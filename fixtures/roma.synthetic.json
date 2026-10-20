@@ -1,0 +1,88 @@
+{
+  "synthetic": true,
+  "teamId": "synthetic-roma-u10",
+  "season": "2026/27",
+  "timeZone": "Europe/London",
+  "pitchPlaces": 7,
+  "plannedHalfDurationMs": 1500000,
+  "players": [
+    {
+      "id": "synthetic-player-01",
+      "displayName": "Player 01",
+      "available": true,
+      "goalkeeperChoice": 1
+    },
+    {
+      "id": "synthetic-player-02",
+      "displayName": "Player 02",
+      "available": true,
+      "goalkeeperChoice": 0
+    },
+    {
+      "id": "synthetic-player-03",
+      "displayName": "Player 03",
+      "available": true,
+      "goalkeeperChoice": 0
+    },
+    {
+      "id": "synthetic-player-04",
+      "displayName": "Player 04",
+      "available": true,
+      "goalkeeperChoice": 0
+    },
+    {
+      "id": "synthetic-player-05",
+      "displayName": "Player 05",
+      "available": true,
+      "goalkeeperChoice": 0
+    },
+    {
+      "id": "synthetic-player-06",
+      "displayName": "Player 06",
+      "available": true,
+      "goalkeeperChoice": 0
+    },
+    {
+      "id": "synthetic-player-07",
+      "displayName": "Player 07",
+      "available": true,
+      "goalkeeperChoice": 0
+    },
+    {
+      "id": "synthetic-player-08",
+      "displayName": "Player 08",
+      "available": true,
+      "goalkeeperChoice": 0
+    },
+    {
+      "id": "synthetic-player-09",
+      "displayName": "Player 09",
+      "available": true,
+      "goalkeeperChoice": 0
+    },
+    {
+      "id": "synthetic-player-10",
+      "displayName": "Player 10",
+      "available": false,
+      "goalkeeperChoice": 0
+    },
+    {
+      "id": "synthetic-player-11",
+      "displayName": "Player 11",
+      "available": false,
+      "goalkeeperChoice": 0
+    },
+    {
+      "id": "synthetic-player-12",
+      "displayName": "Player 12",
+      "available": false,
+      "goalkeeperChoice": 0
+    },
+    {
+      "id": "synthetic-player-13",
+      "displayName": "Player 13",
+      "available": false,
+      "goalkeeperChoice": 0
+    }
+  ]
+}

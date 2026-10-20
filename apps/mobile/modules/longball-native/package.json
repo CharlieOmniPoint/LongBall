@@ -1,0 +1,7 @@
+{
+  "name": "longball-native",
+  "version": "0.0.1",
+  "private": true,
+  "description": "LongBall M0 native continuous-clock and backup-excluded journal directory experiment",
+  "license": "UNLICENSED"
+}

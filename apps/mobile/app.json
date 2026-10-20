@@ -1,0 +1,30 @@
+{
+  "expo": {
+    "name": "LongBall Synthetic Lab",
+    "slug": "longball-synthetic-lab",
+    "version": "0.0.1",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#F6F8F7",
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "name": "LongBall · Roma U10 review",
+      "description": "Fictional Roma U10 matchday review. Native iPhone and Android feasibility work."
+    },
+    "ios": {
+      "bundleIdentifier": "dev.longball.synthetic",
+      "supportsTablet": false
+    },
+    "android": {
+      "package": "dev.longball.synthetic",
+      "allowBackup": false
+    },
+    "plugins": [
+      "expo-dev-client",
+      ["expo-sqlite", { "useSQLCipher": true }],
+      ["expo-secure-store", { "configureAndroidBackup": true }],
+      "expo-notifications"
+    ]
+  }
+}

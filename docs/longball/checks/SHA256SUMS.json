@@ -1,0 +1,16 @@
+{
+  ".env.example": "9c519461f971654523c7b24c41cfdd6f92a20e01bbbe71b82d0063fc0b37b430",
+  "BUILD_START.md": "65512474983831f2a9be42d52dcdc9879d8ed5058c766cb1e634f81e486e782b",
+  "LongBall_Mobile_Build_Pack_v0_1.md": "53f8105c29fe232933371a209150b216d0c504af64d4562bbce304a75b2efab5",
+  "LongBall_Mobile_Design_Booklet_v0_1.pdf": "ad2142410566e77639447142b6a68b5abea235f86cb0644e3b8208efd0644468",
+  "PROPOSED_AGENTS.md": "1912dbeaeab733e776de1ace36c94bd9820d9d7605579e55b43b713c4a54ecc1",
+  "README.md": "82a32d43914b581ae1e98b4c14a0b982cc1370b1b4b59ed3799828600ff0c8ab",
+  "checks/validate_spec_artifacts.py": "9e260a5e346bf08eb4bb0ce174dbce7f86a26d5d7528c04e683981ddb2cc4180",
+  "checks/validation-results.json": "db99dcd85ee5be6cfadecf744d5e74ede409d16f8c0ec00715b241828d3b734b",
+  "contracts/design-tokens.json": "bc9cbfde39ddcc64bc4ea984021b60029f85a40e1f346077b1ecdc45ddc5e2f4",
+  "contracts/fairness-vectors.json": "696821018658b5cc3ebb691d1c52dbfb385179abea67715fc38ff164a7b93973",
+  "contracts/openapi.yaml": "4e5fba84eb9a73d4138b88f1b65e2430213203cdc07655bd5e9f20fbf91e31cf",
+  "design/build_visual_booklet.py": "b91228163a53eb52f7aedd4dd4a66582b00f2561b4d75c63c8e3cda5f7ffebeb",
+  "source/LongBall_Concept_Review_v0_12.docx": "d2fdd6a8d10e56cd4386cc486deb6d78de6171e6390e819a55b46dbfcb51e4c0",
+  "validation-report.md": "97f9e7329935d235497377664e4bc632c1cb153c427a3af868da2197e65f44c7"
+}

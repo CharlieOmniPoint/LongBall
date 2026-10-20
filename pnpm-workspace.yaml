@@ -1,0 +1,11 @@
+packages:
+  - apps/*
+  - packages/*
+engineStrict: true
+saveExact: true
+storeDir: .local/pnpm-store
+cacheDir: .local/pnpm-cache
+minimumReleaseAge: 1440
+allowBuilds:
+  esbuild: true
+  unrs-resolver: true

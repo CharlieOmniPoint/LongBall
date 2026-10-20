@@ -1,0 +1,16 @@
+node_modules/
+.local/
+.venv/
+.expo/
+dist/
+dist-web/
+playwright-report/
+test-results/
+coverage/
+__pycache__/
+*.pyc
+.env
+.env.*
+!.env.example
+apps/mobile/android/
+apps/mobile/ios/

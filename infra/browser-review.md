@@ -1,0 +1,11 @@
+# Browser review deployment preparation
+
+The additional browser surface is an Expo/React Native Web export of the same UI and `@longball/domain` rules used by the native application. It is a synthetic review build, not the production match controller. No hosting service, account, domain, database or paid resource has been provisioned.
+
+Run `pnpm package:review`. The ZIP at `.local/longball-browser-review.zip` contains only the static `site/` output, review instructions and source revision metadata. It excludes local journal data, development caches and credentials. Rebuild from a clean committed tree for a reproducible candidate; the manifest flags uncommitted changes. Keep the generated files together at the root of a static HTTPS origin. There is no API or server start command for this export. `index.html` is the entry point; browser navigation is in application state.
+
+For a later shared link, choose a static host and its audience/access settings deliberately. Initial review must contain fictional data only. Configure HTTPS, disable directory listing, serve HTML with revalidation and hashed JavaScript with an appropriate cache policy. An access password or hosting audience is separate from the future LongBall identity/permission implementation. Do not place provider secrets in public mobile environment variables. Do not enable real scores, invitations, ballots or media sharing from this build.
+
+Each browser origin has an independent IndexedDB rehearsal. Changing hostname/port creates a new storage origin. Browser clearing, eviction or private browsing can lose local data; this is not an offline native guarantee. Tabs at the same origin use transactional writes and stale-revision refusal; rejected candidate branches are retained. Browser refresh/backgrounding requires explicit clock review when continuity cannot be proved. No third-party analytics or remote child images are needed.
+
+The future API/worker/PostgreSQL/identity/private-media services remain at the boundaries in the canonical pack. Before provisioning: settle operating owner, budget, region, privacy/recovery and competition policy; validate service/container versions, migrations, restore and mobile compatibility. Nothing in this static packaging workflow chooses or approves the proposed host or expenditure.

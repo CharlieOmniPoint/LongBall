@@ -1,0 +1,41 @@
+{
+  "name": "longball",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.25.0",
+  "engines": {
+    "node": "24.19.0",
+    "pnpm": "11.25.0"
+  },
+  "scripts": {
+    "setup": "bash scripts/setup.sh",
+    "setup:android": "bash scripts/setup-android.sh",
+    "dev": "bash scripts/start-mobile.sh",
+    "dev:web": "bash scripts/start-web.sh",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit && pnpm --filter mobile typecheck",
+    "test:unit": "vitest run",
+    "test:integration": "vitest run apps/mobile/src/platform",
+    "test:e2e": "node scripts/browser-review.mjs",
+    "package:review": "pnpm build:web && python3 scripts/package-review.py",
+    "test:contracts": ".venv/bin/python scripts/validate-contracts.py",
+    "fixtures:synthetic": "tsx scripts/synthetic-fixtures.ts",
+    "mobile:config": "pnpm --filter mobile exec expo config --type prebuild",
+    "build": "pnpm --filter mobile build:bundle",
+    "build:web": "pnpm --filter mobile build:web",
+    "preview:web": "python3 -m http.server 4173 --bind 0.0.0.0 --directory apps/mobile/dist-web",
+    "check": "pnpm lint && pnpm typecheck && pnpm test:unit && pnpm test:contracts && pnpm fixtures:synthetic && pnpm build"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "eslint": "9.39.5",
+    "eslint-config-expo": "58.0.4",
+    "expo-doctor": "1.21.5",
+    "playwright": "1.58.2",
+    "prettier": "3.6.2",
+    "tsx": "4.23.15",
+    "typescript": "6.0.3",
+    "vitest": "5.0.5"
+  }
+}

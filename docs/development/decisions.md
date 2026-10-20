@@ -1,0 +1,42 @@
+# Implementation decisions and open questions
+
+20 October 2026. Source: the canonical [mobile build pack](../longball/LongBall_Mobile_Build_Pack_v0_1.md), its D01–D28 register, and the current implementation request. This register records reversible development choices separately from unresolved product and operating decisions. The source pack is preserved.
+
+## Development choices
+
+| ID | Choice and reason | Status / limits |
+| --- | --- | --- |
+| ADR-001 | Retain Expo/React Native for native iPhone and Android development builds and a pure TypeScript match domain package. | Implementation route for synthetic M0. Native compilation and physical-device evidence remain separate gates. D17 and PL01 are preserved. |
+| ADR-002 | Add a phone-friendly browser review build beside the native application, reusing the domain and UI where practical. | Explicitly requested for review. It is a synthetic review surface, not a replacement for native match recording or evidence of native storage, clocks or notifications. No hosted service is provisioned. |
+| ADR-003 | Keep the first increment local and synthetic: Roma U10, season 2026/27, 13 fictional roster records, seven pitch places and two planned 25-minute halves. | D02, D11, D16. Fictional availability responses do not establish actual attendance. No real accounts or photographs. |
+| ADR-004 | Keep monotonic clock, encryption/key, journal and notification code in platform adapters. Keep matching rules deterministic and independent of platform/network libraries. | ME11–ME12, ME50–ME51, PL10, DS11. Rendering ticks and wall-clock subtraction cannot establish elapsed playing time. |
+| ADR-005 | Retain the complete F01–F28 integrated pilot. Home → attendance → staged lineup → match clock is an intermediate M0/preparation journey. | No M1–M6 completion, complete manager pilot, server authority or release readiness is implied. |
+| ADR-006 | Preserve supplied contracts and their checksum provenance while documenting discrepancies before generating a network client. | OpenAPI structural/schema validation is not proof of service behaviour. Internal local experiment types must not be described as validated network payloads. |
+
+## Contract issue requiring implementation resolution
+
+**C-001 — event engine version.** Canonical ME50 lists `engineVersion` in the required immutable event envelope. Supplied `contracts/openapi.yaml` has `additionalProperties: false` on its `Event*` object variants and omits that field. A payload satisfying the canonical envelope therefore does not satisfy those wire schemas unchanged. Resolve this in a deliberate versioned companion contract before generated API/client integration. Preserve the original archive and record the amendment separately; do not silently remove engine provenance from local events. This is an engineering discrepancy, not a request to reopen the agreed football rules.
+
+## Owner decisions still open
+
+No row below is accepted by implementation, a default value in a contract, a fictional example or passage of time. Synthetic development can continue without settling these live-use choices.
+
+| Reference | Decision still required | Affected gate |
+| --- | --- | --- |
+| Q05 | Verified household/account recovery route, evidence, approver and cross-team authority. A manager initiates rather than gaining automatic global credential takeover. | Real account activation/recovery, M1/M5. No separate guardian app role is introduced. |
+| Q06 | Acceptable batch preference/cap and minimum-spell defaults outside Roma. | Full planner and live settings. Roma's five-minute spell and 15% buffers are confirmed soft preferences under D22. |
+| Q07 | Precise availability-weighted interval and prospective keeper-policy algorithms; under-strength continuation, competition minimums, abandonment and pause exceptions. | Full planner/exception handling and live operation. D24 availability principle and actual-history preservation remain confirmed. |
+| Q08 | Offline grant validity, handover/reconciliation authority, failed-phone recovery and accepted locked/background alert limitations. | Live controller/recovery and M0 physical-device acceptance. An unreachable phone cannot be instantly remotely disabled. |
+| Q09 | Data controller/operator responsibilities; age versus DOB; legal/privacy assessment; retention/deletion/export, injury-data treatment and report denominators/excused absence. | Real child data and lifecycle workflows. Development supplies no retention period or lawful basis. |
+| Q10 | Named operating entity, payer, budget ceiling, target date, account/repository ownership, technical support/privacy/moderation/recovery owners. | Provisioning, signed distribution, M5/M6 and live service. The pack's £60–£120/month envelope is an unapproved planning allowance. |
+| Q14 | Shared display labels, collision handling and spectator season-renewal details. | Real profile display and invitation renewal. Fictional labels are not acceptance of a production naming policy. |
+| Q15 | Proposed +59-minute vote cutoff and abandoned/corrected/conflicted award treatment. | F23/M4. The confirmed D15 award finalisation deadline remains actual full time +60 minutes; late sync never extends it. |
+| Q18 | Awarded games, forfeits and shoot-outs. | Exceptional results/points. Ordinary completed games, including friendlies, already use confirmed 3/1/0 app points. |
+| Q20 | Final brand/domain and approved launch/store assets. | Publication/store submission. LongBall remains the working name under D28. |
+| Q21 | Actual governing association/league, fixture classifications and permitted audiences for U10 results and derived disclosures. | Real score/result sharing, F22/F27. Invited access is not assumed exempt. Preserve manager recording and implement versioned audited policy before sharing. |
+
+The pack identifies Q05A/B/C, Q06A/B, Q07A/B, Q08A/B, Q11/Q12/Q13/Q16, Q17 and Q19 as resolved. This register does not ask those questions again. Player/parent use stays one child account with one ballot; no child-account promotion to adult authority, paid user access, public profiles, unrestricted chat, advertising or AI ability scores is added.
+
+## Deployment preparation boundary
+
+Prepare deterministic builds, secret-free configuration names, source/test evidence and a review-build output. Do not create paid infrastructure, store enrolments, domains or live-data environments. Railway, Keycloak hosting, region, service sizing and EAS remain proposed choices to evaluate at their milestones. Server authority, backup restoration and real-data access controls must be implemented and tested before a connected pilot; a local browser preview supplies none of those guarantees.
