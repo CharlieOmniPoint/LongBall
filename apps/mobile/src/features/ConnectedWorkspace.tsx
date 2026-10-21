@@ -1,3 +1,8 @@
+import {
+  parseOwnPlayerPreparation,
+  type OwnPlayerPreparation as OwnPreparationDto,
+} from "@longball/application/player-preparation";
+import { FixtureScheduleDetails } from "./FixtureScheduleDetails";
 import { TeamPrivilegesPanel } from "./TeamPrivilegesPanel";
 import {
   assertOwnTeamPrivileges,
@@ -54,7 +59,6 @@ import {
   type AvailabilityResponse,
   type PlayerProfile,
   type PreparationCommand,
-  type PreparationSeason,
   type PreparationState,
 } from "@longball/application/preparation";
 import type {
@@ -204,35 +208,6 @@ type Identity = {
 };
 type CommunityDto = ReturnType<typeof getCommunityView> & { revision: number };
 type RecordsDto = ConnectedRecordsDto;
-interface OwnPreparationDto {
-  kind: "player-preparation";
-  revision: number;
-  team: { id: string; name: string; ageGroup: string };
-  season: PreparationSeason;
-  profile: PlayerProfile;
-  fixtures: {
-    id: string;
-    opponent: string;
-    playedDate: string;
-    kickoff: string | null;
-    venue: string;
-    homeAway: string;
-    status: string;
-    response: AvailabilityResponse;
-    selected: boolean;
-    attendance: string;
-  }[];
-  training: {
-    id: string;
-    date: string;
-    time: string | null;
-    venue: string;
-    status: string;
-    expected: boolean;
-    response: AvailabilityResponse;
-    attendance: string;
-  }[];
-}
 type OwnCommand = { id: string; expectedRevision: number } & (
   | { type: "own.preferences_saved"; preferences: PlayerProfile["preferences"] }
   | {
@@ -1702,12 +1677,13 @@ function WorkspaceSession({
     if (!isManager && isPlayer)
       tasks.push(
         client
-          .request<OwnPreparationDto>(scopedPath("preparation/own"))
-          .then(async (value) => {
-            if (value.profile.playerId !== ticket.playerId)
-              throw new Error(
-                "The returned profile is outside this account's own-player scope.",
-              );
+          .request<unknown>(scopedPath("preparation/own"))
+          .then(async (candidate) => {
+            const value = parseOwnPlayerPreparation(candidate, {
+              teamId: ticket.teamId,
+              seasonId: ticket.seasonId,
+              playerId: ticket.playerId ?? "",
+            });
             const attached = await attach(value);
             if (attached) setOwn(attached);
           })
@@ -3332,12 +3308,13 @@ function OwnPreparation({
   const fixtureCard = (fixture: OwnPreparationDto["fixtures"][number]) => (
     <Card key={fixture.id}>
       <Text style={typography.section}>
-        {fixture.homeAway === "away" ? "Away to" : "v"} {fixture.opponent}
+        {fixture.homeAway === "away" ? "Away to" : "Home v"} {fixture.opponent}
       </Text>
       <Text style={typography.muted}>
-        {fixture.playedDate} · {fixture.kickoff ?? "Time to confirm"} ·{" "}
-        {fixture.venue} · {fixture.status}
+        {fixture.playedDate} · {fixture.venue || "Location not recorded"} ·{" "}
+        {fixture.status}
       </Text>
+      <FixtureScheduleDetails fixture={fixture} />
       <Text style={typography.body}>
         {fixture.selected ? "Selected by manager" : "Not selected"} · actual
         attendance: {fixture.attendance.replaceAll("_", " ")}

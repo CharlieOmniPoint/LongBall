@@ -1,3 +1,4 @@
+import { projectOwnPlayerPreparation } from '../../../packages/application/src/player-preparation';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { chmodSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
@@ -704,9 +705,7 @@ export class DevelopmentStore {
     const profiles = state.profiles.filter(profile => profile.playerId === membership.playerId && profile.seasonId === seasonId && profile.active);
     if (profiles.length !== 1) throw new AccessError('NOT_FOUND', 404, 'The requested own-player profile is unavailable.');
     const profile = profiles[0];
-    return { kind: 'player-preparation', revision: state.revision, team: { id: state.team.id, name: state.team.name, ageGroup: state.team.ageGroup }, season: state.seasons.find(season => season.id === seasonId), profile,
-      fixtures: state.fixtures.filter(fixture => fixture.seasonId === seasonId).map(fixture => ({ id: fixture.id, opponent: fixture.opponent, playedDate: fixture.playedDate, kickoff: fixture.kickoff, venue: fixture.venue, homeAway: fixture.homeAway, status: fixture.status, response: fixture.responses[profile.id] ?? 'no_reply', selected: fixture.selectedProfileIds.includes(profile.id), attendance: fixture.attendance[profile.id] ?? 'not_recorded' })),
-      training: state.training.filter(session => session.seasonId === seasonId).map(session => ({ id: session.id, date: session.date, time: session.time, venue: session.venue, status: session.status, expected: session.expectedProfileIds.includes(profile.id), response: session.responses[profile.id] ?? 'no_reply', attendance: session.attendance[profile.id] ?? 'not_recorded' })) };
+    return projectOwnPlayerPreparation(state, profile, seasonId);
   }
   ownPreparationCommand(principal: Principal, teamId: string, seasonId: string, command: OwnPreparationCommand): Record<string, unknown> {
     const membership = assertTeamRole(principal, this.memberships(), teamId, seasonId, ['player'], this.now());

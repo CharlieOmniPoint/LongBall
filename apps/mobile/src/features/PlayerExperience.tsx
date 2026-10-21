@@ -1,3 +1,4 @@
+import { FixtureScheduleDetails } from "./FixtureScheduleDetails";
 import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import {
@@ -154,12 +155,12 @@ export function PlayerExperience({
                     </Text>
                     <Text style={styles.body}>
                       {fixture.playedDate} ·{" "}
-                      {fixture.kickoff ?? "Time not recorded"} ·{" "}
-                      {fixture.homeAway}
+                      {fixture.homeAway === "away" ? "Away" : "Home"}
                     </Text>
                     <Text style={styles.body}>
                       {fixture.venue || "Venue not recorded"}
                     </Text>
+                    <FixtureScheduleDetails fixture={fixture} />
                     <Text style={styles.body}>
                       Your response:{" "}
                       {(fixture.responses[profile.id] ?? "no_reply").replaceAll(
