@@ -73,6 +73,7 @@ for source, destination in [
     ("infra/cloud-preview/backend/package.json", "backend/package.json"),
     ("infra/cloud-preview/backend/package-lock.json", "backend/package-lock.json"),
     ("infra/cloud-preview/check-media.mjs", "preview/check-media.mjs"),
+    ("infra/cloud-preview/seed-demo-media.mjs", "preview/seed-demo-media.mjs"),
     ("infra/runtime/clamd.conf", "preview/clamd.conf"),
     ("infra/runtime/Dockerfile", "infra/runtime/Dockerfile"),
     ("infra/runtime/Dockerfile.dockerignore", "infra/runtime/Dockerfile.dockerignore"),

@@ -20,7 +20,7 @@ async function open(page, label) {
   await page.getByTestId('prepare-match').waitFor(); await page.getByRole('button', { name: 'More', exact: true }).click(); await page.getByRole('button', { name: 'Service and controller', exact: true }).click();
   await page.getByLabel('Workspace API URL', { exact: true }).fill(api);
   await page.getByRole('button', { name: 'Fictional API review', exact: true }).click(); await page.getByRole('button', { name: label, exact: true }).click(); await page.getByTestId('workspace-connect').click();
-  await selectWorkspaceContext(page, label === 'Fictional Player 01' ? 'player' : 'manager');
+  await selectWorkspaceContext(page, label === 'Oliver Bennett · Player' ? 'player' : 'manager');
 }
 async function decide(page, privilege, suspend) {
   await openWorkspaceTab(page, 'privileges'); await page.getByTestId('workspace-team-privileges').waitFor();
@@ -49,7 +49,7 @@ try {
     const context = await browser.newContext({ viewport: { width, height: 844 }, reducedMotion: 'reduce' });
     const manager = await context.newPage(), player = await context.newPage();
     for (const page of [manager, player]) { page.setDefaultTimeout(20_000); page.on('pageerror', error => pageErrors.push(error.message)); }
-    await open(manager, 'Fictional manager'); await decide(manager, 'uploads', true); await open(player, 'Fictional Player 01');
+    await open(manager, 'Alex Morgan · Manager'); await decide(manager, 'uploads', true); await open(player, 'Oliver Bennett · Player');
     await openWorkspaceTab(player, 'more'); assert.equal(await player.getByTestId('workspace-tab-privileges').count(), 0);
     await openWorkspaceTab(player, 'community'); await player.getByText('Photo contributions are currently held or awaiting a current privilege check.', { exact: false }).waitFor();
     assert.equal(await player.getByTestId('media-generated-image').isDisabled(), true);

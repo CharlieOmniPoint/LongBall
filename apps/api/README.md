@@ -19,6 +19,8 @@ PostgreSQL startup rejects schema/table owners, superusers, roles that bypass ro
 
 Fictional bearer labels include `synthetic-manager-1`, `synthetic-manager-2` through `-5`, `synthetic-admin`, `synthetic-account-player-01` through `-13`, `synthetic-spectator` and `synthetic-other-manager`. These labels are deliberately public demonstration selectors, not secure credentials. The first manager maps to `synthetic-account-manager` and has explicit administrator plus manager assignments; three other Roma managers fill the remaining places. A fifth cannot be assigned. Never use this mode for real accounts, children or photos.
 
+The generated review uses 13 named sample players, eight home/away fixtures and seven training dates from `fixtures/roma.synthetic.json`. Set `LONGBALL_DEMO_SCENARIO=1` only alongside synthetic authentication to expose the sample scores/results and a 45-minute post-match voting example. This opt-in is refused in production and leaves the real competition policy unapproved. The cloud review then runs `infra/cloud-preview/seed-demo-media.mjs` against loopback: it creates two published sample illustrations and one pending player submission through the normal upload, scanner, derivative and moderation pipeline. It cannot populate a non-demo API or publish when scanning is unavailable. The same command is idempotent; it does not overwrite user work or upgrade a pre-existing database into demo-sharing mode.
+
 Team: `synthetic-roma-u10`. Season: `synthetic-season-2026-27`. Match: `synthetic-roma-maple-2026-10-24`. GET `/v1/me` returns the verified principal and current memberships. Every command derives its actor from that principal; body role/classification values cannot create authority.
 
 ## Implemented routes

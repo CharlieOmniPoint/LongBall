@@ -32,7 +32,11 @@
     "test:access": "vitest run --config apps/api/vitest.config.ts packages/application/src/access.test.ts apps/api/src/oidc.test.ts",
     "test:migration": "vitest run --config apps/api/vitest.config.ts apps/api/src/server.test.ts -t 'restor|migrat|rolls back'",
     "preview:web": "python3 -m http.server 4173 --bind 0.0.0.0 --directory apps/mobile/dist-web",
-    "check": "pnpm lint && pnpm typecheck && pnpm test:unit && pnpm test:api && pnpm test:contracts && pnpm test:preview && pnpm fixtures:synthetic && pnpm build && pnpm build:api"
+    "check": "pnpm lint && pnpm typecheck && pnpm test:unit && pnpm test:api && pnpm test:contracts && pnpm test:preview && pnpm fixtures:synthetic && pnpm build && pnpm build:api",
+    "db:migrate:check": "node scripts/check-migrations.mjs",
+    "quality:inventory": "node scripts/quality-inventory.mjs",
+    "quality:secrets": "node scripts/check-secrets.mjs",
+    "quality:dependencies": "node scripts/check-dependencies.mjs"
   },
   "devDependencies": {
     "@types/node": "24.19.2",

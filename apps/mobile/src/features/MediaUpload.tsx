@@ -223,7 +223,7 @@ function MediaUploadContent(props: MediaUploadProps) {
     <Card>
       <Text style={s.heading}>Connected image upload</Text>
       <Pill tone="info">
-        {synthetic ? "FICTIONAL SERVICE REHEARSAL" : "AUTHENTICATED SERVICE"}
+        {synthetic ? "DEMO SERVICE REHEARSAL" : "AUTHENTICATED SERVICE"}
       </Pill>
       <Notice>
         {target
@@ -235,7 +235,7 @@ function MediaUploadContent(props: MediaUploadProps) {
         private until processing and the required publication action succeed.
       </Text>
       <Notice>
-        {synthetic ? "Use the generated fictional PNG for this review. " : ""}
+        {synthetic ? "Use the generated demo PNG for this review. " : ""}
         The service fails closed when its safety scanner is unavailable. No raw
         upload is served through the gallery.
       </Notice>
@@ -248,7 +248,7 @@ function MediaUploadContent(props: MediaUploadProps) {
       )}
       {synthetic && (
         <Button
-          label="Choose generated fictional PNG"
+          label="Choose generated demo PNG"
           testID="media-generated-image"
           variant="secondary"
           disabled={
@@ -328,7 +328,7 @@ function MediaUploadContent(props: MediaUploadProps) {
       <View style={s.row}>
         <Text style={[s.body, { flex: 1 }]}>
           {synthetic
-            ? "I reviewed this fictional image and the content rules."
+            ? "I reviewed this demo image and the content rules."
             : "I reviewed this image and the content rules."}
         </Text>
         <Switch

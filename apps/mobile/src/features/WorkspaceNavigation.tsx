@@ -93,7 +93,6 @@ export function WorkspaceNavigation({
           />
           <Text
             style={[s.label, selected === item.tab && s.activeLabel]}
-            numberOfLines={1}
           >
             {item.label}
           </Text>
@@ -113,7 +112,7 @@ const s = StyleSheet.create({
     paddingVertical: 4,
   },
   tab: {
-    minHeight: 52,
+    minHeight: 56,
     flex: 1,
     minWidth: 0,
     alignItems: "center",
@@ -124,8 +123,9 @@ const s = StyleSheet.create({
   },
   active: { backgroundColor: "#E9F3ED" },
   label: {
-    fontSize: 11,
-    lineHeight: 16,
+    fontSize: 12,
+    lineHeight: 17,
+    textAlign: "center",
     fontWeight: "600",
     color: colors.inkMuted,
   },

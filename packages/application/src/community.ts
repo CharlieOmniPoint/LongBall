@@ -1,3 +1,4 @@
+import { demoAccountLabels, romaFixture } from '@longball/testing';
 /**
  * Serializable community rules shared by the synthetic native and web journeys.
  * Actors must come from an authenticated service in a connected pilot. This module
@@ -274,7 +275,7 @@ function sealAward(state: CommunityState, match: CommunityMatch, nowMs: number) 
     finalisedAtMs: nowMs, deadlineMissed: nowMs > match.finalisationDeadlineAtMs });
 }
 function validateArt(art: FictionalArt, caption: string) {
-  requireRule(['pitch', 'ball', 'cones'].includes(art), 'invalid', 'Choose a fictional review illustration. Arbitrary URLs and raw image uploads are not supported here.');
+  requireRule(['pitch', 'ball', 'cones'].includes(art), 'invalid', 'Choose a demo review illustration. Arbitrary URLs and raw image uploads are not supported here.');
   requireRule(typeof caption === 'string' && caption.trim().length <= 160, 'invalid', 'Keep the caption within 160 characters.');
 }
 export function defaultCommunityPreferences(): CommunityPreferences {
@@ -298,19 +299,19 @@ export function applyCommunityCommand(state: CommunityState, actor: CommunityAct
   if (!personal && command.type !== 'invite.accepted') assertAccess(next, actor, nowMs);
   switch (command.type) {
     case 'invite.created': {
-      requireRule(next.synthetic === true, 'forbidden', 'Review codes are available only in the fictional local journey.');
+      requireRule(next.synthetic === true, 'forbidden', 'Review codes are available only in the local demo journey.');
       requireRule(actor.role !== 'spectator', 'forbidden', 'Spectators cannot invite other spectators.');
       const season = next.seasons.find(item => item.id === actor.seasonId && item.teamId === actor.teamId);
       requireRule(season, 'invalid', 'The team season is missing.');
       requireRule(validTime(command.expiresAtMs) && nowMs < command.expiresAtMs && command.expiresAtMs <= season.accessEndsAtMs, 'invalid', 'Choose an invitation expiry after now and before the season ends.');
-      requireRule(command.reviewCode.trim().length >= 6 && !next.invitations.some(item => item.reviewCode === command.reviewCode || item.id === command.invitationId), 'invalid', 'The fictional invitation identity/code must be unique.');
+      requireRule(command.reviewCode.trim().length >= 6 && !next.invitations.some(item => item.reviewCode === command.reviewCode || item.id === command.invitationId), 'invalid', 'The demo invitation identity/code must be unique.');
       next.invitations.push({ id: command.invitationId, teamId: actor.teamId, seasonId: actor.seasonId,
         inviterAccountId: actor.accountId, reviewCode: command.reviewCode, credential: { kind: 'fictional_review', version: 1, code: command.reviewCode }, createdAtMs: nowMs, expiresAtMs: command.expiresAtMs,
         acceptedBy: null, acceptedAtMs: null, revokedAtMs: null, reissuedFromInvitationId: null });
       break;
     }
     case 'invite.accepted': {
-      requireRule(next.synthetic === true, 'forbidden', 'Review codes are available only in the fictional local journey.');
+      requireRule(next.synthetic === true, 'forbidden', 'Review codes are available only in the local demo journey.');
       const invite = next.invitations.find(item => item.credential?.kind === 'fictional_review' && item.credential.code === command.reviewCode && item.reviewCode === command.reviewCode);
       requireRule(invite && invite.teamId === actor.teamId && invite.seasonId === actor.seasonId, 'forbidden', 'That invitation is not valid for this team and season.');
       requireRule(invite.revokedAtMs === null && invite.acceptedBy === null, 'closed', 'That invitation has already been accepted or revoked.');
@@ -356,7 +357,7 @@ export function applyCommunityCommand(state: CommunityState, actor: CommunityAct
       const match = scopedMatch(next, actor, command.matchId);
       requireRule(match.actualFullTimeAtMs !== null && match.finishQuality === 'trusted', 'policy_needed', 'Trustworthy original full-time evidence is required first.');
       requireRule(!next.awards.some(item => item.matchId === match.id) && match.cutoffSource === 'unresolved', 'closed', 'A configured/closed award cannot be reopened by changing its cutoff.');
-      requireRule(Number.isSafeInteger(command.minutesAfterFullTime) && command.minutesAfterFullTime > 0 && command.minutesAfterFullTime < 60, 'invalid', 'Choose an explicit fictional cutoff from 1 to 59 minutes. This does not approve a production default.');
+      requireRule(Number.isSafeInteger(command.minutesAfterFullTime) && command.minutesAfterFullTime > 0 && command.minutesAfterFullTime < 60, 'invalid', 'Choose an explicit demo cutoff from 1 to 59 minutes. This does not approve a production default.');
       match.voteCutoffAtMs = match.actualFullTimeAtMs + command.minutesAfterFullTime * 60_000;
       match.cutoffSource = 'explicit_fictional_setting';
       break;
@@ -368,7 +369,7 @@ export function applyCommunityCommand(state: CommunityState, actor: CommunityAct
       requireRule(match.finishQuality === 'trusted', 'policy_needed', 'The finish/eligibility evidence requires review before voting.');
       requireRule(!next.awards.some(item => item.matchId === match.id), 'closed', 'Voting is closed.');
       if (match.actualFullTimeAtMs !== null) {
-        requireRule(match.voteCutoffAtMs !== null, 'policy_needed', 'The automatic ballot cutoff is unresolved (Q15). A manager must set an explicit fictional rehearsal cutoff or close deliberately.');
+        requireRule(match.voteCutoffAtMs !== null, 'policy_needed', 'The automatic ballot cutoff is unresolved (Q15). A manager must set an explicit demo cutoff or close deliberately.');
         requireRule(nowMs < match.voteCutoffAtMs && nowMs < match.finalisationDeadlineAtMs!, 'closed', 'Voting is closed at its original cutoff, even if finalisation is delayed.');
       }
       requireRule(command.candidatePlayerId !== actor.playerId && match.playedPlayerIds.includes(command.candidatePlayerId), 'invalid', 'Choose a teammate who actually played. Self-votes are not permitted.');
@@ -879,15 +880,15 @@ export function createCommunityState(nowMs = Date.now()): CommunityState {
   const seasonId = 'synthetic-season-2026-27';
   const playerIds = Array.from({ length: 13 }, (_, index) => `synthetic-player-${String(index + 1).padStart(2, '0')}`);
   const accounts: CommunityAccount[] = [
-    { id: 'synthetic-account-manager', label: 'Fictional manager', classification: 'adult_individual', adultVerified: true },
-    ...playerIds.map((id, index): CommunityAccount => ({ id: `synthetic-account-player-${String(index + 1).padStart(2, '0')}`, label: `Player ${id.slice(-2)}`, classification: 'child_shared', adultVerified: false })),
-    { id: 'synthetic-account-spectator', label: 'Fictional spectator', classification: 'spectator', adultVerified: false },
-    { id: 'synthetic-account-invitee', label: 'Fictional invited spectator', classification: 'spectator', adultVerified: false },
+    { id: 'synthetic-account-manager', label: demoAccountLabels['synthetic-account-manager'], classification: 'adult_individual', adultVerified: true },
+    ...playerIds.map((id, index): CommunityAccount => ({ id: `synthetic-account-player-${String(index + 1).padStart(2, '0')}`, label: romaFixture.players[index].displayName, classification: 'child_shared', adultVerified: false })),
+    { id: 'synthetic-account-spectator', label: demoAccountLabels['synthetic-account-spectator'], classification: 'spectator', adultVerified: false },
+    { id: 'synthetic-account-invitee', label: demoAccountLabels['synthetic-account-invitee'], classification: 'spectator', adultVerified: false },
   ];
   const memberships: CommunityMembership[] = [{ accountId: accounts[0].id, teamId, seasonId, role: 'manager', active: true },
     ...playerIds.map((playerId, index): CommunityMembership => ({ accountId: accounts[index + 1].id, playerId, teamId, seasonId, role: 'player', active: true }))];
   const fullTime = Math.max(0, nowMs - 600_000);
-  const match: CommunityMatch = { id: 'synthetic-community-willow', teamId, seasonId, label: 'Roma vs Willow FC · fictional review',
+  const match: CommunityMatch = { id: 'synthetic-community-willow', teamId, seasonId, label: 'Roma v Willow FC · Practice match',
     playedAtMs: Math.max(0, fullTime - 3_600_000), selectedPlayerIds: playerIds.slice(0, 9), presentPlayerIds: playerIds.slice(0, 9), playedPlayerIds: playerIds.slice(0, 9),
     actualFullTimeAtMs: fullTime, finishQuality: 'trusted', voteCutoffAtMs: null, cutoffSource: 'unresolved', finalisationDeadlineAtMs: fullTime + 3_600_000,
     sharing: 'fictional_review_only', policyVersion: 1 };
@@ -896,13 +897,13 @@ export function createCommunityState(nowMs = Date.now()): CommunityState {
     invitations: [], grants: [{ id: 'synthetic-demo-grant', invitationId: 'synthetic-seeded-invitation', accountId: 'synthetic-account-spectator', teamId, seasonId,
       startsAtMs: Math.max(0, nowMs - 86_400_000), expiresAtMs: Date.parse('2027-08-31T23:00:00Z'), revokedAtMs: null }],
     matches: [match], ballots: [], awards: [], photos: [], concerns: [], hiddenUploaders: [], preferences: {}, privacyRequests: [], audit: [], appliedCommands: {} };
-  // A deliberately public fictional illustration, plus one private player item,
+  // A deliberately public sample illustration, plus one private player item,
   // makes both the gallery and moderation journey reviewable without child photos.
   state.photos.push({ id: 'synthetic-published-pitch', matchId: match.id, teamId, seasonId, uploaderAccountId: 'synthetic-account-manager', uploaderRole: 'manager',
-    currentRevision: 1, publishedRevision: 1, removedAtMs: null, revisions: [{ version: 1, art: 'pitch', caption: 'A fictional matchday illustration. No children or real photographs.',
+    currentRevision: 1, publishedRevision: 1, removedAtMs: null, revisions: [{ version: 1, art: 'pitch', caption: 'Matchday at Rovers Sports Ground · sample illustration',
       status: 'published', createdAtMs: fullTime, reviewedAtMs: fullTime, reviewerAccountId: 'synthetic-account-manager', rejectionReason: null, processing: 'synthetic_derivative_ready' }] });
   state.photos.push({ id: 'synthetic-pending-ball', matchId: match.id, teamId, seasonId, uploaderAccountId: 'synthetic-account-player-01', uploaderRole: 'player',
-    currentRevision: 1, publishedRevision: null, removedAtMs: null, revisions: [{ version: 1, art: 'ball', caption: 'Fictional football illustration awaiting review.',
+    currentRevision: 1, publishedRevision: null, removedAtMs: null, revisions: [{ version: 1, art: 'ball', caption: 'Saturday football · sample illustration awaiting review',
       status: 'pending', createdAtMs: fullTime, reviewedAtMs: null, reviewerAccountId: null, rejectionReason: null, processing: 'synthetic_derivative_ready' }] });
   return state;
 }

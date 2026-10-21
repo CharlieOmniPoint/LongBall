@@ -6,7 +6,7 @@ import type { DatabaseRequestScope } from './request-context';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { AccessError, assertAdultAuthority, assertCanAssignManager, assertCanManageTeam, assertTeamRole, currentMemberships, filterMatchForPrincipal, UNAPPROVED_SHARING_POLICY, type Membership, type Principal, type SharingPolicy } from '../../../packages/application/src/access';
 import { createMatch, ENGINE_VERSION, reduceMatch, type MatchConfig, type MatchEvent, type MatchState } from '../../../packages/domain/src/index';
-import { romaFixture } from '../../../packages/testing/src/index';
+import { demoAccountLabels, romaFixture } from '../../../packages/testing/src/index';
 import type { VerifiedIdentity } from './oidc';
 import { createPreparationState, reducePreparation, trainingAttendanceEvidence, type PreparationCommand, type PreparationState, type PositionCode, type AvailabilityResponse } from '../../../packages/application/src/preparation';
 import { applyCommunityCommand, createCommunityState, getCommunityView, authorizeCommunityMedia, communityCanAccess, type CommunityActor, type CommunityCommand, type CommunityState } from '../../../packages/application/src/community';
@@ -15,6 +15,7 @@ import { effectiveEventTime } from '../../../packages/application/src/sync';
 import { fixtureMatchConfig } from '../../../packages/application/src/application';
 import { applyConfigurationServiceCommand, configurationServiceView, planSeasonRollover, seasonRolloverOptions, type SeasonRolloverCommand, type SeasonRolloverContext } from '../../../packages/application/src/season-service';
 import { applyRecordsServiceCommand, recordsServiceExport, recordsServiceView, type RecordsExportRequest, type RecordsServiceCommand, type RecordsServiceInput } from '../../../packages/application/src/records-service';
+import { gamePreparationEvidence } from '../../../packages/application/src/game-preparation-evidence';
 import { issueClockChallenge as makeClockChallenge, acknowledgeClockChallenge as acceptClockChallenge, type ClockChallenge, type ContinuousUtcMapping, type TrustedTimePolicy } from './trusted-time';
 import { Q08_RECONCILIATION_POLICY, previewReconciliation, type ReconciliationProposal, type ReconciliationProposalInput, type ReconciliationSnapshot, type ReconciliationSubmission } from '../../../packages/application/src/reconciliation';
 import { deriveFinishedMatchContext, finishEligibilityChanged } from './finished-match-context';
@@ -138,13 +139,13 @@ static async open(connectionString: string, now: () => number = Date.now, option
  async one(sql:string,values:readonly unknown[]=[]):Promise<Record<string,unknown>|undefined>{return (await this.db.query(sql,values)).rows[0];}
  async many(sql:string,values:readonly unknown[]=[]):Promise<Record<string,unknown>[]>{return (await this.db.query(sql,values)).rows;}
  async execute(sql:string,values:readonly unknown[]=[]):Promise<{changes:number}>{return {changes:(await this.db.query(sql,values)).rowCount??0};}
-async seedSynthetic(): Promise<void> {
+async seedSynthetic(options: { demoSharing?: boolean } = {}): Promise<void> {
     (await this.transaction(async () => {
         if ((await this.one("SELECT id FROM teams LIMIT 1", [])))
             return;
-        await this.execute('INSERT INTO clubs(id,name) VALUES($1,$2),($3,$4)',['synthetic-richmond-rovers','Richmond Rovers · fictional','synthetic-other-club','Other fictional club']);
-        (await this.execute("INSERT INTO teams(id,name,club_id,scope_status) VALUES($1,$2,$3,'resolved')", [SYNTHETIC_IDS.teamId, 'Roma U10 · fictional','synthetic-richmond-rovers']));
-        (await this.execute("INSERT INTO teams(id,name,club_id,scope_status) VALUES($1,$2,$3,'resolved')", ['synthetic-other-team', 'Other fictional team','synthetic-other-club']));
+        await this.execute('INSERT INTO clubs(id,name) VALUES($1,$2),($3,$4)',['synthetic-richmond-rovers','Richmond Rovers','synthetic-other-club','Brookfield Juniors']);
+        (await this.execute("INSERT INTO teams(id,name,club_id,scope_status) VALUES($1,$2,$3,'resolved')", [SYNTHETIC_IDS.teamId, 'Roma U10','synthetic-richmond-rovers']));
+        (await this.execute("INSERT INTO teams(id,name,club_id,scope_status) VALUES($1,$2,$3,'resolved')", ['synthetic-other-team', 'Milan U11','synthetic-other-club']));
         await this.execute('INSERT INTO team_seasons(club_id,team_id,season_id,label,start_year,start_date,end_date) VALUES($1,$2,$3,$4,$5,$6,$7),($8,$9,$3,$4,$5,$6,$7)',['synthetic-richmond-rovers',SYNTHETIC_IDS.teamId,SYNTHETIC_IDS.seasonId,'2026/27',2026,'2026-09-01','2027-08-31','synthetic-other-club','synthetic-other-team']);
         const add = async (id: string, classification: Principal['identityClassification'], adult: boolean) => (await this.execute("INSERT INTO accounts(id,issuer,subject,classification,adult_verified,strong_auth_enrolled) VALUES($1,$2,$3,$4,$5,$6)", [id, 'urn:longball:synthetic', id, classification, Number(adult), Number(adult)]));
         const membership = async (id: string, role: string, playerId: string | null = null, teamId: string = SYNTHETIC_IDS.teamId) => (await this.execute("INSERT INTO memberships(account_id,team_id,season_id,role,player_id) VALUES($1,$2,$3,$4,$5)", [id, teamId, SYNTHETIC_IDS.seasonId, role, playerId]));
@@ -169,18 +170,28 @@ async seedSynthetic(): Promise<void> {
         (await add('synthetic-account-invitee', 'adult_individual', false));
         (await add('synthetic-account-other-manager', 'adult_individual', true));
         (await membership('synthetic-account-other-manager', 'manager', null, 'synthetic-other-team'));
-        const config: MatchConfig = { matchId: SYNTHETIC_IDS.matchId, players: romaFixture.players, selectedPlayerIds: romaFixture.players.filter(player => player.available).map(player => player.id), pitchPlaces: 7, plannedHalfDurationMs: 1500000, fixedKeeperId: romaFixture.players[0].id };
+        const config: MatchConfig = { matchId: SYNTHETIC_IDS.matchId, players: romaFixture.players, selectedPlayerIds: romaFixture.players.filter(player => player.available).map(player => player.id), pitchPlaces: 7, plannedHalfDurationMs: 1500000, fixedKeeperId: romaFixture.players[0].id, fixture: { opponent: 'Maple FC', playedDate: '2026-10-24', kickoff: '2026-10-24T09:00:00Z', homeAway: 'home', teamId: SYNTHETIC_IDS.teamId, seasonId: SYNTHETIC_IDS.seasonId, teamName: 'Roma', clubName: 'Richmond Rovers' } };
         (await this.insertMatch(config, SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId));
         const community = createCommunityState(this.now());
-        community.matches = community.matches.map(match => ({ ...match, sharing: 'manager_only' }));
+        if (options.demoSharing) await this.execute('UPDATE matches SET sharing_policy_json=$1 WHERE id=$2', [JSON.stringify({ version: 'demo-simulated-scores-v1', approvedBy: 'generated-demo-scenario-only', approvedAt: this.now(), shareScores: true, shareDerivedResults: true }), SYNTHETIC_IDS.matchId]);
+        if (options.demoSharing) {
+          community.photos = [];
+          // This generated scenario explicitly uses 45 minutes, not a real competition default or the unresolved +59 proposal.
+          community.matches = community.matches.map(match => ({ ...match, voteCutoffAtMs: match.actualFullTimeAtMs! + 45 * 60_000, cutoffSource: 'explicit_fictional_setting' }));
+        }
+        if (!options.demoSharing) community.matches = community.matches.map(match => ({ ...match, sharing: 'manager_only' }));
         for (let number = 2; number <= 4; number++) {
             const id = `synthetic-account-manager-${number}`;
-            community.accounts.push({ id, label: `Fictional manager ${number}`, classification: 'adult_individual', adultVerified: true });
+            community.accounts.push({ id, label: demoAccountLabels[id], classification: 'adult_individual', adultVerified: true });
             community.memberships.push({ accountId: id, teamId: SYNTHETIC_IDS.teamId, seasonId: SYNTHETIC_IDS.seasonId, role: 'manager', active: true });
         }
         (await this.saveDocument(SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId, 'preparation', createPreparationState()));
         (await this.saveDocument(SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId, 'community', community));
-        (await this.saveDocument(SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId, 'records', createRecordsSeed()));
+        (await this.saveDocument(SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId, 'records', createRecordsSeed(options)));
+        if (options.demoSharing) for (const match of community.matches) {
+          const key = `award:${SYNTHETIC_IDS.teamId}:${SYNTHETIC_IDS.seasonId}:${match.id}:${match.voteCutoffAtMs}`;
+          await this.execute('INSERT INTO jobs(id,business_key,kind,payload_json,due_at) VALUES($1,$2,$3,$4,$5) ON CONFLICT(business_key) DO NOTHING', [randomUUID(), key, 'award.finalise', JSON.stringify({ teamId: SYNTHETIC_IDS.teamId, seasonId: SYNTHETIC_IDS.seasonId, matchId: match.id }), match.voteCutoffAtMs!]);
+        }
     }));
 }
 async insertMatch(config: MatchConfig, teamId: string, seasonId: string): Promise<void> {
@@ -718,8 +729,8 @@ async bindDevice(principal: Principal, deviceId: string): Promise<void> {
 async teamMatches(principal: Principal, teamId: string, seasonId: string, requestedRole?: string, query: MatchPageQuery = { limit: 25, cursor: null }): Promise<{ items: Record<string, unknown>[]; nextCursor: string | null; serverTime: string }> {
     const memberships = await this.memberships();
     const audience = matchPageAudience(principal, memberships, teamId, seasonId, requestedRole, this.now());
-    const scope = { principal, teamId, seasonId, role: audience.role, playerId: audience.playerId ?? null }, afterId = matchPagePosition(scope, query);
-    const rows = await this.many('SELECT id,state_json,sharing_policy_json,last_sync_at FROM matches WHERE team_id=$1 AND season_id=$2 AND ($3::text IS NULL OR id COLLATE "C" > $3::text COLLATE "C") ORDER BY id COLLATE "C" LIMIT $4', [teamId, seasonId, afterId, query.limit + 1]) as Pick<MatchRow, 'id' | 'state_json' | 'sharing_policy_json' | 'last_sync_at'>[];
+    const scope = { principal, teamId, seasonId, role: audience.role, playerId: audience.playerId ?? null, status: query.status }, afterId = matchPagePosition(scope, query);
+    const rows = await this.many(`SELECT id,state_json,sharing_policy_json,last_sync_at FROM matches WHERE team_id=$1 AND season_id=$2 AND ($3::text IS NULL OR id COLLATE "C" > $3::text COLLATE "C") AND (NOT $4::boolean OR state_json::jsonb ->> 'status' IN ('first_half_running','first_half_paused','half_time','second_half_running','second_half_paused')) ORDER BY id COLLATE "C" LIMIT $5`, [teamId, seasonId, afterId, query.status === 'active', query.limit + 1]) as Pick<MatchRow, 'id' | 'state_json' | 'sharing_policy_json' | 'last_sync_at'>[];
     const visible = rows.slice(0, query.limit);
     return { items: visible.map(row => filterMatchForPrincipal({ principal, memberships, teamId, seasonId, state: JSON.parse(row.state_json), policy: JSON.parse(row.sharing_policy_json), lastSyncAt: row.last_sync_at, requestedRole, now: this.now() })), nextCursor: rows.length > query.limit ? matchPageCursor(scope, visible[visible.length - 1].id) : null, serverTime: new Date(this.now()).toISOString() };
 }
@@ -825,6 +836,9 @@ private async projectPreparationRecords(teamId: string, seasonId: string, prepar
             audit: [...records.audit, { commandId: `preparation-roster-${sourceCommandId}`, action: 'preparation.roster.projected', matchId: null, at, reason: 'Current season roster labels updated from preparation; saved match snapshots preserved.', before: null, after: null }] };
     if (canonical(evidence) !== canonical(previous.trainingAttendance))
         records = reduceRecords(records, { type: 'training.evidence.replace', commandId: `preparation-training-${sourceCommandId}`, at, actor: 'manager', evidence });
+    const gameEvidence = gamePreparationEvidence(preparation, seasonId, sourceCommandId);
+    if (canonical(gameEvidence.map(({ matchId, responses }) => ({ matchId, responses }))) !== canonical((previous.gamePreparation ?? []).map(({ matchId, responses }) => ({ matchId, responses }))))
+        records = reduceRecords(records, { type: 'game.evidence.replace', commandId: `preparation-games-${sourceCommandId}`, at, actor: 'manager', evidence: gameEvidence });
     if (records !== previous)
         (await this.saveDocument(teamId, seasonId, 'records', records));
 }
@@ -870,7 +884,7 @@ async preparationCommand(principal: Principal, teamId: string, seasonId: string,
             }
         }
     }
-    if (command.type.startsWith('training.') || command.type.startsWith('profile.') || command.type === 'roster.imported')
+    if (command.type.startsWith('training.') || command.type.startsWith('profile.') || command.type.startsWith('fixture.') || command.type === 'roster.imported')
         (await this.projectPreparationRecords(teamId, seasonId, state, command.id));
     (await this.saveDocument(teamId, seasonId, 'preparation', state));
     (await this.audit(principal, command.type, teamId, 'accepted'));
@@ -914,8 +928,8 @@ async ownPreparationCommand(principal: Principal, teamId: string, seasonId: stri
         : command.type === 'own.fixture_response_recorded' ? { ...base, type: 'fixture.response_recorded', fixtureId: command.fixtureId, profileId: profile.id, response: command.response }
             : { ...base, type: 'training.response_recorded', trainingId: command.trainingId, profileId: profile.id, response: command.response };
     const updated = reducePreparation(state, bound);
-    if (bound.type.startsWith('training.') || bound.type.startsWith('profile.'))
-        (await this.projectPreparationRecords(teamId, seasonId, updated, command.id));
+    // Own changes persist only in preparation; report reads derive their current
+    // evidence without granting players writes over manager-owned records.
     (await this.saveDocument(teamId, seasonId, 'preparation', updated));
     (await this.audit(principal, command.type, teamId, 'accepted'));
     return (await this.ownPreparation(principal, teamId, seasonId));
@@ -1022,7 +1036,7 @@ private async recordsContext(principal: Principal, teamId: string, seasonId: str
     const community = (await this.communityState(teamId, seasonId));
     const actor = (await this.communityActor(principal, teamId, seasonId, viewer.actor));
     const filtered = getCommunityView(community, actor, this.now());
-    return { principal, memberships: (await this.memberships()), nowMs: this.now(), requestedRole: viewer.actor, state: (await this.document<RecordsState>(teamId, seasonId, 'records')), acceptedMatches: rows.map(row => ({ teamId, seasonId, match: JSON.parse(row.state_json) as MatchState })), community: { accountId: principal.accountId, teamId, seasonId, audience: viewer.actor, playerId: viewer.playerId ?? null, revision: community.revision, view: { allowed: filtered.allowed, matches: filtered.matches, gallery: filtered.gallery } } };
+    return { principal, memberships: (await this.memberships()), nowMs: this.now(), requestedRole: viewer.actor, state: (await this.document<RecordsState>(teamId, seasonId, 'records')), preparation: (await this.document<PreparationState>(teamId, seasonId, 'preparation')), acceptedMatches: rows.map(row => ({ teamId, seasonId, match: JSON.parse(row.state_json) as MatchState })), community: { accountId: principal.accountId, teamId, seasonId, audience: viewer.actor, playerId: viewer.playerId ?? null, revision: community.revision, view: { allowed: filtered.allowed, matches: filtered.matches, gallery: filtered.gallery } } };
 }
 async records(principal: Principal, teamId: string, seasonId: string, role?: string): Promise<Record<string, unknown>> { return recordsServiceView((await this.recordsContext(principal, teamId, seasonId, role))); }
 async recordsExport(principal: Principal, teamId: string, seasonId: string, request: RecordsExportRequest, role?: string): Promise<ReturnType<typeof recordsServiceExport>> { return recordsServiceExport({ ...(await this.recordsContext(principal, teamId, seasonId, role)), request }); }

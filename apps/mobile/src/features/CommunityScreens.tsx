@@ -20,7 +20,7 @@ export interface CommunityScreensProps {
 
 /** Original vector illustrations only; this never renders an unapproved raw upload. */
 function FictionalImage({ art, small = false }: { art: FictionalArt; small?: boolean }) {
-  return <View accessible accessibilityLabel={`Fictional ${art} illustration; no people`} style={[s.art, small && { maxHeight: 128 }]}>
+  return <View accessible accessibilityLabel={`Demo ${art} illustration; no people`} style={[s.art, small && { maxHeight: 128 }]}>
     <Svg width="100%" height={small ? 112 : 170} viewBox="0 0 320 180">
       <Rect width="320" height="180" fill={art === 'cones' ? '#E4EEE7' : '#176B45'} />
       {art === 'pitch' ? <>
@@ -39,7 +39,7 @@ function FictionalImage({ art, small = false }: { art: FictionalArt; small?: boo
         <Line x1="40" y1="154" x2="280" y2="154" stroke="#126946" strokeWidth="3" />
       </>}
     </Svg>
-    <Text style={s.artLabel}>FICTIONAL ILLUSTRATION</Text>
+    <Text style={s.artLabel}>TEAM GALLERY</Text>
   </View>;
 }
 
@@ -105,7 +105,7 @@ function CommunityContent({ state, onChange, actor, section = 'all', nowMs, albu
       const next = prepareCommunityWrite(state, actor, command, nowMs);
       const committed = await onChange(next);
       if (committed === false) throw new Error('The local write did not finish. Your action is retained for the same-identity retry.');
-      setRetry(null); setSaved('Saved in this fictional review.');
+      setRetry(null); setSaved('Saved on this device.');
       return true;
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : 'The action could not be saved.');
@@ -118,7 +118,7 @@ function CommunityContent({ state, onChange, actor, section = 'all', nowMs, albu
     <Card>
       <Text style={s.heading}>My account</Text>
       <Text style={s.body}>{view.accountLabel}</Text>
-      <Text style={s.muted}>This is a fictional role review, not a signed-in identity session. Parent use of a child account keeps the same permissions and single ballot.</Text>
+      <Text style={s.muted}>This is a demo role review, not a signed-in identity session. Parent use of a child account keeps the same permissions and single ballot.</Text>
       <Text style={s.label}>Memberships on this global account</Text>
       {view.memberships.map((membership, index) => <Text key={`${membership.teamId}:${membership.role}:${index}`} style={s.body}>{membership.role} · {membership.teamId === actor.teamId ? view.teamLabel : membership.teamId} · {membership.active ? 'Active' : 'Archived'}</Text>)}
       <Text style={s.label}>Notifications</Text>
@@ -141,7 +141,7 @@ function CommunityContent({ state, onChange, actor, section = 'all', nowMs, albu
     </Card>
     <Card>
       <Text style={s.heading}>My concerns</Text>
-      {view.ownConcerns.length ? view.ownConcerns.map(concern => <View key={concern.id} style={s.stack}><Pill tone="info">{concern.status.replaceAll('_', ' ')}</Pill><Text selectable style={s.muted}>Reference {concern.id}</Text></View>) : <Text style={s.body}>No concerns submitted in this fictional review.</Text>}
+      {view.ownConcerns.length ? view.ownConcerns.map(concern => <View key={concern.id} style={s.stack}><Pill tone="info">{concern.status.replaceAll('_', ' ')}</Pill><Text selectable style={s.muted}>Reference {concern.id}</Text></View>) : <Text style={s.body}>No concerns submitted.</Text>}
       <Text style={s.muted}>Reports about a manager require operator escalation. The operator contact and safeguarding cover remain launch prerequisites.</Text>
     </Card>
     <Card>
@@ -158,12 +158,12 @@ function CommunityContent({ state, onChange, actor, section = 'all', nowMs, albu
 
   const invitationSection = <View style={s.stack}>
     <Text style={s.heading}>Invitations and access</Text>
-    <Notice>Fictional review codes exercise individual acceptance and expiry. Real activation requires an authenticated existing identity or the token-bound account activation service.</Notice>
+    <Notice>Demo review codes exercise individual acceptance and expiry. Real activation requires an authenticated existing identity or the token-bound account activation service.</Notice>
     {view.allowed && actor.role !== 'spectator' && <Card>
       <Text style={s.label}>Invite a spectator to {view.teamLabel}</Text>
       <Text style={s.muted}>{view.seasonLabel} only. Accepted access ends at the season boundary and is renewed explicitly. Players’ invitations do not need an extra approval step.</Text>
       <TextInput style={s.input} keyboardType="numeric" value={inviteHours} onChangeText={setInviteHours} placeholder="Choose validity in hours" placeholderTextColor={colors.inkMuted} accessibilityLabel="Invitation validity in hours" />
-      <Button label="Create fictional spectator invitation" testID="community-create-invite" disabled={busy || !inviteHours.trim()} onPress={() => void run({ type: 'invite.created', invitationId: randomUUID(), reviewCode: `DEMO-${randomUUID().slice(0, 12).toUpperCase()}`, expiresAtMs: (nowMs ?? Date.now()) + Number(inviteHours) * 3_600_000 })} />
+      <Button label="Create spectator invitation" testID="community-create-invite" disabled={busy || !inviteHours.trim()} onPress={() => void run({ type: 'invite.created', invitationId: randomUUID(), reviewCode: `DEMO-${randomUUID().slice(0, 12).toUpperCase()}`, expiresAtMs: (nowMs ?? Date.now()) + Number(inviteHours) * 3_600_000 })} />
       {view.invitations.length === 0 && <Text style={s.muted}>No invitations created in this team context.</Text>}
       {view.invitations.map(invite => <View key={invite.id} style={s.inviteRow}>
         <Text selectable style={s.label}>{invite.reviewCode}</Text>
@@ -172,10 +172,10 @@ function CommunityContent({ state, onChange, actor, section = 'all', nowMs, albu
       </View>)}
     </Card>}
     <Card>
-      <Text style={s.label}>Accept as this existing fictional account</Text>
+      <Text style={s.label}>Accept as this account</Text>
       <Text style={s.body}>{view.accountLabel}</Text>
-      <TextInput style={s.input} value={reviewCode} onChangeText={setReviewCode} placeholder="Enter individual DEMO code" placeholderTextColor={colors.inkMuted} accessibilityLabel="Fictional invitation code" autoCapitalize="characters" />
-      <Button label="Accept fictional invitation" testID="community-accept-invite" disabled={busy || !reviewCode.trim()} onPress={() => void run({ type: 'invite.accepted', reviewCode: reviewCode.trim() })} />
+      <TextInput style={s.input} value={reviewCode} onChangeText={setReviewCode} placeholder="Enter individual DEMO code" placeholderTextColor={colors.inkMuted} accessibilityLabel="Demo invitation code" autoCapitalize="characters" />
+      <Button label="Accept invitation" testID="community-accept-invite" disabled={busy || !reviewCode.trim()} onPress={() => void run({ type: 'invite.accepted', reviewCode: reviewCode.trim() })} />
       <Text style={s.muted}>The account identity is reused. This never creates a second player identity or an extra ballot.</Text>
     </Card>
     {actor.role === 'manager' && view.allowed && <Card><Text style={s.label}>Current and past spectator grants</Text>
@@ -184,7 +184,7 @@ function CommunityContent({ state, onChange, actor, section = 'all', nowMs, albu
   </View>;
 
   return <View style={s.stack}>
-    <Pill tone="info">{view.teamLabel} · {view.seasonLabel} · Fictional {actor.role} review</Pill>
+    <Pill tone="info">{view.teamLabel} · {view.seasonLabel} · {actor.role}</Pill>
     {error && <Notice tone="error">{error}</Notice>}
     {retry && error && <Button label="Retry retained action" variant="secondary" disabled={busy} onPress={() => void submit(retry)} />}
     {saved && <Text accessibilityLiveRegion="polite" style={s.muted}>{saved}</Text>}
@@ -202,15 +202,15 @@ function CommunityContent({ state, onChange, actor, section = 'all', nowMs, albu
           <Text style={s.label}>Result due by: {dateTime(match.deadlineAtMs)}</Text>
           {match.finishQuality !== 'trusted' && <Notice tone="warning">Full-time evidence needs review. The award is blocked; the original deadline is retained.</Notice>}
           {match.award ? <View style={s.stack}><Pill>{match.award.result === 'no_valid_votes' ? 'No valid votes received' : match.award.winnerLabels.length > 1 ? 'Joint players’ players of the match' : 'Players’ player of the match'}</Pill>{match.award.winnerLabels.map(label => <Text key={label} style={s.winner}>{label}</Text>)}{match.award.deadlineMissed && <Notice tone="warning">Finalisation was late. The original full-time deadline has not been extended.</Notice>}<Text style={s.muted}>Finalised {dateTime(match.award.finalisedAtMs)}. This sealed result does not reopen when a report is edited.</Text></View> : <>
-            {match.cutoffSource === 'unresolved' && <Notice tone="warning">The voting cutoff is unresolved: +59 minutes is a proposal. A manager can set a deliberate fictional cutoff below or close voting after full time. No automatic production cutoff is accepted here.</Notice>}
+            {match.cutoffSource === 'unresolved' && <Notice tone="warning">The voting cutoff is unresolved: +59 minutes is a proposal. A manager can set a deliberate demo cutoff below or close voting after full time. No automatic production cutoff is accepted here.</Notice>}
             {actor.role === 'manager' && match.fullTimeAtMs !== null && match.finishQuality === 'trusted' && <>
-              {match.cutoffSource === 'unresolved' && <><TextInput style={s.input} keyboardType="numeric" value={cutoffMinutes[match.id] ?? ''} onChangeText={value => setCutoffMinutes(previous => ({ ...previous, [match.id]: value }))} placeholder="Explicit demo cutoff: 1–59 minutes after full time" placeholderTextColor={colors.inkMuted} accessibilityLabel="Fictional ballot cutoff minutes" /><Button label="Set this fictional ballot cutoff" testID="community-configure-cutoff" variant="secondary" disabled={busy || !cutoffMinutes[match.id]?.trim()} onPress={() => void run({ type: 'award.cutoffConfigured', matchId: match.id, minutesAfterFullTime: Number(cutoffMinutes[match.id]) })} /></>}
+              {match.cutoffSource === 'unresolved' && <><TextInput style={s.input} keyboardType="numeric" value={cutoffMinutes[match.id] ?? ''} onChangeText={value => setCutoffMinutes(previous => ({ ...previous, [match.id]: value }))} placeholder="Explicit demo cutoff: 1–59 minutes after full time" placeholderTextColor={colors.inkMuted} accessibilityLabel="Demo ballot cutoff minutes" /><Button label="Set this demo ballot cutoff" testID="community-configure-cutoff" variant="secondary" disabled={busy || !cutoffMinutes[match.id]?.trim()} onPress={() => void run({ type: 'award.cutoffConfigured', matchId: match.id, minutesAfterFullTime: Number(cutoffMinutes[match.id]) })} /></>}
               <Button label="Close voting and finalise award" testID="community-finalise-award" disabled={busy} onPress={() => setCloseAward(match.id)} />
               <Text style={s.muted}>Managers cannot inspect choices or cast a player’s ballot.</Text>
             </>}
             {actor.role === 'player' && <>
-              {match.ownChoice && <Text style={s.label}>Your saved choice: {match.ownChoice.replace('synthetic-player-', 'Player ')}</Text>}
-              {match.mayVote ? <><Text style={s.label}>Choose a teammate who played</Text>{match.candidates.map(candidate => <Pressable key={candidate.id} accessibilityRole="radio" accessibilityState={{ checked: (choices[match.id] ?? match.ownChoice) === candidate.id }} style={[s.choice, (choices[match.id] ?? match.ownChoice) === candidate.id && s.choiceSelected]} onPress={() => setChoices(previous => ({ ...previous, [match.id]: candidate.id }))}><Text style={s.body}>{candidate.label}</Text></Pressable>)}<Button label={match.ownChoice ? 'Confirm changed private choice' : 'Confirm private choice'} testID="community-cast-ballot" disabled={busy || !(choices[match.id] ?? match.ownChoice)} onPress={() => void run({ type: 'ballot.cast', matchId: match.id, candidatePlayerId: (choices[match.id] ?? match.ownChoice)! })} /><Text style={s.muted}>Saved in this fictional rehearsal only. A connected service must acknowledge a live ballot before it counts.</Text></> : <Text style={s.muted}>Voting is unavailable: the window is closed, the cutoff needs configuration, or this player is not eligible.</Text>}
+              {match.ownChoice && <Text style={s.label}>Your saved choice: {match.candidates.find(candidate => candidate.id === match.ownChoice)?.label ?? 'Saved teammate'}</Text>}
+              {match.mayVote ? <><Text style={s.label}>Choose a teammate who played</Text>{match.candidates.map(candidate => <Pressable key={candidate.id} accessibilityRole="radio" accessibilityState={{ checked: (choices[match.id] ?? match.ownChoice) === candidate.id }} style={[s.choice, (choices[match.id] ?? match.ownChoice) === candidate.id && s.choiceSelected]} onPress={() => setChoices(previous => ({ ...previous, [match.id]: candidate.id }))}><Text style={s.body}>{candidate.label}</Text></Pressable>)}<Button label={match.ownChoice ? 'Confirm changed private choice' : 'Confirm private choice'} testID="community-cast-ballot" disabled={busy || !(choices[match.id] ?? match.ownChoice)} onPress={() => void run({ type: 'ballot.cast', matchId: match.id, candidatePlayerId: (choices[match.id] ?? match.ownChoice)! })} /><Text style={s.muted}>Saved in this demo rehearsal only. A connected service must acknowledge a live ballot before it counts.</Text></> : <Text style={s.muted}>Voting is unavailable: the window is closed, the cutoff needs configuration, or this player is not eligible.</Text>}
             </>}
           </>}
         </>}
@@ -221,7 +221,7 @@ function CommunityContent({ state, onChange, actor, section = 'all', nowMs, albu
       {selectedMatch && <Text style={s.label}>Selected game: {selectedMatch.label}</Text>}
       {explicitMatchId && !selectedMatch && <Notice tone="warning">This game album is unavailable under the current role or competition policy.</Notice>}
       {!albumMatchId && permittedMatches.length > 1 && <View style={s.wrap}>{permittedMatches.map(match => <Button key={match.id} label={`Choose game album ${match.label}`} variant={selectedMatch?.id === match.id ? 'primary' : 'secondary'} onPress={() => { setChosenMatchId(match.id); setViewerId(null); }} />)}</View>}
-      <Notice>Fictional media rehearsal: original vector illustrations only. Real device picking, upload processing and safety scanning are not connected. No real children’s photos are used.</Notice>
+      <Notice>Demo media rehearsal: original vector illustrations only. Real device picking, upload processing and safety scanning are not connected. No real children’s photos are used.</Notice>
       {(!explicitMatchId || selectedMatch) && <Text style={s.label}>{gallery.length} published {gallery.length === 1 ? 'illustration' : 'illustrations'}</Text>}
       {!gallery.length && (!explicitMatchId || selectedMatch) && <Card><Text style={s.body}>No published photos available to this account.</Text><Text style={s.muted}>Grant expiry, competition policy and hidden uploaders are checked for each item.</Text></Card>}
       {gallery.map(photo => <Card key={photo.id}><Pressable accessibilityRole="button" accessibilityLabel={`Open ${photo.caption || 'published illustration'}`} onPress={() => setViewerId(photo.id)}><FictionalImage art={photo.art} /></Pressable><Text style={s.label}>{photo.matchLabel}</Text><Text style={s.muted}>{dateTime(photo.playedAtMs)} · {photo.uploaderLabel}</Text><Text style={s.body}>{photo.caption}</Text><Button label="Open illustration and safety actions" variant="secondary" onPress={() => setViewerId(photo.id)} /></Card>)}
@@ -265,7 +265,7 @@ function CommunityContent({ state, onChange, actor, section = 'all', nowMs, albu
         <Text style={s.body}>Choose a concern category. Avoid adding unnecessary personal details. Reporting and hiding are separate actions.</Text>
         {(['privacy', 'inappropriate', 'other'] as const).map(category => <Pressable key={category} style={[s.choice, reportCategory === category && s.choiceSelected]} accessibilityRole="radio" accessibilityState={{ checked: reportCategory === category }} onPress={() => setReportCategory(category)}><Text style={s.body}>{category}</Text></Pressable>)}
         <TextInput style={s.input} multiline value={reportExplanation} onChangeText={setReportExplanation} maxLength={500} placeholder="Optional explanation" placeholderTextColor={colors.inkMuted} accessibilityLabel="Concern explanation" />
-        <Button label="Save concern in fictional review" testID="community-report-concern" disabled={busy} onPress={() => { if (reportTarget) void run({ type: 'concern.submitted', concernId: randomUUID(), targetType: reportTarget.type, targetId: reportTarget.id, category: reportCategory, explanation: reportExplanation }).then(ok => { if (ok) { setReportTarget(null); setReportExplanation(''); } }); }} />
+        <Button label="Save concern" testID="community-report-concern" disabled={busy} onPress={() => { if (reportTarget) void run({ type: 'concern.submitted', concernId: randomUUID(), targetType: reportTarget.type, targetId: reportTarget.id, category: reportCategory, explanation: reportExplanation }).then(ok => { if (ok) { setReportTarget(null); setReportExplanation(''); } }); }} />
         <Text style={s.muted}>A live submission needs a connected service acknowledgement. This rehearsal does not contact an operator.</Text>
         <Button label="Cancel concern" variant="quiet" onPress={() => setReportTarget(null)} />
       </DialogSheet></View>

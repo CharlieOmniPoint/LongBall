@@ -15,7 +15,7 @@ function integer(value: number, label: string): void {
   if (!Number.isSafeInteger(value) || value < 0) throw new Error(`${label} must be a nonnegative safe integer.`);
 }
 function assertSample(sample: ClockSample): void {
-  if (!Number.isFinite(sample.monotonicMs) || sample.monotonicMs < 0 || !sample.sessionId) throw new Error('Clock sample is invalid.');
+  if (!Number.isFinite(sample.monotonicMs) || sample.monotonicMs < 0 || !Number.isSafeInteger(Math.floor(sample.monotonicMs)) || !sample.sessionId) throw new Error('Clock sample is invalid.');
   integer(sample.wallTimeMs, 'Wall time');
 }
 function isRunning(state: MatchState): boolean {
@@ -122,6 +122,8 @@ export function readClock(state: MatchState, sample: ClockSample): ClockReading 
       matchActiveMs = anchor.matchActiveMs + delta;
     }
   }
+  integer(halfActiveMs, 'Half active time');
+  integer(matchActiveMs, 'Match active time');
   return {
     halfActiveMs, matchActiveMs,
     remainingMs: Math.max(0, state.config.plannedHalfDurationMs - halfActiveMs),

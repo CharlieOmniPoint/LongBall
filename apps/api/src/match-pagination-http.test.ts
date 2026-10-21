@@ -8,6 +8,37 @@ import type { MatchConfig } from '../../../packages/domain/src/index';
 
 const rootPath = `/v1/teams/${SYNTHETIC_IDS.teamId}/matches?seasonId=${SYNTHETIC_IDS.seasonId}`;
 describe('API04/DS13 real HTTP scoped keyset match pages', () => {
+  it('selects active games before pagination, binds the filter into cursors and retains audience restrictions', async () => {
+    const api = createApi({ databasePath: ':memory:', syntheticAuth: true });
+    const config = JSON.parse(api.store.match(SYNTHETIC_IDS.matchId).config_json) as MatchConfig;
+    for (let i = 0; i < 105; i++) api.store.insertMatch({ ...config, matchId: `inactive-${i}` }, SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId);
+    for (const [id, status] of [['z-active-a', 'first_half_running'], ['z-active-b', 'half_time'], ['z-active-c', 'second_half_paused']] as const) {
+      api.store.insertMatch({ ...config, matchId: id }, SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId);
+      // Only read selection is under test; these fixtures do not claim recorded clock/event proof.
+      api.store.database.prepare("UPDATE matches SET state_json=json_set(state_json,'$.status',?) WHERE id=?").run(status, id);
+    }
+    await new Promise<void>(resolve => api.server.listen(0, '127.0.0.1', resolve));
+    const base = `http://127.0.0.1:${(api.server.address() as AddressInfo).port}`;
+    const read = async (suffix: string, token = 'synthetic-manager-2', role = 'manager') => {
+      const response = await fetch(base + rootPath + suffix, { headers: { Authorization: `Bearer ${token}`, 'X-Longball-Role': role } });
+      return { status: response.status, body: await response.json() as { items: { matchId: string; audience: string; state?: unknown; score?: unknown }[]; nextCursor: string | null } };
+    };
+    try {
+      const first = await read('&status=active&limit=1');
+      expect(first.status).toBe(200); expect(first.body.items.map(item => item.matchId)).toEqual(['z-active-a']);
+      const cursor = encodeURIComponent(first.body.nextCursor!);
+      const rest = await read(`&status=active&limit=100&cursor=${cursor}`);
+      expect(rest.body.items.map(item => item.matchId)).toEqual(['z-active-b', 'z-active-c']); expect(rest.body.nextCursor).toBeNull();
+      expect((await read(`&cursor=${cursor}`)).status).toBe(400);
+      const all = await read('&limit=1');
+      expect((await read(`&status=active&cursor=${all.body.nextCursor}`)).status).toBe(400);
+      for (const suffix of ['&status=', '&status=completed', '&status=active&status=active']) expect((await read(suffix)).status).toBe(400);
+      const child = await read('&status=active', 'synthetic-account-player-01', 'player');
+      expect(child.status).toBe(200); expect(child.body.items).toHaveLength(3);
+      expect(child.body.items.every(item => item.audience === 'player' && item.state === undefined && item.score === null)).toBe(true);
+      expect((await read('&status=active', 'synthetic-admin', 'administrator')).status).toBe(404);
+    } finally { api.server.closeAllConnections(); await api.close(); }
+  });
   it('discovers every accepted match beyond100, bounds pages, preserves replay positions and validates query/cursor scope', async () => {
     const api = createApi({ databasePath: ':memory:', syntheticAuth: true, now: () => 1_800_000_000_000 });
     const config = JSON.parse(api.store.match(SYNTHETIC_IDS.matchId).config_json) as MatchConfig;

@@ -232,7 +232,7 @@ export function PlannerPanel({ model, onReviewLineup }: { model: PlannerModel; o
           <Button label={model.returnToNormal === true ? 'Yes · selected' : 'Yes'} disabled={model.preferencesRetained} variant={model.returnToNormal === true ? 'primary' : 'secondary'} onPress={() => model.setReturnToNormal(true)} />
           <Button label={model.returnToNormal === false ? 'No · selected' : 'No'} disabled={model.preferencesRetained} variant={model.returnToNormal === false ? 'primary' : 'secondary'} onPress={() => model.setReturnToNormal(false)} />
         </View>
-        <Text style={typography.muted}>Position weights and Q07 target calculations remain synthetic experiments. Keeper-policy transitions remain unapproved and are refused; confirming these soft preferences cannot approve them.</Text>
+        <Text style={typography.muted}>Position weights and Q07 target calculations remain demo experiments. Keeper-policy transitions remain unapproved and are refused; confirming these soft preferences cannot approve them.</Text>
         {model.legacySettingsRetained && <Notice>Earlier device-only settings were retained as a review draft. They are not yet part of this match’s accepted policy history.</Notice>}
         <Text style={typography.label}>Reason for these future settings</Text>
         <TextInput accessibilityLabel="Match policy change reason" value={model.reason} onChangeText={model.setReason} editable={!model.preferencesRetained} multiline maxLength={500} style={styles.input} />

@@ -126,7 +126,7 @@ describe('private ballots and original award timing', () => {
     expect(final.awards[0].deadlineMissed).toBe(false);
     expect(final.audit.at(-1)).toMatchObject({ actorAccountId: null, origin: 'award_worker' });
     expect(finalizeDueCommunityAwards(final, cutoff + 1000)).toBe(final);
-    expect(getCommunityView(final, lab.actors.spectator, cutoff).matches[0].award?.winnerLabels).toEqual(['Player 02', 'Player 03']);
+    expect(getCommunityView(final, lab.actors.spectator, cutoff).matches[0].award?.winnerLabels).toEqual(['Noah Patel', 'Leo Martin']);
   });
 
   it('counts a committed ballot before a deliberate close in the same millisecond', () => {

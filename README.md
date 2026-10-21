@@ -1,39 +1,47 @@
 # LongBall
 
-Native iPhone and Android team management, with a phone-friendly browser review using the same interface and shared match rules. Development branch: `dev/longball-m0-journey`. The expanded development build implements preparation, attendance, lineup and clock control, goals and audited corrections, substitution planning, participation reports/history, invitations, private awards and moderated photo workflows. All review accounts and Roma U10 data are fictional. It is **not a completed production release**; native device proof and operating decisions remain open.
+Native iPhone and Android team management, with a phone-friendly browser demo sharing the same interface and match rules. Development branch: `dev/longball-m0-journey`.
+
+The demo includes Manager, Administrator, Player/household and Spectator journeys; preparation, attendance, lineups, manual match clocks, goals/corrections, fair-time planning, reports, training, results, invitations, private awards and moderated albums. Roma U10 has a generated sample squad, opponents, fixtures and training sessions. Initial user access stays free.
+
+## Review
+
+Open [LongBall](https://charlieomnipoint.github.io/LongBall/) and choose **Explore Roma U10 demo → a role → Open connected demo**. Use the [functional walkthrough](docs/development/functional-review-walkthrough.md) for the full journeys.
+
+The Pages address lasts. Its separate connected demo service runs for a bounded five-hour session; [review status](docs/development/review.md) records the latest verified service and expiry. Connected changes are shared within that disposable session. Local rehearsal preserves that browser's existing saved work and does not silently upload or reset it. A fresh browser context loads the current sample season.
+
+Real accounts use **Sign in** and receive only verified assigned club/team/season memberships. Production builds omit demo identities. Real identity/push/hosting, policy decisions, privacy-request fulfilment, signing/distribution and deferred physical-device acceptance remain separate release gates; this is a functionality-test environment.
+
+## Run locally
 
 Use Node **24.19.0** and pnpm **11.25.0**:
 
 ```bash
 bash scripts/setup.sh
 source scripts/dev-env.sh
-pnpm check
+pnpm install --frozen-lockfile
+pnpm test:unit
 pnpm build:web
 pnpm build:api
-LONGBALL_SYNTHETIC_AUTH=1 LONGBALL_STATIC_DIRECTORY="$PWD/apps/mobile/dist-web" pnpm dev:api
+LONGBALL_SYNTHETIC_AUTH=1 LONGBALL_DEMO_SCENARIO=1 LONGBALL_STATIC_DIRECTORY="$PWD/apps/mobile/dist-web" pnpm dev:api
 ```
 
-The combined development server defaults to `http://127.0.0.1:4310`. Open it on that machine; cloud localhost does not reach a desktop browser. Share the lasting [fictional browser review](https://charlieomnipoint.github.io/LongBall/). It runs with each browser’s local records and stays available after a temporary runner stops. For connected API review, use the current verified HTTPS session and expiry in [review status](docs/development/review.md) and `preview/longball-m0:preview-status.json`; that separate session is bounded to five hours. Browser review needs no Windows setup.
+The combined development server defaults to `http://127.0.0.1:4310` on the machine running it. A remote browser needs the published review address. Explicit demo mode is rejected in production. Actual uploads still require the configured scanner/decoder; sample image seeding uses that same private processing and publication pipeline.
 
-Start at **Welcome → Explore fictional Roma U10**, choose **Manager, Administrator, Player/household or Spectator**, then choose **Open connected demo** or the local rehearsal. In the Manager matchday journey, use **Prepare match → check in → continue → place starters → start**. The connected demo uses separate HTTP data for that temporary session; local rehearsal changes are not silently uploaded. Real accounts use **Sign in** and receive only their verified assigned team/season memberships. Production builds (`EXPO_PUBLIC_ENVIRONMENT=production`) offer real sign-in/activation and omit fictional accounts.
+`pnpm dev` starts Metro for a custom native development client. Expo Go cannot verify SQLCipher. The native code includes a sleep-inclusive clock, continuity checks, SQLCipher/SecureStore journal, local unlock and backup exclusions. Compilation does not establish installation, sleep/reboot timing, OS prompts, notifications, camera/picker/share, accessibility or physical encryption behaviour.
 
-`pnpm dev` starts Metro for a custom native development client. Expo Go cannot prove SQLCipher. Native code includes a sleep-inclusive clock, continuity checks, SQLCipher/SecureStore journal and backup exclusions. JavaScript exports do not prove native compilation or physical phone behaviour. Standard public CI compiled Android debug and the unsigned iOS Simulator application for published source `c71f19d` in [run39605988033](https://github.com/CharlieOmniPoint/LongBall/actions/runs/39605988033), including `expo-local-authentication` 58.0.2. Binaries were not retained; physical-phone behaviour remains unproved. See the review evidence.
+## Checks and evidence
 
-- [Review, commands and actual evidence](docs/development/review.md)
-- [Full feature implementation and remaining gates](docs/development/full-build-plan.md)
-- [Independent audit](docs/development/independent-audit.md)
-- [All 28 features](docs/development/traceability.md) and [unresolved decisions](docs/development/decisions.md)
-- [Native M0 proof register](docs/development/implementation-scope.md)
-- [API and worker](apps/api/README.md), [media pipeline](docs/development/media-ingestion.md), [records](docs/development/records-implementation.md)
-- [Preserved supplied pack](docs/longball/README.md) and [canonical specification](docs/longball/LongBall_Mobile_Build_Pack_v0_1.md)
-- [Cloud review deployment](infra/browser-review.md) and [native compilation workflow](infra/ci/README.md)
+`pnpm check` runs the application checks and builds. Configure a disposable PostgreSQL administrator URL for real PostgreSQL acceptance, then run `pnpm test:api`, `pnpm db:migrate:check`, and `pnpm test:access`; a skipped database suite is not PostgreSQL proof. Browser scripts use `LONGBALL_REVIEW_BASE_URL` and separate disposable APIs. `pnpm quality:inventory`, `pnpm quality:secrets` and `pnpm quality:dependencies` record dependency/licence, source-secret and registry-advisory results. An advisory failure remains a release finding, not a passed check.
 
-The API runs against real PostgreSQL, with separate migration/API/worker roles, transaction-local verified request context and row-level security on account/tenant tables. Runtime startup rejects owner, superuser, RLS-bypass and wrong-purpose credentials; only the separate migrator changes schema. The disposable runtime has passed access/controller/correction/season/report tests, actual ClamAV scanning, private photo processing, paired database/file restore, and restricted container API/worker checks. The published schema9 checkpoint passed database-clock worker claims/fanout, lease fencing, atomic database-effect/completion settlement, restricted runtime startup and paired restore. The subsequent schema12 branding/invitation/HEIC source passed actual restricted PostgreSQL, ClamAV and paired photo/logo/pointer restore with 34 RLS-protected tables; final restricted container startup and permission checks also passed. Exact-source Pages publication and a public connected photo/logo review also passed. SQLite remains an explicit fictional alternative. See [runtime setup and limits](infra/runtime/README.md).
+- [Specification recheck and remaining work](docs/development/specification-recheck.md)
+- [Review commands and actual evidence](docs/development/review.md)
+- [Feature build plan](docs/development/full-build-plan.md), [traceability](docs/development/traceability.md) and [unresolved decisions](docs/development/decisions.md)
+- [Native device guide](docs/development/device-review.md) and [native M0 register](docs/development/implementation-scope.md)
+- [API and worker](apps/api/README.md), [media](docs/development/media-ingestion.md), [records](docs/development/records-implementation.md) and [database security](docs/development/database-security.md)
+- [Preserved original pack](docs/longball/README.md), [canonical specification](docs/longball/LongBall_Mobile_Build_Pack_v0_1.md) and approved boards at the repository root
+- [Browser hosting](infra/browser-review.md), [native CI](infra/ci/README.md) and [runtime setup](infra/runtime/README.md)
 
-Connected reports include audited historical corrections, explicit accepted-match context/archive, permitted JSON/CSV exports and source-preserving season rollover. History review preserves original event bytes, previews minute changes and saves immutable reconciliation proposals. Final disputed-history approval remains gated by the unresolved owner policy. Generic notification jobs recheck current access/preferences; absent push configuration is visibly blocked and never labelled delivered.
+PostgreSQL uses separate migration/API/worker roles, current verified request context and row-level security. Runtime startup rejects owner, superuser, bypass and wrong-purpose credentials. Accepted recording history, controller conflicts, private ballots and pending media retain their authority boundaries. Privacy export/deletion requests can be captured and tracked; policy-approved fulfilment and deletion-ledger replay after restore still require implementation and operating decisions.
 
-The [lasting fictional review](https://charlieomnipoint.github.io/LongBall/) deployed successfully on 21 October after the owner enabled Actions publishing and allowed the exact preview branch. An external 390×844 browser passed attendance, lineup, clock start/pause and static API-address guard checks without browser errors or failed responses; see [review deployment](infra/browser-review.md). Each browser has its own fictional records; the temporary API session remains separate. Native iPhone/Android, physical-device proof, operating ownership and unresolved child-account/privacy/publication decisions remain required. No paid infrastructure or real child data has been introduced.
-
-Published source `c71f19d` implements uploaded club/team logos, first-time spectator credential activation with verifier-only invitation storage, OS biometric/device authentication for local unlock, and own native-device enrollment/inventory. Invitation capabilities stay in memory; explicit retirement preserves obsolete queued request bytes without inventing server acknowledgement. Logo publication/inheritance and memory-only invitation browser journeys passed at 320px/390px. Actual Keycloak first-time spectator setup, separate sign-in and explicit acceptance also passed; OS-authentication/device tests include both asynchronous lock races. The new source passed 450 shared/platform and 219 full API/access/worker tests, lint and final root/mobile TypeScript checks. Source-built HEIC scanning/processing and paired restore passed; restricted container startup and permission checks passed. Refreshed browser/API and both native JavaScript exports passed, along with four checks on the final plain production browser export. Both native targets compiled with the new OS-authentication dependency, and public Pages/API verification passed for `c71f19d`. Physical-device behaviour remains unproved. The lasting Pages link served this source at that historical checkpoint; [current review status](docs/development/review.md) records later publication. The [historical renewed temporary API](https://circular-quizzes-trunk-pct.trycloudflare.com/) passed a fresh 390px Pages connection at 14:24 UTC and expired at **15:20:04 UTC on 21 October 2026**; [renewal proof](docs/development/evidence/2026-10-21/feature-completion/cloud-review-renewal.json). That session used a fresh fictional database; earlier API records were not migrated.
-
-Download the [standalone fictional Android kit](https://github.com/CharlieOmniPoint/LongBall/actions/runs/39608816471/artifacts/12350396424) before **13:39:45 UTC on 22 October 2026** and follow the [physical phone guide](docs/development/device-review.md). The exact-source build, artifact download, checksums and embedded JavaScript were verified; it requires `arm64-v8a` and Android API24 or later. Installation and hardware behaviour remain untested. A Windows PC and both phones are available, but there is no Mac. The [unsigned iPhoneOS kit](https://github.com/CharlieOmniPoint/LongBall/actions/runs/39616024656/artifacts/12352708819) is also built, downloaded and hash-verified; it requires iOS16.4+ and expires at **14:39:52 UTC on 22 October 2026**. Follow the [Windows signing/install guide](docs/development/iphone-windows-install.md). Its declared local-notification-only test configuration leaves the main application’s full scope unchanged. Owner-local signing, seven-day renewal and all phone execution remain unproved; a raw unsigned IPA, Simulator build or Expo Go cannot satisfy that gate.
+No paid services or real child data are introduced. Historical checkpoints and their exact test scopes remain under `docs/development/evidence`; they do not certify later source.

@@ -1,3 +1,4 @@
+import { romaFixture } from '@longball/testing';
 import { applyTrainingSeries, type TrainingSeriesPayload } from './training-series';
 
 import { applyMatchPlan, saveMatchPlan, validateFixtureMatchPlan, type FixtureMatchPlanDraft, type MatchPlanApplyInput, type MatchPlanContext, type MatchPlanSaveInput, type ReusableMatchPlan } from './match-plans';
@@ -267,7 +268,7 @@ function validateHalf(duration: number) {
 function validateLogo(logo: LogoChoice | null) {
   requireThat(
     logo === null || ["roundel", "shield", "ball"].includes(logo),
-    "Choose one of the original fictional badges.",
+    "Choose one of the sample badges.",
   );
 }
 function activeSeason(state: PreparationState, seasonId: string) {
@@ -967,6 +968,8 @@ export function reducePreparation(
 
 export function trainingAttendanceEvidence(state: PreparationState) {
   return state.training.map((session) => ({
+    sourcePreparationRevision: state.revision,
+    sourceCommandId: state.audit.at(-1)?.id ?? null,
     sessionId: session.id,
     playedDate: session.date,
     eventStatus: session.status,
@@ -1021,10 +1024,10 @@ export function createPreparationState(): PreparationState {
       id: `synthetic-player-${number}:${seasonId}`,
       playerId: `synthetic-player-${number}`,
       seasonId,
-      displayName: `Player ${number}`,
-      initials: number,
-      shirtNumber: index + 1,
-      foot: "not_recorded",
+      displayName: romaFixture.players[index].displayName,
+      initials: romaFixture.players[index].initials,
+      shirtNumber: romaFixture.players[index].shirtNumber,
+      foot: romaFixture.players[index].foot as PlayerProfile["foot"],
       preferences,
       eligiblePositions:
         index === 0
@@ -1033,47 +1036,32 @@ export function createPreparationState(): PreparationState {
       active: true,
     };
   });
-  const fixture: PreparationFixture = {
-    id: "synthetic-roma-maple-2026-10-24",
-    seasonId,
-    opponent: "Maple FC",
-    playedDate: "2026-10-24",
-    kickoff: "10:00",
-    arrival: "09:30",
-    venue: "Roma recreation ground",
-    homeAway: "home",
-    format: 7,
-    plannedHalfDurationMs: 1_500_000,
-    status: "scheduled",
-    selectedProfileIds: profiles.slice(0, 9).map((profile) => profile.id),
-    responses: Object.fromEntries(
-      profiles.slice(0, 9).map((profile) => [profile.id, "available"]),
-    ),
-    attendance: {},
-    history: [
-      {
-        revision: 0,
-        action: "created",
-        playedDate: "2026-10-24",
-        kickoff: "10:00",
-        status: "scheduled",
-      },
-    ],
-  };
-  const training = ["2026-10-22", "2026-10-29"].map(
-    (date, index): PreparationTraining => ({
-      id: `synthetic-training-${index + 1}`,
-      seasonId,
-      date,
-      time: "18:00",
-      venue: "Roma recreation ground",
-      recurrenceGroupId: "synthetic-thursday-training",
-      expectedProfileIds: profiles.map((profile) => profile.id),
-      status: "scheduled",
-      responses: {},
-      attendance: {},
-    }),
-  );
+  const fixtures: PreparationFixture[] = romaFixture.fixtures.map((item, index) => {
+    const selected = profiles.slice(0, item.selectedCount);
+    const past = item.playedDate < "2026-10-21";
+    return {
+      id: item.id, seasonId, opponent: item.opponent, playedDate: item.playedDate,
+      kickoff: item.kickoff, arrival: item.arrival, venue: item.venue,
+      homeAway: item.homeAway as PreparationFixture["homeAway"],
+      format: 7, plannedHalfDurationMs: 1_500_000,
+      status: item.status as PreparationFixture["status"],
+      selectedProfileIds: selected.map((profile) => profile.id),
+      responses: Object.fromEntries(profiles.flatMap((profile, playerIndex): [string, AvailabilityResponse][] => {
+        if (index === 0) return playerIndex < 9 ? [[profile.id, "available"]] : [];
+        if (past) return [[profile.id, playerIndex < item.selectedCount ? "available" : "unavailable"]];
+        return playerIndex < 6 ? [[profile.id, "available"]] : playerIndex === 6 ? [[profile.id, "unsure"]] : playerIndex === 10 ? [[profile.id, "unavailable"]] : [];
+      })),
+      attendance: past ? Object.fromEntries(selected.map((profile) => [profile.id, "present"])) : {},
+      history: [{ revision: 0, action: "created", playedDate: item.playedDate, kickoff: item.kickoff, status: item.status as PreparationFixture["status"] }],
+    };
+  });
+  const training: PreparationTraining[] = romaFixture.training.map((item, sessionIndex) => ({
+    ...item, seasonId, recurrenceGroupId: "synthetic-thursday-training",
+    status: item.status as PreparationTraining["status"],
+    expectedProfileIds: profiles.map((profile) => profile.id),
+    responses: item.status === "held" ? Object.fromEntries(profiles.map((profile, index) => [profile.id, index === (sessionIndex + 3) % 13 ? "unavailable" : "available"])) : {},
+    attendance: item.status === "held" ? Object.fromEntries(profiles.map((profile, index) => [profile.id, index === (sessionIndex + 3) % 13 ? "absent" : "present"])) : {},
+  }));
   return {
     version: 1,
     synthetic: true,
@@ -1104,7 +1092,7 @@ export function createPreparationState(): PreparationState {
     formations: Array.from({ length: 7 }, (_, index) =>
       defaultFormation(index + 5),
     ),
-    fixtures: [fixture],
+    fixtures,
     training,
     snapshots: [],
     appliedCommands: {},

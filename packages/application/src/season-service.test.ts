@@ -21,6 +21,7 @@ function fixture() {
 describe('connected season rollover plan', () => {
   it('creates new scope from explicit assignments without changing old records, snapshots or spectator grants', () => {
     const { context, command } = fixture();
+    context.records.gamePreparation = [{ matchId: 'old-season-game', responses: { [context.records.players[0].id]: 'available' }, sourcePreparationRevision: 4, sourceCommandId: 'old-response' }];
     const original = JSON.stringify(context);
     const result = planSeasonRollover({ ...context, command });
     expect(JSON.stringify(context)).toBe(original);
@@ -29,7 +30,7 @@ describe('connected season rollover plan', () => {
     expect(result.preparation.profiles).toHaveLength(13);
     expect(result.preparation.profiles.every(profile => profile.seasonId === command.idForSeason)).toBe(true);
     expect(result.preparation.snapshots).toEqual([]); expect(result.preparation.training).toEqual([]); expect(result.preparation.fixtures).toEqual([]);
-    expect(result.records.results).toEqual([]); expect(result.records.trainingAttendance).toEqual([]); expect(result.records.liveMatch.matchId).toBe('');
+    expect(result.records.results).toEqual([]); expect(result.records.trainingAttendance).toEqual([]); expect(result.records.gamePreparation).toEqual([]); expect(result.records.liveMatch.matchId).toBe('');
     expect(result.memberships.map(item => item.role)).toEqual(['manager', 'administrator', 'player']);
     expect(result.community.grants).toEqual([]); expect(result.community.invitations).toEqual([]); expect(result.community.photos).toEqual([]); expect(result.community.ballots).toEqual([]);
     expect(context.community.grants).not.toHaveLength(0);

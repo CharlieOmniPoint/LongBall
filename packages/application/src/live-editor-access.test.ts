@@ -88,14 +88,14 @@ describe("explicit fictional connected editor boundary", () => {
   ])("refuses incomplete or production review context %j", (change) => {
     expect(() =>
       assertLiveEditorAccess(match(), { ...preview, ...change }),
-    ).toThrow(/Fictional recording/);
+    ).toThrow(/Demo recording/);
   });
 
   it("refuses real fixture IDs and incomplete immutable preparation", () => {
     const real = match();
     real.config.matchId = "actual-service-match";
     expect(() => assertLiveEditorAccess(real, preview)).toThrow(
-      /Fictional recording/,
+      /Demo recording/,
     );
     const incomplete = match();
     incomplete.config.profileSnapshot = [];

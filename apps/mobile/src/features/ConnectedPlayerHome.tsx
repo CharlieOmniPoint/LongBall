@@ -155,8 +155,12 @@ export function ConnectedPlayerHome(props: ConnectedPlayerHomeProps) {
               {home.liveMatch.opponent ?? "Current team match"} ·{" "}
               {home.liveMatch.status?.replaceAll("_", " ")}
             </Text>
+            <Pill tone={home.liveMatch.lastRecorderSyncAt !== null && props.nowMs >= home.liveMatch.lastRecorderSyncAt && props.nowMs - home.liveMatch.lastRecorderSyncAt <= 15_000 ? "brand" : "warning"}>
+              {home.liveMatch.lastRecorderSyncAt !== null && props.nowMs >= home.liveMatch.lastRecorderSyncAt && props.nowMs - home.liveMatch.lastRecorderSyncAt <= 15_000 ? "Last accepted update" : "Updates delayed"}
+            </Pill>
             <Text style={typography.muted}>
-              Last accepted update. The recording phone may have newer events.
+              Recorder last synchronised: {home.liveMatch.lastRecorderSyncAt === null ? "Not recorded" : new Date(home.liveMatch.lastRecorderSyncAt).toLocaleString("en-GB", { timeZone: "Europe/London" })} Europe/London.
+              The recording phone may have newer events.
             </Text>
           </>
         ) : home.multipleActiveMatches ? (
@@ -200,6 +204,50 @@ export function ConnectedPlayerHome(props: ConnectedPlayerHomeProps) {
             Review and confirm on the next screen. Your vote counts only after
             the service accepts it before the cutoff.
           </Text>
+        </Card>
+      )}
+      {!home.vote && home.award && (
+        <Card>
+          <View style={s.stack} testID="player-home-award">
+            <Text accessibilityRole="header" style={typography.section}>
+              Players’ player of the match
+            </Text>
+            <Text style={typography.label}>{home.award.label}</Text>
+            {home.award.status === "final" ? (
+              <>
+                <Text style={typography.body} testID="player-home-award-result">
+                  {home.award.result === "no_valid_votes"
+                    ? "No valid votes"
+                    : `${home.award.winnerLabels.length > 1 ? "Joint winners" : "Winner"}: ${home.award.winnerLabels.join(" · ")}`}
+                </Text>
+                <Pill tone={home.award.deadlineMissed ? "warning" : "brand"}>
+                  {home.award.deadlineMissed
+                    ? "Finalised after the original deadline"
+                    : "Final award recorded"}
+                </Pill>
+              </>
+            ) : (
+              <Notice tone={home.award.status === "review_required" || home.award.deadlineMissed ? "warning" : "info"}>
+                {home.award.status === "review_required"
+                  ? "The result needs review. Match timing or award details have not been confirmed."
+                  : home.award.deadlineMissed
+                    ? "Voting is closed. The result is delayed beyond its original deadline."
+                    : "Voting is closed. The result is being prepared."}
+              </Notice>
+            )}
+            {home.award.deadlineAtMs !== null && (
+              <Text style={typography.muted}>
+                Original result deadline: {new Date(home.award.deadlineAtMs).toLocaleString("en-GB", { timeZone: "Europe/London" })} Europe/London.
+              </Text>
+            )}
+            <Button
+              label="View match award"
+              variant="secondary"
+              icon="trophy"
+              testID="player-home-award-open"
+              onPress={props.onOpenVote}
+            />
+          </View>
         </Card>
       )}
       <Card>

@@ -67,7 +67,7 @@ async function open(prepared = false) {
     await page.getByRole('button', { name: 'Open fixture Maple FC, 2026-10-24', exact: true }).click();
     await page.getByTestId('preparation-open-match').click();
   }
-  await page.getByTestId('recording-acquire').or(page.getByTestId('recording-upload')).first().waitFor();
+  await page.getByTestId('connected-match-countdown').or(page.getByTestId('recording-acquire')).first().waitFor();
   await until(() => connected(page), value => Boolean(value?.localState), 'Connected document has its authoritative fixture');
   return page;
 }

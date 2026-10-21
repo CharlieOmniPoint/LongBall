@@ -600,7 +600,7 @@ function PreparationContent({
             label={
               storage === "service"
                 ? "Add player profile"
-                : "Add fictional player profile"
+                : "Add demo player profile"
             }
             icon="users"
             disabled={disabled}
@@ -781,7 +781,7 @@ function PreparationContent({
       <Text style={s.footnote}>
         {storage === "service"
           ? "Service preparation · Europe/London · saved by the connected service."
-          : "Fictional local preparation · Europe/London · changes are saved through the application journal."}
+          : "Demo local preparation · Europe/London · changes are saved through the application journal."}
       </Text>
     </View>
   );

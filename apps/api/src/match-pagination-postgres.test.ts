@@ -44,6 +44,17 @@ describe.skipIf(!configuredUrl)('API04/DS13 restricted PostgreSQL match continua
       expect((await call(`&cursor=${first.body.nextCursor}`, 'synthetic-account-player-01', 'player')).status).toBe(400);
       const child = await call('&limit=100', 'synthetic-account-player-01', 'player'); expect(child.status).toBe(200); expect(child.body.items).toHaveLength(100); expect(child.body.items.every(item => item.audience === 'player' && item.state === undefined && item.score === null)).toBe(true);
       expect((await call('', 'synthetic-admin', 'administrator')).status).toBe(404);
+      // Active filtering precedes LIMIT, including rows beyond the first100 history records.
+      const activeIds = expected.slice(-3).sort();
+      for (const id of activeIds) await owner.execute("UPDATE matches SET state_json=jsonb_set(state_json,'{status}','\"first_half_running\"') WHERE id=$1", [id]);
+      const active = await call('&status=active&limit=1');
+      expect(active.status).toBe(200); expect(active.body.items.map(item => item.matchId)).toEqual(activeIds.slice(0, 1));
+      const activeRest = await call(`&status=active&cursor=${active.body.nextCursor}`);
+      expect(activeRest.status).toBe(200); expect(activeRest.body.items.map(item => item.matchId)).toEqual(activeIds.slice(1));
+      expect((await call(`&cursor=${active.body.nextCursor}`)).status).toBe(400);
+      const activeChild = await call('&status=active', 'synthetic-account-player-01', 'player');
+      expect(activeChild.status).toBe(200); expect(activeChild.body.items).toHaveLength(3);
+      expect(activeChild.body.items.every(item => item.audience === 'player' && item.state === undefined && item.score === null)).toBe(true);
     } finally {
       api?.server.closeAllConnections(); await api?.close(); await media?.close(); await owner?.close();
       await admin.query(`DROP DATABASE IF EXISTS "${database}" WITH (FORCE)`);

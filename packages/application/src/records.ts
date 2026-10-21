@@ -70,12 +70,20 @@ export interface MatchRecord extends HistoricalResultInput {
   awardStatus: 'not_recorded';
 }
 export interface TrainingAttendanceEvidence {
+  sourcePreparationRevision?: number;
+  sourceCommandId?: string | null;
   sessionId: string;
   playedDate: string;
   eventStatus: 'held' | 'cancelled' | 'scheduled';
   expectedPlayerIds: string[];
   attendance: Record<string, 'present' | 'absent' | 'excused' | 'not_recorded'>;
   responses?: Record<string, 'available' | 'unavailable' | 'unsure' | 'no_reply'>;
+}
+export interface GamePreparationEvidence {
+  matchId: string;
+  responses: Record<string, 'available' | 'unavailable' | 'unsure' | 'no_reply'>;
+  sourcePreparationRevision: number;
+  sourceCommandId: string;
 }
 export interface LiveMatchDetails {
   matchId: string;
@@ -105,6 +113,8 @@ export interface RecordsState {
   liveMatch: LiveMatchDetails;
   results: MatchRecord[];
   trainingAttendance: TrainingAttendanceEvidence[];
+  /** Optional on retained earlier documents; absent evidence remains unknown. */
+  gamePreparation?: GamePreparationEvidence[];
   audit: RecordsAuditEntry[];
   revision: number;
   appliedCommands: Record<string, string>;
@@ -117,6 +127,7 @@ export type RecordsCommand = CommandBase & (
   | { type: 'live.context.set'; details: LiveMatchDetails }
   | { type: 'publication.set'; recordId: string; expectedRevision: number; policy: ResultPublicationPolicy; reason: string }
   | { type: 'training.evidence.replace'; evidence: TrainingAttendanceEvidence[] }
+  | { type: 'game.evidence.replace'; evidence: GamePreparationEvidence[] }
   | { type: 'participation.exception.noted'; recordId: string; expectedRevision: number; playerId: string; reason: string }
 );
 
@@ -168,7 +179,7 @@ function historicalRecord(state: RecordsState, id: string, input: HistoricalResu
   };
 }
 
-export function createRecordsSeed(): RecordsState {
+export function createRecordsSeed(options: { demoSharing?: boolean } = {}): RecordsState {
   const state: RecordsState = {
     schemaVersion: 1, clubId: 'synthetic-richmond-rovers', teamId: romaFixture.teamId, seasonId: 'synthetic-season-2026-27', seasonLabel: '26/27',
     startsOn: '2026-09-01', endsOn: '2027-08-31',
@@ -183,10 +194,16 @@ export function createRecordsSeed(): RecordsState {
   ];
   state.results = examples.map((example, index) => historicalRecord(state, example.id, {
     playedDate: example.date, recordedKickoff: null, sameDayOrder: null, opponent: example.opponent,
-    homeAway: 'home', fixtureClass: example.fixtureClass, status: 'completed', specialOutcome: 'ordinary',
+    homeAway: index === 1 ? 'away' : 'home', fixtureClass: example.fixtureClass, status: 'completed', specialOutcome: 'ordinary',
     finalScore: example.score, halfTimeScore: null,
     goals: index === 0 ? [{ id: 'synthetic-history-known-goal', beneficiary: 'us', isOwnGoal: false, scorerPlayerId: romaFixture.players[1].id, goalType: null, half: null, halfElapsedMs: null }] : [],
   }, '2026-10-20T12:00:00Z'));
+  if (options.demoSharing) {
+    state.results = state.results.map((record) => ({ ...record, publication: {
+      id: 'demo-simulated-scores-v1', version: 1, fixtureClass: record.fixtureClass,
+      confirmed: true, confirmationReference: 'Generated test scenario only; no competition or real-data approval.', allowedRoles: ['player', 'spectator'],
+    } }));
+  }
   return state;
 }
 
@@ -307,6 +324,13 @@ export function reduceRecords(previous: RecordsState, command: RecordsCommand): 
       if (new Set(ids).size !== ids.length || command.evidence.some(item => !validDate(item.playedDate) || item.playedDate < state.startsOn || item.playedDate > state.endsOn || new Set(item.expectedPlayerIds).size !== item.expectedPlayerIds.length)) throw new Error('Training evidence needs distinct sessions, unique expected players and dates in this season.');
       state = { ...state, trainingAttendance: clone(command.evidence) };
       reason = 'Training evidence updated from the local schedule; cancelled sessions remain excluded.';
+      break;
+    }
+    case 'game.evidence.replace': {
+      const ids = command.evidence.map(item => item.matchId);
+      if (new Set(ids).size !== ids.length || command.evidence.some(item => !item.matchId || !Number.isSafeInteger(item.sourcePreparationRevision) || item.sourcePreparationRevision < 0 || !item.sourceCommandId || Object.entries(item.responses).some(([playerId, response]) => !state.players.some(player => player.id === playerId) || !['available', 'unavailable', 'unsure', 'no_reply'].includes(response)))) throw new Error('Game preparation evidence needs distinct fixtures, known season players and a recorded source revision.');
+      state = { ...state, gamePreparation: clone(command.evidence) };
+      reason = 'Game responses projected separately from actual attendance and active availability.';
       break;
     }
     case 'participation.exception.noted': {
@@ -443,8 +467,8 @@ export interface ParticipationReportRow {
   minutesPerPlayedAppearance: number | null;
   games: AttendanceSummary;
   training: AttendanceSummary;
-  gameRecords: { eventId: string; heldDate: string; eventStatus: MatchRecord['status']; selection: 'selected'; actualAttendance: Attendance; availabilityResponse: null }[];
-  trainingRecords: { eventId: string; heldDate: string; eventStatus: 'held'; expected: true; actualAttendance: Attendance; availabilityResponse: 'available' | 'unavailable' | 'unsure' | 'no_reply' | null }[];
+  gameRecords: { eventId: string; eventType: 'game'; heldDate: string; eventStatus: MatchRecord['status']; selection: 'selected'; actualAttendance: Attendance; excusedStatus: 'excused' | null; availabilityResponse: 'available' | 'unavailable' | 'unsure' | 'no_reply' | null; correctionProvenance: { recordRevision: number; sourceMatchRevision: number | null; updatedAt: string; sourcePreparationRevision: number | null; sourcePreparationCommandId: string | null } }[];
+  trainingRecords: { eventId: string; eventType: 'training'; heldDate: string; eventStatus: 'held'; expected: true; actualAttendance: Attendance; excusedStatus: 'excused' | null; availabilityResponse: 'available' | 'unavailable' | 'unsure' | 'no_reply' | null; correctionProvenance: { sourcePreparationRevision: number | null; sourcePreparationCommandId: string | null } }[];
   coverageLabel: string;
   evidenceState: 'complete' | 'partial' | 'review_required';
 }
@@ -479,8 +503,13 @@ export function selectParticipationReport(state: RecordsState, match: MatchState
       goalkeeperMsWithUnknownPrimaryPreference: evidence.filter(entry => entry.primaryWasGoalkeeper === null).reduce((sum, entry) => sum + (entry.positionMs.GK ?? 0), 0),
       goalkeeperMsWithKnownPrimaryPreference: evidence.filter(entry => entry.primaryWasGoalkeeper !== null).reduce((sum, entry) => sum + (entry.positionMs.GK ?? 0), 0),
       positionMs, preferenceMs, minutesPerPlayedAppearance: matchesPlayed ? playingMs / matchesPlayed / 60_000 : null, games, training,
-      gameRecords: selected.map(record => ({ eventId: record.id, heldDate: record.playedDate, eventStatus: record.status, selection: 'selected' as const, actualAttendance: record.attendance?.[player.id] ?? 'not_recorded', availabilityResponse: null })),
-      trainingRecords: trainingEvidence.map(item => ({ eventId: item.sessionId, heldDate: item.playedDate, eventStatus: 'held' as const, expected: true as const, actualAttendance: item.attendance[player.id] ?? 'not_recorded', availabilityResponse: item.responses?.[player.id] ?? null })),
+      gameRecords: selected.map(record => {
+        const preparation = state.gamePreparation?.find(item => item.matchId === record.id);
+        const actualAttendance = record.attendance?.[player.id] ?? 'not_recorded';
+        return { eventId: record.id, eventType: 'game' as const, heldDate: record.playedDate, eventStatus: record.status, selection: 'selected' as const, actualAttendance, excusedStatus: actualAttendance === 'excused' ? 'excused' as const : null, availabilityResponse: preparation?.responses[player.id] ?? null,
+          correctionProvenance: { recordRevision: record.revision, sourceMatchRevision: record.sourceMatchRevision, updatedAt: record.updatedAt, sourcePreparationRevision: preparation?.sourcePreparationRevision ?? null, sourcePreparationCommandId: preparation?.sourceCommandId ?? null } };
+      }),
+      trainingRecords: trainingEvidence.map(item => ({ eventId: item.sessionId, eventType: 'training' as const, heldDate: item.playedDate, eventStatus: 'held' as const, expected: true as const, actualAttendance: item.attendance[player.id] ?? 'not_recorded', excusedStatus: item.attendance[player.id] === 'excused' ? 'excused' as const : null, availabilityResponse: item.responses?.[player.id] ?? null, correctionProvenance: { sourcePreparationRevision: item.sourcePreparationRevision ?? null, sourcePreparationCommandId: item.sourceCommandId ?? null } })),
       coverageLabel: `Minutes recorded for ${evidence.length} of ${records.length} recorded games; ${unknown} historical squad${unknown === 1 ? '' : 's'} not recorded.`,
       evidenceState: selected.some(record => record.detailCompleteness === 'review_required') ? 'review_required' as const : unknown || selected.length !== evidence.length ? 'partial' as const : 'complete' as const,
     };

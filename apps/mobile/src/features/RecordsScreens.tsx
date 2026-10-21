@@ -216,7 +216,7 @@ export function RecordsScreens({
             {teamLabel} · Season {state.seasonLabel}
           </Text>
         </View>
-        {synthetic && <Pill tone="muted">Fictional data</Pill>}
+        {synthetic && <Pill tone="muted">Sample data</Pill>}
       </View>
       <View style={s.row} accessibilityRole="tablist">
         <TabButton
@@ -647,8 +647,9 @@ export function ParticipationCard({ row }: { row: ParticipationReportRow }) {
           {row.gameRecords.map((item) => (
             <Text style={s.muted} key={item.eventId}>
               {dateLabel(item.heldDate)} · Game ·{" "}
-              {attendanceLabel(item.actualAttendance)} · selected · RSVP not
-              recorded
+              {attendanceLabel(item.actualAttendance)} · selected · RSVP{" "}
+              {item.availabilityResponse?.replaceAll("_", " ") ??
+                "not recorded"}
             </Text>
           ))}
           {row.trainingRecords.map((item) => (

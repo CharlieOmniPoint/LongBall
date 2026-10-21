@@ -8,7 +8,7 @@ import { backup, DatabaseSync } from 'node:sqlite';
 import { SQLITE_TEAM_PRIVILEGES_DDL } from './team-privilege-schema';
 import { AccessError, assertAdultAuthority, assertCanAssignManager, assertCanManageTeam, assertTeamRole, currentMemberships, filterMatchForPrincipal, UNAPPROVED_SHARING_POLICY, type Membership, type Principal, type SharingPolicy } from '../../../packages/application/src/access';
 import { createMatch, ENGINE_VERSION, reduceMatch, type MatchConfig, type MatchEvent, type MatchState } from '../../../packages/domain/src/index';
-import { romaFixture } from '../../../packages/testing/src/index';
+import { demoAccountLabels, romaFixture } from '../../../packages/testing/src/index';
 import type { VerifiedIdentity } from './oidc';
 import { createPreparationState, reducePreparation, trainingAttendanceEvidence, type PreparationCommand, type PreparationState, type PositionCode, type AvailabilityResponse } from '../../../packages/application/src/preparation';
 import { applyCommunityCommand, createCommunityState, getCommunityView, authorizeCommunityMedia, communityCanAccess, type CommunityActor, type CommunityCommand, type CommunityState } from '../../../packages/application/src/community';
@@ -17,6 +17,7 @@ import { effectiveEventTime } from '../../../packages/application/src/sync';
 import { fixtureMatchConfig } from '../../../packages/application/src/application';
 import { applyConfigurationServiceCommand, configurationServiceView, planSeasonRollover, seasonRolloverOptions, type SeasonRolloverCommand, type SeasonRolloverContext } from '../../../packages/application/src/season-service';
 import { applyRecordsServiceCommand, recordsServiceExport, recordsServiceView, type RecordsExportRequest, type RecordsServiceCommand, type RecordsServiceInput } from '../../../packages/application/src/records-service';
+import { gamePreparationEvidence } from '../../../packages/application/src/game-preparation-evidence';
 import { issueClockChallenge as makeClockChallenge, acknowledgeClockChallenge as acceptClockChallenge, type ClockChallenge, type ContinuousUtcMapping, type TrustedTimePolicy } from './trusted-time';
 import { Q08_RECONCILIATION_POLICY, previewReconciliation, type ReconciliationProposal, type ReconciliationProposalInput, type ReconciliationSnapshot, type ReconciliationSubmission } from '../../../packages/application/src/reconciliation';
 import { deriveFinishedMatchContext, finishEligibilityChanged } from './finished-match-context';
@@ -83,7 +84,7 @@ export function validateEnvelope(value: unknown, matchId: string): EventEnvelope
   if (!nonnegative(item.halfElapsedMs) || !nonnegative(item.matchElapsedMs) || ![0, 1, 2].includes(item.effectiveHalf)) bad('Invalid effective playing-time boundary.');
   if (!['anchored', 'estimated', 'reviewRequired'].includes(item.timeQuality) || !Number.isFinite(Date.parse(item.recordedAt)) || !(item.effectiveAt === null || Number.isFinite(Date.parse(item.effectiveAt)))) bad('Invalid event time evidence.');
   const command = item.command;
-  if (!command || typeof command !== 'object' || command.id !== item.eventId || !command.sample || !Number.isFinite(command.sample.monotonicMs) || command.sample.monotonicMs < 0 || !validId(command.sample.sessionId) || !nonnegative(command.sample.wallTimeMs)) bad('Invalid versioned match command.');
+  if (!command || typeof command !== 'object' || command.id !== item.eventId || !command.sample || !Number.isFinite(command.sample.monotonicMs) || command.sample.monotonicMs < 0 || !Number.isSafeInteger(Math.floor(command.sample.monotonicMs)) || !validId(command.sample.sessionId) || !nonnegative(command.sample.wallTimeMs)) bad('Invalid versioned match command.');
   if (!item.clockEvidence || item.clockEvidence.monotonicMs !== command.sample.monotonicMs || !validId(item.clockEvidence.anchorId) || !(item.clockEvidence.continuityId === null || validId(item.clockEvidence.continuityId))) bad('Explicit clock evidence is required.');
   const commandTypes = ['attendance.recorded', 'availability.changed', 'lineup.staged', 'half.started', 'half.paused', 'half.resumed', 'half.ended', 'lineup.committed', 'goal.recorded', 'clock.recovery_required', 'clock.corrected', 'event.corrected', 'event.voided', 'policy.changed', 'match.abandoned'];
   if (!commandTypes.includes(command.type)) bad('Unsupported match command.');
@@ -175,11 +176,11 @@ export class DevelopmentStore {
     chmodSync(destination, 0o600);
   }
   integrity(): string { return String((this.database.prepare('PRAGMA integrity_check').get() as { integrity_check: string }).integrity_check); }
-  seedSynthetic(): void {
+  seedSynthetic(options: { demoSharing?: boolean } = {}): void {
     this.transaction(() => {
       if (this.database.prepare('SELECT id FROM teams LIMIT 1').get()) return;
-      this.database.prepare('INSERT INTO teams(id,name) VALUES(?,?)').run(SYNTHETIC_IDS.teamId, 'Roma U10 · fictional');
-      this.database.prepare('INSERT INTO teams(id,name) VALUES(?,?)').run('synthetic-other-team', 'Other fictional team');
+      this.database.prepare('INSERT INTO teams(id,name) VALUES(?,?)').run(SYNTHETIC_IDS.teamId, 'Roma U10');
+      this.database.prepare('INSERT INTO teams(id,name) VALUES(?,?)').run('synthetic-other-team', 'Milan U11');
       const add = (id: string, classification: Principal['identityClassification'], adult: boolean) => this.database.prepare('INSERT INTO accounts(id,issuer,subject,classification,adult_verified,strong_auth_enrolled) VALUES(?,?,?,?,?,?)').run(id, 'urn:longball:synthetic', id, classification, Number(adult), Number(adult));
       const membership = (id: string, role: string, playerId: string | null = null, teamId: string = SYNTHETIC_IDS.teamId) => this.database.prepare('INSERT INTO memberships(account_id,team_id,season_id,role,player_id) VALUES(?,?,?,?,?)').run(id, teamId, SYNTHETIC_IDS.seasonId, role, playerId);
       add('synthetic-account-admin', 'adult_individual', true); membership('synthetic-account-admin', 'administrator');
@@ -195,18 +196,28 @@ export class DevelopmentStore {
       add('synthetic-account-spectator', 'adult_individual', false); membership('synthetic-account-spectator', 'spectator');
       add('synthetic-account-invitee', 'adult_individual', false);
       add('synthetic-account-other-manager', 'adult_individual', true); membership('synthetic-account-other-manager', 'manager', null, 'synthetic-other-team');
-      const config: MatchConfig = { matchId: SYNTHETIC_IDS.matchId, players: romaFixture.players, selectedPlayerIds: romaFixture.players.filter(player => player.available).map(player => player.id), pitchPlaces: 7, plannedHalfDurationMs: 1_500_000, fixedKeeperId: romaFixture.players[0].id };
+      const config: MatchConfig = { matchId: SYNTHETIC_IDS.matchId, players: romaFixture.players, selectedPlayerIds: romaFixture.players.filter(player => player.available).map(player => player.id), pitchPlaces: 7, plannedHalfDurationMs: 1_500_000, fixedKeeperId: romaFixture.players[0].id, fixture: { opponent: 'Maple FC', playedDate: '2026-10-24', kickoff: '2026-10-24T09:00:00Z', homeAway: 'home', teamId: SYNTHETIC_IDS.teamId, seasonId: SYNTHETIC_IDS.seasonId, teamName: 'Roma', clubName: 'Richmond Rovers' } };
       this.insertMatch(config, SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId);
       const community = createCommunityState(this.now());
-      community.matches = community.matches.map(match => ({ ...match, sharing: 'manager_only' }));
+      if (options.demoSharing) this.database.prepare('UPDATE matches SET sharing_policy_json=? WHERE id=?').run(JSON.stringify({ version: 'demo-simulated-scores-v1', approvedBy: 'generated-demo-scenario-only', approvedAt: this.now(), shareScores: true, shareDerivedResults: true }), SYNTHETIC_IDS.matchId);
+      if (options.demoSharing) {
+        community.photos = [];
+        // This generated scenario explicitly uses 45 minutes, not a real competition default or the unresolved +59 proposal.
+        community.matches = community.matches.map(match => ({ ...match, voteCutoffAtMs: match.actualFullTimeAtMs! + 45 * 60_000, cutoffSource: 'explicit_fictional_setting' }));
+      }
+      if (!options.demoSharing) community.matches = community.matches.map(match => ({ ...match, sharing: 'manager_only' }));
       for (let number = 2; number <= 4; number++) {
         const id = `synthetic-account-manager-${number}`;
-        community.accounts.push({ id, label: `Fictional manager ${number}`, classification: 'adult_individual', adultVerified: true });
+        community.accounts.push({ id, label: demoAccountLabels[id], classification: 'adult_individual', adultVerified: true });
         community.memberships.push({ accountId: id, teamId: SYNTHETIC_IDS.teamId, seasonId: SYNTHETIC_IDS.seasonId, role: 'manager', active: true });
       }
       this.saveDocument(SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId, 'preparation', createPreparationState());
       this.saveDocument(SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId, 'community', community);
-      this.saveDocument(SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId, 'records', createRecordsSeed());
+      this.saveDocument(SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId, 'records', createRecordsSeed(options));
+      if (options.demoSharing) for (const match of community.matches) {
+        const key = `award:${SYNTHETIC_IDS.teamId}:${SYNTHETIC_IDS.seasonId}:${match.id}:${match.voteCutoffAtMs}`;
+        this.database.prepare('INSERT INTO jobs(id,business_key,kind,payload_json,due_at) VALUES(?,?,?,?,?) ON CONFLICT(business_key) DO NOTHING').run(randomUUID(), key, 'award.finalise', JSON.stringify({ teamId: SYNTHETIC_IDS.teamId, seasonId: SYNTHETIC_IDS.seasonId, matchId: match.id }), match.voteCutoffAtMs!);
+      }
     });
   }
   insertMatch(config: MatchConfig, teamId: string, seasonId: string): void {
@@ -587,8 +598,8 @@ export class DevelopmentStore {
   teamMatches(principal: Principal, teamId: string, seasonId: string, requestedRole?: string, query: MatchPageQuery = { limit: 25, cursor: null }): { items: Record<string, unknown>[]; nextCursor: string | null; serverTime: string } {
     const memberships = this.memberships();
     const audience = matchPageAudience(principal, memberships, teamId, seasonId, requestedRole, this.now());
-    const scope = { principal, teamId, seasonId, role: audience.role, playerId: audience.playerId ?? null }, afterId = matchPagePosition(scope, query);
-    const rows = this.database.prepare('SELECT id,state_json,sharing_policy_json,last_sync_at FROM matches WHERE team_id=? AND season_id=? AND (? IS NULL OR id > ?) ORDER BY id COLLATE BINARY LIMIT ?').all(teamId, seasonId, afterId, afterId, query.limit + 1) as Pick<MatchRow, 'id' | 'state_json' | 'sharing_policy_json' | 'last_sync_at'>[];
+    const scope = { principal, teamId, seasonId, role: audience.role, playerId: audience.playerId ?? null, status: query.status }, afterId = matchPagePosition(scope, query);
+    const rows = this.database.prepare("SELECT id,state_json,sharing_policy_json,last_sync_at FROM matches WHERE team_id=? AND season_id=? AND (? IS NULL OR id > ?) AND (?=0 OR json_extract(state_json,'$.status') IN ('first_half_running','first_half_paused','half_time','second_half_running','second_half_paused')) ORDER BY id COLLATE BINARY LIMIT ?").all(teamId, seasonId, afterId, afterId, query.status === 'active' ? 1 : 0, query.limit + 1) as Pick<MatchRow, 'id' | 'state_json' | 'sharing_policy_json' | 'last_sync_at'>[];
     const visible = rows.slice(0, query.limit);
     return { items: visible.map(row => filterMatchForPrincipal({ principal, memberships, teamId, seasonId, state: JSON.parse(row.state_json), policy: JSON.parse(row.sharing_policy_json), lastSyncAt: row.last_sync_at, requestedRole, now: this.now() })), nextCursor: rows.length > query.limit ? matchPageCursor(scope, visible[visible.length - 1].id) : null, serverTime: new Date(this.now()).toISOString() };
   }
@@ -663,6 +674,8 @@ export class DevelopmentStore {
     if (canonical(players) !== canonical(previous.players)) records = { ...records, players, revision: records.revision + 1,
       audit: [...records.audit, { commandId: `preparation-roster-${sourceCommandId}`, action: 'preparation.roster.projected', matchId: null, at, reason: 'Current season roster labels updated from preparation; saved match snapshots preserved.', before: null, after: null }] };
     if (canonical(evidence) !== canonical(previous.trainingAttendance)) records = reduceRecords(records, { type: 'training.evidence.replace', commandId: `preparation-training-${sourceCommandId}`, at, actor: 'manager', evidence });
+    const gameEvidence = gamePreparationEvidence(preparation, seasonId, sourceCommandId);
+    if (canonical(gameEvidence.map(({ matchId, responses }) => ({ matchId, responses }))) !== canonical((previous.gamePreparation ?? []).map(({ matchId, responses }) => ({ matchId, responses })))) records = reduceRecords(records, { type: 'game.evidence.replace', commandId: `preparation-games-${sourceCommandId}`, at, actor: 'manager', evidence: gameEvidence });
     if (records !== previous) this.saveDocument(teamId, seasonId, 'records', records);
   }
   preparationCommand(principal: Principal, teamId: string, seasonId: string, command: PreparationCommand): PreparationState {
@@ -701,7 +714,7 @@ export class DevelopmentStore {
         }
       }
     }
-    if (command.type.startsWith('training.') || command.type.startsWith('profile.') || command.type === 'roster.imported') this.projectPreparationRecords(teamId, seasonId, state, command.id);
+    if (command.type.startsWith('training.') || command.type.startsWith('profile.') || command.type.startsWith('fixture.') || command.type === 'roster.imported') this.projectPreparationRecords(teamId, seasonId, state, command.id);
     this.saveDocument(teamId, seasonId, 'preparation', state);
     this.audit(principal, command.type, teamId, 'accepted');
     if(command.type==='fixture.saved')this.enqueueNotifications(teamId,seasonId,'schedule',command.fixture.id,command.id);
@@ -734,7 +747,8 @@ export class DevelopmentStore {
       : command.type === 'own.fixture_response_recorded' ? { ...base, type: 'fixture.response_recorded', fixtureId: command.fixtureId, profileId: profile.id, response: command.response }
       : { ...base, type: 'training.response_recorded', trainingId: command.trainingId, profileId: profile.id, response: command.response };
     const updated = reducePreparation(state, bound);
-    if (bound.type.startsWith('training.') || bound.type.startsWith('profile.')) this.projectPreparationRecords(teamId, seasonId, updated, command.id);
+    // Own changes persist only in preparation. Reports derive current attendance/RSVP
+    // evidence on read; a player never gains write authority over manager records.
     this.saveDocument(teamId, seasonId, 'preparation', updated);
     this.audit(principal, command.type, teamId, 'accepted');
     return this.ownPreparation(principal, teamId, seasonId);
@@ -816,7 +830,7 @@ export class DevelopmentStore {
     const community=this.communityState(teamId,seasonId);
     const actor=this.communityActor(principal,teamId,seasonId,viewer.actor);
     const filtered=getCommunityView(community,actor,this.now());
-    return { principal, memberships: this.memberships(), nowMs: this.now(), requestedRole: viewer.actor, state: this.document<RecordsState>(teamId, seasonId, 'records'), acceptedMatches: rows.map(row => ({ teamId, seasonId, match: JSON.parse(row.state_json) as MatchState })),community:{accountId:principal.accountId,teamId,seasonId,audience:viewer.actor,playerId:viewer.playerId??null,revision:community.revision,view:{allowed:filtered.allowed,matches:filtered.matches,gallery:filtered.gallery}} };
+    return { principal, memberships: this.memberships(), nowMs: this.now(), requestedRole: viewer.actor, state: this.document<RecordsState>(teamId, seasonId, 'records'), preparation: this.document<PreparationState>(teamId, seasonId, 'preparation'), acceptedMatches: rows.map(row => ({ teamId, seasonId, match: JSON.parse(row.state_json) as MatchState })),community:{accountId:principal.accountId,teamId,seasonId,audience:viewer.actor,playerId:viewer.playerId??null,revision:community.revision,view:{allowed:filtered.allowed,matches:filtered.matches,gallery:filtered.gallery}} };
   }
   records(principal: Principal, teamId: string, seasonId: string, role?: string): Record<string, unknown> { return recordsServiceView(this.recordsContext(principal, teamId, seasonId, role)); }
   recordsExport(principal: Principal, teamId: string, seasonId: string, request: RecordsExportRequest, role?: string): ReturnType<typeof recordsServiceExport> { return recordsServiceExport({ ...this.recordsContext(principal, teamId, seasonId, role), request }); }

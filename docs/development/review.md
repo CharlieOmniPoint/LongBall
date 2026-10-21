@@ -1,5 +1,7 @@
 # Review LongBall
 
+> Current recheck: [original specification comparison](specification-recheck.md) records newly found UI, viewer-refresh, report and clock-integrity gaps and their candidate fixes. The earlier blanket completeness assessment is superseded. New source verification/publication is in progress; privacy fulfilment and operator support remain explicitly incomplete behind owner decisions.
+
 21 October 2026. Development branch: `dev/longball-m0-journey`; draft [PR1](https://github.com/CharlieOmniPoint/LongBall/pull/1). The full functional implementation is published for fictional review, preserving native iPhone/Android. Real-data, operating-provider and physical-device gates remain separate.
 ## Open the shared review
 

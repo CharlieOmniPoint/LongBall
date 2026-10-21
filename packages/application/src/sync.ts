@@ -100,12 +100,20 @@ export class LongBallServiceClient {
     if (trimmed) { const parsed = new URL(trimmed); if (parsed.username || parsed.password) throw new Error('Service URL must not contain credentials. Use the authentication adapter.'); }
     this.baseUrl = trimmed === '/' ? '' : trimmed;
   }
-  async request<T>(path: string, options: { request?: DurableRequest; controllerToken?: string } = {}): Promise<T> {
+  async request<T>(path: string, options: { request?: DurableRequest; controllerToken?: string; signal?: AbortSignal } = {}): Promise<T> {
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout> | undefined;
+    let rejectCancellation: ((error: Error) => void) | undefined;
+    const cancellation = new Promise<never>((_, reject) => { rejectCancellation = reject; });
+    const cancel = () => {
+      const error = new Error('The service read was cancelled.'); error.name = 'AbortError';
+      rejectCancellation?.(error); controller.abort();
+    };
+    if (options.signal?.aborted) { const error = new Error('The service read was cancelled.'); error.name = 'AbortError'; throw error; }
+    options.signal?.addEventListener('abort', cancel, { once: true });
     const timeout = new Promise<never>((_, reject) => { timer = setTimeout(() => { reject(new ServiceError('REQUEST_TIMEOUT', 0, 'The service request timed out. Its original key and payload remain retained for retry.', true)); controller.abort(); }, this.requestTimeoutMs); });
-    try { return await Promise.race([this.exchange<T>(path, options, controller.signal), timeout]); }
-    finally { clearTimeout(timer); }
+    try { return await Promise.race([this.exchange<T>(path, options, controller.signal), timeout, cancellation]); }
+    finally { clearTimeout(timer); options.signal?.removeEventListener('abort', cancel); }
   }
   private async exchange<T>(path: string, options: { request?: DurableRequest; controllerToken?: string }, signal: AbortSignal): Promise<T> {
     const headers: Record<string, string> = { Accept: 'application/json' };

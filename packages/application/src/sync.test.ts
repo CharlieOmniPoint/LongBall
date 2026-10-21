@@ -87,6 +87,19 @@ describe('canonical connected outbox separate from M0 local history', () => {
       expect(await bodyFailure).toMatchObject({ code: 'REQUEST_TIMEOUT' }); expect(JSON.stringify(document.pendingRequest)).toBe(retained);
     } finally { vi.useRealTimers(); }
   });
+  it('cancels a foreground read immediately, aborting transport or a hanging body without waiting for timeout', async () => {
+    const controller = new AbortController(); let observed: AbortSignal | undefined;
+    const client = new LongBallServiceClient('', async (_url, options) => { observed = options.signal; return new Promise(() => {}); });
+    const pending = client.request('/v1/me', { signal: controller.signal }).catch(error => error);
+    controller.abort(); expect(await pending).toMatchObject({ name: 'AbortError' }); expect(observed?.aborted).toBe(true);
+    let contacted = false;
+    const skipped = new LongBallServiceClient('', async () => { contacted = true; return response(200, {}); });
+    await expect(skipped.request('/v1/me', { signal: controller.signal })).rejects.toMatchObject({ name: 'AbortError' }); expect(contacted).toBe(false);
+    const bodyController = new AbortController();
+    const body = new LongBallServiceClient('', async () => ({ ok: true, status: 200, json: () => new Promise(() => {}) }));
+    const bodyPending = body.request('/v1/me', { signal: bodyController.signal }).catch(error => error);
+    await Promise.resolve(); bodyController.abort(); expect(await bodyPending).toMatchObject({ name: 'AbortError' });
+  });
   it('treats409 stale-epoch quarantine as durable acknowledgement and preserves candidate branch', async () => {
     let document = queueConnectedCommand(ready(), { type: 'attendance.recorded', playerId: 'p2', status: 'present' }, sample(), 'old-epoch-event');
     document = prepareServiceRequest(document, 'upload', 'upload-stale-key');

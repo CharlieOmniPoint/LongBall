@@ -544,7 +544,7 @@ function nextChange(input: PlannerInput, schedule: ScheduledLineup[]): PlannerCh
 export function planMatch(input: PlannerInput): PlannerResult {
   const budget = new WorkBudget(input.settings.maxWork);
   const assumptions = [
-    input.settings.policyStatus === 'synthetic_experiment' ? 'Q07 interval-weighted targets and changing keeper policy are synthetic experiments, not silently approved product defaults.' : 'Interval and keeper policy use the explicit match acceptance supplied by the caller.',
+    input.settings.policyStatus === 'synthetic_experiment' ? 'Q07 interval-weighted targets and changing keeper policy are demo settings pending product approval.' : 'Interval and keeper policy use the explicit match acceptance supplied by the caller.',
     'Projection assumes the supplied future availability; expected arrivals still require actual manager confirmation.',
     'Every proposed lineup/substitution requires manager confirmation; actual recorded history is unchanged.',
   ];

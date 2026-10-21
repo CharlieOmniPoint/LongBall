@@ -15,7 +15,7 @@ describe('report final award and published album composition', () => {
     const { report, source } = fixture(), before = JSON.stringify(source);
     source.view.gallery.push({ ...source.view.gallery[0], id: 'other-game-photo', matchId: 'other-game' });
     const result = composeReportCommunity(report, source.accountId, source);
-    expect(result).toMatchObject({ communityStatus: 'available', award: { result: 'winners', winnerLabels: ['Player 01', 'Player 02'], finalisationDeadlineAtMs: nowMs }, publishedAlbum: { matchId: report.matchId, photoCount: 1 } });
+    expect(result).toMatchObject({ communityStatus: 'available', award: { result: 'winners', winnerLabels: ['Oliver Bennett', 'Noah Patel'], finalisationDeadlineAtMs: nowMs }, publishedAlbum: { matchId: report.matchId, photoCount: 1 } });
     for (const secret of ['private-ballot', 'synthetic-pending-ball', 'voterAccountId', 'candidatePlayerId', 'ownChoice', 'candidates', 'uploaderAccountId', 'caption', 'winnerPlayerIds']) expect(JSON.stringify(result)).not.toContain(secret);
     expect(source.view.matches[0].award?.finalisationDeadlineAtMs).toBe(nowMs); expect(before).not.toContain('other-game-photo');
   });

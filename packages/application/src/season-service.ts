@@ -141,7 +141,7 @@ export function planSeasonRollover(context: SeasonRolloverContext & { command: S
   const profiles = command.copyPlayers ? sourceProfiles.map((profile, index) => ({ ...copy(profile), id: `profile-${season.id.slice(0, 60)}-${String(index + 1).padStart(4, '0')}`, seasonId: season.id })) : [];
   const nextPreparation: PreparationState = { ...copy(preparation), revision: 0, activeSeasonId: season.id, seasons: [season], profiles, fixtures: [], training: [], snapshots: [], matchPlans: [], appliedCommands: {}, audit: [{ id: command.id, revision: 0, type: 'season.created_from_explicit_assignments' }] };
   const nextRecords: RecordsState = { ...copy(records), revision: 0, seasonId: season.id, seasonLabel: season.label, startsOn: season.startDate, endsOn: season.endDate, players: profiles.map(profile => ({ id: profile.playerId, label: profile.displayName })),
-    liveMatch: { matchId: '', playedDate: season.startDate, opponent: '', homeAway: 'home', fixtureClass: 'unclassified' }, results: [], trainingAttendance: [], audit: [], appliedCommands: {} };
+    liveMatch: { matchId: '', playedDate: season.startDate, opponent: '', homeAway: 'home', fixtureClass: 'unclassified' }, results: [], trainingAttendance: [], gamePreparation: [], audit: [], appliedCommands: {} };
   const assignedIds = new Set(newMemberships.map(item => item.accountId));
   const nextCommunity: CommunityState = { ...copy(community), revision: 0,
     accounts: accounts.filter(account => assignedIds.has(account.accountId)).map(account => ({ id: account.accountId, label: account.label, classification: account.identityClassification === 'child_shared' ? 'child_shared' : 'adult_individual', adultVerified: account.adultVerified })),

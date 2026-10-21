@@ -12,7 +12,7 @@ function decodeBase64(value: string): Uint8Array {
   const bytes: number[] = [];
   for (const character of value.replace(/=+$/, "")) {
     const index = alphabet.indexOf(character);
-    if (index < 0) throw new Error("The fictional image fixture is invalid.");
+    if (index < 0) throw new Error("The demo image fixture is invalid.");
     accumulated = (accumulated << 6) | index;
     bits += 6;
     if (bits >= 8) {
@@ -26,7 +26,7 @@ export function generatedFictionalImage(): LocalUploadImage {
   return {
     bytes: decodeBase64(fictionalPng),
     mimeType: "image/png",
-    label: "Generated fictional pitch colour PNG · no people",
+    label: "Generated demo pitch colour PNG · no people",
     uri: `data:image/png;base64,${fictionalPng}`,
   };
 }

@@ -17,13 +17,14 @@ describe('UI04 connected manager home selectors', () => {
     const state = createPreparationState();
     const home = selectManagerHome({ state, records: records(), community: community(), nowMs: now });
     expect(home.next).toMatchObject({ id: 'synthetic-training-1', kind: 'training', date: '2026-10-22', time: '18:00', title: 'Team training' });
-    expect(home.upcoming.map(item => item.date)).toEqual(['2026-10-22', '2026-10-24', '2026-10-29']);
+    expect(home.upcoming.map(item => item.date)).toEqual(['2026-10-22', '2026-10-24', '2026-10-29', '2026-10-31', '2026-11-05', '2026-11-07', '2026-11-14']);
     expect(home.next?.prepared).toBe(false);
     expect(home.recentResults).toHaveLength(3);
   });
 
   it('does not invent an event when scheduled records are cancelled, postponed or in another season', () => {
     const state = createPreparationState();
+    state.fixtures = state.fixtures.slice(0, 1); state.training = state.training.slice(0, 2);
     state.fixtures[0].status = 'postponed';
     state.training[0].status = 'cancelled';
     state.training[1].seasonId = 'another-season';
@@ -92,7 +93,7 @@ describe('UI04 connected manager home selectors', () => {
     value.results.rows[0] = { ...value.results.rows[0], id: state.fixtures[0].id, status: 'completed' };
     const home = selectManagerHome({ state, records: value, community: null, nowMs: now });
     expect(home.upcoming.some(item => item.id === state.fixtures[0].id)).toBe(false);
-    expect(home.repliesDue).toBe(26);
+    expect(home.repliesDue).toBe(54);
   });
 
   it('keeps recent date-only ties explicit and never converts unknown scores into zero', () => {
@@ -146,6 +147,7 @@ describe('UI04 connected manager home selectors', () => {
   it('keeps invalid or missing date/time fields unknown without generating an event or preparation snapshot', () => {
     const state = createPreparationState();
     state.training = [];
+    state.fixtures = state.fixtures.slice(0, 1);
     state.fixtures[0].playedDate = '2026-02-30';
     state.fixtures[0].kickoff = '25:00';
     const home = selectManagerHome({ state, records: null, community: null, nowMs: now });

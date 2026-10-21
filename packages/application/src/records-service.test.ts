@@ -60,9 +60,9 @@ describe('connected records service boundaries', () => {
     state.awards.push({ matchId, winnerPlayerIds: ['synthetic-player-01'], result: 'winners', voteCutoffAtMs: now - 60_000, finalisationDeadlineAtMs: now, finalisedAtMs: now - 30_000, deadlineMissed: false });
     const community: ReportCommunitySource = { accountId: context.principal.accountId, teamId: context.state.teamId, seasonId: context.state.seasonId, audience: 'manager', playerId: null, revision: 7, view: getCommunityView(state, { accountId: 'synthetic-account-manager', teamId: context.state.teamId, seasonId: context.state.seasonId, role: 'manager' }, now) };
     const report = recordsServiceView({ ...context, community }).matches.find(report => report.matchId === matchId)!;
-    expect(report.award).toMatchObject({ result: 'winners', winnerLabels: ['Player 01'] }); expect(report.publishedAlbum).toEqual({ matchId, photoCount: 1 });
+    expect(report.award).toMatchObject({ result: 'winners', winnerLabels: ['Oliver Bennett'] }); expect(report.publishedAlbum).toEqual({ matchId, photoCount: 1 });
     const exported = recordsServiceExport({ ...context, community, request: { kind: 'match', matchId, format: 'json' } });
-    expect(JSON.parse(exported.body).matches[0].award.winnerLabels).toEqual(['Player 01']);
+    expect(JSON.parse(exported.body).matches[0].award.winnerLabels).toEqual(['Oliver Bennett']);
     for (const forbidden of ['ownChoice', 'candidates', 'reviewQueue', 'submissions', 'synthetic-pending-ball']) expect(exported.body).not.toContain(forbidden);
     const player = audience(context, 'player');
     const withheld = recordsServiceView({ ...player, community: { ...community, accountId: player.principal.accountId, audience: 'player', playerId: player.memberships[0].playerId! } }).matches.find(report => report.matchId === matchId)!;
@@ -130,12 +130,12 @@ describe('connected records service boundaries', () => {
     const doc = JSON.parse(exported.body);
     expect(doc).toMatchObject({ teamId: context.state.teamId, seasonId: context.state.seasonId, audience: 'player', projectionVersion: context.state.revision, dataCoverage: { includesInventedHistoricalMinutes: false } });
     expect(doc.participation.rows.map((row: { playerId: string }) => row.playerId)).toEqual([context.state.players[0].id]);
-    expect(exported.body).not.toContain('Player 02'); expect(doc.results.totals).toBeNull();
+    expect(exported.body).not.toContain('Noah Patel'); expect(doc.results.totals).toBeNull();
     for (const field of ['editableState', 'activeMatch', 'appliedCommands', 'ballots', 'audit']) expect(exported.body).not.toContain(`"${field}"`);
     const spectator = recordsServiceExport({ ...audience(context, 'spectator'), request: { kind: 'season', format: 'csv' } });
-    expect(spectator.body).not.toContain('"participation",'); expect(spectator.body).not.toContain('Player 01'); expect(spectator.body).toContain('Scores are not shared');
+    expect(spectator.body).not.toContain('"participation",'); expect(spectator.body).not.toContain('Oliver Bennett'); expect(spectator.body).toContain('Scores are not shared');
     const single = JSON.parse(recordsServiceExport({ ...context, request: { kind: 'match', matchId: context.state.results[0].id, format: 'json' } }).body);
-    expect(single.matches).toHaveLength(1); expect(single.matches[0].participation).toBeNull(); expect(single.matches[0].halfTimeScore).toBeNull(); expect(single.matches[0].goals[0].scorerLabel).toBe('Player 02');
+    expect(single.matches).toHaveLength(1); expect(single.matches[0].participation).toBeNull(); expect(single.matches[0].halfTimeScore).toBeNull(); expect(single.matches[0].goals[0].scorerLabel).toBe('Noah Patel');
   });
   it('rejects stale exports and escaped spreadsheet formulas, and rechecks membership before rebuilding the body', () => {
     const context = fixture(), original = recordsServiceExport({ ...context, request: { kind: 'season', format: 'json' } });

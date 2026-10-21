@@ -171,16 +171,16 @@ export function WelcomeScreen({
           </Card>
           {onReview && (
             <Card style={styles.reviewCard}>
-              <Pill tone="muted">FICTIONAL REVIEW</Pill>
+              <Pill tone="muted">DEMO</Pill>
               <Text style={typography.section} accessibilityRole="header">
                 Take a look around
               </Text>
               <Text style={typography.body}>
-                Try LongBall with made-up players and matches. No club account
-                is needed.
+                Explore a complete Roma U10 season with sample teams, players
+                and matches. No club account is needed.
               </Text>
               <Button
-                label="Explore fictional Roma U10"
+                label="Explore Roma U10 demo"
                 variant="secondary"
                 icon="arrow"
                 testID="welcome-review"
@@ -245,13 +245,13 @@ export function ReviewAccountScreen({
             />
           </View>
           <View style={styles.accountIntroduction}>
-            <Pill tone="muted">FICTIONAL ROMA U10</Pill>
+            <Pill tone="muted">DEMO ROMA U10</Pill>
             <Text style={styles.accountTitle} accessibilityRole="header">
-              Choose a review account
+              Choose your demo role
             </Text>
             <Text style={typography.body}>
-              Explore the app with made-up players and matches. These choices do
-              not sign you in to a real club.
+              Try each view of Roma U10’s season. Demo roles let you test the
+              experience without a club account.
             </Text>
           </View>
           <EntryStatus loading={loading} error={error} status={status} />

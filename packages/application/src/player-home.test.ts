@@ -66,6 +66,46 @@ describe('UI05 own-player home', () => {
     view.matches[0].mayVote = false;
     expect(selectPlayerHome({ ...input(), community: view }).vote).toBeNull();
   });
+  it('replaces the closed vote action with the pending outcome at its original cutoff and flags a delayed result', () => {
+    const view = community(); view.matches = [vote()];
+    const home = selectPlayerHome({ ...input(), community: view, nowMs: vote().cutoffAtMs! });
+    expect(home.vote).toBeNull();
+    expect(home.award).toEqual({ matchId: 'finished-a', label: 'Recorded match', status: 'awaiting_result', cutoffAtMs: vote().cutoffAtMs, deadlineAtMs: vote().deadlineAtMs, deadlineMissed: false, result: null, winnerLabels: [] });
+    expect(home.award).not.toHaveProperty('candidates'); expect(home.award).not.toHaveProperty('ownChoice');
+    expect(selectPlayerHome({ ...input(), community: view, nowMs: vote().deadlineAtMs! + 1 }).award?.deadlineMissed).toBe(true);
+    expect(selectPlayerHome({ ...input(), community: { ...view, allowed: false }, nowMs: vote().cutoffAtMs! }).award).toBeNull();
+    expect(selectPlayerHome({ ...input(), community: { ...view, matches: [{ ...vote(), sharingAllowed: false }] }, nowMs: vote().cutoffAtMs! }).award).toBeNull();
+  });
+  it('shows a final winner, equal joint winners or no valid votes without carrying the private ballot projection', () => {
+    for (const labels of [['Avery H'], ['Avery H', 'Noah R'], []]) {
+      const final = { matchId: 'finished-a', result: labels.length ? 'winners' as const : 'no_valid_votes' as const, winnerPlayerIds: labels.map((_, index) => `player-${index}`), winnerLabels: labels, voteCutoffAtMs: now - 1000, finalisationDeadlineAtMs: now + 60_000, finalisedAtMs: now, deadlineMissed: false };
+      const view = community(); view.matches = [{ ...vote(), mayVote: false, cutoffAtMs: final.voteCutoffAtMs, award: final }];
+      const home = selectPlayerHome({ ...input(), community: view });
+      expect(home.award).toMatchObject({ status: 'final', winnerLabels: labels, result: final.result });
+      expect(home.award).not.toHaveProperty('winnerPlayerIds'); expect(home.award).not.toHaveProperty('candidates');
+      expect(home.vote).toBeNull();
+      final.winnerLabels.push('Later mutation'); expect(home.award?.winnerLabels).not.toContain('Later mutation');
+    }
+  });
+  it('keeps unresolved or invalid final award details in review rather than inventing a result or a new deadline', () => {
+    const view = community();
+    for (const patch of [{ finishQuality: 'review_required' as const }, { cutoffSource: 'unresolved' as const, cutoffAtMs: null }]) {
+      view.matches = [{ ...vote(), ...patch }];
+      expect(selectPlayerHome({ ...input(), community: view }).award).toMatchObject({ status: 'review_required', result: null, winnerLabels: [], deadlineAtMs: vote().deadlineAtMs });
+    }
+    view.matches = [{ ...vote(), award: { matchId: 'foreign-match', result: 'winners', winnerPlayerIds: ['player-02'], winnerLabels: ['Other'], voteCutoffAtMs: now - 1000, finalisationDeadlineAtMs: now + 1000, finalisedAtMs: now, deadlineMissed: false } }];
+    expect(selectPlayerHome({ ...input(), community: view }).award).toMatchObject({ status: 'review_required', result: null, winnerLabels: [] });
+  });
+  it('selects the latest closed match by played time, not DTO ordering, preserving open-vote and final-award distinction', () => {
+    const view = community(); const earlier = { ...vote(), id: 'earlier', playedAtMs: now - 7_200_000, cutoffAtMs: now - 1000 };
+    const later = { ...vote(), id: 'later', playedAtMs: now - 3_600_000, cutoffAtMs: now - 1000 };
+    view.matches = [earlier, later];
+    expect(selectPlayerHome({ ...input(), community: view }).award?.matchId).toBe('later');
+    view.matches = [later, earlier];
+    expect(selectPlayerHome({ ...input(), community: view }).award?.matchId).toBe('later');
+    view.matches = [vote()];
+    expect(selectPlayerHome({ ...input(), community: view }).award).toBeNull();
+  });
   it('selects a permitted photo using recorded played time, without manufacturing a date or asset access', () => {
     const view = community();
     const photo = { id: 'photo-a', matchId: 'finished-a', matchLabel: 'Recorded match', playedAtMs: now - 1000, uploaderAccountId: 'uploader', uploaderLabel: 'Uploader', version: 1, art: 'pitch' as const, caption: 'Generated illustration' };

@@ -38,8 +38,8 @@ async function workspace(account, entry = baseUrl) {
   await button(page, account).click();
   await page.getByTestId('workspace-connect').click();
   await page.getByTestId('workspace-session').waitFor();
-  if (account !== 'Fictional invite recipient') await selectWorkspaceContext(page);
-  if (account !== 'Fictional invite recipient') await openWorkspaceTab(page, 'invitations');
+  if (account !== 'Casey Bennett · Invite recipient') await selectWorkspaceContext(page);
+  if (account !== 'Casey Bennett · Invite recipient') await openWorkspaceTab(page, 'invitations');
   await page.getByTestId('connected-invitations').waitFor();
   return page;
 }
@@ -66,7 +66,7 @@ async function absentFromStorage(page, credential) {
   assert.equal(found, false, 'One-time invitation credential must stay out of browser persistence');
 }
 try {
-  const issuer = await workspace('Fictional manager');
+  const issuer = await workspace('Alex Morgan · Manager');
   stage = 'issuer issue and retained display';
   await issuer.getByTestId('invitation-hours').fill('24');
   const created = issuer.waitForResponse(response => response.request().method() === 'POST' && response.url() === `${apiUrl}/v1/teams/${teamId}/spectator-invites`);
@@ -78,7 +78,7 @@ try {
   const original = new URLSearchParams(firstUrl.hash.slice(1)).get('code');
   assert.match(original ?? '', /^[A-Za-z0-9_-]{43}$/);
   assert.equal(await issuer.getByLabel('Workspace API URL', { exact: true }).isEditable(), false);
-  for (const name of ['Fictional Player 01', 'Connected sign-in']) assert.equal(await button(issuer, name).isDisabled(), true);
+  for (const name of ['Oliver Bennett · Player', 'Connected sign-in']) assert.equal(await button(issuer, name).isDisabled(), true);
   assert.equal(await issuer.getByTestId('workspace-connect').isDisabled(), true);
   assert.equal(await issuer.getByTestId('workspace-tab-community').isDisabled(), true);
   await absentFromStorage(issuer, original);
@@ -103,7 +103,7 @@ try {
   changedHints.set('teamId', 'synthetic-untrusted-link-team');
   changedHints.set('seasonId', 'synthetic-untrusted-link-season');
   replacementUrl.hash = changedHints.toString();
-  const recipient = await workspace('Fictional invite recipient', replacementUrl.href);
+  const recipient = await workspace('Casey Bennett · Invite recipient', replacementUrl.href);
   stage = 'memberless recipient inspection';
   await recipient.getByText('No current team membership returned.', { exact: true }).waitFor();
   assert.equal(await recipient.getByTestId('invitation-create').count(), 0);

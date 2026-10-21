@@ -220,7 +220,7 @@ try {
   await click("Service and controller");
   await page.getByLabel("Workspace API URL", { exact: true }).fill(api);
   await click("Fictional API review");
-  await click("Fictional manager");
+  await click("Alex Morgan · Manager");
   await page.getByTestId("workspace-connect").click();
   await selectWorkspaceContext(page);
   await page.getByTestId("preparation-create-event").waitFor();

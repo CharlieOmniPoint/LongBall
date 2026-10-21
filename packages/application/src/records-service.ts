@@ -2,10 +2,12 @@ import type { MatchState } from '@longball/domain';
 import { AccessError, assertAdultAuthority, assertCanManageTeam, assertTeamRole, type Membership, type Principal } from './access';
 import { reduceRecords, selectMatchReport, selectParticipationReport, selectSeasonResults, type FixtureClass, type HistoricalResultInput, type LiveMatchDetails, type RecordsActor, type RecordsCommand, type RecordsState, type RecordsViewer } from './records';
 import { composeReportCommunity, type ReportCommunitySource } from './report-community';
+import { gamePreparationEvidence } from './game-preparation-evidence';
+import { trainingAttendanceEvidence, type PreparationState } from './preparation';
 
 export interface AcceptedRecordsMatch { teamId: string; seasonId: string; match: MatchState }
 export interface RecordsServiceAuthority { principal: Principal; memberships: Membership[]; nowMs: number; requestedRole?: RecordsActor }
-export interface RecordsServiceInput extends RecordsServiceAuthority { state: RecordsState; acceptedMatches: AcceptedRecordsMatch[]; community?: ReportCommunitySource | null }
+export interface RecordsServiceInput extends RecordsServiceAuthority { state: RecordsState; acceptedMatches: AcceptedRecordsMatch[]; community?: ReportCommunitySource | null; preparation?: PreparationState }
 export type CompactArchiveCommand = { type: 'live.archive'; commandId: string; matchId: string; expectedSourceMatchRevision: number; at?: string; actor?: RecordsActor; reason?: string };
 export type RecordsServiceCommand = RecordsCommand | CompactArchiveCommand;
 const copy = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
@@ -67,6 +69,14 @@ function contextFor(state: RecordsState, match: MatchState, fixtureClass?: Fixtu
 }
 export function recordsServiceView(input: RecordsServiceInput) {
   const viewer = recordsServiceViewer(input), { state, nowMs } = input;
+  const preparation = input.preparation;
+  if (preparation && (preparation.team.id !== state.teamId || !preparation.seasons.some(season => season.id === state.seasonId))) fail('Preparation evidence is outside this report scope.', 'NOT_FOUND', 404);
+  // Own RSVP remains durable in preparation. Reading its current evidence requires
+  // no player write permission over the manager's records document.
+  const reportState = preparation ? { ...state,
+    gamePreparation: gamePreparationEvidence(preparation, state.seasonId, preparation.audit.at(-1)?.id ?? 'initial-preparation'),
+    trainingAttendance: trainingAttendanceEvidence({ ...preparation, training: preparation.training.filter(session => session.seasonId === state.seasonId) }),
+  } : state;
   const activeMatch = accepted(input, state.liveMatch.matchId);
   const generatedAt = new Date(nowMs).toISOString();
   const stamp = <T extends object>(value: T) => ({ ...value, generatedAt });
@@ -81,7 +91,7 @@ export function recordsServiceView(input: RecordsServiceInput) {
     const details = match ? contextFor(state, match, id === state.liveMatch.matchId ? state.liveMatch.fixtureClass : undefined) : null;
     return selectMatchReport(details ? { ...state, liveMatch: details } : state, id, viewer, match);
   }).filter((item): item is NonNullable<typeof item> => item !== null);
-  const common = { revision: state.revision, results: stamp(selectSeasonResults(state, viewer)), participation: stamp(selectParticipationReport(state, activeMatch, viewer)), matches: reports.map(report => stamp({ ...report, ...composeReportCommunity(report, input.principal.accountId, input.community), goals: report.goals.map(goal => ({ ...goal, scorerLabel: goal.scorerPlayerId ? state.players.find(player => player.id === goal.scorerPlayerId)?.label ?? null : null })) })) };
+  const common = { revision: state.revision, results: stamp(selectSeasonResults(state, viewer)), participation: stamp({ ...selectParticipationReport(reportState, activeMatch, viewer), ...(viewer.actor === 'spectator' ? {} : { sourcePreparationRevision: preparation?.revision ?? null }) }), matches: reports.map(report => stamp({ ...report, ...composeReportCommunity(report, input.principal.accountId, input.community), goals: report.goals.map(goal => ({ ...goal, scorerLabel: goal.scorerPlayerId ? state.players.find(player => player.id === goal.scorerPlayerId)?.label ?? null : null })) })) };
   if (viewer.actor !== 'manager') return common;
   return { ...common, editableState: copy(state), activeMatch: activeMatch ? copy(activeMatch) : null,
     contexts: input.acceptedMatches.filter(row => row.teamId === state.teamId && row.seasonId === state.seasonId).flatMap(row => {
@@ -127,7 +137,8 @@ export function applyRecordsServiceCommand(input: RecordsServiceInput & { comman
       requireThat(string(command.recordId) && string(command.playerId) && integer(command.expectedRevision) && string(command.reason, 500), 'Review the saved participation and explain the exception.');
       bound = { ...base, type: command.type, recordId: command.recordId, playerId: command.playerId, expectedRevision: command.expectedRevision, reason: command.reason.trim() }; break;
     case 'publication.set': fail('A manager request cannot approve the unresolved competition policy. Independent operator evidence is required.', 'POLICY_APPROVAL_REQUIRED', 503); break;
-    case 'training.evidence.replace': fail('Training report evidence is projected from the authorised preparation service.', 'SERVICE_OWNED_PROJECTION', 403); break;
+    case 'training.evidence.replace':
+    case 'game.evidence.replace': fail('Attendance report evidence is projected from the authorised preparation service.', 'SERVICE_OWNED_PROJECTION', 403); break;
     default: fail('Unsupported record command.');
   }
   // The HTTP idempotency layer owns retries. The reducer still preserves exact command identity.

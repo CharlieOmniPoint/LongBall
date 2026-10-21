@@ -94,7 +94,7 @@ try {
   await page.getByText('24:00 remaining', { exact: true }).waitFor();
   await page.getByTestId('open-goal').click();
   await page.getByRole('button', { name: 'Open play', exact: true }).click();
-  await page.getByRole('button', { name: 'Player 02', exact: true }).click();
+  await page.getByRole('button', { name: 'Noah Patel', exact: true }).click();
   await page.clock.fastForward(15_000);
   await page.getByTestId('save-goal').click();
   let state = await waitState(page, value => value.goals?.length === 1, 'Captured goal did not save');
@@ -122,7 +122,7 @@ try {
   await page.getByTestId('open-goal').click();
   await page.getByRole('button', { name: 'Opposition score', exact: true }).click();
   await page.getByRole('button', { name: 'Own goal · no', exact: true }).click();
-  await page.getByRole('button', { name: 'Player 03', exact: true }).click();
+  await page.getByRole('button', { name: 'Leo Martin', exact: true }).click();
   await page.getByTestId('save-goal').click();
   state = await waitState(page, value => value.goals?.length === 3, 'Roma own goal did not save');
   assert.deepEqual(state.score, { for: 2, against: 1 });
@@ -166,7 +166,7 @@ try {
   await page.clock.fastForward(60_000);
   await page.getByText('22:15 remaining', { exact: true }).waitFor();
   await page.getByTestId('open-availability').click();
-  await page.getByRole('button', { name: 'Player 07 · available', exact: true }).click();
+  await page.getByRole('button', { name: 'Jack Turner · available', exact: true }).click();
   await page.clock.fastForward(10_000);
   await page.getByTestId('confirm-availability').click();
   state = await waitState(page, value => value.availability['synthetic-player-07'] === false, 'Injury change did not save');
@@ -181,13 +181,13 @@ try {
   assert.equal(played(state), 7 * 205_000 - 40_000, 'A vacant place must remain an actual capacity shortfall.');
 
   await page.getByTestId('open-availability').click();
-  await page.getByRole('button', { name: 'Player 07 · unavailable', exact: true }).click();
+  await page.getByRole('button', { name: 'Jack Turner · unavailable', exact: true }).click();
   await page.getByTestId('confirm-availability').click();
   state = await waitState(page, value => value.availability['synthetic-player-07'] === true, 'Return did not save');
   assert.equal(state.lineup.length, 6, 'An available return cannot automatically make a substitution.');
   assert(!state.lineup.some(allocation => allocation.playerId === 'synthetic-player-07'));
   await page.getByRole('button', { name: /^Striker, unfilled,/ }).click();
-  await page.getByRole('button', { name: 'Choose Player 07', exact: true }).click();
+  await page.getByRole('button', { name: 'Choose Jack Turner', exact: true }).click();
   assert.equal((await saved(page)).lineup.length, 6, 'The replacement remains a draft until confirmation.');
   await page.getByTestId('confirm-lineup').click();
   state = await waitState(page, value => value.lineup.length === 7, 'Confirmed replacement did not save');

@@ -28,7 +28,7 @@ describe('explicit recurring training occurrences', () => {
     expect(reducePreparation(state, command)).toBe(state);
     expect(() => reducePreparation(state, { ...command, confirmOccurrences: false } as unknown as PreparationCommand)).toThrow(/different content/);
     expect(() => reducePreparation(state, { ...command, id: 'stale-new-command' })).toThrow(/changed/);
-    expect(original.training).toHaveLength(2);
+    expect(original.training).toHaveLength(createPreparationState().training.length);
   });
   it('rejects duplicate identities, mixed scopes, reused groups and unconfirmed batches without partial mutation', () => {
     const state = createPreparationState(), before = JSON.stringify(state), payload = create(state);

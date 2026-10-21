@@ -4,14 +4,16 @@ import {
   useRef,
   useState,
   type ReactNode,
+  type RefObject,
 } from "react";
-import { Platform, StyleSheet, Text, View } from "react-native";
+import { Platform, ScrollView, StyleSheet, Text, View, type ScrollViewInstance } from "react-native";
 import {
   validateLineup,
   type Allocation,
   type Attendance,
   type ClockReading,
   type MatchState,
+  type EffectiveMatchTime,
 } from "@longball/domain";
 import {
   assertLiveEditorAccess,
@@ -45,6 +47,9 @@ export interface ConnectedLiveEditorProps {
   /** Opens the parent's existing actual-event confirmation; never records directly. */
   onReviewClockAction?: (action: "start" | "pause" | "resume" | "end") => void;
   clockActionReview?: ReactNode;
+  fillScreen?: boolean;
+  header?: ReactNode;
+  extraContent?: ReactNode;
 }
 
 /** Native connected recording, or the explicitly isolated fictional browser review. */
@@ -63,6 +68,8 @@ export function ConnectedLiveEditor(props: ConnectedLiveEditorProps) {
     lineup: Allocation[];
   } | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
+  const [eventAction, setEventAction] = useState<{ revision: number; kind: "goal" | "availability"; effective: EffectiveMatchTime } | null>(null);
+  const contentScroll = useRef<ScrollViewInstance | null>(null);
   const [mode, setMode] = useState<"attendance" | "lineup" | "live">(
     props.match.status === "preparation" ? "attendance" : "live",
   );
@@ -231,6 +238,7 @@ export function ConnectedLiveEditor(props: ConnectedLiveEditorProps) {
       Math.max(5, (saved.y ?? index / props.match.config.pitchPlaces) * 90),
     ),
   }));
+  const initialsByPlayerId = Object.fromEntries((props.match.config.profileSnapshot ?? []).map((profile) => [profile.playerId, profile.initials]));
   const changedSlotIds = props.match.config.slots
     ?.filter(
       (saved) =>
@@ -244,21 +252,138 @@ export function ConnectedLiveEditor(props: ConnectedLiveEditorProps) {
     setLineupDraft(null);
     setSelectedSlot(null);
   };
+  const clockActions = props.clock && (props.onReviewClockAction && !terminal && (
+                <View style={styles.wrap}>
+                  {preparation && (
+                    <Button
+                      label={
+                        props.fillScreen ? props.match.status === "half_time" ? "Start second half" : "Start first half"
+                          : props.match.status === "half_time" ? "Review second-half start" : "Review kickoff"
+                      }
+                      disabled={busy || props.clock.recoveryRequired || dirty || validateLineup(props.match, savedLineup, false).length > 0}
+                      onPress={() => { setMode("live"); props.onReviewClockAction?.("start"); }}
+                      style={[styles.action, props.fillScreen && styles.railButton]}
+                    />
+                  )}
+                  {(running || paused) && (
+                    <>
+                      <Button
+                        label={
+                          paused
+                            ? "Review clock resume"
+                            : "Review referee pause"
+                        }
+                        variant="secondary"
+                        disabled={busy || props.clock.recoveryRequired}
+                        onPress={() =>
+                          props.onReviewClockAction?.(
+                            paused ? "resume" : "pause",
+                          )
+                        }
+                        style={[styles.action, props.fillScreen && styles.railButton]}
+                      />
+                      <Button
+                        label={
+                          props.match.half === 1
+                            ? "Review half-time"
+                            : "Review full-time"
+                        }
+                        variant="danger"
+                        disabled={busy || props.clock.recoveryRequired}
+                        onPress={() => props.onReviewClockAction?.("end")}
+                        style={[styles.action, props.fillScreen && styles.railButton]}
+                      />
+                    </>
+                  )}
+                </View>
+              ));
+  const scoreCard = props.clock && (<Card style={props.fillScreen ? { padding: 10, gap: 4 } : undefined}>
+              <View style={styles.scoreboard}>
+                <Text style={[typography.label, styles.teamName]}>
+                  {teamLabel}
+                </Text>
+                <Text style={typography.score}>
+                  {props.match.score.for}–{props.match.score.against}
+                </Text>
+                <Text style={[typography.label, styles.teamName]}>
+                  {props.match.config.fixture?.opponent ?? "Opposition"}
+                </Text>
+              </View>
+              <Pill
+                tone={
+                  paused || props.clock.recoveryRequired ? "warning" : "brand"
+                }
+              >
+                {props.match.status === "preparation"
+                  ? "Before kickoff"
+                  : props.match.status === "half_time"
+                    ? "Half-time"
+                    : props.match.status === "completed"
+                      ? "Full-time"
+                      : props.match.status === "abandoned"
+                        ? "Match abandoned"
+                        : `${props.match.half === 1 ? "First" : "Second"} half · ${paused ? "referee clock paused" : "in play"}`}
+              </Pill>
+              <Text style={typography.muted}>
+                {terminal ? "Total active match time"
+                  : props.match.status === "half_time" ? "Actual first half"
+                  : props.match.half === 0 ? "Planned half length"
+                  : props.clock.remainingMs === 0 ? "Time elapsed · added active time"
+                  : "Remaining this half"}
+              </Text>
+              <Text style={typography.clock} testID="connected-match-countdown" accessibilityLiveRegion="none">
+                {terminal ? formatTime(props.clock.matchActiveMs)
+                  : props.match.status === "half_time" ? formatTime(props.match.firstHalfDurationMs ?? props.clock.halfActiveMs)
+                  : props.match.half === 0 ? formatTime(props.match.config.plannedHalfDurationMs)
+                  : props.clock.remainingMs === 0 ? `+${formatTime(props.clock.addedMs)}`
+                  : formatTime(props.clock.remainingMs)}
+              </Text>
+              <Text style={typography.body}>
+                {terminal ? "Recorded duration"
+                  : props.match.status === "half_time" ? "Changes take effect when you start the second half."
+                  : props.match.half === 0 ? "The clock starts when you confirm kickoff."
+                  : `${formatTime(props.clock.halfActiveMs)} played this half`}
+              </Text>
+              {!terminal && !props.fillScreen && (
+                <Text style={typography.muted}>
+                  The countdown is a guide. Half-time and full-time always need
+                  your confirmation; they do not happen automatically.
+                </Text>
+              )}
+              {props.clock.recoveryRequired && (
+                <Notice tone="warning">
+                  Time needs checking. The saved checkpoint is retained; review
+                  clock recovery above before recording another event.
+                </Notice>
+              )}
+              {!props.fillScreen && clockActions}
+              {!props.fillScreen && props.clockActionReview}
+            </Card>);
+  const openEvent = (kind: "goal" | "availability") => {
+    if (!props.clock) return;
+    setMode("live");
+    setEventAction((previous) => ({ revision: (previous?.revision ?? 0) + 1, kind, effective: {
+      half: props.match.half === 2 ? 2 : 1,
+      halfElapsedMs: props.clock!.halfActiveMs,
+      matchElapsedMs: props.clock!.matchActiveMs,
+    } }));
+    contentScroll.current?.scrollTo({ y: 0, animated: false });
+  };
   return (
-    <View style={styles.stack}>
-      <Card>
+    <View style={[styles.stack, props.fillScreen && styles.fullScreen]}>
+      {props.fillScreen && <ScrollView style={{ flexGrow: 0, maxHeight: activeMode === "live" ? "45%" : "30%" }} contentContainerStyle={{ gap: 8 }} testID="connected-match-fixed-summary">
+        {props.header}
+        {activeMode === "live" && !gate && scoreCard}
+      </ScrollView>}
+      <EditorContent fillScreen={props.fillScreen} scrollRef={contentScroll}>
+
+      {(activeMode !== "live" || gate || storageError || saveError ||
+        props.mode !== "fictional-review" && diagnostics?.wrongKeyProbe !== "passed") && <Card>
         <Text style={typography.section}>{teamLabel} · match day</Text>
-        {props.mode === "fictional-review" && (
-          <Notice>
-            Fictional browser review. Records use an unprotected local preview
-            journal and the fictional service. This does not test phone storage,
-            clock recovery or notification delivery.
-          </Notice>
-        )}
         <Text style={typography.muted}>
-          Record actual attendance, lineup changes and match events for this
-          saved fixture. Saved on this phone appears after the record is stored;
-          service confirmation is shown separately above.
+          {activeMode === "attendance"
+            ? "Confirm each player’s arrival before choosing the starting lineup."
+            : "Review the players and places before confirming a change."}
         </Text>
         {gate && <Notice tone="warning">{gate}</Notice>}
         {(storageError || saveError) && (
@@ -278,7 +403,7 @@ export function ConnectedLiveEditor(props: ConnectedLiveEditorProps) {
               }}
             />
           )}
-      </Card>
+      </Card>}
       {!gate && props.clock && (
         <>
           <View style={styles.wrap}>
@@ -442,6 +567,7 @@ export function ConnectedLiveEditor(props: ConnectedLiveEditorProps) {
               <Pitch
                 lineup={draft}
                 players={props.match.config.players}
+                initialsByPlayerId={initialsByPlayerId}
                 slots={pitchSlots}
                 formationName={`${props.match.config.pitchPlaces} places · ${dirty ? "unsaved draft" : preparation ? "staged lineup" : "confirmed lineup"}`}
                 selectedSlot={selectedSlot}
@@ -554,117 +680,20 @@ export function ConnectedLiveEditor(props: ConnectedLiveEditorProps) {
             </Card>
           )}
           <View style={[styles.stack, activeMode !== "live" && styles.hidden]}>
-            <Card>
-              <View style={styles.scoreboard}>
-                <Text style={[typography.label, styles.teamName]}>
-                  {teamLabel}
-                </Text>
-                <Text style={typography.score}>
-                  {props.match.score.for}–{props.match.score.against}
-                </Text>
-                <Text style={[typography.label, styles.teamName]}>
-                  {props.match.config.fixture?.opponent ?? "Opposition"}
-                </Text>
-              </View>
-              <Pill
-                tone={
-                  paused || props.clock.recoveryRequired ? "warning" : "brand"
-                }
-              >
-                {props.match.status === "preparation"
-                  ? "Before kickoff"
-                  : props.match.status === "half_time"
-                    ? "Half-time"
-                    : props.match.status === "completed"
-                      ? "Full-time"
-                      : props.match.status === "abandoned"
-                        ? "Match abandoned"
-                        : `${props.match.half === 1 ? "First" : "Second"} half · ${paused ? "referee clock paused" : "in play"}`}
-              </Pill>
-              <Text style={typography.muted}>
-                {props.match.half === 0
-                  ? "Planned half length"
-                  : "Active time this half"}
-              </Text>
-              <Text style={typography.clock}>
-                {formatTime(
-                  props.match.half === 0
-                    ? props.match.config.plannedHalfDurationMs
-                    : props.clock.halfActiveMs,
-                )}
-              </Text>
-              <Text style={typography.body}>
-                {terminal
-                  ? `${formatTime(props.clock.matchActiveMs)} total active match time`
-                  : props.match.status === "half_time"
-                    ? `First half: ${formatTime(props.match.firstHalfDurationMs ?? props.clock.halfActiveMs)} active`
-                    : props.clock.addedMs > 0
-                      ? `+${formatTime(props.clock.addedMs)} beyond the planned half`
-                      : `${formatTime(props.clock.remainingMs)} planned half remaining`}
-              </Text>
-              {!terminal && (
-                <Text style={typography.muted}>
-                  The countdown is a guide. Half-time and full-time always need
-                  your confirmation; they do not happen automatically.
-                </Text>
-              )}
-              {props.clock.recoveryRequired && (
-                <Notice tone="warning">
-                  Time needs checking. The saved checkpoint is retained; review
-                  clock recovery above before recording another event.
-                </Notice>
-              )}
-              {props.onReviewClockAction && !terminal && (
-                <View style={styles.wrap}>
-                  {preparation && (
-                    <Button
-                      label={
-                        props.match.status === "half_time"
-                          ? "Review second-half start"
-                          : "Review kickoff"
-                      }
-                      disabled={busy || props.clock.recoveryRequired}
-                      onPress={() => props.onReviewClockAction?.("start")}
-                      style={styles.action}
-                    />
-                  )}
-                  {(running || paused) && (
-                    <>
-                      <Button
-                        label={
-                          paused
-                            ? "Review clock resume"
-                            : "Review referee pause"
-                        }
-                        variant="secondary"
-                        disabled={busy || props.clock.recoveryRequired}
-                        onPress={() =>
-                          props.onReviewClockAction?.(
-                            paused ? "resume" : "pause",
-                          )
-                        }
-                        style={styles.action}
-                      />
-                      <Button
-                        label={
-                          props.match.half === 1
-                            ? "Review half-time"
-                            : "Review full-time"
-                        }
-                        variant="danger"
-                        disabled={busy || props.clock.recoveryRequired}
-                        onPress={() => props.onReviewClockAction?.("end")}
-                        style={styles.action}
-                      />
-                    </>
-                  )}
-                </View>
-              )}
-              {props.clockActionReview}
-            </Card>
+            {!props.fillScreen && scoreCard}
+            <LiveEventsPanel
+              match={props.match}
+              clock={props.clock}
+              onCommand={record}
+              busy={busy}
+              teamLabel={teamLabel}
+              hideActions={props.fillScreen}
+              actionRequest={eventAction}
+            />
             <Pitch
               lineup={savedLineup}
               players={props.match.config.players}
+              initialsByPlayerId={initialsByPlayerId}
               slots={pitchSlots}
               formationName={`${props.match.config.pitchPlaces} places · ${preparation ? "staged for next start" : "confirmed on pitch"}`}
               compact
@@ -712,21 +741,34 @@ export function ConnectedLiveEditor(props: ConnectedLiveEditorProps) {
                 </Text>
               </Card>
             )}
-            <LiveEventsPanel
-              match={props.match}
-              clock={props.clock}
-              onCommand={record}
-              busy={busy}
-              teamLabel={teamLabel}
-            />
+
           </View>
         </>
       )}
+      {props.extraContent}
+      </EditorContent>
+      {props.fillScreen && !gate && props.clock && !terminal && <View style={styles.fixedRail} testID="connected-match-action-rail">
+        <ScrollView style={{ maxHeight: 220 }} contentContainerStyle={styles.stack} keyboardShouldPersistTaps="handled">
+          {props.clockActionReview}
+          {clockActions}
+          {!preparation && !terminal && <View style={styles.wrap}>
+            <Button label="Record goal" testID="open-goal" style={[styles.action, styles.railButton]} disabled={busy || props.clock.recoveryRequired || props.match.status === "half_time"} onPress={() => openEvent("goal")} />
+            <Button label="Substitute" testID="connected-open-substitute" icon="swap" variant="secondary" style={[styles.action, styles.railButton]} disabled={busy || props.clock.recoveryRequired} onPress={() => { setMode("lineup"); contentScroll.current?.scrollTo({ y: 0, animated: false }); }} />
+            <Button label="Unavailable / return" testID="open-availability" variant="secondary" style={[styles.action, styles.railButton]} disabled={busy || props.clock.recoveryRequired} onPress={() => openEvent("availability")} />
+          </View>}
+        </ScrollView>
+      </View>}
     </View>
   );
 }
+function EditorContent({ fillScreen, scrollRef, children }: { fillScreen?: boolean; scrollRef: RefObject<ScrollViewInstance | null>; children: ReactNode }) {
+  return fillScreen ? <ScrollView ref={scrollRef} style={{ flex: 1 }} contentContainerStyle={{ gap: 12, paddingBottom: 12 }} keyboardShouldPersistTaps="handled" testID="connected-match-content-scroll">{children}</ScrollView> : <View style={{ gap: 12 }}>{children}</View>;
+}
 const styles = StyleSheet.create({
   stack: { gap: 12 },
+  fullScreen: { flex: 1, minHeight: 0, gap: 8 },
+  fixedRail: { borderTopWidth: 1, borderColor: colors.border, paddingTop: 8, backgroundColor: colors.canvas },
+  railButton: { minHeight: 48, paddingVertical: 6, paddingHorizontal: 8 },
   hidden: { display: "none" },
   wrap: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   tab: { flexGrow: 1, flexBasis: 100 },

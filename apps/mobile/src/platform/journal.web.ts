@@ -90,7 +90,7 @@ export async function openJournal(): Promise<Journal> {
     }),
     runCipherProbe: async () => ({
       status: 'unsupported',
-      detail: 'Browser review uses unprotected synthetic IndexedDB. SQLCipher, SecureStore, backup, reboot and lock tests require a native development build on each phone.',
+      detail: 'Browser review uses unprotected demo IndexedDB. SQLCipher, SecureStore, backup, reboot and lock tests require a native development build on each phone.',
     }),
     close: async () => { if (!closed) { closed = true; database.close(); } },
   };

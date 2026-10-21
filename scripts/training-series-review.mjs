@@ -60,13 +60,13 @@ try {
       const ids = created.map(item => item.id);
       assert.equal(new Set(ids).size, 3); assert.equal(new Set(created.map(item => item.recurrenceGroupId)).size, 1);
       await openTraining('2026-11-05');
-      await radio('Player 01 training reply: Available').click();
+      await radio('Oliver Bennett training reply: Available').click();
       await until(value => Object.values(value.training.find(item => item.id === ids[0]).responses).includes('available'));
       await openTraining('2026-11-05');
       await radio('Occurrence status: Held').click();
       await until(value => value.training.find(item => item.id === ids[0]).status === 'held');
       await openTraining('2026-11-05');
-      await radio('Player 01 training attendance: Present').click();
+      await radio('Oliver Bennett training attendance: Present').click();
       await until(value => Object.values(value.training.find(item => item.id === ids[0]).attendance).includes('present'));
       await openTraining('2026-11-12');
       await radio('Occurrence status: Cancelled').click();

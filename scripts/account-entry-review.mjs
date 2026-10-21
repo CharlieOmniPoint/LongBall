@@ -64,14 +64,24 @@ try {
         await page.getByTestId('workspace-tab-home').waitFor();
         await page.getByTestId('workspace-tab-schedule').click();
         await page.getByTestId('preparation-create-event').waitFor();
-        assert.equal(await page.getByRole('button', { name: 'People', exact: true }).count(), 0);
+        assert.equal(await page.getByTestId('workspace-tab-people').count(), 0);
       } else {
         await page.getByTestId(role === 'player' ? 'workspace-player-home' : 'workspace-match-centre').waitFor();
         await page.getByTestId('workspace-tab-centre').waitFor();
         assert.equal(await page.getByTestId('workspace-tab-controller').count(), 0);
-        assert.equal(await page.getByRole('button', { name: 'People', exact: true }).count(), 0);
+        assert.equal(await page.getByTestId('workspace-tab-people').count(), 0);
         assert(!requests.some(request => /\/download(?:\?|$)/.test(request.path)), `${role} entry loaded a private match stream`);
       }
+      const visibleCopy = await page.locator('body').innerText();
+      assert(!/fictional|Player \d{2}/i.test(visibleCopy), `${role} still shows placeholder demo wording`);
+      const footer = page.getByTestId('workspace-bottom-navigation');
+      await footer.waitFor();
+      const initialFooter = await footer.boundingBox();
+      assert(initialFooter && initialFooter.y >= 724 && initialFooter.y + initialFooter.height <= 845, `${role} navigation must remain at the phone bottom`);
+      await page.getByTestId('workspace-content-scroll').evaluate(element => { element.scrollTop = element.scrollHeight; });
+      const scrolledFooter = await footer.boundingBox();
+      assert(scrolledFooter && Math.abs(scrolledFooter.y - initialFooter.y) < 1, `${role} navigation moved with its content`);
+      await page.getByTestId('workspace-content-scroll').evaluate(element => { element.scrollTop = 0; });
       const layout = await page.evaluate(() => ({ width: innerWidth, documentWidth: document.documentElement.scrollWidth }));
       assert(layout.documentWidth <= layout.width, `${role} overflows ${width}px`);
       await page.screenshot({ path: `${directory}/${role}-${width}.png`, fullPage: true, animations: 'disabled' });
@@ -81,7 +91,7 @@ try {
   }
   assert.deepEqual(errors, []);
   await assertReviewArtifactsUnchanged(artifacts, baseURL, apiEntry);
-  await writeFile(`${directory}/report.json`, JSON.stringify({ passed: true, checkedAt: new Date().toISOString(), artifacts, serviceDiscovery: 'Pinned status and tunnel requests routed to isolated local fictional HTTP service; no production identity simulation', checks, runtimeErrors: errors }, null, 2) + '\n');
+  await writeFile(`${directory}/report.json`, JSON.stringify({ passed: true, checkedAt: new Date().toISOString(), artifacts, navigation: 'Bottom navigation stays visible while content scrolls in every role at320/390px', sampleCopy: 'No fictional or numbered-player labels in loaded role screens', serviceDiscovery: 'Pinned status and tunnel requests routed to isolated local fictional HTTP service; no production identity simulation', checks, runtimeErrors: errors }, null, 2) + '\n');
   console.log(JSON.stringify({ passed: true, journeys: checks.length, widths: [320, 390], roles: ['manager', 'administrator', 'player', 'spectator'] }));
 } catch (error) {
   await writeFile(`${directory}/failure.json`, JSON.stringify({ artifacts, checks, error: String(error), errors }, null, 2) + '\n');

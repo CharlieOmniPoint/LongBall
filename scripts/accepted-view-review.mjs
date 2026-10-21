@@ -200,7 +200,7 @@ try {
   await click(pa, "Service and controller");
   await pa.getByLabel("Workspace API URL", { exact: true }).fill(api);
   await click(pa, "Fictional API review");
-  await click(pa, "Fictional manager");
+  await click(pa, "Alex Morgan · Manager");
   await pa.getByTestId("workspace-connect").click();
   await selectWorkspaceContext(pa, "manager");
   await openWorkspaceTab(pa, "controller");
@@ -228,7 +228,7 @@ try {
       !value.pendingRequest,
     "Manager A has actual capability and downloaded checkpoint",
   );
-  await click(pa, "Record fictional squad present");
+  await click(pa, "Record demo squad present");
   await poll(
     () => document(pa, (value) => value.deviceId === aliasA),
     (value) =>
@@ -382,7 +382,7 @@ try {
   assert.equal(
     await pa
       .getByRole("button", {
-        name: "Record fictional squad present",
+        name: "Record demo squad present",
         exact: true,
       })
       .count(),

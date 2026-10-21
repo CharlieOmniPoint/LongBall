@@ -8,81 +8,301 @@
   "players": [
     {
       "id": "synthetic-player-01",
-      "displayName": "Player 01",
+      "displayName": "Oliver Bennett",
       "available": true,
-      "goalkeeperChoice": 1
+      "goalkeeperChoice": 1,
+      "initials": "OB",
+      "shirtNumber": 1,
+      "foot": "right"
     },
     {
       "id": "synthetic-player-02",
-      "displayName": "Player 02",
+      "displayName": "Noah Patel",
       "available": true,
-      "goalkeeperChoice": 0
+      "goalkeeperChoice": 0,
+      "initials": "NP",
+      "shirtNumber": 2,
+      "foot": "right"
     },
     {
       "id": "synthetic-player-03",
-      "displayName": "Player 03",
+      "displayName": "Leo Martin",
       "available": true,
-      "goalkeeperChoice": 0
+      "goalkeeperChoice": 0,
+      "initials": "LM",
+      "shirtNumber": 3,
+      "foot": "left"
     },
     {
       "id": "synthetic-player-04",
-      "displayName": "Player 04",
+      "displayName": "Theo Clarke",
       "available": true,
-      "goalkeeperChoice": 0
+      "goalkeeperChoice": 0,
+      "initials": "TC",
+      "shirtNumber": 4,
+      "foot": "both"
     },
     {
       "id": "synthetic-player-05",
-      "displayName": "Player 05",
+      "displayName": "Oscar Evans",
       "available": true,
-      "goalkeeperChoice": 0
+      "goalkeeperChoice": 0,
+      "initials": "OE",
+      "shirtNumber": 5,
+      "foot": "left"
     },
     {
       "id": "synthetic-player-06",
-      "displayName": "Player 06",
+      "displayName": "Ethan Brooks",
       "available": true,
-      "goalkeeperChoice": 0
+      "goalkeeperChoice": 0,
+      "initials": "EB",
+      "shirtNumber": 6,
+      "foot": "right"
     },
     {
       "id": "synthetic-player-07",
-      "displayName": "Player 07",
+      "displayName": "Jack Turner",
       "available": true,
-      "goalkeeperChoice": 0
+      "goalkeeperChoice": 0,
+      "initials": "JT",
+      "shirtNumber": 7,
+      "foot": "right"
     },
     {
       "id": "synthetic-player-08",
-      "displayName": "Player 08",
+      "displayName": "Freddie Lewis",
       "available": true,
-      "goalkeeperChoice": 0
+      "goalkeeperChoice": 0,
+      "initials": "FL",
+      "shirtNumber": 8,
+      "foot": "left"
     },
     {
       "id": "synthetic-player-09",
-      "displayName": "Player 09",
+      "displayName": "Arthur James",
       "available": true,
-      "goalkeeperChoice": 0
+      "goalkeeperChoice": 0,
+      "initials": "AJ",
+      "shirtNumber": 9,
+      "foot": "right"
     },
     {
       "id": "synthetic-player-10",
-      "displayName": "Player 10",
+      "displayName": "Lucas Wilson",
       "available": false,
-      "goalkeeperChoice": 0
+      "goalkeeperChoice": 0,
+      "initials": "LW",
+      "shirtNumber": 10,
+      "foot": "both"
     },
     {
       "id": "synthetic-player-11",
-      "displayName": "Player 11",
+      "displayName": "Muhammad Khan",
       "available": false,
-      "goalkeeperChoice": 0
+      "goalkeeperChoice": 0,
+      "initials": "MK",
+      "shirtNumber": 11,
+      "foot": "right"
     },
     {
       "id": "synthetic-player-12",
-      "displayName": "Player 12",
+      "displayName": "Archie Green",
       "available": false,
-      "goalkeeperChoice": 0
+      "goalkeeperChoice": 0,
+      "initials": "AG",
+      "shirtNumber": 12,
+      "foot": "left"
     },
     {
       "id": "synthetic-player-13",
-      "displayName": "Player 13",
+      "displayName": "George Taylor",
       "available": false,
-      "goalkeeperChoice": 0
+      "goalkeeperChoice": 0,
+      "initials": "GT",
+      "shirtNumber": 13,
+      "foot": "right"
+    }
+  ],
+  "demo": {
+    "name": "Roma autumn matchdays",
+    "generated": true,
+    "description": "Simulated club, players and matchdays for testing. No real people, photographs or contact details."
+  },
+  "club": {
+    "id": "synthetic-richmond-rovers",
+    "name": "Richmond Rovers"
+  },
+  "team": {
+    "name": "Roma",
+    "ageGroup": "U10"
+  },
+  "opponents": [
+    {
+      "id": "demo-maple",
+      "name": "Maple FC",
+      "venue": "Maple Sports Ground \u00b7 Pitch 1"
+    },
+    {
+      "id": "demo-oak",
+      "name": "Oak FC",
+      "venue": "Oak Meadow \u00b7 Junior pitch"
+    },
+    {
+      "id": "demo-hill",
+      "name": "Hill FC",
+      "venue": "Hill Park \u00b7 Pitch 3"
+    },
+    {
+      "id": "demo-willow",
+      "name": "Willow FC",
+      "venue": "Willow Playing Fields \u00b7 Pitch 2"
+    },
+    {
+      "id": "demo-cedar",
+      "name": "Cedar Athletic",
+      "venue": "Cedar Lane Sports Ground"
+    }
+  ],
+  "fixtures": [
+    {
+      "id": "synthetic-roma-maple-2026-10-24",
+      "opponent": "Maple FC",
+      "playedDate": "2026-10-24",
+      "kickoff": "10:00",
+      "arrival": "09:30",
+      "venue": "Rovers Sports Ground \u00b7 Pitch 2",
+      "homeAway": "home",
+      "status": "scheduled",
+      "selectedCount": 9
+    },
+    {
+      "id": "synthetic-roma-oak-2026-10-31",
+      "opponent": "Oak FC",
+      "playedDate": "2026-10-31",
+      "kickoff": "10:30",
+      "arrival": "10:00",
+      "venue": "Oak Meadow \u00b7 Junior pitch",
+      "homeAway": "away",
+      "status": "scheduled",
+      "selectedCount": 10
+    },
+    {
+      "id": "synthetic-roma-hill-2026-11-07",
+      "opponent": "Hill FC",
+      "playedDate": "2026-11-07",
+      "kickoff": "09:30",
+      "arrival": "09:00",
+      "venue": "Rovers Sports Ground \u00b7 Pitch 2",
+      "homeAway": "home",
+      "status": "scheduled",
+      "selectedCount": 9
+    },
+    {
+      "id": "synthetic-roma-willow-2026-11-14",
+      "opponent": "Willow FC",
+      "playedDate": "2026-11-14",
+      "kickoff": "11:00",
+      "arrival": "10:30",
+      "venue": "Willow Playing Fields \u00b7 Pitch 2",
+      "homeAway": "away",
+      "status": "scheduled",
+      "selectedCount": 9
+    },
+    {
+      "id": "synthetic-roma-cedar-2026-11-21",
+      "opponent": "Cedar Athletic",
+      "playedDate": "2026-11-21",
+      "kickoff": "10:00",
+      "arrival": "09:30",
+      "venue": "Rovers Sports Ground \u00b7 Pitch 2",
+      "homeAway": "home",
+      "status": "postponed",
+      "selectedCount": 0
+    },
+    {
+      "id": "synthetic-history-maple",
+      "opponent": "Maple FC",
+      "playedDate": "2026-10-03",
+      "kickoff": "10:00",
+      "arrival": "09:30",
+      "venue": "Rovers Sports Ground \u00b7 Pitch 2",
+      "homeAway": "home",
+      "status": "scheduled",
+      "selectedCount": 9
+    },
+    {
+      "id": "synthetic-history-oak",
+      "opponent": "Oak FC",
+      "playedDate": "2026-10-10",
+      "kickoff": "10:30",
+      "arrival": "10:00",
+      "venue": "Oak Meadow \u00b7 Junior pitch",
+      "homeAway": "away",
+      "status": "scheduled",
+      "selectedCount": 9
+    },
+    {
+      "id": "synthetic-history-hill",
+      "opponent": "Hill FC",
+      "playedDate": "2026-10-17",
+      "kickoff": "09:30",
+      "arrival": "09:00",
+      "venue": "Rovers Sports Ground \u00b7 Pitch 2",
+      "homeAway": "home",
+      "status": "scheduled",
+      "selectedCount": 8
+    }
+  ],
+  "training": [
+    {
+      "id": "synthetic-training-1",
+      "date": "2026-10-22",
+      "time": "18:00",
+      "venue": "Rovers Sports Ground \u00b7 Training area",
+      "status": "scheduled"
+    },
+    {
+      "id": "synthetic-training-2",
+      "date": "2026-10-29",
+      "time": "18:00",
+      "venue": "Rovers Sports Ground \u00b7 Training area",
+      "status": "scheduled"
+    },
+    {
+      "id": "synthetic-training-2026-11-05",
+      "date": "2026-11-05",
+      "time": "18:00",
+      "venue": "Rovers Sports Ground \u00b7 Training area",
+      "status": "scheduled"
+    },
+    {
+      "id": "synthetic-training-2026-10-01",
+      "date": "2026-10-01",
+      "time": "18:00",
+      "venue": "Rovers Sports Ground \u00b7 Training area",
+      "status": "held"
+    },
+    {
+      "id": "synthetic-training-2026-10-08",
+      "date": "2026-10-08",
+      "time": "18:00",
+      "venue": "Rovers Sports Ground \u00b7 Training area",
+      "status": "held"
+    },
+    {
+      "id": "synthetic-training-2026-10-15",
+      "date": "2026-10-15",
+      "time": "18:00",
+      "venue": "Rovers Sports Ground \u00b7 Training area",
+      "status": "held"
+    },
+    {
+      "id": "synthetic-training-2026-09-24",
+      "date": "2026-09-24",
+      "time": "18:00",
+      "venue": "Rovers Sports Ground \u00b7 Training area",
+      "status": "cancelled"
     }
   ]
 }

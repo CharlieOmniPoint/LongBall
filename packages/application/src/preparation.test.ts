@@ -70,7 +70,7 @@ describe("F01 club and team preparation", () => {
         defaultPitchPlaces: 9,
       }),
     );
-    expect(state.fixtures[0].plannedHalfDurationMs).toBe(1_200_000);
+    expect(state.fixtures.find(item => item.id === fixture.id)?.plannedHalfDurationMs).toBe(1_200_000);
     expect(state.fixtures[0].format).toBe(7);
   });
 });
@@ -98,8 +98,8 @@ describe("F02/F03/F04 team-season history and player snapshots", () => {
     expect(JSON.stringify(state.fixtures[0])).toBe(originalFixture);
     expect(state.profiles[0].playerId).toBe(state.profiles[13].playerId);
     expect(state.profiles[0].id).not.toBe(state.profiles[13].id);
-    expect(state.training).toHaveLength(2);
-    expect(state.fixtures).toHaveLength(1);
+    expect(state.training).toHaveLength(createPreparationState().training.length);
+    expect(state.fixtures).toHaveLength(createPreparationState().fixtures.length);
     expect(() =>
       apply(state, {
         type: "profile.saved",
@@ -205,7 +205,7 @@ describe("F06/F07 fixture, availability and attendance boundaries", () => {
   it("reschedules a postponed fixture with the same identity, historical dates and separate existing replies", () => {
     let state = createPreparationState();
     const fixtureId = state.fixtures[0].id;
-    const responses = JSON.stringify(state.fixtures[0].responses);
+    const responses = JSON.stringify(state.fixtures.find(item => item.id === fixtureId)!.responses);
     state = apply(state, {
       type: "fixture.status_changed",
       fixtureId,
@@ -214,20 +214,20 @@ describe("F06/F07 fixture, availability and attendance boundaries", () => {
     state = apply(state, {
       type: "fixture.saved",
       fixture: {
-        ...state.fixtures[0],
+        ...state.fixtures.find(item => item.id === fixtureId)!,
         playedDate: "2026-11-07",
         kickoff: "11:30",
       },
     });
-    expect(state.fixtures[0].id).toBe(fixtureId);
-    expect(state.fixtures[0].status).toBe("scheduled");
-    expect(state.fixtures[0].history.map((item) => item.action)).toEqual([
+    expect(state.fixtures.find(item => item.id === fixtureId)!.id).toBe(fixtureId);
+    expect(state.fixtures.find(item => item.id === fixtureId)!.status).toBe("scheduled");
+    expect(state.fixtures.find(item => item.id === fixtureId)!.history.map((item) => item.action)).toEqual([
       "created",
       "postponed",
       "rescheduled",
     ]);
-    expect(JSON.stringify(state.fixtures[0].responses)).toBe(responses);
-    expect(state.fixtures[0].attendance).toEqual({});
+    expect(JSON.stringify(state.fixtures.find(item => item.id === fixtureId)!.responses)).toBe(responses);
+    expect(state.fixtures.find(item => item.id === fixtureId)!.attendance).toEqual({});
   });
   it("never treats a reply, selection or cancellation as actual attendance", () => {
     let state = createPreparationState();
@@ -392,7 +392,7 @@ describe("F08 training occurrences and denominator evidence", () => {
     expect(state.training[0].attendance).toEqual({});
     expect(
       trainingAttendanceEvidence(state).map((item) => item.eventStatus),
-    ).toEqual(["cancelled", "scheduled"]);
+    ).toEqual(["cancelled", ...createPreparationState().training.slice(1).map(item => item.status)]);
   });
 });
 

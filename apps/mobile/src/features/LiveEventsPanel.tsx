@@ -24,13 +24,18 @@ export function LiveEventsPanel({
   onCommand,
   busy = false,
   teamLabel = "Roma",
+  actionRequest,
+  hideActions = false,
 }: {
   match: MatchState;
   clock: ClockReading;
   onCommand: (command: Command) => Promise<boolean>;
   busy?: boolean;
   teamLabel?: string;
+  actionRequest?: { revision: number; kind: "goal" | "availability"; effective: EffectiveMatchTime } | null;
+  hideActions?: boolean;
 }) {
+  const [handledAction, setHandledAction] = useState<typeof actionRequest>(null);
   const [panel, setPanel] = useState<
     "goal" | "availability" | "history" | null
   >(null);
@@ -70,6 +75,16 @@ export function LiveEventsPanel({
     setGoalType(goal?.goalType ?? "open_play");
     setEffective(goal?.effective ?? capture());
   };
+  // An explicit footer request starts a new draft before it is painted.
+  // Subsequent clock renders keep the in-progress form untouched.
+  if (actionRequest && actionRequest !== handledAction) {
+    setHandledAction(actionRequest);
+    if (actionRequest.kind === "goal") {
+      setPanel("goal"); setEdit(null); setReason(""); setBeneficiary("us");
+      setOwnGoal(false); setScorer(null); setGoalType("open_play");
+    } else { setPanel("availability"); setPlayerId(null); }
+    setEffective(actionRequest.effective);
+  }
   const saveGoal = async () => {
     if (!effective) return;
     const details = {
@@ -101,7 +116,7 @@ export function LiveEventsPanel({
 
   return (
     <View style={styles.stack}>
-      <View style={styles.row}>
+      {!hideActions && <View style={styles.row}>
         <Button
           label="Record goal"
           testID="open-goal"
@@ -121,7 +136,7 @@ export function LiveEventsPanel({
           }}
           style={styles.flex}
         />
-      </View>
+      </View>}
       <Button
         label={`Goals and corrections · ${goals.length}`}
         variant="quiet"

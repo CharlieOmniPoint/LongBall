@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { assertSyntheticFixture, romaFixture } from './index';
 
 describe('M0 fixture import boundary', () => {
-  it('accepts the supplied fictional seven-a-side scenario', () => {
+  it('accepts the supplied generated seven-a-side scenario', () => {
     expect(() => assertSyntheticFixture(romaFixture)).not.toThrow();
   });
 
@@ -16,10 +16,17 @@ describe('M0 fixture import boundary', () => {
     expect(() => assertSyntheticFixture(invalid)).toThrow(/distinct/);
   });
 
-  it('rejects personal names in the fixture seed', () => {
+  it('rejects a renamed identity outside the generated seed', () => {
     const invalid = structuredClone(romaFixture);
     invalid.players[0].displayName = 'Actual Person';
-    expect(() => assertSyntheticFixture(invalid)).toThrow(/fictional/);
+    expect(() => assertSyntheticFixture(invalid)).toThrow(/generated sample/);
+  });
+
+  it('rejects duplicate sample events and opposition outside the generated club schedule', () => {
+    const duplicate = structuredClone(romaFixture); duplicate.training[0].id = duplicate.fixtures[0].id;
+    expect(() => assertSyntheticFixture(duplicate)).toThrow(/distinct identities/);
+    const unknown = structuredClone(romaFixture); unknown.fixtures[0].opponent = 'Unlisted opposition';
+    expect(() => assertSyntheticFixture(unknown)).toThrow(/known opponent/);
   });
 
   it('rejects a scenario without an available goalkeeper', () => {

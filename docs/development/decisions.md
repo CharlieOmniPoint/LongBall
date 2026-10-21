@@ -1,5 +1,7 @@
 # Implementation decisions and open questions
 
+> Current recheck: [original specification comparison](specification-recheck.md) records newly found UI, viewer-refresh, report and clock-integrity gaps and their candidate fixes. The earlier blanket completeness assessment is superseded. New source verification/publication is in progress; privacy fulfilment and operator support remain explicitly incomplete behind owner decisions.
+
 21 October 2026. Source: the canonical [mobile build pack](../longball/LongBall_Mobile_Build_Pack_v0_1.md), its D01–D28 register, and the current implementation request. This register records reversible development choices separately from unresolved product and operating decisions. The source pack is preserved.
 
 ## Development choices

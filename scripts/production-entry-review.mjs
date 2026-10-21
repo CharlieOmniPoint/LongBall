@@ -15,7 +15,7 @@ try {
   await page.getByTestId('welcome-sign-in').waitFor();
   assert.equal(await page.getByTestId('welcome-review').count(), 0, 'Production Welcome must not offer fictional review.');
   const welcomeText = await page.locator('body').innerText();
-  assert(!/Fictional manager|Fictional Player|Manager A|Prepare match|synthetic-manager|Roma U10/.test(welcomeText), 'Fictional production entry leaked');
+  assert(!/Alex Morgan · Manager|Fictional Player|Manager A|Prepare match|synthetic-manager|Roma U10/.test(welcomeText), 'Fictional production entry leaked');
   assert.deepEqual(await page.evaluate(() => indexedDB.databases()), [], 'Anonymous production entry opened recording storage');
   await page.screenshot({ path: `${output}/welcome.png`, fullPage: true });
   await page.getByTestId('welcome-sign-in').click();

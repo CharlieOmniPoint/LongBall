@@ -70,7 +70,7 @@ try {
   await button('Back to match');
   await page.getByTestId('open-goal').click();
   await button('Open play');
-  await button('Player 02');
+  await button('Noah Patel');
   await page.getByTestId('save-goal').click();
   await button('Fair-time suggestions');
   await assertMode('adventurous');

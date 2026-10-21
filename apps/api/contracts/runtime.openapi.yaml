@@ -100,11 +100,17 @@ paths:
     get:
       operationId: listCurrentScopeMatches
       summary: Read a typed, role-filtered page of current-scope matches
-      description: Fresh verified membership and selected audience apply on every page. Only seasonId, limit and cursor query
+      description: Fresh verified membership and selected audience apply on every page. Only seasonId, limit, cursor and status query
         keys are accepted, once each. Cursor binds verified account/issuer/subject, team, season, effective audience and player
-        identity; it never grants authority. Stable ASCII match-ID ordering. A missing or withdrawn row is not exposed by a
-        continuation.
+        identity and status filter; it never grants authority. Stable binary match-ID ordering. A missing or withdrawn row is not exposed by a
+        continuation. status=active selects running or paused halves and half-time before paging so foreground viewers can discover live games beyond the first history page.
       parameters:
+      - name: status
+        in: query
+        schema:
+          type: string
+          enum: [active]
+        description: Optional active-match selection; omitted returns all match states. Preserve it on continuation requests.
       - name: limit
         in: query
         schema:

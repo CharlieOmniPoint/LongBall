@@ -118,6 +118,7 @@ export function reconcileSeason(state: ApplicationState): ApplicationState {
       .map((profile) => ({ id: profile.playerId, label: profile.displayName })),
     results: [],
     trainingAttendance: [],
+    gamePreparation: [],
     audit: [],
     appliedCommands: {},
     revision: 0,

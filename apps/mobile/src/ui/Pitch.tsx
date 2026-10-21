@@ -30,6 +30,8 @@ export interface PitchSlot {
 export interface PitchProps {
   lineup: Allocation[];
   players: Player[];
+  /** Match-snapshotted initials preserve the manager's selected short label. */
+  initialsByPlayerId?: Readonly<Record<string, string>>;
   onSlotPress?: (slotId: string) => void;
   selectedSlot?: string | null;
   compact?: boolean;
@@ -49,6 +51,7 @@ export interface PitchProps {
 export function Pitch({
   lineup,
   players,
+  initialsByPlayerId,
   onSlotPress,
   selectedSlot,
   compact = false,
@@ -272,7 +275,7 @@ export function Pitch({
                       ? slot.label
                       : (shirt ??
                         (player
-                          ? player.displayName.slice(0, 2).toUpperCase()
+                          ? initialsByPlayerId?.[player.id] ?? player.displayName.trim().split(/\s+/).map((part) => part[0]).filter(Boolean).slice(0, 2).join("").toUpperCase()
                           : "+"))}
                   </Text>
                   {selected && (

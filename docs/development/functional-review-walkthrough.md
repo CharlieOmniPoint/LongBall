@@ -1,21 +1,21 @@
 # Functional review walkthrough
 
-Use a phone or narrow browser window and fictional information only. Some steps deliberately require another persona or a current service permission.
+Use a phone or narrow browser window and sample information only. Some steps deliberately require another persona or a current service permission.
 
 ## Start and switch accounts
 
-- [ ] Open [LongBall](https://charlieomnipoint.github.io/LongBall/) → **Explore fictional Roma U10** → choose the **Manager**, **Administrator**, **Player / household** or **Spectator** card → **Open connected demo**. These are review personas, not real sign-in.
-- [ ] Check team, season and role; choose a space explicitly if offered. **Change space** never grants a role.
+- [ ] Open [LongBall](https://charlieomnipoint.github.io/LongBall/) → **Explore Roma U10 demo** → choose the **Manager**, **Administrator**, **Player / household** or **Spectator** card → **Open connected demo**. These are review personas, not real sign-in.
+- [ ] Try the sample accounts: Roma U10 manager, **Sam Taylor** (Administrator), **Oliver Bennett and household** (Player), and **Jamie Bennett** (Spectator). The connected manager is **Priya Shah**; the local rehearsal uses **Alex Morgan**. Check team, season and role; choose a space explicitly if offered. **Change space** never grants a role.
 - [ ] Switch persona through **Return to welcome** or **Account → Back to welcome**. Keep or explicitly close retained requests, uploads and one-time links before leaving.
-- [ ] The connected service shares changes between reviewers and is disposable: each session lasts five hours. Check the [current session and expiry](review.md#open-the-shared-review) or [published service status](https://github.com/CharlieOmniPoint/LongBall/blob/preview/longball-m0/preview-status.json). If unavailable, use **Check connected demo again**; renewal starts a fresh fictional database.
-- [ ] **Review matchday on this device** / **Review on this device** is a separate local rehearsal; edits are not automatically uploaded. Administrator has no local rehearsal.
+- [ ] The connected service shares changes between reviewers and is disposable: each session lasts five hours. Check the [current session and expiry](review.md#open-the-shared-review) or [published service status](https://github.com/CharlieOmniPoint/LongBall/blob/preview/longball-m0/preview-status.json). If unavailable, use **Check connected demo again**; renewal starts a fresh sample database.
+- [ ] **Review matchday on this device** / **Review on this device** is a separate local rehearsal; edits are not automatically uploaded. Administrator has no local rehearsal. Saved local work is preserved, so an existing browser may still show its earlier sample roster or fixtures. The current connected session starts with the updated sample season; use it to review the new teams, named players, fixtures and completed games.
 
 ## Manager: preparation, training and reusable plans
 
 - [ ] **Home → Prepare match**, or **Schedule → Matches → select a fixture**. Check details, replies and selection. Try **Edit or reschedule fixture**, postpone, cancel and restore on a disposable fixture.
 - [ ] **Schedule → Create fixture**: try another 5–11-a-side format and half duration. Existing team defaults/prepared matches must stay unchanged.
-- [ ] **Team → Edit [player]**: review three distinct preferences and separate eligibility, including goalkeeper. Try adding/archiving a fictional profile; saved match snapshots retain their history.
-- [ ] **Team → Import roster CSV → Use fictional CSV example → Preview roster import**. Inspect validation, identities and shirt numbers before **Confirm and import all players**. Import creates profiles, not accounts or access.
+- [ ] **Team → Edit [player]**: review three distinct preferences and separate eligibility, including goalkeeper. Try adding/archiving a sample profile; saved match snapshots retain their history.
+- [ ] **Team → Import roster CSV → Use demo CSV example → Preview roster import**. Inspect validation, identities and shirt numbers before **Confirm and import all players**. Import creates profiles, not accounts or access.
 - [ ] **More → Team settings → Create formation template**: save distinct labelled positions. Edit a version and team defaults; prepared fixtures retain their saved versions.
 - [ ] In a fixture choose **Saved formation for this match**, then **Save a reusable match plan from this fixture**. Save preparation if prompted; choose players/settings → **Review and save reusable plan**. In another unplayed fixture: **Preview [plan] for this fixture → Confirm copy into this unplayed fixture**. Attendance/replies are not copied.
 - [ ] **Schedule → Training → Create training** or **Create weekly training series**. Choose expected players; review dates before confirming. Open an occurrence to record status, replies and actual attendance separately. **Edit or cancel scheduled series occurrences** preserves held records.
@@ -38,13 +38,13 @@ Use a phone or narrow browser window and fictional information only. Some steps 
 ## Photos, awards, invitations and privileges
 
 - [ ] Manager: **More → Photos and player of the match**. Player/spectator: **Photos**. Choose a permitted game explicitly, browse its album and open a photo; no game is chosen automatically for an upload.
-- [ ] Player or manager: choose **Choose generated fictional PNG**, add a sample caption, acknowledge the policy → **Upload privately and request processing**. Processing/scan refusal must stay private; use no real household photos.
+- [ ] Player or manager: choose **Choose generated demo PNG**, add a sample caption, acknowledge the policy → **Upload privately and request processing**. Processing/scan refusal must stay private; use no real household photos.
 - [ ] For an eligible processed player submission, Manager uses **Private photo review → Approve this exact service photo revision** or rejects it. Return to the uploader → **Publish this exact service photo revision** after approval. Upload alone never publishes.
 - [ ] On a published photo, try **Report photo** and **Report uploader**; check **My concerns**. **Hide this uploader → Confirm gallery-only hide** affects only your gallery; **Show [person] again** reverses it.
 - [ ] Player: for an eligible finished match, select a teammate → **Confirm vote**; before cutoff try **Change vote → Confirm changed vote**. Manager reviews cutoff/finalisation; individual votes stay private. Record sharing/finish/cutoff blocks without approving a policy.
 - [ ] Manager/player: **More → Invitations**; choose 1–48 whole hours → **Create one-time spectator link**. Copy before closing the display. Review reissue/revocation separately; reissue invalidates the old link.
-- [ ] Open a received link, review the service-reported team/season → **Accept reviewed invitation** explicitly. Real recipients sign in/activate first; fictional personas already have sample assignments.
-- [ ] Manager: **More → Upload and invitation privileges**; review a fictional account's suspension/reinstatement with a reason and confirmation. Test uploads/invitations separately; existing photos, links and grants are not silently revoked.
+- [ ] Open a received link, review the service-reported team/season → **Accept reviewed invitation** explicitly. Real recipients sign in/activate first; demo personas already have sample assignments.
+- [ ] Manager: **More → Upload and invitation privileges**; review a demo account's suspension/reinstatement with a reason and confirmation. Test uploads/invitations separately; existing photos, links and grants are not silently revoked.
 - [ ] **Show notification preferences** in Photos/community: save category choices and distinct Europe/London quiet hours. Saved preferences do not prove delivery.
 
 ## Administrator
@@ -69,8 +69,8 @@ Use a phone or narrow browser window and fictional information only. Some steps 
 
 ## Real account, privacy and remaining gates
 
-- [ ] From Welcome, **Sign in** is the one real-account entry for every role; **Activate account** handles issued activation/invitations. There is no self-registration as a manager/administrator. The public fictional review has no configured real operating provider; do not supply real credentials to an invented configuration.
-- [ ] With a configured, verified real session: **My account → Review account data and membership requests** offers account export, global deletion and leaving one selected team/season. Review scope and confirm explicitly. The fictional persona's Account button opens real sign-in; it does not submit a fabricated global privacy request. Submission/status is not fulfilment, erasure or automatic loss of access.
+- [ ] From Welcome, **Sign in** is the one real-account entry for every role; **Activate account** handles issued activation/invitations. There is no self-registration as a manager/administrator. The public demo has no configured real operating provider; do not supply real credentials to an invented configuration.
+- [ ] With a configured, verified real session: **My account → Review account data and membership requests** offers account export, global deletion and leaving one selected team/season. Review scope and confirm explicitly. The demo persona's Account button opens real sign-in; it does not submit a fabricated global privacy request. Submission/status is not fulfilment, erasure or automatic loss of access.
 - [ ] Provider activation/recovery, actual push delivery, production privacy/moderation ownership and real-data approval remain release gates. Native iPhone/Android are retained; encrypted storage/backup, sleep/kill/reboot clock continuity, OS unlock, native picker/share and system-browser behaviour still need physical-device acceptance. See [current limits](review.md#remaining-acceptance) and the [device guide](device-review.md).
 
-For feedback, note persona, team/season, steps, expected/observed result and service acknowledgement. Use fictional screenshots; omit credentials, invitation links, upload capabilities and real child data. Record blocked/withheld states without silently approving them.
+For feedback, note persona, team/season, steps, expected/observed result and service acknowledgement. Use demo screenshots; omit credentials, invitation links, upload capabilities and real child data. Record blocked/withheld states without silently approving them.

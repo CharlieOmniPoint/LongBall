@@ -24,7 +24,7 @@ Path('preview-status.json').write_text(json.dumps({
     'runUrl': f"https://github.com/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{os.environ['GITHUB_RUN_ID']}",
     'startedAt': os.environ['PREVIEW_STARTED_AT'],
     'expiresAt': os.environ['PREVIEW_EXPIRES_AT'],
-    'audience': 'Adult review of fictional Roma U10 data only',
+    'audience': 'LongBall demo review with simulated Roma U10 teams and matches',
 }, indent=2) + '\n')
 PY
   git add preview-status.json
@@ -63,6 +63,8 @@ printf '%s\n' '35fbdd2beb378436c7da377d7358cea8e33f9c94a6705d1d8036bf9b0d6d8005 
 chmod +x /tmp/longball-cloudflared
 
 export LONGBALL_SYNTHETIC_AUTH=1
+# Explicit generated-demo sharing is separate from real competition policy.
+export LONGBALL_DEMO_SCENARIO=1
 export LONGBALL_API_HOST=127.0.0.1
 export LONGBALL_API_PORT=4173
 # Explicit fictional-only clock exchange fixture, never a production policy default.
@@ -112,6 +114,8 @@ for attempt in {1..60}; do
   sleep 1
 done
 if [[ "$server_ready" != true ]]; then cat /tmp/longball-http.log; exit 1; fi
+# Create sample gallery/moderation records through real scanning and the private gateway.
+node preview/seed-demo-media.mjs http://127.0.0.1:4173 >/tmp/longball-demo-media.json
 node backend/worker.mjs >/tmp/longball-worker.log 2>&1 &
 worker_pid=$!
 /tmp/longball-cloudflared tunnel --no-autoupdate --url http://127.0.0.1:4173 >/tmp/longball-tunnel.log 2>&1 &
@@ -133,7 +137,7 @@ export PREVIEW_URL
 export PREVIEW_STARTED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 export PREVIEW_EXPIRES_AT="$(date -u -d '+300 minutes' +%Y-%m-%dT%H:%M:%SZ)"
 publish_status ready
-printf '## LongBall fictional review\n\n%s\n\nExpires at %s (UTC). No real team data or child accounts.\n' "$PREVIEW_URL" "$PREVIEW_EXPIRES_AT" >>"$GITHUB_STEP_SUMMARY"
+printf '## LongBall demo review\n\n%s\n\nExpires at %s (UTC). Sample teams and matches for functionality testing.\n' "$PREVIEW_URL" "$PREVIEW_EXPIRES_AT" >>"$GITHUB_STEP_SUMMARY"
 
 # Bounded, free review session; no service subscription or persistent infrastructure.
 for minute in {1..300}; do

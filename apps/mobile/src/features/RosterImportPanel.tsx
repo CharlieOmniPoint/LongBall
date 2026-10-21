@@ -63,7 +63,7 @@ export function RosterImportPanel({
             and 65,536 characters.
           </Text>
           <Button
-            label="Use fictional CSV example"
+            label="Use demo CSV example"
             testID="roster-import-example"
             variant="quiet"
             disabled={disabled}

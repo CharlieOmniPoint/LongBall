@@ -131,6 +131,7 @@ export function ConnectedMatchCentre({
               sharingRestricted: !manager && match.sharingRestricted,
             })
           : null;
+        const active = ["first_half_running", "first_half_paused", "half_time", "second_half_running", "second_half_paused"].includes(status);
         const fresh =
           match.lastRecorderSyncAt !== null &&
           observedAtMs >= match.lastRecorderSyncAt &&
@@ -184,8 +185,8 @@ export function ConnectedMatchCentre({
                   </Text>
                 </>
               )}
-              <Pill tone={fresh ? "brand" : "warning"}>
-                {fresh ? "Last accepted update" : "Updates delayed"}
+              <Pill tone={active ? fresh ? "brand" : "warning" : "muted"}>
+                {active ? fresh ? "Last accepted update" : "Updates delayed" : status === "completed" ? "Full time" : status === "abandoned" ? "Abandoned" : "Awaiting kickoff"}
               </Pill>
               <Text style={typography.muted}>
                 Recorder last synchronised:{" "}

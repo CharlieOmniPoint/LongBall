@@ -5,7 +5,7 @@ import {
 } from "./preparation";
 
 export const ROSTER_CSV_TEMPLATE =
-  "displayName,initials,shirtNumber,foot,preference1,preference2,preference3,eligiblePositions\nFictional Player,FP,20,not_recorded,CM,CB,ST,CM|CB|ST";
+  "displayName,initials,shirtNumber,foot,preference1,preference2,preference3,eligiblePositions\nHarrison Reed,HR,20,not_recorded,CM,CB,ST,CM|CB|ST";
 export interface RosterImportPreview {
   revision: number;
   seasonId: string;

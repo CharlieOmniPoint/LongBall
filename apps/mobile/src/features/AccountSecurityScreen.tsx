@@ -737,14 +737,14 @@ export function AccountSecurityScreen({
       </Card>
       {onEnterFictionalReview && (
         <Card>
-          <Pill tone="muted">FICTIONAL REVIEW</Pill>
-          <Text style={s.section}>Review Roma without sign-in</Text>
+          <Pill tone="muted">DEMO</Pill>
+          <Text style={s.section}>Explore Roma U10</Text>
           <Text style={s.body}>
-            The fictional team journey stays separate from connected identity. A
-            review role selector never grants access to a real account.
+            Try the sample team without a club account. Your real account
+            access stays separate.
           </Text>
           <Button
-            label="Continue fictional Roma review"
+            label="Explore Roma U10 demo"
             variant="secondary"
             onPress={onEnterFictionalReview}
           />

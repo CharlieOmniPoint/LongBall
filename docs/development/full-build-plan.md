@@ -1,5 +1,7 @@
 # Full feature build and evidence register
 
+> Current recheck: [original specification comparison](specification-recheck.md) records newly found UI, viewer-refresh, report and clock-integrity gaps and their candidate fixes. The earlier blanket completeness assessment is superseded. New source verification/publication is in progress; privacy fulfilment and operator support remain explicitly incomplete behind owner decisions.
+
 Updated 21 October 2026. The supplied canonical pack, approved visual boards, native iPhone/Android target and full F01–F28 scope remain the target. This register distinguishes implemented source, actual runtime/browser evidence, unresolved product decisions and physical-device acceptance. It is not a release-complete claim.
 
 ## Current review release

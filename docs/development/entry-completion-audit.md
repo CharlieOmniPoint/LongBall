@@ -1,5 +1,7 @@
 # Entry and screen-completion audit — 21 October 2026
 
+> Current recheck: [original specification comparison](specification-recheck.md) records newly found UI, viewer-refresh, report and clock-integrity gaps and their candidate fixes. The earlier blanket completeness assessment is superseded. New source verification/publication is in progress; privacy fulfilment and operator support remain explicitly incomplete behind owner decisions.
+
 The original bounded, read-only requirements/source trace was requested after the public preview opened directly in the fictional Manager experience. It compared the canonical screen catalogue and F01–F28 with the `c71f19d` capability checkpoint. The status update below records the released entry response and current full implementation. It is not a new approval or a replacement specification. No product code or canonical files were changed by this audit.
 
 The earlier `c71f19d` 450 shared/platform and 219 API/access/worker checks establish that historical capability checkpoint. They do not establish that every specified screen has been composed into the intended navigation. The four previous production-entry checks established anonymous sign-in gating, absence of fictional seed, no recording journal before sign-in, and phone layout; they did not test the full UI01–03 journey.

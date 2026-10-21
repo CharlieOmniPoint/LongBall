@@ -112,14 +112,14 @@ try {
       await page.getByTestId('prepare-match').waitFor();
       const reopened = await until(page, state => state.preparation.formations.some(value => value.name === name), 'Reopened saved formation');
       assert.deepEqual(reopened.preparation.formations.find(value => value.id === formation.id), formation);
-      await button(page, 'Change fictional review account'); await page.getByTestId('review-entry-player').click(); await page.getByTestId('review-open-local').click();
+      await button(page, 'Change demo account'); await page.getByTestId('review-entry-player').click(); await page.getByTestId('review-open-local').click();
       await button(page, 'Schedule'); await button(page, 'Past');
       assert.match(await page.locator('body').innerText(), new RegExp(`past UI06 ${width}`));
       assert.doesNotMatch(await page.locator('body').innerText(), new RegExp(`upcoming UI06 ${width}`));
       await button(page, 'Training');
       assert.match(await page.locator('body').innerText(), new RegExp(`UI06 training ${width}`));
       assert.equal(await page.getByTestId('preparation-create-event').count(), 0);
-      assert.doesNotMatch(await page.locator('body').innerText(), /Player 02.*attendance/);
+      assert.doesNotMatch(await page.locator('body').innerText(), /Noah Patel.*attendance/);
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
       assert.deepEqual(errors, []);
       await page.screenshot({ path: path.join(output, `ui06-ui11-${width}.png`), fullPage: true });

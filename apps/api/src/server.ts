@@ -33,6 +33,8 @@ import { SqlitePushRepository } from './sqlite-push-registrations';
 export interface ApiOptions extends PushOptions {
   databasePath: string;
   syntheticAuth?: boolean;
+  /** Generated review scores/media only; requires synthetic authentication and a nonproduction process. */
+  demoScenario?: boolean;
   verifyIdentity?: (token: string) => Promise<VerifiedIdentity>;
   oidc?: { issuer: string; audience: string; jwksUri: string; mfaAcrValues?: string[] };
   now?: () => number;
@@ -102,10 +104,14 @@ export function createBrandMedia(options:ApiOptions,store:RuntimeStore,repositor
     return store.brandingContext(fresh,session.teamId,session.seasonId,session.role);
   },audit:(principal,action,objectId,outcome)=>store.audit(principal,action,objectId,outcome)});
 }
+export function assertDemoScenarioOptions(options: Pick<ApiOptions, "demoScenario" | "syntheticAuth">): void {
+ if(options.demoScenario && (!options.syntheticAuth || process.env.NODE_ENV === "production")) throw new Error("The demo scenario requires isolated synthetic authentication outside production.");
+}
 export function createApi(options:ApiOptions) {
- if((options.activationProvider||options.activationPolicy)&&!options.syntheticAuth) throw new Error('The fictional activation experiment requires isolated synthetic authentication.');
+ assertDemoScenarioOptions(options);
+ if((options.activationProvider||options.activationPolicy)&&!options.syntheticAuth) throw new Error('The test activation setup requires isolated demo authentication.');
  const now=options.now??Date.now;const source=new DevelopmentStore(options.databasePath,now);
- if(options.syntheticAuth)source.seedSynthetic();
+ if(options.syntheticAuth)source.seedSynthetic({demoSharing:options.demoScenario===true});
  const runtime=sqliteRuntimeStore(source);
  const media=new DevelopmentMediaService({directory:options.mediaDirectory??join(dirname(options.databasePath),'media'),database:source.database,scanner:options.mediaScanner,now});
  const activation=new DevelopmentActivationService({store:source,provider:options.activationProvider,policy:options.activationPolicy});
@@ -165,7 +171,7 @@ const windows = new Map<string, {
             const url = new URL(request.url ?? '/', 'http://localhost');
             const parts = url.pathname.split('/').filter(Boolean).map(decodeURIComponent);
             if (url.pathname === '/health') {
-                response(reply, 200, { status: 'ok', service: 'longball-api', contractVersion: EVENT_CONTRACT_VERSION, backend: source instanceof DevelopmentStore ? 'fictional-sqlite' : 'postgresql', syntheticOnly: Boolean(options.syntheticAuth) }, requestId);
+                response(reply, 200, { status: 'ok', service: 'longball-api', contractVersion: EVENT_CONTRACT_VERSION, backend: source instanceof DevelopmentStore ? 'fictional-sqlite' : 'postgresql', syntheticOnly: Boolean(options.syntheticAuth), demoScenario: options.demoScenario === true }, requestId);
                 return;
             }
             if (staticRoot && parts[0] !== 'v1' && ['GET', 'HEAD'].includes(request.method ?? '')) {
@@ -187,7 +193,7 @@ const windows = new Map<string, {
                 return;
             }
             if (options.syntheticAuth && !loopback(request.socket.remoteAddress))
-                throw new AccessError('SYNTHETIC_LOCAL_ONLY', 403, 'Synthetic authentication is restricted to loopback clients.');
+                throw new AccessError('SYNTHETIC_LOCAL_ONLY', 403, 'Demo authentication is restricted to loopback clients.');
             const requireContract = () => {
                 if (header(request, 'x-api-contract-version') !== EVENT_CONTRACT_VERSION)
                     throw new AccessError('CONTRACT_VERSION_REQUIRED', 409, `Use X-Api-Contract-Version: ${EVENT_CONTRACT_VERSION}.`);

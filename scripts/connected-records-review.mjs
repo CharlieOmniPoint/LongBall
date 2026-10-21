@@ -172,7 +172,7 @@ async function exportFile(id) {
   await download.saveAs(destination);
   return readFile(destination, "utf8");
 }
-async function enter(account = "Fictional manager") {
+async function enter(account = "Alex Morgan · Manager") {
   await page.goto(baseURL, { waitUntil: "networkidle" });
   await enterFictionalReview(page);
   await page.getByTestId("prepare-match").waitFor();
@@ -182,9 +182,9 @@ async function enter(account = "Fictional manager") {
   await button("Fictional API review");
   await button(account);
   await page.getByTestId("workspace-connect").click();
-  if (account !== "Fictional invite recipient") await selectWorkspaceContext(page);
+  if (account !== "Casey Bennett · Invite recipient") await selectWorkspaceContext(page);
   await page.getByTestId("workspace-tab-reports").waitFor();
-  if (account === "Fictional manager")
+  if (account === "Alex Morgan · Manager")
     await page.getByTestId("preparation-create-event").waitFor();
 }
 async function scenario(name, action) {
@@ -340,7 +340,7 @@ try {
       (doc) => doc.controllerConfirmed && !doc.authoritativeDownloadRequired,
       "Confirmed controller",
     );
-    await button("Record fictional squad present");
+    await button("Record demo squad present");
     await waitController(
       (doc) =>
         doc.localState.config.selectedPlayerIds.every(
@@ -358,7 +358,7 @@ try {
     await page.clock.pauseAt(new Date(date.getTime() + 60_000));
     await confirm("Review kickoff", "first_half_running");
     await page.clock.fastForward(30_000);
-    await button("Record fictional team goal");
+    await button("Record demo team goal");
     await waitController(
       (doc) => doc.localState.goals.length === 1,
       "Actual accepted goal pending upload",
@@ -598,7 +598,7 @@ try {
     async () => {
       await tab("team");
       await page
-        .getByRole("button", { name: "Edit Player 01", exact: true })
+        .getByRole("button", { name: "Edit Oliver Bennett", exact: true })
         .waitFor();
       let release = () => {};
       let responseHeld = false;
@@ -643,7 +643,7 @@ try {
           "Records response held while parallel private preparation loads",
         );
         await page
-          .getByRole("button", { name: "Edit Player 01", exact: true })
+          .getByRole("button", { name: "Edit Oliver Bennett", exact: true })
           .waitFor();
         release();
         await page
@@ -653,7 +653,7 @@ try {
           .waitFor();
         assert.equal(
           await page
-            .getByRole("button", { name: "Edit Player 01", exact: true })
+            .getByRole("button", { name: "Edit Oliver Bennett", exact: true })
             .count(),
           0,
         );
@@ -671,7 +671,7 @@ try {
       page.on("request", observe);
       await button("Refresh service views");
       await page
-        .getByRole("button", { name: "Edit Player 01", exact: true })
+        .getByRole("button", { name: "Edit Oliver Bennett", exact: true })
         .waitFor();
       page.off("request", observe);
       assert(
@@ -716,7 +716,7 @@ try {
         token: "synthetic-account-invitee",
       });
       assert.equal(before.memberships.length, 0);
-      await enter("Fictional invite recipient");
+      await enter("Casey Bennett · Invite recipient");
       await tab("community");
       await input("Invitation team identifier", teamId);
       await input("Invitation season identifier", seasonId);
@@ -743,7 +743,7 @@ try {
       await page.getByTestId("workspace-community").waitFor();
       assert.doesNotMatch(
         await page.getByTestId("workspace-community").innerText(),
-        /Player 01|Player 02/,
+        /Oliver Bennett|Noah Patel/,
       );
       assert.equal(
         JSON.stringify(await stored()).includes(invitation.reviewCode),

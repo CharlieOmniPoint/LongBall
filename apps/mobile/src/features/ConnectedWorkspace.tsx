@@ -1,8 +1,11 @@
+import { demoAccountLabels } from '@longball/testing';
 import {
   parseOwnPlayerPreparation,
   type OwnPlayerPreparation as OwnPreparationDto,
 } from "@longball/application/player-preparation";
 import { FixtureScheduleDetails } from "./FixtureScheduleDetails";
+import { startForegroundRefresh } from "@longball/application/foreground-refresh";
+import { isActiveSharedMatch, mergeSharedMatchViews, refreshSharedHistoryPage, refreshSharedMatchViews, SharedMatchRefreshAuthorityDenied } from "@longball/application/shared-match-refresh";
 import { continueMatchList, parseMatchListPage, MatchListAuthorityDenied, type MatchListPage } from '@longball/application/match-list';
 import { TeamPrivilegesPanel } from "./TeamPrivilegesPanel";
 import {
@@ -19,17 +22,21 @@ import {
   useMemo,
   useRef,
   useState,
+  type ReactNode,
 } from "react";
 import {
   AppState,
   Image,
   Platform,
+  ScrollView,
+  type ScrollViewInstance,
   Switch,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Crypto from "expo-crypto";
 import * as SecureStore from "expo-secure-store";
 import {
@@ -167,6 +174,38 @@ import {
   type WorkspaceOutboxPort,
   type WorkspaceOutboxStatus,
 } from "./WorkspaceOutboxBridge";
+
+
+/** Keeps the primary role navigation reachable while only the task content scrolls. */
+function WorkspaceFrame({ fullScreen, fixedMatch, resetKey, footer, children }: {
+  fullScreen: boolean;
+  fixedMatch?: boolean;
+  resetKey: string;
+  footer: ReactNode;
+  children: ReactNode;
+}) {
+  const insets = useSafeAreaInsets();
+  const scroll = useRef<ScrollViewInstance | null>(null);
+  useEffect(() => { if (fullScreen) scroll.current?.scrollTo({ y: 0, animated: false }); }, [fullScreen, resetKey]);
+  if (!fullScreen) return <View style={s.stack} testID="workspace-session">{footer}{children}</View>;
+  if (fixedMatch) return <View style={{ flex: 1, alignItems: "center", paddingHorizontal: 12, paddingTop: insets.top + 4, paddingBottom: Math.max(8, insets.bottom), backgroundColor: colors.canvas }} testID="workspace-session">
+    <View style={{ flex: 1, minHeight: 0, width: "100%", maxWidth: 600, gap: 8 }}>{children}</View>
+  </View>;
+  return <View style={{ flex: 1, backgroundColor: colors.canvas }} testID="workspace-session">
+    <ScrollView
+      ref={scroll}
+      style={{ flex: 1 }}
+      contentContainerStyle={{ flexGrow: 1, alignItems: "center", paddingTop: insets.top + 12, paddingHorizontal: 16, paddingBottom: 16 }}
+      keyboardShouldPersistTaps="handled"
+      testID="workspace-content-scroll"
+    >
+      <View style={{ width: "100%", maxWidth: 600, gap: 12 }}>{children}</View>
+    </ScrollView>
+    {footer && <View style={{ alignItems: "center", paddingHorizontal: 12, paddingTop: 8, paddingBottom: Math.max(8, insets.bottom), backgroundColor: colors.surface, borderTopWidth: 1, borderColor: colors.border }} testID="workspace-bottom-navigation">
+      <View style={{ width: "100%", maxWidth: 600 }}>{footer}</View>
+    </View>}
+  </View>;
+}
 
 export interface ConnectedWorkspaceProps {
   initialConnection?: {
@@ -349,7 +388,7 @@ export function ConnectedWorkspace(props: ConnectedWorkspaceProps) {
       };
       if (value.mode === "synthetic" && !allowSynthetic)
         throw new Error(
-          "Fictional identities are disabled in this application.",
+          "Demo identities are disabled in this application.",
         );
       assertStaticReviewApiAddress(
         value.baseUrl,
@@ -387,7 +426,7 @@ export function ConnectedWorkspace(props: ConnectedWorkspaceProps) {
           </Text>
           {staticBrowser && (
             <Notice>
-              This lasting review link runs fictional journeys stored in this
+              This lasting review link runs demo journeys stored in this
               browser. Connected service features need an explicit API address
               or the separate temporary full-service link supplied for review.
               This static site does not host the API.
@@ -416,7 +455,7 @@ export function ConnectedWorkspace(props: ConnectedWorkspaceProps) {
             />
             {allowSynthetic && (
               <Button
-                label="Fictional API review"
+                label="Demo API review"
                 variant={mode === "synthetic" ? "primary" : "secondary"}
                 disabled={connectionHeld}
                 onPress={() => {
@@ -433,20 +472,20 @@ export function ConnectedWorkspace(props: ConnectedWorkspaceProps) {
             </Notice>
           ) : allowSynthetic ? (
             <>
-              <Pill tone="warning">PUBLIC FICTIONAL IDENTITIES</Pill>
+              <Pill tone="warning">DEMO ACCOUNTS</Pill>
               <Text style={typography.muted}>
-                These selectors work only on an API explicitly running synthetic
+                These selectors work only on an API explicitly running demo
                 authentication. They do not authenticate a person or provide
                 real-account security.
               </Text>
               <View style={s.row}>
                 {[
-                  ["synthetic-manager-1", "Fictional manager"],
-                  ["synthetic-admin", "Fictional administrator"],
-                  ["synthetic-manager-2", "Fictional manager only"],
-                  ["synthetic-account-player-01", "Fictional Player 01"],
-                  ["synthetic-spectator", "Fictional spectator"],
-                  ["synthetic-account-invitee", "Fictional invite recipient"],
+                  ["synthetic-manager-1", `${demoAccountLabels["synthetic-account-manager"]} · Manager`],
+                  ["synthetic-admin", `${demoAccountLabels["synthetic-account-admin"]} · Administrator`],
+                  ["synthetic-manager-2", `${demoAccountLabels["synthetic-account-manager-2"]} · Manager`],
+                  ["synthetic-account-player-01", `${demoAccountLabels["synthetic-account-player-01"]} · Player`],
+                  ["synthetic-spectator", `${demoAccountLabels["synthetic-account-spectator"]} · Spectator`],
+                  ["synthetic-account-invitee", `${demoAccountLabels["synthetic-account-invitee"]} · Invite recipient`],
                 ].map(([value, label]) => (
                   <Button
                     key={value}
@@ -462,7 +501,7 @@ export function ConnectedWorkspace(props: ConnectedWorkspaceProps) {
             </>
           ) : (
             <Notice tone="error">
-              Fictional API identities are disabled in this build.
+              Demo API identities are disabled in this build.
             </Notice>
           )}
           <Text style={typography.muted}>
@@ -480,7 +519,7 @@ export function ConnectedWorkspace(props: ConnectedWorkspaceProps) {
               try {
                 if (mode === "synthetic" && !allowSynthetic)
                   throw new Error(
-                    "Fictional API identities are disabled in this build.",
+                    "Demo API identities are disabled in this build.",
                   );
                 assertStaticReviewApiAddress(
                   baseUrl,
@@ -745,6 +784,10 @@ function WorkspaceSession({
     MatchListPage<ConnectedMatchCentreDto>
   > | null>(null);
   const [loadingMoreMatches, setLoadingMoreMatches] = useState(false);
+  const [sharedRefreshCache, setSharedRefreshCache] = useState<BoundWorkspaceValue<ConnectedMatchCentreDto[]> | null>(null);
+  const sharedRefreshRef = useRef<BoundWorkspaceValue<ConnectedMatchCentreDto[]> | null>(null);
+  const [sharedRefreshDelayed, setSharedRefreshDelayed] = useState(false);
+  const sharedHistoryCursor = useRef<{ binding: WorkspaceBinding; cursor: string | null } | null>(null);
   const [seasonCache, setSeasons] =
     useState<BoundWorkspaceValue<ConnectedSeasonOptions> | null>(null);
   const [configurationCache, setConfiguration] =
@@ -1076,7 +1119,11 @@ function WorkspaceSession({
     identity?.memberships ?? [],
     membershipTime,
   );
-  const matches = matchList?.items ?? null;
+  const refreshedMatches = readWorkspaceValue(
+    sharedRefreshCache, expectedBinding, identity?.principal ?? null,
+    identity?.memberships ?? [], membershipTime,
+  );
+  const matches = matchList ? mergeSharedMatchViews(matchList.items, refreshedMatches ?? []) : null;
   const seasonOptions = readWorkspaceValue(
     seasonCache,
     expectedBinding,
@@ -1717,6 +1764,98 @@ function WorkspaceSession({
       invalidateRequests();
     };
   }, [load, invalidateRequests]);
+
+  // Shared viewers receive accepted score updates without a manual Refresh. Do not
+  // reload preparation forms or replace the paginated history/cursor while polling.
+  const sharedRefreshEnabled = Boolean(expectedBinding && membership &&
+    (membership.role === "player" || membership.role === "spectator" || membership.role === "manager" && tab === "centre") &&
+    ["home", "centre", "reports", "community"].includes(tab) &&
+    !busy && !pending && !loadingMoreMatches && !uploadRetained && !brandRetained && !invitationHeld?.active);
+  const sharedRefreshKey = expectedBinding ? JSON.stringify(expectedBinding) : null;
+  useEffect(() => {
+    if (!sharedRefreshEnabled || !expectedBinding || !sharedRefreshKey) return;
+    const ticket = expectedBinding;
+    const sessionCurrent = async () => {
+      if (!sameWorkspaceBinding(ticket, liveBinding.current)) return false;
+      if (!oidcSessionId) return true;
+      const session = await getConnectedSessionSummary();
+      return Boolean(workspaceSessionAllows(session, absoluteApi, Date.now()) && session?.sessionId === oidcSessionId && session.accountId === ticket.accountId && session.issuer === ticket.issuer && session.subject === ticket.subject);
+    };
+    const scoped = (section: string) => `/v1/teams/${encodeURIComponent(ticket.teamId)}/${section}?seasonId=${encodeURIComponent(ticket.seasonId)}`;
+    const foreground = () => Platform.OS === "web"
+      ? typeof document !== "undefined" && document.visibilityState !== "hidden"
+      : AppState.currentState === "active";
+    const refresh = startForegroundRefresh({
+      read: async (signal, related) => {
+        if (lock.current || !sameWorkspaceBinding(ticket, liveBinding.current)) return;
+        let freshIdentity: Identity | null = null;
+        const previous = sameWorkspaceBinding(sharedRefreshRef.current?.binding ?? null, ticket)
+          ? sharedRefreshRef.current!.value
+          : (matchList?.items.filter(isActiveSharedMatch) ?? []);
+        const next = await refreshSharedMatchViews<ConnectedMatchCentreDto>(ticket, previous, {
+          me: async (requestSignal) => { freshIdentity = await client.request<Identity>("/v1/me", { signal: requestSignal }); return freshIdentity; },
+          request: (requestPath, requestSignal) => client.request<unknown>(requestPath, { signal: requestSignal }),
+          currentBinding: () => liveBinding.current, sessionCurrent,
+          now: serviceActionTime,
+        }, signal);
+        if (!next || signal.aborted || !sameWorkspaceBinding(ticket, liveBinding.current) || !await sessionCurrent()) return;
+        if (freshIdentity) setIdentity(freshIdentity);
+        sharedRefreshRef.current = next.matches;
+        setSharedRefreshCache(next.matches);
+        if (!related || lock.current) return;
+        const [report, social] = await Promise.all([
+          client.request<RecordsDto>(scoped("records"), { signal }),
+          client.request<CommunityDto>(scoped("community"), { signal }),
+        ]);
+        if (signal.aborted || !sameWorkspaceBinding(ticket, liveBinding.current) || !await sessionCurrent()) return;
+        if (report.results.visibilityScope !== ticket.role || report.results.teamId !== ticket.teamId || report.results.seasonId !== ticket.seasonId ||
+          (ticket.role !== "manager" && (report.editableState || report.activeMatch)))
+          throw new Error("The refreshed report differs from the selected role or team. The last confirmed view is retained.");
+        const attach = <T,>(value: T) => attachWorkspaceValue(ticket, liveBinding.current, next.identity.principal, next.identity.memberships, serviceActionTime(), value);
+        const recordsUpdate = attach({
+          revision: report.revision, results: report.results, participation: report.participation, matches: report.matches,
+          ...(ticket.role === "manager" ? { editableState: report.editableState, activeMatch: report.activeMatch, contexts: report.contexts } : {}),
+          playerLabels: report.playerLabels,
+        });
+        const communityUpdate = attach(social);
+        if (recordsUpdate && communityUpdate) { setRecords(recordsUpdate); setCommunity(communityUpdate); }
+        const history = await refreshSharedHistoryPage(ticket,
+          mergeSharedMatchViews(matchList?.items ?? [], next.matches.value),
+          sameWorkspaceBinding(ticket, sharedHistoryCursor.current?.binding ?? null) ? sharedHistoryCursor.current!.cursor : null,
+          next.identity, {
+            me: (requestSignal) => client.request<Identity>("/v1/me", { signal: requestSignal }),
+            request: (requestPath, requestSignal) => client.request<unknown>(requestPath, { signal: requestSignal }),
+            currentBinding: () => liveBinding.current, sessionCurrent, now: serviceActionTime,
+          }, signal);
+        if (history && !signal.aborted && sameWorkspaceBinding(ticket, liveBinding.current)) {
+          sharedHistoryCursor.current = { binding: ticket, cursor: history.nextCursor };
+          sharedRefreshRef.current = history.matches; setSharedRefreshCache(history.matches);
+        }
+      },
+      onSuccess: () => setSharedRefreshDelayed(false),
+      onFailure: (cause) => {
+        if (!sameWorkspaceBinding(ticket, liveBinding.current)) return "stop";
+        if (cause instanceof SharedMatchRefreshAuthorityDenied || cause instanceof ServiceError && [401, 403, 404].includes(cause.status)) {
+          invalidateRequests(); setBinding(null); setPreparation(null); setOwn(null); setRecords(null); setCommunity(null);
+          setOwnPrivileges(null); setTeamPrivileges(null); setMatches(null); setSharedRefreshCache(null); sharedRefreshRef.current = null;
+          setSeasons(null); setConfiguration(null); setStaff(null); setBranding(null);
+          setErrors(["Current service access changed. Private workspace views were closed. Refresh to verify your account; retained requests remain unchanged."]);
+          return "stop";
+        }
+        setSharedRefreshDelayed(true); return "retry";
+      },
+    }, foreground());
+    const nativeSubscription = AppState.addEventListener("change", () => refresh.setForeground(foreground()));
+    const visibilityChanged = () => refresh.setForeground(foreground());
+    if (Platform.OS === "web" && typeof document !== "undefined") document.addEventListener("visibilitychange", visibilityChanged);
+    return () => {
+      refresh.stop(); nativeSubscription.remove();
+      if (Platform.OS === "web" && typeof document !== "undefined") document.removeEventListener("visibilitychange", visibilityChanged);
+    };
+    // The identity/ticket is rechecked on every accepted read. DTO refreshes never
+    // recreate this timer or overwrite a form draft; changing scope aborts it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sharedRefreshEnabled, sharedRefreshKey, client, absoluteApi, oidcSessionId, invalidateRequests]);
 
   const execute = async (
     request: PendingRequest,
@@ -2376,18 +2515,43 @@ function WorkspaceSession({
     );
   const focusedMatch = Boolean(props.initialConnection && manager && tab === "controller" && matchFocused);
   return (
-    <View style={s.stack} testID="workspace-session">
-      <Card style={{ padding: 12 }}>
+    <WorkspaceFrame fullScreen={Boolean(props.initialConnection)} fixedMatch={focusedMatch} resetKey={tab} footer={
+      expectedBinding && membership && !focusedMatch && (
+        <View testID="workspace-context-ready">
+          <WorkspaceNavigation
+            role={membership.role}
+            active={tab}
+            disabled={disabled}
+            onSelect={(value) => {
+              if (
+                !uploadRetainedRef.current &&
+                !brandRetainedRef.current &&
+                !invitationIsRetained()
+              ) {
+                if (value === "account" && props.onOpenAccount)
+                  guardNavigation(props.onOpenAccount);
+                else {
+                  if (value === "community")
+                    setCommunityInitialSection("photos");
+                  setTab(value);
+                }
+              }
+            }}
+          />
+        </View>
+      )
+    }>
+      <Card style={{ padding: focusedMatch ? 2 : 12 }}>
         {focusedMatch && (
           <View style={s.row} testID="workspace-match-header">
-            <Button label="Back to team; clock continues" testID="workspace-back-to-team" variant="quiet" icon="left" disabled={disabled} onPress={() => setTab("home")} />
-            <Button label="Account and security" testID="workspace-match-account" variant="quiet" icon="lock" onPress={() => guardNavigation(props.onOpenAccount ?? (() => setTab("account")))} />
+            <Button label="Back to team" accessibilityLabel="Back to team; clock continues" testID="workspace-back-to-team" variant="quiet" icon="left" style={{ flex: 1, paddingHorizontal: 4 }} disabled={disabled} onPress={() => setTab("home")} />
+            <Button label="Account" accessibilityLabel="Account and security" testID="workspace-match-account" variant="quiet" icon="lock" style={{ flex: 1, paddingHorizontal: 4 }} onPress={() => guardNavigation(props.onOpenAccount ?? (() => setTab("account")))} />
           </View>
         )}
         {!focusedMatch && manager && matchFocused && serviceMatchId && (
           <Button label="Return to selected match" testID="workspace-return-to-match" variant="secondary" disabled={disabled} onPress={() => setTab("controller")} />
         )}
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+        {!focusedMatch && <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
           {branding && brandClient && brandScopeKey && (
             <AuthenticatedBrandBadge
               client={brandClient}
@@ -2426,12 +2590,12 @@ function WorkspaceSession({
               style={{ fontSize: 10, lineHeight: 14, color: colors.inkMuted }}
             >
               {connection.mode === "synthetic"
-                ? "FICTIONAL API REVIEW"
+                ? "DEMO"
                 : "CONNECTED SERVICE"}
             </Text>
           </View>
-        </View>
-        {selectedContext && contextChoices.length > 1 && (
+        </View>}
+        {!focusedMatch && selectedContext && contextChoices.length > 1 && (
           <Button
             label="Change space"
             testID="workspace-change-context"
@@ -2517,13 +2681,18 @@ function WorkspaceSession({
             onPress={() => setTab("invitations")}
           />
         )}
+        {sharedRefreshEnabled && sharedRefreshDelayed && (
+          <Notice tone="warning">
+            Updates are delayed. Your last confirmed view is retained while the connection is retried.
+          </Notice>
+        )}
         {errors.map((error, index) => (
           <Notice key={`${index}:${error}`} tone="error">
             {error}
           </Notice>
         ))}
         {notice && <Notice>{notice}</Notice>}
-        {(activeController?.unsent || activeController?.pendingNetwork) && (
+        {!focusedMatch && (activeController?.unsent || activeController?.pendingNetwork) && (
           <Notice tone="warning">
             This match has {activeController.pendingCount} event(s) awaiting
             acknowledgement
@@ -2690,30 +2859,6 @@ function WorkspaceSession({
           />
         )}
       </Card>
-      {expectedBinding && membership && (
-        <View testID="workspace-context-ready">
-          {!focusedMatch && <WorkspaceNavigation
-            role={membership.role}
-            active={tab}
-            disabled={disabled}
-            onSelect={(value) => {
-              if (
-                !uploadRetainedRef.current &&
-                !brandRetainedRef.current &&
-                !invitationIsRetained()
-              ) {
-                if (value === "account" && props.onOpenAccount)
-                  guardNavigation(props.onOpenAccount);
-                else {
-                  if (value === "community")
-                    setCommunityInitialSection("photos");
-                  setTab(value);
-                }
-              }
-            }}
-          />}
-        </View>
-      )}
       {tab === "more" && expectedBinding && (
         <Card>
           <View style={s.stack} testID="workspace-more-panel">
@@ -3205,7 +3350,7 @@ function WorkspaceSession({
           />
         )}
       {tab === "controller" && manager && props.journal && props.deviceId && (
-        <View style={s.stack}>
+        <View style={[s.stack, focusedMatch && { flex: 1, minHeight: 0 }]}>
           {!focusedMatch && <Card>
             <Text style={typography.section}>Choose the service match</Text>
             <Text style={typography.body}>
@@ -3240,6 +3385,7 @@ function WorkspaceSession({
           </Card>}
           {teamId && seasonId && serviceMatchId.trim() ? (
             <ServicePanel
+              fillScreen={focusedMatch}
               key={`${teamId}:${seasonId}:${serviceMatchId.trim()}`}
               journal={props.journal}
               deviceId={props.deviceId}
@@ -3265,7 +3411,7 @@ function WorkspaceSession({
           )}
         </View>
       )}
-    </View>
+    </WorkspaceFrame>
   );
 }
 
@@ -3312,6 +3458,7 @@ function OwnPreparation({
   const [schedulePeriod, setSchedulePeriod] = useState<"upcoming" | "past">(
     "upcoming",
   );
+  const [scheduleKind, setScheduleKind] = useState<"all" | "match" | "training">("all");
   const dayParts = new Intl.DateTimeFormat("en-GB", {
     timeZone: "Europe/London",
     year: "numeric",
@@ -3323,7 +3470,7 @@ function OwnPreparation({
     ...value.fixtures.map((item) => ({ ...item, kind: "match" as const })),
     ...value.training.map((item) => ({ ...item, kind: "training" as const })),
   ];
-  const groups = groupPreparationEvents(events, {
+  const groups = groupPreparationEvents(events.filter(event => scheduleKind === "all" || event.kind === scheduleKind), {
     period: schedulePeriod,
     today,
     date: (event) => (event.kind === "match" ? event.playedDate : event.date),
@@ -3469,9 +3616,21 @@ function OwnPreparation({
               />
             ))}
           </View>
+          <View style={s.row} accessibilityRole="tablist" accessibilityLabel="Schedule event type">
+            {(["all", "match", "training"] as const).map((kind) => (
+              <Button
+                key={kind}
+                label={kind === "all" ? "All events" : kind === "match" ? "Matches" : "Training"}
+                testID={`own-schedule-kind-${kind}`}
+                variant={scheduleKind === kind ? "primary" : "secondary"}
+                disabled={disabled}
+                onPress={() => setScheduleKind(kind)}
+              />
+            ))}
+          </View>
           {!groups.length && (
             <Notice>
-              No {schedulePeriod} matches or training are recorded.
+              No {schedulePeriod} {scheduleKind === "all" ? "matches or training" : scheduleKind === "match" ? "matches" : "training sessions"} are recorded.
             </Notice>
           )}
           {groups.map((group) => (

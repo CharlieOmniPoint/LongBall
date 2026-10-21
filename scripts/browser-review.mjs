@@ -157,7 +157,7 @@ try {
 
   await page.getByTestId("prepare-match").click();
   await page
-    .getByRole("radio", { name: "Player 01, Absent", exact: true })
+    .getByRole("radio", { name: "Oliver Bennett, Absent", exact: true })
     .click();
   state = await waitState(
     page,
@@ -202,16 +202,16 @@ try {
     new Set(state.stagedLineup.map((item) => item.playerId)).size,
     7,
   );
-  await page.getByRole("button", { name: /^Goalkeeper, Player 01,/ }).click();
-  await page.getByRole("button", { name: "Choose Player 02", exact: true }).click();
+  await page.getByRole("button", { name: /^Goalkeeper, Oliver Bennett,/ }).click();
+  await page.getByRole("button", { name: "Choose Noah Patel", exact: true }).click();
   await page.getByText(/Goalkeeper cover requires a first- or second-choice eligible keeper/).waitFor();
   const rejectedKeeperState = await savedState(page);
   assert.equal(rejectedKeeperState.revision, state.revision, "An invalid keeper assignment cannot change the saved draft.");
   assert.equal(rejectedKeeperState.stagedLineup.find(item => item.slotId === "gk").playerId, "synthetic-player-01");
   assert.equal(rejectedKeeperState.intervals.length, 0);
-  await page.getByRole("button", { name: /^Left wing, Player 05,/ }).click();
+  await page.getByRole("button", { name: /^Left wing, Oscar Evans,/ }).click();
   await page
-    .getByRole("button", { name: "Choose Player 08", exact: true })
+    .getByRole("button", { name: "Choose Freddie Lewis", exact: true })
     .click();
   state = await waitState(
     page,
@@ -312,9 +312,9 @@ try {
   const firstHalfIntervals = JSON.stringify(state.intervals);
   const firstActualLineup = JSON.stringify(state.lineup);
   await page.getByTestId("prepare-second-half").click();
-  await page.getByRole("button", { name: /^Right wing, Player 06,/ }).click();
+  await page.getByRole("button", { name: /^Right wing, Ethan Brooks,/ }).click();
   await page
-    .getByRole("button", { name: "Choose Player 09", exact: true })
+    .getByRole("button", { name: "Choose Arthur James", exact: true })
     .click();
   await waitState(
     page,
@@ -500,7 +500,7 @@ try {
     };
   }, { requestedMatchId: matchId, previousIds: scopedIds(beforeFailure) });
   await failurePage
-    .getByRole("radio", { name: "Player 01, Present", exact: true })
+    .getByRole("radio", { name: "Oliver Bennett, Present", exact: true })
     .click();
   await failurePage
     .getByRole("button", { name: "Retry unsaved action", exact: true })
@@ -557,7 +557,7 @@ try {
   await firstTab.getByTestId("prepare-match").click();
   await secondTab.getByTestId("prepare-match").click();
   await firstTab
-    .getByRole("radio", { name: "Player 01, Present", exact: true })
+    .getByRole("radio", { name: "Oliver Bennett, Present", exact: true })
     .click();
   await waitState(
     firstTab,
@@ -565,7 +565,7 @@ try {
     "First-tab action did not save",
   );
   await secondTab
-    .getByRole("radio", { name: "Player 02, Present", exact: true })
+    .getByRole("radio", { name: "Noah Patel, Present", exact: true })
     .click();
   const conflictDeadline = Date.now() + 10_000;
   let concurrentJournal;
@@ -609,7 +609,7 @@ try {
   await enterFictionalReview(secondTab);
   await secondTab.getByTestId("prepare-match").click();
   await secondTab
-    .getByRole("radio", { name: "Player 02, Present", exact: true })
+    .getByRole("radio", { name: "Noah Patel, Present", exact: true })
     .click();
   await waitState(
     secondTab,

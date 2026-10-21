@@ -253,7 +253,7 @@ function ActivationPanelContent({
           "The configured provider handles password and recovery setup. Completion activates only this account; sign in separately and explicitly accept the invitation. No team grant or adult authority is created here."
         ) : (
           <>
-            Activation uses an explicitly configured fictional provider trial.
+            Activation uses an explicitly configured demo provider trial.
             Q05 household delivery, linking and recovery authority remain
             unapproved. A manager cannot see or set the household password.
           </>

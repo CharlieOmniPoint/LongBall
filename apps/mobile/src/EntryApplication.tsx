@@ -223,13 +223,12 @@ export function EntryApplication({
         ]}
       >
         <View style={s.column}>
-          <Pill tone="muted">FICTIONAL ROMA U10 REVIEW</Pill>
+          <Pill tone="muted">ROMA U10 · DEMO</Pill>
           <Text accessibilityRole="header" style={typography.title}>
             Choose your team space
           </Text>
           <Text style={typography.body}>
-            Review as {REVIEW_IDENTITIES[reviewRole].label}. These are fictional
-            sample accounts for functionality feedback.
+            Explore as {REVIEW_IDENTITIES[reviewRole].label}.
           </Text>
           <Card>
             <Text style={typography.section}>Richmond Rovers · Roma U10</Text>
@@ -238,7 +237,7 @@ export function EntryApplication({
               {reviewRole === "administrator"
                 ? "Club administrator"
                 : reviewRole === "player"
-                  ? "Player 01 and household"
+                  ? "Oliver Bennett and household"
                   : reviewRole === "spectator"
                     ? "Invited spectator"
                     : "Assigned manager"}
@@ -272,7 +271,7 @@ export function EntryApplication({
           )}
           {reviewRole !== "administrator" && (
             <Text style={typography.muted}>
-              The on-this-device review keeps fictional changes in this{" "}
+              Changes stay in this{" "}
               {Platform.OS === "web" ? "browser" : "phone"}. Use it for the full
               attendance → lineup → match-clock rehearsal.
             </Text>
@@ -285,7 +284,7 @@ export function EntryApplication({
           ) : reviewService.status === "available" ? (
             <>
               <Notice>
-                The connected demo shares fictional changes between reviewers.
+                Changes in the connected demo are shared with other reviewers.
                 This temporary session ends at{" "}
                 {new Date(reviewService.expiresAtMs).toLocaleString("en-GB", {
                   timeZone: "Europe/London",
@@ -324,7 +323,7 @@ export function EntryApplication({
             />
           )}
           <Button
-            label="Choose another review account"
+            label="Choose another demo role"
             variant="quiet"
             onPress={() => setRoute("accounts")}
           />
@@ -359,7 +358,7 @@ export function EntryApplication({
             </Text>
             <Text style={typography.body}>
               {route === "privacy"
-                ? "The fictional Roma U10 review is for adult feedback. Use sample information only. Changes in the local rehearsal stay on this device; connected review changes are shared with other reviewers."
+                ? "The demo Roma U10 review is for adult feedback. Use sample information only. Changes in the local rehearsal stay on this device; connected review changes are shared with other reviewers."
                 : "For a child’s invited player account, the authorised household completes activation. Child email is not required. An existing account can accept a spectator invitation after sign-in."}
             </Text>
             <Text style={typography.body}>
@@ -416,16 +415,7 @@ export function EntryApplication({
       {!production &&
         route === "connected-review" &&
         reviewService?.status === "available" && (
-          <ScrollView
-            contentContainerStyle={[
-              s.page,
-              {
-                paddingTop: insets.top + 16,
-                paddingBottom: insets.bottom + 24,
-              },
-            ]}
-          >
-            <View style={s.column}>
+          <View style={s.root}>
               <FictionalReviewWorkspace
                 initialConnection={{
                   baseUrl: reviewService.apiBaseUrl,
@@ -438,8 +428,7 @@ export function EntryApplication({
                 onNavigationGuardChange={retainReviewNavigationGuard}
                 invitationDestination={reviewInvitation}
               />
-            </View>
-          </ScrollView>
+          </View>
         )}
     </View>
   );

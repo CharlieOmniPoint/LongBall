@@ -35,7 +35,7 @@ export function assertLiveEditorAccess(
     !match.config.matchId.startsWith("synthetic-")
   )
     throw new Error(
-      "Fictional recording requires the explicit browser review, a synthetic fixture, its local preview journal and the confirmed fictional controller.",
+      "Demo recording requires the browser review, a sample fixture, its local preview journal and the confirmed demo controller.",
     );
   assertSavedMatchRoster(match);
 }

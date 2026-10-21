@@ -36,6 +36,7 @@ import {
   reducePreparation,
   type PreparationCommand,
 } from "@longball/application/preparation";
+import { gamePreparationEvidence } from "@longball/application/game-preparation-evidence";
 import {
   reduceRecords,
   selectMatchReport,
@@ -319,7 +320,7 @@ function LongBall({ initialRole, onLeaveReview, onSignIn, invitationDestination 
         running: true,
       });
       setAlertStatus(
-        `${permission} A synthetic reminder was requested for 10 seconds from now. No match event is changed.`,
+        `${permission} A test reminder was requested for 10 seconds from now. No match event is changed.`,
       );
     } catch (failure) {
       setAlertStatus(
@@ -408,6 +409,8 @@ function LongBall({ initialRole, onLeaveReview, onSignIn, invitationDestination 
           evidence: preparation.training
             .filter((session) => session.seasonId === seasonId)
             .map((session) => ({
+              sourcePreparationRevision: preparation.revision,
+              sourceCommandId: command.id,
               sessionId: session.id,
               playedDate: session.date,
               eventStatus: session.status,
@@ -426,6 +429,19 @@ function LongBall({ initialRole, onLeaveReview, onSignIn, invitationDestination 
                 ]),
               ),
             })),
+        });
+        next = {
+          ...next,
+          recordsBySeason: { ...next.recordsBySeason, [seasonId]: updated },
+        };
+      }
+      if (command.type.startsWith("fixture.")) {
+        const updated = reduceRecords(next.recordsBySeason[seasonId], {
+          type: "game.evidence.replace",
+          commandId: `preparation-games-${command.id}`,
+          at: new Date().toISOString(),
+          actor: "manager",
+          evidence: gamePreparationEvidence(preparation, seasonId, command.id),
         });
         next = {
           ...next,
@@ -673,10 +689,10 @@ function LongBall({ initialRole, onLeaveReview, onSignIn, invitationDestination 
             ))}
           </View>
           <View style={s.reviewNote}>
-            <Pill tone="muted">FICTIONAL ROMA REVIEW</Pill>
+            <Pill tone="muted">ROMA U10 · DEMO</Pill>
             <Text style={s.small}>
               Shared interface and match rules with the native app. Browser
-              storage is for synthetic review. Native device checks remain open.
+              storage is for demo review. Native device checks remain open.
             </Text>
           </View>
         </View>
@@ -713,7 +729,7 @@ function LongBall({ initialRole, onLeaveReview, onSignIn, invitationDestination 
                   <Icon name="left" size={23} />
                   <Text style={s.label}>Back to team</Text>
                 </Pressable>
-                <Pill tone="muted">Fictional fixture</Pill>
+                <Pill tone="muted">Demo</Pill>
               </View>
             ) : (
               <View style={s.header}>
@@ -738,7 +754,7 @@ function LongBall({ initialRole, onLeaveReview, onSignIn, invitationDestination 
                 </View>
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel="Change fictional review account"
+                  accessibilityLabel="Change demo account"
                   onPress={leaveReview}
                   disabled={application.busy || model.pendingRetry || busy}
                   style={[s.brand, { minHeight: 48 }]}
@@ -926,7 +942,7 @@ function LongBall({ initialRole, onLeaveReview, onSignIn, invitationDestination 
                     <View style={s.row}>
                       <Icon name="shield" size={18} color={colors.brand} />
                       <Text style={s.small}>
-                        {state.config.players.length} fictional players · Season
+                        {state.config.players.length} players · Season
                         26/27
                       </Text>
                     </View>
@@ -1347,7 +1363,7 @@ function LongBall({ initialRole, onLeaveReview, onSignIn, invitationDestination 
                     </>
                   )}
                   <Text style={s.footnote}>
-                    Local synthetic controller · no server connection configured
+                    Local demo controller · no server connection configured
                   </Text>
                 </>
               )}
@@ -1443,7 +1459,7 @@ function LongBall({ initialRole, onLeaveReview, onSignIn, invitationDestination 
                       const summary = composeReportCommunity(report, actor.accountId, { accountId: actor.accountId, teamId: actor.teamId, seasonId: actor.seasonId, audience: actor.role, playerId: actor.playerId ?? null, revision: app.community.revision, view: localCommunityView });
                       return <ReportCommunityCard matchId={matchId} value={summary} onOpenAlbum={selectedMatchId => {
                         try {
-                          if (!localAlbumScope) throw new Error('Choose the current fictional team context.');
+                          if (!localAlbumScope) throw new Error('Choose the current demo team context.');
                           setLocalAlbumSelection(selectAlbum(localAlbumScope, localCommunityView.matches, selectedMatchId, localCommunityView.allowed));
                           navigate('photos');
                         } catch (failure) { setLocalError(failure instanceof Error ? failure.message : 'This game album is unavailable in the current view.'); }
@@ -1454,7 +1470,7 @@ function LongBall({ initialRole, onLeaveReview, onSignIn, invitationDestination 
               {screen === "account" && (
                 <>
                   <Button
-                    label="Switch fictional review account"
+                    label="Switch demo account"
                     variant="secondary"
                     onPress={leaveReview}
                   />
@@ -1506,7 +1522,7 @@ function LongBall({ initialRole, onLeaveReview, onSignIn, invitationDestination 
                     More
                   </Text>
                   <Card>
-                    <Text style={s.section}>Fictional review experience</Text>
+                    <Text style={s.section}>Explore the demo</Text>
                     <Text style={s.small}>
                       Explore separate sample accounts. Real access requires
                       verified sign-in and server permissions.
@@ -1620,7 +1636,7 @@ function LongBall({ initialRole, onLeaveReview, onSignIn, invitationDestination 
               )}
               {screen === "lab" && role === "manager" && (
                 <>
-                  <Text style={s.eyebrow}>SYNTHETIC DEVELOPMENT BUILD</Text>
+                  <Text style={s.eyebrow}>DEMO DEVELOPMENT BUILD</Text>
                   <Text accessibilityRole="header" style={s.title}>
                     Feasibility lab
                   </Text>
@@ -1633,7 +1649,7 @@ function LongBall({ initialRole, onLeaveReview, onSignIn, invitationDestination 
                       Storage:{" "}
                       {model.diagnostics?.mode === "encrypted-native"
                         ? "SQLCipher journal"
-                        : "Synthetic browser storage"}
+                        : "Demo browser storage"}
                     </Text>
                     <Text style={s.body}>
                       Saved records: {model.diagnostics?.savedCount ?? 0}
@@ -1677,7 +1693,7 @@ function LongBall({ initialRole, onLeaveReview, onSignIn, invitationDestination 
                       Native notification experiment
                     </Text>
                     <Text style={s.small}>
-                      Requests local notification permission and one synthetic
+                      Requests local notification permission and one test
                       reminder. Test foreground, lock, Focus and denied
                       permission on each phone. Delivery is not guaranteed.
                     </Text>
@@ -1727,8 +1743,7 @@ function LongBall({ initialRole, onLeaveReview, onSignIn, invitationDestination 
                     ))}
                   </Card>
                   <Text style={s.footnote}>
-                    F01–F28 remain the integrated pilot scope. Fictional Roma
-                    U10 data only. No paid infrastructure provisioned.
+                    Demo environment · Sample team information only.
                   </Text>
                 </>
               )}

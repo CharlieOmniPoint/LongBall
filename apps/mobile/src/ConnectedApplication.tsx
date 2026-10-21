@@ -311,7 +311,9 @@ export function ConnectedApplication({
   const showAccount = !identity || account;
 
   return (
+    <View style={{ flex: 1, backgroundColor: colors.canvas }}>
     <ScrollView
+      style={{ flex: 1, display: showAccount || !foreground || loading || !storage || storage.identity !== identity ? "flex" : "none" }}
       contentContainerStyle={[
         styles.page,
         {
@@ -399,9 +401,10 @@ export function ConnectedApplication({
           <ActivityIndicator color={colors.brand} />
         )
       ) : null}
+    </ScrollView>
       {identity && storage?.identity === identity && (
         <View
-          style={{ display: foreground && !showAccount ? "flex" : "none" }}
+          style={{ flex: 1, display: foreground && !showAccount ? "flex" : "none" }}
           accessibilityElementsHidden={!foreground || showAccount}
           importantForAccessibility={
             foreground && !showAccount ? "auto" : "no-hide-descendants"
@@ -428,7 +431,7 @@ export function ConnectedApplication({
           />
         </View>
       )}
-    </ScrollView>
+    </View>
   );
 }
 

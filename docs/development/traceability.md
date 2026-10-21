@@ -1,5 +1,7 @@
 # Capability traceability
 
+> Current recheck: [original specification comparison](specification-recheck.md) records newly found UI, viewer-refresh, report and clock-integrity gaps and their candidate fixes. The earlier blanket completeness assessment is superseded. New source verification/publication is in progress; privacy fulfilment and operator support remain explicitly incomplete behind owner decisions.
+
 > Historical 20 October M0 baseline. Its table records the original slice and the work outstanding then. The 21 October capability checkpoints, published full implementation are tracked in [full-build-plan.md](full-build-plan.md), [review.md](review.md) and the [entry audit](entry-completion-audit.md). Physical-device acceptance remains open and is currently deferred.
 
 20 October 2026. All F01–F28 remain the integrated pilot target. `Initial` means an intermediate synthetic/local implementation target, not end-to-end product acceptance. At this original baseline, API, identity and shared server authority were later work; their subsequent actual evidence is recorded in the linked registers. Real-data release remains unaccepted. The canonical acceptance criteria remain [the source of truth](../longball/LongBall_Mobile_Build_Pack_v0_1.md#capability-backlog-and-end-to-end-acceptance).

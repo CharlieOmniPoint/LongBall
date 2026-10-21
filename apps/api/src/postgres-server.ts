@@ -1,7 +1,7 @@
 import { TeamPrivilegeService } from './team-privileges-service';
 import { PostgresTeamPrivilegeRepository } from './postgres-team-privileges';
 import { dirname, join } from 'node:path';
-import { createRuntimeApi,createBrandMedia, type ApiOptions } from './server';
+import { createRuntimeApi,createBrandMedia,assertDemoScenarioOptions, type ApiOptions } from './server';
 import { PostgresStore } from './postgres-store';
 import { PgMediaService } from './postgres-media';
 import { PostgresActivationService } from './postgres-activation';
@@ -15,12 +15,13 @@ import { PostgresPushRepository } from './postgres-push-registrations';
 import { PushRegistrationService } from './push-registrations';
 
 export async function createPostgresApi(options: ApiOptions & { connectionString: string; migrationMode?:'apply'|'verify'; seedSynthetic?:boolean; allowOwnerTestFixture?:true }) {
+  assertDemoScenarioOptions(options);
   const store = await PostgresStore.open(options.connectionString, options.now, {migrationMode:options.migrationMode});
   try {
     if(options.allowOwnerTestFixture&&process.env.NODE_ENV!=='test')throw new Error('Owner-credential fixtures are available only in the isolated test process.');
     const explicitOwnerFixture=options.allowOwnerTestFixture===true&&options.syntheticAuth===true&&options.seedSynthetic!==false&&(options.migrationMode??'apply')==='apply';
     if(!explicitOwnerFixture)await store.assertRuntimeRole('api');
-    if (options.syntheticAuth&&options.seedSynthetic!==false) await store.seedSynthetic();
+    if (options.syntheticAuth&&options.seedSynthetic!==false) await store.seedSynthetic({demoSharing:options.demoScenario===true});
     const media = await PgMediaService.open({ directory: options.mediaDirectory ?? join(dirname(options.databasePath), 'media'), database: store.db, scanner: options.mediaScanner, now: options.now });
     const activation = await new PostgresActivationService({ store, provider: options.activationProvider, policy: options.activationPolicy }).initialize();
     const port: RuntimeStore = store;

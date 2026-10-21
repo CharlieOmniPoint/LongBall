@@ -48,7 +48,7 @@ describe("UI07 own-player recorded fixture detail boundary", () => {
     });
     const dto = projectOwnPlayerPreparation(state, profile, scope.seasonId),
       parsed = parseOwnPlayerPreparation(dto, scope);
-    expect(parsed.fixtures).toHaveLength(1);
+    expect(parsed.fixtures).toHaveLength(state.fixtures.filter(item => item.seasonId === scope.seasonId).length);
     expect(parsed.fixtures[0]).toMatchObject({
       arrival: "08:35",
       kickoff: "09:05",

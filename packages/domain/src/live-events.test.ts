@@ -66,6 +66,23 @@ describe('F16 goal evidence, own goals and effective time', () => {
 });
 
 describe('ME54 score corrections preserve immutable evidence and actual participation', () => {
+  it('refuses unsafe monotonic evidence even when a retrospective correction has a safe effective boundary', () => {
+    const firstGoal = command({ type: 'goal.recorded', beneficiary: 'us', sample: sample(10_000) });
+    const state = reduceMatch(started(), firstGoal);
+    const correction = command({ type: 'event.corrected', targetEventId: firstGoal.id, reason: 'Reviewed original scorer evidence', replacement: { type: 'goal.recorded', beneficiary: 'opposition' }, sample: sample(1e308, 'continuous', 1_900_000_020_000) });
+    expect(() => reduceMatch(state, correction)).toThrow('Clock sample is invalid');
+    expect(state.matchActiveMs).toBe(10_000);
+    const fractional = reduceMatch(state, { ...correction, sample: sample(20_000.75, 'continuous', 1_900_000_020_000) });
+    expect(fractional.matchActiveMs).toBe(20_000);
+    expect(fractional.score).toEqual({ for: 0, against: 1 });
+  });
+  it('refuses accumulated active-time overflow before producing a projection', () => {
+    const initial = started();
+    const nearLimit = Number.MAX_SAFE_INTEGER - 5;
+    const state = { ...initial, halfActiveMs: nearLimit, matchActiveMs: nearLimit, anchor: { sample: sample(0), halfActiveMs: nearLimit, matchActiveMs: nearLimit } };
+    expect(() => readClock(state, sample(10))).toThrow('safe integer');
+    expect(state.matchActiveMs).toBe(nearLimit);
+  });
   it('corrects and voids first-half goals after completion without reopening play or its deadline', () => {
     let state = started();
     const firstGoal = command({ type: 'goal.recorded', beneficiary: 'us', scorerPlayerId: 'p2', isOwnGoal: false, goalType: 'open_play', sample: sample(100_000) });

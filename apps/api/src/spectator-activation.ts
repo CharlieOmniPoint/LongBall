@@ -133,7 +133,7 @@ export class SpectatorActivationService {
         policy.activationTtlMs <= 0)
     )
       throw new Error(
-        "Configure an explicit versioned fictional activation policy and positive lifetime.",
+        "Configure an explicit versioned test activation policy and positive lifetime.",
       );
     if (provider) {
       const issuer = new URL(provider.issuer);

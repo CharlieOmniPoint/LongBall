@@ -213,7 +213,7 @@ export class DevelopmentActivationService {
         options.policy.activationTtlMs <= 0)
     )
       throw new Error(
-        "An explicit versioned fictional activation policy and positive expiry are required.",
+        "An explicit versioned test activation policy and positive expiry are required.",
       );
     if (options.provider) {
       const issuer = new URL(options.provider.issuer);

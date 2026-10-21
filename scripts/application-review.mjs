@@ -57,7 +57,7 @@ async function role(page, next) {
     await more.click();
     await page.getByTestId(`review-role-${next}`).click();
   } else {
-    await button(page, 'Change fictional review account');
+    await button(page, 'Change demo account');
     await page.getByTestId(`review-entry-${next}`).click();
     await page.getByTestId('review-open-local').click();
   }
@@ -111,13 +111,13 @@ try {
   await scenario('02-training-evidence', async page => {
     await button(page, 'Schedule'); await radio(page, 'Event type: Training');
     await button(page, 'Open training 2026-10-22');
-    await radio(page, 'Player 01 training reply: Available');
+    await radio(page, 'Oliver Bennett training reply: Available');
     let app = await until(page, value => Object.values(value.preparation.training[0].responses).includes('available'), 'Training RSVP');
     const profile = app.preparation.profiles.find(item => item.playerId === playerId);
     assert.equal(app.preparation.training[0].attendance[profile.id], undefined, 'Available is not attendance');
     await radio(page, 'Occurrence status: Held');
     await until(page, value => value.preparation.training[0].status === 'held', 'Training held');
-    await radio(page, 'Player 01 training attendance: Present');
+    await radio(page, 'Oliver Bennett training attendance: Present');
     await until(page, value => value.preparation.training[0].attendance[profile.id] === 'present', 'Training actual attendance');
     await button(page, 'Back to schedule'); await button(page, 'Open training 2026-10-29');
     await radio(page, 'Occurrence status: Cancelled');
@@ -137,9 +137,9 @@ try {
     await page.getByTestId('preparation-open-match').click();
     const prepared = await until(page, value => value.preparation.snapshots.length > 0, 'Prepare immutable profile snapshot');
     const previous = prepared.preparation.snapshots[0].profiles.find(item => item.playerId === playerId);
-    await button(page, 'Back to team; clock continues'); await button(page, 'Team'); await button(page, 'Edit Player 01');
-    await page.getByLabel('Player display name', { exact: true }).fill('Player 01 Rehearsal'); await page.getByTestId('preparation-save').click();
-    let app = await until(page, value => value.preparation.profiles.some(item => item.displayName === 'Player 01 Rehearsal'), 'Profile edit');
+    await button(page, 'Back to team; clock continues'); await button(page, 'Team'); await button(page, 'Edit Oliver Bennett');
+    await page.getByLabel('Player display name', { exact: true }).fill('Oliver Bennett Rehearsal'); await page.getByTestId('preparation-save').click();
+    let app = await until(page, value => value.preparation.profiles.some(item => item.displayName === 'Oliver Bennett Rehearsal'), 'Profile edit');
     assert.deepEqual(app.preparation.snapshots[0].profiles.find(item => item.playerId === playerId), previous);
     await more(page, 'Team and season settings');
     for (const size of [5, 11]) {
@@ -180,7 +180,7 @@ try {
     assert.equal(app.preparation.training[0].attendance[profile.id], undefined);
     await button(page, 'My game'); await page.getByTestId('records-tab-participation').click();
     const ownView = await page.getByTestId('records-screen').innerText();
-    assert.match(ownView, /Player 01/); assert.doesNotMatch(ownView, /Player 02|Player 03|Player 13/);
+    assert.match(ownView, /Oliver Bennett/); assert.doesNotMatch(ownView, /Noah Patel|Leo Martin|George Taylor/);
     assert.equal(await page.getByTestId('records-participation-synthetic-player-02').count(), 0);
     await role(page, 'spectator');
     assert.equal(await page.getByTestId('records-tab-participation').count(), 0);
@@ -197,7 +197,7 @@ try {
     await role(page, 'spectator'); await button(page, 'Photos');
     assert.equal(await page.getByText('Fictional football illustration awaiting review.', { exact: true }).count(), 0);
     await role(page, 'manager'); await more(page, 'Team photos');
-    await button(page, 'Approve Player 01 revision 1');
+    await button(page, 'Approve Oliver Bennett revision 1');
     await until(page, value => value.community.photos.find(item => item.id === 'synthetic-pending-ball')?.publishedRevision === 1, 'Approve exact original revision');
     await role(page, 'player'); await button(page, 'Photos');
     await page.getByLabel('Illustration caption', { exact: true }).fill('Browser revised fictional cones'); await radio(page, 'Choose cones illustration'); await page.getByRole('switch', { name: 'Content policy reviewed', exact: true }).check();
@@ -207,7 +207,7 @@ try {
     await role(page, 'spectator'); await button(page, 'Photos');
     assert.equal(await page.getByText('Browser revised fictional cones', { exact: true }).count(), 0);
     await page.getByRole('button', { name: 'Open Fictional football illustration awaiting review.', exact: true }).waitFor();
-    await role(page, 'manager'); await more(page, 'Team photos'); await button(page, 'Approve Player 01 revision 2');
+    await role(page, 'manager'); await more(page, 'Team photos'); await button(page, 'Approve Oliver Bennett revision 2');
     await until(page, value => value.community.photos.find(item => item.id === 'synthetic-pending-ball')?.publishedRevision === 2, 'Approve exact replacement revision');
     await button(page, 'Open Browser revised fictional cones'); await button(page, 'Remove this published illustration');
     app = await until(page, value => value.community.photos.find(item => item.id === 'synthetic-pending-ball')?.removedAtMs !== null, 'Remove published revision');
@@ -220,14 +220,14 @@ try {
     let app = await application(page); assert.equal(app.community.matches[0].voteCutoffAtMs, null); assert.equal(app.community.ballots.length, 0);
     await more(page, 'Players’ award');
     assert.equal(await page.getByTestId('community-cast-ballot').count(), 0, 'Managers cannot cast player ballot');
-    await page.getByLabel('Fictional ballot cutoff minutes', { exact: true }).fill('25'); await page.getByTestId('community-configure-cutoff').click();
+    await page.getByLabel('Demo ballot cutoff minutes', { exact: true }).fill('25'); await page.getByTestId('community-configure-cutoff').click();
     app = await until(page, value => value.community.matches[0].cutoffSource === 'explicit_fictional_setting', 'Explicit cutoff');
     assert.equal(app.community.matches[0].voteCutoffAtMs - app.community.matches[0].actualFullTimeAtMs, 25 * 60_000);
     await role(page, 'player'); await more(page, 'Players’ award');
-    assert.equal(await page.getByRole('radio', { name: 'Player 01', exact: true }).count(), 0, 'Self is absent from candidates');
-    await radio(page, 'Player 02'); await page.getByTestId('community-cast-ballot').click();
+    assert.equal(await page.getByRole('radio', { name: 'Oliver Bennett', exact: true }).count(), 0, 'Self is absent from candidates');
+    await radio(page, 'Noah Patel'); await page.getByTestId('community-cast-ballot').click();
     app = await until(page, value => value.community.ballots.length === 1, 'Private own ballot');
-    await radio(page, 'Player 03'); await page.getByTestId('community-cast-ballot').click();
+    await radio(page, 'Leo Martin'); await page.getByTestId('community-cast-ballot').click();
     app = await until(page, value => value.community.ballots.length === 2, 'Changed private own ballot');
     assert.deepEqual(app.community.ballots.map(item => item.revision), [1, 2]); assert.equal(new Set(app.community.ballots.map(item => item.voterPlayerId)).size, 1);
     await role(page, 'manager'); await more(page, 'Players’ award'); assert.equal(await page.getByText(/Your saved choice:/).count(), 0); assert.equal(await page.getByRole('radio').count(), 0);
@@ -243,7 +243,7 @@ try {
     let app = await until(page, value => value.community.invitations.length === 1, 'Individual invitation'); const invite = app.community.invitations[0];
     assert.match(invite.reviewCode, /^DEMO-/); assert.equal(invite.seasonId, seasonId);
     await button(page, 'Revoke invitation and linked access'); await until(page, value => value.community.invitations[0].revokedAtMs !== null, 'Invitation revocation');
-    await button(page, 'Revoke access for Fictional spectator'); app = await until(page, value => value.community.grants[0].revokedAtMs !== null, 'Grant revocation');
+    await button(page, 'Revoke access for Jamie Bennett · Spectator'); app = await until(page, value => value.community.grants[0].revokedAtMs !== null, 'Grant revocation');
     await role(page, 'spectator'); await button(page, 'Photos');
     await page.getByText(/Access unavailable|revoked|expired|no active invitation/i).first().waitFor();
     assert.equal(await page.getByRole('button', { name: /Open .*illustration/ }).count(), 0);
@@ -254,21 +254,21 @@ try {
   await scenario('09-durability-stale-tab', async (page, context) => {
     const other = await open(context);
     await button(page, 'Team'); await button(other, 'Team');
-    await button(page, 'Edit Player 01'); await button(other, 'Edit Player 01');
-    await page.getByLabel('Player display name', { exact: true }).fill('Player 01 accepted tab'); await page.getByTestId('preparation-save').click();
-    await until(page, value => value.preparation.profiles.some(item => item.displayName === 'Player 01 accepted tab'), 'Accepted first tab');
-    await other.getByLabel('Player display name', { exact: true }).fill('Player 01 rejected tab'); await other.getByTestId('preparation-save').click();
+    await button(page, 'Edit Oliver Bennett'); await button(other, 'Edit Oliver Bennett');
+    await page.getByLabel('Player display name', { exact: true }).fill('Oliver Bennett accepted tab'); await page.getByTestId('preparation-save').click();
+    await until(page, value => value.preparation.profiles.some(item => item.displayName === 'Oliver Bennett accepted tab'), 'Accepted first tab');
+    await other.getByLabel('Player display name', { exact: true }).fill('Oliver Bennett rejected tab'); await other.getByTestId('preparation-save').click();
     await other.getByRole('button', { name: 'Reload saved team records; retain conflict', exact: true }).waitFor();
     const record = await stored(other); const app = record.projections[documentId];
-    assert(app.preparation.profiles.some(item => item.displayName === 'Player 01 accepted tab'));
-    assert(!app.preparation.profiles.some(item => item.displayName === 'Player 01 rejected tab'));
+    assert(app.preparation.profiles.some(item => item.displayName === 'Oliver Bennett accepted tab'));
+    assert(!app.preparation.profiles.some(item => item.displayName === 'Oliver Bennett rejected tab'));
     const conflicts = Object.values(record.events).filter(item => item.matchId === documentId && item.disposition === 'quarantined');
-    assert.equal(conflicts.length, 1); assert(conflicts[0].rejectedProjection.preparation.profiles.some(item => item.displayName === 'Player 01 rejected tab'));
+    assert.equal(conflicts.length, 1); assert(conflicts[0].rejectedProjection.preparation.profiles.some(item => item.displayName === 'Oliver Bennett rejected tab'));
     await button(other, 'Reload saved team records; retain conflict');
     const retainedEditor = other.getByRole('button', { name: 'Keep previous values', exact: true });
     if (await retainedEditor.count()) await retainedEditor.click();
-    await other.getByRole('button', { name: 'Edit Player 01 accepted tab', exact: true }).waitFor();
-    await page.reload({ waitUntil: 'networkidle' }); await enterFictionalReview(page); await button(page, 'Team'); await page.getByRole('button', { name: 'Edit Player 01 accepted tab', exact: true }).waitFor();
+    await other.getByRole('button', { name: 'Edit Oliver Bennett accepted tab', exact: true }).waitFor();
+    await page.reload({ waitUntil: 'networkidle' }); await enterFictionalReview(page); await button(page, 'Team'); await page.getByRole('button', { name: 'Edit Oliver Bennett accepted tab', exact: true }).waitFor();
     assert.equal(Object.values((await stored(page)).events).filter(item => item.disposition === 'quarantined').length, 1);
     return 'Reload preserves accepted team document; stale second-tab write cannot overwrite it and retained rejected projection survives reload.';
   });

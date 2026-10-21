@@ -99,10 +99,10 @@ async function enterWorkspace(page, api, account) {
   await button(page, 'Fictional API review'); await button(page, account);
   await page.getByTestId('workspace-connect').click();
   await page.getByTestId('workspace-session').waitFor();
-  if (account !== 'Fictional invite recipient') await selectWorkspaceContext(page, account === 'Fictional Player 01' ? 'player' : 'manager');
-  if (account !== 'Fictional invite recipient') await page.getByTestId('workspace-context-ready').waitFor();
+  if (account !== 'Casey Bennett · Invite recipient') await selectWorkspaceContext(page, account === 'Oliver Bennett · Player' ? 'player' : 'manager');
+  if (account !== 'Casey Bennett · Invite recipient') await page.getByTestId('workspace-context-ready').waitFor();
 }
-async function openWorkspace(api, account = 'Fictional manager') {
+async function openWorkspace(api, account = 'Alex Morgan · Manager') {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' });
   const page = await context.newPage(); activePage = page;
   page.setDefaultTimeout(20_000);
@@ -141,7 +141,7 @@ async function acquire(page, alias, api) {
 }
 async function recordPresent(page, alias, api) {
   const before = (await connected(page, alias, api)).allocatedSequence;
-  await button(page, 'Record fictional squad present');
+  await button(page, 'Record demo squad present');
   return waitConnected(page, alias, api, doc => doc.allocatedSequence === before + doc.localState.config.selectedPlayerIds.length, 'Explicit attendance events durably queued');
 }
 async function confirm(page, label, alias, api, status) {
@@ -192,7 +192,7 @@ try {
       const date = new Date('2026-10-24T09:00:00.000Z');
       await page.clock.install({ time: new Date(date.getTime() - 3_600_000) }); await page.clock.pauseAt(date);
       await confirm(page, 'Review kickoff', alias, primaryAPI, 'first_half_running');
-      await page.clock.fastForward(20_000); await button(page, 'Record fictional team goal');
+      await page.clock.fastForward(20_000); await button(page, 'Record demo team goal');
       await waitConnected(page, alias, primaryAPI, doc => doc.localState.goals.length === 1, 'Live goal queued');
       await page.clock.fastForward(5_000);
       await confirm(page, 'Review actual referee clock pause', alias, primaryAPI, 'first_half_paused');
@@ -222,7 +222,7 @@ try {
       const originalRequest = JSON.stringify(uncertain.pendingRequest);
       // The phone keeps recording actual events while the original upload awaits its receipt.
       await confirm(page, 'Review actual clock resume', alias, primaryAPI, 'first_half_running');
-      await page.clock.fastForward(4_000); await button(page, 'Record fictional team goal');
+      await page.clock.fastForward(4_000); await button(page, 'Record demo team goal');
       await waitConnected(page, alias, primaryAPI, value => value.localState.goals.length === 2, 'Offline goal suffix saved behind the original upload');
       await page.clock.fastForward(1_000);
       let doc = await confirm(page, 'Review actual referee clock pause', alias, primaryAPI, 'first_half_paused');
@@ -252,7 +252,7 @@ try {
       assert.equal(doc.localState.firstHalfDurationMs, 1_503_000, 'First-half overtime is retained.');
       doc = await confirm(page, 'Review second-half start', alias, primaryAPI, 'second_half_running');
       assert.equal(doc.localState.halfActiveMs, 0, 'Second half begins with its independent25 minutes.');
-      await page.clock.fastForward(30_000); await button(page, 'Record fictional team goal');
+      await page.clock.fastForward(30_000); await button(page, 'Record demo team goal');
       await waitConnected(page, alias, primaryAPI, value => value.localState.goals.length === 3, 'Second-half goal');
       await page.clock.fastForward(1_470_000);
       doc = await confirm(page, 'Review manual full-time', alias, primaryAPI, 'completed');
@@ -318,7 +318,7 @@ try {
     const a = first.page, b = second.page;
     try {
       await openController(a, controlAPI, aliasA); await acquire(a, aliasA, controlAPI);
-      await button(a, 'Acknowledge fictional session-clock experiment'); await a.getByTestId('clock-exchange').click();
+      await button(a, 'Acknowledge demo session-clock experiment'); await a.getByTestId('clock-exchange').click();
       await a.getByText(/Exchange received under fictional-connected-review-clock-v1/).waitFor();
       assert.equal((await json(controlAPI, `/v1/matches/${matchId}/clock/policy`)).status, 'configured_trial');
       const retainedMapping = (await connected(a, aliasA, controlAPI)).clockMapping; assert(retainedMapping?.challengeId);
@@ -376,7 +376,7 @@ try {
       await poll(async () => a.getByTestId('reconciliation-retry').isEnabled(), Boolean, 'Proposal response loss retains exact request');
       const prepared = await json(controlAPI, `/v1/matches/${matchId}/reconciliation`);
       assert.equal(prepared.proposals.length, 1); assert.equal(prepared.proposals[0].status, 'prepared');
-      await a.reload({ waitUntil: 'networkidle' }); await enterWorkspace(a, controlAPI, 'Fictional manager'); await openController(a, controlAPI, aliasA);
+      await a.reload({ waitUntil: 'networkidle' }); await enterWorkspace(a, controlAPI, 'Alex Morgan · Manager'); await openController(a, controlAPI, aliasA);
       await a.getByTestId('reconciliation-retry').click();
       await poll(async () => a.getByTestId('reconciliation-retry').count(), value => value === 0, 'Proposal receipt saved after exact retained retry');
       assert.equal(requests.length, 2); assert.deepEqual(requests[0], requests[1]);
@@ -420,18 +420,18 @@ try {
       const community = await poll(() => json(primaryAPI, scoped('community')), value => value.invitations?.some(item => !item.revokedAtMs), 'Service invitation created');
       const invitation = community.invitations.find(item => !item.revokedAtMs);
       await picture(page, '03-workspace-manager');
-      const own = await openWorkspace(primaryAPI, 'Fictional Player 01');
+      const own = await openWorkspace(primaryAPI, 'Oliver Bennett · Player');
       try {
         await own.page.getByTestId('workspace-own-preparation').waitFor();
         const ownView = await own.page.getByTestId('workspace-own-preparation').innerText();
-        assert.match(ownView, /Player 01/); assert.doesNotMatch(ownView, /Player 02|Player 13/);
+        assert.match(ownView, /Oliver Bennett/); assert.doesNotMatch(ownView, /Noah Patel|George Taylor/);
         await own.page.getByRole('button', { name: 'Unsure', exact: true }).first().click();
         const ownData = await poll(() => json(primaryAPI, scoped('preparation/own'), 'synthetic-account-player-01'), value => value.fixtures?.[0]?.response === 'unsure', 'Player own-only RSVP persisted');
         assert.equal(ownData.profile.playerId, 'synthetic-player-01');
         assert.equal(ownData.fixtures[0].attendance, 'not_recorded', 'RSVP cannot fabricate attendance.');
         assert.equal(ownData.profiles, undefined); await picture(own.page, '03-workspace-own-player');
       } finally { await own.context.close(); }
-      const invitee = await openWorkspace(primaryAPI, 'Fictional invite recipient');
+      const invitee = await openWorkspace(primaryAPI, 'Casey Bennett · Invite recipient');
       try {
         await openWorkspaceTab(invitee.page, 'community'); await input(invitee.page, 'Service invitation code', invitation.reviewCode);
         await button(invitee.page, 'Accept service invitation');
@@ -516,11 +516,11 @@ try {
       assert.equal(committed.fixtures.filter(item => item.opponent === 'Outbox Alder rehearsal').length, 1);
       const fixtureId = committed.fixtures.find(item => item.opponent === 'Outbox Alder rehearsal').id;
       await page.reload({ waitUntil: 'networkidle' });
-      await enterWorkspace(page, primaryAPI, 'Fictional Player 01');
+      await enterWorkspace(page, primaryAPI, 'Oliver Bennett · Player');
       await page.getByTestId('workspace-own-preparation').waitFor();
       assert.equal(await page.getByRole('button', { name: 'Retry exact service request', exact: true }).count(), 0, 'Another account cannot replay the manager retained request.');
       assert.equal((await workspaceOutbox(page, primaryAPI)).pending.bodyJson, retained.bodyJson, 'Account change retains the manager branch without exposing its replay control.');
-      await button(page, 'Fictional manager'); await page.getByTestId('workspace-connect').click();
+      await button(page, 'Alex Morgan · Manager'); await page.getByTestId('workspace-connect').click();
       await selectWorkspaceContext(page);
       await page.getByTestId('workspace-context-ready').waitFor();
       await page.getByRole('button', { name: 'Retry exact service request', exact: true }).waitFor();
@@ -534,7 +534,7 @@ try {
       assert.equal(final.revision, committed.revision, 'Cached HTTP receipt does not apply the fixture command twice.');
       assert.equal(final.fixtures.filter(item => item.id === fixtureId).length, 1);
       assert.equal(final.fixtures.find(item => item.id === fixtureId).history.length, 1);
-      await page.reload({ waitUntil: 'networkidle' }); await enterWorkspace(page, primaryAPI, 'Fictional manager');
+      await page.reload({ waitUntil: 'networkidle' }); await enterWorkspace(page, primaryAPI, 'Alex Morgan · Manager');
       await poll(() => workspaceOutbox(page, primaryAPI), value => !value?.pending && value?.lastSettled?.request.key === retained.key, 'Acknowledgement survives a second reload');
       assert.equal(await page.getByRole('button', { name: 'Retry exact service request', exact: true }).count(), 0);
       await picture(page, '05-workspace-durable-receipt');

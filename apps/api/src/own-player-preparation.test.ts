@@ -13,6 +13,7 @@ import { PostgresActivationService } from "./postgres-activation";
 import { applyRuntimeGrants } from "./runtime-grants";
 import { EVENT_CONTRACT_VERSION, SYNTHETIC_IDS } from "./store";
 import { parseOwnPlayerPreparation } from "../../../packages/application/src/player-preparation";
+import type { RecordsState } from "../../../packages/application/src/records";
 const cleanups: (() => Promise<void>)[] = [];
 afterEach(async () => {
   for (const close of cleanups.splice(0).reverse()) await close();
@@ -93,14 +94,15 @@ async function start(kind: "sqlite" | "postgres") {
     {
       token = "synthetic-account-player-01",
       body,
-    }: { token?: string; body?: unknown } = {},
+      key,
+    }: { token?: string; body?: unknown; key?: string } = {},
   ) => {
     const headers: Record<string, string> = {
       authorization: `Bearer ${token}`,
     };
     if (body !== undefined) {
       headers["content-type"] = "application/json";
-      headers["idempotency-key"] = randomUUID();
+      headers["idempotency-key"] = key ?? randomUUID();
       headers["x-api-contract-version"] = EVENT_CONTRACT_VERSION;
     }
     const response = await fetch(base + path, {
@@ -120,6 +122,71 @@ for (const kind of ["sqlite", "postgres"] as const)
   describe.skipIf(kind === "postgres" && !testUrl)(
     `UI07 ${kind} authorised own-player HTTP`,
     () => {
+      it("persists manager and own RSVP changes into scoped REP02 reports without inventing check-in or permitting client evidence writes", async () => {
+        const { call, api, owner } = await start(kind);
+        const store = owner ?? api.store;
+        const records = await store.document<RecordsState>(SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId, 'records');
+        const ids = ['synthetic-player-01', 'synthetic-player-02', 'synthetic-player-03'];
+        const record = { ...records.results[0], id: SYNTHETIC_IDS.matchId, selectedPlayerIds: ids, attendance: { [ids[0]]: 'not_recorded' as const, [ids[1]]: 'present' as const, [ids[2]]: 'excused' as const } };
+        const updatedRecords: RecordsState = { ...records, results: [record] };
+        await store.saveDocument(SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId, 'records', updatedRecords);
+        const ownCommand = { id: randomUUID(), expectedRevision: 0, type: 'own.fixture_response_recorded', fixtureId: SYNTHETIC_IDS.matchId, response: 'unsure' };
+        const key = randomUUID();
+        const accepted = await call(`${teamUrl}/preparation/own`, { body: { command: ownCommand }, key });
+        expect(accepted.status, JSON.stringify(accepted.body)).toBe(200);
+        const immediate = await call(`${teamUrl}/records`);
+        expect(immediate.status, JSON.stringify(immediate.body)).toBe(200);
+        expect(immediate.body.participation).toMatchObject({ sourcePreparationRevision: accepted.body.revision, rows: [{ playerId: ids[0], gameRecords: [{ availabilityResponse: 'unsure', actualAttendance: 'not_recorded' }] }] });
+        const firstEvidence = await store.document<RecordsState>(SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId, 'records');
+        const duplicate = await call(`${teamUrl}/preparation/own`, { body: { command: ownCommand }, key });
+        expect(duplicate).toEqual(accepted);
+        expect((await store.document<RecordsState>(SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId, 'records')).revision).toBe(firstEvidence.revision);
+        const managerCommand = { id: randomUUID(), expectedRevision: accepted.body.revision, type: 'fixture.response_recorded', fixtureId: SYNTHETIC_IDS.matchId, profileId: `${ids[1]}:${SYNTHETIC_IDS.seasonId}`, response: 'unavailable' };
+        const changed = await call(`${teamUrl}/preparation`, { token: 'synthetic-manager-1', body: { command: managerCommand } });
+        expect(changed.status, JSON.stringify(changed.body)).toBe(200);
+        const manager = await call(`${teamUrl}/records`, { token: 'synthetic-manager-1' });
+        expect(manager.status, JSON.stringify(manager.body)).toBe(200);
+        const managerRows = (manager.body.participation as { rows: { playerId: string; gameRecords: Record<string, unknown>[]; games: { attendanceRecordedCount: number } }[] }).rows;
+        expect(managerRows.find(row => row.playerId === ids[0])?.gameRecords[0]).toMatchObject({ eventType: 'game', availabilityResponse: 'unsure', actualAttendance: 'not_recorded', correctionProvenance: { sourcePreparationCommandId: managerCommand.id } });
+        expect(managerRows.find(row => row.playerId === ids[0])?.games.attendanceRecordedCount).toBe(0);
+        expect(managerRows.find(row => row.playerId === ids[1])?.gameRecords[0]).toMatchObject({ availabilityResponse: 'unavailable', actualAttendance: 'present' });
+        const own = await call(`${teamUrl}/records`);
+        expect(own.status).toBe(200);
+        const participation = own.body.participation as { rows: { playerId: string; gameRecords: Record<string, unknown>[] }[] };
+        expect(participation.rows).toHaveLength(1);
+        expect(participation.rows[0].gameRecords[0]).toMatchObject({ availabilityResponse: 'unsure', actualAttendance: 'not_recorded' });
+        expect(JSON.stringify(participation)).not.toContain(ids[1]);
+        const spectator = await call(`${teamUrl}/records`, { token: 'synthetic-spectator' });
+        expect(spectator.status).toBe(200);
+        expect(spectator.body.participation).toMatchObject({ access: 'denied', rows: [] });
+        const exportReply = await call(`${teamUrl}/records/export?kind=season&format=json`);
+        expect(exportReply.status).toBe(200);
+        expect(JSON.parse(String(exportReply.body.body)).participation.rows[0].gameRecords[0]).toMatchObject({ availabilityResponse: 'unsure', actualAttendance: 'not_recorded' });
+        const forged = await call(`${teamUrl}/records`, { token: 'synthetic-manager-1', body: { command: { type: 'game.evidence.replace', commandId: randomUUID(), evidence: [] } } });
+        expect(forged.status).toBe(403);
+        expect(forged.body).toMatchObject({ code: 'SERVICE_OWNED_PROJECTION' });
+        if (api.store instanceof PostgresStore) expect(await api.store.many('SELECT * FROM documents')).toEqual([]);
+      });
+      it("accepts own preferences and held-training RSVP without granting manager-record writes", async () => {
+        const { call, api, owner } = await start(kind);
+        const store = owner ?? api.store;
+        const trainingId = `rep02-own-training-${kind}`;
+        const created = await call(`${teamUrl}/preparation`, { token: 'synthetic-manager-1', body: { command: { id: randomUUID(), expectedRevision: 0, type: 'training.saved', training: { id: trainingId, seasonId: SYNTHETIC_IDS.seasonId, date: '2026-10-20', time: '18:00', venue: 'South training pitch', recurrenceGroupId: null, expectedProfileIds: [`synthetic-player-01:${SYNTHETIC_IDS.seasonId}`] } } } });
+        expect(created.status, JSON.stringify(created.body)).toBe(200);
+        const held = await call(`${teamUrl}/preparation`, { token: 'synthetic-manager-1', body: { command: { id: randomUUID(), expectedRevision: created.body.revision, type: 'training.status_changed', trainingId, status: 'held' } } });
+        expect(held.status, JSON.stringify(held.body)).toBe(200);
+        const before = await store.document<RecordsState>(SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId, 'records');
+        const responded = await call(`${teamUrl}/preparation/own`, { body: { command: { id: randomUUID(), expectedRevision: held.body.revision, type: 'own.training_response_recorded', trainingId, response: 'available' } } });
+        expect(responded.status, JSON.stringify(responded.body)).toBe(200);
+        const preferences = await call(`${teamUrl}/preparation/own`, { body: { command: { id: randomUUID(), expectedRevision: responded.body.revision, type: 'own.preferences_saved', preferences: ['GK', 'CB', 'ST'] } } });
+        expect(preferences.status, JSON.stringify(preferences.body)).toBe(200);
+        expect((await store.document<RecordsState>(SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId, 'records')).revision).toBe(before.revision);
+        const own = await call(`${teamUrl}/records`);
+        expect(own.status, JSON.stringify(own.body)).toBe(200);
+        const rows = (own.body.participation as { rows: { trainingRecords: { eventId: string; actualAttendance: string; availabilityResponse: string }[] }[] }).rows;
+        expect(rows[0].trainingRecords.find(item => item.eventId === trainingId)).toMatchObject({ eventType: 'training', availabilityResponse: 'available', actualAttendance: 'not_recorded' });
+        if (api.store instanceof PostgresStore) expect(await api.store.many('SELECT * FROM documents')).toEqual([]);
+      });
       it("returns saved arrival, format and duration through fresh own views/replies while filtering private preparation", async () => {
         const { call, api } = await start(kind);
         let revision = 0;
@@ -168,7 +235,7 @@ for (const kind of ["sqlite", "postgres"] as const)
         const reply = await call(`${teamUrl}/preparation/own`);
         expect(reply.status).toBe(200);
         const own = parseOwnPlayerPreparation(reply.body, scope);
-        expect(own.fixtures[0]).toMatchObject({
+        expect(own.fixtures.find(item => item.id === SYNTHETIC_IDS.matchId)!).toMatchObject({
           arrival: "08:35",
           kickoff: "09:05",
           format: 5,
@@ -195,7 +262,7 @@ for (const kind of ["sqlite", "postgres"] as const)
           "history",
           "matchPlanDraft",
         ])
-          expect(own.fixtures[0]).not.toHaveProperty(key);
+          expect(own.fixtures.find(item => item.id === SYNTHETIC_IDS.matchId)!).not.toHaveProperty(key);
         expect(JSON.stringify(own)).not.toContain("synthetic-player-02");
         const accepted = await call(`${teamUrl}/preparation/own`, {
           body: {
@@ -211,7 +278,7 @@ for (const kind of ["sqlite", "postgres"] as const)
         expect(accepted.status).toBe(200);
         revision = Number(accepted.body.revision);
         expect(
-          parseOwnPlayerPreparation(accepted.body, scope).fixtures[0],
+          parseOwnPlayerPreparation(accepted.body, scope).fixtures.find(item => item.id === SYNTHETIC_IDS.matchId)!,
         ).toMatchObject({
           arrival: "08:35",
           format: 5,
@@ -234,7 +301,7 @@ for (const kind of ["sqlite", "postgres"] as const)
           parseOwnPlayerPreparation(
             (await call(`${teamUrl}/preparation/own`)).body,
             scope,
-          ).fixtures[0],
+          ).fixtures.find(item => item.id === SYNTHETIC_IDS.matchId)!,
         ).toMatchObject({ format: 5, plannedHalfDurationMs: 1_050_000 });
         if (api.store instanceof PostgresStore) {
           expect(await api.store.many("SELECT * FROM documents")).toEqual([]);
@@ -274,7 +341,7 @@ for (const kind of ["sqlite", "postgres"] as const)
           parseOwnPlayerPreparation(
             (await call(`${teamUrl}/preparation/own`)).body,
             scope,
-          ).fixtures[0],
+          ).fixtures.find(item => item.id === SYNTHETIC_IDS.matchId)!,
         ).toMatchObject({ arrival: null, kickoff: null });
         for (const [path, token] of [
           [

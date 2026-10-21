@@ -3,8 +3,9 @@ import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } fro
 import { Icon, type IconName } from './Icon';
 import { colors } from './tokens';
 
-export function Button({ label, onPress, variant = 'primary', icon, disabled = false, testID, style }: {
+export function Button({ label, accessibilityLabel, onPress, variant = 'primary', icon, disabled = false, testID, style }: {
   label: string;
+  accessibilityLabel?: string;
   onPress: () => void;
   variant?: 'primary' | 'secondary' | 'danger' | 'quiet';
   icon?: IconName;
@@ -16,6 +17,7 @@ export function Button({ label, onPress, variant = 'primary', icon, disabled = f
   const ink = variant === 'primary' ? colors.surface : variant === 'danger' ? colors.errorInk : colors.brand;
   return <Pressable
     accessibilityRole="button"
+    accessibilityLabel={accessibilityLabel}
     accessibilityState={{ disabled }}
     disabled={disabled}
     onPress={onPress}

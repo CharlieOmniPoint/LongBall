@@ -8,10 +8,10 @@ export interface ReviewIdentity {
   readonly localFallback: boolean;
 }
 export const REVIEW_IDENTITIES: Readonly<Record<ReviewRole, ReviewIdentity>> = Object.freeze({
-  manager: Object.freeze({ role: 'manager', label: 'Fictional manager', token: 'synthetic-manager-2', accountId: 'synthetic-account-manager-2', localFallback: true }),
-  administrator: Object.freeze({ role: 'administrator', label: 'Fictional administrator', token: 'synthetic-admin', accountId: 'synthetic-account-admin', localFallback: false }),
-  player: Object.freeze({ role: 'player', label: 'Fictional Player 01', token: 'synthetic-account-player-01', accountId: 'synthetic-account-player-01', localFallback: true }),
-  spectator: Object.freeze({ role: 'spectator', label: 'Fictional spectator', token: 'synthetic-spectator', accountId: 'synthetic-account-spectator', localFallback: true }),
+  manager: Object.freeze({ role: 'manager', label: 'Roma U10 manager', token: 'synthetic-manager-2', accountId: 'synthetic-account-manager-2', localFallback: true }),
+  administrator: Object.freeze({ role: 'administrator', label: 'Sam Taylor', token: 'synthetic-admin', accountId: 'synthetic-account-admin', localFallback: false }),
+  player: Object.freeze({ role: 'player', label: 'Oliver Bennett', token: 'synthetic-account-player-01', accountId: 'synthetic-account-player-01', localFallback: true }),
+  spectator: Object.freeze({ role: 'spectator', label: 'Jamie Bennett', token: 'synthetic-spectator', accountId: 'synthetic-account-spectator', localFallback: true }),
 });
 
 export const REVIEW_STATUS_URL = 'https://raw.githubusercontent.com/CharlieOmniPoint/LongBall/preview/longball-m0/preview-status.json';
@@ -77,12 +77,12 @@ export function fictionalReviewApiUrl(value: unknown): string | null {
 }
 /** Status is availability evidence, never an account, membership, or authority assertion. */
 export function parseFictionalReviewStatus(value: unknown, nowMs: number): ReviewDiscovery {
-  if (!object(value) || !Number.isFinite(nowMs) || !['ready', 'starting', 'stopped', 'failed'].includes(String(value.state))) return unavailable('invalid_status', 'The published fictional service status is invalid.');
-  if (value.state !== 'ready') return unavailable('not_ready', 'The temporary fictional service is not running.');
+  if (!object(value) || !Number.isFinite(nowMs) || !['ready', 'starting', 'stopped', 'failed'].includes(String(value.state))) return unavailable('invalid_status', 'The published demo service status is invalid.');
+  if (value.state !== 'ready') return unavailable('not_ready', 'The temporary demo service is not running.');
   const apiBaseUrl = fictionalReviewApiUrl(value.url);
   const startedAtMs = utcTime(value.startedAt), expiresAtMs = utcTime(value.expiresAt);
-  if (!apiBaseUrl || startedAtMs === null || expiresAtMs === null || startedAtMs >= expiresAtMs || startedAtMs > nowMs || typeof value.sourceRevision !== 'string' || !/^[a-f0-9]{40}(?:[a-f0-9]{24})?$/.test(value.sourceRevision)) return unavailable('invalid_status', 'The published fictional service address, lifetime or source revision is invalid.');
-  if (expiresAtMs <= nowMs) return unavailable('expired', 'The temporary fictional service expired. Choose a local rehearsal or try again after it is renewed.');
+  if (!apiBaseUrl || startedAtMs === null || expiresAtMs === null || startedAtMs >= expiresAtMs || startedAtMs > nowMs || typeof value.sourceRevision !== 'string' || !/^[a-f0-9]{40}(?:[a-f0-9]{24})?$/.test(value.sourceRevision)) return unavailable('invalid_status', 'The published demo service address, lifetime or source revision is invalid.');
+  if (expiresAtMs <= nowMs) return unavailable('expired', 'The temporary demo service expired. Choose a local rehearsal or try again after it is renewed.');
   return { status: 'available', apiBaseUrl, sourceRevision: value.sourceRevision, expiresAtMs, statusUrl: REVIEW_STATUS_URL };
 }
 
@@ -94,13 +94,13 @@ export async function discoverFictionalReview(options: {
   signal?: AbortSignal;
   timeoutMs?: number;
 }): Promise<ReviewDiscovery> {
-  if (!options.fictionalReviewChosen) return unavailable('not_chosen', 'Choose fictional review before looking for its temporary service.');
-  if (options.signal?.aborted) return unavailable('cancelled', 'Fictional service discovery was cancelled.');
+  if (!options.fictionalReviewChosen) return unavailable('not_chosen', 'Choose demo review before looking for its temporary service.');
+  if (options.signal?.aborted) return unavailable('cancelled', 'Demo service discovery was cancelled.');
   const now = options.now ?? Date.now;
   const controller = new AbortController();
   let abortedAs: 'cancelled' | 'timeout' | null = null;
   const timeoutMs = options.timeoutMs ?? 8_000;
-  if (!Number.isFinite(timeoutMs) || timeoutMs < 1 || timeoutMs > 30_000) return unavailable('invalid_status', 'The fictional service discovery deadline is invalid.');
+  if (!Number.isFinite(timeoutMs) || timeoutMs < 1 || timeoutMs > 30_000) return unavailable('invalid_status', 'The demo service discovery deadline is invalid.');
   let rejectAbort: (reason: Error) => void = () => undefined;
   const aborted = new Promise<never>((_, reject) => { rejectAbort = reject; });
   const abort = (reason: 'cancelled' | 'timeout') => {
@@ -128,15 +128,15 @@ export async function discoverFictionalReview(options: {
     if (status.status === 'unavailable') return status;
     phase = 'health';
     const health = await read(`${status.apiBaseUrl}/health`);
-    if (!object(health) || health.status !== 'ok' || health.service !== 'longball-api' || health.syntheticOnly !== true || health.contractVersion !== WIRE_VERSION) return unavailable('not_fictional', 'This endpoint did not verify the fictional LongBall review service. No account was opened.');
-    if (status.expiresAtMs <= now()) return unavailable('expired', 'The temporary fictional service expired while it was being checked.');
+    if (!object(health) || health.status !== 'ok' || health.service !== 'longball-api' || health.syntheticOnly !== true || health.contractVersion !== WIRE_VERSION) return unavailable('not_fictional', 'This endpoint did not verify the demo LongBall review service. No account was opened.');
+    if (status.expiresAtMs <= now()) return unavailable('expired', 'The temporary demo service expired while it was being checked.');
     return status;
   } catch {
-    if (abortedAs === 'cancelled') return unavailable('cancelled', 'Fictional service discovery was cancelled.');
-    if (abortedAs === 'timeout') return unavailable('timeout', 'The temporary fictional service did not answer in time. Local rehearsal remains available.');
+    if (abortedAs === 'cancelled') return unavailable('cancelled', 'Demo service discovery was cancelled.');
+    if (abortedAs === 'timeout') return unavailable('timeout', 'The temporary demo service did not answer in time. Local rehearsal remains available.');
     return phase === 'status'
-      ? unavailable('status_unavailable', 'The published fictional service status could not be checked. Local rehearsal remains available.')
-      : unavailable('health_unavailable', 'The temporary fictional service could not be reached. Local rehearsal remains available.');
+      ? unavailable('status_unavailable', 'The published demo service status could not be checked. Local rehearsal remains available.')
+      : unavailable('health_unavailable', 'The temporary demo service could not be reached. Local rehearsal remains available.');
   } finally {
     clearTimeout(timer);
     options.signal?.removeEventListener('abort', cancel);

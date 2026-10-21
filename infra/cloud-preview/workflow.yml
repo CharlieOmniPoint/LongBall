@@ -1,4 +1,4 @@
-name: LongBall temporary cloud review
+name: LongBall temporary demo service
 
 on:
   push:
@@ -40,5 +40,5 @@ jobs:
           --secret id=proxy_ca,src=/etc/ssl/certs/ca-certificates.crt
           --output type=local,dest=.local/heic-runtime
           -f infra/runtime/Dockerfile .
-      - name: Serve the fictional export for a bounded five-hour review
+      - name: Serve the demo for a bounded five-hour review
         run: bash preview/run.sh
