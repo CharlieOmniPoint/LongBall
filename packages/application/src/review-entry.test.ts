@@ -8,6 +8,7 @@ const published = {
   runUrl: 'https://github.com/CharlieOmniPoint/LongBall/actions/runs/123', audience: 'Adult review of fictional Roma U10 data only',
 };
 const health = { status: 'ok', service: 'longball-api', contractVersion: 'longball.events/1.1', backend: 'fictional-sqlite', syntheticOnly: true };
+const statusRequest = /^https:\/\/raw\.githubusercontent\.com\/CharlieOmniPoint\/LongBall\/preview\/longball-m0\/preview-status\.json\?reviewCheck=\d{1,16}-\d{1,9}$(?![\s\S])/;
 const reply = (value: unknown) => ({ ok: true, status: 200, text: async () => JSON.stringify(value) });
 function ready() {
   return vi.fn<ReviewFetch>().mockResolvedValueOnce(reply(published)).mockResolvedValueOnce(reply(health));
@@ -34,7 +35,8 @@ describe('explicit fictional review entry', () => {
     const fetch = ready();
     const result = await discoverFictionalReview({ fictionalReviewChosen: true, fetch, now: () => nowMs });
     expect(result).toEqual({ status: 'available', apiBaseUrl: published.url, sourceRevision: published.sourceRevision, expiresAtMs: Date.parse(published.expiresAt), statusUrl: REVIEW_STATUS_URL });
-    expect(fetch.mock.calls.map(([url]) => url)).toEqual([REVIEW_STATUS_URL, `${published.url}/health`]);
+    expect(fetch.mock.calls[0][0]).toMatch(statusRequest);
+    expect(fetch.mock.calls[1][0]).toBe(`${published.url}/health`);
     for (const [, request] of fetch.mock.calls) {
       expect(request).toMatchObject({ method: 'GET', credentials: 'omit', redirect: 'error', cache: 'no-store', headers: { Accept: 'application/json' } });
       expect(Object.keys(request.headers)).toEqual(['Accept']);
@@ -46,9 +48,73 @@ describe('explicit fictional review entry', () => {
   it('supports browser global fetch without supplying an invalid Window receiver', async () => {
     const fetch: ReviewFetch = async function (this: unknown, url) {
       if (this !== undefined) throw new TypeError('Illegal invocation');
-      return reply(url === REVIEW_STATUS_URL ? published : health);
+      return { ...reply(statusRequest.test(url) ? published : health), url };
     };
     expect(await discoverFictionalReview({ fictionalReviewChosen: true, fetch, now: () => nowMs })).toMatchObject({ status: 'available', apiBaseUrl: published.url });
+  });
+
+  it('bypasses a cached canonical status on every check, including retries in one clock tick', async () => {
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(nowMs);
+    const cache = new Map([[REVIEW_STATUS_URL, { ...published, url: 'https://old-dead-review.trycloudflare.com' }]]);
+    const fetch = vi.fn<ReviewFetch>().mockImplementation(async url => {
+      if (statusRequest.test(url)) {
+        if (!cache.has(url)) cache.set(url, published);
+        return { ...reply(cache.get(url)), url };
+      }
+      if (url === `${published.url}/health`) return { ...reply(health), url };
+      throw new Error('An unexpected endpoint must never be requested');
+    });
+    try {
+      const first = await discoverFictionalReview({ fictionalReviewChosen: true, fetch, now: () => nowMs });
+      const second = await discoverFictionalReview({ fictionalReviewChosen: true, fetch, now: () => nowMs });
+      expect(first).toMatchObject({ status: 'available', apiBaseUrl: published.url, statusUrl: REVIEW_STATUS_URL });
+      expect(second).toEqual(first);
+      const requests = fetch.mock.calls.map(([url]) => url);
+      expect(requests).toHaveLength(4);
+      expect(requests[0]).toMatch(statusRequest);
+      expect(requests[2]).toMatch(statusRequest);
+      expect(requests[0]).not.toBe(requests[2]);
+      expect(requests[1]).toBe(`${published.url}/health`);
+      expect(requests[3]).toBe(`${published.url}/health`);
+      expect(requests).not.toContain(REVIEW_STATUS_URL);
+      expect(cache.get(REVIEW_STATUS_URL)?.url).toBe('https://old-dead-review.trycloudflare.com');
+    } finally { clock.mockRestore(); }
+  });
+
+  it('keeps the public cache key bounded even if the wall clock is invalid or unsafe', async () => {
+    const clock = vi.spyOn(Date, 'now');
+    const fetch = vi.fn<ReviewFetch>().mockImplementation(async url => ({ ...reply(statusRequest.test(url) ? published : health), url }));
+    try {
+      for (const observed of [Number.NaN, Number.POSITIVE_INFINITY, -1, 1.5, Number.MAX_SAFE_INTEGER + 1, Number.MAX_SAFE_INTEGER]) {
+        clock.mockReturnValue(observed);
+        const result = await discoverFictionalReview({ fictionalReviewChosen: true, fetch, now: () => nowMs });
+        expect(result).toMatchObject({ status: 'available', statusUrl: REVIEW_STATUS_URL });
+        const url = fetch.mock.calls.at(-2)![0];
+        expect(url).toMatch(statusRequest);
+        expect(new URL(url).searchParams.get('reviewCheck')?.split('-')[0]).toBe(observed === Number.MAX_SAFE_INTEGER ? String(observed) : '0');
+      }
+    } finally { clock.mockRestore(); }
+  });
+
+  it.each(['canonical', 'different_key', 'extra_query', 'different_path', 'redirect'] as const)('rejects a status response with %s destination instead of the exact requested cache key', async changed => {
+    const fetch = vi.fn<ReviewFetch>().mockImplementation(async url => {
+      const destination = changed === 'canonical' ? REVIEW_STATUS_URL
+        : changed === 'different_key' ? `${REVIEW_STATUS_URL}?reviewCheck=0-0`
+        : changed === 'extra_query' ? `${url}&token=not-allowed`
+        : changed === 'different_path' ? url.replace('preview-status.json', 'other.json') : url;
+      return { ...reply(published), url: destination, redirected: changed === 'redirect' };
+    });
+    expect(await discoverFictionalReview({ fictionalReviewChosen: true, fetch, now: () => nowMs })).toMatchObject({ status: 'unavailable', reason: 'status_unavailable' });
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the health response destination exact and unqueried after a valid status response', async () => {
+    const fetch = vi.fn<ReviewFetch>().mockImplementation(async url => statusRequest.test(url)
+      ? { ...reply(published), url }
+      : { ...reply(health), url: `${url}?reviewCheck=0-1` });
+    expect(await discoverFictionalReview({ fictionalReviewChosen: true, fetch, now: () => nowMs })).toMatchObject({ status: 'unavailable', reason: 'health_unavailable' });
+    expect(fetch.mock.calls[1][0]).toBe(`${published.url}/health`);
+    expect(fetch.mock.calls[1][1]).toMatchObject({ credentials: 'omit', redirect: 'error', cache: 'no-store', headers: { Accept: 'application/json' } });
   });
 
   it.each(['starting', 'stopped', 'failed'])('does not contact a %s service', async state => {

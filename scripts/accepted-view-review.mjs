@@ -7,6 +7,7 @@ import path from "node:path";
 import { chromium } from "playwright";
 import { captureReviewArtifacts, assertReviewArtifactsUnchanged, assertReviewApiPortAvailable } from "./review-artifacts.mjs";
 import {
+  REVIEW_STATUS_REQUEST,
   enterFictionalReview,
   openWorkspaceTab,
   selectWorkspaceContext,
@@ -257,7 +258,7 @@ try {
   const b = await createContext(320),
     pb = b.page;
   await b.context.route(
-    "https://raw.githubusercontent.com/CharlieOmniPoint/LongBall/preview/longball-m0/preview-status.json",
+    REVIEW_STATUS_REQUEST,
     (route) =>
       route.fulfill({
         headers: { "access-control-allow-origin": "*" },

@@ -6,7 +6,7 @@ import { createWriteStream, existsSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { chromium } from 'playwright';
-import { enterFictionalReview, openWorkspaceTab } from './review-entry.mjs';
+import { REVIEW_STATUS_REQUEST, enterFictionalReview, openWorkspaceTab } from './review-entry.mjs';
 
 const baseURL = process.env.LONGBALL_REVIEW_BASE_URL ?? 'http://127.0.0.1:4390';
 const api = process.env.LONGBALL_REVIEW_API_URL ?? 'http://127.0.0.1:4391';
@@ -30,7 +30,7 @@ try {
   await until(async () => { if (startupError || server.exitCode !== null) throw startupError ?? new Error(`Fixture API stopped ${server.exitCode}`); try { return await (await fetch(`${api}/health`)).json(); } catch { return null; } }, health => health?.syntheticOnly === true);
   const initial = await (await fetch(`${api}/v1/teams/synthetic-roma-u10/matches?seasonId=synthetic-season-2026-27&limit=100`, { headers: { Authorization: 'Bearer synthetic-manager-2', 'X-Longball-Role': 'manager' } })).json();
   assert.equal(initial.items.length, 100); assert(initial.nextCursor);
-  await page.route('https://raw.githubusercontent.com/CharlieOmniPoint/LongBall/preview/longball-m0/preview-status.json', route => route.fulfill({ headers: { 'access-control-allow-origin': '*' }, json: { state: 'ready', url: tunnel, startedAt: new Date(Date.now() - 1000).toISOString(), expiresAt: new Date(Date.now() + 3_600_000).toISOString(), sourceRevision: 'a'.repeat(40) } }));
+  await page.route(REVIEW_STATUS_REQUEST, route => route.fulfill({ headers: { 'access-control-allow-origin': '*' }, json: { state: 'ready', url: tunnel, startedAt: new Date(Date.now() - 1000).toISOString(), expiresAt: new Date(Date.now() + 3_600_000).toISOString(), sourceRevision: 'a'.repeat(40) } }));
   await page.route(`${tunnel}/**`, async route => { const response = await route.fetch({ url: api + route.request().url().slice(tunnel.length) }); await route.fulfill({ response, headers: { ...response.headers(), 'access-control-allow-origin': new URL(baseURL).origin } }); });
   await page.goto(baseURL, { waitUntil: 'networkidle' }); await enterFictionalReview(page, 'manager', 'connected');
   await page.getByTestId('workspace-context-ready').waitFor(); await openWorkspaceTab(page, 'centre');

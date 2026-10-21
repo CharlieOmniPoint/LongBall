@@ -1,3 +1,4 @@
+import { REVIEW_STATUS_REQUEST } from "./review-entry.mjs";
 import assert from "node:assert/strict";
 import { Buffer } from "node:buffer";
 import { spawn } from "node:child_process";
@@ -189,7 +190,7 @@ try {
     page.setDefaultTimeout(45_000);
     page.on("pageerror", (error) => errors.push(error.message));
     await context.route(
-      "https://raw.githubusercontent.com/CharlieOmniPoint/LongBall/preview/longball-m0/preview-status.json",
+      REVIEW_STATUS_REQUEST,
       (route) =>
         route.fulfill({
           headers: { "access-control-allow-origin": "*" },

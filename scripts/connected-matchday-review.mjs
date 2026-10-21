@@ -4,7 +4,7 @@ import { existsSync, createWriteStream } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { chromium } from 'playwright';
 import { captureReviewArtifacts, assertReviewArtifactsUnchanged, assertReviewApiPortAvailable } from './review-artifacts.mjs';
-import { enterFictionalReview, openWorkspaceTab } from './review-entry.mjs';
+import { REVIEW_STATUS_REQUEST, enterFictionalReview, openWorkspaceTab } from './review-entry.mjs';
 
 const baseURL = process.env.LONGBALL_REVIEW_BASE_URL ?? 'http://127.0.0.1:4173';
 const api = process.env.LONGBALL_REVIEW_API_URL ?? 'http://127.0.0.1:4360', tunnel = 'https://longball-matchday-review.trycloudflare.com';
@@ -31,7 +31,7 @@ async function readAccepted() {
 try {
   const deadline = Date.now() + 20_000;
   while (true) { try { assert.equal((await (await fetch(`${api}/health`)).json()).syntheticOnly, true); break; } catch (error) { if (Date.now() >= deadline || server.exitCode !== null) throw error; await new Promise(resolve => setTimeout(resolve, 100)); } }
-  await page.route('https://raw.githubusercontent.com/CharlieOmniPoint/LongBall/preview/longball-m0/preview-status.json', route => route.fulfill({ headers: { 'access-control-allow-origin': '*' }, json: { state: 'ready', url: tunnel, startedAt: new Date(Date.now() - 1000).toISOString(), expiresAt: new Date(Date.now() + 3_600_000).toISOString(), sourceRevision: 'a'.repeat(40) } }));
+  await page.route(REVIEW_STATUS_REQUEST, route => route.fulfill({ headers: { 'access-control-allow-origin': '*' }, json: { state: 'ready', url: tunnel, startedAt: new Date(Date.now() - 1000).toISOString(), expiresAt: new Date(Date.now() + 3_600_000).toISOString(), sourceRevision: 'a'.repeat(40) } }));
   await page.route(`${tunnel}/**`, async route => { const response = await route.fetch({ url: api + route.request().url().slice(tunnel.length) }); await route.fulfill({ response, headers: { ...response.headers(), 'access-control-allow-origin': new URL(baseURL).origin } }); });
   await page.goto(baseURL, { waitUntil: 'networkidle' });
   await enterFictionalReview(page, 'manager', 'connected');

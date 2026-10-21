@@ -1,3 +1,4 @@
+import { REVIEW_STATUS_REQUEST } from './review-entry.mjs';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { existsSync, createWriteStream } from 'node:fs';
@@ -34,7 +35,7 @@ try {
       console.log(`Reviewing ${role} at ${width}px`);
       page.on('pageerror', error => errors.push(error.message));
       const requests = [];
-      await context.route('https://raw.githubusercontent.com/CharlieOmniPoint/LongBall/preview/longball-m0/preview-status.json', route => route.fulfill({ headers: { 'access-control-allow-origin': '*' }, json: { state: 'ready', url: tunnel, startedAt: new Date(Date.now() - 1000).toISOString(), expiresAt: new Date(Date.now() + 3_600_000).toISOString(), sourceRevision: 'a'.repeat(40) } }));
+      await context.route(REVIEW_STATUS_REQUEST, route => route.fulfill({ headers: { 'access-control-allow-origin': '*' }, json: { state: 'ready', url: tunnel, startedAt: new Date(Date.now() - 1000).toISOString(), expiresAt: new Date(Date.now() + 3_600_000).toISOString(), sourceRevision: 'a'.repeat(40) } }));
       await context.route(`${tunnel}/**`, async route => {
         const request = route.request();
         const path = request.url().slice(tunnel.length);

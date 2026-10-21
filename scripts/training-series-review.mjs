@@ -3,7 +3,7 @@ import { spawn } from 'node:child_process';
 import { existsSync, createWriteStream } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { chromium } from 'playwright';
-import { enterFictionalReview, openWorkspaceTab } from './review-entry.mjs';
+import { REVIEW_STATUS_REQUEST, enterFictionalReview, openWorkspaceTab } from './review-entry.mjs';
 
 const baseURL = process.env.LONGBALL_REVIEW_BASE_URL ?? 'http://127.0.0.1:4386';
 const apiURL = 'http://127.0.0.1:4387', tunnel = 'https://longball-training-review.trycloudflare.com';
@@ -40,7 +40,7 @@ try {
       : page.evaluate(() => new Promise((resolve, reject) => { const open = indexedDB.open('longball-synthetic-m0'); open.onerror = () => reject(open.error); open.onsuccess = () => { const db = open.result; const tx = db.transaction('journal', 'readonly'); const row = tx.objectStore('journal').get('record'); row.onsuccess = () => resolve(row.result.projections['synthetic-longball-application-v1'].preparation); row.onerror = () => reject(row.error); tx.oncomplete = () => db.close(); }; }));
     const until = async predicate => { const deadline = Date.now() + 12_000; while (true) { const state = await read(); if (predicate(state)) return state; if (Date.now() > deadline) throw new Error('Expected training save did not appear in the independent read.'); await new Promise(resolve => setTimeout(resolve, 50)); } };
     try {
-      await page.route('https://raw.githubusercontent.com/CharlieOmniPoint/LongBall/preview/longball-m0/preview-status.json', route => route.fulfill({ headers: { 'access-control-allow-origin': '*' }, json: { state: 'ready', url: tunnel, startedAt: new Date(Date.now() - 1000).toISOString(), expiresAt: new Date(Date.now() + 3_600_000).toISOString(), sourceRevision: 'a'.repeat(40) } }));
+      await page.route(REVIEW_STATUS_REQUEST, route => route.fulfill({ headers: { 'access-control-allow-origin': '*' }, json: { state: 'ready', url: tunnel, startedAt: new Date(Date.now() - 1000).toISOString(), expiresAt: new Date(Date.now() + 3_600_000).toISOString(), sourceRevision: 'a'.repeat(40) } }));
       await page.route(`${tunnel}/**`, async route => { const response = await route.fetch({ url: apiURL + route.request().url().slice(tunnel.length) }); await route.fulfill({ response, headers: { ...response.headers(), 'access-control-allow-origin': new URL(baseURL).origin } }); });
       await page.goto(baseURL, { waitUntil: 'networkidle' }); await enterFictionalReview(page, 'manager', mode === 'connected' ? 'connected' : 'local');
       if (mode === 'connected') await openWorkspaceTab(page, 'schedule'); else await button('Schedule').click();

@@ -5,7 +5,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { randomUUID, createHash } from "node:crypto";
 import path from "node:path";
 import { chromium } from "playwright";
-import { enterFictionalReview, openWorkspaceTab } from "./review-entry.mjs";
+import { REVIEW_STATUS_REQUEST, enterFictionalReview, openWorkspaceTab } from "./review-entry.mjs";
 
 const baseURL = "http://127.0.0.1:4384",
   api = "http://127.0.0.1:4385",
@@ -99,7 +99,7 @@ async function context(role, width) {
     acceptDownloads: true,
   });
   await context.route(
-    "https://raw.githubusercontent.com/CharlieOmniPoint/LongBall/preview/longball-m0/preview-status.json",
+    REVIEW_STATUS_REQUEST,
     (route) =>
       route.fulfill({
         headers: { "access-control-allow-origin": "*" },

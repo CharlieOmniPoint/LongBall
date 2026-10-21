@@ -1,3 +1,6 @@
+/** Exact pinned discovery endpoint with only its bounded public cache-busting key. */
+export const REVIEW_STATUS_REQUEST = /^https:\/\/raw\.githubusercontent\.com\/CharlieOmniPoint\/LongBall\/preview\/longball-m0\/preview-status\.json\?reviewCheck=\d{1,16}-\d{1,9}$(?![\s\S])/;
+
 /** Select the fictional account explicitly whenever the entry screen is shown. */
 export async function enterFictionalReview(page, role = 'manager', destination = 'local') {
   const welcome = page.getByTestId('welcome-review');

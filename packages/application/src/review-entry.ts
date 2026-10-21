@@ -17,6 +17,17 @@ export const REVIEW_IDENTITIES: Readonly<Record<ReviewRole, ReviewIdentity>> = O
 export const REVIEW_STATUS_URL = 'https://raw.githubusercontent.com/CharlieOmniPoint/LongBall/preview/longball-m0/preview-status.json';
 const WIRE_VERSION = 'longball.events/1.1';
 const MAX_RESPONSE_CHARACTERS = 16_384;
+let statusRequestSequence = 0;
+
+/** Public cache key only; never an identity, credential or configurable URL. */
+function freshStatusRequestUrl(): string {
+  // GitHub's edge cache may retain the canonical key despite cache: 'no-store'.
+  // The counter also separates explicit retries within one wall-clock tick.
+  const wallClock = Date.now();
+  const timestamp = Number.isSafeInteger(wallClock) && wallClock >= 0 ? wallClock : 0;
+  statusRequestSequence = statusRequestSequence >= 999_999_999 ? 1 : statusRequestSequence + 1;
+  return `${REVIEW_STATUS_URL}?reviewCheck=${timestamp}-${statusRequestSequence}`;
+}
 
 export type ReviewUnavailableReason = 'not_chosen' | 'not_ready' | 'expired' | 'invalid_status' | 'status_unavailable' | 'health_unavailable' | 'not_fictional' | 'cancelled' | 'timeout';
 export interface ReviewUnavailable { status: 'unavailable'; reason: ReviewUnavailableReason; message: string }
@@ -113,7 +124,7 @@ export async function discoverFictionalReview(options: {
       if (body.length > MAX_RESPONSE_CHARACTERS) throw new Error('Oversized response');
       return JSON.parse(body) as unknown;
     };
-    const status = parseFictionalReviewStatus(await read(REVIEW_STATUS_URL), now());
+    const status = parseFictionalReviewStatus(await read(freshStatusRequestUrl()), now());
     if (status.status === 'unavailable') return status;
     phase = 'health';
     const health = await read(`${status.apiBaseUrl}/health`);
