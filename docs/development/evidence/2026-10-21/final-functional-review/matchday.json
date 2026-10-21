@@ -1,0 +1,26 @@
+{
+  "passed": true,
+  "checkedAt": "2026-10-21T19:33:39.812Z",
+  "artifacts": {
+    "sourceRevision": "7ede8d1ef944823cfd6a5f6965ab51d4c37d286e",
+    "web": {
+      "entry": "/_expo/static/js/web/index-0e10e3d0fbd5528d8ee4e090a5d1e659.js",
+      "sha256": "c007d2543cbff4ce46c1eded82f8ce9d485b2dba7b2fa68f25e1eee7e2e126c7"
+    },
+    "api": {
+      "entry": "apps/api/dist/api.mjs",
+      "sha256": "d1568c20879d2e1df83843fc31e35a6fa053751785560988f53093c546e10798"
+    }
+  },
+  "checks": [
+    "Opening an unprepared fixture cannot claim its controller; saved formation and player snapshots are required first.",
+    "Selected manager account downloads the real service fixture, explicitly claims recording, and records actual attendance through the shared editor.",
+    "A complete eligible staged lineup is saved locally; the independent service read remains unchanged before explicit upload.",
+    "The focused match hides team navigation; Back to team and return preserve the running clock without another event. Explicit kickoff and referee pause use the existing confirmation, journal and canonical upload; an independent HTTP read verifies accepted attendance, lineup, time and unchanged score."
+  ],
+  "acceptedRevision": 12,
+  "acceptedStatus": "first_half_paused",
+  "browserErrors": [],
+  "fixture": "Isolated fictional SQLite; transport-only discovery redirect; actual HTTP commands, no state injection",
+  "nativeDeviceEvidence": false
+}
