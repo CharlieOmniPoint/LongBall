@@ -3,15 +3,17 @@ name: LongBall development checks
 on:
   pull_request:
     branches: [main]
+    paths-ignore: ["docs/development/**", "README.md", "**/README.md"]
   push:
     branches: [main, dev/longball-m0-journey]
+    paths-ignore: ["docs/development/**", "README.md", "**/README.md"]
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: longball-checks-${{ github.workflow }}-${{ github.ref }}
+  group: longball-checks-${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
