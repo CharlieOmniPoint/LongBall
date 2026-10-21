@@ -29,8 +29,9 @@ jobs:
   unsigned_iphoneos:
     if: github.repository == 'CharlieOmniPoint/LongBall' && github.event.repository.private == false && github.ref == 'refs/heads/preview/native-ios-device'
     name: Unsigned iPhoneOS arm64 fictional IPA
-    # Standard free public ARM64 host; the same explicitly selected Xcode.
-    runs-on: macos-26
+    # Standard free public Intel host; iPhoneOS output remains arm64.
+    # ARM64 hosted pools reported capacity constraints during this rehearsal.
+    runs-on: macos-15-intel
     timeout-minutes: 60
     env:
       NATIVE_PLATFORM: ios
