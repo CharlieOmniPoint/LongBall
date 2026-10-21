@@ -106,16 +106,15 @@ export class PostgresTeamPrivilegeRepository
         409,
         "Team privileges changed. Refresh before confirming.",
       );
-    const command = decision.command,
-      receivedAt = this.store.db.applicationContext?.nowMs;
-    if (!Number.isSafeInteger(receivedAt) || !team?.club_id)
+    const command = decision.command;
+    if (!team?.club_id)
       throw new AccessError(
         "TEAM_PRIVILEGES_UNAVAILABLE",
         503,
         "Current team privileges are unavailable.",
       );
     await this.store.execute(
-      "INSERT INTO team_privilege_decisions(team_id,club_id,revision,command_id,actor_id,target_account_id,privilege,suspended,reason_code,private_note,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)",
+      "INSERT INTO team_privilege_decisions(team_id,club_id,revision,command_id,actor_id,target_account_id,privilege,suspended,reason_code,private_note) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)",
       [
         session.teamId,
         team.club_id,
@@ -127,7 +126,6 @@ export class PostgresTeamPrivilegeRepository
         command.type === "privilege.suspended",
         command.reasonCode,
         command.privateNote,
-        receivedAt,
       ],
     );
     await this.store.audit(

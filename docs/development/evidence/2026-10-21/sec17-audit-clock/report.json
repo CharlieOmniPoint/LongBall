@@ -1,0 +1,61 @@
+{
+  "kind": "sec17-current-database-audit-clock",
+  "baseline": "1d11987",
+  "observedAt": "2026-10-21T18:30:15.291073+00:00",
+  "postgresCoreLedger": 15,
+  "proof": {
+    "beforeFix": {
+      "selected": "actual current database time",
+      "result": "failed",
+      "httpStatus": 422,
+      "publicCode": "COMMAND_REJECTED",
+      "clock": "Date.now dynamically; no future-frozen context"
+    },
+    "afterFix": {
+      "selected": "actual current database time",
+      "result": "passed",
+      "selectedTests": 1,
+      "otherTestsFilteredOut": 18,
+      "checks": [
+        "restricted HTTP suspension and reinstatement",
+        "all retained audit fields and database-clock before/after bounds",
+        "exact accepted retry preserves immutable row",
+        "stale revision and forged manager role refused",
+        "caller timestamp field refused",
+        "private note excluded from DTOs",
+        "audit timestamp update refused"
+      ]
+    },
+    "combinedRegressionRun": {
+      "files": [
+        "team-privileges-http.test.ts",
+        "postgres-privacy-migration.test.ts",
+        "push-registrations.test.ts"
+      ],
+      "passed": 34,
+      "failed": 1,
+      "failure": "New actual-clock test used mismatched command/key for forged-role check; corrected exact key; corrected selected test passed afterward.",
+      "includes": [
+        "schema14 to15 all-table row preservation",
+        "migration installation rollback",
+        "schema15 runtime verify/reopen",
+        "DS14 and privacy migration regressions"
+      ]
+    },
+    "rootTypeScript": "passed",
+    "scopedLint": "passed"
+  },
+  "sourceSha256": {
+    "apps/api/migrations/postgresql/015_team_privilege_audit_clock.sql": "51f85dd33068db7321c4be5da053edefc3ce20509607f2862a9859b7ad47efe9",
+    "apps/api/src/pg.ts": "c6f91c5045031bc083aff884e10e5af460548a44a5a8b4354453c2938eebcaae",
+    "apps/api/src/postgres-team-privileges.ts": "19616c8904e740c5891058c41a75782f368515afdf4579522f1bd789b18c4131",
+    "apps/api/src/team-privileges-http.test.ts": "1e0b75a5f23c2b60f848e53571390c80bda1bcf668838f407434436223544e6f",
+    "apps/api/src/postgres-privacy-migration.test.ts": "3065d7a5331165203a19b0e9260c4dbcc4afdbda52e17ebd4c322205ee22b17d",
+    "apps/api/src/push-registrations.test.ts": "a3951c5a80ace5b700259e36bca9cad7771bc503c07055d98a9ff15e30dca90b"
+  },
+  "limits": [
+    "Combined root application verification and operational runtime proofs are repeated after integration.",
+    "No new browser/native-device or production identity-provider proof.",
+    "Existing audit rows are preserved; new decisions use database-stamped receipt time."
+  ]
+}

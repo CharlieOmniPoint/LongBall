@@ -25,6 +25,8 @@ Real browser mutation bodies remain memory-only. Protected native outbox storage
 
 SQLite expansion **9** preserves existing documents, grants, events and receipts. PostgreSQL core migration **013** creates team-wide state and append-only decisions with current-manager row security and a narrow own-permission function. Media feature migration **4** adds current contribution checks and permits a current player's canonical processed-media completion to atomically link its private pending community revision. The API and worker remain non-owner roles; production schema application remains a separate migrator operation. Later feature migrations may advance these ledgers.
 
+PostgreSQL expansion **015** corrects audit clock provenance for installations that already applied 013/014. A database trigger stamps each new decision with the database receipt time; the repository supplies no audit timestamp. Current manager, operation, actor and target checks remain in row security, and existing decisions remain immutable. This avoids comparing a captured request time with a later volatile clock observation. Existing audit rows are preserved.
+
 ## Validation boundary
 
 The focused tests exercise real HTTP requests against isolated fictional SQLite and restricted PostgreSQL, including role/scope denial, stale and exact duplicate decisions, audit/receipt rollback, explicit reinstatement, existing invitation/grant preservation, prepared upload tokens, cross-season persistence, other-team independence, suspension during scanning, private derivative denial and retained-key completion. Shared policy and outbox tests cover exact parsing and manager-bound protected replay. The scanner fixture accepts only the generated geometric test image and is not an antivirus claim.

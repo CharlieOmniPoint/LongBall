@@ -553,6 +553,18 @@ describe.skipIf(!testUrl)("DS14 PostgreSQL additive migration", () => {
       database = client.owner!.db;
     // Construct the actual preceding schema shape, rather than just lowering its ledger.
     await database.query(
+      "DROP TRIGGER team_privilege_decision_received ON longball.team_privilege_decisions",
+    );
+    await database.query(
+      "DROP FUNCTION longball.stamp_team_privilege_decision_received()",
+    );
+    await database.query(
+      "ALTER POLICY team_privilege_decision_insert ON longball.team_privilege_decisions WITH CHECK(longball.team_privilege_manager(club_id,team_id) AND longball.context_json()->>'operation'='privileges.write' AND actor_id=longball.context_json()->>'accountId' AND longball.team_privilege_target(club_id,team_id,target_account_id) AND created_at=longball.context_now())",
+    );
+    await database.query(
+      "DELETE FROM longball.schema_migrations WHERE version=15",
+    );
+    await database.query(
       "DROP FUNCTION longball.push_targets_for_current_job(text)",
     );
     await database.query("DROP TABLE longball.push_registrations");

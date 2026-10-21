@@ -48,6 +48,7 @@ for (const kind of ["SQLite", "PostgreSQL"] as const)
         admin: Pool | null = null,
         database = "";
       let bytes: Buffer;
+      let useCurrentClock = false;
       let scanGate: { entered: () => void; wait: Promise<void> } | null = null;
       const roles: string[] = [];
       const query = async (sql: string, values: unknown[] = []) => {
@@ -156,7 +157,7 @@ for (const kind of ["SQLite", "PostgreSQL"] as const)
         const options = {
           databasePath: join(directory, "service.sqlite"),
           syntheticAuth: true,
-          now: () => now,
+          now: () => (useCurrentClock ? Date.now() : now),
           publicAppEntryUrl: "https://example.invalid/LongBall/",
           invitationPolicyVersion: "explicit-fictional-test-policy",
           mediaScanner: {
@@ -791,6 +792,213 @@ for (const kind of ["SQLite", "PostgreSQL"] as const)
             .status,
         ).toBe(200);
       });
+      if (kind === "PostgreSQL")
+        it("stamps immutable audit evidence at actual current database time through restricted HTTP", async () => {
+          useCurrentClock = true;
+          try {
+            const before = await view(),
+              id = randomUUID(),
+              accountId = target("07");
+            const command = {
+              id,
+              type: "privilege.suspended",
+              expectedRevision: before.revision,
+              targetAccountId: accountId,
+              privilege: "uploads",
+              reasonCode: "current_clock_review",
+              privateNote: "restricted_current_clock_note",
+              confirm: true,
+            };
+            const databaseBefore = Number(
+              (
+                await query(
+                  "SELECT floor(extract(epoch FROM clock_timestamp())*1000)::bigint AS now_ms",
+                )
+              )[0].now_ms,
+            );
+            expect(Math.abs(api.store.now() - Date.now())).toBeLessThan(1000);
+            const accepted = await call("privileges", {
+              key: id,
+              body: { command },
+            });
+            expect(accepted).toMatchObject({
+              status: 200,
+              body: {
+                kind: "team-privilege-receipt",
+                commandId: id,
+                teamId,
+                revision: before.revision + 1,
+              },
+            });
+            const databaseAfter = Number(
+              (
+                await query(
+                  "SELECT floor(extract(epoch FROM clock_timestamp())*1000)::bigint AS now_ms",
+                )
+              )[0].now_ms,
+            );
+            const rows = await query(
+              "SELECT * FROM team_privilege_decisions WHERE command_id=$1",
+              [id],
+            );
+            expect(rows).toHaveLength(1);
+            expect(rows[0]).toEqual({
+              team_id: teamId,
+              club_id: "synthetic-richmond-rovers",
+              revision: before.revision + 1,
+              command_id: id,
+              actor_id: "synthetic-account-manager",
+              target_account_id: accountId,
+              privilege: "uploads",
+              suspended: true,
+              reason_code: "current_clock_review",
+              private_note: "restricted_current_clock_note",
+              created_at: expect.any(Number),
+            });
+            expect(Number(rows[0].created_at)).toBeGreaterThanOrEqual(
+              databaseBefore,
+            );
+            expect(Number(rows[0].created_at)).toBeLessThanOrEqual(
+              databaseAfter,
+            );
+            expect(
+              await call("privileges", { key: id, body: { command } }),
+            ).toEqual(accepted);
+            expect(
+              await query(
+                "SELECT * FROM team_privilege_decisions WHERE command_id=$1",
+                [id],
+              ),
+            ).toEqual(rows);
+            const staleId = randomUUID();
+            expect(
+              (
+                await call("privileges", {
+                  key: staleId,
+                  body: {
+                    command: {
+                      ...command,
+                      id: staleId,
+                      targetAccountId: target("06"),
+                    },
+                  },
+                })
+              ).status,
+            ).toBe(409);
+            expect(
+              (
+                await call("privileges", {
+                  account: accountId,
+                  role: "manager",
+                  key: id,
+                  body: { command },
+                })
+              ).status,
+            ).toBe(404);
+            const forgedTimestampId = randomUUID();
+            expect(
+              (
+                await call("privileges", {
+                  key: forgedTimestampId,
+                  body: {
+                    command: {
+                      ...command,
+                      id: forgedTimestampId,
+                      expectedRevision: before.revision + 1,
+                      createdAtMs: 0,
+                    },
+                  },
+                })
+              ).status,
+            ).toBe(400);
+            expect(
+              JSON.stringify([
+                await view(),
+                (
+                  await call("privileges/own", {
+                    account: accountId,
+                    role: "player",
+                  })
+                ).body,
+              ]),
+            ).not.toMatch(
+              /restricted_current_clock_note|current_clock_review|privateNote|reasonCode/,
+            );
+            const restored = await decision(accountId, "uploads", false);
+            expect(restored.status).toBe(200);
+            await expect(
+              query(
+                "UPDATE team_privilege_decisions SET created_at=0 WHERE command_id=$1",
+                [id],
+              ),
+            ).rejects.toThrow(/Immutable team privilege decision/);
+          } finally {
+            useCurrentClock = false;
+          }
+        });
+      if (kind === "PostgreSQL")
+        it("expands schema14 without rewriting audit rows and rolls back a failed audit-clock installation", async () => {
+          if (!owner) throw new Error("Expected PostgreSQL migration fixture");
+          await query(
+            "DROP TRIGGER team_privilege_decision_received ON team_privilege_decisions",
+          );
+          await query(
+            "DROP FUNCTION longball.stamp_team_privilege_decision_received()",
+          );
+          await query(
+            "ALTER POLICY team_privilege_decision_insert ON team_privilege_decisions WITH CHECK(longball.team_privilege_manager(club_id,team_id) AND longball.context_json()->>'operation'='privileges.write' AND actor_id=longball.context_json()->>'accountId' AND longball.team_privilege_target(club_id,team_id,target_account_id) AND created_at=longball.context_now())",
+          );
+          await query("DELETE FROM schema_migrations WHERE version=15");
+          const snapshot = async () => {
+            const tables = await query(
+                "SELECT tablename FROM pg_tables WHERE schemaname='longball' AND tablename<>'schema_migrations' ORDER BY tablename",
+              ),
+              result: Record<string, unknown> = {};
+            for (const row of tables) {
+              const name = String(row.tablename);
+              expect(name).toMatch(/^[a-z0-9_]+$/);
+              result[name] = await query(
+                `SELECT to_jsonb(t) AS value FROM longball."${name}" t ORDER BY to_jsonb(t)::text`,
+              );
+            }
+            return result;
+          };
+          const before = await snapshot();
+          await query(
+            "CREATE FUNCTION longball.stamp_team_privilege_decision_received() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RETURN NEW; END $$",
+          );
+          await expect(owner.migrate()).rejects.toMatchObject({
+            code: "42723",
+          });
+          expect(
+            await query(
+              "SELECT version FROM schema_migrations WHERE version=15",
+            ),
+          ).toEqual([]);
+          expect(
+            await query(
+              "SELECT tgname FROM pg_trigger WHERE tgname='team_privilege_decision_received'",
+            ),
+          ).toEqual([]);
+          expect(await snapshot()).toEqual(before);
+          await query(
+            "DROP FUNCTION longball.stamp_team_privilege_decision_received()",
+          );
+          await owner.migrate();
+          expect(
+            await query(
+              "SELECT version FROM schema_migrations ORDER BY version",
+            ),
+          ).toEqual(
+            Array.from({ length: 14 }, (_, index) => ({ version: index + 2 })),
+          );
+          expect(await snapshot()).toEqual(before);
+          await owner.migrate();
+          if (!(api.store instanceof PostgresStore))
+            throw new Error("Expected restricted PostgreSQL runtime");
+          await api.store.db.migrate();
+          expect(await snapshot()).toEqual(before);
+        });
       it("rolls back the decision and audit if its receipt cannot commit, then accepts the exact retained retry", async () => {
         const before = (await view()).revision,
           id = randomUUID();
