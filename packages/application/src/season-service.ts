@@ -139,7 +139,7 @@ export function planSeasonRollover(context: SeasonRolloverContext & { command: S
   const sourceProfiles = preparation.profiles.filter(profile => profile.seasonId === old.id && profile.active);
   requireThat(sourceProfiles.length <= 2000 && new Set(sourceProfiles.map(profile => profile.playerId)).size === sourceProfiles.length, 'The source roster must have one distinct active profile for each player.');
   const profiles = command.copyPlayers ? sourceProfiles.map((profile, index) => ({ ...copy(profile), id: `profile-${season.id.slice(0, 60)}-${String(index + 1).padStart(4, '0')}`, seasonId: season.id })) : [];
-  const nextPreparation: PreparationState = { ...copy(preparation), revision: 0, activeSeasonId: season.id, seasons: [season], profiles, fixtures: [], training: [], snapshots: [], appliedCommands: {}, audit: [{ id: command.id, revision: 0, type: 'season.created_from_explicit_assignments' }] };
+  const nextPreparation: PreparationState = { ...copy(preparation), revision: 0, activeSeasonId: season.id, seasons: [season], profiles, fixtures: [], training: [], snapshots: [], matchPlans: [], appliedCommands: {}, audit: [{ id: command.id, revision: 0, type: 'season.created_from_explicit_assignments' }] };
   const nextRecords: RecordsState = { ...copy(records), revision: 0, seasonId: season.id, seasonLabel: season.label, startsOn: season.startDate, endsOn: season.endDate, players: profiles.map(profile => ({ id: profile.playerId, label: profile.displayName })),
     liveMatch: { matchId: '', playedDate: season.startDate, opponent: '', homeAway: 'home', fixtureClass: 'unclassified' }, results: [], trainingAttendance: [], audit: [], appliedCommands: {} };
   const assignedIds = new Set(newMemberships.map(item => item.accountId));

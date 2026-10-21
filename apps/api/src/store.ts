@@ -651,14 +651,22 @@ export class DevelopmentStore {
   }
   preparationCommand(principal: Principal, teamId: string, seasonId: string, command: PreparationCommand): PreparationState {
     const previous = this.preparation(principal, teamId, seasonId);
-    const types = ['club.updated', 'team.updated', 'season.rolled_over', 'profile.saved', 'roster.imported', 'profile.archived', 'formation.saved', 'fixture.saved', 'fixture.status_changed', 'fixture.response_recorded', 'fixture.selection_saved', 'fixture.attendance_recorded', 'fixture.prepared', 'training.series_created', 'training.series_updated', 'training.series_cancelled', 'training.saved', 'training.status_changed', 'training.response_recorded', 'training.attendance_recorded'];
+    const types = ['club.updated', 'team.updated', 'season.rolled_over', 'profile.saved', 'roster.imported', 'profile.archived', 'formation.saved', 'fixture.saved', 'fixture.status_changed', 'fixture.response_recorded', 'fixture.selection_saved', 'fixture.attendance_recorded', 'fixture.prepared', 'match_plan.saved', 'match_plan.applied', 'match_plan.cleared', 'training.series_created', 'training.series_updated', 'training.series_cancelled', 'training.saved', 'training.status_changed', 'training.response_recorded', 'training.attendance_recorded'];
     if (!command || !types.includes(command.type)) bad('Unsupported preparation command.');
     if (command.type === 'season.rolled_over') throw new AccessError('SEASON_ASSIGNMENT_REQUIRED', 503, 'A connected new season requires approved manager/player assignments and explicit spectator renewal. The local rehearsal supports rollover; this service will not save an inaccessible new season or silently copy authority.');
     if (command.type === 'club.updated') {
       assertTeamRole(principal, this.memberships(), teamId, seasonId, ['administrator'], this.now());
       assertAdultAuthority(principal, true, this.now());
     }
-    const state = reducePreparation(previous, command);
+    const protectedFixtureIds: string[] = [];
+    if (command.type === 'match_plan.applied') {
+      const match = this.database.prepare('SELECT state_json FROM matches WHERE id=? AND team_id=? AND season_id=?').get(command.fixtureId, teamId, seasonId) as { state_json: string } | undefined;
+      if (match) {
+        const accepted = JSON.parse(match.state_json) as MatchState;
+        if (accepted.status !== 'preparation' || accepted.revision !== 0 || this.database.prepare('SELECT match_id FROM controller_grants WHERE match_id=?').get(command.fixtureId) || this.database.prepare('SELECT event_id FROM events WHERE match_id=? LIMIT 1').get(command.fixtureId)) protectedFixtureIds.push(command.fixtureId);
+      }
+    }
+    const state = reducePreparation(previous, command, { nowMs: this.now(), protectedFixtureIds });
     if (command.type === 'fixture.prepared') {
       const snapshot = state.snapshots.find(snapshot => snapshot.fixtureId === command.fixtureId && snapshot.preparedRevision === command.expectedRevision + 1);
       if (!snapshot) throw new AccessError('PREPARATION_SNAPSHOT_REQUIRED', 409, 'The immutable prepared fixture snapshot is unavailable.');

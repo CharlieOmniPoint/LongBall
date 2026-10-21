@@ -1,5 +1,6 @@
 import { applyTrainingSeries, type TrainingSeriesPayload } from './training-series';
 
+import { applyMatchPlan, saveMatchPlan, validateFixtureMatchPlan, type FixtureMatchPlanDraft, type MatchPlanApplyInput, type MatchPlanContext, type MatchPlanSaveInput, type ReusableMatchPlan } from './match-plans';
 /** Team preparation is a serializable local projection; authentication belongs to the application boundary. */
 export type LogoChoice = "roundel" | "shield" | "ball";
 export type PositionCode =
@@ -74,6 +75,7 @@ export interface FixtureDraft {
   plannedHalfDurationMs: number;
 }
 export interface PreparationFixture extends FixtureDraft {
+  matchPlanDraft?: FixtureMatchPlanDraft;
   status: "scheduled" | "postponed" | "cancelled";
   selectedProfileIds: string[];
   responses: Record<string, AvailabilityResponse>;
@@ -101,6 +103,7 @@ export interface PreparationTraining extends TrainingDraft {
   attendance: Record<string, PreparationAttendance>;
 }
 export interface PreparedFixtureSnapshot {
+  matchPlanDraft?: FixtureMatchPlanDraft;
   id: string;
   fixtureId: string;
   seasonId: string;
@@ -131,6 +134,7 @@ export interface PreparationState {
   fixtures: PreparationFixture[];
   training: PreparationTraining[];
   snapshots: PreparedFixtureSnapshot[];
+  matchPlans?: ReusableMatchPlan[];
   appliedCommands: Record<string, string>;
   audit: { id: string; revision: number; type: string }[];
 }
@@ -192,6 +196,9 @@ export type PreparationCommand = PreparationCommandBase &
       }
     | { type: "fixture.prepared"; fixtureId: string; formationId: string }
     | TrainingSeriesPayload
+    | ({ type: "match_plan.saved" } & MatchPlanSaveInput)
+    | ({ type: "match_plan.applied" } & MatchPlanApplyInput)
+    | { type: "match_plan.cleared"; fixtureId: string }
     | { type: "training.saved"; training: TrainingDraft }
     | {
         type: "training.status_changed";
@@ -412,7 +419,8 @@ export function prepareFixtureSnapshot(
     "Only a scheduled match can be prepared.",
   );
   activeSeason(state, fixture.seasonId);
-  const formation = state.formations.find(
+  if (fixture.matchPlanDraft && fixture.matchPlanDraft.formation.id === formationId) validateFixtureMatchPlan(state, fixture);
+  const formation = fixture.matchPlanDraft && fixture.matchPlanDraft.formation.id === formationId ? fixture.matchPlanDraft.formation : state.formations.find(
     (item) => item.id === (formationId ?? `formation-${fixture.format}`),
   );
   requireThat(
@@ -436,6 +444,7 @@ export function prepareFixtureSnapshot(
     selectedProfileIds: _selected,
     history: _history,
     status: _status,
+    matchPlanDraft: _planDraft,
     ...draft
   } = fixture;
   return clone({
@@ -453,6 +462,7 @@ export function prepareFixtureSnapshot(
         fixture.attendance[profile.id] ?? "not_recorded",
       ]),
     ),
+    ...(fixture.matchPlanDraft?.formation.id === formation.id ? { matchPlanDraft: fixture.matchPlanDraft } : {}),
   });
 }
 
@@ -600,6 +610,7 @@ export function validateRosterImport(
 export function reducePreparation(
   previous: PreparationState,
   command: PreparationCommand,
+  context: MatchPlanContext = {},
 ): PreparationState {
   requireThat(
     command.id && typeof command.id === "string",
@@ -778,6 +789,7 @@ export function reducePreparation(
         selectedProfileIds: existing?.selectedProfileIds ?? [],
         responses: existing?.responses ?? {},
         attendance: existing?.attendance ?? {},
+        ...(existing?.matchPlanDraft ? { matchPlanDraft: existing.matchPlanDraft } : {}),
         history: [
           ...(existing?.history ?? []),
           {
@@ -860,6 +872,24 @@ export function reducePreparation(
     case "training.series_updated":
     case "training.series_cancelled": {
       applyTrainingSeries(state, command, draft => validateTraining(state, draft));
+      break;
+    }
+    case "match_plan.saved": {
+      const { type: _type, id: _id, expectedRevision: _revision, ...input } = command;
+      const plan = saveMatchPlan(state, input);
+      state.matchPlans = [...(state.matchPlans ?? []), plan];
+      break;
+    }
+    case "match_plan.applied": {
+      const { type: _type, id: _id, expectedRevision: _revision, ...input } = command;
+      const draft = applyMatchPlan(state, input, context);
+      state.fixtures.find(item => item.id === command.fixtureId)!.matchPlanDraft = draft;
+      break;
+    }
+    case "match_plan.cleared": {
+      const fixture = state.fixtures.find(item => item.id === command.fixtureId);
+      requireThat(fixture && fixture.seasonId === state.activeSeasonId, 'Choose a fixture in the current season.');
+      delete fixture.matchPlanDraft;
       break;
     }
     case "training.saved": {

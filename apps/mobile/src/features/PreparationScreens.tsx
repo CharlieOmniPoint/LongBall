@@ -35,6 +35,7 @@ import {
 } from "@longball/application/calendar-export";
 import { deliverCalendarExport } from "../platform/calendar-export";
 import { FormationPositionEditor } from "./FormationPositionEditor";
+import { ReusableMatchPlans } from "./ReusableMatchPlans";
 import { randomUUID } from "../platform/id";
 import { Button, Card, colors, Icon, Notice, Pill } from "../ui";
 
@@ -1521,11 +1522,12 @@ function FixtureDetail({
 }) {
   const players = seasonPlayers(state, fixture.seasonId);
   const scheduled = fixture.status === "scheduled";
-  const [formationId, setFormationId] = useState(`formation-${fixture.format}`);
+  const [formationId, setFormationId] = useState(fixture.matchPlanDraft?.formation.id ?? `formation-${fixture.format}`);
+  const availableFormations = [...(fixture.matchPlanDraft ? [fixture.matchPlanDraft.formation] : []), ...state.formations];
   const formation =
-    state.formations.find(
+    availableFormations.find(
       (item) => item.id === formationId && item.format === fixture.format,
-    ) ?? state.formations.find((item) => item.format === fixture.format);
+    ) ?? availableFormations.find((item) => item.format === fixture.format);
   return (
     <>
       <Card>
@@ -1668,7 +1670,7 @@ function FixtureDetail({
           <Choice
             label="Saved formation for this match"
             value={formation?.id ?? ""}
-            options={state.formations
+            options={availableFormations
               .filter((item) => item.format === fixture.format)
               .map((item) => ({
                 value: item.id,
@@ -1695,6 +1697,7 @@ function FixtureDetail({
           />
         </>
       )}
+      <ReusableMatchPlans key={fixture.id} state={state} fixture={fixture} busy={disabled} onCommand={async command => { const saved = await onCommand(command); if (saved && command.type === 'match_plan.applied') setFormationId(`match-plan:${command.planId}:${command.planVersion}`); if (saved && command.type === 'match_plan.cleared') setFormationId(`formation-${fixture.format}`); return saved; }} onPrepare={() => formation ? onCommand({ type: 'fixture.prepared', fixtureId: fixture.id, formationId: formation.id }) : Promise.resolve(false)} />
       <Text style={s.section}>Fixture history</Text>
       {fixture.history.map((item) => (
         <Text key={`${item.revision}-${item.action}`} style={s.small}>

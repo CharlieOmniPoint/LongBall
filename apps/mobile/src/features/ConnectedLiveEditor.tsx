@@ -25,6 +25,7 @@ import { Pitch } from "../ui/Pitch";
 import { colors, typography } from "../ui/tokens";
 import { formatTime } from "../useMatch";
 import { LiveEventsPanel } from "./LiveEventsPanel";
+import { reviewPreparedMatchPlanLineup } from '@longball/application/match-plans';
 
 export interface ConnectedLiveEditorProps {
   match: MatchState;
@@ -198,6 +199,9 @@ export function ConnectedLiveEditor(props: ConnectedLiveEditorProps) {
   const suggestedErrors = suggestedDraft
     ? validateLineup(props.match, suggestedDraft.lineup, !preparation)
     : [];
+  const reusableProposal = props.match.config.initialLineupProposal;
+  let reusableProposalError: string | null = null;
+  if (props.match.status === 'preparation' && reusableProposal) { try { reviewPreparedMatchPlanLineup(props.match); } catch (cause) { reusableProposalError = cause instanceof Error ? cause.message : 'Review actual check-in first.'; } }
   const slot = props.match.config.slots?.find(
     (value) => value.slotId === selectedSlot,
   );
@@ -375,6 +379,7 @@ export function ConnectedLiveEditor(props: ConnectedLiveEditorProps) {
                   ? "Prepare the saved formation"
                   : "Review a lineup change"}
               </Text>
+              {props.match.status === 'preparation' && reusableProposal && <View style={styles.stack}><Notice>Saved match-plan proposal. Actual check-in is still required; reviewing this draft never puts an absent player on the pitch.</Notice>{reusableProposalError && <Text style={typography.muted}>{reusableProposalError}</Text>}<Button label="Review saved match-plan lineup" disabled={busy || Boolean(reusableProposalError)} onPress={() => { try { const reviewed = reviewPreparedMatchPlanLineup(current.current.match); setLineupDraft({ matchId: current.current.match.config.matchId, ...reviewed }); setSelectedSlot(null); } catch (cause) { setSaveError(cause instanceof Error ? cause.message : 'The saved proposal is no longer applicable.'); } }} /></View>}
               <Text style={typography.muted}>
                 {preparation
                   ? "Assign the actual present players to the saved places. Kickoff commits the staged lineup."

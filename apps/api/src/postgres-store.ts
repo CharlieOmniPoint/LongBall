@@ -820,7 +820,7 @@ private async projectPreparationRecords(teamId: string, seasonId: string, prepar
 }
 async preparationCommand(principal: Principal, teamId: string, seasonId: string, command: PreparationCommand): Promise<PreparationState> {
     const previous = (await this.preparation(principal, teamId, seasonId));
-    const types = ['club.updated', 'team.updated', 'season.rolled_over', 'profile.saved', 'roster.imported', 'profile.archived', 'formation.saved', 'fixture.saved', 'fixture.status_changed', 'fixture.response_recorded', 'fixture.selection_saved', 'fixture.attendance_recorded', 'fixture.prepared', 'training.series_created', 'training.series_updated', 'training.series_cancelled', 'training.saved', 'training.status_changed', 'training.response_recorded', 'training.attendance_recorded'];
+    const types = ['club.updated', 'team.updated', 'season.rolled_over', 'profile.saved', 'roster.imported', 'profile.archived', 'formation.saved', 'fixture.saved', 'fixture.status_changed', 'fixture.response_recorded', 'fixture.selection_saved', 'fixture.attendance_recorded', 'fixture.prepared', 'match_plan.saved', 'match_plan.applied', 'match_plan.cleared', 'training.series_created', 'training.series_updated', 'training.series_cancelled', 'training.saved', 'training.status_changed', 'training.response_recorded', 'training.attendance_recorded'];
     if (!command || !types.includes(command.type))
         bad('Unsupported preparation command.');
     if (command.type === 'season.rolled_over')
@@ -829,7 +829,15 @@ async preparationCommand(principal: Principal, teamId: string, seasonId: string,
         assertTeamRole(principal, (await this.memberships()), teamId, seasonId, ['administrator'], this.now());
         assertAdultAuthority(principal, true, this.now());
     }
-    const state = reducePreparation(previous, command);
+    const protectedFixtureIds: string[] = [];
+    if (command.type === 'match_plan.applied') {
+        const match = await this.one('SELECT state_json FROM matches WHERE id=$1 AND team_id=$2 AND season_id=$3', [command.fixtureId, teamId, seasonId]) as { state_json: string } | undefined;
+        if (match) {
+            const accepted = JSON.parse(match.state_json) as MatchState;
+            if (accepted.status !== 'preparation' || accepted.revision !== 0 || await this.one('SELECT match_id FROM controller_grants WHERE match_id=$1', [command.fixtureId]) || await this.one('SELECT event_id FROM events WHERE match_id=$1 LIMIT 1', [command.fixtureId])) protectedFixtureIds.push(command.fixtureId);
+        }
+    }
+    const state = reducePreparation(previous, command, { nowMs: this.now(), protectedFixtureIds });
     if (command.type === 'fixture.prepared') {
         const snapshot = state.snapshots.find(snapshot => snapshot.fixtureId === command.fixtureId && snapshot.preparedRevision === command.expectedRevision + 1);
         if (!snapshot)

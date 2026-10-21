@@ -24,6 +24,7 @@ import {
   type Attendance,
   type MatchConfig,
 } from "@longball/domain";
+import { reviewPreparedMatchPlanLineup } from '@longball/application/match-plans';
 import { romaFixture } from "@longball/testing";
 import {
   fixtureMatchConfig,
@@ -371,7 +372,7 @@ function LongBall({ initialRole, onLeaveReview, onSignIn, invitationDestination 
       return false;
     }
     return application.change((current) => {
-      const preparation = reducePreparation(current.preparation, command);
+      const preparation = reducePreparation(current.preparation, command, { protectedFixtureIds: [...Object.values(current.recordsBySeason).flatMap(records => records.results.map(record => record.id)), ...(state && state.revision > 0 ? [state.config.matchId] : [])] });
       let next = reconcileSeason({ ...current, preparation });
       const seasonId = preparation.activeSeasonId;
       const seasonRecords = next.recordsBySeason[seasonId];
@@ -1124,6 +1125,7 @@ function LongBall({ initialRole, onLeaveReview, onSignIn, invitationDestination 
                       testID="place-seven"
                     />
                   )}
+                  {!started && state.config.initialLineupProposal && <Card><Text style={s.section}>Saved reusable lineup proposal</Text><Text style={s.small}>Actual attendance and eligibility are checked before staging. This does not start the match.</Text><Button label="Stage reviewed match-plan lineup" variant="secondary" disabled={busy || present < capacity} onPress={() => { try { const reviewed = reviewPreparedMatchPlanLineup(state); void send({ type: 'lineup.staged', lineup: reviewed.lineup }); } catch (cause) { setLocalError(cause instanceof Error ? cause.message : 'Review current check-in before using this proposal.'); } }} /></Card>}
                   <Pitch
                     lineup={allocation}
                     players={state.config.players}

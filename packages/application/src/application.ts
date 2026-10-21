@@ -59,7 +59,7 @@ export function fixtureMatchConfig(
   const keepers = snapshot.profiles.filter(
     (player) => goalkeeperChoice(player) > 0,
   );
-  return {
+  const config: MatchConfig = {
     matchId: snapshot.fixtureId,
     players: snapshot.profiles.map((player) => ({
       id: player.playerId,
@@ -70,6 +70,7 @@ export function fixtureMatchConfig(
     pitchPlaces: snapshot.fixture.format,
     plannedHalfDurationMs: snapshot.fixture.plannedHalfDurationMs,
     fixedKeeperId: keepers.length === 1 ? keepers[0].playerId : null,
+    ...(snapshot.matchPlanDraft ? { initialPolicyProposal: snapshot.matchPlanDraft.settings, initialLineupProposal: snapshot.matchPlanDraft.allocations.map(row => ({ ...row })) } : {}),
     initialAttendance: { ...snapshot.attendance },
     slots: snapshot.formation.slots.map((slot) => ({
       slotId: slot.id,
@@ -95,6 +96,7 @@ export function fixtureMatchConfig(
       clubName: preparation.club.name,
     },
   };
+  return config;
 }
 
 /** A rollover starts new totals and grants; old season projections remain intact. */
