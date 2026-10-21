@@ -388,6 +388,7 @@ export function EntryApplication({
       {authOpened && (
         <View style={[s.root, route !== "auth" && s.hidden]}>
           <ConnectedApplication
+            visible={route === "auth"}
             initialIntent={intent}
             intentRevision={intentRevision}
             initialDestination={destination}

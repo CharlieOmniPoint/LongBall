@@ -208,6 +208,8 @@ function WorkspaceFrame({ fullScreen, fixedMatch, resetKey, footer, children }: 
 }
 
 export interface ConnectedWorkspaceProps {
+  /** A retained hidden workspace preserves its journal without polling protected views. */
+  active?: boolean;
   initialConnection?: {
     baseUrl: string;
     mode: "synthetic" | "oidc";
@@ -1767,7 +1769,7 @@ function WorkspaceSession({
 
   // Shared viewers receive accepted score updates without a manual Refresh. Do not
   // reload preparation forms or replace the paginated history/cursor while polling.
-  const sharedRefreshEnabled = Boolean(expectedBinding && membership &&
+  const sharedRefreshEnabled = Boolean(props.active !== false && expectedBinding && membership &&
     (membership.role === "player" || membership.role === "spectator" || membership.role === "manager" && tab === "centre") &&
     ["home", "centre", "reports", "community"].includes(tab) &&
     !busy && !pending && !loadingMoreMatches && !uploadRetained && !brandRetained && !invitationHeld?.active);

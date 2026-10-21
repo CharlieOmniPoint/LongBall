@@ -31,6 +31,7 @@ import {
 import { activationRelayChannelName } from "@longball/application/activation-relay";
 
 export interface ConnectedApplicationProps {
+  visible?: boolean;
   onBackToWelcome?: () => void;
   initialIntent?: "sign-in" | "activate";
   intentRevision?: number;
@@ -39,6 +40,7 @@ export interface ConnectedApplicationProps {
 }
 /** Connected journeys keep one memory boundary through welcome/account navigation. */
 export function ConnectedApplication({
+  visible = true,
   onBackToWelcome,
   initialIntent = "sign-in",
   intentRevision = 0,
@@ -411,6 +413,7 @@ export function ConnectedApplication({
           }
         >
           <ConnectedWorkspace
+            active={visible && foreground && !showAccount}
             key={identity}
             journal={storage.journal}
             deviceId={storage.deviceId}
