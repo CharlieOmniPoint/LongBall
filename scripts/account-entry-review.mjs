@@ -61,6 +61,7 @@ try {
         await page.getByTestId('preparation-create-event').waitFor();
         assert.equal(await page.getByRole('button', { name: 'People', exact: true }).count(), 0);
       } else {
+        await page.getByTestId(role === 'player' ? 'workspace-player-home' : 'workspace-match-centre').waitFor();
         await page.getByTestId('workspace-tab-centre').waitFor();
         assert.equal(await page.getByTestId('workspace-tab-controller').count(), 0);
         assert.equal(await page.getByRole('button', { name: 'People', exact: true }).count(), 0);

@@ -2732,8 +2732,9 @@ function WorkspaceSession({
         )}
       {tab === "home" && membership?.role === "player" && !own && (
         <Notice>
-          Your current player home is unavailable. Refresh after the service
-          confirms your own team and season assignment.
+          {busy
+            ? "Loading your player home…"
+            : "Your current player home is unavailable. Refresh after the service confirms your own team and season assignment."}
         </Notice>
       )}
       {tab === "clubs" && administrator && configuration && (
@@ -2834,7 +2835,9 @@ function WorkspaceSession({
           />
         ) : (
           <Notice>
-            Match updates are unavailable in this current authorised context.
+            {busy
+              ? "Loading permitted match updates…"
+              : "Match updates are unavailable in this current authorised context."}
           </Notice>
         ))}
       {(tab === "schedule" || tab === "team" || tab === "settings") &&
