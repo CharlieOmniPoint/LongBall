@@ -1,3 +1,5 @@
+import { readReportExportOptions } from '../../api/src/report-export-config';
+import { runDueReportExports } from './report-export-jobs';
 import { DevelopmentStore } from '../../api/src/store';
 import { runDueJobs } from './jobs';
 import { PostgresStore } from '../../api/src/postgres-store';
@@ -11,8 +13,9 @@ const migrationMode=process.env.LONGBALL_DATABASE_MIGRATION_MODE??(process.env.L
 if(!['apply','verify'].includes(migrationMode)||process.env.NODE_ENV==='production'&&migrationMode!=='verify')throw new Error('The production worker verifies schemas; use the dedicated operator migration command.');
 const store=connectionString?await PostgresStore.open(connectionString,Date.now,{migrationMode:migrationMode as 'apply'|'verify'}):new DevelopmentStore(process.env.LONGBALL_API_DATABASE??'.local/api/longball.sqlite');
 if(store instanceof PostgresStore){try{await store.assertRuntimeRole('worker');}catch(error){await store.close();throw error;}}
+const reportExports=readReportExportOptions(process.env);
 let running=false;
-const run = async () => { if(running)return;running=true;try{const result=store instanceof PostgresStore?await runDuePostgresJobs(store):runDueJobs(store);const notifications=await runDueTeamNotifications(store);if(result.completed||result.retried||result.failed||Object.values(notifications).some(Boolean))console.log(JSON.stringify({worker:connectionString?'longball-postgresql':'longball-fictional',...result,notifications}));}finally{running=false;} };
+const run = async () => { if(running)return;running=true;try{const result=store instanceof PostgresStore?await runDuePostgresJobs(store):runDueJobs(store);const notifications=await runDueTeamNotifications(store);const exports=await runDueReportExports(store,reportExports);if(result.completed||result.retried||result.failed||Object.values(notifications).some(Boolean)||Object.values(exports).some(Boolean))console.log(JSON.stringify({worker:connectionString?'longball-postgresql':'longball-fictional',...result,notifications,exports}));}finally{running=false;} };
 await run();
 if (process.argv.includes('--once')) await store.close();
 else {

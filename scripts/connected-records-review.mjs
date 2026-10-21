@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
-import { spawn } from "node:child_process";
+import { spawn, execFileSync } from "node:child_process";
+import { randomBytes } from "node:crypto";
 import { existsSync, createWriteStream } from "node:fs";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile, unlink } from "node:fs/promises";
 import path from "node:path";
 import { chromium } from "playwright";
 import { changeWorkspaceContext, enterFictionalReview, openWorkspaceTab, selectWorkspaceContext } from "./review-entry.mjs";
@@ -16,12 +17,15 @@ const teamId = "synthetic-roma-u10",
   seasonId = "synthetic-season-2026-27";
 const matchId = "synthetic-roma-maple-2026-10-24",
   alias = "connected-records-review-phone";
-const directory = path.resolve(".local/connected-records-review");
+const directory = path.resolve(process.env.LONGBALL_REVIEW_OUTPUT_DIRECTORY ?? ".local/connected-records-review");
 const runId = new Date().toISOString().replaceAll(/[^0-9]/g, "");
+const scenarioFilter = process.env.LONGBALL_RECORDS_REVIEW_SCENARIO ?? "";
 const checks = [],
   errors = [];
-let server, stream, browser, context, page;
+const exportJobs = process.env.LONGBALL_REVIEW_EXPORT_JOBS === "1";
+let server, stream, worker, workerStream, exportKeyFile, browser, context, page;
 let inspectionWindowStartedAt = null;
+let sensitiveInvitationVisible = false;
 await mkdir(directory, { recursive: true });
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 async function poll(read, predicate, label) {
@@ -73,9 +77,9 @@ const input = (name, value) =>
   page.getByLabel(name, { exact: true }).fill(value);
 const tab = (name) => openWorkspaceTab(page, name);
 async function settleWorkspace() {
-  const refresh = page.getByRole("button", {name: "Refresh service views", exact: true});
-  await refresh.waitFor();
-  await poll(() => refresh.isEnabled(), Boolean, "The local receipt and refreshed service views settled");
+  const navigation = page.getByTestId("workspace-context-ready");
+  await navigation.waitFor();
+  await poll(() => navigation.getByRole("tab").first().isEnabled(), Boolean, "The local receipt and current workspace navigation settled");
 }
 
 async function picture(name) {
@@ -96,21 +100,29 @@ async function startAPI() {
   const url = new URL(api);
   assert(["127.0.0.1", "localhost"].includes(url.hostname));
   stream = createWriteStream(path.join(directory, "api.log"));
-  server = spawn(process.execPath, ["apps/api/dist/api.mjs"], {
-    cwd: process.cwd(),
-    env: {
+  if (exportJobs) {
+    exportKeyFile = path.join(directory, `${runId}-export.key`);
+    await writeFile(exportKeyFile, randomBytes(32).toString("hex") + "\n", { mode: 0o600, flag: "wx" });
+  }
+  const runtimeEnvironment = {
       ...process.env,
       NODE_ENV: "development",
       LONGBALL_SYNTHETIC_AUTH: "1",
+      LONGBALL_DEMO_SCENARIO: "0",
+      LONGBALL_DATABASE_URL: "",
+      LONGBALL_DATABASE_URL_FILE: "",
       LONGBALL_API_HOST: "127.0.0.1",
       LONGBALL_API_PORT: url.port,
       LONGBALL_API_DATABASE: path.join(directory, `${runId}.sqlite`),
       LONGBALL_MEDIA_DIRECTORY: path.join(directory, `${runId}-media`),
-      LONGBALL_API_ORIGINS: new URL(baseURL).origin,
+      LONGBALL_API_ORIGINS: [new URL(baseURL).origin, `http://localhost:${new URL(baseURL).port}`].join(","),
       LONGBALL_CLAMSCAN_PATH: "",
-    },
-    stdio: ["ignore", "pipe", "pipe"],
-  });
+      LONGBALL_PUBLIC_APP_ENTRY_URL: "http://localhost:" + new URL(baseURL).port + "/",
+      LONGBALL_INVITATION_POLICY_VERSION: "isolated-browser-invitation-v1",
+      ...(exportKeyFile ? { LONGBALL_EXPORT_ENCRYPTION_KEY_FILE: exportKeyFile, LONGBALL_EXPORT_TTL_MS: "3600000" } : {}),
+  };
+  const apiBundle = process.env.LONGBALL_REVIEW_API_BUNDLE ?? "apps/api/dist/api.mjs";
+  server = spawn(process.execPath, [apiBundle], { cwd: process.cwd(), env: runtimeEnvironment, stdio: ["ignore", "pipe", "pipe"] });
   server.stdout.pipe(stream);
   server.stderr.pipe(stream);
   await poll(
@@ -126,6 +138,11 @@ async function startAPI() {
     Boolean,
     "Start isolated fictional API",
   );
+  if (exportJobs) {
+    workerStream = createWriteStream(path.join(directory, "worker.log"));
+    worker = spawn(process.execPath, [path.join(path.dirname(apiBundle), "worker.mjs")], { cwd: process.cwd(), env: runtimeEnvironment, stdio: ["ignore", "pipe", "pipe"] });
+    worker.stdout.pipe(workerStream); worker.stderr.pipe(workerStream);
+  }
 }
 async function stored() {
   return page.evaluate(
@@ -165,29 +182,65 @@ async function confirm(name, status) {
   return waitController((doc) => doc.localState.status === status, name);
 }
 async function exportFile(id) {
-  const event = page.waitForEvent("download");
+  const event = page.waitForEvent("download", { timeout: 45_000 });
+  void event.catch(() => {}); // Preserve the active assertion if a later poll fails and closes the context.
   await page.getByTestId(id).click();
+  if (exportJobs && id !== "records-export-json") {
+    const prepared = page.getByTestId("records-export-download");
+    await poll(async () => {
+      if (await prepared.isVisible() && await prepared.isEnabled()) return true;
+      const check = page.getByTestId("records-export-status");
+      if (await check.isVisible() && await check.isEnabled()) await check.click();
+      await sleep(700);
+      return false;
+    }, Boolean, "The actual worker prepared the scoped export");
+    await prepared.click();
+  }
   const download = await event;
-  const destination = path.join(directory, download.suggestedFilename());
+  const destination = path.join(directory, path.basename(download.suggestedFilename()));
   await download.saveAs(destination);
+  if (id === "records-export-pdf") {
+    const bytes = await readFile(destination);
+    assert.equal(bytes.subarray(0, 5).toString("ascii"), "%PDF-");
+    assert(bytes.length > 1_000 && bytes.length <= 5 * 1024 * 1024, "PDF is a bounded real binary document");
+    if (existsSync("/usr/bin/pdftotext")) {
+      const text = execFileSync("/usr/bin/pdftotext", [destination, "-"], { encoding: "utf8", maxBuffer: 6 * 1024 * 1024 });
+      assert.match(text, /Maple FC/);
+      assert.match(text, /Roma/);
+    }
+    return bytes;
+  }
   return readFile(destination, "utf8");
 }
-async function enter(account = "Alex Morgan · Manager") {
-  await page.goto(baseURL, { waitUntil: "networkidle" });
+async function enter(account = "Alex Morgan · Manager", entry = baseURL) {
+  try { await page.goto(entry, { waitUntil: "networkidle" }); }
+  catch { throw new Error("The browser review entry could not open. Invitation details were not logged."); }
   await enterFictionalReview(page);
   await page.getByTestId("prepare-match").waitFor();
-  await button("More");
-  await button("Service and controller");
+  if (new URL(entry).hash) {
+    await page.getByTestId("review-received-service-invitation").click();
+    assert(new URL(page.url()).hash === "", "Received capability is removed from the browser address.");
+  } else {
+    await button("More");
+    await button("Service and controller");
+  }
   await input("Workspace API URL", api);
-  await button("Fictional API review");
+  await button("Demo API review");
   await button(account);
   await page.getByTestId("workspace-connect").click();
   if (account !== "Casey Bennett · Invite recipient") await selectWorkspaceContext(page);
-  await page.getByTestId("workspace-tab-reports").waitFor();
-  if (account === "Alex Morgan · Manager")
+  if (account === "Casey Bennett · Invite recipient") {
+    await button("Review received season invitation");
+    await page.getByTestId("connected-invitations").waitFor();
+  }
+  else await page.getByTestId("workspace-context-ready").waitFor();
+  if (account === "Alex Morgan · Manager") {
+    await tab("schedule");
     await page.getByTestId("preparation-create-event").waitFor();
+  }
 }
 async function scenario(name, action) {
+  if (scenarioFilter && !name.startsWith(scenarioFilter)) return;
   const detail = await action();
   checks.push({ name, status: "passed", detail });
   console.log(`PASSED ${name}`);
@@ -376,7 +429,9 @@ try {
       "Completed canonical match accepted",
     );
     await page.clock.resume();
+    await tab("more");
     await button("Refresh service views");
+    await settleWorkspace();
     await tab("reports");
     let value = await json(scoped("records"));
     const offered = value.contexts.find((row) => row.matchId === matchId);
@@ -418,7 +473,7 @@ try {
       document.dataCoverage.includesInventedHistoricalMinutes,
       false,
     );
-    assert.equal(document.results.unknownScoreCount, 1);
+    assert.equal(document.results.unknownScoreCount, checks.some(check => check.name.startsWith("01-")) ? 1 : 0, "Only the explicitly entered unknown historical result is counted.");
     assert(document.policyFingerprint);
     const csv = await exportFile("records-export-csv");
     assert.match(csv, /"projectionVersion"/);
@@ -429,12 +484,14 @@ try {
     assert.equal(matchExport.reportType, "match");
     assert.equal(matchExport.matches.length, 1);
     assert.equal(matchExport.matches[0].matchId, matchId);
+    if (exportJobs) await exportFile("records-export-pdf");
     await picture("02-accepted-archive-and-exports");
     return {
       archivedSourceRevision: archived.sourceMatchRevision,
       recordedActiveMs: archived.actualActiveDurationMs,
       explicitContext: true,
       browserJsonCsvDownloads: true,
+      encryptedCsvAndPdfJobsTested: exportJobs,
       nativeShareTested: false,
     };
   });
@@ -459,7 +516,8 @@ try {
       await openWorkspaceTab(page, "settings");
       await page.getByTestId("administrator-configuration").waitFor();
       assert.equal(await page.getByTestId("workspace-tab-reports").count(), 0);
-      assert.equal(await page.getByTestId("workspace-tab-team").count(), 0);
+      assert.equal(await page.getByTestId("workspace-tab-team").getAttribute("aria-label"), "Teams");
+      assert.equal(await page.getByRole("button", { name: "Edit Oliver Bennett", exact: true }).count(), 0, "Administrator team configuration does not expose the private player roster.");
       const safe = await json(scoped("configuration"), {
         role: "administrator",
       });
@@ -572,9 +630,10 @@ try {
         { headers: { Authorization: "Bearer synthetic-spectator" } },
       );
       assert.equal(notRenewed.status, 404);
+      await tab("schedule");
       await page.getByTestId("preparation-create-event").waitFor();
       await settleWorkspace();
-      await button(`${teamId} · ${seasonId}`);
+      await changeWorkspaceContext(page, "manager", { teamId, seasonId });
       await settleWorkspace();
       await tab("seasons");
       await page.getByText(/The next season already exists/).waitFor();
@@ -636,21 +695,20 @@ try {
       };
       await page.route(matchRecords, deny);
       try {
+        await tab("more");
         await button("Refresh service views");
         await poll(
           async () => responseHeld,
           Boolean,
           "Records response held while parallel private preparation loads",
         );
-        await page
-          .getByRole("button", { name: "Edit Oliver Bennett", exact: true })
-          .waitFor();
         release();
         await page
           .getByText(
             /Private workspace views were closed because the service refused this scope/,
           )
           .waitFor();
+        assert.equal(await page.getByTestId("workspace-context-ready").count(), 0, "A refused scope clears the stale role and its navigation.");
         assert.equal(
           await page
             .getByRole("button", { name: "Edit Oliver Bennett", exact: true })
@@ -669,7 +727,12 @@ try {
           freshIdentities += 1;
       };
       page.on("request", observe);
-      await button("Refresh service views");
+      const retry = page.getByRole("button", { name: "Refresh service views", exact: true });
+      await retry.waitFor();
+      await retry.click();
+      await selectWorkspaceContext(page, "manager", { teamId, seasonId });
+      await settleWorkspace();
+      await tab("team");
       await page
         .getByRole("button", { name: "Edit Oliver Bennett", exact: true })
         .waitFor();
@@ -682,6 +745,7 @@ try {
         delayed403Fixture: true,
         realMembershipRevocationTested: false,
         parallelPrivateRepliesClosed: true,
+        staleRoleAndNavigationCleared: true,
         freshIdentityRequiredToReopen: true,
       };
     },
@@ -690,20 +754,19 @@ try {
   await scenario(
     "05-new-account-invitation-remains-online-and-usable",
     async () => {
-      await tab("community");
-      await button("Acknowledge sharing a limited season invitation");
-      await button("Create service invitation code");
-      const invitations = await poll(
-        () => json(scoped("community")),
-        (value) =>
-          value.invitations.some(
-            (item) => !item.revokedAtMs && !item.acceptedBy,
-          ),
-        "Create actual source-season invitation",
-      );
-      const invitation = invitations.invitations.find(
-        (item) => !item.revokedAtMs && !item.acceptedBy,
-      );
+      await tab("invitations");
+      await page.getByTestId("invitation-hours").fill("24");
+      sensitiveInvitationVisible = true;
+      await page.getByTestId("invitation-create").click();
+      const disclosure = page.getByLabel("One-time spectator invitation link", { exact: true });
+      await disclosure.waitFor();
+      const issuedUrl = new URL(await disclosure.innerText());
+      const invitationCode = new URLSearchParams(issuedUrl.hash.slice(1)).get("code");
+      const recipientEntry = issuedUrl; // Only the explicitly configured localhost development entry accepts HTTP links.
+      assert(typeof invitationCode === "string" && /^[A-Za-z0-9_-]{43}$/.test(invitationCode), "The issued invitation has the canonical entropy shape.");
+      assert.equal(JSON.stringify(await stored()).includes(invitationCode), false, "Issued capability stays out of browser persistence.");
+      await page.getByTestId("invitation-close-link").click();
+      sensitiveInvitationVisible = false;
       await context.close();
       context = await browser.newContext({
         viewport: { width: 390, height: 844 },
@@ -716,12 +779,14 @@ try {
         token: "synthetic-account-invitee",
       });
       assert.equal(before.memberships.length, 0);
-      await enter("Casey Bennett · Invite recipient");
-      await tab("community");
-      await input("Invitation team identifier", teamId);
-      await input("Invitation season identifier", seasonId);
-      await input("Service invitation code", invitation.reviewCode);
-      await button("Accept service invitation");
+      await enter("Casey Bennett · Invite recipient", recipientEntry.href);
+      await page.getByTestId("invitation-token").fill(invitationCode);
+      await page.getByTestId("invitation-inspect").click();
+      await page.getByText(`Team: ${teamId}`, { exact: true }).waitFor();
+      await page.getByText(`Season: ${seasonId}`, { exact: true }).waitFor();
+      assert.equal(await page.getByTestId("invitation-accept").isDisabled(), true, "Inspection does not accept the invitation.");
+      await page.getByLabel("Confirm the service-reviewed invitation destination", { exact: true }).check();
+      await page.getByTestId("invitation-accept").click();
       const after = await poll(
         () => json("/v1/me", { token: "synthetic-account-invitee" }),
         (value) =>
@@ -746,7 +811,7 @@ try {
         /Oliver Bennett|Noah Patel/,
       );
       assert.equal(
-        JSON.stringify(await stored()).includes(invitation.reviewCode),
+        JSON.stringify(await stored()).includes(invitationCode),
         false,
         "Acceptance code is not persisted in the invitation recipient's browser journal.",
       );
@@ -759,6 +824,7 @@ try {
       };
     },
   );
+  assert(checks.length > 0, "At least one selected browser scenario must run.");
   assert.deepEqual(errors, [], "No uncaught browser runtime exceptions");
 } catch (error) {
   checks.push({
@@ -766,7 +832,7 @@ try {
     status: "failed",
     error: error.message,
   });
-  await page
+  if (!sensitiveInvitationVisible) await page
     ?.screenshot({
       path: path.join(directory, "failure.png"),
       animations: "disabled",
@@ -781,9 +847,11 @@ try {
         baseURL,
         api,
         viewport: { width: 390, height: 844 },
+        scenarioFilter,
         checks,
         browserErrors: errors,
         nativeDeviceTested: false,
+        failureScreenshotOmittedForOneTimeInvitation: sensitiveInvitationVisible,
       },
       null,
       2,
@@ -791,10 +859,13 @@ try {
   );
   await context?.close();
   await browser?.close();
-  if (server) {
+  if (server?.exitCode === null && server.signalCode === null) {
     server.kill("SIGTERM");
     await new Promise((resolve) => server.once("exit", resolve));
   }
+  if (worker?.exitCode === null && worker.signalCode === null) { worker.kill("SIGTERM"); await new Promise(resolve => worker.once("exit", resolve)); }
+  workerStream?.end();
+  if (exportKeyFile) await unlink(exportKeyFile).catch(() => {});
   stream?.end();
 }
 if (checks.some((check) => check.status !== "passed")) process.exitCode = 1;

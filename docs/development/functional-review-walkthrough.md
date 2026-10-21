@@ -25,14 +25,15 @@ Use a phone or narrow browser window and sample information only. Some steps del
 
 - [ ] Select a fixture → **Open match preparation → Take control of this match**. Unprepared fixtures/current recorder conflicts must block a claim. In **Attendance**, mark actual arrivals; availability replies alone do not check players in.
 - [ ] **Lineup**: place eligible present players; try an invalid keeper/duplicate, then **Save staged lineup**. Try **Show position list** as an alternative to the pitch.
-- [ ] **Live → Review kickoff → Confirm the actual event now**. Try referee pause/resume and goal/own-goal entry. Review alone must not change recorded play.
-- [ ] Confirm **Review half-time**; prepare the next lineup without accruing time, then **Review second-half start** with a fresh full duration. **Review full-time** is explicit; zero does not auto-finish.
+- [ ] **Live → Start first half → Confirm the actual event now**. Try referee pause/resume and goal/own-goal entry. Review alone must not change recorded play. The score, remaining half time and action rail stay visible while details scroll.
+- [ ] Confirm **Review half-time**; prepare the next lineup without accruing time, then **Start second half** with a fresh full duration. **Review full-time** is explicit; zero does not auto-finish.
 - [ ] Try injury/unavailability and return. A returning player stays benched until a replacement; use **Confirm lineup changes happened now** for the actual change.
 - [ ] In **Playing-time plan → Review settings**, set spell, half buffer, batch and score-lead preferences with a reason → **Confirm settings and plan**. Review suggestions before committing; actual minutes and blocked keeper policies stay preserved.
 - [ ] Use **Save [number] recorded match changes**; wait for **Match changes acknowledged**. Local save is separate. **Back to team → Return to selected match** preserves play; use the exact retry action for retained requests.
 - [ ] In a second browser/private window, open the same match as Manager: expect **Viewing**, accepted pitch/bench and a static clock. **Request handover** sends no message; give its details to the recorder. Use **Recording and sync details** to offer to that exact account/device; the recipient accepts explicitly. Ordinary handover is before kickoff, at half-time or already genuinely paused—never pause just to transfer.
 - [ ] **Reports → Results / Minutes & attendance**: distinguish unknown data from zero; open goals, award/album links where permitted. **Add historical result to service**, then **Correct this result** with a reason; original evidence remains.
-- [ ] For recorded play: **Use this accepted match for reports → Save completed match to season**, where offered. Try **Season report / Match report → Export permitted JSON / Export permitted CSV**; audience restrictions remain.
+- [ ] For recorded play: **Use this accepted match for reports → Save completed match to season**, where offered. In **Export a permitted report**, choose **Season report**, **Match report**, **Team participation** or **Attendance**, then **Prepare permitted CSV / Prepare permitted PDF**. Wait for **Ready to download** and explicitly choose **Download prepared CSV / PDF**. Preparation alone never downloads a file. **Export permitted JSON** remains available for season and match summaries.
+- [ ] Change a report after requesting an export: its prepared copy must become unavailable, requiring a new request. A changed role, revoked access or expired export must block download. Files use an opaque reference; save only sample information outside LongBall.
 - [ ] Under **Recording and sync details**, validate history corrections/reconciliation proposals before confirming. A disputed proposal is not an approved replacement history.
 
 ## Photos, awards, invitations and privileges
@@ -43,7 +44,7 @@ Use a phone or narrow browser window and sample information only. Some steps del
 - [ ] On a published photo, try **Report photo** and **Report uploader**; check **My concerns**. **Hide this uploader → Confirm gallery-only hide** affects only your gallery; **Show [person] again** reverses it.
 - [ ] Player: for an eligible finished match, select a teammate → **Confirm vote**; before cutoff try **Change vote → Confirm changed vote**. Manager reviews cutoff/finalisation; individual votes stay private. Record sharing/finish/cutoff blocks without approving a policy.
 - [ ] Manager/player: **More → Invitations**; choose 1–48 whole hours → **Create one-time spectator link**. Copy before closing the display. Review reissue/revocation separately; reissue invalidates the old link.
-- [ ] Open a received link, review the service-reported team/season → **Accept reviewed invitation** explicitly. Real recipients sign in/activate first; demo personas already have sample assignments.
+- [ ] Open a received link, review the service-reported club/team and season names → **Accept reviewed invitation** explicitly. Real recipients sign in/activate first; demo personas already have sample assignments. Link text never grants a role or supplies trusted team names.
 - [ ] Manager: **More → Upload and invitation privileges**; review a demo account's suspension/reinstatement with a reason and confirmation. Test uploads/invitations separately; existing photos, links and grants are not silently revoked.
 - [ ] **Show notification preferences** in Photos/community: save category choices and distinct Europe/London quiet hours. Saved preferences do not prove delivery.
 
@@ -58,12 +59,12 @@ Use a phone or narrow browser window and sample information only. Some steps del
 
 - [ ] **Home**: reply **Available / Unavailable / Unsure** to the next event, then inspect **Schedule → Upcoming / Past**. Only your own replies/preferences are editable; replies do not set selection or actual attendance.
 - [ ] **Home → My profile** or **More → My profile**: choose three distinct positions → **Save my position preferences to service**. Goalkeeper eligibility remains a separate manager decision.
-- [ ] **My game**: refresh accepted updates, inspect **Show my accepted intervals**, goals/award/album details where permitted, then **Open my reports**. Teammates' private minute/attendance details must remain hidden.
+- [ ] **My game**: inspect accepted updates and **Show my accepted intervals**, goals/award/album details where permitted, then **Open my reports**. Try **My participation / Attendance → Prepare permitted PDF**, wait for readiness and download explicitly. Teammates' private minute/attendance details must remain hidden.
 - [ ] **Schedule → Export selected events** makes a calendar copy of events this account can see. **Photos** and **More → Invitations** provide the scoped contribution/voting/invitation journeys above, subject to current privileges.
 
 ## Spectator
 
-- [ ] **Scores → Refresh accepted match updates**: inspect permitted match state and freshness; the phone must not invent a live extrapolated recorder clock. Use **Load more accepted matches** if offered.
+- [ ] **Scores**: inspect permitted match state and freshness. In another browser record and upload a goal; the accepted score should update automatically while this view is open. Manual **Refresh accepted match updates** remains available. The phone must not invent a live extrapolated recorder clock. Use **Load more accepted matches** if offered.
 - [ ] **Results** opens permitted team results/reports; **Photos** opens published game albums and permitted sealed awards. Withheld scores, private minutes, pending uploads and private votes must stay withheld.
 - [ ] Spectator has no squad editor, recording authority, player ballot, upload or invitation-creation permission. **Account** opens the common real-account route; choosing a persona never grants real access.
 

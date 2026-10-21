@@ -1,5 +1,6 @@
 import { PostgresTeamPrivilegeRepository } from './postgres-team-privileges';
 import type { Principal } from '../../../packages/application/src/access';
+import { parseInvitationContext } from '../../../packages/application/src/invitation-context';
 import type { CommunityState } from '../../../packages/application/src/community';
 import { assertInvitationMirror, invitationChangedRows, invitationGrantProjection, type InvitationReceipt, type InvitationRepository, type InvitationSession } from './invitation-service';
 import type { PostgresStore } from './postgres-store';
@@ -40,7 +41,11 @@ export class PostgresInvitationRepository implements InvitationRepository {
   async saveReceipt(accountId: string, operation: string, key: string, receipt: InvitationReceipt): Promise<void> { await this.store.execute('INSERT INTO idempotency(account_id,operation,key,signature,response_json) VALUES($1,$2,$3,$4,$5)', [accountId, operation, key, receipt.signature, JSON.stringify(receipt.response)]); }
   async resolve(_principal: Principal, tokenHash: string) {
     const row = await this.store.one('SELECT * FROM invitation_accept_scope($1)', [tokenHash]);
-    return row ? { invitationId: String(row.id), teamId: String(row.team_id), seasonId: String(row.season_id), expiresAt: new Date(Number(row.expires_at)).toISOString() } : null;
+    if (!row) return null;
+    const names = await this.store.one('SELECT * FROM invitation_preview_context($1)', [tokenHash]);
+    if (!names) return null;
+    const context = parseInvitationContext({ clubName: names.club_name, teamName: names.team_name, ageGroup: names.age_group, seasonLabel: names.season_label, inviterLabel: names.inviter_label });
+    return { invitationId: String(row.id), teamId: String(row.team_id), seasonId: String(row.season_id), expiresAt: new Date(Number(row.expires_at)).toISOString(), context };
   }
   audit(principal: Principal, action: string, objectId: string): Promise<void> { return this.store.audit(principal, action, objectId, 'accepted'); }
 }

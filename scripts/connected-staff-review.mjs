@@ -11,7 +11,7 @@ import { changeWorkspaceContext, enterFictionalReview, openWorkspaceTab, selectW
 const baseURL = process.env.LONGBALL_REVIEW_BASE_URL ?? "http://127.0.0.1:4173";
 const api =
   process.env.LONGBALL_STAFF_REVIEW_API_URL ?? "http://127.0.0.1:4316";
-const directory = path.resolve(".local/connected-staff-review");
+const directory = path.resolve(process.env.LONGBALL_REVIEW_OUTPUT_DIRECTORY ?? ".local/connected-staff-review");
 const teamId = "synthetic-roma-u10",
   seasonId = "synthetic-season-2026-27";
 const willow = "synthetic-community-willow";
@@ -70,16 +70,9 @@ async function service(
 const click = (name) =>
   page.getByRole("button", { name, exact: true }).click({ noWaitAfter: true });
 async function settled() {
-  const refresh = page.getByRole("button", {
-    name: "Refresh service views",
-    exact: true,
-  });
-  await refresh.waitFor();
-  await poll(
-    () => refresh.isEnabled(),
-    Boolean,
-    "Service receipt and local refresh settled",
-  );
+  const navigation = page.getByTestId("workspace-context-ready");
+  await navigation.waitFor();
+  await poll(() => navigation.getByRole("tab").first().isEnabled(), Boolean, "The local receipt and current workspace navigation settled");
 }
 async function picture(name) {
   await page.screenshot({
@@ -99,12 +92,15 @@ async function launchAPI() {
   const address = new URL(api);
   assert(["127.0.0.1", "localhost"].includes(address.hostname));
   stream = createWriteStream(path.join(directory, "api.log"));
-  server = spawn(process.execPath, ["apps/api/dist/api.mjs"], {
+  server = spawn(process.execPath, [process.env.LONGBALL_REVIEW_API_BUNDLE ?? "apps/api/dist/api.mjs"], {
     cwd: process.cwd(),
     env: {
       ...process.env,
       NODE_ENV: "development",
       LONGBALL_SYNTHETIC_AUTH: "1",
+      LONGBALL_DEMO_SCENARIO: "0",
+      LONGBALL_DATABASE_URL: "",
+      LONGBALL_DATABASE_URL_FILE: "",
       LONGBALL_API_HOST: "127.0.0.1",
       LONGBALL_API_PORT: address.port,
       LONGBALL_API_DATABASE: path.join(directory, `${runId}.sqlite`),
@@ -219,10 +215,11 @@ try {
   await click("More");
   await click("Service and controller");
   await page.getByLabel("Workspace API URL", { exact: true }).fill(api);
-  await click("Fictional API review");
+  await click("Demo API review");
   await click("Alex Morgan · Manager");
   await page.getByTestId("workspace-connect").click();
   await selectWorkspaceContext(page);
+  await openWorkspaceTab(page, "schedule");
   await page.getByTestId("preparation-create-event").waitFor();
   await settled();
   await changeWorkspaceContext(page, "administrator");
@@ -329,6 +326,7 @@ try {
   });
   console.log("PASSED staff assignment/revocation");
   await changeWorkspaceContext(page, "manager");
+  await openWorkspaceTab(page, "schedule");
   await page.getByTestId("preparation-create-event").waitFor();
   await settled();
   await openWorkspaceTab(page, "reports");
@@ -358,7 +356,7 @@ try {
   await page.getByTestId("album-photo-viewer").waitFor();
   assert.match(
     await page.getByTestId("album-photo-viewer").innerText(),
-    /No children or real photographs/,
+    /Matchday at Rovers Sports Ground · sample illustration/,
   );
   await page.getByTestId("album-photo-viewer").scrollIntoViewIfNeeded();
   await picture("03-report-opens-exact-scoped-game-album");
@@ -375,7 +373,7 @@ try {
   const webHtml = await (await fetch(baseURL)).text();
   const bundleName = webHtml.match(/index-[a-f0-9]+\.js/)?.[0] ?? null;
   const apiHash = createHash("sha256")
-    .update(await readFile("apps/api/dist/api.mjs"))
+    .update(await readFile(process.env.LONGBALL_REVIEW_API_BUNDLE ?? "apps/api/dist/api.mjs"))
     .digest("hex");
   await writeFile(
     path.join(directory, "summary.json"),

@@ -96,7 +96,7 @@ async function enterWorkspace(page, api, account) {
   await page.getByTestId('prepare-match').waitFor();
   await button(page, 'More'); await button(page, 'Service and controller');
   await input(page, 'Workspace API URL', api);
-  await button(page, 'Fictional API review'); await button(page, account);
+  await button(page, 'Demo API review'); await button(page, account);
   await page.getByTestId('workspace-connect').click();
   await page.getByTestId('workspace-session').waitFor();
   if (account !== 'Casey Bennett · Invite recipient') await selectWorkspaceContext(page, account === 'Oliver Bennett · Player' ? 'player' : 'manager');

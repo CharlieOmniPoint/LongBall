@@ -4,7 +4,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { chromium } from 'playwright';
 import { enterFictionalReview } from './review-entry.mjs';
 const baseURL = process.env.LONGBALL_REVIEW_BASE_URL ?? 'http://127.0.0.1:4388';
-const output = '.local/match-plans-review'; await mkdir(output, { recursive: true });
+const output = process.env.LONGBALL_REVIEW_OUTPUT_DIRECTORY ?? '.local/match-plans-review'; await mkdir(output, { recursive: true });
 const browser = await chromium.launch({ executablePath: process.env.LONGBALL_CHROMIUM_PATH ?? (existsSync('/usr/bin/chromium') ? '/usr/bin/chromium' : undefined), headless: true, args: ['--no-sandbox'] });
 async function journal(page) { return page.evaluate(() => new Promise((resolve, reject) => { const opening = indexedDB.open('longball-synthetic-m0'); opening.onerror = () => reject(opening.error); opening.onsuccess = () => { const db = opening.result, transaction = db.transaction('journal', 'readonly'), read = transaction.objectStore('journal').get('record'); read.onsuccess = () => resolve(read.result); read.onerror = () => reject(read.error); transaction.oncomplete = () => db.close(); }; })); }
 const application = async page => (await journal(page))?.projections?.['synthetic-longball-application-v1'];

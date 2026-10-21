@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { AccessError } from "../../../packages/application/src/access";
 import type { PostgresStore } from "./postgres-store";
+import { parseInvitationContext } from '../../../packages/application/src/invitation-context';
 import type {
   SpectatorActivationRepository,
   SpectatorActivationAccount,
@@ -59,7 +60,8 @@ export class PostgresSpectatorActivationRepository
     const row = await this.store.one("SELECT * FROM invitation_preflight($1)", [
       tokenHash,
     ]);
-    return row
+    const names = row ? await this.store.one('SELECT * FROM invitation_preview_context($1)', [tokenHash]) : null;
+    return row && names
       ? {
           id: String(row.id),
           clubId: String(row.club_id),
@@ -67,6 +69,7 @@ export class PostgresSpectatorActivationRepository
           seasonId: String(row.season_id),
           expiresAt: Number(row.expires_at),
           policyVersion: String(row.policy_version),
+          context: parseInvitationContext({ clubName: names.club_name, teamName: names.team_name, ageGroup: names.age_group, seasonLabel: names.season_label, inviterLabel: names.inviter_label }),
         }
       : null;
   }

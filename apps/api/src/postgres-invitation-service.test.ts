@@ -52,7 +52,7 @@ describe.skipIf(!configured)('actual restricted PostgreSQL invitation service', 
     const first = await issue(), invitee = session('invitee', 'spectator');
     const before = (await owner.query('SELECT * FROM memberships ORDER BY account_id,role')).rows;
     const inspected = await store.withActorContext(invitee.principal, { operation: 'invite.resolve', requestedRole: 'default', invitationTokenHash: invitationVerifier(first.token) }, () => service.inspect(invitee.principal, { token: first.token }));
-    expect(inspected).toEqual({ invitationId: first.id, teamId, seasonId, expiresAt: first.expiresAt }); expect((await owner.query('SELECT * FROM memberships ORDER BY account_id,role')).rows).toEqual(before);
+    expect(inspected).toEqual({ invitationId: first.id, teamId, seasonId, expiresAt: first.expiresAt, context: { clubName: 'Richmond Rovers', teamName: 'Roma', ageGroup: 'U10', seasonLabel: '2026/27', inviterLabel: 'Team manager' } }); expect((await owner.query('SELECT * FROM memberships ORDER BY account_id,role')).rows).toEqual(before);
     const key = randomUUID(), accepted = await accept(first.token, invitee, key); expect((await accept(first.token, invitee, key))).toEqual(accepted);
     const state = JSON.parse((await owner.query("SELECT value_json FROM documents WHERE team_id=$1 AND season_id=$2 AND kind='community'", [teamId, seasonId])).rows[0].value_json) as CommunityState;
     expect(state.grants.filter(grant => grant.invitationId === first.id)).toHaveLength(1); expect(accepted.body.expiresAt).toBe(new Date(state.seasons.find(item => item.id === seasonId)!.accessEndsAtMs).toISOString());

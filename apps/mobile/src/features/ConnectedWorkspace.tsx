@@ -168,6 +168,7 @@ import {
 } from "./ConnectedStaffPanel";
 import type { SeasonRolloverCommand } from "@longball/application/season-service";
 import { deliverReportExport } from "../platform/report-export";
+import { ReportExportJobsClient, type ReportExportJobPort } from "../platform/report-export-jobs";
 import { assertReportExportAccess } from "../platform/report-export-access";
 import {
   WorkspaceOutboxBridge,
@@ -418,7 +419,7 @@ export function ConnectedWorkspace(props: ConnectedWorkspaceProps) {
     ? supplied.connection
     : connection;
   return (
-    <View style={s.stack} testID="connected-workspace">
+    <View style={[s.stack, props.initialConnection && { flex: 1, minHeight: 0 }]} testID="connected-workspace">
       {!props.initialConnection && (
         <Card>
           <Text style={typography.section}>Service workspace</Text>
@@ -846,6 +847,29 @@ function WorkspaceSession({
     ++generation.current;
     liveBinding.current = null;
   }, []);
+  const closeDeniedScope = useCallback((source: WorkspaceBinding | null) => {
+    // A late response from a previous request must never close a newer account
+    // or workspace. Keep retained commands and their journal/outbox intact.
+    if (!source || !sameWorkspaceBinding(source, liveBinding.current)) return false;
+    invalidateRequests();
+    setIdentity(null);
+    setBinding(null);
+    setPreparation(null);
+    setOwn(null);
+    setRecords(null);
+    setCommunity(null);
+    setOwnPrivileges(null);
+    setTeamPrivileges(null);
+    setMatches(null);
+    setSharedRefreshCache(null);
+    sharedRefreshRef.current = null;
+    sharedHistoryCursor.current = null;
+    setSeasons(null);
+    setConfiguration(null);
+    setStaff(null);
+    setBranding(null);
+    return true;
+  }, [invalidateRequests]);
   const [tab, setTab] = useState<Tab>("home");
   const [communityInitialSection, setCommunityInitialSection] = useState<
     "photos" | "awards"
@@ -1540,7 +1564,7 @@ function WorkspaceSession({
       cause: unknown,
       scopedPrivateList = false,
     ) => {
-      if (generation.current !== requestGeneration) return;
+      if (generation.current !== requestGeneration || !sameWorkspaceBinding(ticket, liveBinding.current)) return;
       faults.push(`${section}: ${failureText(cause)}`);
       if (
         scopedPrivateList &&
@@ -1551,19 +1575,7 @@ function WorkspaceSession({
         // An already attached parallel reply must close when this same authorised
         // ticket receives a known scope denial. Individual photo/entity reads
         // and a new account's invitation setup do not use this list-read gate.
-        invalidateRequests();
-        setBinding(null);
-        setPreparation(null);
-        setOwn(null);
-        setRecords(null);
-        setCommunity(null);
-        setOwnPrivileges(null);
-        setTeamPrivileges(null);
-        setMatches(null);
-        setSeasons(null);
-        setConfiguration(null);
-        setStaff(null);
-        setBranding(null);
+        closeDeniedScope(ticket);
         setErrors([
           ...faults,
           "Private workspace views were closed because the service refused this scope. Refresh service views to verify current access. Retained requests remain unchanged.",
@@ -1745,7 +1757,7 @@ function WorkspaceSession({
     oidcAccountId,
     oidcIssuer,
     oidcSubject,
-    invalidateRequests,
+    closeDeniedScope,
     props.initialRole,
   ]);
   useEffect(() => {
@@ -1838,9 +1850,7 @@ function WorkspaceSession({
       onFailure: (cause) => {
         if (!sameWorkspaceBinding(ticket, liveBinding.current)) return "stop";
         if (cause instanceof SharedMatchRefreshAuthorityDenied || cause instanceof ServiceError && [401, 403, 404].includes(cause.status)) {
-          invalidateRequests(); setBinding(null); setPreparation(null); setOwn(null); setRecords(null); setCommunity(null);
-          setOwnPrivileges(null); setTeamPrivileges(null); setMatches(null); setSharedRefreshCache(null); sharedRefreshRef.current = null;
-          setSeasons(null); setConfiguration(null); setStaff(null); setBranding(null);
+          closeDeniedScope(ticket);
           setErrors(["Current service access changed. Private workspace views were closed. Refresh to verify your account; retained requests remain unchanged."]);
           return "stop";
         }
@@ -1857,12 +1867,13 @@ function WorkspaceSession({
     // The identity/ticket is rechecked on every accepted read. DTO refreshes never
     // recreate this timer or overwrite a form draft; changing scope aborts it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sharedRefreshEnabled, sharedRefreshKey, client, absoluteApi, oidcSessionId, invalidateRequests]);
+  }, [sharedRefreshEnabled, sharedRefreshKey, client, absoluteApi, oidcSessionId, closeDeniedScope]);
 
   const execute = async (
     request: PendingRequest,
     retained?: WorkspaceOutboxState,
   ): Promise<boolean> => {
+    const source = liveBinding.current;
     let outcomeAttempted = false;
     const durable = request.protected === true;
     const settle = async (outcome: WorkspaceRequestOutcome) => {
@@ -2074,6 +2085,7 @@ function WorkspaceSession({
           /* The exact pending request stays in the journal; its local save may need retry. */
         }
       }
+      if (cause instanceof ServiceError && [401, 403, 404].includes(cause.status)) closeDeniedScope(source);
       throw cause;
     }
   };
@@ -2259,7 +2271,7 @@ function WorkspaceSession({
     } catch (cause) {
       if (!sameWorkspaceBinding(cached.binding, liveBinding.current)) return;
       if (cause instanceof MatchListAuthorityDenied || cause instanceof ServiceError && [401, 403, 404].includes(cause.status)) {
-        invalidateRequests(); setBinding(null); setMatches(null);
+        closeDeniedScope(cached.binding);
       }
       setErrors([failureText(cause)]);
     } finally { lock.current = false; setLoadingMoreMatches(false); }
@@ -2273,7 +2285,7 @@ function WorkspaceSession({
   const reload = async () => {
     if (
       lock.current ||
-      pending ||
+      (pending && liveBinding.current !== null) ||
       uploadRetainedRef.current ||
       brandRetainedRef.current ||
       invitationIsRetained()
@@ -2373,17 +2385,7 @@ function WorkspaceSession({
           (cause instanceof ServiceError &&
             [401, 403, 404].includes(cause.status)))
       ) {
-        invalidateRequests();
-        setBinding(null);
-        setCommunity(null);
-        setPreparation(null);
-        setOwn(null);
-        setRecords(null);
-        setMatches(null);
-        setSeasons(null);
-        setConfiguration(null);
-        setStaff(null);
-        setBranding(null);
+        closeDeniedScope(source);
         setErrors([
           "Schedule access could not be verified. Private workspace views were closed; refresh service views to verify current access.",
         ]);
@@ -2391,8 +2393,31 @@ function WorkspaceSession({
       throw cause;
     }
   };
+  const closeDeniedExportScope = (source: WorkspaceBinding) => {
+    if (!closeDeniedScope(source)) return;
+    setErrors(["Export access could not be verified. Private workspace views were closed; refresh to verify current access. Retained requests and match records remain unchanged."]);
+  };
+  const openExportJobs = (): ReportExportJobPort => {
+    const source = liveBinding.current;
+    if (!source || source.role === "administrator") throw new Error("Open a current authorised report before preparing an export.");
+    const assertAccess = () => assertReportExportAccess({
+      source, currentBinding: () => liveBinding.current,
+      principal: identity?.principal ?? null, memberships: identity?.memberships ?? [], nowMs: Date.now,
+      session: connection.mode === "oidc" ? { requiredSessionId: oidcSessionId ?? "", read: getConnectedSessionSummary } : null,
+    });
+    const jobs = new ReportExportJobsClient({
+      baseUrl: source.apiBaseUrl, role: source.role, teamId: source.teamId, seasonId: source.seasonId,
+      fetch: authenticatedFetch, assertAccess, onAccessDenied: () => closeDeniedExportScope(source), deliver: deliverReportExport,
+    });
+    return {
+      create: (request, revision, key, signal) => jobs.create(request, revision, key, signal),
+      read: (id, signal) => jobs.read(id, signal),
+      download: (id, format, signal) => jobs.download(id, format, signal),
+    };
+  };
   const exportReport = async (
     request: ConnectedExportRequest,
+    signal?: AbortSignal,
   ): Promise<string> => {
     const source = liveBinding.current;
     if (!source)
@@ -2412,9 +2437,13 @@ function WorkspaceSession({
       seasonId: string;
       audience: string;
       projectionVersion: number;
-    }>(`${path("records/export")}&${parameters}`);
-    const assertAccess = () =>
-      assertReportExportAccess({
+    }>(`${path("records/export")}&${parameters}`, { signal }).catch((cause) => {
+      if (cause instanceof ServiceError && [401, 403, 404].includes(cause.status)) closeDeniedExportScope(source);
+      throw cause;
+    });
+    const assertAccess = async () => {
+      if (signal?.aborted) { const error = new Error("The export operation was cancelled."); error.name = "AbortError"; throw error; }
+      await assertReportExportAccess({
         source,
         currentBinding: () => liveBinding.current,
         principal: identity?.principal ?? null,
@@ -2428,6 +2457,8 @@ function WorkspaceSession({
               }
             : null,
       });
+      if (signal?.aborted) { const error = new Error("The export operation was cancelled."); error.name = "AbortError"; throw error; }
+    };
     if (
       artifact.kind !== "records-export" ||
       artifact.teamId !== source.teamId ||
@@ -2572,7 +2603,9 @@ function WorkspaceSession({
                     ? `${own.team.name} ${own.team.ageGroup}`
                     : configuration
                       ? `${configuration.team.name} ${configuration.team.ageGroup}`
-                      : (branding?.team.name ?? selectedContext.teamLabel)
+                      : branding
+                        ? `${branding.team.name} ${branding.team.ageGroup}`.trim()
+                        : (community?.teamLabel ?? selectedContext.teamLabel)
                 : identity
                   ? "Choose your workspace"
                   : "Checking your account…"}
@@ -2585,6 +2618,7 @@ function WorkspaceSession({
                     ?.label ??
                   configuration?.seasons.find((item) => item.id === seasonId)
                     ?.label ??
+                  community?.seasonLabel ??
                   selectedContext.seasonLabel}
               </Text>
             )}
@@ -2850,7 +2884,7 @@ function WorkspaceSession({
             variant="secondary"
             disabled={
               busy ||
-              Boolean(pending) ||
+              (Boolean(pending) && binding !== null) ||
               uploadRetained ||
               brandRetained ||
               invitationRetained
@@ -3265,6 +3299,8 @@ function WorkspaceSession({
             disabled={disabled}
             onChange={(command) => mutate("records", command, "Result")}
             onExport={exportReport}
+            openExportJobs={openExportJobs}
+            active={props.active !== false && tab === "reports"}
             onOpenAlbum={openAlbum}
             onOpenController={
               manager && props.journal && props.deviceId

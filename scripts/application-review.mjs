@@ -109,6 +109,9 @@ try {
   });
 
   await scenario('02-training-evidence', async page => {
+    const initial = await application(page);
+    const initialProfileId = initial.preparation.profiles.find(item => item.playerId === playerId).id;
+    const initialHeld = initial.preparation.training.filter(item => item.status === 'held' && item.seasonId === seasonId && item.expectedProfileIds.includes(initialProfileId)).length;
     await button(page, 'Schedule'); await radio(page, 'Event type: Training');
     await button(page, 'Open training 2026-10-22');
     await radio(page, 'Oliver Bennett training reply: Available');
@@ -124,12 +127,15 @@ try {
     app = await until(page, value => value.preparation.training[1].status === 'cancelled', 'Cancel second occurrence');
     assert.equal(app.preparation.training[0].status, 'held', 'Occurrence cancellation cannot cancel whole series');
     const evidence = app.recordsBySeason[seasonId].trainingAttendance;
-    assert.equal(evidence.filter(item => item.eventStatus === 'held' && item.expectedPlayerIds.includes(playerId)).length, 1);
+    const eligible = evidence.filter(item => item.eventStatus === 'held' && item.expectedPlayerIds.includes(playerId));
+    assert.equal(eligible.length, initialHeld + 1);
+    assert(!eligible.some(item => item.sessionId === app.preparation.training[1].id), 'Cancelled occurrence cannot enter the denominator');
     await button(page, 'Reports'); await page.getByTestId('records-tab-participation').click();
     const own = page.getByTestId(`records-participation-${playerId}`).locator('..');
-    assert.match(await own.innerText(), /Completeness 100% \(1\/1 eligible events\)/);
-    assert.equal(evidence[0].attendance[playerId], 'present');
-    return 'RSVP does not check in; held expected session contributes 1/1, cancelled occurrence excluded independently.';
+    const recorded = eligible.filter(item => ['present', 'absent', 'excused'].includes(item.attendance[playerId])).length;
+    assert((await own.innerText()).includes(`Completeness ${Math.round(recorded / eligible.length * 100)}% (${recorded}/${eligible.length} eligible events)`));
+    assert.equal(eligible.find(item => item.sessionId === app.preparation.training[0].id).attendance[playerId], 'present');
+    return 'RSVP does not check in; the newly held expected session increases the retained baseline denominator by one, while the cancelled occurrence is excluded.';
   });
 
   await scenario('03-snapshots-and-formats', async page => {
@@ -194,25 +200,26 @@ try {
   });
 
   await scenario('06-exact-photo-revision', async page => {
+    const originalCaption = (await application(page)).community.photos.find(item => item.id === 'synthetic-pending-ball').revisions[0].caption;
     await role(page, 'spectator'); await button(page, 'Photos');
-    assert.equal(await page.getByText('Fictional football illustration awaiting review.', { exact: true }).count(), 0);
+    assert.equal(await page.getByText(originalCaption, { exact: true }).count(), 0);
     await role(page, 'manager'); await more(page, 'Team photos');
     await button(page, 'Approve Oliver Bennett revision 1');
     await until(page, value => value.community.photos.find(item => item.id === 'synthetic-pending-ball')?.publishedRevision === 1, 'Approve exact original revision');
     await role(page, 'player'); await button(page, 'Photos');
-    await page.getByLabel('Illustration caption', { exact: true }).fill('Browser revised fictional cones'); await radio(page, 'Choose cones illustration'); await page.getByRole('switch', { name: 'Content policy reviewed', exact: true }).check();
+    await page.getByLabel('Illustration caption', { exact: true }).fill('Browser revised cones'); await radio(page, 'Choose cones illustration'); await page.getByRole('switch', { name: 'Content policy reviewed', exact: true }).check();
     await button(page, 'Submit a revised caption and selected illustration');
     let app = await until(page, value => value.community.photos.find(item => item.id === 'synthetic-pending-ball')?.currentRevision === 2, 'Submit revised pending media');
     assert.equal(app.community.photos.find(item => item.id === 'synthetic-pending-ball').publishedRevision, 1);
     await role(page, 'spectator'); await button(page, 'Photos');
-    assert.equal(await page.getByText('Browser revised fictional cones', { exact: true }).count(), 0);
-    await page.getByRole('button', { name: 'Open Fictional football illustration awaiting review.', exact: true }).waitFor();
+    assert.equal(await page.getByText('Browser revised cones', { exact: true }).count(), 0);
+    await page.getByRole('button', { name: `Open ${originalCaption}`, exact: true }).waitFor();
     await role(page, 'manager'); await more(page, 'Team photos'); await button(page, 'Approve Oliver Bennett revision 2');
     await until(page, value => value.community.photos.find(item => item.id === 'synthetic-pending-ball')?.publishedRevision === 2, 'Approve exact replacement revision');
-    await button(page, 'Open Browser revised fictional cones'); await button(page, 'Remove this published illustration');
+    await button(page, 'Open Browser revised cones'); await button(page, 'Remove this published illustration');
     app = await until(page, value => value.community.photos.find(item => item.id === 'synthetic-pending-ball')?.removedAtMs !== null, 'Remove published revision');
     assert.equal(app.community.photos.find(item => item.id === 'synthetic-pending-ball').revisions.length, 2);
-    await role(page, 'spectator'); await button(page, 'Photos'); assert.equal(await page.getByText('Browser revised fictional cones', { exact: true }).count(), 0);
+    await role(page, 'spectator'); await button(page, 'Photos'); assert.equal(await page.getByText('Browser revised cones', { exact: true }).count(), 0);
     return 'Pending media stays private; exact approval publishes v1/v2, previous approved revision remains until replacement approval, removal blocks spectator retrieval.';
   });
 
@@ -243,7 +250,8 @@ try {
     let app = await until(page, value => value.community.invitations.length === 1, 'Individual invitation'); const invite = app.community.invitations[0];
     assert.match(invite.reviewCode, /^DEMO-/); assert.equal(invite.seasonId, seasonId);
     await button(page, 'Revoke invitation and linked access'); await until(page, value => value.community.invitations[0].revokedAtMs !== null, 'Invitation revocation');
-    await button(page, 'Revoke access for Jamie Bennett · Spectator'); app = await until(page, value => value.community.grants[0].revokedAtMs !== null, 'Grant revocation');
+    const spectatorLabel = app.community.accounts.find(account => account.id === app.community.grants[0].accountId).label;
+    await button(page, `Revoke access for ${spectatorLabel}`); app = await until(page, value => value.community.grants[0].revokedAtMs !== null, 'Grant revocation');
     await role(page, 'spectator'); await button(page, 'Photos');
     await page.getByText(/Access unavailable|revoked|expired|no active invitation/i).first().waitFor();
     assert.equal(await page.getByRole('button', { name: /Open .*illustration/ }).count(), 0);

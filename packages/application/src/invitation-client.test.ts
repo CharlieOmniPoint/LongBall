@@ -29,6 +29,8 @@ const accepted = {
   seasonId: issued.seasonId,
   expiresAt: "2027-08-31T23:00:00.000Z",
 };
+const context = { clubName: 'Richmond Rovers', teamName: 'Roma', ageGroup: 'U10', seasonLabel: '2026/27', inviterLabel: 'Team manager' };
+const inspection = { ...accepted, expiresAt: issued.expiresAt, context };
 const reply = (status: number, body: unknown): HttpResponse => ({
   status,
   ok: status >= 200 && status < 300,
@@ -94,7 +96,7 @@ describe("ephemeral canonical invitation HTTP client", () => {
   });
   it("requires server inspection of the exact credential before acceptance and rejects a mismatched accepted scope", async () => {
     const { client, calls } = fixture([
-      reply(200, { ...accepted, expiresAt: issued.expiresAt }),
+      reply(200, inspection),
       reply(200, { ...accepted, teamId: "other" }),
     ]);
     expect(() => client.accept(token, key)).toThrow(InvitationClientError);
@@ -102,6 +104,7 @@ describe("ephemeral canonical invitation HTTP client", () => {
     expect(await client.inspect(token)).toEqual({
       ...accepted,
       expiresAt: issued.expiresAt,
+      context,
     });
     expect(calls[0].url).toBe(
       "https://api.example/v1/spectator-invites/inspect",
@@ -130,6 +133,17 @@ describe("ephemeral canonical invitation HTTP client", () => {
     expect(calls[0].options.method).toBe("DELETE");
     expect(calls[0].options.body).toBeUndefined();
     expect(calls[1].options.headers).toEqual(calls[0].options.headers);
+  });
+  it('refuses incomplete/private invitation labels and keeps the server-reviewed scope independent of returned display objects', async () => {
+    const { client } = fixture([
+      reply(200, { ...inspection, context: { ...context, privateRoster: ['Child name'] } }),
+      reply(200, { ...inspection, context: { ...context, inviterLabel: 'Named child' } }),
+      reply(200, inspection), reply(200, accepted),
+    ]);
+    await expect(client.inspect(token)).rejects.toMatchObject({ code: 'INVITATION_INVALID_RESPONSE' });
+    await expect(client.inspect(token)).rejects.toMatchObject({ code: 'INVITATION_INVALID_RESPONSE' });
+    const reviewed = await client.inspect(token); reviewed.teamId = 'changed-display'; reviewed.context.teamName = 'Changed display';
+    await expect(client.accept(token, key)).resolves.toEqual({ kind: 'accepted', receipt: accepted });
   });
   it("explicitly closes only pending memory and allows a separate new action with a new identity", async () => {
     const { client, calls } = fixture([
@@ -216,7 +230,7 @@ describe("ephemeral canonical invitation HTTP client", () => {
   });
   it("keeps acceptance credentials only in memory for exact retry and returns a secret-free grant receipt", async () => {
     const { calls, client } = fixture([
-      reply(200, { ...accepted, expiresAt: issued.expiresAt }),
+      reply(200, inspection),
       new Error("network down"),
       reply(200, accepted),
     ]);
@@ -337,7 +351,7 @@ describe("ephemeral canonical invitation HTTP client", () => {
   });
   it("never echoes a credential-bearing HTTP error or accepts a secret in a redacted replay DTO", async () => {
     const { client } = fixture([
-      reply(200, { ...accepted, expiresAt: issued.expiresAt }),
+      reply(200, inspection),
       reply(403, { code: token, message: `Rejected ${token}` }),
       reply(200, { ...redacted, shareUrl: issued.shareUrl }),
     ]);

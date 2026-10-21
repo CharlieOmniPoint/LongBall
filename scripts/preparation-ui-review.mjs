@@ -7,7 +7,7 @@ import { chromium } from 'playwright';
 import { enterFictionalReview } from './review-entry.mjs';
 
 const baseURL = process.env.LONGBALL_REVIEW_BASE_URL ?? 'http://127.0.0.1:4177';
-const output = path.resolve('.local/preparation-presentation');
+const output = path.resolve(process.env.LONGBALL_REVIEW_OUTPUT_DIRECTORY ?? '.local/preparation-presentation');
 await mkdir(output, { recursive: true });
 const browser = await chromium.launch({ executablePath: process.env.LONGBALL_CHROMIUM_PATH ?? (existsSync('/usr/bin/chromium') ? '/usr/bin/chromium' : undefined), headless: true, args: ['--no-sandbox'] });
 const results = [];

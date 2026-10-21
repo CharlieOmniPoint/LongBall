@@ -21,7 +21,8 @@ vi.mock("expo-file-system", () => ({
     create = mocks.createDirectory;
   },
   File: class {
-    uri = "file://cache/report-opaque-export-id.json";
+    uri: string;
+    constructor(...parts: unknown[]) { this.uri = `file://cache/${parts.at(-1)}`; }
     get exists() {
       return mocks.exists;
     }
@@ -56,7 +57,7 @@ describe("native permitted report export boundary", () => {
     await expect(deliverReportExport(artifact, access)).rejects.toThrow(
       "session closed",
     );
-    expect(mocks.write).toHaveBeenCalledWith(artifact.body);
+    expect(mocks.write).toHaveBeenCalledWith(new TextEncoder().encode(artifact.body));
     expect(mocks.share).not.toHaveBeenCalled();
     expect(mocks.remove).toHaveBeenCalledOnce();
     expect(mocks.exists).toBe(false);
@@ -79,6 +80,19 @@ describe("native permitted report export boundary", () => {
       "share unavailable",
     );
     expect(mocks.remove).toHaveBeenCalledOnce();
+  });
+  it("shares real PDF bytes with the platform PDF type and always removes the app cache copy", async () => {
+    const bytes = new TextEncoder().encode("%PDF-1.7\nBinary report fixture\n%%EOF\n");
+    await deliverReportExport({ fileName: "longball-report-safe.pdf", contentType: "application/pdf", bytes }, async () => {});
+    expect(mocks.write).toHaveBeenCalledWith(bytes);
+    expect(mocks.share).toHaveBeenCalledWith("file://cache/report-opaque-export-id.pdf", expect.objectContaining({ mimeType: "application/pdf", UTI: "com.adobe.pdf" }));
+    expect(mocks.remove).toHaveBeenCalledOnce();
+  });
+  it("rejects a renamed HTML/text file or oversized binary before creating a private file", async () => {
+    for (const bytes of [new TextEncoder().encode("<html>not a PDF</html>"), new Uint8Array(5 * 1024 * 1024 + 1)]) {
+      await expect(deliverReportExport({ fileName: "longball-report-safe.pdf", contentType: "application/pdf", bytes }, async () => {})).rejects.toThrow(/invalid/);
+    }
+    expect(mocks.create).not.toHaveBeenCalled(); expect(mocks.share).not.toHaveBeenCalled();
   });
   it("rejects invalid filenames and unavailable share destinations before creating a file", async () => {
     await expect(

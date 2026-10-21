@@ -227,9 +227,9 @@ try {
     assert.equal(fixture.plannedHalfDurationMs, 1_200_000);
     assert.equal(applicationState.preparation.team.defaultHalfDurationMs, 1_500_000, 'A fixture duration override cannot change the team default.');
     await formatPage.getByRole('button', { name: `Open fixture ${opponent}, 2026-11-01`, exact: true }).click();
-    for (let index = 1; index <= format; index++) {
-      await formatPage.getByRole('switch', { name: `Select Player ${String(index).padStart(2, '0')}`, exact: true }).click();
-      await waitState(formatPage, value => value.preparation.fixtures.find(item => item.id === fixture.id).selectedProfileIds.length === index, 'Selection did not save', applicationId);
+    for (const [index, profile] of applicationState.preparation.profiles.slice(0, format).entries()) {
+      await formatPage.getByRole('switch', { name: `Select ${profile.displayName}`, exact: true }).click();
+      await waitState(formatPage, value => value.preparation.fixtures.find(item => item.id === fixture.id).selectedProfileIds.length === index + 1, 'Selection did not save', applicationId);
     }
     await formatPage.getByTestId('preparation-open-match').click();
     let prepared = await waitState(formatPage, value => value.config?.matchId === fixture.id, 'Prepared fixture did not open', fixture.id);

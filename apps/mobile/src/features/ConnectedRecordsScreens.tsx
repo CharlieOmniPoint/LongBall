@@ -1,4 +1,6 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
+import { ReportExportPanel } from "./ReportExportPanel";
+import type { ReportExportJobPort } from "../platform/report-export-jobs";
 import { Text, View } from "react-native";
 import type { MatchState } from "@longball/domain";
 import type {
@@ -65,6 +67,8 @@ export function ConnectedRecordsScreens({
   disabled,
   onChange,
   onExport,
+  openExportJobs,
+  active = true,
   onOpenController,
   onOpenAlbum,
   initialMatchId,
@@ -74,7 +78,9 @@ export function ConnectedRecordsScreens({
   teamLabel: string;
   disabled: boolean;
   onChange: (command: ConnectedRecordsCommand) => Promise<boolean>;
-  onExport: (request: ConnectedExportRequest) => Promise<string>;
+  onExport: (request: ConnectedExportRequest, signal?: AbortSignal) => Promise<string>;
+  openExportJobs: () => ReportExportJobPort;
+  active?: boolean;
   onOpenController?: (matchId: string) => void;
   onOpenAlbum?: (matchId: string) => void;
   initialMatchId?: string;
@@ -230,104 +236,18 @@ export function ConnectedRecordsScreens({
           disabled={disabled}
         />
       )}
-      <ReportExport value={value} disabled={disabled} onExport={onExport} />
+      <ReportExportPanel
+        teamId={value.results.teamId}
+        seasonId={value.results.seasonId}
+        audience={audience}
+        projectionVersion={value.revision}
+        matches={value.matches}
+        disabled={disabled}
+        active={active}
+        openJobs={openExportJobs}
+        onLegacyJson={onExport}
+      />
     </View>
-  );
-}
-function ReportExport({
-  value,
-  disabled,
-  onExport,
-}: {
-  value: ConnectedRecordsDto;
-  disabled: boolean;
-  onExport: (request: ConnectedExportRequest) => Promise<string>;
-}) {
-  const [kind, setKind] = useState<"season" | "match">("season");
-  const [matchId, setMatchId] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState<string | null>(null);
-  const lock = useRef(false);
-  const run = async (format: "json" | "csv") => {
-    if (lock.current) return;
-    lock.current = true;
-    setBusy(true);
-    setResult(null);
-    try {
-      setResult(
-        await onExport({
-          kind,
-          format,
-          ...(kind === "match" && matchId ? { matchId } : {}),
-          expectedProjectionVersion: value.revision,
-        }),
-      );
-    } catch (cause) {
-      setResult(
-        cause instanceof Error
-          ? cause.message
-          : "The permitted report could not be exported.",
-      );
-    } finally {
-      lock.current = false;
-      setBusy(false);
-    }
-  };
-  return (
-    <Card>
-      <Text style={typography.section}>Export a permitted report</Text>
-      <Text style={typography.body}>
-        The service checks current access and sharing policy again. The file
-        records its audience, filters, policy and projection version. Saving it
-        outside LongBall creates a separate copy.
-      </Text>
-      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-        <Button
-          label="Season report"
-          variant={kind === "season" ? "primary" : "secondary"}
-          disabled={disabled || busy}
-          onPress={() => setKind("season")}
-        />
-        <Button
-          label="Match report"
-          variant={kind === "match" ? "primary" : "secondary"}
-          disabled={disabled || busy}
-          onPress={() => setKind("match")}
-        />
-      </View>
-      {kind === "match" &&
-        value.matches
-          .filter((report) => report !== null)
-          .map((report) => (
-            <Button
-              key={report.matchId}
-              label={`${report.opponent} · ${report.playedDate}`}
-              variant={matchId === report.matchId ? "primary" : "secondary"}
-              disabled={disabled || busy}
-              onPress={() => setMatchId(report.matchId)}
-            />
-          ))}
-      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-        <Button
-          label="Export permitted JSON"
-          testID="records-export-json"
-          disabled={disabled || busy || (kind === "match" && !matchId)}
-          onPress={() => {
-            void run("json");
-          }}
-        />
-        <Button
-          label="Export permitted CSV"
-          testID="records-export-csv"
-          variant="secondary"
-          disabled={disabled || busy || (kind === "match" && !matchId)}
-          onPress={() => {
-            void run("csv");
-          }}
-        />
-      </View>
-      {result && <Notice>{result}</Notice>}
-    </Card>
   );
 }
 function ReadOnlyRecords({

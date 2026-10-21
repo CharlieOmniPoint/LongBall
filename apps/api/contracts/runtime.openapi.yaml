@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: LongBall implemented runtime extensions
-  version: 1.6.0
+  version: 1.7.0
   description: >-
     Runtime additions beside the unchanged supplied canonical contract. Server
     authorization, explicit policy decisions and native-device acceptance remain
@@ -13,6 +13,99 @@ servers:
 security:
   - bearerAuth: []
 paths:
+  /me:
+    get:
+      operationId: readOwnWorkspaceIdentity
+      summary: Read the signed-in identity and its current named workspace choices
+      description: Display names are optional metadata from the exact authorized team-season. They never replace opaque IDs, selected role or player binding and do not grant preparation or roster access.
+      responses:
+        '200':
+          description: Current own identity and memberships only; private, no-store
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [accountId, identityClassification, principal, memberships, serverTime, syntheticOnly]
+                properties:
+                  accountId: {$ref: '#/components/schemas/Identifier'}
+                  identityClassification: {enum: [child_shared, adult_individual, unclassified]}
+                  principal: {type: object, description: Current authenticated runtime principal; no credentials}
+                  memberships:
+                    type: array
+                    items: {$ref: '#/components/schemas/NamedWorkspaceMembership'}
+                  serverTime: {type: string, format: date-time}
+                  syntheticOnly: {type: boolean}
+        '401': {description: A current authenticated identity is required}
+        '403': {description: The account is unavailable}
+  /exports:
+    post:
+      operationId: createProtectedReportExport
+      summary: Queue a requester-bound CSV or PDF report
+      description: >-
+        Implements the canonical report-export job contract. Own participation is player-only;
+        team participation is manager-only; attendance excludes spectators and players receive
+        only their own records. Match and season summaries retain current publication policy.
+        The role-filtered snapshot and generated artifact are encrypted at rest. A separate
+        leased worker creates the file. Current identity, membership, role, source fingerprint
+        and sharing policy are rechecked before delivery. No public download token is issued.
+        Export capability requires an explicit private key and artifact TTL; no deployment or
+        privacy-retention approval is inferred. Legacy synchronous JSON/CSV remains available.
+      parameters:
+      - $ref: '#/components/parameters/SelectedRole'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      - $ref: '#/components/parameters/ContractVersion'
+      - name: If-Match
+        in: header
+        required: false
+        schema: {type: string, pattern: '^"(?:0|[1-9][0-9]{0,14})"$'}
+        description: Optional exact quoted records projection revision. A supplied stale revision is rejected. An absent header captures the current transaction snapshot. The idempotency signature includes this header.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ReportExportRequest'}
+      responses:
+        '202':
+          description: Durable queued export; private, no-store
+          content: {application/json: {schema: {$ref: '#/components/schemas/ReportExportStatus'}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '404': {$ref: '#/components/responses/Unavailable'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '413': {description: The filtered snapshot exceeds the five MiB report limit}
+        '503': {description: EXPORT_NOT_CONFIGURED; configure a private encryption key and explicit artifact TTL}
+  /exports/{exportId}:
+    parameters:
+    - $ref: '#/components/parameters/ReportExportId'
+    - $ref: '#/components/parameters/SelectedRole'
+    get:
+      operationId: readProtectedReportExport
+      summary: Read current requester-bound export status
+      responses:
+        '200':
+          description: Current state; expired or invalidated bytes are cleared, private, no-store
+          content: {application/json: {schema: {$ref: '#/components/schemas/ReportExportStatus'}}}
+        '404': {$ref: '#/components/responses/Unavailable'}
+  /exports/{exportId}/download:
+    parameters:
+    - $ref: '#/components/parameters/ReportExportId'
+    - $ref: '#/components/parameters/SelectedRole'
+    get:
+      operationId: downloadProtectedReportExport
+      summary: Download a ready file after fresh access and policy checks
+      description: At most five MiB. Authenticated downloadPath is relative to this API. Content-Disposition uses only the opaque export UUID. Cross-origin allowed responses expose its attachment header. Saved external copies remain under the recipient's control.
+      responses:
+        '200':
+          description: Authenticated binary attachment; Cache-Control private, no-store; exact Content-Length and sanitized Content-Disposition
+          headers:
+            Content-Disposition: {schema: {type: string}, description: 'attachment; filename="longball-report-<UUID>.csv|pdf"'}
+            Content-Length: {schema: {type: integer, minimum: 1, maximum: 5242880}}
+          content:
+            application/pdf: {schema: {type: string, format: binary}}
+            text/csv: {schema: {type: string, format: binary}}
+        '404': {$ref: '#/components/responses/Unavailable'}
+        '409': {description: 'Export is not ready, source/policy changed, key changed or encrypted artifact verification failed; request a fresh report'}
+        '410': {description: EXPORT_EXPIRED; encrypted bytes were cleared}
   /matches/{matchId}/download:
     parameters:
     - $ref: '#/components/parameters/MatchId'
@@ -428,7 +521,7 @@ paths:
     post:
       operationId: inspectPossessedInvitationDestination
       summary: Confirm the actual invitation destination before authenticated acceptance
-      description: Read-only lookup for the exact server-hashed token and current authenticated account. Link-supplied team and season fields do not authorize a destination. No account, session, grant or receipt is created; no labels, verifier, token or private roster are returned.
+      description: Read-only lookup for the exact server-hashed token and current authenticated account. Link-supplied team, season and labels do not authorize a destination. Returns only current club/team/age-group/season context and a role-only inviter label. No account, session, grant or receipt is created; no person name, verifier, token, roster or contact is returned.
       parameters:
         - {$ref: '#/components/parameters/ContractVersion'}
       requestBody:
@@ -437,7 +530,7 @@ paths:
       responses:
         '200':
           description: Safe token-bound destination metadata
-          content: {application/json: {schema: {$ref: '#/components/schemas/InvitationDestination'}}}
+          content: {application/json: {schema: {$ref: '#/components/schemas/InvitationInspection'}}}
         '404': {$ref: '#/components/responses/Unavailable'}
   /spectator-invites/accept:
     post:
@@ -469,17 +562,20 @@ paths:
         content: {application/json: {schema: {$ref: '#/components/schemas/InvitationTokenInput'}}}
       responses:
         '200':
-          description: Minimal capability-bound expiry and policy; creates no account or access
+          description: Minimal exact-token destination context, expiry and policy; creates no account or access
           content:
             application/json:
               schema:
                 type: object
                 additionalProperties: false
-                required: [invitationId, expiresAt, policyVersion]
+                required: [invitationId, teamId, seasonId, expiresAt, policyVersion, context]
                 properties:
                   invitationId: {$ref: '#/components/schemas/Identifier'}
+                  teamId: {$ref: '#/components/schemas/Identifier'}
+                  seasonId: {$ref: '#/components/schemas/Identifier'}
                   expiresAt: {type: string, format: date-time}
                   policyVersion: {$ref: '#/components/schemas/Identifier'}
+                  context: {$ref: '#/components/schemas/InvitationContext'}
         '410': {$ref: '#/components/responses/Unavailable'}
         '429': {description: The bounded capability request window has been reached}
         '503': {$ref: '#/components/responses/PolicyRequired'}
@@ -1001,6 +1097,51 @@ components:
   securitySchemes:
     bearerAuth: {type: http, scheme: bearer, bearerFormat: JWT}
   schemas:
+    NamedWorkspaceMembership:
+      type: object
+      additionalProperties: false
+      required: [accountId, teamId, seasonId, role]
+      properties:
+        accountId: {$ref: '#/components/schemas/Identifier'}
+        teamId: {$ref: '#/components/schemas/Identifier'}
+        seasonId: {$ref: '#/components/schemas/Identifier'}
+        role: {enum: [administrator, manager, player, spectator]}
+        playerId: {$ref: '#/components/schemas/Identifier'}
+        expiresAt: {type: [integer, 'null'], minimum: 0}
+        revokedAt: {type: [integer, 'null'], minimum: 0}
+        teamName: {type: string, minLength: 1, maxLength: 120, description: Optional server-bound display name including the current age group when known}
+        clubName: {type: string, minLength: 1, maxLength: 120}
+        seasonLabel: {type: string, minLength: 1, maxLength: 120}
+    ReportExportRequest:
+      type: object
+      additionalProperties: false
+      required: [kind, teamId, seasonId, format]
+      properties:
+        kind: {enum: [own_participation, team_participation, attendance, match_summary, season_results]}
+        teamId: {$ref: '#/components/schemas/Identifier'}
+        seasonId: {$ref: '#/components/schemas/Identifier'}
+        matchId: {type: [string, 'null'], maxLength: 150, description: Required only for match_summary; absent or null for other kinds}
+        format: {enum: [csv, pdf]}
+    ReportExportStatus:
+      type: object
+      additionalProperties: false
+      required: [id, status, downloadPath, expiresAt, failureCode, publicationPolicyVersions, generatedAt]
+      properties:
+        id: {type: string, format: uuid}
+        status: {enum: [queued, working, ready, failed, expired]}
+        downloadPath: {type: [string, 'null'], description: 'Only ready jobs have /v1/exports/<UUID>/download; always authenticated'}
+        expiresAt: {type: string, format: date-time}
+        failureCode: {type: [string, 'null'], pattern: '^[A-Z0-9_]{1,80}$'}
+        publicationPolicyVersions:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [policyId, version]
+            properties:
+              policyId: {type: string}
+              version: {type: integer, minimum: 0}
+        generatedAt: {type: [string, 'null'], format: date-time}
     OfflinePlayerSnapshot:
       type: object
       additionalProperties: false
@@ -2234,6 +2375,27 @@ components:
         teamId: {$ref: '#/components/schemas/Identifier'}
         seasonId: {$ref: '#/components/schemas/Identifier'}
         expiresAt: {type: string, format: date-time}
+    InvitationContext:
+      type: object
+      additionalProperties: false
+      required: [clubName, teamName, ageGroup, seasonLabel, inviterLabel]
+      properties:
+        clubName: {type: string, minLength: 1, maxLength: 150}
+        teamName: {type: string, minLength: 1, maxLength: 150}
+        ageGroup: {type: [string, 'null'], minLength: 1, maxLength: 150}
+        seasonLabel: {type: [string, 'null'], minLength: 1, maxLength: 150}
+        inviterLabel: {type: string, enum: [Team manager, Team member]}
+      description: Display metadata only from the exact current server-validated invitation scope. Role-only inviter label exposes no person's identity and grants no authority.
+    InvitationInspection:
+      type: object
+      additionalProperties: false
+      required: [invitationId, teamId, seasonId, expiresAt, context]
+      properties:
+        invitationId: {$ref: '#/components/schemas/Identifier'}
+        teamId: {$ref: '#/components/schemas/Identifier'}
+        seasonId: {$ref: '#/components/schemas/Identifier'}
+        expiresAt: {type: string, format: date-time}
+        context: {$ref: '#/components/schemas/InvitationContext'}
     InvitationList:
       type: object
       additionalProperties: false
@@ -2484,6 +2646,7 @@ components:
         message: {type: string}
         retryable: {type: boolean}
   parameters:
+    ReportExportId: {name: exportId, in: path, required: true, schema: {type: string, format: uuid}}
     PushDeviceId: {name: deviceId, in: path, required: true, schema: {type: string, pattern: '^[A-Za-z0-9_-]{1,120}$'}}
     PushIfMatch:
       name: If-Match

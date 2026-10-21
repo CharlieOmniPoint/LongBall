@@ -11,6 +11,7 @@ const result = spawnSync("pnpm", [
   "apps/api/src/migration.test.ts",
   "apps/api/src/postgres-privacy-migration.test.ts",
   "apps/api/src/postgres-invitation-migration.test.ts",
+  "apps/api/src/report-export-repository.test.ts",
 ], { stdio: "inherit" });
 if (result.error) {
   console.error("The migration test runner could not start.");

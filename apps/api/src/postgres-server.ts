@@ -1,3 +1,5 @@
+import { ReportExportRepository } from './report-export-repository';
+import { ReportExportService } from './report-export-service';
 import { TeamPrivilegeService } from './team-privileges-service';
 import { PostgresTeamPrivilegeRepository } from './postgres-team-privileges';
 import { dirname, join } from 'node:path';
@@ -30,6 +32,8 @@ export async function createPostgresApi(options: ApiOptions & { connectionString
     const invitations=new SpectatorInvitationService({...options,repository:new PostgresInvitationRepository(store),now:store.now});
     const privileges=new TeamPrivilegeService(new PostgresTeamPrivilegeRepository(store),store.now);
     const push=new PushRegistrationService(new PostgresPushRepository(store.db),options,store.now);
-    return createRuntimeApi(options, store, port, media, activation,undefined,{branding,spectator,invitations,privileges,push});
+    const exportsRepository=new ReportExportRepository(store);await exportsRepository.initialize();
+    const reports=new ReportExportService(exportsRepository,store,options.reportExports,store.now);
+    return createRuntimeApi(options, store, port, media, activation,undefined,{branding,spectator,invitations,privileges,push,reports});
   } catch (error) { await store.close(); throw error; }
 }

@@ -63,7 +63,9 @@ for local, destination in exports:
     for path in sorted(directory.rglob("*")):
         if path.is_symlink():
             raise SystemExit(f"Refusing a symbolic link in the review export: {path}")
-        if path.is_file() and (destination != "backend" or path.suffix == ".mjs"):
+        if destination == "backend" and path.is_file() and path.relative_to(directory).as_posix() == "assets/fonts/DejaVuSans.ttf":
+            include("backend/assets/fonts/DejaVuSans.ttf.base64", base64.b64encode(path.read_bytes()).decode() + "\n")
+        if path.is_file() and (destination != "backend" or path.suffix == ".mjs" or path.relative_to(directory).as_posix() == "assets/fonts/LICENSE"):
             include(f"{destination}/{path.relative_to(directory)}", path.read_text())
 
 for source, destination in [

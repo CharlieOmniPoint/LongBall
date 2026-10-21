@@ -7,6 +7,7 @@ import {
   type InvitationMemoryClient,
 } from "@longball/application/invitation-client";
 import { isCanonicalInvitationToken } from "@longball/application/invitation-credentials";
+import { invitationTeamLabel } from '@longball/application/invitation-context';
 import { Button, Card, colors, Notice, Pill, typography } from "../ui";
 
 type InvitationList = Awaited<ReturnType<InvitationMemoryClient["list"]>>;
@@ -204,11 +205,15 @@ function InvitationSession(props: ConnectedInvitationsPanelProps) {
       setResult(value);
       disclosure.current = value.kind === "issued";
       if (value.kind === "accepted") {
+        const reviewed = inspection?.value;
+        const destination = reviewed?.invitationId === value.receipt.invitationId && reviewed.teamId === value.receipt.teamId && reviewed.seasonId === value.receipt.seasonId
+          ? `${invitationTeamLabel(reviewed.context)} · ${reviewed.context.clubName} · ${reviewed.context.seasonLabel ?? 'reviewed season'}`
+          : 'the service-verified team and season';
         setToken("");
         setInspection(null);
         setAcceptedReview(false);
         setNotice(
-          `Spectator access accepted for ${value.receipt.teamId}, ${value.receipt.seasonId}. Access ends ${when(value.receipt.expiresAt)}.`,
+          `Spectator access accepted for ${destination}. Access ends ${when(value.receipt.expiresAt)}.`,
         );
       } else if (value.kind === "revoked") {
         setNotice("The invitation link was revoked.");
@@ -584,12 +589,18 @@ function InvitationSession(props: ConnectedInvitationsPanelProps) {
           }}
         />
         {currentInspection && (
-          <View style={styles.row}>
+          <View style={styles.row} testID="invitation-reviewed-context">
             <Text style={typography.label}>
-              Team: {currentInspection.teamId}
+              {invitationTeamLabel(currentInspection.context)}
             </Text>
             <Text style={typography.body}>
-              Season: {currentInspection.seasonId}
+              {currentInspection.context.clubName} · {currentInspection.context.seasonLabel ?? 'Season label unavailable'}
+            </Text>
+            <Text style={typography.muted}>
+              Invited by: {currentInspection.context.inviterLabel}
+            </Text>
+            <Text selectable style={typography.muted}>
+              References: team {currentInspection.teamId} · season {currentInspection.seasonId}
             </Text>
             <Text style={typography.muted}>
               Link expires {when(currentInspection.expiresAt)}

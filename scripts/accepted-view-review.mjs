@@ -199,7 +199,7 @@ try {
   await click(pa, "More");
   await click(pa, "Service and controller");
   await pa.getByLabel("Workspace API URL", { exact: true }).fill(api);
-  await click(pa, "Fictional API review");
+  await click(pa, "Demo API review");
   await click(pa, "Alex Morgan · Manager");
   await pa.getByTestId("workspace-connect").click();
   await selectWorkspaceContext(pa, "manager");

@@ -1,4 +1,16 @@
 import type { OidcClientConfig } from "@longball/application/security";
+import { parseInvitationContext, type InvitationContext } from '@longball/application/invitation-context';
+export interface InvitationActivationInfo {
+  invitationId: string; teamId: string; seasonId: string; expiresAt: string; policyVersion: string; context: InvitationContext;
+}
+/** No URL label or unreviewed response field becomes invitation context. */
+export function parseInvitationActivationInfo(value: unknown, nowMs: number): InvitationActivationInfo {
+  const fields = ['invitationId', 'teamId', 'seasonId', 'expiresAt', 'policyVersion', 'context'];
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Invalid invitation review.');
+  const info = value as Record<string, unknown>;
+  if (Object.keys(info).length !== fields.length || fields.some(field => !Object.hasOwn(info, field)) || ['invitationId', 'teamId', 'seasonId', 'policyVersion'].some(field => typeof info[field] !== 'string' || !/^[A-Za-z0-9_.:-]{1,150}$/.test(info[field] as string)) || typeof info.expiresAt !== 'string' || info.expiresAt.length > 40 || !Number.isFinite(Date.parse(info.expiresAt)) || Date.parse(info.expiresAt) <= nowMs) throw new Error('Invalid invitation review.');
+  return { invitationId: info.invitationId, teamId: info.teamId, seasonId: info.seasonId, expiresAt: info.expiresAt, policyVersion: info.policyVersion, context: parseInvitationContext(info.context) } as InvitationActivationInfo;
+}
 export interface InvitationProviderSetup {
   accountId: string;
   username: string;

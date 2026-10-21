@@ -1,3 +1,7 @@
+import { ReportExportRepository } from '../apps/api/src/report-export-repository';
+import { ReportExportService } from '../apps/api/src/report-export-service';
+import { runDueReportExports } from '../apps/worker/src/report-export-jobs';
+import type { ReportExportOptions } from '../apps/api/src/report-export-config';
 /** Disposable operational proof. No provider is contacted and no token/key is logged. */
 import assert from "node:assert/strict";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
@@ -47,16 +51,17 @@ export async function verifyRuntimeProofSchema(database: PgDatabase) {
       )
     ).rows[0].value,
   );
-  assert.deepEqual(versions, [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
+  assert.deepEqual(versions, [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]);
   assert.deepEqual(mediaVersions, [1, 2, 3, 4]);
   assert.deepEqual(activation, [{ version: 2 }]);
-  assert.equal(protectedTables, 37);
+  assert.equal(protectedTables, 38);
   const sourcePaths = [
     "apps/api/src/pg.ts",
     "apps/api/src/runtime-grants.ts",
     "apps/api/migrations/postgresql/013_team_privileges.sql",
     "apps/api/migrations/postgresql/014_push_registrations.sql",
     "apps/api/migrations/postgresql/015_team_privilege_audit_clock.sql",
+    "apps/api/migrations/postgresql/016_report_exports.sql",
     "apps/api/migrations/postgresql/media_004_team_privileges.sql",
     "scripts/runtime-contribution-boundaries.ts",
     "scripts/runtime-heic.ts",
@@ -147,12 +152,14 @@ export interface RuntimeContributionCheckpoint {
   cipher: PushTokenCipher;
   rawToken: string;
   recorded: Awaited<ReturnType<typeof rows>>;
+  exportProof: {id:string; options:ReportExportOptions; row:Record<string,unknown>; sha256:string};
 }
 
 /** Writes through restricted application repositories before the paired archive. */
 export async function prepareRuntimeContributions(
   owner: PostgresStore,
   api: PostgresStore,
+  worker: PostgresStore,
 ): Promise<RuntimeContributionCheckpoint> {
   const manager = await principal(api, "synthetic-account-manager", true);
   const player = await principal(api, "synthetic-account-player-01", false);
@@ -237,6 +244,15 @@ export async function prepareRuntimeContributions(
       dueAtMs: Date.now() - 1_000,
     }),
   );
+  const exportOptions:ReportExportOptions={encryptionKey:randomBytes(32),ttlMs:3_600_000};
+  const exportService=new ReportExportService(new ReportExportRepository(api),api,exportOptions);
+  const queued=await api.db.withContext(context(player,"player","exports.request"),()=>api.transaction(()=>exportService.create(player,{...scope,kind:'own_participation',format:'csv'},'player')));
+  assert.equal((await runDueReportExports(worker,exportOptions)).completed,1);
+  const artifact=await api.db.withContext(context(player,"player","exports.download"),()=>exportService.download(player,queued.id,'player'));
+  const exportRow=await owner.one('SELECT * FROM report_exports WHERE id=$1',[queued.id]);assert(exportRow);
+  assert.equal(exportRow.snapshot_ciphertext,null);assert.equal(exportRow.status,'ready');
+  assert(!JSON.stringify(exportRow).includes('playingMs'));
+  const exportProof={id:queued.id,options:exportOptions,row:exportRow,sha256:createHash('sha256').update(artifact.bytes).digest('hex')};
   const recorded = await rows(owner, deviceId);
   assert.equal(recorded.registration.length, 1);
   assert.equal(recorded.decisions.length, 2);
@@ -250,6 +266,7 @@ export async function prepareRuntimeContributions(
     cipher,
     rawToken,
     recorded,
+    exportProof,
   };
 }
 
@@ -261,6 +278,15 @@ export async function verifyRuntimeContributions(
   checkpoint: RuntimeContributionCheckpoint,
 ) {
   const { manager, player, otherPlayer, deviceId, jobId } = checkpoint;
+  const restoredExport=await owner.one('SELECT * FROM report_exports WHERE id=$1',[checkpoint.exportProof.id]);
+  assert.deepEqual(restoredExport,checkpoint.exportProof.row,'Restore preserves exact encrypted derived report bytes.');
+  const exports=new ReportExportService(new ReportExportRepository(api),api,checkpoint.exportProof.options);
+  const restoredArtifact=await api.db.withContext(context(player,'player','exports.download'),()=>exports.download(player,checkpoint.exportProof.id,'player'));
+  assert.equal(createHash('sha256').update(restoredArtifact.bytes).digest('hex'),checkpoint.exportProof.sha256);
+  const unavailableExports=new ReportExportService(new ReportExportRepository(api),api,{...checkpoint.exportProof.options,encryptionKey:randomBytes(32)});
+  await assert.rejects(api.db.withContext(context(player,'player','exports.download'),()=>unavailableExports.download(player,checkpoint.exportProof.id,'player')),error=>(error as {code?:string}).code==='EXPORT_KEY_CHANGED');
+  const clearedExport=await owner.one('SELECT status,failure_code,snapshot_ciphertext,artifact_ciphertext,artifact_sha256 FROM report_exports WHERE id=$1',[checkpoint.exportProof.id]);
+  assert.deepEqual(clearedExport,{status:'failed',failure_code:'EXPORT_KEY_CHANGED',snapshot_ciphertext:null,artifact_ciphertext:null,artifact_sha256:null});
   const restored = await rows(owner, deviceId);
   assert(
     JSON.stringify(restored) === JSON.stringify(checkpoint.recorded),
@@ -425,6 +451,9 @@ export async function verifyRuntimeContributions(
     unclaimedWorkerDestinationDenied: true,
     exactLeasedRecipientOnly: true,
     wrongLeaseCapabilityDenied: true,
+    exactEncryptedReportRestored:true,
+    reportDecryptsOnlyWithSeparateKey:true,
+    missingReportKeyFailsClosedAndClearsArtifact:true,
     actualPushDelivered: false,
   };
 }

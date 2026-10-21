@@ -47,6 +47,15 @@ for (const [key, entry] of [...entries].sort(([a], [b]) => a.localeCompare(b))) 
       writeFileSync(join(output, target), bytes);
       retained.push({ file: target, sha256: createHash("sha256").update(bytes).digest("hex"), bytes: bytes.length });
     }
+    // This pinned package ships its licence declaration in README.md rather
+    // than a separate LICENCE file. Retain that upstream evidence verbatim.
+    if (entry.name === "@pdf-lib/fontkit" && retained.length === 0) {
+      const bytes = readFileSync(join(entry.path, "README.md"));
+      const target = join("licenses", id, "README.md");
+      mkdirSync(dirname(join(output, target)), { recursive: true });
+      writeFileSync(join(output, target), bytes);
+      retained.push({ file: target, sha256: createHash("sha256").update(bytes).digest("hex"), bytes: bytes.length });
+    }
   }
   const resolved = typeof entry.resolved === "string" && /^https:\/\//.test(entry.resolved) && !new URL(entry.resolved).username ? entry.resolved : "NOASSERTION";
   licenses.push({ name: entry.name, version: entry.version, declaredLicense: declared, installed: Boolean(manifest), retained });
@@ -58,18 +67,40 @@ for (const [key, entry] of [...entries].sort(([a], [b]) => a.localeCompare(b))) 
     externalRefs: [{ referenceCategory: "PACKAGE-MANAGER", referenceType: "purl", referenceLocator: `pkg:npm/${entry.name.startsWith("@") ? `%40${entry.name.slice(1)}` : entry.name}@${encodeURIComponent(entry.version)}` }],
   });
 }
+const fontPath = "apps/api/src/assets/fonts/DejaVuSans.ttf";
+const fontBytes = readFileSync(join(root, fontPath));
+const fontLicense = readFileSync(join(root, "apps/api/src/assets/fonts/LICENSE"));
+const fontLicenseTarget = "licenses/report-font/DejaVuSans-LICENSE";
+mkdirSync(dirname(join(output, fontLicenseTarget)), { recursive: true });
+writeFileSync(join(output, fontLicenseTarget), fontLicense);
+const fontSha256 = createHash("sha256").update(fontBytes).digest("hex");
+const assets = [{
+  name: "DejaVu Sans", kind: "report PDF font", sourcePath: fontPath,
+  source: "https://dejavu-fonts.github.io/", bytes: fontBytes.length, sha256: fontSha256,
+  declaredLicense: "Bitstream-Vera", licenseNote: "Unmodified font; DejaVu changes are in the public domain. See retained notice. No legal approval is inferred.",
+  retained: [{ file: fontLicenseTarget, sha256: createHash("sha256").update(fontLicense).digest("hex"), bytes: fontLicense.length }],
+}];
+const fontFile = {
+  SPDXID: "SPDXRef-File-ReportFont-DejaVuSans", fileName: fontPath, fileTypes: ["BINARY"],
+  checksums: [{ algorithm: "SHA256", checksumValue: fontSha256 }],
+  licenseConcluded: "NOASSERTION", licenseInfoInFiles: ["Bitstream-Vera"],
+  copyrightText: "Copyright (c) 2003 by Bitstream, Inc. All Rights Reserved. DejaVu changes are in public domain.",
+  comment: "Report PDF font asset; retained distribution notice is listed in assets.json. This is not licence approval.",
+};
 const observedAt = new Date().toISOString();
 const workingTreeDirty = command("git", ["status", "--porcelain"]).trim().length > 0;
 const document = {
   spdxVersion: "SPDX-2.3", dataLicense: "CC0-1.0", SPDXID: "SPDXRef-DOCUMENT",
-  name: `LongBall resolved JavaScript dependency inventory ${sourceCommit}`,
+  name: `LongBall resolved JavaScript dependency and report font inventory ${sourceCommit}`,
   documentNamespace: `https://github.com/CharlieOmniPoint/LongBall/spdxdocs/${sourceCommit}-${lockSha256}`,
   creationInfo: { created: observedAt.replace(/\.\d{3}Z$/, "Z"), creators: ["Tool: LongBall-quality-inventory-1"] },
-  comment: `Resolved pnpm workspace dependency inventory, including development and optional platform packages. Working tree dirty: ${workingTreeDirty}. This is not a native OS/image SBOM, vulnerability result, shipped-artifact attestation or licence approval.`,
-  packages,
-  relationships: packages.map((entry) => ({ spdxElementId: "SPDXRef-DOCUMENT", relationshipType: "DESCRIBES", relatedSpdxElement: entry.SPDXID })),
+  comment: `Resolved pnpm workspace dependency inventory, including development and optional platform packages, plus the report PDF font asset. Working tree dirty: ${workingTreeDirty}. This is not a native OS/image SBOM, vulnerability result, shipped-artifact attestation or licence approval.`,
+  packages, files: [fontFile],
+  relationships: [...packages, fontFile].map((entry) => ({ spdxElementId: "SPDXRef-DOCUMENT", relationshipType: "DESCRIBES", relatedSpdxElement: entry.SPDXID })),
 };
 writeFileSync(join(output, "sbom.spdx.json"), JSON.stringify(document, null, 2) + "\n");
 writeFileSync(join(output, "licenses.json"), JSON.stringify({ observedAt, sourceCommit, workingTreeDirty, lockSha256, packages: licenses }, null, 2) + "\n");
-writeFileSync(join(output, "summary.json"), JSON.stringify({ observedAt, sourceCommit, workingTreeDirty, lockSha256, packageCount: packages.length, retainedLicenseFiles: licenses.reduce((sum, entry) => sum + entry.retained.length, 0), sbom: "sbom.spdx.json", licenses: "licenses.json", scope: "Resolved JavaScript workspace only; optional uninstalled packages have no retained licence text. Native/image inventories remain separate." }, null, 2) + "\n");
-console.log(`Recorded ${packages.length} resolved packages and ${licenses.reduce((sum, entry) => sum + entry.retained.length, 0)} licence files in ${relative(root, output)}.`);
+writeFileSync(join(output, "assets.json"), JSON.stringify({ observedAt, sourceCommit, workingTreeDirty, assets }, null, 2) + "\n");
+const retainedLicenseFiles = [...licenses, ...assets].reduce((sum, entry) => sum + entry.retained.length, 0);
+writeFileSync(join(output, "summary.json"), JSON.stringify({ observedAt, sourceCommit, workingTreeDirty, lockSha256, packageCount: packages.length, assetCount: assets.length, retainedLicenseFiles, sbom: "sbom.spdx.json", licenses: "licenses.json", assets: "assets.json", scope: "Resolved JavaScript workspace and report PDF font; optional uninstalled packages have no retained licence text. Native/image inventories remain separate." }, null, 2) + "\n");
+console.log(`Recorded ${packages.length} resolved packages, ${assets.length} font asset and ${retainedLicenseFiles} licence files in ${relative(root, output)}.`);

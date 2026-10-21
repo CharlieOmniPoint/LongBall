@@ -24,6 +24,18 @@ assert.equal(typeof privateError.message, "string");
 assert.equal(typeof privateError.requestId, "string");
 assert.equal(typeof privateError.retryable, "boolean");
 
+const reportPdfResult = await promisify(execFile)(process.execPath,
+  ["--max-old-space-size=128", "/app/backend/report-pdf-probe.mjs"],
+  { timeout: 15_000, maxBuffer: 8192 });
+const reportPdf = JSON.parse(reportPdfResult.stdout);
+assert.equal(reportPdf.passed, true);
+assert.equal(reportPdf.pages, 1);
+assert.ok(reportPdf.bytes > 0 && reportPdf.bytes <= 5 * 1024 * 1024);
+assert.equal(reportPdf.magic, "%PDF-1.7");
+assert.equal(reportPdf.embeddedFont, true);
+assert.equal(reportPdf.unicodeReadable, true);
+assert.equal(reportPdf.unknownAndZeroDistinct, true);
+
 async function scan(bytes) {
   return new Promise((yes, no) => {
     const socket = connect(3310, "scanner"), chunks = [];
@@ -54,4 +66,4 @@ try {
   }
   decoder = { originalSha256: sha(original), displaySha256: sha(bytes), dimensions: [metadata.width, metadata.height], worker: JSON.parse(result.stdout), orientationAppliedOnce: true, metadataStripped: true };
 } finally { await rm(directory, { recursive: true, force: true }); }
-console.log(JSON.stringify({ passed: true, observedAt: new Date().toISOString(), uid: process.getuid(), healthStatus: health.status, unconfiguredPrivateStatus: privateResponse.status, actualScannerCleanAndEicar: true, decoder, apiSha256: sha(await readFile("/app/backend/api.mjs")), workerSha256: sha(await readFile("/app/backend/worker.mjs")), sharp: sharp.versions.sharp, limitations: ["Isolated image/runtime/decoder proof only. No identity provider, production hosting, actual push, physical device, operational signature-update SLA or paired restore was exercised in this check."] }));
+console.log(JSON.stringify({ passed: true, observedAt: new Date().toISOString(), uid: process.getuid(), healthStatus: health.status, unconfiguredPrivateStatus: privateResponse.status, actualScannerCleanAndEicar: true, decoder, reportPdf, apiSha256: sha(await readFile("/app/backend/api.mjs")), workerSha256: sha(await readFile("/app/backend/worker.mjs")), reportPdfProbeSha256: sha(await readFile("/app/backend/report-pdf-probe.mjs")), sharp: sharp.versions.sharp, limitations: ["Isolated image/runtime/decoder/PDF proof only. No identity provider, production hosting, actual push, physical device, operational signature-update SLA or paired restore was exercised in this check."] }));

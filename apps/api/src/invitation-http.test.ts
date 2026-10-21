@@ -145,6 +145,7 @@ describe("canonical invitation client through actual fictional HTTP and SQLite",
       teamId,
       seasonId,
       expiresAt: replacement.receipt.expiresAt,
+      context: { clubName: 'Richmond Rovers', teamName: 'Roma', ageGroup: 'U10', seasonLabel: '2026/27', inviterLabel: 'Team member' },
     });
     expect(
       lab.api.store.database
@@ -247,6 +248,7 @@ describe("canonical invitation client through actual fictional HTTP and SQLite",
       teamId,
       seasonId,
       expiresAt: created.receipt.expiresAt,
+      context: { clubName: 'Richmond Rovers', teamName: 'Roma', ageGroup: 'U10', seasonLabel: '2026/27', inviterLabel: 'Team manager' },
     });
     expect(
       lab.api.store.database

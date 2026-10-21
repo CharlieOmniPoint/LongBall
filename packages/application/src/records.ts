@@ -111,6 +111,8 @@ export interface RecordsState {
   endsOn: string;
   players: RecordPlayer[];
   liveMatch: LiveMatchDetails;
+  /** Server-seeded approval for the first projection only; never inferred from a score or team role. */
+  initialLivePublication?: { matchId: string; fixtureClass: FixtureClass; publication: ResultPublicationPolicy };
   results: MatchRecord[];
   trainingAttendance: TrainingAttendanceEvidence[];
   /** Optional on retained earlier documents; absent evidence remains unknown. */
@@ -199,6 +201,10 @@ export function createRecordsSeed(options: { demoSharing?: boolean } = {}): Reco
     goals: index === 0 ? [{ id: 'synthetic-history-known-goal', beneficiary: 'us', isOwnGoal: false, scorerPlayerId: romaFixture.players[1].id, goalType: null, half: null, halfElapsedMs: null }] : [],
   }, '2026-10-20T12:00:00Z'));
   if (options.demoSharing) {
+    state.initialLivePublication = { matchId: state.liveMatch.matchId, fixtureClass: state.liveMatch.fixtureClass, publication: {
+      id: 'demo-simulated-scores-v1', version: 1, fixtureClass: state.liveMatch.fixtureClass,
+      confirmed: true, confirmationReference: 'Generated test scenario only; no competition or real-data approval.', allowedRoles: ['player', 'spectator'],
+    } };
     state.results = state.results.map((record) => ({ ...record, publication: {
       id: 'demo-simulated-scores-v1', version: 1, fixtureClass: record.fixtureClass,
       confirmed: true, confirmationReference: 'Generated test scenario only; no competition or real-data approval.', allowedRoles: ['player', 'spectator'],
@@ -212,6 +218,10 @@ export function snapshotLiveMatch(state: RecordsState, match: MatchState, at: st
   if (match.config.matchId !== state.liveMatch.matchId) throw new Error('Set this match’s recorded fixture details before reporting it.');
   const previousRecord = state.results.find(record => record.id === match.config.matchId);
   const sameClassification = previousRecord?.fixtureClass === state.liveMatch.fixtureClass;
+  const initial = state.initialLivePublication;
+  const initialPublication = !previousRecord && initial?.matchId === match.config.matchId &&
+    initial.fixtureClass === state.liveMatch.fixtureClass && initial.publication.fixtureClass === state.liveMatch.fixtureClass
+      ? initial.publication : null;
   const sample = match.anchor?.sample ?? { monotonicMs: 0, sessionId: 'records-checkpoint', wallTimeMs: 0 };
   const started = match.status !== 'preparation';
   const targets = started ? currentTargets(match, sample) : [];
@@ -229,7 +239,7 @@ export function snapshotLiveMatch(state: RecordsState, match: MatchState, at: st
   return {
     ...input, id: match.config.matchId, teamId: state.teamId, seasonId: state.seasonId,
     recordMode: 'detailed_live', detailCompleteness: match.recoveryRequired ? 'review_required' : 'complete',
-    publication: sameClassification ? clone(previousRecord!.publication) : managerOnlyPublication(state.liveMatch.fixtureClass),
+    publication: sameClassification ? clone(previousRecord!.publication) : initialPublication ? clone(initialPublication) : managerOnlyPublication(state.liveMatch.fixtureClass),
     classificationVersion: previousRecord ? previousRecord.classificationVersion + Number(!sameClassification) : 1,
     selectedPlayerIds: [...match.config.selectedPlayerIds], attendance: { ...match.attendance },
     participation: started ? playerMinutes(match, sample).map(player => {
@@ -306,6 +316,15 @@ export function reduceRecords(previous: RecordsState, command: RecordsCommand): 
     case 'live.context.set': {
       if (!validDate(command.details.playedDate) || command.details.playedDate < state.startsOn || command.details.playedDate > state.endsOn || !command.details.opponent.trim()) throw new Error('Choose valid fixture details in this season.');
       state = { ...state, liveMatch: clone(command.details) };
+      before = state.results.find(record => record.id === command.details.matchId) ?? null;
+      if (before && before.fixtureClass !== command.details.fixtureClass) {
+        after = { ...before, publication: managerOnlyPublication(before.fixtureClass), revision: before.revision + 1, updatedAt: command.at };
+        state = { ...state, results: state.results.map(record => record.id === after!.id ? after! : record) };
+      }
+      // A changed classification invalidates the initial approval permanently.
+      // Returning to the old class cannot silently restore the discarded decision.
+      if (state.initialLivePublication?.matchId === command.details.matchId && state.initialLivePublication.fixtureClass !== command.details.fixtureClass)
+        delete state.initialLivePublication;
       reason = 'Current fixture context recorded.';
       break;
     }

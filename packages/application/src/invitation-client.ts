@@ -4,6 +4,7 @@ import {
   type RedactedInviteReceipt,
 } from "./invitation-credentials";
 import type { HttpFetch } from "./sync";
+import { parseInvitationContext, type InvitationContext } from './invitation-context';
 
 export type InvitationClientResult =
   | { kind: "issued"; receipt: InviteCreated }
@@ -15,6 +16,9 @@ export interface InvitationAccepted {
   teamId: string;
   seasonId: string;
   expiresAt: string;
+}
+export interface InvitationInspection extends InvitationAccepted {
+  context: InvitationContext;
 }
 export interface InvitationRevoked {
   invitationId: string;
@@ -177,6 +181,12 @@ function acceptedReceipt(value: unknown): InvitationAccepted {
     seasonId: value.seasonId,
   };
 }
+function inspectionReceipt(value: unknown): InvitationInspection {
+  if (!isRecord(value) || !exactKeys(value, ['invitationId', 'expiresAt', 'teamId', 'seasonId', 'context'])) return invalid();
+  const destination = acceptedReceipt({ invitationId: value.invitationId, expiresAt: value.expiresAt, teamId: value.teamId, seasonId: value.seasonId });
+  try { return { ...destination, context: parseInvitationContext(value.context) }; }
+  catch { return invalid(); }
+}
 function revokedReceipt(value: unknown): InvitationRevoked {
   if (
     !isRecord(value) ||
@@ -264,7 +274,7 @@ export class InvitationMemoryClient {
   #pendingRequest: MemoryRequest | null = null;
   private busy = false;
   private closed = false;
-  #inspection: { token: string; destination: InvitationAccepted } | null = null;
+  #inspection: { token: string; destination: InvitationInspection } | null = null;
   #inspectionGeneration = 0;
   private readonly baseUrl: string;
   private readonly timeoutMs: number;
@@ -322,7 +332,7 @@ export class InvitationMemoryClient {
     if (response.status !== 200) return invalid();
     return listReceipt(response.value, teamId, seasonId);
   }
-  async inspect(token: string): Promise<InvitationAccepted> {
+  async inspect(token: string): Promise<InvitationInspection> {
     this.current();
     if (!isCanonicalInvitationToken(token))
       throw new InvitationClientError("INVITATION_INVALID_CREDENTIAL");
@@ -341,9 +351,9 @@ export class InvitationMemoryClient {
     if (response.status !== 200) return invalid();
     if (generation !== this.#inspectionGeneration)
       throw new InvitationClientError("INVITATION_REVIEW_CHANGED");
-    const destination = acceptedReceipt(response.value);
+    const destination = inspectionReceipt(response.value);
     this.#inspection = { token, destination };
-    return { ...destination };
+    return { ...destination, context: { ...destination.context } };
   }
   issue(
     teamId: string,

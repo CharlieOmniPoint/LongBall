@@ -19,7 +19,7 @@ async function open(page, label) {
   await page.goto(web, { waitUntil: 'networkidle' }); await enterFictionalReview(page);
   await page.getByTestId('prepare-match').waitFor(); await page.getByRole('button', { name: 'More', exact: true }).click(); await page.getByRole('button', { name: 'Service and controller', exact: true }).click();
   await page.getByLabel('Workspace API URL', { exact: true }).fill(api);
-  await page.getByRole('button', { name: 'Fictional API review', exact: true }).click(); await page.getByRole('button', { name: label, exact: true }).click(); await page.getByTestId('workspace-connect').click();
+  await page.getByRole('button', { name: 'Demo API review', exact: true }).click(); await page.getByRole('button', { name: label, exact: true }).click(); await page.getByTestId('workspace-connect').click();
   await selectWorkspaceContext(page, label === 'Oliver Bennett · Player' ? 'player' : 'manager');
 }
 async function decide(page, privilege, suspend) {

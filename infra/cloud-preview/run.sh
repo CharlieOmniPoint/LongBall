@@ -11,6 +11,7 @@ tunnel_pid=""
 worker_pid=""
 scanner_container=""
 scanner_volume=""
+export_key_directory=""
 
 publish_status() {
   export PREVIEW_STATE="$1"
@@ -40,6 +41,7 @@ cleanup() {
   if [[ -n "$worker_pid" ]]; then kill "$worker_pid" 2>/dev/null || true; fi
   if [[ -n "$scanner_container" ]]; then docker rm --force "$scanner_container" >/dev/null 2>&1 || true; fi
   if [[ -n "$scanner_volume" ]]; then docker volume rm "$scanner_volume" >/dev/null 2>&1 || true; fi
+  if [[ -n "$export_key_directory" ]]; then rm -rf -- "$export_key_directory"; fi
   if [[ $result -eq 0 ]]; then
     publish_status stopped || true
   else
@@ -62,6 +64,21 @@ curl --fail --location --retry 3 --max-time 120 \
 printf '%s\n' '35fbdd2beb378436c7da377d7358cea8e33f9c94a6705d1d8036bf9b0d6d8005  /tmp/longball-cloudflared' | sha256sum --check
 chmod +x /tmp/longball-cloudflared
 
+# GitHub text payloads carry the licensed font explicitly as base64.
+if [[ -f backend/assets/fonts/DejaVuSans.ttf.base64 ]]; then
+  base64 --decode backend/assets/fonts/DejaVuSans.ttf.base64 >backend/assets/fonts/DejaVuSans.ttf
+fi
+printf '%s\n' '57f73e11f51999432bf7ab22ce55b6f945d5eca1bf824404cfa9ec2e3718c84e  backend/assets/fonts/DejaVuSans.ttf' | sha256sum --check
+# A fresh private key per bounded review session; older session exports fail closed.
+export_key_directory="$(mktemp -d /tmp/longball-export-key.XXXXXXXX)"
+chmod 700 "$export_key_directory"
+export LONGBALL_EXPORT_ENCRYPTION_KEY_FILE="$export_key_directory/key"
+export LONGBALL_EXPORT_TTL_MS=3600000
+node --input-type=module - <<'JS'
+import { randomBytes } from 'node:crypto';
+import { writeFileSync } from 'node:fs';
+writeFileSync(process.env.LONGBALL_EXPORT_ENCRYPTION_KEY_FILE, randomBytes(32).toString('hex') + '\n', {mode:0o600,flag:'wx'});
+JS
 export LONGBALL_SYNTHETIC_AUTH=1
 # Explicit generated-demo sharing is separate from real competition policy.
 export LONGBALL_DEMO_SCENARIO=1

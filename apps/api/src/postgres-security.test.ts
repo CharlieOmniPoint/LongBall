@@ -67,6 +67,48 @@ describe.skipIf(!configured)('SEC10 actual PostgreSQL ancestry, RLS and pooled t
     await expect(api.withContext(context(),()=>api.query("INSERT INTO clock_challenges(id,match_id,account_id,challenge_json) VALUES('cross-team','fictional-match-team-b','synthetic-account-manager','{}')"))).rejects.toMatchObject({code:'42501'});
     await expect(api.withContext(context(),()=>api.query("INSERT INTO clock_challenges(id,match_id,account_id,challenge_json,club_id,team_id,season_id) VALUES('wrong-parent',$1,'synthetic-account-manager','{}','synthetic-other-club',$2,$3)",[SYNTHETIC_IDS.matchId,SYNTHETIC_IDS.teamId,SYNTHETIC_IDS.seasonId]))).rejects.toMatchObject({code:'42501'});
   });
+  it('keeps own-account lookups distinct from the full administrative membership view and honours an explicit lower role', async () => {
+    const restricted = new PostgresStore(api);
+    const identity = { issuer: 'urn:longball:synthetic', subject: 'synthetic-account-manager', strongAuth: true, authenticatedAt: Date.now() };
+    const principal = await restricted.withIdentityContext(identity, () => restricted.principal(identity));
+    await restricted.withActorContext(principal, { teamId: SYNTHETIC_IDS.teamId, seasonId: SYNTHETIC_IDS.seasonId, requestedRole: 'administrator', operation: 'staff.read' }, async () => {
+      const own = await restricted.myMemberships(principal);
+      expect(own.every(item => item.accountId === principal.accountId)).toBe(true);
+      expect(own.map(item => item.role).sort()).toEqual(['administrator', 'manager', 'player']);
+      const team = await restricted.memberships();
+      expect(team.some(item => item.accountId === 'synthetic-account-manager-2' && item.role === 'manager')).toBe(true);
+      expect(team.length).toBeGreaterThan(own.length);
+    });
+    await restricted.withActorContext(principal, { matchId: SYNTHETIC_IDS.matchId, requestedRole: 'player', operation: 'match.read' }, async () => {
+      const view = await restricted.matchDto(principal, SYNTHETIC_IDS.matchId, 'player');
+      expect(view.audience).toBe('player');
+      expect(view).not.toHaveProperty('state');
+      expect(view.ownRecord).toMatchObject({ playerId: 'fictional-dual-role-player' });
+    });
+  });
+  it('rechecks revoked manager membership and spectator grants without retaining own-account authority', async () => {
+    const restricted = new PostgresStore(api);
+    for (const [accountId, role] of [['synthetic-account-manager-2', 'manager'], ['synthetic-account-spectator', 'spectator']] as const) {
+      const identity = { issuer: 'urn:longball:synthetic', subject: accountId, strongAuth: role === 'manager', authenticatedAt: Date.now() };
+      const principal = await restricted.withIdentityContext(identity, () => restricted.principal(identity));
+      const within = <T>(work: () => Promise<T>) => restricted.withActorContext(principal, { teamId: SYNTHETIC_IDS.teamId, seasonId: SYNTHETIC_IDS.seasonId, requestedRole: role, operation: 'match.read' }, work);
+      const original = await store.document<CommunityState>(SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId, 'community');
+      expect(await within(() => restricted.myMemberships(principal))).toHaveLength(1);
+      expect((await within(() => restricted.matchDto(principal, SYNTHETIC_IDS.matchId, role))).audience).toBe(role);
+      try {
+        if (role === 'manager') await owner.query('UPDATE memberships SET revoked_at=$1 WHERE account_id=$2 AND team_id=$3 AND season_id=$4', [Date.now(), accountId, SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId]);
+        else {
+          const revoked: CommunityState = { ...original, grants: original.grants.map(grant => grant.accountId === accountId ? { ...grant, revokedAtMs: Date.now() } : grant) };
+          await store.saveDocument(SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId, 'community', revoked);
+        }
+        expect(await within(() => restricted.myMemberships(principal))).toEqual([]);
+        await expect(within(() => restricted.matchDto(principal, SYNTHETIC_IDS.matchId, role))).rejects.toMatchObject({ code: 'NOT_FOUND' });
+      } finally {
+        if (role === 'manager') await owner.query('UPDATE memberships SET revoked_at=NULL WHERE account_id=$1 AND team_id=$2 AND season_id=$3', [accountId, SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId]);
+        else await store.saveDocument(SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId, 'community', original);
+      }
+    }
+  });
   it('binds context kinds to the actual database login purpose', async()=>{
     await expect(api.query('SELECT * FROM runtime_roles')).rejects.toMatchObject({code:'42501'});
     await expect(worker.query("UPDATE runtime_roles SET purpose='api'")).rejects.toMatchObject({code:'42501'});

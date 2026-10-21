@@ -28,6 +28,10 @@ export function requestDatabaseScope(input:{method:string;parts:string[];seasonI
     scope.operation=parts[2]==='link-requests'?'account.link_request':'account.recovery_request';
     if(opaque(body?.teamId)&&opaque(body?.seasonId)){scope.teamId=body.teamId;scope.seasonId=body.seasonId;}
   }
+  else if(parts[1]==='exports'){
+    scope.operation=method==='POST'&&parts.length===2?'exports.request':method==='GET'&&parts.length===3?'exports.read':method==='GET'&&parts.length===4&&parts[3]==='download'?'exports.download':'unavailable';
+    if(scope.operation==='exports.request'&&opaque(body?.teamId)&&opaque(body?.seasonId)){scope.teamId=body.teamId;scope.seasonId=body.seasonId;}
+  }
   else if(parts[1]==='matches'&&opaque(parts[2])){
     scope.matchId=parts[2];scope.operation=method==='GET'&&parts.length===3?'match.read':'match.manage';
     if(scope.operation==='match.manage'&&input.role&&input.role!=='manager')throw new AccessError('NOT_FOUND',404,'Choose the current manager context for match recording.');

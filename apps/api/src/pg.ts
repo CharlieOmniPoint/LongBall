@@ -13,7 +13,7 @@ export type PgApplicationContext =
       matchId?: string; operation?: string; nowMs: number; provisionAccountId?: string; staffTargetAccountId?: string; newSeasonId?: string; invitationTokenHash?: string }
   | { kind: 'activation_token'; tokenHash: string; activationId?: string; completionVerified?: true; nowMs: number }
   | { kind: 'invitation_activation'; tokenHash: string; activationId?: string; provisionAccountId?: string; completionVerified?: true; nowMs: number }
-  | { kind: 'worker_claim'; jobKind: 'award.finalise' | 'notification.dispatch'; nowMs: number }
+  | { kind: 'worker_claim'; jobKind: 'award.finalise' | 'notification.dispatch' | 'report.export'; nowMs: number }
   | { kind: 'worker_job'; jobId: string; leaseToken: string; clubId: string; teamId: string; seasonId: string; nowMs: number };
 interface ApplicationFrame { value: Readonly<PgApplicationContext>; active: boolean; key: string; parent?: ApplicationFrame }
 interface TransactionFrame { client: PoolClient; applicationKey: string | null; active: boolean }
@@ -26,7 +26,7 @@ function validateContext(context: PgApplicationContext): void {
   if (!Object.hasOwn(required, context.kind) || required[context.kind].some(name => typeof (context as unknown as Record<string, unknown>)[name] !== 'string' || !(context as unknown as Record<string, string>)[name] || (context as unknown as Record<string, string>)[name].length > 2048)) throw new Error('Invalid PostgreSQL application context.');
   if (context.kind === 'actor' && (typeof context.strongAuth !== 'boolean' || !Number.isSafeInteger(context.authenticatedAtMs) || context.authenticatedAtMs < 0 || (context.requestedRole !== undefined && !['administrator', 'manager', 'player', 'spectator', 'default'].includes(context.requestedRole)))) throw new Error('Invalid PostgreSQL actor context.');
   if (['activation_token','invitation_activation'].includes(context.kind) && 'tokenHash' in context && (!/^[a-f0-9]{64}$/.test(context.tokenHash) || ('completionVerified' in context && context.completionVerified !== undefined && context.completionVerified !== true))) throw new Error('Invalid PostgreSQL activation context.');
-  if (context.kind === 'worker_claim' && !['award.finalise', 'notification.dispatch'].includes(context.jobKind)) throw new Error('Invalid PostgreSQL job context.');
+  if (context.kind === 'worker_claim' && !['award.finalise', 'notification.dispatch', 'report.export'].includes(context.jobKind)) throw new Error('Invalid PostgreSQL job context.');
   if (context.kind === 'worker_job' && !/^[a-f0-9]{64}$/.test(context.leaseToken)) throw new Error('Invalid PostgreSQL job capability.');
 }
 function isNarrowing(parent: PgApplicationContext, child: PgApplicationContext): boolean {
@@ -122,9 +122,9 @@ export class PgDatabase implements PgQuery {
   async migrate(): Promise<void> {
     if (this.migrationMode === 'verify') {
       const versions = await this.query<{ version: number }>('SELECT version FROM longball.schema_migrations ORDER BY version');
-      if (versions.rows.some(row => row.version > 15)) throw new Error('This PostgreSQL schema is newer than the application. Preserve it and use a compatible build.');
-      if (![2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15].every(version => versions.rows.some(row => row.version === version))) throw new Error('PostgreSQL migrations are required. Run the separate migrator before starting the runtime.');
-      const protectedTables = ['clubs','teams','team_seasons','game_contexts','accounts','memberships','matches','documents','devices','controller_grants','controller_history','events','streams','conflicting_submissions','transfers','clock_challenges','clock_mappings','reconciliation_proposals','audit','idempotency','privacy_requests','privacy_pending_keys','jobs','brand_assets','brand_slots','spectator_invitations','lb_spectator_activation_accounts','lb_spectator_activation_attempts','native_app_devices','team_privilege_states','team_privilege_decisions','push_registrations'];
+      if (versions.rows.some(row => row.version > 16)) throw new Error('This PostgreSQL schema is newer than the application. Preserve it and use a compatible build.');
+      if (![2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16].every(version => versions.rows.some(row => row.version === version))) throw new Error('PostgreSQL migrations are required. Run the separate migrator before starting the runtime.');
+      const protectedTables = ['clubs','teams','team_seasons','game_contexts','accounts','memberships','matches','documents','devices','controller_grants','controller_history','events','streams','conflicting_submissions','transfers','clock_challenges','clock_mappings','reconciliation_proposals','audit','idempotency','privacy_requests','privacy_pending_keys','jobs','brand_assets','brand_slots','spectator_invitations','lb_spectator_activation_accounts','lb_spectator_activation_attempts','native_app_devices','team_privilege_states','team_privilege_decisions','push_registrations','report_exports'];
       const security = await this.query<{ relname: string; relrowsecurity: boolean; policies: number }>(`SELECT c.relname,c.relrowsecurity,(SELECT count(*)::integer FROM pg_catalog.pg_policy p WHERE p.polrelid=c.oid) AS policies FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='longball' AND c.relname=ANY($1::text[])`, [protectedTables]);
       if (security.rows.length !== protectedTables.length || security.rows.some(row => !row.relrowsecurity || row.policies < 1)) throw new Error('PostgreSQL row security is missing. Run the separate migrator before starting runtime.');
       return;
@@ -143,12 +143,13 @@ export class PgDatabase implements PgQuery {
     const teamPrivilegesMigration = await readFile(new URL('../migrations/postgresql/013_team_privileges.sql', import.meta.url), 'utf8');
     const pushRegistrationMigration = await readFile(new URL('../migrations/postgresql/014_push_registrations.sql', import.meta.url), 'utf8');
     const privilegeAuditClockMigration = await readFile(new URL('../migrations/postgresql/015_team_privilege_audit_clock.sql', import.meta.url), 'utf8');
+    const reportExportsMigration = await readFile(new URL('../migrations/postgresql/016_report_exports.sql', import.meta.url), 'utf8');
     await this.transaction(async () => {
       const schema = await this.query<{ namespace: string | null }>("SELECT to_regnamespace('longball')::text AS namespace");
       if (!schema.rows[0]?.namespace) await this.query('CREATE SCHEMA longball');
       await this.query('CREATE TABLE IF NOT EXISTS longball.schema_migrations(version integer PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())');
       const versions = await this.query<{ version: number }>('SELECT version FROM longball.schema_migrations ORDER BY version');
-      if (versions.rows.some(row => row.version > 15)) throw new Error('This PostgreSQL schema is newer than the application. Preserve it and use a compatible build.');
+      if (versions.rows.some(row => row.version > 16)) throw new Error('This PostgreSQL schema is newer than the application. Preserve it and use a compatible build.');
       if (!versions.rows.some(row => row.version === 2)) {
         await this.query(migration);
         await this.query('INSERT INTO longball.schema_migrations(version) VALUES(2)');
@@ -166,6 +167,7 @@ export class PgDatabase implements PgQuery {
       if (!versions.rows.some(row => row.version === 13)) { await this.query(teamPrivilegesMigration); await this.query('INSERT INTO longball.schema_migrations(version) VALUES(13)'); }
       if (!versions.rows.some(row => row.version === 14)) { await this.query(pushRegistrationMigration); await this.query('INSERT INTO longball.schema_migrations(version) VALUES(14)'); }
       if (!versions.rows.some(row => row.version === 15)) { await this.query(privilegeAuditClockMigration); await this.query('INSERT INTO longball.schema_migrations(version) VALUES(15)'); }
+      if (!versions.rows.some(row => row.version === 16)) { await this.query(reportExportsMigration); await this.query('INSERT INTO longball.schema_migrations(version) VALUES(16)'); }
     });
   }
   async close(): Promise<void> { await this.pool.end(); }

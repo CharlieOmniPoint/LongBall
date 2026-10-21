@@ -22,6 +22,7 @@ function fixture() {
     seasonId: "season",
     expiresAt: 100_000,
     policyVersion: "explicit-fixture",
+    context: { clubName: 'Richmond Rovers', teamName: 'Roma', ageGroup: 'U10', seasonLabel: '2026/27', inviterLabel: 'Team manager' as const },
   };
   let context: { tokenHash: string; completionVerified?: true } | null = null;
   const repository: SpectatorActivationRepository = {
@@ -162,8 +163,11 @@ describe("invitation-bound username credential activation", () => {
     const f = fixture();
     expect(await f.service.preflight({ token: f.token })).toEqual({
       invitationId: "invite",
+      teamId: 'team',
+      seasonId: 'season',
       expiresAt: new Date(100_000).toISOString(),
       policyVersion: "explicit-fixture",
+      context: { clubName: 'Richmond Rovers', teamName: 'Roma', ageGroup: 'U10', seasonLabel: '2026/27', inviterLabel: 'Team manager' },
     });
     await expect(
       f.service.preflight({ token: randomBytes(32).toString("base64url") }),

@@ -24,6 +24,8 @@ import { managerRoster as projectManagerRoster, type StaffAccountEvidence } from
 import { prepareAccountPrivacyRequest, projectAccountPrivacyRequests, type PrivacyRequestRecord } from '../../../packages/application/src/privacy-requests';
 import { brandSelectedRole,type BrandingAuthority } from './brand-repository';
 import { ownDevicesDto,parseNativeDeviceInput,type NativeDeviceRow } from './devices';
+import { namedWorkspaceMembership, type WorkspaceMembershipNames } from './workspace-memberships';
+import type { NamedWorkspaceMembership } from '../../../packages/application/src/workspace-context';
 
 export const EVENT_CONTRACT_VERSION = 'longball.events/1.1';
 export const SYNTHETIC_IDS = { teamId: 'synthetic-roma-u10', seasonId: 'synthetic-season-2026-27', matchId: 'synthetic-roma-maple-2026-10-24' } as const;
@@ -203,11 +205,22 @@ async principal(identity: VerifiedIdentity): Promise<Principal> {
         throw new AccessError('ACCOUNT_UNAVAILABLE', 403, 'The account is not active for this service.');
     return { accountId: account.id, issuer: account.issuer, subject: account.subject, identityClassification: account.classification, adultVerified: Boolean(account.adult_verified), strongAuth: identity.strongAuth, authenticatedAt: identity.authenticatedAt, status: account.status };
 }
-async memberships(): Promise<Membership[]> {
-    const rows=await this.many("SELECT m.*,CASE WHEN m.role='spectator' THEN longball.spectator_grant_active(m.account_id,m.club_id,m.team_id,m.season_id) ELSE true END AS grant_active FROM memberships m") as unknown as {account_id:string;team_id:string;season_id:string;role:Membership['role'];player_id:string|null;expires_at:number|null;revoked_at:number|null;grant_active:boolean}[];
+async memberships(accountId?: string): Promise<Membership[]> {
+    // Own-account hot paths constrain candidate rows before the unchanged RLS
+    // predicates and current grant checks. Administrative callers retain the
+    // complete RLS-filtered team view by omitting this optional bound parameter.
+    const rows=await this.many("SELECT m.*,CASE WHEN m.role='spectator' THEN longball.spectator_grant_active(m.account_id,m.club_id,m.team_id,m.season_id) ELSE true END AS grant_active FROM memberships m" + (accountId === undefined ? "" : " WHERE m.account_id=$1"), accountId === undefined ? [] : [accountId]) as unknown as {account_id:string;team_id:string;season_id:string;role:Membership['role'];player_id:string|null;expires_at:number|null;revoked_at:number|null;grant_active:boolean}[];
     return rows.map(row=>({accountId:row.account_id,teamId:row.team_id,seasonId:row.season_id,role:row.role,playerId:row.player_id??undefined,expiresAt:row.expires_at,revokedAt:row.role==='spectator'&&!row.grant_active?row.revoked_at??Math.max(1,this.now()):row.revoked_at}));
 }
-async myMemberships(principal: Principal): Promise<Membership[]> { return currentMemberships(principal, (await this.memberships()), this.now()); }
+async myMemberships(principal: Principal): Promise<Membership[]> { return currentMemberships(principal, (await this.memberships(principal.accountId)), this.now()); }
+async workspaceMemberships(principal: Principal): Promise<NamedWorkspaceMembership[]> {
+    const own = await this.myMemberships(principal);
+    if (!own.length) return [];
+    // Own memberships retain normal RLS and current grant checks. The separate
+    // account-read helper exposes only current public names, never documents.
+    const rows = await this.many('SELECT * FROM longball.workspace_membership_names()') as unknown as (WorkspaceMembershipNames & { team_id: string; season_id: string })[];
+    return own.map(member => namedWorkspaceMembership(member, rows.find(row => row.team_id === member.teamId && row.season_id === member.seasonId)));
+}
 async recognisedDevices(principal:Principal){
     const legacy=await this.many('SELECT id,account_id FROM devices WHERE account_id=$1 ORDER BY id',[principal.accountId]) as unknown as {id:string;account_id:string}[];
     const native=await this.many('SELECT * FROM native_app_devices WHERE account_id=$1 AND issuer=$2 ORDER BY registered_at,device_id',[principal.accountId,principal.issuer]) as unknown as NativeDeviceRow[];
@@ -234,12 +247,12 @@ async match(matchId: string): Promise<MatchRow> {
 }
 async managerMatch(principal: Principal, matchId: string): Promise<MatchRow> {
     const row = (await this.match(matchId));
-    assertCanManageTeam(principal, (await this.memberships()), row.team_id, row.season_id, this.now());
+    assertCanManageTeam(principal, (await this.myMemberships(principal)), row.team_id, row.season_id, this.now());
     return row;
 }
 async matchDto(principal: Principal, matchId: string, requestedRole?: string): Promise<Record<string, unknown>> {
     const row = (await this.match(matchId));
-    return filterMatchForPrincipal({ principal, memberships: (await this.memberships()), teamId: row.team_id, seasonId: row.season_id, state: JSON.parse(row.state_json) as MatchState, policy: JSON.parse(row.sharing_policy_json) as SharingPolicy, lastSyncAt: row.last_sync_at, now: this.now(), requestedRole });
+    return filterMatchForPrincipal({ principal, memberships: (await this.myMemberships(principal)), teamId: row.team_id, seasonId: row.season_id, state: JSON.parse(row.state_json) as MatchState, policy: JSON.parse(row.sharing_policy_json) as SharingPolicy, lastSyncAt: row.last_sync_at, now: this.now(), requestedRole });
 }
 async download(principal: Principal, matchId: string, deviceId: string, syntheticOnly = false, controllerToken?: string): Promise<ReturnType<typeof buildOfflineDownload>> {
     return this.transaction(async () => {
@@ -1030,13 +1043,14 @@ async recordsViewer(principal: Principal, teamId: string, seasonId: string, role
 }
 private async recordsContext(principal: Principal, teamId: string, seasonId: string, role?: string): Promise<RecordsServiceInput> {
     const viewer = (await this.recordsViewer(principal, teamId, seasonId, role));
-    const rows = (await this.many("SELECT state_json FROM matches WHERE team_id=$1 AND season_id=$2 ORDER BY id", [teamId, seasonId])) as {
+    const rows = (await this.many("SELECT state_json,sharing_policy_json FROM matches WHERE team_id=$1 AND season_id=$2 ORDER BY id", [teamId, seasonId])) as {
         state_json: string;
+        sharing_policy_json: string;
     }[];
     const community = (await this.communityState(teamId, seasonId));
     const actor = (await this.communityActor(principal, teamId, seasonId, viewer.actor));
     const filtered = getCommunityView(community, actor, this.now());
-    return { principal, memberships: (await this.memberships()), nowMs: this.now(), requestedRole: viewer.actor, state: (await this.document<RecordsState>(teamId, seasonId, 'records')), preparation: (await this.document<PreparationState>(teamId, seasonId, 'preparation')), acceptedMatches: rows.map(row => ({ teamId, seasonId, match: JSON.parse(row.state_json) as MatchState })), community: { accountId: principal.accountId, teamId, seasonId, audience: viewer.actor, playerId: viewer.playerId ?? null, revision: community.revision, view: { allowed: filtered.allowed, matches: filtered.matches, gallery: filtered.gallery } } };
+    return { principal, memberships: (await this.memberships()), nowMs: this.now(), requestedRole: viewer.actor, state: (await this.document<RecordsState>(teamId, seasonId, 'records')), preparation: (await this.document<PreparationState>(teamId, seasonId, 'preparation')), acceptedMatches: rows.map(row => ({ teamId, seasonId, match: JSON.parse(row.state_json) as MatchState, sharingPolicy: JSON.parse(row.sharing_policy_json) as SharingPolicy })), community: { accountId: principal.accountId, teamId, seasonId, audience: viewer.actor, playerId: viewer.playerId ?? null, revision: community.revision, view: { allowed: filtered.allowed, matches: filtered.matches, gallery: filtered.gallery } } };
 }
 async records(principal: Principal, teamId: string, seasonId: string, role?: string): Promise<Record<string, unknown>> { return recordsServiceView((await this.recordsContext(principal, teamId, seasonId, role))); }
 async recordsExport(principal: Principal, teamId: string, seasonId: string, request: RecordsExportRequest, role?: string): Promise<ReturnType<typeof recordsServiceExport>> { return recordsServiceExport({ ...(await this.recordsContext(principal, teamId, seasonId, role)), request }); }

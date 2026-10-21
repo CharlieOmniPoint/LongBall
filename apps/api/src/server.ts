@@ -1,9 +1,12 @@
+import type { ReportExportOptions } from './report-export-config';
+import { ReportExportRepository } from './report-export-repository';
+import { ReportExportService, reportExportRevision } from './report-export-service';
 import { parseMatchPageQuery } from './match-pagination';
 import { TeamPrivilegeService } from './team-privileges-service';
 import { SqliteTeamPrivilegeRepository } from './team-privileges-repository';
 import { parseTeamPrivilegeCommand } from '../../../packages/application/src/team-privileges';
-import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
-import { randomUUID } from 'node:crypto';
+import { type IncomingMessage, type ServerResponse } from 'node:http';
+import { createFastifyTransport } from './fastify-transport';
 import { readFileSync, realpathSync, statSync } from 'node:fs';
 import { dirname, extname, join, sep } from 'node:path';
 import { AccessError, assertAdultAuthority, assertCanManageTeam, assertTeamRole, type Principal } from '../../../packages/application/src/access';
@@ -32,6 +35,7 @@ import { SqlitePushRepository } from './sqlite-push-registrations';
 
 export interface ApiOptions extends PushOptions {
   databasePath: string;
+  reportExports?: ReportExportOptions;
   syntheticAuth?: boolean;
   /** Generated review scores/media only; requires synthetic authentication and a nonproduction process. */
   demoScenario?: boolean;
@@ -68,21 +72,12 @@ function syntheticIdentity(token: string, now: number): VerifiedIdentity {
   if (!/^synthetic-account-(?:manager(?:-[2-5])?|admin|player-(?:0[1-9]|1[0-3])|spectator|invitee|other-manager)$/.test(accountId)) throw new AccessError('INVALID_SESSION', 401, 'A valid authenticated session is required.');
   return { issuer: 'urn:longball:synthetic', subject: accountId, strongAuth: /manager|admin/.test(accountId), authenticatedAt: now };
 }
-async function readJson(request: IncomingMessage): Promise<Record<string, unknown>> {
-  if (!header(request, 'content-type')?.startsWith('application/json')) throw new AccessError('JSON_REQUIRED', 415, 'Use application/json for this command.');
-  let length = 0; const chunks: Buffer[] = [];
-  for await (const raw of request) {
-    const chunk = Buffer.isBuffer(raw) ? raw : Buffer.from(raw as string);
-    length += chunk.length;
-    if (length > 256 * 1024) throw new AccessError('REQUEST_TOO_LARGE', 413, 'The request exceeds the 256 KiB limit.');
-    chunks.push(chunk);
-  }
-  try {
-    const value: unknown = JSON.parse(Buffer.concat(chunks).toString('utf8'));
-    if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error();
-    return value as Record<string, unknown>;
-  } catch { throw new AccessError('INVALID_JSON', 400, 'A JSON object is required.'); }
+function readJson(request: IncomingMessage, value: unknown): Record<string, unknown> {
+  if (!header(request, 'content-type')?.toLowerCase().startsWith('application/json')) throw new AccessError('JSON_REQUIRED', 415, 'Use application/json for this command.');
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new AccessError('INVALID_JSON', 400, 'A JSON object is required.');
+  return value as Record<string, unknown>;
 }
+
 function staffCommand(body:Record<string,unknown>,kind:'manager.assigned'|'manager.revoked',key:string):{accountId:string;reason:string;confirmRevocation:true;expectedRevision?:number;commandId:string}{
   const wrapped=Object.hasOwn(body,'command');
   if(wrapped&&Object.keys(body).some(field=>field!=='command'))throw new AccessError('INVALID_REQUEST',400,'Only the captured staff command is accepted.');
@@ -117,13 +112,15 @@ export function createApi(options:ApiOptions) {
  const activation=new DevelopmentActivationService({store:source,provider:options.activationProvider,policy:options.activationPolicy});
  const branding=createBrandMedia(options,runtime.store,new SqliteBrandRepository(source.database,runtime.store.transaction));
  const repository=new SqliteInvitationRepository(source,runtime.store);
- const ready=runtime.serialize(()=>repository.initialize());void ready.catch(()=>undefined);
+ const exportsRepository=new ReportExportRepository(source,runtime.store.transaction);
+ const reports=new ReportExportService(exportsRepository,source,options.reportExports,now);
+ const ready=runtime.serialize(async()=>{await repository.initialize();await exportsRepository.initialize();});void ready.catch(()=>undefined);
  const invitations=new SpectatorInvitationService({...options,repository,now});
  const privileges=new TeamPrivilegeService(new SqliteTeamPrivilegeRepository(source,runtime.store),now);
  const push=new PushRegistrationService(new SqlitePushRepository(source.database,runtime.store.transaction),options,now);
- return createRuntimeApi(options,source,runtime.store,media,activation,work=>ready.then(()=>runtime.serialize(work)),{branding,invitations,privileges,push});
+ return createRuntimeApi(options,source,runtime.store,media,activation,work=>ready.then(()=>runtime.serialize(work)),{branding,invitations,privileges,push,reports});
 }
-export function createRuntimeApi<T>(options:ApiOptions,source:T,store:RuntimeStore,media:RuntimeMedia,activation:RuntimeActivation,serialize:<R>(work:()=>Promise<R>)=>Promise<R> = work=>work(),services:{branding?:BrandMediaService;spectator?:RuntimeSpectatorActivation;invitations?:SpectatorInvitationService;privileges?:TeamPrivilegeService;push?:PushRegistrationService}={}) {
+export function createRuntimeApi<T>(options:ApiOptions,source:T,store:RuntimeStore,media:RuntimeMedia,activation:RuntimeActivation,serialize:<R>(work:()=>Promise<R>)=>Promise<R> = work=>work(),services:{branding?:BrandMediaService;spectator?:RuntimeSpectatorActivation;invitations?:SpectatorInvitationService;privileges?:TeamPrivilegeService;push?:PushRegistrationService;reports?:ReportExportService}={}) {
  const now=options.now??Date.now;
  const privilegeService=()=>{if(!services.privileges)throw new AccessError('TEAM_PRIVILEGES_UNAVAILABLE',503,'Current team privileges are unavailable.');return services.privileges;};
  const verifyIdentity=options.verifyIdentity??(options.oidc?createOidcVerifier({...options.oidc,now}):null);
@@ -144,10 +141,7 @@ const windows = new Map<string, {
         reply.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'private, no-store', 'Referrer-Policy': 'no-referrer', 'X-Content-Type-Options': 'nosniff', 'X-Request-Id': requestId });
         reply.end(JSON.stringify(value));
     };
-    const server = createServer((request, reply) => { void serialize(async () => {
-        const rawRequestId = header(request, 'x-request-id');
-        const requestId = rawRequestId && /^[a-zA-Z0-9_-]{1,100}$/.test(rawRequestId) ? rawRequestId : randomUUID();
-        try {
+    const beforeParsing = (request: IncomingMessage, reply: ServerResponse) => {
             const origin = header(request, 'origin');
             if (origin) {
                 let sameOrigin = false;
@@ -162,7 +156,11 @@ const windows = new Map<string, {
                 reply.setHeader('Vary', 'Origin');
                 reply.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type, Idempotency-Key, X-Controller-Token, X-Media-Upload-Token, X-Longball-Role, X-Api-Contract-Version, If-Match, X-Request-Id');
                 reply.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+                reply.setHeader('Access-Control-Expose-Headers', 'Content-Disposition, Content-Length, Content-Type, Cache-Control');
             }
+    };
+    const framework = createFastifyTransport({ beforeParsing, dispatch: (request, reply, parsedBody, requestId) => serialize(async () => {
+        try {
             if (request.method === 'OPTIONS') {
                 reply.writeHead(204);
                 reply.end();
@@ -218,7 +216,7 @@ const windows = new Map<string, {
                     throw new AccessError('RATE_LIMIT', 429, 'Please retry after the current request window.');
                 }
                 const key = requireContract();
-                const input = await readJson(request);
+                const input = readJson(request, parsedBody);
                 let result: unknown;
                 if(url.pathname.startsWith('/v1/spectator-invites/')){
                     if(!services.spectator)throw new AccessError('ACTIVATION_NOT_CONFIGURED',503,'Invitation activation requires a configured PostgreSQL provider boundary.');
@@ -262,13 +260,13 @@ const windows = new Map<string, {
             }
             const role = header(request, 'x-longball-role');
             const controllerToken = header(request, 'x-controller-token');
-            const body = request.method === 'POST' ? await readJson(request) : null;
+            const body = request.method === 'POST' ? readJson(request, parsedBody) : null;
             if(request.method==='POST'&&parts[1]==='spectator-invites'&&['inspect','accept'].includes(parts[2])&&parts.length===3){
                 const invitations=services.invitations;if(!invitations)throw new AccessError('INVITATION_NOT_CONFIGURED',503,'Invitation processing is unavailable.');
                 if(header(request,'x-api-contract-version')!==EVENT_CONTRACT_VERSION)throw new AccessError('CONTRACT_VERSION_REQUIRED',409,`Use X-Api-Contract-Version: ${EVENT_CONTRACT_VERSION}.`);
                 const key=parts[2]==='accept'?requireContract():undefined;const {token}=parseInvitationAccept(body);const tokenHash=invitationVerifier(token);
                 const resolved=await store.withActorContext(principal,{operation:'invite.resolve',requestedRole:'default',invitationTokenHash:tokenHash},()=>invitations.resolve(principal,body));
-                if(parts[2]==='inspect'){const {invitationId,teamId,seasonId,expiresAt}=resolved;response(reply,200,{invitationId,teamId,seasonId,expiresAt},requestId);return;}
+                if(parts[2]==='inspect'){const {invitationId,teamId,seasonId,expiresAt,context}=resolved;response(reply,200,{invitationId,teamId,seasonId,expiresAt,context},requestId);return;}
                 const accepted=await store.withActorContext(principal,{operation:'invite.accept',requestedRole:'default',teamId:resolved.teamId,seasonId:resolved.seasonId,invitationTokenHash:tokenHash},()=>invitations.accept({principal,teamId:resolved.teamId,seasonId:resolved.seasonId},key!,body));
                 response(reply,accepted.status,accepted.body,requestId);return;
             }
@@ -277,7 +275,7 @@ const windows = new Map<string, {
             if(invitationWrite&&(typeof bodySeason!=='string'||url.searchParams.has('seasonId')&&url.searchParams.get('seasonId')!==bodySeason))throw new AccessError('INVALID_REQUEST',400,'Use the invitation body season without a contradictory query scope.');
             const seasonId = (typeof bodySeason==='string'?bodySeason:url.searchParams.get('seasonId')) ?? (options.syntheticAuth ? SYNTHETIC_IDS.seasonId : '');
             if (parts[1] === 'teams' && !seasonId) throw new AccessError('SEASON_REQUIRED',400,'Choose an explicit current team-season scope.');
-            const scopedOperation = (operation: string) => parts[1] === 'teams' ? JSON.stringify([operation, parts[2], seasonId, role ?? 'default']) : operation;
+            const scopedOperation = (operation: string) => parts[1] === 'teams' ? JSON.stringify([operation, parts[2], seasonId, role ?? 'default']) : parts[1] === 'exports' ? JSON.stringify([operation, body?.teamId, body?.seasonId, role ?? 'default']) : operation;
             await store.withActorContext(principal,requestDatabaseScope({method:request.method??'GET',parts,seasonId,role,body}),async()=>{
             if (body && parts[1] === 'teams' && parts[3] === 'community') {
                 if(body.command&&typeof body.command==='object'&&'type' in body.command&&typeof body.command.type==='string'&&body.command.type.startsWith('invite.'))throw new AccessError('CANONICAL_INVITATION_REQUIRED',409,'Use the server-issued invitation endpoints; client credentials and JSON-only revocation are unavailable.');
@@ -320,9 +318,24 @@ const windows = new Map<string, {
             });
             let result: unknown;
             if (request.method === 'GET' && url.pathname === '/v1/me')
-                result = { accountId: principal.accountId, identityClassification: principal.identityClassification, principal, memberships: (await store.myMemberships(principal)), serverTime: new Date(now()).toISOString(), syntheticOnly: Boolean(options.syntheticAuth) };
+                result = { accountId: principal.accountId, identityClassification: principal.identityClassification, principal, memberships: (await store.workspaceMemberships(principal)), serverTime: new Date(now()).toISOString(), syntheticOnly: Boolean(options.syntheticAuth) };
             else if (request.method === 'GET' && url.pathname === '/v1/contracts/events')
                 result = eventContract;
+            else if(parts[1]==='exports'&&services.reports){
+                const reports=services.reports;
+                if(request.method==='POST'&&parts.length===2){
+                    const revision=reportExportRevision(header(request,'if-match'));
+                    const receipt=await mutate(url.pathname,()=>reports.create(principal,body,role,revision),()=>reports.authorize(principal,body,role),{body,revision:revision??null});
+                    response(reply,202,receipt,requestId);return;
+                }
+                if(!/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(parts[2]??''))throw new AccessError('NOT_FOUND',404,'The requested export is unavailable.');
+                if(request.method==='GET'&&parts.length===3)result=await reports.status(principal,parts[2],role);
+                else if(request.method==='GET'&&parts.length===4&&parts[3]==='download'){
+                    const artifact=await reports.download(principal,parts[2],role);
+                    reply.writeHead(200,{'Content-Type':artifact.contentType,'Content-Length':artifact.bytes.byteLength,'Content-Disposition':`attachment; filename="${artifact.filename}"`,'Cache-Control':'private, no-store','Referrer-Policy':'no-referrer','X-Content-Type-Options':'nosniff','X-Request-Id':requestId});
+                    reply.end(artifact.bytes);return;
+                }else throw new AccessError('NOT_FOUND',404,'The requested export is unavailable.');
+            }
             else if(request.method==='GET'&&url.pathname==='/v1/identity/devices')result=await store.recognisedDevices(principal);
             else if(request.method==='POST'&&url.pathname==='/v1/identity/devices')result=await mutate(url.pathname,()=>store.enrolDevice(principal,body));
             else if(parts[1]==='me'&&parts[2]==='push-registrations'&&services.push){
@@ -542,9 +555,8 @@ const windows = new Map<string, {
             const safeMessage = error instanceof AccessError ? error.message : unavailable ? 'Storage is temporarily unavailable. Retain pending commands and retry the same request.' : 'The command could not be applied. Check the current saved state and request fields.';
             response(reply, status, { code, message: safeMessage, requestId, retryable: status === 429 || status === 503 }, requestId);
         }
-    }); });
-    server.requestTimeout = 65000;
-    server.headersTimeout = 10000;
-    return { server, store: source, media, activation,branding:services.branding,spectator:services.spectator, close: async () => { await new Promise((resolve,reject)=>server.close(error=>error?reject(error):resolve(undefined))); await media.close(); await store.close(); } };
+    }) });
+    const server = framework.server;
+    return { server, framework, store: source, media, activation,branding:services.branding,spectator:services.spectator, close: async () => { await framework.close(); await media.close(); await store.close(); } };
 }
 export type { Principal };

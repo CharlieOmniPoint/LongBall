@@ -3,6 +3,8 @@ import { createHash } from 'node:crypto';
 import { AccessError, type Principal } from '../../../packages/application/src/access';
 import type { CommunityState } from '../../../packages/application/src/community';
 import { pendingInvitation } from '../../../packages/application/src/invitation-credentials';
+import { parseInvitationContext } from '../../../packages/application/src/invitation-context';
+import type { PreparationState } from '../../../packages/application/src/preparation';
 import { retireLegacyInvitationCredentials, redactRetainedInvitationResponse } from '../../../packages/application/src/invitation-redaction';
 import { DevelopmentStore } from './store';
 import type { RuntimeStore } from './runtime-store';
@@ -71,14 +73,19 @@ export class SqliteInvitationRepository implements InvitationRepository {
   }
   async saveReceipt(accountId: string, operation: string, key: string, receipt: InvitationReceipt): Promise<void> { this.source.database.prepare('INSERT INTO idempotency(account_id,operation,key,signature,response_json) VALUES(?,?,?,?,?)').run(accountId, operation, key, receipt.signature, JSON.stringify(receipt.response)); }
   async resolve(principal: Principal, tokenHash: string) {
-    const row = this.source.database.prepare('SELECT id,team_id,season_id FROM spectator_invitations WHERE token_hash=?').get(tokenHash) as { id: string; team_id: string; season_id: string } | undefined;
+    const row = this.source.database.prepare('SELECT id,club_id,team_id,season_id FROM spectator_invitations WHERE token_hash=?').get(tokenHash) as { id: string; club_id: string; team_id: string; season_id: string } | undefined;
     if (!row) return null;
     const state = await this.state(row.team_id, row.season_id), now = this.source.now();
     const invite = state.invitations.find(item => item.id === row.id);
     if (!invite || invite.credential.kind !== 'sha256' || invite.credential.tokenHash !== tokenHash || invite.revokedAtMs !== null) return null;
     const ownAccepted = invite.acceptedBy === principal.accountId && state.grants.some(grant => grant.invitationId === invite.id && grant.accountId === principal.accountId && grant.revokedAtMs === null && grant.expiresAtMs > now);
     if (!pendingInvitation(state, tokenHash, now) && !ownAccepted) return null;
-    return { invitationId: invite.id, teamId: invite.teamId, seasonId: invite.seasonId, expiresAt: new Date(invite.expiresAtMs).toISOString() };
+    const preparation = this.source.document<PreparationState>(row.team_id, row.season_id, 'preparation');
+    const season = preparation.seasons.find(item => item.id === row.season_id);
+    if (preparation.team.id !== row.team_id || preparation.club.id !== row.club_id || !season) return null;
+    const inviter = this.source.database.prepare("SELECT 1 FROM memberships m JOIN accounts a ON a.id=m.account_id WHERE m.account_id=? AND m.team_id=? AND m.season_id=? AND m.role='manager' AND m.revoked_at IS NULL AND (m.expires_at IS NULL OR m.expires_at>?) AND a.status='active' AND a.classification='adult_individual' AND a.adult_verified=1").get(invite.inviterAccountId, row.team_id, row.season_id, now);
+    const context = parseInvitationContext({ clubName: preparation.club.name, teamName: preparation.team.name, ageGroup: preparation.team.ageGroup || null, seasonLabel: season.label || null, inviterLabel: inviter ? 'Team manager' : 'Team member' });
+    return { invitationId: invite.id, teamId: invite.teamId, seasonId: invite.seasonId, expiresAt: new Date(invite.expiresAtMs).toISOString(), context };
   }
   async audit(principal: Principal, action: string, objectId: string): Promise<void> { if (principal.status !== 'active') unavailable(); await this.runtime.audit(principal, action, objectId, 'accepted'); }
 }

@@ -2,6 +2,7 @@ import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { AccessError } from "../../../packages/application/src/access";
 import { invitationTokenHashInput } from "../../../packages/application/src/invitation-credentials";
 import type { ActivationPolicy, ActivationProvider } from "./activation";
+import type { InvitationContext } from '../../../packages/application/src/invitation-context';
 export interface SpectatorInvitationCapability {
   id: string;
   clubId: string;
@@ -9,6 +10,7 @@ export interface SpectatorInvitationCapability {
   seasonId: string;
   expiresAt: number;
   policyVersion: string;
+  context: InvitationContext;
 }
 export interface SpectatorActivationAccount {
   accountId: string;
@@ -184,8 +186,11 @@ export class SpectatorActivationService {
         const invitation = await this.available(tokenHash);
         return {
           invitationId: invitation.id,
+          teamId: invitation.teamId,
+          seasonId: invitation.seasonId,
           expiresAt: new Date(invitation.expiresAt).toISOString(),
           policyVersion: invitation.policyVersion,
+          context: invitation.context,
         };
       },
     );

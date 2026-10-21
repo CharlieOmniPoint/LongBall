@@ -7,27 +7,28 @@ import path from "node:path";
 import { chromium } from "playwright";
 import { REVIEW_STATUS_REQUEST, enterFictionalReview, openWorkspaceTab } from "./review-entry.mjs";
 
-const baseURL = "http://127.0.0.1:4384",
-  api = "http://127.0.0.1:4385",
+const baseURL = process.env.LONGBALL_REVIEW_BASE_URL ?? "http://127.0.0.1:4384",
+  api = process.env.LONGBALL_IMPORT_EXPORT_API_URL ?? "http://127.0.0.1:4385",
   tunnel = "https://longball-import-export-review.trycloudflare.com";
 const directory = path.resolve(
-  ".local/import-export-review",
+  process.env.LONGBALL_REVIEW_OUTPUT_DIRECTORY ?? ".local/import-export-review",
   `${Date.now()}-${randomUUID().slice(0, 8)}`,
 );
 await mkdir(directory, { recursive: true });
 const apiLog = createWriteStream(path.join(directory, "api.log"));
 const server = spawn(
   process.execPath,
-  ["--import", "tsx", "apps/api/src/main.ts"],
+  process.env.LONGBALL_REVIEW_API_BUNDLE ? [process.env.LONGBALL_REVIEW_API_BUNDLE] : ["--import", "tsx", "apps/api/src/main.ts"],
   {
     env: {
       ...process.env,
       NODE_ENV: "development",
       LONGBALL_SYNTHETIC_AUTH: "1",
+      LONGBALL_DEMO_SCENARIO: "0",
       LONGBALL_DATABASE_URL: "",
       LONGBALL_DATABASE_URL_FILE: "",
       LONGBALL_API_HOST: "127.0.0.1",
-      LONGBALL_API_PORT: "4385",
+      LONGBALL_API_PORT: new URL(api).port,
       LONGBALL_API_DATABASE: path.join(directory, "service.sqlite"),
       LONGBALL_MEDIA_DIRECTORY: path.join(directory, "media"),
       LONGBALL_API_ORIGINS: baseURL,
@@ -45,11 +46,11 @@ const staticServer = spawn(
   [
     "-m",
     "http.server",
-    "4384",
+    new URL(baseURL).port,
     "--bind",
     "127.0.0.1",
     "--directory",
-    ".local/import-export-web",
+    process.env.LONGBALL_REVIEW_WEB_DIRECTORY ?? ".local/import-export-web",
   ],
   { stdio: "ignore" },
 );
@@ -287,7 +288,7 @@ try {
   await player.context.close();
   activePage = null;
   assert.deepEqual(errors, []);
-  const html = await readFile(".local/import-export-web/index.html", "utf8"),
+  const html = await readFile(path.join(process.env.LONGBALL_REVIEW_WEB_DIRECTORY ?? ".local/import-export-web", "index.html"), "utf8"),
     bundle = html.match(/src="([^"]+\.js)"/)?.[1];
   const report = {
     status: "passed",
@@ -299,12 +300,12 @@ try {
       ? createHash("sha256")
           .update(
             await readFile(
-              path.join(".local/import-export-web", bundle.replace(/^\//, "")),
+              path.join(process.env.LONGBALL_REVIEW_WEB_DIRECTORY ?? ".local/import-export-web", bundle.replace(/^\//, "")),
             ),
           )
           .digest("hex")
       : null,
-    api: "Actual isolated TypeScript HTTP service on4385; new fictional SQLite database, no projection injection",
+    api: `Actual isolated HTTP service at ${api}; new sample SQLite database, no projection injection`,
     limitations: [
       "Public fictional identities, not production authentication proof",
       "Native Sharing and accessibility require physical iPhone/Android checks",

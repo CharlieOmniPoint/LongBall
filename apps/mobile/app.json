@@ -11,7 +11,7 @@
       "bundler": "metro",
       "output": "single",
       "name": "LongBall · Roma U10 review",
-      "description": "Fictional Roma U10 matchday review. Native iPhone and Android feasibility work."
+      "description": "Explore LongBall with Roma U10 teams, players and matchday schedules."
     },
     "ios": {
       "bundleIdentifier": "dev.longball.synthetic",

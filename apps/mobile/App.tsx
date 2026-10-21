@@ -1535,7 +1535,7 @@ function LongBall({ initialRole, onLeaveReview, onSignIn, invitationDestination 
                             value === "manager"
                               ? "Manager review"
                               : value === "player"
-                                ? "Player 01 and parent review"
+                                ? "Player and household review"
                                 : "Invited spectator review"
                           }
                           variant={role === value ? "primary" : "secondary"}

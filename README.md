@@ -4,6 +4,8 @@ Native iPhone and Android team management, with a phone-friendly browser demo sh
 
 The demo includes Manager, Administrator, Player/household and Spectator journeys; preparation, attendance, lineups, manual match clocks, goals/corrections, fair-time planning, reports, training, results, invitations, private awards and moderated albums. Roma U10 has a generated sample squad, opponents, fixtures and training sessions. Initial user access stays free.
 
+Reports include queued CSV/PDF preparation with protected, explicit downloads and retained JSON export. The service uses the specified typed Fastify API, PostgreSQL and a separate worker. [The specification recheck](docs/development/specification-recheck.md) records actual verification and remaining gates.
+
 ## Review
 
 Open [LongBall](https://charlieomnipoint.github.io/LongBall/) and choose **Explore Roma U10 demo → a role → Open connected demo**. Use the [functional walkthrough](docs/development/functional-review-walkthrough.md) for the full journeys.
@@ -39,6 +41,7 @@ The combined development server defaults to `http://127.0.0.1:4310` on the machi
 - [Feature build plan](docs/development/full-build-plan.md), [traceability](docs/development/traceability.md) and [unresolved decisions](docs/development/decisions.md)
 - [Native device guide](docs/development/device-review.md) and [native M0 register](docs/development/implementation-scope.md)
 - [API and worker](apps/api/README.md), [media](docs/development/media-ingestion.md), [records](docs/development/records-implementation.md) and [database security](docs/development/database-security.md)
+- [Protected CSV/PDF exports](docs/development/report-exports.md) and [Fastify transport](docs/development/fastify-transport.md)
 - [Preserved original pack](docs/longball/README.md), [canonical specification](docs/longball/LongBall_Mobile_Build_Pack_v0_1.md) and approved boards at the repository root
 - [Browser hosting](infra/browser-review.md), [native CI](infra/ci/README.md) and [runtime setup](infra/runtime/README.md)
 

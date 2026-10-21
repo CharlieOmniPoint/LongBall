@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { Principal } from '../../../packages/application/src/access';
 import type { CommunityState } from '../../../packages/application/src/community';
+import type { PreparationState } from '../../../packages/application/src/preparation';
 import { DevelopmentStore, SYNTHETIC_IDS } from './store';
 import { sqliteRuntimeStore } from './runtime-store';
 import { SqliteInvitationRepository } from './invitation-repository';
@@ -45,7 +46,7 @@ describe('server-issued invitations through actual fictional SQLite transactions
   });
   it('inspects the possessed token without writing and accepts once into the authenticated account, with season-bound grant', async () => {
     const first = await issued(), invitee = session('invitee', 'spectator'), before = source.database.prepare('SELECT COUNT(*) AS count FROM memberships').get();
-    expect(await service.inspect(invitee.principal, { token: first.token })).toEqual({ invitationId: first.id, teamId, seasonId, expiresAt: first.expiresAt });
+    expect(await service.inspect(invitee.principal, { token: first.token })).toEqual({ invitationId: first.id, teamId, seasonId, expiresAt: first.expiresAt, context: { clubName: 'Richmond Rovers', teamName: 'Roma', ageGroup: 'U10', seasonLabel: '2026/27', inviterLabel: 'Team manager' } });
     expect(source.database.prepare('SELECT COUNT(*) AS count FROM memberships').get()).toEqual(before);
     const accepted = await service.accept(invitee, 'request-accept-01', { token: first.token });
     const season = (source.document<CommunityState>(teamId, seasonId, 'community')).seasons.find(item => item.id === seasonId)!;
@@ -56,6 +57,23 @@ describe('server-issued invitations through actual fictional SQLite transactions
     await expect(service.accept(session('player-02', 'spectator'), 'request-accept-03', { token: first.token })).rejects.toMatchObject({ code: 'INVITATION_UNAVAILABLE' });
     await expect(service.inspect(session().principal, { token: invitationVerifier(first.token) })).rejects.toMatchObject({ code: 'INVITATION_UNAVAILABLE' });
     await expect(service.inspect(session().principal, { token: first.token, accountId: 'other' })).rejects.toMatchObject({ code: 'INVALID_REQUEST' });
+  });
+  it('returns only exact-token current readable context, reflects configuration renames, and refuses forged scope and labels', async () => {
+    const first = await issued('context-issued-01', session('player-01')), invitee = session('invitee', 'spectator');
+    const before = source.document<PreparationState>(teamId, seasonId, 'preparation');
+    const renamed: PreparationState = { ...before, revision: before.revision + 1, club: { ...before.club, name: 'Riverside Juniors' }, team: { ...before.team, name: 'Falcons', ageGroup: 'U11' }, seasons: before.seasons.map(season => season.id === seasonId ? { ...season, label: 'Autumn 2026' } : season) };
+    source.saveDocument(teamId, seasonId, 'preparation', renamed);
+    const preview = await service.inspect(invitee.principal, { token: first.token });
+    expect(preview.context).toEqual({ clubName: 'Riverside Juniors', teamName: 'Falcons', ageGroup: 'U11', seasonLabel: 'Autumn 2026', inviterLabel: 'Team member' });
+    expect(Object.keys(preview.context).sort()).toEqual(['ageGroup', 'clubName', 'inviterLabel', 'seasonLabel', 'teamName']);
+    expect(JSON.stringify(preview)).not.toMatch(/profiles|players|accountId|shirtNumber|tokenHash|preferences/);
+    await expect(service.inspect(invitee.principal, { token: first.token, teamId: 'other', context: preview.context })).rejects.toMatchObject({ code: 'INVALID_REQUEST' });
+    const foreign: PreparationState = { ...renamed, team: { ...renamed.team, id: 'another-team' } };
+    source.saveDocument(teamId, seasonId, 'preparation', foreign);
+    await expect(service.inspect(invitee.principal, { token: first.token })).rejects.toMatchObject({ status: 404 });
+    source.saveDocument(teamId, seasonId, 'preparation', renamed);
+    now += 3_600_000;
+    await expect(service.inspect(invitee.principal, { token: first.token })).rejects.toMatchObject({ status: 404 });
   });
   it('reissues only an original current player pending link or manager and never rotates an accepted grant', async () => {
     const owner = session('player-01'), first = await issued('request-issued-001', owner);

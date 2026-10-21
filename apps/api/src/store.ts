@@ -27,6 +27,8 @@ import { managerRoster as projectManagerRoster, type StaffAccountEvidence } from
 import { prepareAccountPrivacyRequest, projectAccountPrivacyRequests, type PrivacyRequestRecord } from '../../../packages/application/src/privacy-requests';
 import { brandSelectedRole,type BrandingAuthority } from './brand-repository';
 import { ownDevicesDto,parseNativeDeviceInput,type NativeDeviceRow } from './devices';
+import { namedWorkspaceMembership, type WorkspaceMembershipNames } from './workspace-memberships';
+import type { NamedWorkspaceMembership } from '../../../packages/application/src/workspace-context';
 
 export const EVENT_CONTRACT_VERSION = 'longball.events/1.1';
 export const SYNTHETIC_IDS = { teamId: 'synthetic-roma-u10', seasonId: 'synthetic-season-2026-27', matchId: 'synthetic-roma-maple-2026-10-24' } as const;
@@ -240,6 +242,23 @@ export class DevelopmentStore {
     });
   }
   myMemberships(principal: Principal): Membership[] { return currentMemberships(principal, this.memberships(), this.now()); }
+  workspaceMemberships(principal: Principal): NamedWorkspaceMembership[] {
+    const own = this.myMemberships(principal);
+    if (!own.length) return [];
+    // SQLite keeps configuration in documents. Extract only named metadata for
+    // this account's exact current team-season; never load the preparation body.
+    const rows = this.database.prepare(`SELECT m.team_id,m.season_id,
+      COALESCE(NULLIF(TRIM(json_extract(d.value_json,'$.team.name')),''),t.name) AS team_name,
+      json_extract(d.value_json,'$.team.ageGroup') AS age_group,
+      json_extract(d.value_json,'$.club.name') AS club_name,
+      (SELECT json_extract(s.value,'$.label') FROM json_each(d.value_json,'$.seasons') s WHERE json_extract(s.value,'$.id')=m.season_id LIMIT 1) AS season_label
+      FROM memberships m JOIN teams t ON t.id=m.team_id
+      LEFT JOIN documents d ON d.team_id=m.team_id AND d.season_id=m.season_id AND d.kind='preparation'
+        AND json_extract(d.value_json,'$.team.id')=m.team_id
+        AND(SELECT COUNT(*) FROM json_each(d.value_json,'$.seasons') s WHERE json_extract(s.value,'$.id')=m.season_id)=1
+      WHERE m.account_id=? AND m.revoked_at IS NULL AND(m.expires_at IS NULL OR m.expires_at>?)`).all(principal.accountId, this.now()) as unknown as (WorkspaceMembershipNames & { team_id: string; season_id: string })[];
+    return own.map(member => namedWorkspaceMembership(member, rows.find(row => row.team_id === member.teamId && row.season_id === member.seasonId)));
+  }
   recognisedDevices(principal:Principal){
     const legacy=this.database.prepare('SELECT id,account_id FROM devices WHERE account_id=? ORDER BY id').all(principal.accountId) as unknown as {id:string;account_id:string}[];
     const native=this.database.prepare('SELECT * FROM native_app_devices WHERE account_id=? AND issuer=? ORDER BY registered_at,device_id').all(principal.accountId,principal.issuer) as unknown as NativeDeviceRow[];
@@ -826,11 +845,11 @@ export class DevelopmentStore {
   }
   private recordsContext(principal: Principal, teamId: string, seasonId: string, role?: string): RecordsServiceInput {
     const viewer = this.recordsViewer(principal, teamId, seasonId, role);
-    const rows = this.database.prepare('SELECT state_json FROM matches WHERE team_id=? AND season_id=? ORDER BY id').all(teamId, seasonId) as { state_json: string }[];
+    const rows = this.database.prepare('SELECT state_json,sharing_policy_json FROM matches WHERE team_id=? AND season_id=? ORDER BY id').all(teamId, seasonId) as { state_json: string; sharing_policy_json: string }[];
     const community=this.communityState(teamId,seasonId);
     const actor=this.communityActor(principal,teamId,seasonId,viewer.actor);
     const filtered=getCommunityView(community,actor,this.now());
-    return { principal, memberships: this.memberships(), nowMs: this.now(), requestedRole: viewer.actor, state: this.document<RecordsState>(teamId, seasonId, 'records'), preparation: this.document<PreparationState>(teamId, seasonId, 'preparation'), acceptedMatches: rows.map(row => ({ teamId, seasonId, match: JSON.parse(row.state_json) as MatchState })),community:{accountId:principal.accountId,teamId,seasonId,audience:viewer.actor,playerId:viewer.playerId??null,revision:community.revision,view:{allowed:filtered.allowed,matches:filtered.matches,gallery:filtered.gallery}} };
+    return { principal, memberships: this.memberships(), nowMs: this.now(), requestedRole: viewer.actor, state: this.document<RecordsState>(teamId, seasonId, 'records'), preparation: this.document<PreparationState>(teamId, seasonId, 'preparation'), acceptedMatches: rows.map(row => ({ teamId, seasonId, match: JSON.parse(row.state_json) as MatchState, sharingPolicy: JSON.parse(row.sharing_policy_json) as SharingPolicy })),community:{accountId:principal.accountId,teamId,seasonId,audience:viewer.actor,playerId:viewer.playerId??null,revision:community.revision,view:{allowed:filtered.allowed,matches:filtered.matches,gallery:filtered.gallery}} };
   }
   records(principal: Principal, teamId: string, seasonId: string, role?: string): Record<string, unknown> { return recordsServiceView(this.recordsContext(principal, teamId, seasonId, role)); }
   recordsExport(principal: Principal, teamId: string, seasonId: string, request: RecordsExportRequest, role?: string): ReturnType<typeof recordsServiceExport> { return recordsServiceExport({ ...this.recordsContext(principal, teamId, seasonId, role), request }); }

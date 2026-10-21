@@ -60,7 +60,7 @@ try {
   await page.getByRole("button", { name: "Service and controller", exact: true }).click();
   const apiInput = page.getByLabel("Workspace API URL", { exact: true });
   assert.equal(await apiInput.inputValue(), "", "Static review must not suggest its host is an API.");
-  await page.getByRole("button", { name: "Fictional API review", exact: true }).click();
+  await page.getByRole("button", { name: "Demo API review", exact: true }).click();
   for (const address of ["", "/", new URL(baseURL).origin]) {
     await apiInput.fill(address);
     await page.getByTestId("workspace-connect").click();

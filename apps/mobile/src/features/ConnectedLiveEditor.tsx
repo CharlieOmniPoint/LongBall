@@ -373,7 +373,7 @@ export function ConnectedLiveEditor(props: ConnectedLiveEditorProps) {
     <View style={[styles.stack, props.fillScreen && styles.fullScreen]}>
       {props.fillScreen && <ScrollView style={{ flexGrow: 0, maxHeight: activeMode === "live" ? "45%" : "30%" }} contentContainerStyle={{ gap: 8 }} testID="connected-match-fixed-summary">
         {props.header}
-        {activeMode === "live" && !gate && scoreCard}
+        {activeMode === "live" && scoreCard}
       </ScrollView>}
       <EditorContent fillScreen={props.fillScreen} scrollRef={contentScroll}>
 
@@ -404,7 +404,7 @@ export function ConnectedLiveEditor(props: ConnectedLiveEditorProps) {
             />
           )}
       </Card>}
-      {!gate && props.clock && (
+      {props.clock && (
         <>
           <View style={styles.wrap}>
             {(["attendance", "lineup", "live"] as const).map((value) => (
@@ -747,7 +747,7 @@ export function ConnectedLiveEditor(props: ConnectedLiveEditorProps) {
       )}
       {props.extraContent}
       </EditorContent>
-      {props.fillScreen && !gate && props.clock && !terminal && <View style={styles.fixedRail} testID="connected-match-action-rail">
+      {props.fillScreen && props.clock && !terminal && <View style={styles.fixedRail} testID="connected-match-action-rail">
         <ScrollView style={{ maxHeight: 220 }} contentContainerStyle={styles.stack} keyboardShouldPersistTaps="handled">
           {props.clockActionReview}
           {clockActions}

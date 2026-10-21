@@ -34,7 +34,7 @@ async function workspace(account, entry = baseUrl) {
     await button(page, 'Service and controller').click();
   }
   await page.getByLabel('Workspace API URL', { exact: true }).fill(apiUrl);
-  await button(page, 'Fictional API review').click();
+  await button(page, 'Demo API review').click();
   await button(page, account).click();
   await page.getByTestId('workspace-connect').click();
   await page.getByTestId('workspace-session').waitFor();

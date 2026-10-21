@@ -372,7 +372,7 @@ try {
   await click("More");
   await click("Service and controller");
   await page.getByLabel("Workspace API URL", { exact: true }).fill(api);
-  await click("Fictional API review");
+  await click("Demo API review");
   await click("Alex Morgan · Manager");
   await page.getByTestId("workspace-connect").click();
   await selectWorkspaceContext(page);

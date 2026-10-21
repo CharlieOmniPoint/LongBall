@@ -37,8 +37,9 @@ try{
  await PgMediaService.open({directory:sourceMedia,database:owner.db});await new PostgresActivationService({store:owner}).initialize();await applyRuntimeGrants(owner.db,roles);
  const installed=await verifyRuntimeProofSchema(owner.db);
  const sourceApi=await PostgresStore.open(url(sourceName,roles.apiRole),Date.now,{migrationMode:'verify'});stores.push(sourceApi);await sourceApi.assertRuntimeRole('api');
- const contributions=await prepareRuntimeContributions(owner,sourceApi);
- const archive=await docker(['exec',container,'pg_dump','-U','postgres','-d',sourceName,'--format=custom','--no-owner','--no-privileges']);await writeFile(resolve(directory,'schema15.dump'),archive,{mode:0o600});
+ const sourceWorker=await PostgresStore.open(url(sourceName,roles.workerRole),Date.now,{migrationMode:'verify'});stores.push(sourceWorker);await sourceWorker.assertRuntimeRole('worker');
+ const contributions=await prepareRuntimeContributions(owner,sourceApi,sourceWorker);
+ const archive=await docker(['exec',container,'pg_dump','-U','postgres','-d',sourceName,'--format=custom','--no-owner','--no-privileges']);await writeFile(resolve(directory,'schema16.dump'),archive,{mode:0o600});
  const objectArchive=resolve(directory,'objects');await cp(sourceMedia,objectArchive,{recursive:true});
  await restore(restoredName,archive);
  const restoredOwner=await PostgresStore.open(url(restoredName,roles.owner));stores.push(restoredOwner);await applyRuntimeGrants(restoredOwner.db,roles);
@@ -55,7 +56,7 @@ try{
  await worker.db.withContext(context,async()=>{assert.equal((await worker.db.query('SELECT * FROM documents')).rowCount,0);assert.equal((await worker.db.query('SELECT * FROM accounts')).rowCount,0);});
  const security=await restoredOwner.one("SELECT count(*)::integer AS protected_tables FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='longball' AND c.relrowsecurity");
  const constraints=await restoredOwner.one("SELECT count(*)::integer AS composite_foreign_keys FROM pg_constraint c JOIN pg_namespace n ON n.oid=c.connamespace WHERE n.nspname='longball' AND c.contype='f' AND array_length(c.conkey,1)>1");
- assert.equal(Number(security?.protected_tables),37);assert(Number(constraints?.composite_foreign_keys)>=18);
+ assert.equal(Number(security?.protected_tables),38);assert(Number(constraints?.composite_foreign_keys)>=18);
  const contributionChecks=await verifyRuntimeContributions(restoredOwner,api,worker,contributions);
  const preservedCounts=await restoredOwner.one('SELECT (SELECT count(*)::integer FROM media_uploads) AS manifests,(SELECT count(*)::integer FROM clubs) AS clubs,(SELECT count(*)::integer FROM team_seasons) AS seasons,(SELECT count(*)::integer FROM game_contexts) AS game_contexts');assert.equal(preservedCounts?.manifests,3);
  const result={status:'passed',observedAt:new Date().toISOString(),syntheticOnly:true,execution:'host-bundled-operational-proof',productionImageExercised:false,actualPushDelivered:false,...installed,contributionChecks,historicalMediaCheckpoint:historical?.observedAt,archiveSha256:hash(archive),exactRestoredDerivativeSha256:restoredHash,protectedTables:security?.protected_tables,compositeForeignKeys:constraints?.composite_foreign_keys,preservedCounts,temporaryDatabaseCreateRevoked:true,restoredSchemaOwnerNonBypass:true,restoredApiWorkerNonBypass:true,restoredCurrentPlayerGateway:true,contextFreeDataDenied:true,foreignTeamDenied:true,workerForgedActorDenied:true,limitations:['Reuses previously processed fictional image bytes; ClamAV engine was not rerun.','Paired private object copy and custom-format archive; no encrypted offsite backup, retention, RPO or RTO claim.','Disposable proof database roles use loopback-only trust authentication; production credentials remain separate mounted secrets.']};

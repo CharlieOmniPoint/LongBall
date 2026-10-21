@@ -10,8 +10,11 @@ import type {
 } from "@longball/application/deep-links";
 import { WIRE_CONTRACT_VERSION } from "@longball/application/sync";
 import { isCanonicalInvitationToken } from "@longball/application/invitation-credentials";
+import { invitationTeamLabel } from '@longball/application/invitation-context';
 import {
   parseInvitationProviderSetup,
+  parseInvitationActivationInfo,
+  type InvitationActivationInfo,
   type InvitationProviderSetup,
 } from "../platform/spectator-activation-core";
 import { randomUUID } from "../platform/id";
@@ -29,13 +32,41 @@ export function SpectatorActivationPanel({
   onCompletionConsumed?: () => void;
 }) {
   const [setup, setSetup] = useState<InvitationProviderSetup | null>(null),
+    [info, setInfo] = useState<InvitationActivationInfo | null>(null),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(false),
     [finished, setFinished] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
   const requestId = useRef<string | null>(null),
     deviceId = useRef<string | null>(null);
-  async function begin() {
+  async function post(path: string, body: object) {
+    validateOidcConfig(config);
+    const base = config.apiBaseUrl.replace(/\/$/, ''), controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 20_000);
+    requestId.current ??= randomUUID();
+    try {
+      const response = await fetch(`${base}${base.endsWith('/v1') ? '' : '/v1'}/spectator-invites/${path}`, {
+        method: 'POST', redirect: 'error', signal: controller.signal,
+        headers: { 'content-type': 'application/json', 'x-api-contract-version': WIRE_CONTRACT_VERSION, 'idempotency-key': requestId.current },
+        body: JSON.stringify(body),
+      });
+      if (!response.ok) throw new Error('Unavailable');
+      const text = await response.text();
+      if (text.length > 32_000) throw new Error('Response too large');
+      return JSON.parse(text) as Record<string, unknown>;
+    } finally { clearTimeout(timer); }
+  }
+  async function review() {
     if (busy) return;
+    setBusy(true); setError(false); setNotice(null); setInfo(null);
+    try {
+      if (!isCanonicalInvitationToken(invitation.code)) throw new Error('Invitation needs reissue.');
+      setInfo(parseInvitationActivationInfo(await post('activation-info', { token: invitation.code }), Date.now()));
+    } catch { setError(true); }
+    finally { setBusy(false); }
+  }
+  async function begin() {
+    if (busy || !info) return;
     setBusy(true);
     setError(false);
     try {
@@ -44,48 +75,16 @@ export function SpectatorActivationPanel({
         throw new Error("Invitation needs reissue.");
       requestId.current ??= randomUUID();
       deviceId.current ??= randomUUID();
-      const base = config.apiBaseUrl.replace(/\/$/, "");
-      async function post(path: string, body: object) {
-        const controller = new AbortController(),
-          timer = setTimeout(() => controller.abort(), 20_000);
-        try {
-          const response = await fetch(
-            `${base}${base.endsWith("/v1") ? "" : "/v1"}/spectator-invites/${path}`,
-            {
-              method: "POST",
-              redirect: "error",
-              signal: controller.signal,
-              headers: {
-                "content-type": "application/json",
-                "x-api-contract-version": WIRE_CONTRACT_VERSION,
-                "idempotency-key": requestId.current!,
-              },
-              body: JSON.stringify(body),
-            },
-          );
-          if (!response.ok) throw new Error("Unavailable");
-          const text = await response.text();
-          if (text.length > 32_000) throw new Error("Response too large");
-          return JSON.parse(text) as Record<string, unknown>;
-        } finally {
-          clearTimeout(timer);
-        }
+      const fresh = parseInvitationActivationInfo(await post('activation-info', { token: invitation.code }), Date.now());
+      if (fresh.invitationId !== info.invitationId || fresh.teamId !== info.teamId || fresh.seasonId !== info.seasonId || fresh.policyVersion !== info.policyVersion || JSON.stringify(fresh.context) !== JSON.stringify(info.context)) {
+        setInfo(fresh); setNotice('The invitation details changed. Review the current destination before creating an account.'); return;
       }
-      const info = await post("activation-info", { token: invitation.code });
-      if (
-        Object.keys(info).length !== 3 ||
-        typeof info.invitationId !== "string" ||
-        typeof info.expiresAt !== "string" ||
-        Date.parse(info.expiresAt) <= Date.now() ||
-        typeof info.policyVersion !== "string"
-      )
-        throw new Error("Unavailable");
       setSetup(
         parseInvitationProviderSetup(
           await post("activate", {
             token: invitation.code,
             deviceId: deviceId.current,
-            policyVersion: info.policyVersion,
+            policyVersion: fresh.policyVersion,
           }),
           config,
           Date.now(),
@@ -108,11 +107,14 @@ export function SpectatorActivationPanel({
           accept the invitation in Community. A new invitee can create a
           username-only account with the configured provider below.
         </Text>
-        <Text>
-          This link selects team {invitation.teamId}, season{" "}
-          {invitation.seasonId}; the service validates its actual scope. It
-          cannot configure your API or identity provider.
-        </Text>
+        <Text>Review the service-verified club, team and season before creating an account.</Text>
+        {info && <>
+          <Text testID="activation-invitation-context">{invitationTeamLabel(info.context)} · {info.context.clubName} · {info.context.seasonLabel ?? 'Season label unavailable'}</Text>
+          <Text>Invited by: {info.context.inviterLabel}</Text>
+          <Text>Link expires {new Date(info.expiresAt).toLocaleString()}.</Text>
+          <Text selectable>References: team {info.teamId} · season {info.seasonId}</Text>
+        </>}
+        {notice && <Notice>{notice}</Notice>}
         {error && (
           <Notice tone="warning">
             Invitation setup is unavailable or incomplete. Keep the original
@@ -125,6 +127,8 @@ export function SpectatorActivationPanel({
             Account activation completed. Use secure sign-in, then explicitly
             review and accept this invitation in Community.
           </Notice>
+        ) : !info ? (
+          <Button label="Review invitation destination" testID="activation-invitation-inspect" disabled={busy} onPress={() => { void review(); }} />
         ) : (
           <Button
             label={

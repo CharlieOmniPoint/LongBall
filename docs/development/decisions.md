@@ -24,6 +24,8 @@
 
 ## Current testing priority
 
+21 October owner response during the specification recheck: **leave Q05/Q09/Q10 privacy verification, retention and support authority pending for later.** Continue simulated-data functionality testing. This defers those decisions; it does not approve a retention period, appoint a support operator or complete SEC20/SEC21 privacy fulfilment.
+
 21 October owner instruction: defer Android/iPhone installation and physical
 testing for now; concentrate on connected demo functionality and feedback.
 This changes the current review priority, not the native targets, F01–F28 scope

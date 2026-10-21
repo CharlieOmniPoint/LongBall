@@ -1,11 +1,11 @@
 import type { MatchState } from '@longball/domain';
-import { AccessError, assertAdultAuthority, assertCanManageTeam, assertTeamRole, type Membership, type Principal } from './access';
+import { AccessError, assertAdultAuthority, assertCanManageTeam, assertTeamRole, type Membership, type Principal, type SharingPolicy } from './access';
 import { reduceRecords, selectMatchReport, selectParticipationReport, selectSeasonResults, type FixtureClass, type HistoricalResultInput, type LiveMatchDetails, type RecordsActor, type RecordsCommand, type RecordsState, type RecordsViewer } from './records';
 import { composeReportCommunity, type ReportCommunitySource } from './report-community';
 import { gamePreparationEvidence } from './game-preparation-evidence';
 import { trainingAttendanceEvidence, type PreparationState } from './preparation';
 
-export interface AcceptedRecordsMatch { teamId: string; seasonId: string; match: MatchState }
+export interface AcceptedRecordsMatch { teamId: string; seasonId: string; match: MatchState; /** Trusted current service policy; absent on local-only callers. */ sharingPolicy?: SharingPolicy }
 export interface RecordsServiceAuthority { principal: Principal; memberships: Membership[]; nowMs: number; requestedRole?: RecordsActor }
 export interface RecordsServiceInput extends RecordsServiceAuthority { state: RecordsState; acceptedMatches: AcceptedRecordsMatch[]; community?: ReportCommunitySource | null; preparation?: PreparationState }
 export type CompactArchiveCommand = { type: 'live.archive'; commandId: string; matchId: string; expectedSourceMatchRevision: number; at?: string; actor?: RecordsActor; reason?: string };
@@ -67,8 +67,24 @@ function contextFor(state: RecordsState, match: MatchState, fixtureClass?: Fixtu
   if (!fixture) return state.liveMatch.matchId === match.config.matchId ? { ...state.liveMatch, fixtureClass: fixtureClass ?? state.liveMatch.fixtureClass } : null;
   return { matchId: match.config.matchId, playedDate: fixture.playedDate, opponent: fixture.opponent, homeAway: fixture.homeAway, fixtureClass: fixtureClass ?? state.results.find(record => record.id === match.config.matchId)?.fixtureClass ?? 'unclassified' };
 }
+/** Intersect approval with current service policy; never infer a publication decision from it. */
+function currentSharingState(input: RecordsServiceInput, viewer: RecordsViewer, derived: boolean): RecordsState {
+  if (viewer.actor === 'manager') return input.state;
+  const denied = new Set(input.acceptedMatches.filter(row => {
+    if (row.teamId !== input.state.teamId || row.seasonId !== input.state.seasonId || !row.sharingPolicy) return false;
+    const policy = row.sharingPolicy;
+    return policy.approvedBy === null || policy.approvedAt === null || !policy.shareScores || derived && !policy.shareDerivedResults;
+  }).map(row => row.match.config.matchId));
+  if (!denied.size) return input.state;
+  const initial = input.state.initialLivePublication;
+  return { ...input.state,
+    ...(initial && denied.has(initial.matchId) ? { initialLivePublication: { ...initial, publication: { ...initial.publication, confirmed: false, allowedRoles: [] } } } : {}),
+    results: input.state.results.map(record => denied.has(record.id) ? { ...record, publication: { ...record.publication, confirmed: false, allowedRoles: [] } } : record),
+  };
+}
 export function recordsServiceView(input: RecordsServiceInput) {
   const viewer = recordsServiceViewer(input), { state, nowMs } = input;
+  const scoreState = currentSharingState(input, viewer, false), derivedState = currentSharingState(input, viewer, true);
   const preparation = input.preparation;
   if (preparation && (preparation.team.id !== state.teamId || !preparation.seasons.some(season => season.id === state.seasonId))) fail('Preparation evidence is outside this report scope.', 'NOT_FOUND', 404);
   // Own RSVP remains durable in preparation. Reading its current evidence requires
@@ -89,9 +105,9 @@ export function recordsServiceView(input: RecordsServiceInput) {
   const reports = [...ids].map(id => {
     const match = accepted(input, id);
     const details = match ? contextFor(state, match, id === state.liveMatch.matchId ? state.liveMatch.fixtureClass : undefined) : null;
-    return selectMatchReport(details ? { ...state, liveMatch: details } : state, id, viewer, match);
+    return selectMatchReport(details ? { ...scoreState, liveMatch: details } : scoreState, id, viewer, match);
   }).filter((item): item is NonNullable<typeof item> => item !== null);
-  const common = { revision: state.revision, results: stamp(selectSeasonResults(state, viewer)), participation: stamp({ ...selectParticipationReport(reportState, activeMatch, viewer), ...(viewer.actor === 'spectator' ? {} : { sourcePreparationRevision: preparation?.revision ?? null }) }), matches: reports.map(report => stamp({ ...report, ...composeReportCommunity(report, input.principal.accountId, input.community), goals: report.goals.map(goal => ({ ...goal, scorerLabel: goal.scorerPlayerId ? state.players.find(player => player.id === goal.scorerPlayerId)?.label ?? null : null })) })) };
+  const common = { revision: state.revision, results: stamp(selectSeasonResults(derivedState, viewer)), participation: stamp({ ...selectParticipationReport(reportState, activeMatch, viewer), ...(viewer.actor === 'spectator' ? {} : { sourcePreparationRevision: preparation?.revision ?? null }) }), matches: reports.map(report => stamp({ ...report, ...composeReportCommunity(report, input.principal.accountId, input.community), goals: report.goals.map(goal => ({ ...goal, scorerLabel: goal.scorerPlayerId ? state.players.find(player => player.id === goal.scorerPlayerId)?.label ?? null : null })) })) };
   if (viewer.actor !== 'manager') return common;
   return { ...common, editableState: copy(state), activeMatch: activeMatch ? copy(activeMatch) : null,
     contexts: input.acceptedMatches.filter(row => row.teamId === state.teamId && row.seasonId === state.seasonId).flatMap(row => {
@@ -115,7 +131,8 @@ export function applyRecordsServiceCommand(input: RecordsServiceInput & { comman
       requireThat(string(command.recordId) && integer(command.expectedRevision) && string(command.reason, 500), 'Review the current record revision and provide a correction reason.');
       bound = { ...base, type: command.type, recordId: command.recordId, expectedRevision: command.expectedRevision, reason: command.reason.trim(), input: parseHistoricalResultInput(command.input) }; break;
     case 'live.context.set': {
-      requireThat(command.details && typeof command.details === 'object' && string(command.details.matchId) && fixtureClasses.includes(command.details.fixtureClass), 'Choose a prepared match and an explicit fixture class.');
+      requireThat(object(command.details) && string(command.details.matchId) && fixtureClasses.includes(command.details.fixtureClass), 'Choose a prepared match and an explicit fixture class.');
+      fields(command.details, ['matchId', 'playedDate', 'opponent', 'homeAway', 'fixtureClass']);
       const match = accepted(input, command.details.matchId);
       if (!match) fail('The prepared match is outside this team and season.', 'NOT_FOUND', 404);
       const details = contextFor(state, match, command.details.fixtureClass);
@@ -144,8 +161,9 @@ export function applyRecordsServiceCommand(input: RecordsServiceInput & { comman
   // The HTTP idempotency layer owns retries. The reducer still preserves exact command identity.
   return reduceRecords(state, bound);
 }
-function policyFingerprint(state: RecordsState): string {
-  const source = JSON.stringify(state.results.map(record => [record.id, record.classificationVersion, record.fixtureClass, record.publication]));
+function policyFingerprint(state: RecordsState, acceptedMatches: AcceptedRecordsMatch[]): string {
+  const currentPolicies = acceptedMatches.filter(row => row.teamId === state.teamId && row.seasonId === state.seasonId && row.sharingPolicy).map(row => [row.match.config.matchId, row.sharingPolicy]).sort((left, right) => String(left[0]).localeCompare(String(right[0])));
+  const source = JSON.stringify([state.results.map(record => [record.id, record.classificationVersion, record.fixtureClass, record.publication]), state.initialLivePublication ?? null, currentPolicies]);
   let hash = 2166136261;
   for (const character of source) hash = Math.imul(hash ^ character.charCodeAt(0), 16777619) >>> 0;
   return `policy-v1-${hash.toString(16).padStart(8, '0')}`; // Cache invalidation only; never authority or a signature.
@@ -154,7 +172,7 @@ export interface RecordsExportRequest { kind: 'season' | 'match'; matchId?: stri
 export function recordsServiceExport(input: RecordsServiceInput & { request: RecordsExportRequest }) {
   const viewer = recordsServiceViewer(input), view = recordsServiceView(input), { request, state, nowMs } = input;
   requireThat(request && ['season', 'match'].includes(request.kind) && ['json', 'csv'].includes(request.format), 'Choose a report and supported export format.');
-  const fingerprint = policyFingerprint(state);
+  const fingerprint = policyFingerprint(state, input.acceptedMatches);
   if (request.expectedProjectionVersion !== undefined && request.expectedProjectionVersion !== state.revision || request.expectedPolicyFingerprint !== undefined && request.expectedPolicyFingerprint !== fingerprint) fail('This report or audience policy changed. Refresh before exporting.', 'STALE_PROJECTION', 409);
   const matches = request.kind === 'match' ? view.matches.filter(report => report.matchId === request.matchId) : view.matches;
   if (request.kind === 'match' && matches.length !== 1) fail('That permitted match report is unavailable.', 'NOT_FOUND', 404);

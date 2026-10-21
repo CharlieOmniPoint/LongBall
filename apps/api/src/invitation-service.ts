@@ -3,9 +3,10 @@ import { AccessError, type Principal } from '../../../packages/application/src/a
 import { applyCommunityCommand, applyVerifiedInvitationCommand, type CommunityActor, type CommunityState, type SpectatorInvite } from '../../../packages/application/src/community';
 import { invitationTokenHashInput, pendingInvitation, redactInviteCreated, type InviteCreated, type RedactedInviteReceipt } from '../../../packages/application/src/invitation-credentials';
 import { publicInvitation } from '../../../packages/application/src/invitation-credentials';
+import type { InvitationContext } from '../../../packages/application/src/invitation-context';
 
 export interface InvitationSession { principal: Principal; teamId: string; seasonId: string; role?: string }
-export interface InvitationResolved { invitationId: string; teamId: string; seasonId: string; tokenHash: string; expiresAt: string }
+export interface InvitationResolved { invitationId: string; teamId: string; seasonId: string; tokenHash: string; expiresAt: string; context: InvitationContext }
 export interface InvitationAccepted { invitationId: string; teamId: string; seasonId: string; expiresAt: string }
 export interface InvitationSummary { id: string; teamId: string; seasonId: string; expiresAt: string; status: 'pending'|'accepted'|'revoked'|'expired'|'requires_reissue'; canReissue: boolean; canRevoke: boolean }
 export interface InvitationList { kind: 'spectator-invitations'; teamId: string; seasonId: string; revision: number; invitations: InvitationSummary[] }
@@ -110,9 +111,9 @@ export class SpectatorInvitationService {
     if (!found) return unavailable();
     return { ...found, tokenHash };
   }
-  async inspect(principal: Principal, value: unknown): Promise<{ invitationId: string; teamId: string; seasonId: string; expiresAt: string }> {
-    const { invitationId, teamId, seasonId, expiresAt } = await this.resolve(principal, value);
-    return { invitationId, teamId, seasonId, expiresAt };
+  async inspect(principal: Principal, value: unknown): Promise<Omit<InvitationResolved, 'tokenHash'>> {
+    const { invitationId, teamId, seasonId, expiresAt, context } = await this.resolve(principal, value);
+    return { invitationId, teamId, seasonId, expiresAt, context };
   }
   async accept(session: InvitationSession, key: string, value: unknown): Promise<{ status: 200; body: InvitationAccepted }> {
     this.identity(session, key);

@@ -12,6 +12,7 @@ await build({
     api: "apps/api/src/main.ts",
     worker: "apps/worker/src/main.ts",
     migrate: "apps/api/src/migrate.ts",
+    "report-pdf-probe": "apps/api/src/report-export-pdf-probe.ts",
   },
   outdir,
   outExtension: { ".js": ".mjs" },
@@ -23,7 +24,7 @@ await build({
     "@longball/domain": resolve("packages/domain/src/index.ts"),
     "@longball/testing": resolve("packages/testing/src/index.ts"),
   },
-  external: ["sharp", "pg"],
+  external: ["sharp", "pg", "fastify"],
   logLevel: "info",
 });
 await copyFile(
@@ -31,3 +32,11 @@ await copyFile(
   resolve(outdir, "media-worker.mjs"),
 );
 await copyFile("apps/api/src/heic-worker.mjs",resolve(outdir,"heic-worker.mjs"));
+const fontDirectory = resolve(outdir, "assets/fonts");
+await mkdir(fontDirectory, { recursive: true });
+for (const filename of ["DejaVuSans.ttf", "LICENSE"]) {
+  await copyFile(
+    resolve("apps/api/src/assets/fonts", filename),
+    resolve(fontDirectory, filename),
+  );
+}
