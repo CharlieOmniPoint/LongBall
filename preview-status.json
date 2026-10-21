@@ -1,9 +1,9 @@
 {
-  "state": "ready",
-  "url": "https://college-acrobat-cad-forever.trycloudflare.com",
+  "state": "starting",
+  "url": "",
   "sourceRevision": "3ff822d303b8266719da5b78a0209ae87b63db0b",
-  "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/39567723833",
-  "startedAt": "2026-10-21T08:15:50Z",
-  "expiresAt": "2026-10-21T09:15:50Z",
+  "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/39568758645",
+  "startedAt": "2026-10-21T08:23:26Z",
+  "expiresAt": "",
   "audience": "Adult review of fictional Roma U10 data only"
 }
