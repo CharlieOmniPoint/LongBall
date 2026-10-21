@@ -16,8 +16,15 @@ export type PgApplicationContext =
   | { kind: 'worker_claim'; jobKind: 'award.finalise' | 'notification.dispatch' | 'report.export'; nowMs: number }
   | { kind: 'worker_job'; jobId: string; leaseToken: string; clubId: string; teamId: string; seasonId: string; nowMs: number };
 interface ApplicationFrame { value: Readonly<PgApplicationContext>; active: boolean; key: string; parent?: ApplicationFrame }
-interface TransactionFrame { client: PoolClient; applicationKey: string | null; active: boolean }
+interface TransactionFrame { client: PoolClient; applicationKey: string | null; active: boolean; writeLock: 'none' | 'global' | 'team' }
 const contextKey = (context: PgApplicationContext) => JSON.stringify(Object.entries(context).sort(([a], [b]) => a.localeCompare(b)));
+function matchWriteTeam(context: Readonly<PgApplicationContext> | undefined): string | null {
+  if(context?.kind!=='actor'||context.operation!=='match.manage'||!['manager','default'].includes(context.requestedRole??''))return null;
+  const ids=[context.clubId,context.teamId,context.seasonId,context.matchId];
+  if(ids.some(id=>typeof id!=='string'||!/^[A-Za-z0-9_-]{1,150}$/.test(id)))return null;
+  // The resolved club/team pair deliberately covers every season and match of a team.
+  return JSON.stringify([context.clubId,context.teamId]);
+}
 function validateContext(context: PgApplicationContext): void {
   if (!context || typeof context !== 'object' || !Number.isSafeInteger(context.nowMs) || context.nowMs < 0) throw new Error('Invalid PostgreSQL application context.');
   const required: Record<PgApplicationContext['kind'], string[]> = {
@@ -101,6 +108,7 @@ export class PgDatabase implements PgQuery {
     if (existing) {
       if (!existing.active) throw new Error('PostgreSQL transaction has ended.');
       if (existing.applicationKey !== applicationKey) throw new Error('PostgreSQL transaction context changed.');
+      if(lockWrites&&existing.writeLock==='none')throw new Error('An unlocked PostgreSQL transaction cannot be upgraded to a write transaction.');
       return work();
     }
     const client = await this.pool.connect();
@@ -108,8 +116,18 @@ export class PgDatabase implements PgQuery {
     try {
       await client.query('BEGIN');
       if (application) await client.query("SELECT set_config('longball.context',$1,true)", [JSON.stringify(application)]);
-      if (lockWrites) await client.query("SELECT pg_advisory_xact_lock(hashtextextended('longball:domain-write:v1', 0))");
-      const transaction: TransactionFrame = { client, applicationKey, active: true };
+      const team=lockWrites?matchWriteTeam(application):null;
+      if(lockWrites){
+        if(team!==null){
+          // Shared legacy barrier first: old/global writers remain exclusive
+          // against every match transaction, including those on independent teams.
+          await client.query("SELECT pg_advisory_xact_lock_shared(hashtextextended('longball:domain-write:v1', 0))");
+          // Two-int advisory keys inhabit a separate namespace from the legacy
+          // bigint key. Hash collisions only serialize extra teams; never bypass locks.
+          await client.query("SELECT pg_advisory_xact_lock(hashtext('longball:team-write:v1'),hashtext($1))",[team]);
+        }else await client.query("SELECT pg_advisory_xact_lock(hashtextextended('longball:domain-write:v1', 0))");
+      }
+      const transaction: TransactionFrame = { client, applicationKey, active: true, writeLock:lockWrites?(team===null?'global':'team'):'none' };
       let result: T;
       try { result = await this.transactions.run(transaction, work); }
       finally { transaction.active = false; }

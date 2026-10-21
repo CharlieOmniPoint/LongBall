@@ -4,15 +4,17 @@ Native iPhone and Android team management, with a phone-friendly browser demo sh
 
 The demo includes Manager, Administrator, Player/household and Spectator journeys; preparation, attendance, lineups, manual match clocks, goals/corrections, fair-time planning, reports, training, results, invitations, private awards and moderated albums. Roma U10 has a generated sample squad, opponents, fixtures and training sessions. Initial user access stays free.
 
-Reports include queued CSV/PDF preparation with protected, explicit downloads and retained JSON export. The service uses the specified typed Fastify API, PostgreSQL and a separate worker. [The specification recheck](docs/development/specification-recheck.md) records actual verification and remaining gates.
+Reports include queued CSV/PDF preparation with protected, explicit downloads and retained JSON export. The service uses the specified typed Fastify API, PostgreSQL and a separate worker. Development checkpoint `bb509f7` includes the latest readable-report changes. [The specification recheck](docs/development/specification-recheck.md) records source-bound verification and incomplete work; source coverage does not establish full release acceptance.
 
 ## Review
 
 Open [LongBall](https://charlieomnipoint.github.io/LongBall/) and choose **Explore Roma U10 demo → a role → Open connected demo**. Use the [functional walkthrough](docs/development/functional-review-walkthrough.md) for the full journeys.
 
-The Pages address lasts. Its separate connected demo service runs for a bounded five-hour session; [review status](docs/development/review.md) records the latest verified service and expiry. Connected changes are shared within that disposable session. Local rehearsal preserves that browser's existing saved work and does not silently upload or reset it. A fresh browser context loads the current sample season.
+The Pages address lasts, but the public build is still the older `c538419` checkpoint. Publication of the new development source is pending. Its separate connected demo service runs for a bounded five-hour session; [review status](docs/development/review.md) distinguishes the last recorded service from a freshly verified session. Connected changes are shared within that disposable session. Local rehearsal preserves that browser's existing saved work and does not silently upload or reset it. A fresh browser context loads the current sample season.
 
-Real accounts use **Sign in** and receive only verified assigned club/team/season memberships. Production builds omit demo identities. Real identity/push/hosting, policy decisions, privacy-request fulfilment, signing/distribution and deferred physical-device acceptance remain separate release gates; this is a functionality-test environment.
+**Sign in** opens the real-account flow; current service assignments determine club/team/season access. Production entry omits demo identities. SEC20/SEC21 privacy fulfilment and the operator support/recovery console remain incomplete. The owner has deferred Q05/Q09/Q10 and physical phone testing. Operating identity/push/hosting, policy decisions and signed distribution remain release gates; this is a functionality-test environment.
+
+The complete `ee7cb613` checks passed 741 shared/platform tests, 367 API tests without skips, 24 migration checks, evaluated native configuration, anonymous browser entry and JavaScript/API exports. Later `bb509f7` changes passed focused readable-report and notification checks; a fresh queued-PDF browser run is pending. QL04 performance remains below target, and two high build-tool advisories fail the dependency quality gate. See [review status](docs/development/review.md) for exact scopes and failures.
 
 ## Run locally
 
@@ -29,6 +31,8 @@ LONGBALL_SYNTHETIC_AUTH=1 LONGBALL_DEMO_SCENARIO=1 LONGBALL_STATIC_DIRECTORY="$P
 ```
 
 The combined development server defaults to `http://127.0.0.1:4310` on the machine running it. A remote browser needs the published review address. Explicit demo mode is rejected in production. Actual uploads still require the configured scanner/decoder; sample image seeding uses that same private processing and publication pipeline.
+
+Queued CSV/PDF exports also require the separate worker, using the same database, configured export key file and TTL as the API. The API-only command above does not process queued exports; use the [protected-report guide](docs/development/report-exports.md) and [runtime setup](infra/runtime/README.md).
 
 `pnpm dev` starts Metro for a custom native development client. Expo Go cannot verify SQLCipher. The native code includes a sleep-inclusive clock, continuity checks, SQLCipher/SecureStore journal, local unlock and backup exclusions. Compilation does not establish installation, sleep/reboot timing, OS prompts, notifications, camera/picker/share, accessibility or physical encryption behaviour.
 

@@ -740,6 +740,10 @@ async bindDevice(principal: Principal, deviceId: string): Promise<void> {
     if (device && device.account_id !== principal.accountId)
         throw new AccessError('DEVICE_ACCOUNT_CONFLICT', 409, 'Enrol a separate device identity for this account.');
     (await this.execute("INSERT INTO devices(id,account_id) VALUES($1,$2) ON CONFLICT(id) DO NOTHING", [deviceId, principal.accountId]));
+    // A cross-team contender can win the global device key while this insert
+    // waits. Recheck the committed binding before issuing any controller grant.
+    const bound=await this.one('SELECT account_id FROM devices WHERE id=$1 AND account_id=$2',[deviceId,principal.accountId]);
+    if(!bound)throw new AccessError('DEVICE_ACCOUNT_CONFLICT',409,'Enrol a separate device identity for this account.');
 }
 async teamMatches(principal: Principal, teamId: string, seasonId: string, requestedRole?: string, query: MatchPageQuery = { limit: 25, cursor: null }): Promise<{ items: Record<string, unknown>[]; nextCursor: string | null; serverTime: string }> {
     const memberships = await this.memberships();
