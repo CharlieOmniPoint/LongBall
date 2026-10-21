@@ -797,20 +797,25 @@ export class DevelopmentActivationService {
   }
   async completeActivation(input: {
     activationId: string;
+    token: string;
     completionProof: string;
   }): Promise<{ status: "complete"; signInRequired: true }> {
     const { provider } = this.enabled();
-    fields(input, ["activationId", "completionProof"]);
+    fields(input, ["activationId", "token", "completionProof"]);
     if (
       !uuid(input.activationId) ||
+      typeof input.token !== "string" ||
+      !/^[A-Za-z0-9_-]{43}$/.test(input.token) ||
       typeof input.completionProof !== "string" ||
       !input.completionProof ||
       input.completionProof.length > 16_384
     )
       unavailable();
     const token = this.store.database
-      .prepare("SELECT * FROM lb_activation_tokens WHERE id=?")
-      .get(input.activationId) as unknown as TokenRow | undefined;
+      .prepare("SELECT * FROM lb_activation_tokens WHERE id=? AND token_hash=?")
+      .get(input.activationId, hash(input.token)) as unknown as
+      | TokenRow
+      | undefined;
     if (
       !token ||
       !["redeeming", "completed"].includes(token.state) ||

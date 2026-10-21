@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: LongBall implemented runtime extensions
-  version: 1.1.0
+  version: 1.2.0
   description: >-
     Runtime additions beside the unchanged supplied canonical contract. Server
     authorization, explicit policy decisions and native-device acceptance remain
@@ -13,6 +13,42 @@ servers:
 security:
   - bearerAuth: []
 paths:
+  /activation/complete:
+    post:
+      operationId: completeOriginalTokenActivation
+      summary: Verify provider completion for the exact original household activation capability
+      security: []
+      description: The original opaque token and activation ID scope database access before provider verification. Actual provider proof is verified outside the transaction before an atomic capability-bound completion. The token remains memory-only; a cold return requires the original token again. This operation creates no app session and never returns credentials or recovery material.
+      parameters:
+        - {$ref: '#/components/parameters/ContractVersion'}
+        - {$ref: '#/components/parameters/IdempotencyKey'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [activationId, token, completionProof]
+              properties:
+                activationId: {type: string, format: uuid}
+                token: {type: string, pattern: '^[A-Za-z0-9_-]{43}$', writeOnly: true}
+                completionProof: {type: string, minLength: 1, maxLength: 16384, writeOnly: true}
+      responses:
+        '200':
+          description: Completion requires a separate sign-in; no application session is created
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [status, signInRequired]
+                properties:
+                  status: {const: complete}
+                  signInRequired: {const: true}
+        '404': {$ref: '#/components/responses/Unavailable'}
+        '429': {description: The bounded activation attempt window has been reached}
+        '503': {$ref: '#/components/responses/PolicyRequired'}
   /matches/{matchId}/clock/challenges:
     parameters:
       - {$ref: '#/components/parameters/MatchId'}
@@ -345,7 +381,7 @@ components:
     MatchId: {name: matchId, in: path, required: true, schema: {$ref: '#/components/schemas/Identifier'}}
     TeamId: {name: teamId, in: path, required: true, schema: {$ref: '#/components/schemas/Identifier'}}
     SeasonId: {name: seasonId, in: query, required: true, schema: {$ref: '#/components/schemas/Identifier'}}
-    SelectedRole: {name: X-Longball-Role, in: header, schema: {enum: [manager, player, spectator]}}
+    SelectedRole: {name: X-Longball-Role, in: header, schema: {enum: [administrator, manager, player, spectator]}}
     ContractVersion: {name: X-Api-Contract-Version, in: header, required: true, schema: {const: longball.events/1.1}}
     IdempotencyKey: {name: Idempotency-Key, in: header, required: true, schema: {type: string, pattern: '^[A-Za-z0-9_-]{8,150}$'}}
     ControllerToken: {name: X-Controller-Token, in: header, required: true, schema: {type: string}}

@@ -67,14 +67,14 @@ Manager routes use the existing authenticated principal and assigned-team
 checks. Token and provider-proof routes are intentionally separate from app
 sign-in and require the configured activation experiment.
 
-| Route                                                        | Body                                                         | Result                                          |
-| ------------------------------------------------------------ | ------------------------------------------------------------ | ----------------------------------------------- |
-| `POST /v1/teams/:teamId/activation/pending-child?seasonId=…` | `{"playerId":"…"}`                                           | Pending UUID/username; no secret or session.    |
-| `POST /v1/teams/:teamId/activation/issue?seasonId=…`         | `{"accountId":"…"}`                                          | One-time token body and explicit policy expiry. |
-| `POST /v1/activation/redeem`                                 | `{"token":"…"}`                                              | Expiring provider setup URL and activation ID.  |
-| `POST /v1/activation/complete`                               | `{"activationId":"…","completionProof":"…"}`                 | Completion status; full sign-in required.       |
-| `POST /v1/accounts/link-requests`                            | Exact team, season, player and existing global account UUID. | Pending independent verification only.          |
-| `POST /v1/accounts/recovery-requests`                        | Exact team, season and global account UUID.                  | Pending independent verification only.          |
+| Route                                                        | Body                                                                       | Result                                          |
+| ------------------------------------------------------------ | -------------------------------------------------------------------------- | ----------------------------------------------- |
+| `POST /v1/teams/:teamId/activation/pending-child?seasonId=…` | `{"playerId":"…"}`                                                         | Pending UUID/username; no secret or session.    |
+| `POST /v1/teams/:teamId/activation/issue?seasonId=…`         | `{"accountId":"…"}`                                                        | One-time token body and explicit policy expiry. |
+| `POST /v1/activation/redeem`                                 | `{"token":"…"}`                                                            | Expiring provider setup URL and activation ID.  |
+| `POST /v1/activation/complete`                               | `{"activationId":"…","token":"original capability","completionProof":"…"}` | Completion status; full sign-in required.       |
+| `POST /v1/accounts/link-requests`                            | Exact team, season, player and existing global account UUID.               | Pending independent verification only.          |
+| `POST /v1/accounts/recovery-requests`                        | Exact team, season and global account UUID.                                | Pending independent verification only.          |
 
 Link and recovery requests deliberately do not look up or reveal whether a
 global target exists, or expose its other memberships. Managers can request
@@ -84,6 +84,57 @@ credential reset, global membership transfer, proof approval or manager-led
 recovery completion. Request rows retain policy version, actor, scope and exact
 target for the future independently verified process. Neither a request nor
 knowing an account UUID confers recovery authority.
+
+Completion now requires the original opaque activation capability in the request
+body together with the activation ID and independent provider completion proof.
+The server checks the exact ID/token-hash pair before reading a provider flow or
+calling the provider. Knowing a public activation UUID or provider return alone
+cannot finish activation. The app keeps a redeemed capability only in component
+memory while setup continues; after a cold start the household must paste the
+original capability again. The original capability is never added to a callback
+URL, phone journal, saved draft or provider setup URL.
+
+If that original capability is lost after provider setup completes, the provider
+return alone cannot activate the application account. The service cannot recover
+the old plaintext token, and cancellation deliberately refuses an already
+completed provider setup. This remains an independently verified Q05 recovery or
+reconciliation case; a manager cannot bypass the token requirement or take over
+the household credentials.
+
+PostgreSQL activation feature version 2 installs and verifies row security after
+core migration 005. Server-computed token hash/ID contexts narrow capability SQL;
+only successful independent provider verification adds the final completion
+marker before a new SQL transaction. Pending-child provisioning narrows manager
+context with the generated account ID before opening each transaction. No SQL
+transaction stays open across provider I/O. Runtime initialization verifies the
+feature security state without running privileged migration DDL.
+
+The earlier nine provider checks, four privacy API checks and six 320px browser
+checks are retained as historical evidence for the first candidate. The later
+completion protocol and row-security boundary passed a separate actual provider
+rerun of ten checks, including missing/mismatched original capability refusal
+and successful completion through the restricted PostgreSQL API. The bounded
+migration compared hashes of original account, membership, match, document,
+audit, privacy and activation columns and preserved every existing row. See
+`evidence/2026-10-21/identity/keycloak-row-security.json` and
+`evidence/2026-10-21/identity/row-security-migration.json`. This does not prove a
+native device or approve live onboarding.
+
+The four actual account-request API checks also passed after this migration,
+including lost-response resolution, pending-request deduplication and retained
+memberships/account status. Their separate result is
+`evidence/2026-10-21/identity/account-requests-row-security-api.json`.
+
+Worker-only migrations 006 and 007 were subsequently applied without changing
+the original recorded columns or the API/identity authority. Runtime startup now
+verifies core schema 007. A separate five-check smoke obtained fresh real manager
+MFA/PKCE and child sessions, checked current identity and manager access, repeated
+the capability-completion refusal/acceptance boundary, and refused child manager
+access and fake authentication aliases. It skipped unrelated protocol
+replay/cancellation/refresh cases. The initial ten-check provider and four-check
+privacy evidence remains explicitly core 005. See `schema006-upgrade.json`,
+`schema007-upgrade.json` and `keycloak-schema007-smoke.json` in the same evidence
+directory. No physical-device result is inferred.
 
 ## Provider and release decisions still open
 
@@ -135,7 +186,9 @@ provider completion evidence, prevention of reactivating a disabled account,
 exact-ID link/recovery capture and current-authority checks after an external
 call. The provider fixture proves these service contracts; it is not proof that
 a deployed identity provider supports them. Separately, the actual PostgreSQL
-suite passed five tests, the Keycloak transport fixtures passed four, destination
-parsing passed ten, and the real pinned provider/API harness passed nine journey
-checks. The identity README gives the exact reproduction commands and records
-which evidence remains missing.
+suite passed five tests, the Keycloak transport fixtures passed four and the
+service suite passed fourteen, including original-capability refusal before
+provider I/O. Destination parsing passed ten. The real pinned provider/API
+harness originally passed nine journey checks and passed ten after the
+capability-completion and row-security change. The identity README gives the
+exact reproduction commands and records which evidence remains missing.

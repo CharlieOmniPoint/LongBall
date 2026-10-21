@@ -1,4 +1,5 @@
-import { PgDatabase } from './pg';
+import { PgDatabase, type PgApplicationContext } from './pg';
+import type { DatabaseRequestScope } from './request-context';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { AccessError, assertAdultAuthority, assertCanAssignManager, assertCanManageTeam, assertTeamRole, currentMemberships, filterMatchForPrincipal, UNAPPROVED_SHARING_POLICY, type Membership, type Principal, type SharingPolicy } from '../../../packages/application/src/access';
 import { createMatch, ENGINE_VERSION, reduceMatch, type MatchConfig, type MatchEvent, type MatchState } from '../../../packages/domain/src/index';
@@ -100,7 +101,35 @@ static async open(connectionString: string, now: () => number = Date.now, option
     }
 }
  async close():Promise<void>{await this.db.close();}
+ async assertRuntimeRole(kind:'api'|'worker'):Promise<void>{
+   const role=await this.one(`SELECT r.rolsuper,r.rolbypassrls,longball.runtime_purpose() AS runtime_purpose,
+     EXISTS(SELECT 1 FROM pg_catalog.pg_roles privileged WHERE (privileged.rolsuper OR privileged.rolbypassrls) AND pg_has_role(current_user,privileged.oid,'MEMBER')) AS privileged_membership,
+     (EXISTS(SELECT 1 FROM pg_catalog.pg_namespace n WHERE n.nspname='longball' AND pg_has_role(current_user,n.nspowner,'MEMBER')) OR
+      EXISTS(SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='longball' AND c.relkind IN('r','p') AND pg_has_role(current_user,c.relowner,'MEMBER'))) AS owns_data
+     FROM pg_catalog.pg_roles r WHERE r.rolname=current_user`);
+   if(!role||role.rolsuper||role.rolbypassrls||role.privileged_membership||role.owns_data)throw new Error(`The PostgreSQL ${kind} requires a separate non-owner role without superuser, bypass-RLS or privileged-role membership.`);
+   if(role.runtime_purpose!==kind)throw new Error(`The PostgreSQL role is not assigned the ${kind} runtime purpose.`);
+ }
  transaction<T>(work:()=>Promise<T>|T):Promise<T>{return this.db.transaction(work);}
+ async withIdentityContext<T>(identity:VerifiedIdentity,work:()=>Promise<T>|T):Promise<T>{
+   return this.db.withContext({kind:'identity',issuer:identity.issuer,subject:identity.subject,nowMs:this.now()},work);
+ }
+ async withActorContext<T>(principal:Principal,scope:DatabaseRequestScope,work:()=>Promise<T>|T):Promise<T>{
+   const context:Extract<PgApplicationContext,{kind:'actor'}>={kind:'actor',accountId:principal.accountId,issuer:principal.issuer,subject:principal.subject,strongAuth:principal.strongAuth,authenticatedAtMs:principal.authenticatedAt,nowMs:this.now(),...scope};
+   return this.db.withContext(context,async()=>{
+     if(scope.matchId){
+       const match=await this.one('SELECT club_id,team_id,season_id FROM matches WHERE id=$1',[scope.matchId]);
+       if(!match||typeof match.club_id!=='string'||typeof match.team_id!=='string'||typeof match.season_id!=='string')throw new AccessError('NOT_FOUND',404,'The requested object is unavailable.');
+       return this.db.withContext({...context,clubId:String(match.club_id),teamId:String(match.team_id),seasonId:String(match.season_id)},work);
+     }
+     if(scope.teamId){
+       const team=await this.one("SELECT club_id FROM teams WHERE id=$1 AND scope_status='resolved'",[scope.teamId]);
+       if(!team||typeof team.club_id!=='string')throw new AccessError('NOT_FOUND',404,'The requested object is unavailable.');
+       return this.db.withContext({...context,clubId:String(team.club_id)},work);
+     }
+     return work();
+   });
+ }
  async one(sql:string,values:readonly unknown[]=[]):Promise<Record<string,unknown>|undefined>{return (await this.db.query(sql,values)).rows[0];}
  async many(sql:string,values:readonly unknown[]=[]):Promise<Record<string,unknown>[]>{return (await this.db.query(sql,values)).rows;}
  async execute(sql:string,values:readonly unknown[]=[]):Promise<{changes:number}>{return {changes:(await this.db.query(sql,values)).rowCount??0};}
@@ -108,8 +137,10 @@ async seedSynthetic(): Promise<void> {
     (await this.transaction(async () => {
         if ((await this.one("SELECT id FROM teams LIMIT 1", [])))
             return;
-        (await this.execute("INSERT INTO teams(id,name) VALUES($1,$2)", [SYNTHETIC_IDS.teamId, 'Roma U10 · fictional']));
-        (await this.execute("INSERT INTO teams(id,name) VALUES($1,$2)", ['synthetic-other-team', 'Other fictional team']));
+        await this.execute('INSERT INTO clubs(id,name) VALUES($1,$2),($3,$4)',['synthetic-richmond-rovers','Richmond Rovers · fictional','synthetic-other-club','Other fictional club']);
+        (await this.execute("INSERT INTO teams(id,name,club_id,scope_status) VALUES($1,$2,$3,'resolved')", [SYNTHETIC_IDS.teamId, 'Roma U10 · fictional','synthetic-richmond-rovers']));
+        (await this.execute("INSERT INTO teams(id,name,club_id,scope_status) VALUES($1,$2,$3,'resolved')", ['synthetic-other-team', 'Other fictional team','synthetic-other-club']));
+        await this.execute('INSERT INTO team_seasons(club_id,team_id,season_id,label,start_year,start_date,end_date) VALUES($1,$2,$3,$4,$5,$6,$7),($8,$9,$3,$4,$5,$6,$7)',['synthetic-richmond-rovers',SYNTHETIC_IDS.teamId,SYNTHETIC_IDS.seasonId,'2026/27',2026,'2026-09-01','2027-08-31','synthetic-other-club','synthetic-other-team']);
         const add = async (id: string, classification: Principal['identityClassification'], adult: boolean) => (await this.execute("INSERT INTO accounts(id,issuer,subject,classification,adult_verified,strong_auth_enrolled) VALUES($1,$2,$3,$4,$5,$6)", [id, 'urn:longball:synthetic', id, classification, Number(adult), Number(adult)]));
         const membership = async (id: string, role: string, playerId: string | null = null, teamId: string = SYNTHETIC_IDS.teamId) => (await this.execute("INSERT INTO memberships(account_id,team_id,season_id,role,player_id) VALUES($1,$2,$3,$4,$5)", [id, teamId, SYNTHETIC_IDS.seasonId, role, playerId]));
         (await add('synthetic-account-admin', 'adult_individual', true));
@@ -157,28 +188,8 @@ async principal(identity: VerifiedIdentity): Promise<Principal> {
     return { accountId: account.id, issuer: account.issuer, subject: account.subject, identityClassification: account.classification, adultVerified: Boolean(account.adult_verified), strongAuth: identity.strongAuth, authenticatedAt: identity.authenticatedAt, status: account.status };
 }
 async memberships(): Promise<Membership[]> {
-    const rows = ((await this.many("SELECT * FROM memberships", [])) as unknown as {
-        account_id: string;
-        team_id: string;
-        season_id: string;
-        role: Membership['role'];
-        player_id: string | null;
-        expires_at: number | null;
-        revoked_at: number | null;
-    }[]).map(row => ({ accountId: row.account_id, teamId: row.team_id, seasonId: row.season_id, role: row.role, playerId: row.player_id ?? undefined, expiresAt: row.expires_at, revokedAt: row.revoked_at }));
-    const communities = ((await this.many("SELECT team_id,season_id,value_json FROM documents WHERE kind='community'", [])) as {
-        team_id: string;
-        season_id: string;
-        value_json: string;
-    }[]).map(row => ({ ...row, state: JSON.parse(row.value_json) as CommunityState }));
-    return rows.map(row => {
-        if (row.role !== 'spectator')
-            return row;
-        const scope = communities.find(document => document.team_id === row.teamId && document.season_id === row.seasonId);
-        // Every endpoint, including match/results DTOs, intersects SQL authority with current grants.
-        const granted = scope?.state.grants.some(grant => grant.accountId === row.accountId && grant.teamId === row.teamId && grant.seasonId === row.seasonId && grant.revokedAtMs === null && grant.startsAtMs <= this.now() && grant.expiresAtMs > this.now());
-        return scope && !granted ? { ...row, revokedAt: row.revokedAt ?? Math.max(1, this.now()) } : row;
-    });
+    const rows=await this.many("SELECT m.*,CASE WHEN m.role='spectator' THEN longball.spectator_grant_active(m.account_id,m.club_id,m.team_id,m.season_id) ELSE true END AS grant_active FROM memberships m") as unknown as {account_id:string;team_id:string;season_id:string;role:Membership['role'];player_id:string|null;expires_at:number|null;revoked_at:number|null;grant_active:boolean}[];
+    return rows.map(row=>({accountId:row.account_id,teamId:row.team_id,seasonId:row.season_id,role:row.role,playerId:row.player_id??undefined,expiresAt:row.expires_at,revokedAt:row.role==='spectator'&&!row.grant_active?row.revoked_at??Math.max(1,this.now()):row.revoked_at}));
 }
 async myMemberships(principal: Principal): Promise<Membership[]> { return currentMemberships(principal, (await this.memberships()), this.now()); }
 async match(matchId: string): Promise<MatchRow> {
@@ -620,7 +631,7 @@ async revokeManager(actor: Principal, teamId: string, seasonId: string, input: {
         throw new AccessError('NOT_FOUND', 404, 'That manager assignment is outside this scope.');
     if (member.revoked_at === null) {
         (await this.execute("UPDATE memberships SET revoked_at=$1 WHERE account_id=$2 AND team_id=$3 AND season_id=$4 AND role='manager'", [this.now(), input.accountId, teamId, seasonId]));
-        (await this.execute("UPDATE controller_grants SET frozen=1 WHERE account_id=$1 AND match_id IN (SELECT id FROM matches WHERE team_id=$2 AND season_id=$3)", [input.accountId, teamId, seasonId]));
+        (await this.execute("UPDATE controller_grants SET frozen=1 WHERE account_id=$1 AND team_id=$2 AND season_id=$3", [input.accountId, teamId, seasonId]));
         (await this.bumpStaffRevision(teamId, seasonId));
         (await this.audit(actor, 'manager.assignment_revoked', input.accountId, input.reason.trim()));
     }
@@ -696,9 +707,12 @@ async saveDocument(teamId: string, seasonId: string, kind: string, state: {
     (await this.execute("INSERT INTO documents(team_id,season_id,kind,revision,value_json) VALUES($1,$2,$3,$4,$5) ON CONFLICT(team_id,season_id,kind) DO UPDATE SET revision=excluded.revision,value_json=excluded.value_json", [teamId, seasonId, kind, state.revision, JSON.stringify(state)]));
 }
 async enqueueNotifications(teamId: string, seasonId: string, category: TeamNotificationCategory, entityId: string, sourceId: string): Promise<number> {
+    const workerJob=this.db.applicationContext?.kind==='worker_job';
+    const observed=workerJob?(await this.one('SELECT floor(extract(epoch FROM clock_timestamp())*1000)::bigint AS now_ms'))?.now_ms:this.now();
+    if(typeof observed!=='number'||!Number.isSafeInteger(observed)||observed<0)throw new Error('DATABASE_CLOCK_UNAVAILABLE');
     const recipients = new Map<string, Membership>();
     const priority = { manager: 3, player: 2, spectator: 1, administrator: 0 };
-    for (const member of (await this.memberships()).filter(item => item.teamId === teamId && item.seasonId === seasonId && ['manager', 'player', 'spectator'].includes(item.role) && item.revokedAt == null && (item.expiresAt == null || item.expiresAt > this.now()))) {
+    for (const member of (await this.memberships()).filter(item => item.teamId === teamId && item.seasonId === seasonId && ['manager', 'player', 'spectator'].includes(item.role) && item.revokedAt == null && (item.expiresAt == null || item.expiresAt > observed))) {
         const current = recipients.get(member.accountId);
         if (!current || priority[member.role] > priority[current.role])
             recipients.set(member.accountId, member);
@@ -708,9 +722,13 @@ async enqueueNotifications(teamId: string, seasonId: string, category: TeamNotif
         if (member.role === 'administrator' || member.role === 'player' && !member.playerId)
             continue;
         const businessKey = `notify:${digest(canonical([teamId, seasonId, category, entityId, sourceId, member.accountId, member.role]))}`;
-        const job = createTeamNotificationJob({ id: randomUUID(), businessKey, accountId: member.accountId, teamId, seasonId, audience: member.role, playerId: member.role === 'player' ? member.playerId! : null, category, entityId, dueAtMs: this.now() });
-        const result = (await this.execute("INSERT INTO jobs(id,business_key,kind,payload_json,due_at) VALUES($1,$2,'notification.dispatch',$3,$4) ON CONFLICT(business_key) DO NOTHING", [job.id, businessKey, JSON.stringify(job), job.dueAtMs]));
-        inserted += Number(result.changes);
+        const job = createTeamNotificationJob({ id: randomUUID(), businessKey, accountId: member.accountId, teamId, seasonId, audience: member.role, playerId: member.role === 'player' ? member.playerId! : null, category, entityId, dueAtMs: observed });
+        if(workerJob){
+            const result=await this.one('SELECT longball.enqueue_award_notification($1,$2,$3::jsonb,$4) AS changes',[job.id,businessKey,JSON.stringify(job),job.dueAtMs]);inserted+=Number(result?.changes??0);
+        }else{
+            const result = (await this.execute("INSERT INTO jobs(id,business_key,kind,payload_json,due_at) VALUES($1,$2,'notification.dispatch',$3,$4) ON CONFLICT(business_key) DO NOTHING", [job.id, businessKey, JSON.stringify(job), job.dueAtMs]));
+            inserted += Number(result.changes);
+        }
     }
     return inserted;
 }
@@ -738,10 +756,9 @@ async configurationCommand(principal: Principal, teamId: string, seasonId: strin
 private async seasonContext(principal: Principal, teamId: string, seasonId: string): Promise<SeasonRolloverContext> {
     const community = (await this.communityState(teamId, seasonId));
     const accounts = (await this.many("SELECT * FROM accounts", [])) as unknown as AccountRow[];
-    const preparationDocuments = (await this.many("SELECT value_json FROM documents WHERE team_id=$1 AND kind='preparation'", [teamId])) as {
-        value_json: string;
-    }[];
-    const existingSeasons = preparationDocuments.flatMap(row => (JSON.parse(row.value_json) as PreparationState).seasons.map(season => ({ teamId, id: season.id, startYear: season.startYear })));
+    const catalogue=await this.many('SELECT season_id,start_year FROM team_seasons WHERE team_id=$1',[teamId]) as {season_id:string;start_year:number|null}[];
+    if(catalogue.some(season=>season.start_year===null))throw new AccessError('SEASON_SCOPE_REVIEW_REQUIRED',409,'Record the existing season catalogue before creating another season.');
+    const existingSeasons=catalogue.map(season=>({teamId,id:season.season_id,startYear:season.start_year!}));
     return { principal, memberships: (await this.memberships()), existingSeasons, nowMs: this.now(), preparation: (await this.document<PreparationState>(teamId, seasonId, 'preparation')), records: (await this.document<RecordsState>(teamId, seasonId, 'records')), community,
         accounts: accounts.map(account => ({ accountId: account.id, label: community.accounts.find(item => item.id === account.id)?.label ?? 'Verified account', status: account.status, identityClassification: account.classification, adultVerified: Boolean(account.adult_verified), strongAuthEnrolled: Boolean(account.strong_auth_enrolled) })) };
 }
@@ -751,6 +768,10 @@ async createSeason(principal: Principal, teamId: string, seasonId: string, comma
     const plan = planSeasonRollover({ ...context, command });
     if ((await this.one("SELECT kind FROM documents WHERE team_id=$1 AND season_id=$2 LIMIT 1", [teamId, plan.receipt.seasonId])))
         throw new AccessError('SEASON_EXISTS', 409, 'That destination season already has saved documents.');
+    const team=await this.one("SELECT club_id FROM teams WHERE id=$1 AND scope_status='resolved'",[teamId]);
+    const destination=plan.preparation.seasons.find(item=>item.id===plan.receipt.seasonId)!;
+    if(!team||!destination)throw new AccessError('NOT_FOUND',404,'The authorised team season is unavailable.');
+    await this.execute('INSERT INTO team_seasons(club_id,team_id,season_id,label,start_year,start_date,end_date) VALUES($1,$2,$3,$4,$5,$6,$7)',[team.club_id,teamId,destination.id,destination.label,destination.startYear,destination.startDate,destination.endDate]);
     for (const member of plan.memberships)
         (await this.execute("INSERT INTO memberships(account_id,team_id,season_id,role,player_id,expires_at,revoked_at) VALUES($1,$2,$3,$4,$5,$6,$7)", [member.accountId, member.teamId, member.seasonId, member.role, member.playerId ?? null, member.expiresAt ?? null, member.revokedAt ?? null]));
     (await this.saveDocument(teamId, plan.receipt.seasonId, 'preparation', plan.preparation));

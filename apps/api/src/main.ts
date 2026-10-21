@@ -28,7 +28,7 @@ const options: ApiOptions = { databasePath: process.env.LONGBALL_API_DATABASE ??
   mediaDirectory: process.env.LONGBALL_MEDIA_DIRECTORY, mediaScanner, clockPolicy };
 const migrationMode=process.env.LONGBALL_DATABASE_MIGRATION_MODE??(syntheticAuth?'apply':'verify');
 if(!['apply','verify'].includes(migrationMode)||process.env.NODE_ENV==='production'&&migrationMode!=='verify')throw new Error('The serving API uses verify-only schema mode in production; apply migrations with the dedicated operator command.');
-const api = connectionString ? await createPostgresApi({ ...options, connectionString, migrationMode:migrationMode as 'apply'|'verify' }) : createApi(options);
+const api = connectionString ? await createPostgresApi({ ...options, connectionString, seedSynthetic:false, migrationMode:migrationMode as 'apply'|'verify' }) : createApi(options);
 const port = Number(process.env.LONGBALL_API_PORT ?? 4310);
 if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('Configure a valid API port.');
 api.server.listen(port, host, () => { console.log(`LongBall API http://${host}:${port} · ${syntheticAuth ? 'isolated fictional authentication' : 'verified OIDC'} · ${connectionString ? 'PostgreSQL runtime' : 'fictional SQLite store'}`); });

@@ -57,6 +57,8 @@ describe.skipIf(!configured)('real PostgreSQL privacy expansion and runtime gran
       await owner.query('INSERT INTO longball.schema_migrations(version) VALUES(2),(3)');
       await owner.query("INSERT INTO accounts(id,issuer,subject,classification) VALUES($1,'urn:fictional','fixture','adult_individual')", [account]);
       await owner.query("INSERT INTO teams(id,name) VALUES('fictional-roma','Fictional Roma U10')");
+      await owner.query("INSERT INTO documents(team_id,season_id,kind,revision,value_json) VALUES('fictional-roma','fictional-2026','preparation',0,$1)", [JSON.stringify({ club: { id: 'fictional-club', name: 'Fictional club' }, seasons: [{ id: 'fictional-2026', label: '2026/27', startYear: 2026, startDate: '2026-09-01', endDate: '2027-08-31' }] })]);
+      await owner.query("INSERT INTO memberships(account_id,team_id,season_id,role) VALUES($1,'fictional-roma','fictional-2026','player')", [account]);
       for (const [id, kind, status, created] of [
         ['export-a', 'export', pending, 100], ['export-b', 'export', pending, 100],
         ['export-history', 'export', 'legacy_status_retained', 1], ['delete-a', 'delete_account', pending, 200],
@@ -66,7 +68,7 @@ describe.skipIf(!configured)('real PostgreSQL privacy expansion and runtime gran
     return { owner, connect, roles, directory };
   }
 
-  it('preserves duplicate legacy rows and unknown snapshots, chooses one exact canonical key and requires migration4', async () => {
+  it('preserves duplicate legacy rows and unknown snapshots, chooses one exact canonical key and requires current migration', async () => {
     const fixture = await previousSchema();
     const reader = fixture.connect(fixture.roles.owner);
     await expect(reader.migrate()).rejects.toThrow('migrations are required');
@@ -83,7 +85,7 @@ describe.skipIf(!configured)('real PostgreSQL privacy expansion and runtime gran
     await fixture.owner.query("INSERT INTO documents(team_id,season_id,kind,revision,value_json) VALUES('fictional-roma','fictional-2026','staff',0,'{\"revision\":0}')");
     await expect(fixture.owner.query("INSERT INTO documents(team_id,season_id,kind,revision,value_json) VALUES('fictional-roma','fictional-2026','unknown',0,'{}')")).rejects.toMatchObject({ code: '23514' });
     await fixture.owner.migrate();
-    expect((await fixture.owner.query('SELECT version FROM schema_migrations ORDER BY version')).rows).toEqual([{ version: 2 }, { version: 3 }, { version: 4 }]);
+    expect((await fixture.owner.query('SELECT version FROM schema_migrations ORDER BY version')).rows).toEqual([{ version: 2 }, { version: 3 }, { version: 4 }, { version: 5 }, { version: 6 }, { version: 7 }, { version: 8 }, { version: 9 }]);
     await fixture.owner.query('INSERT INTO schema_migrations(version) VALUES(99)');
     await expect(reader.migrate()).rejects.toThrow('newer than the application');
     expect((await fixture.owner.query('SELECT version FROM schema_migrations WHERE version=99')).rowCount).toBe(1);
@@ -111,12 +113,13 @@ describe.skipIf(!configured)('real PostgreSQL privacy expansion and runtime gran
     const api = fixture.connect(fixture.roles.api), worker = fixture.connect(fixture.roles.worker);
     await api.migrate(); await worker.migrate();
     const key = JSON.stringify([account, 'leave_team', 'team_season', 'fictional-roma', 'fictional-2026']);
-    await api.transaction(async () => {
+    const context = { kind: 'actor' as const, accountId: account, issuer: 'urn:fictional', subject: 'fixture', strongAuth: false, authenticatedAtMs: Date.now(), nowMs: Date.now(), operation: 'privacy.request' };
+    await api.withContext(context, () => api.transaction(async () => {
       await api.query('INSERT INTO privacy_requests(id,account_id,kind,status,created_at,team_id,season_id,affected_memberships_json) VALUES($1,$2,$3,$4,$5,$6,$7,$8)', ['new-scoped', account, 'leave_team', pending, 500, 'fictional-roma', 'fictional-2026', '[]']);
       await api.query('INSERT INTO privacy_pending_keys(business_key,request_id) VALUES($1,$2)', [key, 'new-scoped']);
-    });
-    expect((await api.query('SELECT team_id,season_id,affected_memberships_json FROM privacy_requests WHERE id=$1', ['new-scoped'])).rows).toEqual([{ team_id: 'fictional-roma', season_id: 'fictional-2026', affected_memberships_json: '[]' }]);
-    await expect(api.query('INSERT INTO privacy_pending_keys(business_key,request_id) VALUES($1,$2)', [key, 'export-b'])).rejects.toMatchObject({ code: '23505' });
+    }));
+    expect((await api.withContext(context, () => api.query('SELECT team_id,season_id,affected_memberships_json FROM privacy_requests WHERE id=$1', ['new-scoped']))).rows).toEqual([{ team_id: 'fictional-roma', season_id: 'fictional-2026', affected_memberships_json: '[]' }]);
+    await expect(api.withContext(context, () => api.query('INSERT INTO privacy_pending_keys(business_key,request_id) VALUES($1,$2)', [key, 'export-b']))).rejects.toMatchObject({ code: '23505' });
     await expect(worker.query('SELECT id FROM privacy_requests')).rejects.toMatchObject({ code: '42501' });
     await expect(worker.query('SELECT request_id FROM privacy_pending_keys')).rejects.toMatchObject({ code: '42501' });
     await expect(api.query('DELETE FROM privacy_requests WHERE false')).rejects.toMatchObject({ code: '42501' });

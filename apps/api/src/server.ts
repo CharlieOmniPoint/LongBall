@@ -16,6 +16,7 @@ import { DevelopmentActivationService, type ActivationPolicy, type ActivationPro
 import type { TrustedTimePolicy } from './trusted-time';
 import { Q08_RECONCILIATION_POLICY, type ReconciliationProposalInput } from '../../../packages/application/src/reconciliation';
 import { prepareAccountPrivacyRequest } from '../../../packages/application/src/privacy-requests';
+import { requestDatabaseScope } from './request-context';
 
 export interface ApiOptions {
   databasePath: string;
@@ -189,8 +190,8 @@ const windows = new Map<string, {
                     result = await (await activation.redeemActivation({ token: input.token as string, requestId: key }));
                 }
                 else {
-                    activationFields(input, ['activationId', 'completionProof']);
-                    result = await (await activation.completeActivation({ activationId: input.activationId as string, completionProof: input.completionProof as string }));
+                    activationFields(input, ['activationId', 'token', 'completionProof']);
+                    result = await (await activation.completeActivation({ activationId: input.activationId as string, token: input.token as string, completionProof: input.completionProof as string }));
                 }
                 response(reply, 200, result, requestId);
                 return;
@@ -202,7 +203,7 @@ const windows = new Map<string, {
                 throw new AccessError('INVALID_SESSION', 401, 'A valid authenticated session is required.');
             const token = authorization.slice(7);
             const identity = options.syntheticAuth ? syntheticIdentity(token, now()) : await verifyIdentity!(token);
-            let principal = (await store.principal(identity));
+            let principal = await store.withIdentityContext(identity,()=>store.principal(identity));
             const rate = windows.get(principal.accountId);
             const count = rate && now() - rate.begins < 60000 ? rate : { begins: now(), ordinary: 0, mutation: 0 };
             count.ordinary += 1;
@@ -219,6 +220,7 @@ const windows = new Map<string, {
             if (parts[1] === 'teams' && !seasonId) throw new AccessError('SEASON_REQUIRED',400,'Choose an explicit current team-season scope.');
             const scopedOperation = (operation: string) => parts[1] === 'teams' ? JSON.stringify([operation, parts[2], seasonId, role ?? 'default']) : operation;
             const body = request.method === 'POST' ? await readJson(request) : null;
+            await store.withActorContext(principal,requestDatabaseScope({method:request.method??'GET',parts,seasonId,role,body}),async()=>{
             if (body && parts[1] === 'teams' && parts[3] === 'community') {
                 if (body.command && typeof body.command === 'object' && 'type' in body.command && body.command.type === 'match.registered')
                     throw new AccessError('POLICY_APPROVAL_REQUIRED', 503, 'Connected award/sharing context requires accepted match evidence, verified finish-time anchors and independently approved policy.');
@@ -403,6 +405,7 @@ const windows = new Map<string, {
                 throw new AccessError('NOT_FOUND', 404, 'The requested object is unavailable.');
             const pendingReview = typeof result === 'object' && result !== null && 'pendingReview' in result && result.pendingReview === true;
             response(reply, pendingReview ? 409 : 200, result, requestId);
+            });
         }
         catch (error) {
             const domainCode = error && typeof error === 'object' && 'code' in error ? String(error.code) : null;

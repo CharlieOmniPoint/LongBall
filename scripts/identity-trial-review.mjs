@@ -20,6 +20,9 @@ import { resolve } from "node:path";
 // DOM parser only: no browser trust/system-browser/physical-device proof is asserted.
 const { config, headers, adminBase } = await configureTrial();
 const apiProof = process.env.LONGBALL_IDENTITY_TRIAL_API_PROOF === "1";
+const schemaSmoke = process.env.LONGBALL_IDENTITY_TRIAL_SCHEMA_SMOKE === "1";
+if (schemaSmoke && !apiProof)
+  throw new Error("Schema smoke requires the actual configured API journey");
 const checks = [];
 const record = (description) => {
   checks.push(description);
@@ -254,6 +257,11 @@ try {
   assert.equal(discovery.issuer, config.issuer);
   assert.ok(discovery.code_challenge_methods_supported.includes("S256"));
   record("Actual pinned provider discovery over verified HTTPS");
+  const verify = createOidcVerifier({
+    issuer: config.issuer,
+    audience: "longball-api",
+    jwksUri: discovery.jwks_uri,
+  });
   const denied = await fetch(`${config.issuer}/longball-activation/pending`, {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -262,223 +270,232 @@ try {
   assert.equal(denied.status, 403);
   record("Provider extension refuses unauthenticated provisioning");
 
-  const child = await pending();
-  assert.deepEqual(
-    await provider.provisionPending({
-      operationId: `pending:${child.accountId}`,
-      accountId: child.accountId,
-      username: child.username,
-      classification: "child_shared",
-      emailRequired: false,
-    }),
-    {
-      issuer: child.issuer,
-      subject: child.subject,
-      username: child.username,
-      pending: true,
-      credentialConfigured: false,
-    },
-  );
-  const before = await user(child.subject);
-  assert.equal(before.enabled, false);
-  assert.ok(!before.email);
-  const active = await begin(child);
-  const protocol = await session();
-  await protocol.visit(active.receipt.setupUrl);
-  const password = randomBytes(32).toString("base64url");
-  await protocol.submit("kc-passwd-update-form", {
-    "password-new": password,
-    "password-confirm": password,
-  });
-  assert.ok(
-    (await protocol.page.locator("#kc-recovery-codes-list li").count()) > 0,
-    "Provider must issue actual recovery codes",
-  );
-  await protocol.submit("kc-recovery-codes-settings-form");
-  await protocol.submit("longball-activation-finish");
-  if (!protocol.callback) {
-    const link = protocol.page.locator('a[href*="completionProof="]');
-    assert.equal(
-      await link.count(),
-      1,
-      "Provider must offer the registered completion return",
+  if (!schemaSmoke) {
+    const child = await pending();
+    assert.deepEqual(
+      await provider.provisionPending({
+        operationId: `pending:${child.accountId}`,
+        accountId: child.accountId,
+        username: child.username,
+        classification: "child_shared",
+        emailRequired: false,
+      }),
+      {
+        issuer: child.issuer,
+        subject: child.subject,
+        username: child.username,
+        pending: true,
+        credentialConfigured: false,
+      },
     );
-    await protocol.visit(await link.getAttribute("href"));
-  }
-  assert.equal(protocol.callback.pathname, "/activation/callback");
-  assert.equal(
-    protocol.callback.hash.includes(
-      `longballActivation=${active.activationId}`,
-    ),
-    true,
-  );
-  const proof = new URLSearchParams(protocol.callback.hash.slice(1)).get(
-    "completionProof",
-  );
-  assert.ok(proof);
-  const verified = await provider.verifyCredentialSetup({
-    operationId: active.operationId,
-    flowId: active.receipt.flowId,
-    issuer: child.issuer,
-    subject: child.subject,
-    completionProof: proof,
-  });
-  assert.equal(verified.credentialConfigured, true);
-  assert.equal(verified.recoveryMaterialIssued, true);
-  await assert.rejects(
-    provider.verifyCredentialSetup({
+    const before = await user(child.subject);
+    assert.equal(before.enabled, false);
+    assert.ok(!before.email);
+    const active = await begin(child);
+    const protocol = await session();
+    await protocol.visit(active.receipt.setupUrl);
+    const password = randomBytes(32).toString("base64url");
+    await protocol.submit("kc-passwd-update-form", {
+      "password-new": password,
+      "password-confirm": password,
+    });
+    assert.ok(
+      (await protocol.page.locator("#kc-recovery-codes-list li").count()) > 0,
+      "Provider must issue actual recovery codes",
+    );
+    await protocol.submit("kc-recovery-codes-settings-form");
+    await protocol.submit("longball-activation-finish");
+    if (!protocol.callback) {
+      const link = protocol.page.locator('a[href*="completionProof="]');
+      assert.equal(
+        await link.count(),
+        1,
+        "Provider must offer the registered completion return",
+      );
+      await protocol.visit(await link.getAttribute("href"));
+    }
+    assert.equal(protocol.callback.pathname, "/activation/callback");
+    assert.equal(
+      protocol.callback.hash.includes(
+        `longballActivation=${active.activationId}`,
+      ),
+      true,
+    );
+    const proof = new URLSearchParams(protocol.callback.hash.slice(1)).get(
+      "completionProof",
+    );
+    assert.ok(proof);
+    const verified = await provider.verifyCredentialSetup({
       operationId: active.operationId,
       flowId: active.receipt.flowId,
       issuer: child.issuer,
       subject: child.subject,
-      completionProof: "wrong-proof",
-    }),
-  );
-  const after = await user(child.subject);
-  assert.ok(!after.email);
-  assert.equal(after.attributes["longball.classification"][0], "child_shared");
-  assert.notEqual(after.attributes["longball.activation.proofHash"][0], proof);
-  record(
-    "Actual username-only provider password + recovery-code setup, hashed completion proof and wrong-proof refusal",
-  );
-  const replay = await session();
-  await replay.visit(active.receipt.setupUrl);
-  assert.equal(await replay.page.locator("#kc-passwd-update-form").count(), 0);
-  await replay.close();
-  await protocol.close();
-  record("Consumed action-token replay cannot reopen credential setup");
-
-  const cancellation = await begin(await pending());
-  const interrupted = await session();
-  await interrupted.visit(cancellation.receipt.setupUrl);
-  assert.equal(
-    await interrupted.page.locator("#kc-passwd-update-form").count(),
-    1,
-  );
-  await provider.cancelCredentialSetup({
-    operationId: cancellation.operationId,
-    issuer: cancellation.issuer,
-    subject: cancellation.subject,
-  });
-  assert.equal((await user(cancellation.subject)).enabled, false);
-  const replacement = await begin({
-    accountId: cancellation.accountId,
-    issuer: cancellation.issuer,
-    subject: cancellation.subject,
-    username: cancellation.username,
-  });
-  await interrupted.submit("kc-passwd-update-form", {
-    "password-new": password,
-    "password-confirm": password,
-  });
-  const cancelled = await user(cancellation.subject);
-  assert.equal(
-    cancelled.attributes["longball.activation.operation"][0],
-    replacement.operationId,
-  );
-  const credentials = await trialJson(
-    `${adminBase}/users/${cancellation.subject}/credentials`,
-    { headers },
-  );
-  assert.equal(
-    credentials.some((item) => item.type === "password"),
-    false,
-  );
-  await interrupted.close();
-  await provider.cancelCredentialSetup({
-    operationId: replacement.operationId,
-    issuer: replacement.issuer,
-    subject: replacement.subject,
-  });
-  record(
-    "Cancellation plus reissue blocks stale credential submission from an already-open provider form",
-  );
-
-  const childLogin = await session();
-  const childAuth = await authorize(childLogin, {
-    username: child.username,
-    password,
-  });
-  const childTokenResponse = await exchange(childAuth.code, childAuth.verifier);
-  assert.equal(childTokenResponse.status, 200);
-  const childTokens = await childTokenResponse.json();
-  const verify = createOidcVerifier({
-    issuer: config.issuer,
-    audience: "longball-api",
-    jwksUri: discovery.jwks_uri,
-  });
-  const childIdentity = await verify(childTokens.access_token);
-  assert.equal(childIdentity.subject, child.subject);
-  assert.equal(childIdentity.strongAuth, false);
-  assert.equal(
-    JSON.parse(Buffer.from(childTokens.id_token.split(".")[1], "base64url"))
-      .nonce,
-    childAuth.nonce,
-  );
-
-  await childLogin.close();
-  record(
-    "Actual child authorization code + PKCE S256, signed API token, nonce and code replay refusal",
-  );
-  const wrongPkce = await session();
-  const wrongAuthorization = await authorize(wrongPkce, {
-    username: child.username,
-    password,
-  });
-  assert.equal(
-    (
-      await exchange(
-        wrongAuthorization.code,
-        randomBytes(32).toString("base64url"),
-      )
-    ).status,
-    400,
-  );
-  await wrongPkce.close();
-  const refreshResponse = await fetch(
-    `${config.issuer}/protocol/openid-connect/token`,
-    {
-      method: "POST",
-      headers: { "content-type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        grant_type: "refresh_token",
-        client_id: config.publicClientId,
-        refresh_token: childTokens.refresh_token,
+      completionProof: proof,
+    });
+    assert.equal(verified.credentialConfigured, true);
+    assert.equal(verified.recoveryMaterialIssued, true);
+    await assert.rejects(
+      provider.verifyCredentialSetup({
+        operationId: active.operationId,
+        flowId: active.receipt.flowId,
+        issuer: child.issuer,
+        subject: child.subject,
+        completionProof: "wrong-proof",
       }),
-    },
-  );
-  assert.equal(refreshResponse.status, 200);
-  const refreshed = await refreshResponse.json();
-  assert.equal((await verify(refreshed.access_token)).subject, child.subject);
-  const revoked = await fetch(
-    `${config.issuer}/protocol/openid-connect/revoke`,
-    {
-      method: "POST",
-      headers: { "content-type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        client_id: config.publicClientId,
-        token: refreshed.refresh_token,
-        token_type_hint: "refresh_token",
-      }),
-    },
-  );
-  assert.equal(revoked.status, 200);
-  const revokedRefresh = await fetch(
-    `${config.issuer}/protocol/openid-connect/token`,
-    {
-      method: "POST",
-      headers: { "content-type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        grant_type: "refresh_token",
-        client_id: config.publicClientId,
-        refresh_token: refreshed.refresh_token,
-      }),
-    },
-  );
-  assert.equal(revokedRefresh.status, 400);
-  const replayCode = await exchange(childAuth.code, childAuth.verifier);
-  assert.equal(replayCode.status, 400);
-  record("Actual wrong-PKCE refusal, refresh and refresh-token revocation");
+    );
+    const after = await user(child.subject);
+    assert.ok(!after.email);
+    assert.equal(
+      after.attributes["longball.classification"][0],
+      "child_shared",
+    );
+    assert.notEqual(
+      after.attributes["longball.activation.proofHash"][0],
+      proof,
+    );
+    record(
+      "Actual username-only provider password + recovery-code setup, hashed completion proof and wrong-proof refusal",
+    );
+    const replay = await session();
+    await replay.visit(active.receipt.setupUrl);
+    assert.equal(
+      await replay.page.locator("#kc-passwd-update-form").count(),
+      0,
+    );
+    await replay.close();
+    await protocol.close();
+    record("Consumed action-token replay cannot reopen credential setup");
+
+    const cancellation = await begin(await pending());
+    const interrupted = await session();
+    await interrupted.visit(cancellation.receipt.setupUrl);
+    assert.equal(
+      await interrupted.page.locator("#kc-passwd-update-form").count(),
+      1,
+    );
+    await provider.cancelCredentialSetup({
+      operationId: cancellation.operationId,
+      issuer: cancellation.issuer,
+      subject: cancellation.subject,
+    });
+    assert.equal((await user(cancellation.subject)).enabled, false);
+    const replacement = await begin({
+      accountId: cancellation.accountId,
+      issuer: cancellation.issuer,
+      subject: cancellation.subject,
+      username: cancellation.username,
+    });
+    await interrupted.submit("kc-passwd-update-form", {
+      "password-new": password,
+      "password-confirm": password,
+    });
+    const cancelled = await user(cancellation.subject);
+    assert.equal(
+      cancelled.attributes["longball.activation.operation"][0],
+      replacement.operationId,
+    );
+    const credentials = await trialJson(
+      `${adminBase}/users/${cancellation.subject}/credentials`,
+      { headers },
+    );
+    assert.equal(
+      credentials.some((item) => item.type === "password"),
+      false,
+    );
+    await interrupted.close();
+    await provider.cancelCredentialSetup({
+      operationId: replacement.operationId,
+      issuer: replacement.issuer,
+      subject: replacement.subject,
+    });
+    record(
+      "Cancellation plus reissue blocks stale credential submission from an already-open provider form",
+    );
+
+    const childLogin = await session();
+    const childAuth = await authorize(childLogin, {
+      username: child.username,
+      password,
+    });
+    const childTokenResponse = await exchange(
+      childAuth.code,
+      childAuth.verifier,
+    );
+    assert.equal(childTokenResponse.status, 200);
+    const childTokens = await childTokenResponse.json();
+    const childIdentity = await verify(childTokens.access_token);
+    assert.equal(childIdentity.subject, child.subject);
+    assert.equal(childIdentity.strongAuth, false);
+    assert.equal(
+      JSON.parse(Buffer.from(childTokens.id_token.split(".")[1], "base64url"))
+        .nonce,
+      childAuth.nonce,
+    );
+
+    await childLogin.close();
+    record(
+      "Actual child authorization code + PKCE S256, signed API token, nonce and code replay refusal",
+    );
+    const wrongPkce = await session();
+    const wrongAuthorization = await authorize(wrongPkce, {
+      username: child.username,
+      password,
+    });
+    assert.equal(
+      (
+        await exchange(
+          wrongAuthorization.code,
+          randomBytes(32).toString("base64url"),
+        )
+      ).status,
+      400,
+    );
+    await wrongPkce.close();
+    const refreshResponse = await fetch(
+      `${config.issuer}/protocol/openid-connect/token`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          grant_type: "refresh_token",
+          client_id: config.publicClientId,
+          refresh_token: childTokens.refresh_token,
+        }),
+      },
+    );
+    assert.equal(refreshResponse.status, 200);
+    const refreshed = await refreshResponse.json();
+    assert.equal((await verify(refreshed.access_token)).subject, child.subject);
+    const revoked = await fetch(
+      `${config.issuer}/protocol/openid-connect/revoke`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          client_id: config.publicClientId,
+          token: refreshed.refresh_token,
+          token_type_hint: "refresh_token",
+        }),
+      },
+    );
+    assert.equal(revoked.status, 200);
+    const revokedRefresh = await fetch(
+      `${config.issuer}/protocol/openid-connect/token`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          grant_type: "refresh_token",
+          client_id: config.publicClientId,
+          refresh_token: refreshed.refresh_token,
+        }),
+      },
+    );
+    assert.equal(revokedRefresh.status, 400);
+    const replayCode = await exchange(childAuth.code, childAuth.verifier);
+    assert.equal(replayCode.status, 400);
+    record("Actual wrong-PKCE refusal, refresh and refresh-token revocation");
+  }
 
   const adultFixture = apiProof
     ? {
@@ -586,7 +603,7 @@ try {
     );
     assert.equal(fixture.fictionalOnly, true);
     assert.equal(fixture.apiBaseUrl, "https://localhost:8444");
-    const api = async (path, bearer, body) => {
+    const api = async (path, bearer, body, expectedStatus = 200) => {
       console.log(`API proof ${body ? "POST" : "GET"} ${path.split("?")[0]}`);
       const response = await fetch(`${fixture.apiBaseUrl}/v1${path}`, {
         method: body ? "POST" : "GET",
@@ -606,7 +623,7 @@ try {
       });
       assert.equal(
         response.status,
-        200,
+        expectedStatus,
         `Actual provider/API request failed at ${path.split("?")[0]}`,
       );
       return response.json();
@@ -676,8 +693,40 @@ try {
       );
     const returned = new URLSearchParams(household.callback.hash.slice(1));
     assert.equal(returned.get("longballActivation"), setup.activationId);
+    const completion = {
+      activationId: setup.activationId,
+      token: capability.token,
+      completionProof: returned.get("completionProof"),
+    };
+    const wrongCapability = await api(
+      "/activation/complete",
+      null,
+      { ...completion, token: randomBytes(32).toString("base64url") },
+      410,
+    );
+    assert.equal(wrongCapability.code, "ACTIVATION_UNAVAILABLE");
+    const wrongActivation = await api(
+      "/activation/complete",
+      null,
+      { ...completion, activationId: randomUUID() },
+      410,
+    );
+    assert.equal(wrongActivation.code, "ACTIVATION_UNAVAILABLE");
+    await api(
+      "/activation/complete",
+      null,
+      {
+        activationId: completion.activationId,
+        completionProof: completion.completionProof,
+      },
+      400,
+    );
+    record(
+      "Actual activation completion refuses missing or mismatched original capability before accepting the independent provider proof",
+    );
     const completed = await api("/activation/complete", null, {
       activationId: setup.activationId,
+      token: capability.token,
       completionProof: returned.get("completionProof"),
     });
     assert.equal(completed.status, "complete");
@@ -870,6 +919,9 @@ try {
         httpsCertificateVerified: true,
         actualProviderRequests: true,
         actualProviderApiJourney: apiProof,
+        activationCompletionRequiresOriginalCapability: apiProof,
+        verifiedRuntimeSchema: apiProof ? { core: 7, activation: 2 } : null,
+        schemaUpgradeSmokeOnly: schemaSmoke,
         chromiumUse: "offline DOM parser only",
         systemBrowserTested: false,
         physicalDeviceTested: false,

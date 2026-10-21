@@ -1,13 +1,18 @@
-import { randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
+import { performance } from 'node:perf_hooks';
 import type { Principal } from '../../../packages/application/src/access';
 import { authorizeCommunityMedia, defaultCommunityPreferences, getCommunityView, type CommunityActor, type CommunityState } from '../../../packages/application/src/community';
 import type { PreparationState } from '../../../packages/application/src/preparation';
 import { claimTeamNotificationJob, createTeamNotificationJob, dispatchClaimedTeamNotification, validateTeamNotificationJob, type TeamNotificationEvidence, type TeamNotificationJob, type TeamNotificationProvider } from '../../../packages/application/src/team-notifications';
 import { DevelopmentStore } from '../../api/src/store';
 import { PostgresStore } from '../../api/src/postgres-store';
+import type { PgApplicationContext } from '../../api/src/pg';
 
 type Store = DevelopmentStore | PostgresStore;
 interface JobRow { id: string; kind: string; business_key: string; payload_json: string; state: string; attempts: number; lease_until: number | null }
+interface ScopedJobRow extends JobRow { club_id: string; team_id: string; season_id: string }
+type JobContext = Extract<PgApplicationContext, { kind: 'worker_job' }>;
+interface ClaimedJob { job: TeamNotificationJob | null; reviewed: boolean; context?: JobContext }
 const KIND = 'notification.dispatch';
 const decode = (row: JobRow): TeamNotificationJob => { const job = JSON.parse(row.payload_json) as TeamNotificationJob; validateTeamNotificationJob(job); if (row.id !== job.id || row.business_key !== job.businessKey || row.kind !== KIND) throw new Error('NOTIFICATION_SCOPE_CONFLICT'); return job; };
 const outerState = (job: TeamNotificationJob) => job.state === 'provider_accepted' ? 'completed' : job.state;
@@ -44,22 +49,42 @@ function owns(row: JobRow | undefined, job: TeamNotificationJob, nowMs: number):
   const saved = decode(row);
   return saved.revision === job.revision && saved.lease?.attemptId === job.lease?.attemptId;
 }
-function expiredNeedsReview(row: JobRow, provider: TeamNotificationProvider | null): boolean { return row.state === 'leased' && (!provider?.configured || provider.idempotency !== 'provider' || row.attempts >= 6); }
+function expiredNeedsReview(job: TeamNotificationJob, provider: TeamNotificationProvider | null): boolean { return job.state === 'leased' && (!provider?.configured || provider.idempotency !== 'provider' || job.attempts >= 6); }
 function reviewExpired(job: TeamNotificationJob): TeamNotificationJob { return { ...job, revision: job.revision + 1, state: 'review_required', lease: null, lastCode: 'LEASE_EXPIRED_OUTCOME_UNKNOWN' }; }
-async function claimNext(store: Store, nowMs: number, provider: TeamNotificationProvider | null): Promise<{ job: TeamNotificationJob | null; reviewed: boolean }> {
-  if (store instanceof PostgresStore) return store.transaction(async () => {
-    const row = await store.one("SELECT id,kind,business_key,payload_json,state,attempts,lease_until FROM jobs WHERE kind=$1 AND ((state='pending' AND due_at<=$2) OR (state='leased' AND lease_until<=$2)) ORDER BY due_at,id FOR UPDATE SKIP LOCKED LIMIT 1", [KIND, nowMs]) as unknown as JobRow | undefined;
+async function inJobContext<T>(store: Store, context: JobContext | undefined, nowMs: number, work: () => Promise<T>): Promise<T> {
+  if (!(store instanceof PostgresStore)) return work();
+  if (!context) throw new Error('NOTIFICATION_JOB_CAPABILITY_REQUIRED');
+  return store.db.withContext({ ...context, nowMs: Math.max(context.nowMs, nowMs) }, work);
+}
+async function claimNext(store: Store, nowMs: number, provider: TeamNotificationProvider | null): Promise<ClaimedJob> {
+  if (store instanceof PostgresStore) {
+    const capability = randomBytes(32).toString('hex');
+    // The claim context cannot read jobs or recipient data. Only this protected function
+    // chooses a due row and grants its exact, expiring capability from stored ancestry.
+    const row = await store.db.withContext({ kind: 'worker_claim', jobKind: KIND, nowMs }, () => store.one('SELECT * FROM longball.claim_due_job($1,$2,$3)', [KIND, nowMs, capability])) as unknown as ScopedJobRow | undefined;
     if (!row) return { job: null, reviewed: false };
-    const prior = decode(row), reviewed = expiredNeedsReview(row, provider);
-    const next = reviewed ? reviewExpired(prior) : claimTeamNotificationJob(prior, randomUUID(), nowMs);
-    if (!next) throw new Error('NOTIFICATION_QUEUE_STATE_CONFLICT');
-    await store.execute('UPDATE jobs SET payload_json=$1,state=$2,attempts=$3,lease_until=$4,last_error_code=$5 WHERE id=$6', [JSON.stringify(next), outerState(next), next.attempts, next.lease?.untilMs ?? null, next.lastCode, next.id]);
-    return { job: reviewed ? null : next, reviewed };
-  });
+    const prior = decode(row);
+    if (![row.club_id, row.team_id, row.season_id].every(value => typeof value === 'string' && value.length > 0) || row.team_id !== prior.teamId || row.season_id !== prior.seasonId || !Number.isSafeInteger(row.lease_until) || row.lease_until! <= nowMs) throw new Error('NOTIFICATION_SCOPE_CONFLICT');
+    // The database alone chooses claim time and the 30-second lease. An observed
+    // application clock must never advance either boundary.
+    const claimedAt = row.lease_until! - 30_000;
+    const context: JobContext = { kind: 'worker_job', jobId: row.id, leaseToken: capability, clubId: row.club_id, teamId: row.team_id, seasonId: row.season_id, nowMs: claimedAt };
+    return inJobContext(store, context, claimedAt, () => store.transaction(async () => {
+      // The SQL function changes the outer lease only. Inspect the original payload
+      // to distinguish a fresh pending job from a crashed previous provider call.
+      const reviewed = expiredNeedsReview(prior, provider);
+      const next = reviewed ? reviewExpired(prior) : claimTeamNotificationJob(prior, randomUUID(), claimedAt);
+      if (!next) throw new Error('NOTIFICATION_QUEUE_STATE_CONFLICT');
+      if (next.lease) next.lease.untilMs = row.lease_until!;
+      const changed = await store.execute('UPDATE jobs SET payload_json=$1,state=$2,attempts=$3,lease_until=$4,last_error_code=$5 WHERE id=$6 AND state=\'leased\' AND attempts=$7 AND lease_until=$8', [JSON.stringify(next), outerState(next), next.attempts, next.lease?.untilMs ?? null, next.lastCode, next.id, prior.attempts, row.lease_until]);
+      if (!changed.changes) return { job: null, reviewed: false };
+      return { job: reviewed ? null : next, reviewed, context };
+    }));
+  }
   return store.transaction(() => {
     const row = store.database.prepare("SELECT id,kind,business_key,payload_json,state,attempts,lease_until FROM jobs WHERE kind=? AND ((state='pending' AND due_at<=?) OR (state='leased' AND lease_until<=?)) ORDER BY due_at,id LIMIT 1").get(KIND, nowMs, nowMs) as JobRow | undefined;
     if (!row) return { job: null, reviewed: false };
-    const prior = decode(row), reviewed = expiredNeedsReview(row, provider);
+    const prior = decode(row), reviewed = expiredNeedsReview(prior, provider);
     const next = reviewed ? reviewExpired(prior) : claimTeamNotificationJob(prior, randomUUID(), nowMs);
     if (!next) throw new Error('NOTIFICATION_QUEUE_STATE_CONFLICT');
     store.database.prepare('UPDATE jobs SET payload_json=?,state=?,attempts=?,lease_until=?,last_error_code=? WHERE id=?').run(JSON.stringify(next), outerState(next), next.attempts, next.lease?.untilMs ?? null, next.lastCode, next.id);
@@ -71,8 +96,8 @@ async function commit(store: Store, leased: TeamNotificationJob, next: TeamNotif
   if (store instanceof PostgresStore) return store.transaction(async () => {
     const row = await store.one('SELECT id,kind,business_key,payload_json,state,attempts,lease_until FROM jobs WHERE id=$1 FOR UPDATE', [leased.id]) as unknown as JobRow | undefined;
     if (!owns(row, leased, nowMs)) return false;
-    await store.execute('UPDATE jobs SET payload_json=$1,state=$2,due_at=$3,attempts=$4,lease_until=NULL,last_error_code=$5 WHERE id=$6', [JSON.stringify(next), outerState(next), next.dueAtMs, next.attempts, next.lastCode, next.id]);
-    return true;
+    const updated = await store.execute('UPDATE jobs SET payload_json=$1,state=$2,due_at=$3,attempts=$4,lease_until=NULL,last_error_code=$5 WHERE id=$6', [JSON.stringify(next), outerState(next), next.dueAtMs, next.attempts, next.lastCode, next.id]);
+    return updated.changes === 1;
   });
   return store.transaction(() => {
     const row = store.database.prepare('SELECT id,kind,business_key,payload_json,state,attempts,lease_until FROM jobs WHERE id=?').get(leased.id) as JobRow | undefined;
@@ -131,10 +156,29 @@ export async function runDueTeamNotifications(store: Store, options: { provider?
     const claimed = await claimNext(store, now(), provider);
     if (claimed.reviewed) { result.reviewRequired++; continue; }
     if (!claimed.job) break;
-    const settled = await dispatchClaimedTeamNotification(claimed.job, { now, provider,
-      readCurrentEvidence: (job, at) => evidence(store, job, at),
-      stillOwnsLease: async (job, at) => owns(await readRow(store, job.id), job, at),
-      commit: (leased, next) => commit(store, leased, next, now()),
+    // Caller wall time is only a bounded observation for claiming. Recipient,
+    // quiet-hour and outcome decisions advance from the database's lease anchor
+    // using elapsed process time; a tolerated wall-clock offset grants no authority.
+    let observedMonotonic = performance.now();
+    let observedDatabaseMs = claimed.context?.nowMs ?? 0;
+    const dispatchNow = store instanceof PostgresStore
+      ? () => observedDatabaseMs + Math.max(0, Math.floor(performance.now() - observedMonotonic))
+      : now;
+    const observeDatabaseNow = async () => {
+      if (!(store instanceof PostgresStore)) return now();
+      const observation = await store.one('SELECT floor(extract(epoch FROM clock_timestamp())*1000)::bigint AS now_ms');
+      if (!Number.isSafeInteger(observation?.now_ms)) throw new Error('NOTIFICATION_DATABASE_CLOCK_UNAVAILABLE');
+      observedDatabaseMs = Number(observation!.now_ms);
+      observedMonotonic = performance.now();
+      return observedDatabaseMs;
+    };
+    // The claim/payload transactions may take time. Re-observe at every asynchronous
+    // dispatch boundary instead of treating receipt as the original claim instant.
+    await inJobContext(store, claimed.context, dispatchNow(), observeDatabaseNow);
+    const settled = await dispatchClaimedTeamNotification(claimed.job, { now: dispatchNow, provider,
+      readCurrentEvidence: (job, at) => inJobContext(store, claimed.context, at, async () => { const current = await evidence(store, job, await observeDatabaseNow()); await observeDatabaseNow(); return current; }),
+      stillOwnsLease: (job, at) => inJobContext(store, claimed.context, at, async () => owns(await readRow(store, job.id), job, await observeDatabaseNow())),
+      commit: (leased, next) => inJobContext(store, claimed.context, dispatchNow(), async () => commit(store, leased, next, await observeDatabaseNow())),
     });
     if (settled.status === 'provider_accepted') result.accepted++;
     else if (settled.status === 'blocked_provider') result.blocked++;

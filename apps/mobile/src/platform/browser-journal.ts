@@ -30,9 +30,13 @@ export function loadBrowserRecord(storage: LocalStorageAdapter): BrowserRecord |
 export function validateBrowserRecord(value: unknown): BrowserRecord {
   if (!value || typeof value !== 'object') throw new Error('Browser review data is incompatible or damaged. Existing data was retained.');
   const record = value as Partial<BrowserRecord>;
-  if (record.version !== 1 || typeof record.deviceId !== 'string' ||
+  if (record.version !== 1 ||
       !record.events || !record.projections || !record.checkpoints) {
     throw new Error('Browser review data is incompatible or damaged. Existing data was retained.');
+  }
+  if (typeof record.deviceId !== 'string' || record.deviceId.length < 1 || record.deviceId.length > 150 ||
+      /[^A-Za-z0-9_-]/.test(record.deviceId)) {
+    throw new Error('The saved browser device identity is invalid. Existing data and event history were retained; no replacement identity was created.');
   }
   return record as BrowserRecord;
 }

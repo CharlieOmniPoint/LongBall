@@ -5,6 +5,10 @@ import {
   type Principal,
 } from "../../../packages/application/src/access";
 import type { PostgresStore } from "./postgres-store";
+import {
+  installActivationSecurity,
+  verifyActivationSecurity,
+} from "./postgres-security";
 /** Explicit experiment policy; no proposed expiry or live-onboarding authority is assumed. */
 export interface ActivationPolicy {
   version: string;
@@ -102,6 +106,7 @@ export interface PendingVerificationReceipt {
 }
 interface ChildRow {
   account_id: string;
+  club_id: string;
   username: string;
   team_id: string;
   season_id: string;
@@ -257,10 +262,11 @@ export class PostgresActivationService {
       const version = await this.store.one(
         "SELECT version FROM lb_activation_schema WHERE singleton=1",
       );
-      if (!version || version.version !== 1)
+      if (!version || version.version !== 2)
         throw new Error(
           "Activation schema is missing or unsupported. Run the privileged migration command; preserve the database.",
         );
+      await verifyActivationSecurity(this.store.db);
       return;
     }
     await this.store.transaction(async () => {
@@ -275,12 +281,16 @@ export class PostgresActivationService {
             version: number;
           }
         | undefined;
-      if (version && version.version !== 1)
+      if (version && ![1, 2].includes(version.version))
         throw new Error(
           "Unsupported activation feature schema; preserve the database.",
         );
-      if (version) return;
-      await this.store.db.query(`
+      if (version?.version === 2) {
+        await verifyActivationSecurity(this.store.db);
+        return;
+      }
+      if (!version)
+        await this.store.db.query(`
         CREATE TABLE lb_activation_children(
           account_id TEXT PRIMARY KEY REFERENCES accounts(id),username TEXT NOT NULL,
           team_id TEXT NOT NULL REFERENCES teams(id),season_id TEXT NOT NULL,player_id TEXT NOT NULL,
@@ -306,6 +316,10 @@ CREATE FUNCTION lb_activation_immutable_child_guard() RETURNS trigger LANGUAGE p
 CREATE TRIGGER lb_activation_immutable_child BEFORE UPDATE OF classification ON accounts FOR EACH ROW EXECUTE FUNCTION lb_activation_immutable_child_guard();
         INSERT INTO lb_activation_schema VALUES(1,1);
       `);
+      await installActivationSecurity(this.store.db);
+      await this.store.execute(
+        "UPDATE lb_activation_schema SET version=2 WHERE singleton=1",
+      );
     });
   }
   private async manager(
@@ -373,6 +387,19 @@ CREATE TRIGGER lb_activation_immutable_child BEFORE UPDATE OF classification ON 
       );
     }
   }
+  private async withProvisionedAccount<T>(
+    accountId: string,
+    work: () => Promise<T>,
+  ): Promise<T> {
+    const current = this.store.db.applicationContext;
+    // Owner-only migration/tests have no actor context. Runtime SQL without authority remains denied by RLS.
+    return current?.kind === "actor"
+      ? this.store.db.withContext(
+          { ...current, provisionAccountId: accountId },
+          work,
+        )
+      : work();
+  }
   async createPendingChild(
     principal: Principal,
     input: PendingChildInput,
@@ -385,104 +412,107 @@ CREATE TRIGGER lb_activation_immutable_child BEFORE UPDATE OF classification ON 
     )
       invalid();
     const signature = fingerprint(principal.accountId, input);
-    const row = await this.store.transaction(async () => {
-      await this.manager(principal, input.teamId, input.seasonId);
-      const existing = (await this.store.one(
-        "SELECT * FROM lb_activation_children WHERE request_id=$1",
-        [input.requestId],
-      )) as unknown as ChildRow | undefined;
-      if (existing) {
-        if (existing.request_signature !== signature) conflict();
-        return existing;
-      }
-      const profile = (
-        await this.store.preparation(principal, input.teamId, input.seasonId)
-      ).profiles.find(
-        (item) =>
-          item.playerId === input.playerId &&
-          item.seasonId === input.seasonId &&
-          item.active,
-      );
-      if (!profile)
-        throw new AccessError(
-          "NOT_FOUND",
-          404,
-          "The requested object is unavailable.",
-        );
-      if (
-        (await this.store.memberships()).some(
+    const candidateAccountId = randomUUID();
+    const row = await this.withProvisionedAccount(candidateAccountId, () =>
+      this.store.transaction(async () => {
+        await this.manager(principal, input.teamId, input.seasonId);
+        const existing = (await this.store.one(
+          "SELECT * FROM lb_activation_children WHERE request_id=$1",
+          [input.requestId],
+        )) as unknown as ChildRow | undefined;
+        if (existing) {
+          if (existing.request_signature !== signature) conflict();
+          return existing;
+        }
+        const profile = (
+          await this.store.preparation(principal, input.teamId, input.seasonId)
+        ).profiles.find(
           (item) =>
-            item.teamId === input.teamId &&
-            item.seasonId === input.seasonId &&
             item.playerId === input.playerId &&
-            item.role === "player" &&
-            item.revokedAt == null,
-        )
-      )
-        throw new AccessError(
-          "PLAYER_ACCOUNT_EXISTS",
-          409,
-          "This player already has an account assignment. Use the verified exact-account linking process.",
+            item.seasonId === input.seasonId &&
+            item.active,
         );
-      const accountId = randomUUID();
-      let chosen = username();
-      for (
-        let tries = 0;
-        await this.store.one(
-          "SELECT 1 FROM lb_activation_children WHERE lower(username)=lower($1)",
-          [chosen],
-        );
-        tries++
-      ) {
-        if (tries >= 10)
+        if (!profile)
           throw new AccessError(
-            "IDENTITY_ALLOCATION_UNAVAILABLE",
-            503,
-            "A unique username could not be allocated.",
+            "NOT_FOUND",
+            404,
+            "The requested object is unavailable.",
           );
-        chosen = username();
-      }
-      await this.store.execute(
-        "INSERT INTO accounts(id,issuer,subject,classification,adult_verified,strong_auth_enrolled,status) VALUES($1,$2,$3,$4,0,0,$5)",
-        [
+        if (
+          (await this.store.memberships()).some(
+            (item) =>
+              item.teamId === input.teamId &&
+              item.seasonId === input.seasonId &&
+              item.playerId === input.playerId &&
+              item.role === "player" &&
+              item.revokedAt == null,
+          )
+        )
+          throw new AccessError(
+            "PLAYER_ACCOUNT_EXISTS",
+            409,
+            "This player already has an account assignment. Use the verified exact-account linking process.",
+          );
+        const accountId = candidateAccountId;
+        let chosen = username();
+        for (
+          let tries = 0;
+          await this.store.one(
+            "SELECT 1 FROM lb_activation_children WHERE lower(username)=lower($1)",
+            [chosen],
+          );
+          tries++
+        ) {
+          if (tries >= 10)
+            throw new AccessError(
+              "IDENTITY_ALLOCATION_UNAVAILABLE",
+              503,
+              "A unique username could not be allocated.",
+            );
+          chosen = username();
+        }
+        await this.store.execute(
+          "INSERT INTO accounts(id,issuer,subject,classification,adult_verified,strong_auth_enrolled,status) VALUES($1,$2,$3,$4,0,0,$5)",
+          [
+            accountId,
+            "urn:longball:pending-activation",
+            accountId,
+            "child_shared",
+            "disabled",
+          ],
+        );
+        await this.store.execute(
+          "INSERT INTO lb_activation_children(account_id,username,team_id,season_id,player_id,request_id,request_signature,state,created_by,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,'provisioning',$8,$9)",
+          [
+            accountId,
+            chosen,
+            input.teamId,
+            input.seasonId,
+            input.playerId,
+            input.requestId,
+            signature,
+            principal.accountId,
+            this.store.now(),
+          ],
+        );
+        await this.store.execute(
+          "INSERT INTO memberships(account_id,team_id,season_id,role,player_id) VALUES($1,$2,$3,'player',$4)",
+          [accountId, input.teamId, input.seasonId, input.playerId],
+        );
+        await this.store.audit(
+          principal,
+          "identity.child_reserved",
           accountId,
-          "urn:longball:pending-activation",
+          "pending_provider",
+        );
+        return await this.child(
+          principal,
           accountId,
-          "child_shared",
-          "disabled",
-        ],
-      );
-      await this.store.execute(
-        "INSERT INTO lb_activation_children(account_id,username,team_id,season_id,player_id,request_id,request_signature,state,created_by,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,'provisioning',$8,$9)",
-        [
-          accountId,
-          chosen,
           input.teamId,
           input.seasonId,
-          input.playerId,
-          input.requestId,
-          signature,
-          principal.accountId,
-          this.store.now(),
-        ],
-      );
-      await this.store.execute(
-        "INSERT INTO memberships(account_id,team_id,season_id,role,player_id) VALUES($1,$2,$3,'player',$4)",
-        [accountId, input.teamId, input.seasonId, input.playerId],
-      );
-      await this.store.audit(
-        principal,
-        "identity.child_reserved",
-        accountId,
-        "pending_provider",
-      );
-      return await this.child(
-        principal,
-        accountId,
-        input.teamId,
-        input.seasonId,
-      );
-    });
+        );
+      }),
+    );
     if (row.state !== "provisioning") return await this.receipt(row);
     const result = await this.providerCall(() =>
       provider.provisionPending({
@@ -508,57 +538,74 @@ CREATE TRIGGER lb_activation_immutable_child BEFORE UPDATE OF classification ON 
         502,
         "The pending provider identity could not be safely bound.",
       );
-    return await this.store.transaction(async () => {
-      const fresh = await this.child(
-        principal,
-        row.account_id,
-        input.teamId,
-        input.seasonId,
-      );
-      if (fresh.state !== "provisioning") {
-        if (
-          fresh.provider_issuer !== result.issuer ||
-          fresh.provider_subject !== result.subject
-        )
+    return await this.withProvisionedAccount(row.account_id, () =>
+      this.store.transaction(async () => {
+        const fresh = await this.child(
+          principal,
+          row.account_id,
+          input.teamId,
+          input.seasonId,
+        );
+        if (fresh.state !== "provisioning") {
+          if (
+            fresh.provider_issuer !== result.issuer ||
+            fresh.provider_subject !== result.subject
+          )
+            throw new AccessError(
+              "PROVIDER_BINDING_REJECTED",
+              409,
+              "The provider identity requires reconciliation.",
+            );
+          return await this.receipt(fresh);
+        }
+        const binding = await this.store.one(
+          "SELECT id FROM accounts WHERE issuer=$1 AND subject=$2 AND id!=$3",
+          [result.issuer, result.subject, row.account_id],
+        );
+        if (binding)
           throw new AccessError(
             "PROVIDER_BINDING_REJECTED",
             409,
             "The provider identity requires reconciliation.",
           );
-        return await this.receipt(fresh);
-      }
-      const binding = await this.store.one(
-        "SELECT id FROM accounts WHERE issuer=$1 AND subject=$2 AND id!=$3",
-        [result.issuer, result.subject, row.account_id],
-      );
-      if (binding)
+        await this.store.execute(
+          "UPDATE accounts SET issuer=$1,subject=$2 WHERE id=$3 AND status='disabled'",
+          [result.issuer, result.subject, row.account_id],
+        );
+        await this.store.execute(
+          "UPDATE lb_activation_children SET provider_issuer=$1,provider_subject=$2,state='pending_activation' WHERE account_id=$3",
+          [result.issuer, result.subject, row.account_id],
+        );
+        await this.store.audit(
+          principal,
+          "identity.child_provisioned",
+          row.account_id,
+          "pending_activation",
+        );
+        return await this.receipt(
+          await this.child(
+            principal,
+            row.account_id,
+            input.teamId,
+            input.seasonId,
+          ),
+        );
+      }),
+    ).catch((error: unknown) => {
+      // An out-of-scope issuer/subject collision remains hidden; the unique constraint still refuses adoption.
+      if (
+        error &&
+        typeof error === "object" &&
+        "code" in error &&
+        error.code === "23505"
+      ) {
         throw new AccessError(
           "PROVIDER_BINDING_REJECTED",
           409,
           "The provider identity requires reconciliation.",
         );
-      await this.store.execute(
-        "UPDATE accounts SET issuer=$1,subject=$2 WHERE id=$3 AND status='disabled'",
-        [result.issuer, result.subject, row.account_id],
-      );
-      await this.store.execute(
-        "UPDATE lb_activation_children SET provider_issuer=$1,provider_subject=$2,state='pending_activation' WHERE account_id=$3",
-        [result.issuer, result.subject, row.account_id],
-      );
-      await this.store.audit(
-        principal,
-        "identity.child_provisioned",
-        row.account_id,
-        "pending_activation",
-      );
-      return await this.receipt(
-        await this.child(
-          principal,
-          row.account_id,
-          input.teamId,
-          input.seasonId,
-        ),
-      );
+      }
+      throw error;
     });
   }
   async issueActivation(
@@ -605,7 +652,7 @@ CREATE TRIGGER lb_activation_immutable_child BEFORE UPDATE OF classification ON 
           [generation, child.account_id],
         );
         await this.store.execute(
-          "INSERT INTO lb_activation_issues VALUES($1,$2,$3,$4,'preparing',$5)",
+          "INSERT INTO lb_activation_issues(request_id,account_id,signature,generation,state,created_at) VALUES($1,$2,$3,$4,'preparing',$5)",
           [
             input.requestId,
             child.account_id,
@@ -719,6 +766,27 @@ CREATE TRIGGER lb_activation_immutable_child BEFORE UPDATE OF classification ON 
     requestId: string;
   }): Promise<ActivationSetupReceipt> {
     await this.ready;
+    fields(input, ["token", "requestId"]);
+    if (
+      typeof input.token !== "string" ||
+      !/^[A-Za-z0-9_-]{43}$/.test(input.token) ||
+      !id(input.requestId)
+    )
+      unavailable();
+    return this.store.db.withContext(
+      {
+        kind: "activation_token",
+        tokenHash: hash(input.token),
+        nowMs: this.store.now(),
+      },
+      () => this.redeemWithCapability(input),
+    );
+  }
+  private async redeemWithCapability(input: {
+    token: string;
+    requestId: string;
+  }): Promise<ActivationSetupReceipt> {
+    await this.ready;
     const { provider } = await this.enabled();
     fields(input, ["token", "requestId"]);
     if (
@@ -818,6 +886,33 @@ CREATE TRIGGER lb_activation_immutable_child BEFORE UPDATE OF classification ON 
   }
   async completeActivation(input: {
     activationId: string;
+    token: string;
+    completionProof: string;
+  }): Promise<{ status: "complete"; signInRequired: true }> {
+    await this.ready;
+    fields(input, ["activationId", "token", "completionProof"]);
+    if (
+      !uuid(input.activationId) ||
+      typeof input.token !== "string" ||
+      !/^[A-Za-z0-9_-]{43}$/.test(input.token) ||
+      typeof input.completionProof !== "string" ||
+      !input.completionProof ||
+      input.completionProof.length > 16_384
+    )
+      unavailable();
+    return this.store.db.withContext(
+      {
+        kind: "activation_token",
+        tokenHash: hash(input.token),
+        activationId: input.activationId,
+        nowMs: this.store.now(),
+      },
+      () => this.completeWithCapability(input),
+    );
+  }
+  private async completeWithCapability(input: {
+    activationId: string;
+    token: string;
     completionProof: string;
   }): Promise<{
     status: "complete";
@@ -825,17 +920,19 @@ CREATE TRIGGER lb_activation_immutable_child BEFORE UPDATE OF classification ON 
   }> {
     await this.ready;
     const { provider } = await this.enabled();
-    fields(input, ["activationId", "completionProof"]);
+    fields(input, ["activationId", "token", "completionProof"]);
     if (
       !uuid(input.activationId) ||
+      typeof input.token !== "string" ||
+      !/^[A-Za-z0-9_-]{43}$/.test(input.token) ||
       typeof input.completionProof !== "string" ||
       !input.completionProof ||
       input.completionProof.length > 16384
     )
       unavailable();
     const token = (await this.store.one(
-      "SELECT * FROM lb_activation_tokens WHERE id=$1",
-      [input.activationId],
+      "SELECT * FROM lb_activation_tokens WHERE id=$1 AND token_hash=$2",
+      [input.activationId, hash(input.token)],
     )) as unknown as TokenRow | undefined;
     if (
       !token ||
@@ -870,51 +967,70 @@ CREATE TRIGGER lb_activation_immutable_child BEFORE UPDATE OF classification ON 
       proof.completedAt >= token.flow_expires_at
     )
       unavailable();
-    return await this.store.transaction(async () => {
-      const fresh = (await this.store.one(
-        "SELECT * FROM lb_activation_tokens WHERE id=$1",
-        [token.id],
-      )) as unknown as TokenRow;
-      if (
-        !["redeeming", "completed"].includes(fresh.state) ||
-        fresh.flow_expires_at! <= this.store.now()
-      )
-        unavailable();
-      const account = (await this.store.one(
-        "SELECT classification,status FROM accounts WHERE id=$1",
-        [child.account_id],
-      )) as {
-        classification: string;
-        status: string;
-      };
-      if (account.classification !== "child_shared") unavailable();
-      if (fresh.state === "completed") {
-        if (account.status !== "active") unavailable();
-        return { status: "complete", signInRequired: true };
-      }
-      if (account.status !== "disabled") unavailable();
-      await this.store.execute(
-        "UPDATE accounts SET status='active' WHERE id=$1 AND classification='child_shared'",
-        [child.account_id],
-      );
-      await this.store.execute(
-        "UPDATE lb_activation_children SET state='active' WHERE account_id=$1",
-        [child.account_id],
-      );
-      await this.store.execute(
-        "UPDATE lb_activation_tokens SET state='completed',completed_at=$1 WHERE id=$2",
-        [this.store.now(), token.id],
-      );
-      await this.store.execute("INSERT INTO audit VALUES($1,$2,$3,$4,$5,$6)", [
-        randomUUID(),
-        child.account_id,
-        "identity.activation_completed",
-        child.account_id,
-        "provider_verified_sign_in_required",
-        this.store.now(),
-      ]);
-      return { status: "complete", signInRequired: true };
-    });
+    // Only independent provider verification may open the final activation write boundary.
+    return await this.store.db.withContext(
+      {
+        kind: "activation_token",
+        tokenHash: hash(input.token),
+        activationId: input.activationId,
+        nowMs: this.store.now(),
+        completionVerified: true,
+      },
+      async () => {
+        return await this.store.transaction(async () => {
+          const fresh = (await this.store.one(
+            "SELECT * FROM lb_activation_tokens WHERE id=$1",
+            [token.id],
+          )) as unknown as TokenRow;
+          if (
+            !["redeeming", "completed"].includes(fresh.state) ||
+            fresh.flow_expires_at! <= this.store.now()
+          )
+            unavailable();
+          const account = (await this.store.one(
+            "SELECT classification,status FROM accounts WHERE id=$1",
+            [child.account_id],
+          )) as {
+            classification: string;
+            status: string;
+          };
+          if (account.classification !== "child_shared") unavailable();
+          if (fresh.state === "completed") {
+            if (account.status !== "active") unavailable();
+            return { status: "complete", signInRequired: true };
+          }
+          if (account.status !== "disabled") unavailable();
+          await this.store.execute(
+            "UPDATE accounts SET status='active' WHERE id=$1 AND classification='child_shared'",
+            [child.account_id],
+          );
+          await this.store.execute(
+            "UPDATE lb_activation_children SET state='active' WHERE account_id=$1",
+            [child.account_id],
+          );
+          await this.store.execute(
+            "UPDATE lb_activation_tokens SET state='completed',completed_at=$1 WHERE id=$2",
+            [this.store.now(), token.id],
+          );
+          await this.store.execute(
+            "INSERT INTO audit(id,actor_id,action,object_id,outcome,created_at,club_id,team_id,season_id,context_operation) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)",
+            [
+              randomUUID(),
+              child.account_id,
+              "identity.activation_completed",
+              child.account_id,
+              "provider_verified_sign_in_required",
+              this.store.now(),
+              child.club_id,
+              child.team_id,
+              child.season_id,
+              "activation.complete",
+            ],
+          );
+          return { status: "complete", signInRequired: true };
+        });
+      },
+    );
   }
   async requestExistingAccountLink(
     principal: Principal,
@@ -1007,7 +1123,7 @@ CREATE TRIGGER lb_activation_immutable_child BEFORE UPDATE OF classification ON 
       if (!previous) {
         // Deliberately do not look up the global target or expose its other memberships.
         await this.store.execute(
-          "INSERT INTO lb_activation_verification_requests VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)",
+          "INSERT INTO lb_activation_verification_requests(request_id,kind,actor_id,team_id,season_id,player_id,target_account_id,signature,status,policy_version,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)",
           [
             input.requestId,
             kind,

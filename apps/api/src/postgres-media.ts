@@ -19,6 +19,7 @@ import {
   type MediaPrepareInput,
   type PreparedMediaUpload,
 } from "./media";
+import { installMediaSecurity, verifyMediaSecurity } from './postgres-security';
 import type { PgDatabase } from "./pg";
 
 const {
@@ -70,8 +71,9 @@ export class PgMediaService {
       const versions = await this.database.query<{ version: number }>(
         'SELECT version FROM longball.media_schema_migrations ORDER BY version',
       );
-      if (versions.rows.some(row => row.version > 1)) throw new Error('Media schema is newer than this build.');
-      if (!versions.rows.some(row => row.version === 1)) throw new Error('Run the separate media migrator before starting the runtime.');
+      if (versions.rows.some(row => row.version > 2)) throw new Error('Media schema is newer than this build.');
+      if (!versions.rows.some(row => row.version === 2)) throw new Error('Run the separate media migrator before starting the runtime.');
+      await verifyMediaSecurity(this.database);
       return;
     }
     await this.database.transaction(async () => {
@@ -81,7 +83,7 @@ export class PgMediaService {
       const versions = await this.database.query<{ version: number }>(
         "SELECT version FROM longball.media_schema_migrations ORDER BY version",
       );
-      if (versions.rows.some((row) => row.version > 1))
+      if (versions.rows.some((row) => row.version > 2))
         throw new Error(
           "Media schema is newer than this build; preserve it and use a compatible version.",
         );
@@ -96,6 +98,10 @@ export class PgMediaService {
           CREATE UNIQUE INDEX media_linked_revision ON longball.media_uploads(photo_id,display_revision) WHERE status='linked';
           CREATE INDEX media_owner_scope ON longball.media_uploads(owner_id,team_id,season_id,created_at);
           INSERT INTO longball.media_schema_migrations(version) VALUES(1);`);
+      }
+      if (!versions.rows.some(row => row.version === 2)) {
+        await installMediaSecurity(this.database);
+        await this.database.query('INSERT INTO longball.media_schema_migrations(version) VALUES(2)');
       }
     });
   }

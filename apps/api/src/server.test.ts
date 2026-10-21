@@ -143,8 +143,10 @@ describe('provider activation HTTP boundary', () => {
     expect(JSON.stringify(client.api.store.database.prepare('SELECT * FROM lb_activation_tokens').all())).not.toContain(token);
     const opened = await client.call('/v1/activation/redeem', { token: null, body: { token } });
     expect(opened.status).toBe(200); expect(opened.body.status).toBe('provider_credential_setup_required');
-    expect((await client.call('/v1/activation/complete', { token: null, body: { activationId: issued.body.activationId, completionProof: 'forged' } })).status).toBe(503);
-    const completed = await client.call('/v1/activation/complete', { token: null, body: { activationId: issued.body.activationId, completionProof: 'fictional-provider-proof' } });
+    expect((await client.call('/v1/activation/complete', { token: null, body: { activationId: issued.body.activationId, completionProof: 'fictional-provider-proof' } })).status).toBe(400);
+    expect((await client.call('/v1/activation/complete', { token: null, body: { activationId: issued.body.activationId, token: 'A'.repeat(43), completionProof: 'fictional-provider-proof' } })).status).toBe(410);
+    expect((await client.call('/v1/activation/complete', { token: null, body: { activationId: issued.body.activationId, token, completionProof: 'forged' } })).status).toBe(503);
+    const completed = await client.call('/v1/activation/complete', { token: null, body: { activationId: issued.body.activationId, token, completionProof: 'fictional-provider-proof' } });
     expect(completed.body).toEqual({ status: 'complete', signInRequired: true }); expect(completed.status).toBe(200);
     expect(completed.body).not.toHaveProperty('accessToken');
     expect((await client.call('/v1/me', { token: null })).status).toBe(401);

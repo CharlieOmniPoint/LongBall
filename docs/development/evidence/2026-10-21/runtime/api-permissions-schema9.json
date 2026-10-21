@@ -1,0 +1,27 @@
+{
+  "role": "longball_api",
+  "versions": [
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9
+  ],
+  "passed": [
+    "restricted_role_attributes",
+    "cannot_create_schema_objects",
+    "cannot_create_public_objects",
+    "cannot_alter_schema",
+    "cannot_change_migration_version",
+    "schema9_verified",
+    "login_purpose_and_context_free_rls",
+    "api_cannot_delete_domain_rows",
+    "api_cannot_rewrite_audit",
+    "api_scoped_request_schema_and_key_access",
+    "api_feature_verification_and_request_schema",
+    "api_cannot_claim_worker_job"
+  ]
+}

@@ -17,6 +17,7 @@ import { romaFixture } from "@longball/testing";
 import { createPreparationState } from "@longball/application/preparation";
 import { openJournal } from "./platform/journal";
 import { readClock } from "./platform/clock";
+import { assertRetainedMatchFixture } from "./platform/retained-match";
 import {
   LocalConflictError,
   type CommitInput,
@@ -178,7 +179,8 @@ export function useMatch(config: MatchConfig = initialConfig) {
           await closeOpened();
           return;
         }
-        if (!loaded) {
+        if (loaded !== null) assertRetainedMatchFixture(loaded, matchId);
+        if (loaded === null) {
           loaded = createMatch(config);
           const seed = (bootstrapRef.current?.matchId === matchId
             ? bootstrapRef.current
@@ -200,7 +202,8 @@ export function useMatch(config: MatchConfig = initialConfig) {
               throw failure;
             // Another tab won bootstrap. Keep our rejected candidate and show its saved projection.
             const winner = await journal.load<MatchState>(matchId);
-            if (!winner) throw failure;
+            if (winner === null) throw failure;
+            assertRetainedMatchFixture(winner, matchId);
             loaded = winner;
             retryRef.current = seed;
             durableConflictRef.current = failure.eventId;
@@ -215,6 +218,8 @@ export function useMatch(config: MatchConfig = initialConfig) {
           await closeOpened();
           return;
         }
+        // Check the final candidate before version replay or UI attachment.
+        assertRetainedMatchFixture(loaded, matchId);
         loaded = upgradeMatchState(loaded);
         journalRef.current = journal;
         deviceIdRef.current = info.deviceId;

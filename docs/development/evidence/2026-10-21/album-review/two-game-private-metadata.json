@@ -1,0 +1,31 @@
+{
+  "runId": "20261021100522852",
+  "artifacts": {
+    "web": {
+      "url": "http://127.0.0.1:4173/_expo/static/js/web/index-574b3e4289da41fb548779d3b27caa53.js",
+      "sha256": "34f026256d1eb1dca1a1686a6d2a02a4ec2f8389c715a9c70497c224abb92427"
+    },
+    "api": {
+      "entry": "apps/api/dist/api.mjs",
+      "sha256": "bcf92d7d6937c965c88637c089168636122c29c06b817291faee480ebe7df558"
+    }
+  },
+  "rows": [
+    {
+      "id": "46b330bb-c91e-468a-a497-4b12e27184f5",
+      "request_id": "000de75a-3fc8-4ed0-8413-3ff84b14c532",
+      "match_id": "synthetic-roma-maple-2026-10-24",
+      "status": "uploaded",
+      "caption": "Fictional game album 1",
+      "failure_code": "SCANNER_REQUIRED"
+    },
+    {
+      "id": "930ddebf-fb98-45b9-a5d4-2913f16a76e8",
+      "request_id": "56b26743-2d76-4b21-9cba-b4f933158812",
+      "match_id": "synthetic-community-willow",
+      "status": "uploaded",
+      "caption": "Fictional game album 2",
+      "failure_code": "SCANNER_REQUIRED"
+    }
+  ]
+}

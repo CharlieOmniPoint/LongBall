@@ -10,6 +10,7 @@ if (!connectionString && process.env.LONGBALL_SYNTHETIC_AUTH!=='1') throw new Er
 const migrationMode=process.env.LONGBALL_DATABASE_MIGRATION_MODE??(process.env.LONGBALL_SYNTHETIC_AUTH==='1'?'apply':'verify');
 if(!['apply','verify'].includes(migrationMode)||process.env.NODE_ENV==='production'&&migrationMode!=='verify')throw new Error('The production worker verifies schemas; use the dedicated operator migration command.');
 const store=connectionString?await PostgresStore.open(connectionString,Date.now,{migrationMode:migrationMode as 'apply'|'verify'}):new DevelopmentStore(process.env.LONGBALL_API_DATABASE??'.local/api/longball.sqlite');
+if(store instanceof PostgresStore){try{await store.assertRuntimeRole('worker');}catch(error){await store.close();throw error;}}
 let running=false;
 const run = async () => { if(running)return;running=true;try{const result=store instanceof PostgresStore?await runDuePostgresJobs(store):runDueJobs(store);const notifications=await runDueTeamNotifications(store);if(result.completed||result.retried||result.failed||Object.values(notifications).some(Boolean))console.log(JSON.stringify({worker:connectionString?'longball-postgresql':'longball-fictional',...result,notifications}));}finally{running=false;} };
 await run();

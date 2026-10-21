@@ -6,7 +6,7 @@ The browser surface is an Expo/React Native Web export of the native UI and shar
 
 The public repository's separate `preview/longball-m0` branch carries generated `site/`, bundled `backend/`, a checksummed development-source Git bundle and pinned workflows. A standard public GitHub Actions runner serves the combined Node API/browser application through a Cloudflare Quick Tunnel for up to one hour. This is an independent runner, not inbound access to managed Codex. It needs no Cloudflare account, custom domain or paid service. Main is unchanged; the runner imports and pushes the exact development commit from its verified source bundle.
 
-The workflow is maintained in [cloud-preview/workflow.yml](cloud-preview/workflow.yml) and [run.sh](cloud-preview/run.sh). It installs a pinned decoder runtime, verifies cloudflared's SHA256, verifies API health, starts the worker and checks public HTML before recording a ready URL, source revision, Actions run and expiry in `preview-status.json`. Only an externally verified `ready` URL before expiry is a usable link. Cleanup records stopped/failed when possible. A separate static GitHub Pages review is prepared below. Temporary API sessions carry no uptime or storage guarantee.
+The workflow is maintained in [cloud-preview/workflow.yml](cloud-preview/workflow.yml) and [run.sh](cloud-preview/run.sh). It installs a pinned decoder runtime, verifies cloudflared's SHA256, verifies API health, starts the worker and checks public HTML before recording a ready URL, source revision, Actions run and expiry in `preview-status.json`. Only an externally verified `ready` URL before expiry is a usable link. Cleanup records stopped/failed when possible. A separate lasting static GitHub Pages review is available below. Temporary API sessions carry no uptime or storage guarantee.
 
 Review uses fictional Roma U10 data and explicitly enabled synthetic API identities. The default manager rehearsal uses IndexedDB; **More → Connected service** opens the distinct HTTP-backed workspace. Its data is persistent only for that runner's session. This separation prevents local rehearsal actions being silently treated as accepted server history. Review identity selectors are public fictional accounts, not authentication for real users. Sites is excluded because of its under-13 targeting restriction; no Site was created.
 
@@ -26,7 +26,7 @@ A new tunnel hostname creates a new browser origin. IndexedDB records do not mig
 `infra/cloud-preview/pages-workflow.yml` prepares a static GitHub Pages review
 alongside the temporary full API session. The owner enabled repository
 **Settings → Pages → Build and deployment → Source → GitHub Actions** on
-21 October 2026. The connected repository tools do not expose that setting. The official
+21 October 2026. The owner also added exact branch `preview/longball-m0` to the `github-pages` environment’s allowed deployment branches, retaining `main`. The connected repository tools do not expose those administration settings. The official
 [configure-pages action](https://github.com/actions/configure-pages/blob/45bfe0192ca1faeb007ade9deae92b16b8254a0d/action.yml)
 requires a different administration token to enable it automatically; no extra
 token is requested or embedded here.
@@ -41,10 +41,10 @@ available after the temporary API runner stops. Each browser retains its own
 fictional review state; connected API review still requires entering the live API session address. The temporary API explicitly permits the Pages origin; its expiry still applies.
 It is not a deployed shared production database or a native-device proof.
 
-The expected address is `https://charlieomnipoint.github.io/LongBall/` after a
-successful deployment. Do not report that address as live before verifying it.
+The lasting address is [https://charlieomnipoint.github.io/LongBall/](https://charlieomnipoint.github.io/LongBall/). Deployment [run39582847164](https://github.com/CharlieOmniPoint/LongBall/actions/runs/39582847164) succeeded after the branch rule was saved. At 10:50:38 UTC, an external 390×844 browser completed actual check-in → starting lineup → start → pause on export `1f994eab9ecd0cbe816e06ec65de3984` from development source `79cbc724`. The static workspace started with no API and rejected blank, relative and same-host addresses before network access. There were no browser exceptions, failed HTTP responses or horizontal overflow. The later security checkpoint passed 355 shared/platform and 169 API/access/worker tests, including migration009 database-clock claims/fanout and atomic database-effect/completion settlement checks. Its schema9 restricted-runtime proof passed; exact-source publication is still pending; the hosted journey above proves the published `79cbc724` build.
+
 The local subpath rehearsal is `node scripts/pages-review.mjs` against
-`http://127.0.0.1:4176/LongBall/`, with the export mounted under that path.
+`http://127.0.0.1:4176/LongBall/`, with the export mounted under that path. Set `LONGBALL_PAGES_REVIEW_URL` to the lasting address to exercise the same checks against deployment.
 
 ## Production deployment preparation
 

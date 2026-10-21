@@ -1,0 +1,34 @@
+{
+  "baseURL": "http://127.0.0.1:4173",
+  "artifact": {
+    "url": "http://127.0.0.1:4173/_expo/static/js/web/index-25ef8375d2900f017af0882d72abda65.js",
+    "sha256": "44c470778f2fce51e094180d16d834587de95c062da8787a6b12cef871a8e98e"
+  },
+  "deliberateFictionalCorruptionFixtures": true,
+  "results": [
+    {
+      "name": "blank-device",
+      "status": "passed",
+      "explicitRetainedError": true,
+      "exactRecordPreservedAfterReopenAndRetry": true,
+      "retainedRecordSha256": "256b8b97303fe0d0e519d944afff472c0975d09029a2b38d5960422b356e9971",
+      "originalEventCount": 2
+    },
+    {
+      "name": "malformed-device",
+      "status": "passed",
+      "explicitRetainedError": true,
+      "exactRecordPreservedAfterReopenAndRetry": true,
+      "retainedRecordSha256": "35e05c6ca9058769f35ffabccb3b3766719a844bcd6b97cd97a7a20beb3c273a",
+      "originalEventCount": 2
+    },
+    {
+      "name": "different-match",
+      "status": "passed",
+      "explicitRetainedError": true,
+      "exactRecordPreservedAfterReopenAndRetry": true,
+      "retainedRecordSha256": "97294c9fd6457b1600fa418a1a0c4a80bc12bda1462f67627216dab4ea143c12",
+      "originalEventCount": 2
+    }
+  ]
+}

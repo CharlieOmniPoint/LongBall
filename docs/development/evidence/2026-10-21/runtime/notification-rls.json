@@ -1,0 +1,86 @@
+{
+  "verifiedAt": "2026-10-21T11:01:08.066071Z",
+  "baseCommit": "79cbc724d5cc63a8331b5f10eeabe6f5d2c3fc4e",
+  "source": "Uncommitted schema009 security checkpoint; hashes identify tested source rather than the earlier published native/browser candidate.",
+  "command": "node node_modules/vitest/vitest.mjs run --config apps/api/vitest.config.ts apps/worker/src/notification-jobs.test.ts --maxWorkers=1",
+  "result": {
+    "passed": 18,
+    "failed": 0,
+    "skipped": 0,
+    "sqlite": 7,
+    "actualPostgreSQL": 11
+  },
+  "postgresql": {
+    "version": "18.6 local disposable databases",
+    "runtimeDispatchRole": "Separate non-owner NOSUPERUSER NOBYPASSRLS credential in all eleven PostgreSQL scenarios",
+    "ownerUsedFor": "Synthetic fixture setup, independent assertions and permission/revocation mutations only"
+  },
+  "checks": [
+    "Durable dedupe, conflicting key rejection and absent provider blocked without fabricated receipt",
+    "Fresh account/membership/grant/preferences/entity policy and London DST quiet-hour checks",
+    "Same provider business key after response loss and reopen",
+    "Concurrent workers claim once; external provider wait retains no SQL transaction or ambient logical authority",
+    "Expired non-idempotent provider outcome requires review",
+    "Protected claim returns original payload and canonical stored ancestry",
+    "Exact job and recipient metadata only; scheduling capability cannot read match state",
+    "Wrong capability, job, team or season cannot read job/account/document rows",
+    "Worker cannot forge API identity/actor context through context JSON",
+    "Category rewrite, token hash rekey and lease extension rejected by PostgreSQL",
+    "Stale logical timestamp cannot extend lease past actual database clock",
+    "Database alone chooses due/reclaim time and lease; caller clock is only a \u00b130-second observation",
+    "A tolerated +25-second observation cannot advance recipient eligibility or accepted receipt time",
+    "Fresh database observations around evidence/lease/outcome avoid inheriting claim response latency; expired recipient during a controlled 20ms repository delay is suppressed"
+  ],
+  "provider": "Explicit test double only; no APNs/FCM receipt or device-delivery proof",
+  "physicalDeviceTested": false,
+  "broadRuntimeAcceptance": false,
+  "sha256": {
+    "apps/worker/src/notification-jobs.ts": "af0636a91f2545baf4fa0e645cc0c0f78f68d09a5ca6b5992c14c2f94d6132e9",
+    "apps/worker/src/notification-jobs.test.ts": "f1d1e0270e6d8fabba2e2e358df44979438634b1422b509f01ccffc7bc13219d",
+    "apps/api/src/pg.ts": "210930cb42a47afef85a85e394d6c01b4627388510c62f9a44016bab157124dc",
+    "apps/api/src/runtime-grants.ts": "46669b6f2b36e528fe4bcfd95a9e0dd4e86b9238b934aa9d9e6e2f35b759ec0f",
+    "apps/api/migrations/postgresql/005_scope_security.sql": "6c6e73509ea12851c5c7080a711114244046350128ecdc6e1f2611a665dac13b",
+    "apps/api/migrations/postgresql/005_media_security.sql": "abe04afacd7341cd1b22fdb2174dab9c24ae6d441d09bd5f4b22f2827ef7205a",
+    "apps/api/migrations/postgresql/006_award_notifications.sql": "121ef919d7a0c66135e644cccb03a20159948bd5bc0034b5428a535b1aa1928d",
+    "apps/api/migrations/postgresql/007_worker_boundaries.sql": "17436fc100ad0a80a5d3df78db4a14dc98d192cc38ed5578a73136cd98845aed",
+    "apps/api/migrations/postgresql/008_controller_revocation.sql": "c39e8132ea91637b95ffe31ff8b7ffdb2c713d3e035e30d802e86ff50978cddf",
+    "apps/api/migrations/postgresql/009_dispatch_database_clock.sql": "5298965bb5425e58fcd8c758024b62da9191e38121cdf94c5ea176282d6cdcfa"
+  },
+  "followUpOutcomeCas": {
+    "verifiedAt": "2026-10-21T11:11:11.689822Z",
+    "command": "node node_modules/vitest/vitest.mjs run --config apps/api/vitest.config.ts apps/worker/src/notification-jobs.test.ts -t 'durable provider receipt' --maxWorkers=1",
+    "result": {
+      "passed": 1,
+      "failed": 0,
+      "skipped": 18
+    },
+    "actualPostgreSQLRestrictedWorker": true,
+    "provider": "Explicit test double only",
+    "change": "Return UPDATE changes===1 after locked ownership check; zero-row RLS expiry is superseded rather than a durable provider receipt.",
+    "boundary": "Same pinned transaction shortens the capability and observes actual elapsed database time before final outcome UPDATE; no stale-write override.",
+    "sha256": {
+      "apps/worker/src/notification-jobs.ts": "d254350c2e3cd26f399282858bb474c57f6ef884ddc83d24f55373ed0a4db079",
+      "apps/worker/src/notification-jobs.test.ts": "96165190f26034ca7bd1a1ec6ac7acb2c76712129cab12e0a4a5dd221a2819ab"
+    },
+    "limit": "This is one targeted new case. The preceding full18 run remains a separate source checkpoint; no full19 run is claimed here."
+  },
+  "latestWholeApiAcceptance": {
+    "reportedAt": "2026-10-21T11:14:39.271667Z",
+    "reportedBy": "Root agent actual quiet full API run",
+    "startedAt": "2026-10-21T11:11:21Z",
+    "durationSeconds": 99.99,
+    "result": {
+      "wholeApiPassed": 169,
+      "wholeApiFiles": 20,
+      "notificationPassed": 19,
+      "notificationPostgreSQL": 12,
+      "notificationSQLite": 7
+    },
+    "command": "node node_modules/vitest/vitest.mjs run --config apps/api/vitest.config.ts",
+    "sha256": {
+      "apps/worker/src/notification-jobs.ts": "d254350c2e3cd26f399282858bb474c57f6ef884ddc83d24f55373ed0a4db079",
+      "apps/worker/src/notification-jobs.test.ts": "96165190f26034ca7bd1a1ec6ac7acb2c76712129cab12e0a4a5dd221a2819ab"
+    },
+    "limit": "Includes the final CAS case and prior notification cases; overlaps focused tests and is not an extra release-count sum. Runtime image acceptance is separate."
+  }
+}

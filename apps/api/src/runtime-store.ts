@@ -2,6 +2,8 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import { createHash } from 'node:crypto';
 import { AccessError, type Principal } from '../../../packages/application/src/access';
 import { canonical, DevelopmentStore } from './store';
+import type { VerifiedIdentity } from './oidc';
+import type { DatabaseRequestScope } from './request-context';
 
 type Excluded = 'database' | 'path' | 'now' | 'transaction' | 'idempotent' | 'document' | 'migrate' | 'backup' | 'integrity' | 'close';
 type AsyncMethods<T> = { [K in keyof T]: T[K] extends (...args: infer A) => infer R ? (...args: A) => Promise<Awaited<R>> : never };
@@ -11,6 +13,8 @@ export type RuntimeStore = AsyncMethods<Omit<DevelopmentStore, Excluded>> & {
   transaction<T>(work: () => Promise<T> | T): Promise<T>;
   idempotent<T>(principal: Principal, operation: string, key: string, payload: unknown, work: () => Promise<T> | T): Promise<T>;
   close(): Promise<void>;
+  withIdentityContext<T>(identity:VerifiedIdentity,work:()=>Promise<T>|T):Promise<T>;
+  withActorContext<T>(principal:Principal,scope:DatabaseRequestScope,work:()=>Promise<T>|T):Promise<T>;
 };
 
 /** Fictional SQLite facade. It does not translate SQL or emulate PostgreSQL. */
@@ -29,6 +33,8 @@ export function sqliteRuntimeStore(source: DevelopmentStore): { store: RuntimeSt
     catch (error) { source.database.exec('ROLLBACK'); throw error; }
   };
   facade.transaction = transaction;
+  facade.withIdentityContext=async <T>(_identity:VerifiedIdentity,work:()=>Promise<T>|T):Promise<T>=>work();
+  facade.withActorContext=async <T>(_principal:Principal,_scope:DatabaseRequestScope,work:()=>Promise<T>|T):Promise<T>=>work();
   facade.idempotent = async <T>(principal: Principal, operation: string, key: string, payload: unknown, work: () => Promise<T> | T): Promise<T> => {
     if (!/^[A-Za-z0-9_-]{8,150}$/.test(key)) throw new AccessError('INVALID_REQUEST', 400, 'A stable Idempotency-Key is required for mutations.');
     const signature = createHash('sha256').update(canonical(payload)).digest('hex');

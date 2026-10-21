@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { browserStorageKey, commitBrowser, createBrowserRecord, loadBrowserRecord } from './browser-journal';
+import { browserStorageKey, commitBrowser, createBrowserRecord, loadBrowserRecord, validateBrowserRecord } from './browser-journal';
 import type { LocalStorageAdapter } from './browser-journal';
 
 function storageAdapter() {
@@ -49,6 +49,35 @@ describe('synthetic browser persistence', () => {
     storage.setItem(browserStorageKey, damaged);
     expect(() => createBrowserRecord(storage, 'new')).toThrow('retained');
     expect(storage.getItem(browserStorageKey)).toBe(damaged);
+  });
+
+  it.each(['', ' ', '\n', 'review-device\n', 'review-device\r\n', 'unsafe/device', 'device.with.dots', 'é', 'a'.repeat(151), null, 7])(
+    'refuses retained device identity %j on load, reopen and commit without replacing any saved bytes',
+    (deviceId) => {
+      const { storage } = storageAdapter();
+      createBrowserRecord(storage, 'review-device');
+      commitBrowser(storage, input('retained-event'));
+      const damaged = { ...loadBrowserRecord(storage)!, deviceId };
+      // Preserve formatting too: a failed open must not reserialize, migrate or allocate an identity.
+      const original = JSON.stringify(damaged, null, 2);
+      storage.setItem(browserStorageKey, original);
+      for (const operation of [
+        () => loadBrowserRecord(storage),
+        () => createBrowserRecord(storage, 'replacement-must-not-be-used'),
+        () => commitBrowser(storage, input('must-not-be-written')),
+      ]) {
+        expect(operation).toThrow('saved browser device identity is invalid');
+        expect(storage.getItem(browserStorageKey)).toBe(original);
+        expect(JSON.parse(storage.getItem(browserStorageKey)!).events).toEqual(damaged.events);
+      }
+    },
+  );
+
+  it('keeps canonical retained identifiers unchanged through the150-character boundary', () => {
+    for (const deviceId of ['a', 'Review_device-01', 'a'.repeat(150)]) {
+      const record = { version: 1, deviceId, events: {}, projections: {}, checkpoints: {} };
+      expect(validateBrowserRecord(record)).toBe(record);
+    }
   });
 
   it('rejects a second tab using a stale source revision without overwriting the saved match', () => {

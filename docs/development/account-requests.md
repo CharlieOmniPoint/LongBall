@@ -82,6 +82,13 @@ it through a fresh GET without reposting, checks a new-key business duplicate,
 records separate global deletion and scoped leave requests, and verifies that
 account status and memberships remain unchanged. The injected response loss is a
 transport experiment; the provider JWT, API and PostgreSQL requests are real.
+
+After PostgreSQL core migration 005 and feature row security were installed, all
+four actual API checks passed again using a new real child JWT and the restricted
+API login. The separate result is recorded in
+`evidence/2026-10-21/identity/account-requests-row-security-api.json`; it preserves
+the earlier evidence and does not claim a later physical-device/browser rerun.
+
 The actual phone-width browser trial passed six checks on 21 October 2026 against
 the production entry, Chromium 155 and Keycloak 26.8.1. It entered the fictional
 manager's credentials through the provider UI, enrolled TOTP and recovery codes,

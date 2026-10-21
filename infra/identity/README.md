@@ -135,8 +135,12 @@ already-open obsolete form cannot configure a credential after cancellation.
 
 Completion requires actual provider password/recovery credentials and returns a
 random proof in the registered callback **fragment**. Only its hash is retained in
-provider user state. The LongBall API verifies it server-to-server before enabling
-the application identity. Completion grants no session: full OIDC sign-in follows.
+provider user state. The LongBall API requires the original application capability
+and exact activation ID before looking up that flow, then verifies the provider
+proof server-to-server before enabling the application identity. The capability
+stays only in component memory during setup; a cold-start return asks for it
+again. It is never placed in the callback or provider URL. Completion grants no
+session: full OIDC sign-in follows.
 
 Once provider credential setup completed, the cancellation endpoint refuses to
 reset it. If application completion or its callback is lost, the retained pending
@@ -177,22 +181,51 @@ Official references checked 2026-10-21:
 - https://www.keycloak.org/docs/latest/server_development/index.html
 - https://www.keycloak.org/docs-api/26.8.1/rest-api/index.html
 - https://github.com/keycloak/keycloak/tree/26.8.1
+- https://chromium.googlesource.com/chromium/src/+/main/docs/linux/cert_management.md
 
 ## Recorded result and open release choices
 
-On 2026-10-21 the pinned Maven/JDK21 extension compiled, and the real HTTPS
-provider/API harness passed nine journey checks. The actual API used the separate
-`longball_identity_trial_api` PostgreSQL role with runtime migrations disabled.
-The PostgreSQL activation suite passed five tests, including initialization in an
-actual read-only database transaction; provider transport fixtures passed four
-tests and destination parsing passed ten. Native mobile TypeScript and scoped
-ESLint passed. See the sanitized identity evidence in `docs/development/evidence`.
+On 2026-10-21 the pinned Maven/JDK21 extension compiled. The first candidate's
+real HTTPS provider/API harness passed nine journey checks and its privacy client
+passed four actual API checks. A separate six-check, 320px Chromium trial entered
+the fictional manager's credentials at the actual provider UI, enrolled
+TOTP/recovery, completed real PKCE and exercised account-request confirmation and
+lost-response retry. Its isolated NSS database trusted the local trial CA with
+normal certificate validation; no session/vault was injected.
 
-Still unproved: system-browser trust and popup handling, iOS/Android redirect
-delivery, physical-device SecureStore/PIN/backup behavior, provider upgrade and
-restore comparisons, operational monitoring, account recovery and a live pilot.
-The official Firefox download hosts were unavailable under the workspace network
-policy, so no isolated trusted-browser test was substituted or claimed.
+After original-capability completion and PostgreSQL row security were added, the
+real provider/API harness passed ten checks through the verify-only restricted
+`longball_identity_trial_api` login. It refused missing/mismatched original
+capabilities and completed with the correct independent proof. The named
+migration preserved hashes of existing original account, membership, match,
+document, audit, privacy and activation records. Core schema 005, media feature 2
+and activation feature 2 were installed by the separate schema-owner process.
+Historical evidence was retained in separate files.
+
+All four real privacy API checks passed again after row security, with a new real
+child JWT and the same restricted API login. Requests remained pending without
+changing memberships, credentials or account status.
+
+Subsequent worker-only migrations 006/007 preserved the recorded original columns
+and left API/identity scope unchanged. The final schema-007 verify-only runtime
+passed a separate five-check smoke with fresh real manager MFA/PKCE and child
+sessions, current identity, guarded activation, child manager denial and fake-alias
+refusal. Earlier full ten-check/provider and four-check/privacy evidence remains
+labelled core 005. For this bounded final smoke, set
+`LONGBALL_IDENTITY_TRIAL_SCHEMA_SMOKE=1` alongside
+`LONGBALL_IDENTITY_TRIAL_API_PROOF=1` in the harness command; unrelated standalone
+protocol cases are skipped.
+
+The PostgreSQL activation suite passed five tests, including initialization in an
+actual read-only transaction; service fixtures passed fourteen, provider transport
+fixtures four and destination parsing ten. Mobile/root TypeScript and scoped
+ESLint passed. See `docs/development/evidence/2026-10-21/identity`.
+
+Still unproved: native system-browser trust and popup handling, iOS/Android
+redirect delivery, physical-device SecureStore/PIN/backup behavior, provider
+upgrade and restore comparisons, operational monitoring, account recovery and a
+live pilot. Desktop browser, HTTP and compile evidence do not prove these device
+behaviors.
 
 Before live onboarding, choose and operate a production provider. Keeping this
 Keycloak extension preserves the tested username-only path but requires owning

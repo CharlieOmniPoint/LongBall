@@ -28,11 +28,15 @@ try {
   await denied('cannot_alter_schema', 'ALTER TABLE longball.jobs ADD COLUMN runtime_must_not_add text');
   await denied('cannot_change_migration_version', 'UPDATE longball.schema_migrations SET version=version');
   const versions = (await client.query('SELECT version FROM longball.schema_migrations ORDER BY version')).rows.map(row => row.version);
-  if (JSON.stringify(versions) !== '[2,3,4]') throw new Error('Expected runtime migration versions 2,3,4.');
-  checks.push('schema4_verified');
+  if (JSON.stringify(versions) !== '[2,3,4,5,6,7,8,9]') throw new Error('Expected runtime migration versions 2 through 9.');
+  checks.push('schema9_verified');
+  const purpose=(await client.query('SELECT longball.runtime_purpose() AS value')).rows[0]?.value;
+  if(purpose!==kind)throw new Error('Runtime login purpose does not match its command.');
+  const protectedTables=(await client.query("SELECT count(*)::integer AS value FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='longball' AND c.relrowsecurity")).rows[0]?.value;
+  if(protectedTables<28)throw new Error('Expected core and feature row security.');
+  for(const table of ['accounts','matches','documents','jobs'])if((await client.query(`SELECT * FROM longball.${table}`)).rowCount!==0)throw new Error('Context-free data access was not denied.');
+  checks.push('login_purpose_and_context_free_rls');
   if (kind === 'api') {
-    await client.query("INSERT INTO longball.teams(id,name) VALUES('runtime-permission-proof','Fictional Roma U10')");
-    await client.query("UPDATE longball.teams SET name='Fictional permission proof' WHERE id='runtime-permission-proof'");
     await denied('api_cannot_delete_domain_rows', "DELETE FROM longball.teams WHERE id='runtime-permission-proof'");
     await denied('api_cannot_rewrite_audit', 'UPDATE longball.audit SET outcome=outcome');
     await client.query('SELECT version FROM longball.media_schema_migrations');
@@ -41,13 +45,17 @@ try {
     await client.query("INSERT INTO longball.privacy_pending_keys(business_key,request_id) SELECT 'permission-proof','permission-proof' WHERE false");
     await client.query('UPDATE longball.privacy_pending_keys SET business_key=business_key WHERE false');
     checks.push('api_scoped_request_schema_and_key_access');
-    checks.push('api_insert_update_and_feature_verification');
+    checks.push('api_feature_verification_and_request_schema');
+    await denied('api_cannot_claim_worker_job', "SELECT * FROM longball.claim_due_job('award.finalise',0,repeat('a',64))");
   } else {
     await client.query('SELECT id FROM longball.jobs');
     await client.query('UPDATE longball.jobs SET attempts=attempts WHERE false');
     await client.query('UPDATE longball.documents SET revision=revision WHERE false');
     await client.query('SELECT id FROM longball.accounts');
-    await client.query("INSERT INTO longball.jobs(id,business_key,kind,payload_json,due_at) VALUES('permission-proof','permission-proof','notification.dispatch','{}',0)");
+    await denied('worker_cannot_insert_unscoped_job', "INSERT INTO longball.jobs(id,business_key,kind,payload_json,due_at) VALUES('permission-proof','permission-proof','notification.dispatch','{}',0)");
+    await client.query("SELECT set_config('longball.context',$1,true)",[JSON.stringify({kind:'identity',issuer:'urn:longball:synthetic',subject:'synthetic-account-manager',nowMs:Date.now()})]);
+    if((await client.query('SELECT * FROM longball.accounts')).rowCount!==0)throw new Error('Worker forged identity escaped its login purpose.');
+    checks.push('worker_cannot_forge_api_identity');
     await denied('worker_cannot_change_accounts', 'UPDATE longball.accounts SET status=status');
     await denied('worker_cannot_read_private_media_manifests', 'SELECT id FROM longball.media_uploads');
     await denied('worker_cannot_read_privacy_requests', 'SELECT id FROM longball.privacy_requests');

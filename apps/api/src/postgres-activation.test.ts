@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { Pool } from "pg";
 import { randomBytes, randomUUID } from "node:crypto";
 import { PostgresStore, SYNTHETIC_IDS } from "./postgres-store";
@@ -260,6 +260,7 @@ describe.skipIf(!databaseUrl)("actual PostgreSQL activation repository", () => {
     await expect(
       activation.completeActivation({
         activationId: active.activationId,
+        token: active.token,
         completionProof: "fixture-provider-proof",
       }),
     ).rejects.toMatchObject({ code: "ACTIVATION_UNAVAILABLE" });
@@ -267,12 +268,31 @@ describe.skipIf(!databaseUrl)("actual PostgreSQL activation repository", () => {
       token: replacement.token,
       requestId: randomUUID(),
     });
-    expect(
-      await activation.completeActivation({
-        activationId: setup.activationId,
-        completionProof: "fixture-provider-proof",
+    const verify = vi.spyOn(provider, "verifyCredentialSetup");
+    const completion = {
+      activationId: setup.activationId,
+      token: replacement.token,
+      completionProof: "fixture-provider-proof",
+    };
+    await expect(
+      activation.completeActivation({
+        ...completion,
+        token: randomBytes(32).toString("base64url"),
       }),
-    ).toEqual({ status: "complete", signInRequired: true });
+    ).rejects.toMatchObject({ code: "ACTIVATION_UNAVAILABLE" });
+    await expect(
+      activation.completeActivation({
+        ...completion,
+        activationId: randomUUID(),
+      }),
+    ).rejects.toMatchObject({ code: "ACTIVATION_UNAVAILABLE" });
+    expect(verify).not.toHaveBeenCalled();
+    expect(await activation.completeActivation(completion)).toEqual({
+      status: "complete",
+      signInRequired: true,
+    });
+    expect(verify).toHaveBeenCalledTimes(1);
+    verify.mockRestore();
     expect(
       await store.one(
         "SELECT classification,status FROM accounts WHERE id=$1",

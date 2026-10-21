@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { createHash, randomUUID } from "node:crypto";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -498,6 +498,7 @@ describe("F05 pending child activation", () => {
     await expect(
       test.service.completeActivation({
         activationId: activation.activationId,
+        token: activation.token,
         completionProof: "client-says-complete",
       }),
     ).rejects.toMatchObject({ code: "PROVIDER_FLOW_UNAVAILABLE" });
@@ -505,12 +506,14 @@ describe("F05 pending child activation", () => {
     await expect(
       test.service.completeActivation({
         activationId: activation.activationId,
+        token: activation.token,
         completionProof: test.fixture.proof(activation.activationId),
       }),
     ).rejects.toMatchObject({ code: "ACTIVATION_UNAVAILABLE" });
     test.fixture.patchProof({});
     const completed = {
       activationId: activation.activationId,
+      token: activation.token,
       completionProof: test.fixture.proof(activation.activationId),
     };
     expect(await test.service.completeActivation(completed)).toEqual({
@@ -554,6 +557,54 @@ describe("F05 pending child activation", () => {
         .get(pending.accountId),
     ).toMatchObject({ status: "disabled" });
   });
+  it("requires the original capability bound to the activation before any provider completion I/O", async () => {
+    const test = lab();
+    const { activation, pending } = await test.issued();
+    await test.service.redeemActivation({
+      token: activation.token,
+      requestId: randomUUID(),
+    });
+    const verify = vi.spyOn(test.fixture.provider, "verifyCredentialSetup");
+    const completion = {
+      activationId: activation.activationId,
+      token: activation.token,
+      completionProof: test.fixture.proof(activation.activationId),
+    };
+    const wrongToken = createHash("sha256")
+      .update("another fictional household capability")
+      .digest("base64url");
+    for (const candidate of [
+      { ...completion, token: wrongToken },
+      { ...completion, activationId: randomUUID() },
+      { ...completion, token: "" },
+    ]) {
+      await expect(
+        test.service.completeActivation(candidate as typeof completion),
+      ).rejects.toMatchObject({ code: "ACTIVATION_UNAVAILABLE" });
+    }
+    await expect(
+      test.service.completeActivation({
+        activationId: completion.activationId,
+        completionProof: completion.completionProof,
+      } as typeof completion),
+    ).rejects.toMatchObject({ code: "INVALID_REQUEST" });
+    expect(verify).not.toHaveBeenCalled();
+    expect(
+      test.store.database
+        .prepare("SELECT status FROM accounts WHERE id=?")
+        .get(pending.accountId),
+    ).toMatchObject({ status: "disabled" });
+    expect(await test.service.completeActivation(completion)).toEqual({
+      status: "complete",
+      signInRequired: true,
+    });
+    expect(verify).toHaveBeenCalledTimes(1);
+    expect(
+      JSON.stringify(
+        test.store.database.prepare("SELECT * FROM lb_activation_tokens").all(),
+      ),
+    ).not.toContain(activation.token);
+  });
   it("expires exactly at the configured boundary and gives unknown, expired and revoked secrets the same public error", async () => {
     const test = lab();
     const { activation } = await test.issued();
@@ -584,6 +635,7 @@ describe("F05 pending child activation", () => {
     });
     const completion = {
       activationId: activation.activationId,
+      token: activation.token,
       completionProof: test.fixture.proof(activation.activationId),
     };
     test.fixture.patchProof({ subject: randomUUID() });
@@ -621,6 +673,7 @@ describe("F05 pending child activation", () => {
     await expect(
       test.service.completeActivation({
         activationId: activation.activationId,
+        token: activation.token,
         completionProof: test.fixture.proof(activation.activationId),
       }),
     ).rejects.toMatchObject({ code: "ACTIVATION_UNAVAILABLE" });

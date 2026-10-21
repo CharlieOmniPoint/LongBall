@@ -52,7 +52,6 @@ export function ActivationPanel(props: ActivationPanelProps) {
     props.config.issuer,
     props.config.apiBaseUrl,
     props.childDestination,
-    props.completion?.activationId,
   ]);
   return <ActivationPanelContent key={key} {...props} />;
 }
@@ -68,9 +67,23 @@ function ActivationPanelContent({
   const [pending, setPending] = useState<Pending | null>(null);
   const [issue, setIssue] = useState<Issue | null>(null);
   const [setup, setSetup] = useState<Setup | null>(null);
-  const [proof, setProof] = useState<ActivationCompletionDestination | null>(
-    completion ?? null,
+  const [localProof, setProof] =
+    useState<ActivationCompletionDestination | null>(null);
+  const [consumedCompletion, setConsumedCompletion] = useState<string | null>(
+    null,
   );
+  const completionKey = completion ? JSON.stringify(completion) : null;
+  const incomingProof =
+    completion && completionKey !== consumedCompletion ? completion : null;
+  const proof = incomingProof === null ? localProof : incomingProof;
+  const [retainedCapability, setRetainedCapability] = useState<{
+    activationId: string;
+    token: string;
+  } | null>(null);
+  const completionToken =
+    proof && retainedCapability?.activationId === proof.activationId
+      ? retainedCapability.token
+      : token;
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -402,6 +415,9 @@ function ActivationPanelContent({
             )
               throw new Error("Untrusted credential origin");
             setSetup(result as unknown as Setup);
+            setRetainedCapability({ activationId: result.activationId, token });
+            setProof(null);
+            setConsumedCompletion(completionKey);
             setToken("");
             setMessage(
               "Provider setup is ready. Continue explicitly in its browser.",
@@ -451,24 +467,45 @@ function ActivationPanelContent({
           <Text style={styles.body}>
             A provider completion return is ready for activation{" "}
             {proof.activationId}. Verify it with the configured LongBall API.
+            Completion requires the original household capability as well as the
+            provider proof.
           </Text>
+          {retainedCapability?.activationId !== proof.activationId && (
+            <>
+              <Notice>
+                The original activation capability was not saved on this device.
+                Paste it again to verify this return.
+              </Notice>
+              <TextInput
+                accessibilityLabel="Original activation capability for completion"
+                value={token}
+                onChangeText={setToken}
+                autoCapitalize="none"
+                autoCorrect={false}
+                secureTextEntry
+                maxLength={43}
+                style={styles.input}
+              />
+            </>
+          )}
           <Button
             label="Discard this unverified completion return"
             variant="quiet"
             disabled={busy}
             onPress={() => {
               setProof(null);
+              setConsumedCompletion(completionKey);
               onCompletionConsumed?.(false);
             }}
           />
           <Button
             label="Verify provider completion"
-            disabled={busy}
+            disabled={busy || !/^[A-Za-z0-9_-]{43}$/.test(completionToken)}
             onPress={() =>
               void run(async () => {
                 const result = await post(
                   "/activation/complete",
-                  proof,
+                  { ...proof, token: completionToken },
                   false,
                   `complete:${proof.activationId}`,
                 );
@@ -478,7 +515,11 @@ function ActivationPanelContent({
                 )
                   throw new Error("Unverified completion");
                 setProof(null);
+                setConsumedCompletion(completionKey);
                 setSetup(null);
+                setRetainedCapability(null);
+                setToken("");
+                operations.current.clear();
                 onCompletionConsumed?.(true);
                 setMessage(
                   "The provider completion was verified. Use full secure sign-in above to obtain a separate application session.",

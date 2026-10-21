@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { AddressInfo } from 'node:net';
 import { Pool } from 'pg';
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { ENGINE_VERSION, reduceMatch, type MatchEvent, type MatchState } from '../../../packages/domain/src/index';
 import { effectiveEventTime } from '../../../packages/application/src/sync';
 import type { RecordsState } from '../../../packages/application/src/records';
@@ -14,23 +14,30 @@ import type { ApiOptions } from './server';
 import type { CommunityState } from '../../../packages/application/src/community';
 import { runDuePostgresJobs } from '../../worker/src/postgres-jobs';
 import { runDueTeamNotifications } from '../../worker/src/notification-jobs';
+import { PostgresStore } from './postgres-store';
+import { applyRuntimeGrants } from './runtime-grants';
 
 const configuredUrl = process.env.LONGBALL_POSTGRES_TEST_URL;
-const at = Date.parse('2026-10-21T10:00:00Z');
+let at = Date.now();
 const running: Awaited<ReturnType<typeof createPostgresApi>>[] = [];
 const fixtures: { database: string; directory: string }[] = [];
+const workers: PostgresStore[] = [];
+const workerFixtureRoles: string[] = [];
 let admin: Pool;
 const teamUrl = `/v1/teams/${SYNTHETIC_IDS.teamId}`;
 const matchUrl = `/v1/matches/${SYNTHETIC_IDS.matchId}`;
 
 describe.skipIf(!configuredUrl)('real PostgreSQL HTTP runtime (requires disposable PostgreSQL)', () => {
   beforeAll(() => { admin = new Pool({ connectionString: configuredUrl, max: 2 }); });
+  beforeEach(() => { at = Date.now(); });
   afterEach(async () => {
+    for (const worker of workers.splice(0)) await worker.close();
     for (const api of running.splice(0)) { api.server.closeAllConnections(); await api.close(); }
     for (const fixture of fixtures.splice(0)) {
       await admin.query(`DROP DATABASE "${fixture.database}" WITH (FORCE)`);
       rmSync(fixture.directory, { recursive: true, force: true });
     }
+    for (const role of workerFixtureRoles.splice(0)) await admin.query(`DROP ROLE "${role}"`);
   });
   afterAll(async () => { await admin.end(); });
   async function start(connectionString?: string, directory?: string, overrides:Partial<ApiOptions>={}) {
@@ -41,7 +48,7 @@ describe.skipIf(!configuredUrl)('real PostgreSQL HTTP runtime (requires disposab
       await admin.query(`CREATE DATABASE "${database}"`);
       const url = new URL(configuredUrl!); url.pathname = `/${database}`; connectionString = url.href;
     }
-    const api = await createPostgresApi({ connectionString, databasePath: join(directory!, 'unused-sqlite-path'), mediaDirectory: join(directory!, 'private-media'), syntheticAuth: true, now: () => at, ...overrides });
+    const api = await createPostgresApi({ connectionString, databasePath: join(directory!, 'unused-sqlite-path'), mediaDirectory: join(directory!, 'private-media'), syntheticAuth: true, allowOwnerTestFixture:true, now: () => at, ...overrides });
     running.push(api);
     await new Promise<void>(resolve => api.server.listen(0, '127.0.0.1', resolve));
     const base = `http://127.0.0.1:${(api.server.address() as AddressInfo).port}`;
@@ -55,6 +62,19 @@ describe.skipIf(!configuredUrl)('real PostgreSQL HTTP runtime (requires disposab
       return { status: response.status, body: await response.json() as Record<string, unknown> };
     };
     return { api, call, base, connectionString, directory: directory! };
+  }
+  async function restrictedWorker(client: Awaited<ReturnType<typeof start>>) {
+    const suffix = randomUUID().replaceAll('-', '');
+    const roles = { apiRole: `lb_fixture_api_${suffix}`, workerRole: `lb_fixture_worker_${suffix}` };
+    for (const role of Object.values(roles)) {
+      await admin.query(`CREATE ROLE "${role}" LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS`);
+      workerFixtureRoles.push(role);
+    }
+    await applyRuntimeGrants(client.api.store.db, roles);
+    const url = new URL(client.connectionString); url.username = roles.workerRole; url.password = '';
+    const worker = await PostgresStore.open(url.href, client.api.store.now, { migrationMode: 'verify' });
+    workers.push(worker); await worker.assertRuntimeRole('worker');
+    return worker;
   }
   const event = (state: MatchState, details: Record<string, unknown>, sequence = 1, previousEventId: string | null = null, monotonicMs=0, anchorId='pg-clock-anchor'): EventEnvelope => {
     const id = randomUUID();
@@ -77,6 +97,8 @@ describe.skipIf(!configuredUrl)('real PostgreSQL HTTP runtime (requires disposab
     expect(await client.api.store.one('SELECT COUNT(*)::integer AS count FROM clock_mappings')).toEqual({count:1});
   });
   it('keeps accepted full time and the original deadline across late first sync, a sealed award and later conflicting history',async()=>{
+    // Record the historical match clock first; worker claims always observe the actual database clock.
+    at=Date.now()-6_660_100;
     let clock=at;const client=await start(undefined,undefined,{now:()=>clock,clockPolicy});
     expect((await client.call(`${teamUrl}/preparation`,{body:{command:{id:randomUUID(),expectedRevision:0,type:'fixture.saved',fixture:{id:SYNTHETIC_IDS.matchId,seasonId:SYNTHETIC_IDS.seasonId,opponent:'Fictional clock FC',playedDate:'2026-10-21',kickoff:'10:00',arrival:'09:30',venue:'Fictional pitch',homeAway:'home',format:7,plannedHalfDurationMs:1_500_000}}}})).status).toBe(200);
     expect((await client.call(`${teamUrl}/preparation`,{body:{command:{id:randomUUID(),expectedRevision:1,type:'fixture.prepared',fixtureId:SYNTHETIC_IDS.matchId,formationId:'formation-7'}}})).status).toBe(200);
@@ -93,7 +115,7 @@ describe.skipIf(!configuredUrl)('real PostgreSQL HTTP runtime (requires disposab
     const registered=await client.api.store.document<CommunityState>(SYNTHETIC_IDS.teamId,SYNTHETIC_IDS.seasonId,'community');const context=registered.matches.find(match=>match.id===SYNTHETIC_IDS.matchId)!;
     expect(context.actualFullTimeAtMs).toBe(at+3_000_055);expect(context.actualFullTimeAtMs).toBeLessThan(clock-3_600_000);expect(context.finalisationDeadlineAtMs).toBe(context.actualFullTimeAtMs!+3_600_000);expect(context.sharing).toBe('manager_only');expect(context.voteCutoffAtMs).toBeNull();
     const configured=await client.call(`${teamUrl}/community`,{body:{command:{id:randomUUID(),type:'award.cutoffConfigured',matchId:SYNTHETIC_IDS.matchId,minutesAfterFullTime:58}}});expect(configured.status).toBe(200);
-    expect(await runDuePostgresJobs(client.api.store,clock)).toEqual({completed:1,retried:0,failed:0});
+    expect(await runDuePostgresJobs(await restrictedWorker(client),Date.now())).toEqual({completed:1,retried:0,failed:0});
     const sealed=await client.api.store.document<CommunityState>(SYNTHETIC_IDS.teamId,SYNTHETIC_IDS.seasonId,'community');const original=sealed.matches.find(match=>match.id===SYNTHETIC_IDS.matchId)!;const award=sealed.awards.find(award=>award.matchId===SYNTHETIC_IDS.matchId)!;expect(award.deadlineMissed).toBe(true);
     const newId=randomUUID();const oldBranch={...events.at(-1)!,eventId:newId,clientSequence:sequence+1,previousEventId:previous,baseRevision:state.revision,engineVersion:'unrecognized-engine',command:{...events.at(-1)!.command,id:newId}};
     expect((await client.call(`${matchUrl}/events`,{controller,body:{events:[oldBranch]}})).status).toBe(409);
@@ -148,6 +170,7 @@ describe.skipIf(!configuredUrl)('real PostgreSQL HTTP runtime (requires disposab
     expect((await client.call(path,{token:'synthetic-manager-2'})).status).toBe(404);expect((await client.call(path,{token:'synthetic-account-player-01'})).status).toBe(404);expect((await client.call(path,{role:'manager'})).status).toBe(404);
     const roster=await client.call(path,{token:'synthetic-admin',role:'administrator'});expect(roster.status).toBe(200);expect(roster.body).toMatchObject({kind:'manager-roster',revision:0,activeTeamManagerCount:4,maximumManagers:4});
     const wire=JSON.stringify(roster.body);expect(wire).not.toContain('synthetic-player');expect(wire).not.toContain('synthetic-account-manager-5');expect(wire).not.toContain('synthetic-account-other-manager');expect(wire).not.toContain('subject');
+    await client.api.store.execute('INSERT INTO team_seasons(club_id,team_id,season_id) VALUES($1,$2,$3)',['synthetic-richmond-rovers',SYNTHETIC_IDS.teamId,'fictional-retained-season']);
     await client.api.store.execute("INSERT INTO memberships(account_id,team_id,season_id,role) VALUES($1,$2,$3,'manager')",['synthetic-account-manager-4',SYNTHETIC_IDS.teamId,'fictional-retained-season']);
     const key=randomUUID(),body={command:{id:key,type:'manager.revoked',expectedRevision:0,accountId:'synthetic-account-manager-4',reason:'Explicit departure from the requested season',confirmRevocation:true}};
     const revoked=await client.call(`${path}/revoke`,{token:'synthetic-admin',role:'administrator',key,body});expect(revoked.status).toBe(200);expect(revoked.body).toMatchObject({commandId:key,revision:1,remainingActiveTeamSeasons:['fictional-retained-season']});expect(await client.call(`${path}/revoke`,{token:'synthetic-admin',role:'administrator',key,body})).toEqual(revoked);
@@ -161,6 +184,7 @@ describe.skipIf(!configuredUrl)('real PostgreSQL HTTP runtime (requires disposab
   it('deduplicates explicitly scoped account requests across PostgreSQL pools and rechecks leave authority on retries',async()=>{
     const client=await start(),other=await start(client.connectionString,client.directory),path='/v1/privacy/requests',token='synthetic-account-player-01';
     expect((await client.call(path,{token,body:{kind:'leave_team'}})).status).toBe(400);expect((await client.call(path,{token,body:{kind:'delete_account'}})).status).toBe(400);expect((await client.call(path,{token,body:{kind:'leave_team',teamId:'synthetic-other-team',seasonId:SYNTHETIC_IDS.seasonId,confirmLeave:true}})).status).toBe(404);
+    await client.api.store.execute('INSERT INTO team_seasons(club_id,team_id,season_id) VALUES($1,$2,$3)',['synthetic-richmond-rovers',SYNTHETIC_IDS.teamId,'fictional-revoked-season']);
     await client.api.store.execute("INSERT INTO memberships(account_id,team_id,season_id,role,player_id,revoked_at) VALUES($1,$2,$3,'player',$4,$5)",[token,SYNTHETIC_IDS.teamId,'fictional-revoked-season','synthetic-player-01',at-1]);
     const body={kind:'export',scope:'all_memberships',confirmAllMemberships:true};const responses=await Promise.all([client.call(path,{token,body}),other.call(path,{token,body})]);expect(responses.map(item=>item.status)).toEqual([200,200]);expect(responses[0].body).toEqual(responses[1].body);expect(responses[0].body.affectedMemberships).toHaveLength(2);
     await client.api.store.execute("INSERT INTO privacy_requests(id,account_id,kind,status,created_at,affected_memberships_json) VALUES($1,$2,'export','pending_verification_and_policy',$3,$4)",['legacy-retained-export',token,at+1,JSON.stringify(responses[0].body.affectedMemberships)]);
@@ -173,6 +197,8 @@ describe.skipIf(!configuredUrl)('real PostgreSQL HTTP runtime (requires disposab
     expect(await client.api.store.one('SELECT status FROM accounts WHERE id=$1',[token])).toEqual({status:'active'});expect((await client.api.store.many('SELECT * FROM memberships WHERE account_id=$1',[token]))).toHaveLength(2);
   });
   it('joins only a sealed award summary and permitted published album count into current role-filtered reports and exports',async()=>{
+    // The accepted vote is historical; finalisation runs at actual time after its original cutoff.
+    at=Date.now()-600_001;
     let clock=at;const client=await start(undefined,undefined,{now:()=>clock});
     const records=await client.api.store.document<RecordsState>(SYNTHETIC_IDS.teamId,SYNTHETIC_IDS.seasonId,'records');const record=records.results[0];
     // An explicit fictional policy fixture exercises both allow/withhold paths; clients cannot approve it.
@@ -182,8 +208,10 @@ describe.skipIf(!configuredUrl)('real PostgreSQL HTTP runtime (requires disposab
     await client.api.store.transaction(async()=>{await client.api.store.saveDocument(SYNTHETIC_IDS.teamId,SYNTHETIC_IDS.seasonId,'records',records);await client.api.store.saveDocument(SYNTHETIC_IDS.teamId,SYNTHETIC_IDS.seasonId,'community',community);});
     expect((await client.call(`${teamUrl}/community`,{body:{command:{id:randomUUID(),type:'award.cutoffConfigured',matchId:record.id,minutesAfterFullTime:20}}})).status).toBe(200);
     const ballotId=randomUUID();expect((await client.call(`${teamUrl}/community`,{token:'synthetic-account-player-01',role:'player',body:{command:{id:ballotId,type:'ballot.cast',matchId:record.id,candidatePlayerId:'synthetic-player-02'}}})).status).toBe(200);
+    const queued=await client.api.store.document<CommunityState>(SYNTHETIC_IDS.teamId,SYNTHETIC_IDS.seasonId,'community');queued.matches.push({...queued.matches[0],id:'unclaimed-due-award-context',voteCutoffAtMs:at-1,cutoffSource:'explicit_fictional_setting'});await client.api.store.saveDocument(SYNTHETIC_IDS.teamId,SYNTHETIC_IDS.seasonId,'community',queued);
     const before=await client.call(`${teamUrl}/records`,{token:'synthetic-account-player-01',role:'player'});expect((before.body.matches as Record<string,unknown>[]).find(item=>item.matchId===record.id)).toMatchObject({award:null,publishedAlbum:{matchId:record.id,photoCount:1},communityStatus:'available'});
-    clock+=600_001;expect(await runDuePostgresJobs(client.api.store,clock)).toEqual({completed:1,retried:0,failed:0});
+    clock=Date.now();expect(await runDuePostgresJobs(await restrictedWorker(client),clock)).toEqual({completed:1,retried:0,failed:0});
+    expect((await client.api.store.document<CommunityState>(SYNTHETIC_IDS.teamId,SYNTHETIC_IDS.seasonId,'community')).awards.some(award=>award.matchId==='unclaimed-due-award-context')).toBe(false);
     for(const audience of [{token:'synthetic-manager-1',role:'manager'},{token:'synthetic-account-player-01',role:'player'},{token:'synthetic-spectator',role:'spectator'}]){
       const response=await client.call(`${teamUrl}/records`,audience);expect(response.status).toBe(200);const report=(response.body.matches as Record<string,unknown>[]).find(item=>item.matchId===record.id)!;
       expect(report).toMatchObject({communityStatus:'available',publishedAlbum:{matchId:record.id,photoCount:1},award:{matchId:record.id,result:'winners',winnerLabels:['Player 02'],deadlineMissed:false}});
@@ -222,7 +250,7 @@ describe.skipIf(!configuredUrl)('real PostgreSQL HTTP runtime (requires disposab
     const after=await client.call(`${teamUrl}/preparation`);expect((after.body.fixtures as {id:string}[]).some(item=>item.id==='fictional-rolled-back-notification')).toBe(false);expect(after.body.revision).toBe(2);expect(await client.api.store.one('SELECT key FROM idempotency WHERE key=$1',[rejectedKey])).toBeUndefined();
     await client.api.store.db.query('DROP TRIGGER reject_notification_test ON jobs');
     expect((await client.call(`${teamUrl}/preparation`,{key:rejectedKey,body:rejectedBody})).status).toBe(200);
-    const dispatched=await runDueTeamNotifications(client.api.store,{now:()=>at,maximum:3});expect(dispatched.accepted).toBe(0);expect(dispatched.blocked+dispatched.suppressed).toBe(3);
+    const dispatched=await runDueTeamNotifications(await restrictedWorker(client),{now:()=>at,maximum:3});expect(dispatched.accepted).toBe(0);expect(dispatched.blocked+dispatched.suppressed).toBe(3);
     expect(await client.api.store.one("SELECT COUNT(*)::integer AS count FROM jobs WHERE kind='notification.dispatch' AND state='completed'")).toEqual({count:0});
   });
   it('uses real PostgreSQL JSONB/FKs and filters auth, team, own-player and selected-role access', async () => {

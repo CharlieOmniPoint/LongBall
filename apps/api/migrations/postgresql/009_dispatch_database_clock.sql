@@ -1,0 +1,12 @@
+-- Dispatch authority uses the independent database clock, never caller-selected future time.
+CREATE OR REPLACE FUNCTION worker_job_valid(c text,t text,s text) RETURNS boolean LANGUAGE sql VOLATILE SECURITY DEFINER SET search_path=pg_catalog,longball AS $$ SELECT longball.runtime_purpose() ='worker' AND longball.context_json()->>'kind'='worker_job' AND longball.context_json()->>'clubId'=c AND longball.context_json()->>'teamId'=t AND longball.context_json()->>'seasonId'=s AND EXISTS(SELECT 1 FROM longball.jobs j WHERE j.id=longball.context_json()->>'jobId' AND j.club_id=c AND j.team_id=t AND j.season_id=s AND j.state='leased' AND j.due_at<=floor(extract(epoch FROM clock_timestamp())*1000)::bigint AND j.lease_until<=floor(extract(epoch FROM clock_timestamp())*1000)::bigint+30000 AND j.lease_until>longball.context_now() AND j.lease_token_hash=encode(sha256(convert_to(longball.context_json()->>'leaseToken','UTF8')),'hex')) $$;
+CREATE OR REPLACE FUNCTION claim_due_job(p_kind text,p_now bigint,p_capability text) RETURNS SETOF jobs LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path=pg_catalog,longball AS $fn$
+DECLARE selected_id text; clock_now bigint:=floor(extract(epoch FROM clock_timestamp())*1000)::bigint; BEGIN
+ IF longball.runtime_purpose()<>'worker' OR longball.runtime_purpose() IS NULL OR longball.context_json()->>'kind' IS DISTINCT FROM 'worker_claim' OR p_kind IS NULL OR p_kind NOT IN('award.finalise','notification.dispatch') OR p_kind IS DISTINCT FROM longball.context_json()->>'jobKind' OR p_now IS NULL OR p_now IS DISTINCT FROM (longball.context_json()->>'nowMs')::bigint OR p_capability IS NULL OR p_capability !~ '^[a-f0-9]{64}$' THEN RAISE EXCEPTION 'Job claim unavailable' USING ERRCODE='42501'; END IF;
+ IF p_now<clock_now-30000 OR p_now>clock_now+30000 THEN RAISE EXCEPTION 'Worker clock observation unavailable' USING ERRCODE='42501'; END IF;
+ SELECT j.id INTO selected_id FROM longball.jobs j WHERE j.kind=p_kind AND j.club_id IS NOT NULL AND ((j.state='pending' AND j.due_at<=clock_now) OR (j.state='leased' AND j.lease_until<=clock_now)) ORDER BY j.due_at,j.id FOR UPDATE SKIP LOCKED LIMIT 1;
+ IF selected_id IS NULL THEN RETURN; END IF;
+ UPDATE longball.jobs SET state='leased',lease_until=clock_now+30000,lease_token_hash=encode(sha256(convert_to(p_capability,'UTF8')),'hex') WHERE id=selected_id;
+ RETURN QUERY SELECT * FROM longball.jobs WHERE id=selected_id;
+END $fn$;
+REVOKE ALL ON FUNCTION claim_due_job(text,bigint,text) FROM PUBLIC;
