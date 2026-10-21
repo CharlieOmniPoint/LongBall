@@ -844,6 +844,7 @@ function WorkspaceSession({
   const [serviceMatchId, setServiceMatchId] = useState(
     props.match?.config.matchId ?? "",
   );
+  const [matchFocused, setMatchFocused] = useState(false);
   const oidcSessionId = oidcSession?.sessionId;
   const oidcAccountId = oidcSession?.accountId;
   const oidcIssuer = oidcSession?.issuer;
@@ -2117,6 +2118,7 @@ function WorkspaceSession({
       setStaff(null);
       setBranding(null);
       setServiceMatchId("");
+      setMatchFocused(false);
       setSelectedReportMatchId(null);
       setCommunityInitialSection("photos");
       setRoleChoice(role);
@@ -2255,9 +2257,19 @@ function WorkspaceSession({
         authorised branding view.
       </Notice>
     );
+  const focusedMatch = Boolean(props.initialConnection && manager && tab === "controller" && matchFocused);
   return (
     <View style={s.stack} testID="workspace-session">
       <Card style={{ padding: 12 }}>
+        {focusedMatch && (
+          <View style={s.row} testID="workspace-match-header">
+            <Button label="Back to team; clock continues" testID="workspace-back-to-team" variant="quiet" icon="left" disabled={disabled} onPress={() => setTab("home")} />
+            <Button label="Account and security" testID="workspace-match-account" variant="quiet" icon="lock" onPress={() => guardNavigation(props.onOpenAccount ?? (() => setTab("account")))} />
+          </View>
+        )}
+        {!focusedMatch && manager && matchFocused && serviceMatchId && (
+          <Button label="Return to selected match" testID="workspace-return-to-match" variant="secondary" disabled={disabled} onPress={() => setTab("controller")} />
+        )}
         <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
           {branding && brandClient && brandScopeKey && (
             <AuthenticatedBrandBadge
@@ -2563,7 +2575,7 @@ function WorkspaceSession({
       </Card>
       {expectedBinding && membership && (
         <View testID="workspace-context-ready">
-          <WorkspaceNavigation
+          {!focusedMatch && <WorkspaceNavigation
             role={membership.role}
             active={tab}
             disabled={disabled}
@@ -2582,7 +2594,7 @@ function WorkspaceSession({
                 }
               }
             }}
-          />
+          />}
         </View>
       )}
       {tab === "more" && expectedBinding && (
@@ -2660,6 +2672,7 @@ function WorkspaceSession({
             props.journal && props.deviceId
               ? (matchId: string) => {
                   setServiceMatchId(matchId);
+                  setMatchFocused(true);
                   setTab("controller");
                 }
               : undefined
@@ -2886,6 +2899,7 @@ function WorkspaceSession({
               props.journal && props.deviceId
                 ? (fixtureId) => {
                     setServiceMatchId(fixtureId);
+                    setMatchFocused(true);
                     setTab("controller");
                   }
                 : undefined
@@ -2969,6 +2983,7 @@ function WorkspaceSession({
               manager && props.journal && props.deviceId
                 ? (matchId) => {
                     setServiceMatchId(matchId);
+                    setMatchFocused(true);
                     setTab("controller");
                   }
                 : undefined
@@ -3049,7 +3064,7 @@ function WorkspaceSession({
         )}
       {tab === "controller" && manager && props.journal && props.deviceId && (
         <View style={s.stack}>
-          <Card>
+          {!focusedMatch && <Card>
             <Text style={typography.section}>Choose the service match</Text>
             <Text style={typography.body}>
               Open a prepared fixture or enter an existing accepted match
@@ -3077,10 +3092,10 @@ function WorkspaceSession({
                   variant={
                     serviceMatchId === fixture.id ? "primary" : "secondary"
                   }
-                  onPress={() => setServiceMatchId(fixture.id)}
+                  onPress={() => { setServiceMatchId(fixture.id); setMatchFocused(true); }}
                 />
               ))}
-          </Card>
+          </Card>}
           {teamId && seasonId && serviceMatchId.trim() ? (
             <ServicePanel
               key={`${teamId}:${seasonId}:${serviceMatchId.trim()}`}

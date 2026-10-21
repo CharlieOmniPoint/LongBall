@@ -41,6 +41,8 @@ try {
   await page.getByRole('button', { name: 'Open fixture Maple FC, 2026-10-24', exact: true }).click();
   await page.getByTestId('preparation-open-match').click();
   await page.getByTestId('recording-acquire').waitFor();
+  await page.getByTestId('workspace-match-header').waitFor();
+  assert.equal(await page.getByTestId('workspace-tab-home').count(), 0, 'The focused match console must hide team navigation');
   const initial = await readAccepted();
   assert.equal(initial.acceptedRevision, 0);
   const match = initial.state ?? initial.acceptedState ?? initial.match;
@@ -82,6 +84,10 @@ try {
   await page.getByTestId('connected-match-live').click();
   await button('Review kickoff').click();
   await button('Confirm the actual event now').click();
+  await page.getByTestId('workspace-back-to-team').click();
+  await page.getByTestId('workspace-manager-home').waitFor();
+  await page.getByTestId('workspace-return-to-match').click();
+  await page.getByTestId('connected-match-live').click();
   await button('Review referee pause').click();
   await button('Confirm the actual event now').click();
   await page.getByTestId('recording-upload').click();
@@ -93,7 +99,7 @@ try {
   assert.equal(saved.config.selectedPlayerIds.filter(id => saved.attendance[id] === 'present').length, match.config.selectedPlayerIds.length);
   assert(saved.matchActiveMs >= 0);
   assert.deepEqual(saved.score, { for: 0, against: 0 });
-  checks.push('Explicit kickoff and referee pause go through the existing confirmation, journal and canonical upload; a separate HTTP read verifies accepted attendance, lineup, time and unchanged score.');
+  checks.push('The focused match hides team navigation; Back to team and return preserve the running clock without another event. Explicit kickoff and referee pause use the existing confirmation, journal and canonical upload; an independent HTTP read verifies accepted attendance, lineup, time and unchanged score.');
   assert.deepEqual(errors, []);
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
   await page.screenshot({ path: `${directory}/accepted-match-clock-390.png`, fullPage: true, animations: 'disabled' });
