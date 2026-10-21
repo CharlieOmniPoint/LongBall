@@ -56,15 +56,17 @@ server_pid=$!
 tunnel_pid=$!
 
 for attempt in {1..90}; do
-  PREVIEW_URL="$(sed -nE 's/.*(https:\/\/[a-z0-9-]+\.trycloudflare\.com).*/\1/p' /tmp/longball-tunnel.log | head -1)"
+  PREVIEW_URL="$(sed -nE 's/.*(https:\/\/[a-z0-9-]+\.trycloudflare\.com).*/\1/p' /tmp/longball-tunnel.log | sed '/^https:\/\/api\.trycloudflare\.com$/d' | head -1)"
   if [[ -n "$PREVIEW_URL" ]] && curl --silent --fail --connect-timeout 3 --max-time 5 "$PREVIEW_URL" >/tmp/longball-public.html; then
     if rg -q 'LongBall' /tmp/longball-public.html; then break; fi
   fi
   if ! kill -0 "$tunnel_pid" 2>/dev/null; then cat /tmp/longball-tunnel.log; exit 1; fi
   sleep 2
 done
-test -n "$PREVIEW_URL"
-rg -q 'LongBall' /tmp/longball-public.html
+if [[ -z "$PREVIEW_URL" ]] || ! rg -q 'LongBall' /tmp/longball-public.html; then
+  cat /tmp/longball-tunnel.log /tmp/longball-http.log
+  exit 1
+fi
 export PREVIEW_URL
 export PREVIEW_STARTED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 export PREVIEW_EXPIRES_AT="$(date -u -d '+60 minutes' +%Y-%m-%dT%H:%M:%SZ)"
