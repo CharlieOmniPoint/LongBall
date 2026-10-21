@@ -1,12 +1,11 @@
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
-import { Buffer } from 'node:buffer';
 import { spawn } from 'node:child_process';
 import { existsSync, createWriteStream } from 'node:fs';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { chromium } from 'playwright';
 import { enterFictionalReview, openWorkspaceTab } from './review-entry.mjs';
+import { captureReviewArtifacts, assertReviewArtifactsUnchanged, assertReviewApiPortAvailable } from './review-artifacts.mjs';
 
 // Transport-only discovery redirect to a new isolated fictional API. No match state injection.
 const baseURL = process.env.LONGBALL_REVIEW_BASE_URL ?? 'http://127.0.0.1:4390';
@@ -17,8 +16,8 @@ const tunnel = 'https://longball-policy-review.trycloudflare.com';
 const matchId = 'synthetic-roma-maple-2026-10-24';
 const accountId = 'synthetic-account-manager-2';
 await mkdir(directory, { recursive: true });
-assert(['127.0.0.1', 'localhost'].includes(new URL(api).hostname));
-try { await fetch(`${api}/health`); assert.fail('Requested API port is occupied. Preserve the listener and choose an explicitly different isolated port.'); } catch (error) { if (error.code === 'ERR_ASSERTION') throw error; }
+await assertReviewApiPortAvailable(api);
+const artifacts = await captureReviewArtifacts(baseURL, apiEntry);
 const runId = Date.now();
 const log = createWriteStream(path.join(directory, `${runId}-api.log`));
 const server = spawn(process.execPath, [apiEntry], { env: { ...process.env, NODE_ENV: 'development', LONGBALL_SYNTHETIC_AUTH: '1', LONGBALL_DATABASE_URL: '', LONGBALL_DATABASE_URL_FILE: '', LONGBALL_API_HOST: '127.0.0.1', LONGBALL_API_PORT: new URL(api).port, LONGBALL_API_DATABASE: path.join(directory, `${runId}.sqlite`), LONGBALL_MEDIA_DIRECTORY: path.join(directory, `${runId}-media`), LONGBALL_API_ORIGINS: new URL(baseURL).origin }, stdio: ['ignore', 'pipe', 'pipe'] });
@@ -134,12 +133,12 @@ try {
   assert.deepEqual(errors, []);
   assert.equal(await b.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
   await b.screenshot({ path: path.join(directory, 'accepted-policy-after-handover.png'), fullPage: true, animations: 'disabled' });
-  const html = await (await fetch(baseURL)).text(), bundle = /src="([^\"]*\/index-[^\"]+\.js)"/.exec(html)?.[1];
-  const report = { status: 'passed', checkedAt: new Date().toISOString(), baseURL, api, checks, acceptedRevision: final.acceptedRevision, policyHistory: final.state.policyHistory, browserErrors: errors, artifacts: { web: { entry: bundle, sha256: createHash('sha256').update(Buffer.from(await (await fetch(new URL(bundle, baseURL))).arrayBuffer())).digest('hex') }, api: { entry: apiEntry, sha256: createHash('sha256').update(await readFile(apiEntry)).digest('hex') } }, limitations: ['Fictional development accounts and transport-only discovery redirect to loopback.', 'Browser evidence does not establish native encrypted storage, physical clocks, background reminders or real identity-provider sign-in.', 'Q07 keeper transitions remain unapproved and refused.'] };
+  await assertReviewArtifactsUnchanged(artifacts, baseURL, apiEntry);
+  const report = { status: 'passed', checkedAt: new Date().toISOString(), baseURL, api, checks, acceptedRevision: final.acceptedRevision, policyHistory: final.state.policyHistory, browserErrors: errors, artifacts, limitations: ['Fictional development accounts and transport-only discovery redirect to loopback.', 'Browser evidence does not establish native encrypted storage, physical clocks, background reminders or real identity-provider sign-in.', 'Q07 keeper transitions remain unapproved and refused.'] };
   await writeFile(path.join(directory, 'report.json'), JSON.stringify(report, null, 2) + '\n');
   console.log(JSON.stringify({ status: report.status, checks, artifacts: report.artifacts, acceptedRevision: report.acceptedRevision }, null, 2));
 } catch (error) {
   await pages.at(-1)?.screenshot({ path: path.join(directory, 'failed.png'), fullPage: true }).catch(() => {});
-  await writeFile(path.join(directory, 'failure.json'), JSON.stringify({ checks, error: String(error), errors }, null, 2) + '\n');
+  await writeFile(path.join(directory, 'failure.json'), JSON.stringify({ artifacts, checks, error: String(error), errors }, null, 2) + '\n');
   throw error;
 } finally { await browser.close(); server.kill('SIGTERM'); log.end(); }

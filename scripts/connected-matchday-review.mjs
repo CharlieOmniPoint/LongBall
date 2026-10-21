@@ -3,15 +3,19 @@ import { spawn } from 'node:child_process';
 import { existsSync, createWriteStream } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { chromium } from 'playwright';
+import { captureReviewArtifacts, assertReviewArtifactsUnchanged, assertReviewApiPortAvailable } from './review-artifacts.mjs';
 import { enterFictionalReview, openWorkspaceTab } from './review-entry.mjs';
 
 const baseURL = process.env.LONGBALL_REVIEW_BASE_URL ?? 'http://127.0.0.1:4173';
-const api = 'http://127.0.0.1:4360', tunnel = 'https://longball-matchday-review.trycloudflare.com';
-const directory = '.local/connected-matchday-review', matchId = 'synthetic-roma-maple-2026-10-24';
+const api = process.env.LONGBALL_REVIEW_API_URL ?? 'http://127.0.0.1:4360', tunnel = 'https://longball-matchday-review.trycloudflare.com';
+const apiEntry = process.env.LONGBALL_REVIEW_API_ENTRY ?? 'apps/api/dist/api.mjs';
+const directory = process.env.LONGBALL_REVIEW_OUTPUT ?? '.local/connected-matchday-review', matchId = 'synthetic-roma-maple-2026-10-24';
 const token = 'synthetic-manager-2';
+await assertReviewApiPortAvailable(api);
+const artifacts = await captureReviewArtifacts(baseURL, apiEntry);
 await mkdir(directory, { recursive: true });
 const id = Date.now(), log = createWriteStream(`${directory}/${id}-api.log`);
-const server = spawn(process.execPath, ['apps/api/dist/api.mjs'], { env: { ...process.env, NODE_ENV: 'development', LONGBALL_SYNTHETIC_AUTH: '1', LONGBALL_DATABASE_URL: '', LONGBALL_DATABASE_URL_FILE: '', LONGBALL_API_HOST: '127.0.0.1', LONGBALL_API_PORT: '4360', LONGBALL_API_DATABASE: `${directory}/${id}.sqlite`, LONGBALL_MEDIA_DIRECTORY: `${directory}/${id}-media`, LONGBALL_API_ORIGINS: new URL(baseURL).origin, LONGBALL_FICTIONAL_CLOCK_POLICY: JSON.stringify({ id: 'fictional-connected-matchday-clock-v1', serverClockUncertaintyMs: 1000, maximumRoundTripMs: 5000, maximumMappingAgeMs: 3600000, maximumUncertaintyMs: 3000, maximumDriftPpm: 100 }) }, stdio: ['ignore', 'pipe', 'pipe'] });
+const server = spawn(process.execPath, [apiEntry], { env: { ...process.env, NODE_ENV: 'development', LONGBALL_SYNTHETIC_AUTH: '1', LONGBALL_DATABASE_URL: '', LONGBALL_DATABASE_URL_FILE: '', LONGBALL_API_HOST: '127.0.0.1', LONGBALL_API_PORT: new URL(api).port, LONGBALL_API_DATABASE: `${directory}/${id}.sqlite`, LONGBALL_MEDIA_DIRECTORY: `${directory}/${id}-media`, LONGBALL_API_ORIGINS: new URL(baseURL).origin, LONGBALL_FICTIONAL_CLOCK_POLICY: JSON.stringify({ id: 'fictional-connected-matchday-clock-v1', serverClockUncertaintyMs: 1000, maximumRoundTripMs: 5000, maximumMappingAgeMs: 3600000, maximumUncertaintyMs: 3000, maximumDriftPpm: 100 }) }, stdio: ['ignore', 'pipe', 'pipe'] });
 server.stdout.pipe(log); server.stderr.pipe(log);
 const browser = await chromium.launch({ executablePath: process.env.LONGBALL_CHROMIUM_PATH ?? (existsSync('/usr/bin/chromium') ? '/usr/bin/chromium' : undefined), headless: true, args: ['--no-sandbox'] });
 const page = await browser.newPage({ viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' });
@@ -101,12 +105,13 @@ try {
   assert.deepEqual(saved.score, { for: 0, against: 0 });
   checks.push('The focused match hides team navigation; Back to team and return preserve the running clock without another event. Explicit kickoff and referee pause use the existing confirmation, journal and canonical upload; an independent HTTP read verifies accepted attendance, lineup, time and unchanged score.');
   assert.deepEqual(errors, []);
+  await assertReviewArtifactsUnchanged(artifacts, baseURL, apiEntry);
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
   await page.screenshot({ path: `${directory}/accepted-match-clock-390.png`, fullPage: true, animations: 'disabled' });
-  await writeFile(`${directory}/report.json`, JSON.stringify({ passed: true, checkedAt: new Date().toISOString(), checks, acceptedRevision: accepted.acceptedRevision, acceptedStatus: saved.status, browserErrors: errors, fixture: 'Isolated fictional SQLite; transport-only discovery redirect; actual HTTP commands, no state injection', nativeDeviceEvidence: false }, null, 2) + '\n');
+  await writeFile(`${directory}/report.json`, JSON.stringify({ passed: true, checkedAt: new Date().toISOString(), artifacts, checks, acceptedRevision: accepted.acceptedRevision, acceptedStatus: saved.status, browserErrors: errors, fixture: 'Isolated fictional SQLite; transport-only discovery redirect; actual HTTP commands, no state injection', nativeDeviceEvidence: false }, null, 2) + '\n');
   console.log(JSON.stringify({ passed: true, checks: checks.length, acceptedRevision: accepted.acceptedRevision }));
 } catch (error) {
   await page.screenshot({ path: `${directory}/failed.png`, fullPage: true }).catch(() => {});
-  await writeFile(`${directory}/failure.json`, JSON.stringify({ checks, error: String(error), errors }, null, 2) + '\n');
+  await writeFile(`${directory}/failure.json`, JSON.stringify({ artifacts, checks, error: String(error), errors }, null, 2) + '\n');
   throw error;
 } finally { await browser.close(); server.kill('SIGTERM'); log.end(); }

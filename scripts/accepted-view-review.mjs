@@ -1,32 +1,33 @@
 import assert from "node:assert/strict";
-import { randomUUID, createHash } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { spawn } from "node:child_process";
 import { createWriteStream } from "node:fs";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { chromium } from "playwright";
+import { captureReviewArtifacts, assertReviewArtifactsUnchanged, assertReviewApiPortAvailable } from "./review-artifacts.mjs";
 import {
   enterFictionalReview,
   openWorkspaceTab,
   selectWorkspaceContext,
 } from "./review-entry.mjs";
 
-const baseURL = "http://127.0.0.1:4384",
-  api = "http://127.0.0.1:4385",
+const baseURL = process.env.LONGBALL_REVIEW_BASE_URL ?? "http://127.0.0.1:4384",
+  api = process.env.LONGBALL_REVIEW_API_URL ?? "http://127.0.0.1:4385",
   tunnel = "https://longball-accepted-view-review.trycloudflare.com";
 const matchId = "synthetic-roma-maple-2026-10-24",
   teamId = "synthetic-roma-u10",
   seasonId = "synthetic-season-2026-27",
   aliasA = "accepted-view-phone-a";
-const directory = path.resolve(
-  ".local/accepted-view-review",
-  `${Date.now()}-${randomUUID().slice(0, 8)}`,
-);
+const apiEntry = process.env.LONGBALL_REVIEW_API_ENTRY ?? "apps/api/dist/api.mjs";
+const directory = path.resolve(process.env.LONGBALL_REVIEW_OUTPUT ?? path.join(".local/accepted-view-review", `${Date.now()}-${randomUUID().slice(0, 8)}`));
+await assertReviewApiPortAvailable(api);
+if (!process.env.LONGBALL_REVIEW_BASE_URL) await assertReviewApiPortAvailable(baseURL);
 await mkdir(directory, { recursive: true });
 const log = createWriteStream(path.join(directory, "api.log"));
 const server = spawn(
   process.execPath,
-  ["--import", "tsx", "apps/api/src/main.ts"],
+  [apiEntry],
   {
     env: {
       ...process.env,
@@ -35,9 +36,9 @@ const server = spawn(
       LONGBALL_DATABASE_URL: "",
       LONGBALL_DATABASE_URL_FILE: "",
       LONGBALL_API_HOST: "127.0.0.1",
-      LONGBALL_API_PORT: "4385",
+      LONGBALL_API_PORT: new URL(api).port,
       LONGBALL_API_DATABASE: path.join(directory, "service.sqlite"),
-      LONGBALL_API_ORIGINS: baseURL,
+      LONGBALL_API_ORIGINS: new URL(baseURL).origin,
       LONGBALL_CLAMD_HOST: "",
       LONGBALL_CLAMD_SOCKET: "",
       LONGBALL_CLAMD_PORT: "",
@@ -47,7 +48,7 @@ const server = spawn(
 );
 server.stdout.pipe(log);
 server.stderr.pipe(log);
-const staticServer = spawn(
+const staticServer = process.env.LONGBALL_REVIEW_BASE_URL ? null : spawn(
   "python3",
   [
     "-m",
@@ -60,7 +61,7 @@ const staticServer = spawn(
   ],
   { stdio: "ignore" },
 );
-let browser, activePage;
+let browser, activePage, artifacts;
 const checks = [],
   errors = [];
 async function poll(read, accepts, label) {
@@ -165,6 +166,7 @@ try {
     Boolean,
     "Owned isolated services start",
   );
+  artifacts = await captureReviewArtifacts(baseURL, apiEntry);
   const preparationPath = `/v1/teams/${teamId}/preparation?seasonId=${seasonId}`,
     preparation = (await http(preparationPath)).body;
   assert.equal(
@@ -276,7 +278,7 @@ try {
       response,
       headers: {
         ...response.headers(),
-        "access-control-allow-origin": baseURL,
+        "access-control-allow-origin": new URL(baseURL).origin,
       },
     });
   });
@@ -390,21 +392,15 @@ try {
     "390px former recorder refreshes to Viewing after transfer, without editing controls or changes to the accepted lineup",
   );
   assert.deepEqual(errors, []);
-  const html = await readFile(".local/accepted-view-web/index.html", "utf8"),
-    bundle = html.match(/src="([^"]+\.js)"/)?.[1];
+  await assertReviewArtifactsUnchanged(artifacts, baseURL, apiEntry);
   const report = {
     status: "passed",
     completedAt: new Date().toISOString(),
     checks,
     errors,
-    webBundle: bundle,
-    webSha256: createHash("sha256")
-      .update(
-        await readFile(
-          path.join(".local/accepted-view-web", bundle.replace(/^\//, "")),
-        ),
-      )
-      .digest("hex"),
+    artifacts,
+    webBundle: artifacts.web.entry,
+    webSha256: artifacts.web.sha256,
     limitations: [
       "Fictional browser controller storage and public identities; not native storage or real authentication proof",
       "No running transfer, referee clock pause, message or notification was introduced",
@@ -424,12 +420,12 @@ try {
     .catch(() => {});
   await writeFile(
     path.join(directory, "failure.json"),
-    JSON.stringify({ message: error.message, checks, errors }, null, 2),
+    JSON.stringify({ artifacts, message: error.message, checks, errors }, null, 2),
   );
   throw error;
 } finally {
   await browser?.close();
   server.kill("SIGTERM");
-  staticServer.kill("SIGTERM");
+  staticServer?.kill("SIGTERM");
   log.end();
 }

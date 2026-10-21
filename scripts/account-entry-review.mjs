@@ -3,17 +3,21 @@ import { spawn } from 'node:child_process';
 import { existsSync, createWriteStream } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { chromium } from 'playwright';
+import { captureReviewArtifacts, assertReviewArtifactsUnchanged, assertReviewApiPortAvailable } from './review-artifacts.mjs';
 
 // Real UI and isolated fictional HTTP API; only published service discovery is redirected locally.
 const baseURL = process.env.LONGBALL_REVIEW_BASE_URL ?? 'http://127.0.0.1:4173';
-const api = 'http://127.0.0.1:4358';
+const api = process.env.LONGBALL_REVIEW_API_URL ?? 'http://127.0.0.1:4358';
+const apiEntry = process.env.LONGBALL_REVIEW_API_ENTRY ?? 'apps/api/dist/api.mjs';
 const tunnel = 'https://longball-entry-review.trycloudflare.com';
-const directory = '.local/account-entry-review';
+const directory = process.env.LONGBALL_REVIEW_OUTPUT ?? '.local/account-entry-review';
 const checks = [], errors = [];
+await assertReviewApiPortAvailable(api);
+const artifacts = await captureReviewArtifacts(baseURL, apiEntry);
 await mkdir(directory, { recursive: true });
 const id = Date.now();
 const log = createWriteStream(`${directory}/${id}-api.log`);
-const server = spawn(process.execPath, ['apps/api/dist/api.mjs'], { env: { ...process.env, NODE_ENV: 'development', LONGBALL_SYNTHETIC_AUTH: '1', LONGBALL_DATABASE_URL: '', LONGBALL_DATABASE_URL_FILE: '', LONGBALL_API_HOST: '127.0.0.1', LONGBALL_API_PORT: '4358', LONGBALL_API_DATABASE: `${directory}/${id}.sqlite`, LONGBALL_MEDIA_DIRECTORY: `${directory}/${id}-media`, LONGBALL_API_ORIGINS: new URL(baseURL).origin, LONGBALL_CLAMD_SOCKET: '', LONGBALL_CLAMD_HOST: '', LONGBALL_CLAMD_PORT: '' }, stdio: ['ignore', 'pipe', 'pipe'] });
+const server = spawn(process.execPath, [apiEntry], { env: { ...process.env, NODE_ENV: 'development', LONGBALL_SYNTHETIC_AUTH: '1', LONGBALL_DATABASE_URL: '', LONGBALL_DATABASE_URL_FILE: '', LONGBALL_API_HOST: '127.0.0.1', LONGBALL_API_PORT: new URL(api).port, LONGBALL_API_DATABASE: `${directory}/${id}.sqlite`, LONGBALL_MEDIA_DIRECTORY: `${directory}/${id}-media`, LONGBALL_API_ORIGINS: new URL(baseURL).origin, LONGBALL_CLAMD_SOCKET: '', LONGBALL_CLAMD_HOST: '', LONGBALL_CLAMD_PORT: '' }, stdio: ['ignore', 'pipe', 'pipe'] });
 server.stdout.pipe(log); server.stderr.pipe(log);
 const browser = await chromium.launch({ executablePath: process.env.LONGBALL_CHROMIUM_PATH ?? (existsSync('/usr/bin/chromium') ? '/usr/bin/chromium' : undefined), headless: true, args: ['--no-sandbox'] });
 try {
@@ -75,9 +79,11 @@ try {
     }
   }
   assert.deepEqual(errors, []);
-  await writeFile(`${directory}/report.json`, JSON.stringify({ passed: true, serviceDiscovery: 'Pinned status and tunnel requests routed to isolated local fictional HTTP service; no production identity simulation', checks, runtimeErrors: errors }, null, 2) + '\n');
+  await assertReviewArtifactsUnchanged(artifacts, baseURL, apiEntry);
+  await writeFile(`${directory}/report.json`, JSON.stringify({ passed: true, checkedAt: new Date().toISOString(), artifacts, serviceDiscovery: 'Pinned status and tunnel requests routed to isolated local fictional HTTP service; no production identity simulation', checks, runtimeErrors: errors }, null, 2) + '\n');
   console.log(JSON.stringify({ passed: true, journeys: checks.length, widths: [320, 390], roles: ['manager', 'administrator', 'player', 'spectator'] }));
 } catch (error) {
+  await writeFile(`${directory}/failure.json`, JSON.stringify({ artifacts, checks, error: String(error), errors }, null, 2) + '\n');
   for (const context of browser.contexts()) for (const page of context.pages()) await page.screenshot({ path: `${directory}/failed.png`, fullPage: true }).catch(() => {});
   throw error;
 } finally {
