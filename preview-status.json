@@ -1,9 +1,9 @@
 {
-  "state": "starting",
-  "url": "",
+  "state": "ready",
+  "url": "https://conditional-runner-belief-delivery.trycloudflare.com",
   "sourceRevision": "bb3965bd478934dcede62b1cbcc30d647bed2d70",
   "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/39664214764",
-  "startedAt": "2026-10-21T19:48:14Z",
-  "expiresAt": "",
+  "startedAt": "2026-10-21T19:48:46Z",
+  "expiresAt": "2026-10-22T00:48:46Z",
   "audience": "Adult review of fictional Roma U10 data only"
 }
