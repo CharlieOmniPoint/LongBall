@@ -1,5 +1,5 @@
 {
-  "state": "ready",
+  "state": "stopped",
   "url": "https://circular-quizzes-trunk-pct.trycloudflare.com",
   "sourceRevision": "9141b8a0a96c30ed53ab1cfebd284651e5fa2bc1",
   "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/39615563105",
