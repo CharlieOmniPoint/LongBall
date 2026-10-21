@@ -211,16 +211,16 @@ successful local signing and device launch are not yet proved.
 The separate [iPhoneOS template](../../infra/ci/native-ios-device.yml) targets
 `preview/native-ios-device`, with marker `preview/ios-device-build-request.txt`
 containing sourceHead `c71f19dcea05f76adb0f7b5a4e2afb621d49bd40`, fictionalOnly
-`true` and requestId `ios-physical-c71-v2`. It reuses standard macOS 15/Xcode 26.3
+`true` and requestId `ios-physical-c71-v4`. It uses the standard free `macos-15-intel` host with Xcode 26.3
 and CocoaPods 1.17.0, checks the exact source and bundle hashes, and records the
 allowlisted notification configuration's before/after hashes and one-file diff.
 It produces an **unsigned candidate**, bounded to 250 MiB with one-day retention,
 without an Apple account, signing certificate or provisioning profile. No
 unsigned-device build result is implied merely by this template being present.
 
-The first actual candidate build is now running in
-[run39612410823](https://github.com/CharlieOmniPoint/LongBall/actions/runs/39612410823)
-from isolated transport commit `b644b5050fad512487d68d27f0c662e05c39a409`.
+The current candidate attempt is
+[run39616024656](https://github.com/CharlieOmniPoint/LongBall/actions/runs/39616024656)
+from isolated transport commit `100635dd137b959b48c79ecd04b121835de1e298`.
 Its declared local-notification-only configuration is part of the provenance;
 this is not the unmodified production entitlement configuration. Until the run
 passes and its artifact is verified, no iPhoneOS IPA is available from this kit.

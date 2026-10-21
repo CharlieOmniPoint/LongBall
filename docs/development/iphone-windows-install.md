@@ -1,7 +1,7 @@
 # Install the fictional iPhone kit from Windows
 
 A Windows PC and iPhone are available. **The verified IPA is pending** in
-[build 39612410823](https://github.com/CharlieOmniPoint/LongBall/actions/runs/39612410823).
+[build 39616024656](https://github.com/CharlieOmniPoint/LongBall/actions/runs/39616024656).
 Wait for its successful build, verified artifact link and IPA SHA256 before
 signing. The Simulator app cannot run on iPhone. LongBall signing/install on the
 owner’s PC and phone remains unproved.

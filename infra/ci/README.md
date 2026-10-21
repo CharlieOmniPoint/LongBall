@@ -93,14 +93,21 @@ is inferred from these build and package checks.
 
 [native-ios-device.yml](native-ios-device.yml) runs separately on
 `preview/native-ios-device`. It builds `iphoneos` ARM64 Release rather than a
-Simulator application. [Run39612410823](https://github.com/CharlieOmniPoint/LongBall/actions/runs/39612410823)
-is in progress; no successful package or installation is claimed yet.
+Simulator application. [Run39616024656](https://github.com/CharlieOmniPoint/LongBall/actions/runs/39616024656)
+is pending; no successful package or installation is claimed yet.
 
 The first device attempt stopped after pod installation because its verifier
 expected a compiler flag in console output. The retry checks the actual generated
 ExpoSQLite Release configuration, retains that configuration, and still checks
 the vendored SQLCipher bytes and linked binary. See the preserved
 [preflight diagnostic](../../docs/development/evidence/2026-10-21/feature-completion/ios-device-preflight-diagnostic.json).
+
+The next attempt uses the standard free `macos-15-intel` host with the same
+Xcode 26.3/build17C529. Public GitHub annotations reported ARM64 hosted capacity
+constraints before a compiler could run; the [scheduler diagnostic](../../docs/development/evidence/2026-10-21/feature-completion/ios-device-queue-diagnostic.json)
+records the exact result. The iPhoneOS target remains ARM64. Only this iPhone
+workflow supersedes its older attempts; the cloud and other native jobs use
+separate concurrency groups.
 
 The candidate uses source `c71f19d` plus one recorded test configuration change:
 `expo-notifications` has `enableRemoteNotifications:false`. This preserves local

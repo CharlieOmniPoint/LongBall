@@ -14,7 +14,7 @@ permissions:
 
 concurrency:
   group: longball-unsigned-ios-device-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 env:
   CI: "1"
@@ -29,7 +29,9 @@ jobs:
   unsigned_iphoneos:
     if: github.repository == 'CharlieOmniPoint/LongBall' && github.event.repository.private == false && github.ref == 'refs/heads/preview/native-ios-device'
     name: Unsigned iPhoneOS arm64 fictional IPA
-    runs-on: macos-15
+    # Standard free public Intel host; iPhoneOS output remains arm64.
+    # ARM64 hosted pools reported capacity constraints during this rehearsal.
+    runs-on: macos-15-intel
     timeout-minutes: 60
     env:
       NATIVE_PLATFORM: ios
@@ -109,6 +111,8 @@ jobs:
               "transportHead": git("rev-parse", "HEAD"),
               "sourceRef": bundle_ref,
               "platform": os.environ["NATIVE_PLATFORM"],
+              "runnerImageOS": os.environ.get("ImageOS"),
+              "runnerImageVersion": os.environ.get("ImageVersion"),
               "artifactUploadRequested": True,
               "requestId": marker["requestId"],
               "mode": "fictional unsigned iPhoneOS Release variant with declared local-notification-only configuration",
@@ -145,6 +149,9 @@ jobs:
           test -d /Applications/Xcode_26.3.app/Contents/Developer
           sudo xcode-select --switch /Applications/Xcode_26.3.app/Contents/Developer
           xcodebuild -version | tee -a "$RUNNER_TEMP/longball-native-logs/tools.log"
+          test "$(xcodebuild -version)" = $'Xcode 26.3\nBuild version 17C529'
+          sw_vers >> "$RUNNER_TEMP/longball-native-logs/tools.log"
+          uname -m >> "$RUNNER_TEMP/longball-native-logs/tools.log"
           ruby --version >> "$RUNNER_TEMP/longball-native-logs/tools.log"
           gem install cocoapods --version 1.17.0 --no-document --user-install
           pod_bin="$(ruby -e 'print Gem.user_dir')/bin"
