@@ -1,2 +1,0 @@
-# LongBall
-Football Team Management
