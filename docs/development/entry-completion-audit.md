@@ -1,8 +1,12 @@
 # Entry and screen-completion audit — 21 October 2026
 
-The original bounded, read-only requirements/source trace was requested after the public preview opened directly in the fictional Manager experience. It compared the canonical screen catalogue and F01–F28 with the `c71f19d` capability checkpoint. The status update below records the released entry response and subsequent unreleased scope work. It is not a new approval or a replacement specification. No product code or canonical files were changed by this audit.
+The original bounded, read-only requirements/source trace was requested after the public preview opened directly in the fictional Manager experience. It compared the canonical screen catalogue and F01–F28 with the `c71f19d` capability checkpoint. The status update below records the released entry response and current full implementation. It is not a new approval or a replacement specification. No product code or canonical files were changed by this audit.
 
 The earlier `c71f19d` 450 shared/platform and 219 API/access/worker checks establish that historical capability checkpoint. They do not establish that every specified screen has been composed into the intended navigation. The four previous production-entry checks established anonymous sign-in gating, absence of fictional seed, no recording journal before sign-in, and phone layout; they did not test the full UI01–03 journey.
+
+## Current published outcome
+
+Pages source `d08666f` contains the functional build and passed [external 390px entry checks](evidence/2026-10-21/full-publication/entry.json). The API is healthy and its status has refreshed. Accepted product `e899e29` adds the bounded discovery-cache correction and is ready for final publication. Native CI passed Android debug and unsigned iOS Simulator Debug for source `d08666f`; no physical execution is proved. Physical M0 and real-data policy/signing remain separate.
 
 ## Required entry model
 
@@ -14,7 +18,7 @@ At the checkpoint, ordinary review builds mounted `LongBall()` directly with rol
 
 The three approved root PNG boards and the supplied eight-page visual booklet contain no dedicated authentication board. UI01–03/UI33 therefore use the screen catalogue and shared approved direction: light canvas, white outlined cards, dark text, green primary actions, portrait layout and accessible touch targets. The booklet explicitly does not replace UI01–UI35.
 
-## Released entry and verified candidate
+## Historical entry f4fbffe and its resolved findings
 
 The original entry/screen findings have implemented responses in published entry `f4fbffe`. External checks passed Welcome, consumer sign-in, Manager/Administrator and **loaded** Player/Spectator views, then explicit fixture preparation/claim/attendance/lineup/clock/upload. Independent HTTP confirmed accepted revision12 / `first_half_paused`; [publication](evidence/2026-10-21/entry-journey/publication.json), [loaded roles](evidence/2026-10-21/entry-journey/public-loaded-player-spectator.json) and [public matchday](evidence/2026-10-21/entry-journey/public-matchday.json).
 
@@ -95,8 +99,8 @@ The original trace executed no new tests; this status update cites the separate 
 
 ## Bounded completeness assessment
 
-The entry audit closes its original findings within their recorded release/test scopes. Candidate `7ede8d1` additionally implements the identified functional Must and all four Should fixes and has passed final acceptance for fictional review. [The final summary](evidence/2026-10-21/final-build-checks.json) records 678 shared/platform tests with matching unchanged tested inputs, 284 API tests in 45 files with zero skips, 18 fresh connected browser groups, six production-entry checks, six native-configuration groups, both production Hermes exports and both current schema15 operational proofs. Source/artifact bindings and earlier diagnostics remain explicit.
+The original findings are closed within their recorded proof scopes. Product `e899e29` completes the identified functional Must and all four Should implementations for fictional review. [Latest acceptance](evidence/2026-10-21/review-discovery-followup.json) records 686 shared/platform tests, complete static checks, 18 accepted browser groups, production entry/configuration/Hermes results and unchanged inputs for the 284/45 API and schema15 runtime proofs. An earlier browser reset and diagnostic are explicit; this is not a first-run/no-retry claim.
 
-Publication/external verification is pending; the public review still serves `f4fbffe`. Native compilation/signing/physical acceptance is separate, and physical M0 remains deferred. See the [feature/evidence register](full-build-plan.md).
+The current public build is `d08666f`; final cache-fix publication/external proof remains pending. Native CI passed Android debug and unsigned iOS Simulator Debug for source `d08666f`; no physical execution is proved. Native signing/physical acceptance remains separate and physical M0 is deferred. See the [feature/evidence register](full-build-plan.md).
 
 This trace does not approve production recovery/privacy/audience policy, a live operating provider or every UI01–35 error state. Physical M0 remains deferred and unproved. The historical findings are not fresh defects after implementation, and a later source commit is not treated as released until its public verification is recorded.
