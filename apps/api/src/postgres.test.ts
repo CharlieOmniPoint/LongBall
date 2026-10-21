@@ -330,13 +330,18 @@ describe.skipIf(!configuredUrl)('real PostgreSQL HTTP runtime (requires disposab
   });
   it('creates an assigned new season without source mutation or copied spectator authority, and projects training reports', async () => {
     const client = await start(); let revision=0;
+    const baselineReport=await client.call(`${teamUrl}/records`,{token:'synthetic-account-player-01'});
+    expect(baselineReport.status).toBe(200);
+    const baseline=(baselineReport.body.participation as {rows:{training:{eligibleEventCount:number;attendanceRecordedCount:number;attendedCount:number}}[]}).rows[0].training;
     const prep = async (command:Record<string,unknown>) => { const reply=await client.call(`${teamUrl}/preparation`,{body:{command:{id:randomUUID(),expectedRevision:revision,...command}}}); if(reply.status===200)revision=reply.body.revision as number;return reply; };
     const profileId=`synthetic-player-01:${SYNTHETIC_IDS.seasonId}`;
     expect((await prep({type:'training.saved',training:{id:'pg-training',seasonId:SYNTHETIC_IDS.seasonId,date:'2026-11-02',time:'18:00',venue:'Fictional pitch',recurrenceGroupId:null,expectedProfileIds:[profileId]}})).status).toBe(200);
     expect((await prep({type:'training.status_changed',trainingId:'pg-training',status:'held'})).status).toBe(200);
     expect((await prep({type:'training.attendance_recorded',trainingId:'pg-training',profileId,attendance:'present'})).status).toBe(200);
     const report=await client.call(`${teamUrl}/records`,{token:'synthetic-account-player-01'});
-    expect((report.body.participation as {rows:{training:unknown}[]}).rows[0].training).toMatchObject({eligibleEventCount:1,attendanceRecordedCount:1,attendedCount:1});
+    const reportRow=(report.body.participation as {rows:{training:unknown;trainingRecords:{eventId:string;actualAttendance:string;availabilityResponse:string|null}[]}[]}).rows[0];
+    expect(reportRow.training).toMatchObject({eligibleEventCount:baseline.eligibleEventCount+1,attendanceRecordedCount:baseline.attendanceRecordedCount+1,attendedCount:baseline.attendedCount+1});
+    expect(reportRow.trainingRecords.find(item=>item.eventId==='pg-training')).toMatchObject({actualAttendance:'present',availabilityResponse:null});
     const before=await client.call(`${teamUrl}/preparation`);
     const command={id:randomUUID(),type:'season.rolled_over',expectedPreparationRevision:revision,idForSeason:'fictional-season-2027-28',startYear:2027,copyPlayers:true,managerAccountIds:['synthetic-account-manager'],administratorAccountIds:['synthetic-account-manager'],playerAssignments:[{accountId:'synthetic-account-player-01',playerId:'synthetic-player-01'}],confirmSpectatorRenewal:true};
     const key=randomUUID();const created=await client.call(`${teamUrl}/seasons`,{key,body:{command}});

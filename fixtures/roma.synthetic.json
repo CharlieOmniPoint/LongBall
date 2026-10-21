@@ -10,118 +10,79 @@
       "id": "synthetic-player-01",
       "displayName": "Oliver Bennett",
       "available": true,
-      "goalkeeperChoice": 1,
-      "initials": "OB",
-      "shirtNumber": 1,
-      "foot": "right"
+      "goalkeeperChoice": 1
     },
     {
       "id": "synthetic-player-02",
       "displayName": "Noah Patel",
       "available": true,
-      "goalkeeperChoice": 0,
-      "initials": "NP",
-      "shirtNumber": 2,
-      "foot": "right"
+      "goalkeeperChoice": 0
     },
     {
       "id": "synthetic-player-03",
       "displayName": "Leo Martin",
       "available": true,
-      "goalkeeperChoice": 0,
-      "initials": "LM",
-      "shirtNumber": 3,
-      "foot": "left"
+      "goalkeeperChoice": 0
     },
     {
       "id": "synthetic-player-04",
       "displayName": "Theo Clarke",
       "available": true,
-      "goalkeeperChoice": 0,
-      "initials": "TC",
-      "shirtNumber": 4,
-      "foot": "both"
+      "goalkeeperChoice": 0
     },
     {
       "id": "synthetic-player-05",
       "displayName": "Oscar Evans",
       "available": true,
-      "goalkeeperChoice": 0,
-      "initials": "OE",
-      "shirtNumber": 5,
-      "foot": "left"
+      "goalkeeperChoice": 0
     },
     {
       "id": "synthetic-player-06",
       "displayName": "Ethan Brooks",
       "available": true,
-      "goalkeeperChoice": 0,
-      "initials": "EB",
-      "shirtNumber": 6,
-      "foot": "right"
+      "goalkeeperChoice": 0
     },
     {
       "id": "synthetic-player-07",
       "displayName": "Jack Turner",
       "available": true,
-      "goalkeeperChoice": 0,
-      "initials": "JT",
-      "shirtNumber": 7,
-      "foot": "right"
+      "goalkeeperChoice": 0
     },
     {
       "id": "synthetic-player-08",
       "displayName": "Freddie Lewis",
       "available": true,
-      "goalkeeperChoice": 0,
-      "initials": "FL",
-      "shirtNumber": 8,
-      "foot": "left"
+      "goalkeeperChoice": 0
     },
     {
       "id": "synthetic-player-09",
       "displayName": "Arthur James",
       "available": true,
-      "goalkeeperChoice": 0,
-      "initials": "AJ",
-      "shirtNumber": 9,
-      "foot": "right"
+      "goalkeeperChoice": 0
     },
     {
       "id": "synthetic-player-10",
       "displayName": "Lucas Wilson",
       "available": false,
-      "goalkeeperChoice": 0,
-      "initials": "LW",
-      "shirtNumber": 10,
-      "foot": "both"
+      "goalkeeperChoice": 0
     },
     {
       "id": "synthetic-player-11",
       "displayName": "Muhammad Khan",
       "available": false,
-      "goalkeeperChoice": 0,
-      "initials": "MK",
-      "shirtNumber": 11,
-      "foot": "right"
+      "goalkeeperChoice": 0
     },
     {
       "id": "synthetic-player-12",
       "displayName": "Archie Green",
       "available": false,
-      "goalkeeperChoice": 0,
-      "initials": "AG",
-      "shirtNumber": 12,
-      "foot": "left"
+      "goalkeeperChoice": 0
     },
     {
       "id": "synthetic-player-13",
       "displayName": "George Taylor",
       "available": false,
-      "goalkeeperChoice": 0,
-      "initials": "GT",
-      "shirtNumber": 13,
-      "foot": "right"
+      "goalkeeperChoice": 0
     }
   ],
   "demo": {
@@ -303,6 +264,86 @@
       "time": "18:00",
       "venue": "Rovers Sports Ground \u00b7 Training area",
       "status": "cancelled"
+    }
+  ],
+  "profiles": [
+    {
+      "playerId": "synthetic-player-01",
+      "initials": "OB",
+      "shirtNumber": 1,
+      "foot": "right"
+    },
+    {
+      "playerId": "synthetic-player-02",
+      "initials": "NP",
+      "shirtNumber": 2,
+      "foot": "right"
+    },
+    {
+      "playerId": "synthetic-player-03",
+      "initials": "LM",
+      "shirtNumber": 3,
+      "foot": "left"
+    },
+    {
+      "playerId": "synthetic-player-04",
+      "initials": "TC",
+      "shirtNumber": 4,
+      "foot": "both"
+    },
+    {
+      "playerId": "synthetic-player-05",
+      "initials": "OE",
+      "shirtNumber": 5,
+      "foot": "left"
+    },
+    {
+      "playerId": "synthetic-player-06",
+      "initials": "EB",
+      "shirtNumber": 6,
+      "foot": "right"
+    },
+    {
+      "playerId": "synthetic-player-07",
+      "initials": "JT",
+      "shirtNumber": 7,
+      "foot": "right"
+    },
+    {
+      "playerId": "synthetic-player-08",
+      "initials": "FL",
+      "shirtNumber": 8,
+      "foot": "left"
+    },
+    {
+      "playerId": "synthetic-player-09",
+      "initials": "AJ",
+      "shirtNumber": 9,
+      "foot": "right"
+    },
+    {
+      "playerId": "synthetic-player-10",
+      "initials": "LW",
+      "shirtNumber": 10,
+      "foot": "both"
+    },
+    {
+      "playerId": "synthetic-player-11",
+      "initials": "MK",
+      "shirtNumber": 11,
+      "foot": "right"
+    },
+    {
+      "playerId": "synthetic-player-12",
+      "initials": "AG",
+      "shirtNumber": 12,
+      "foot": "left"
+    },
+    {
+      "playerId": "synthetic-player-13",
+      "initials": "GT",
+      "shirtNumber": 13,
+      "foot": "right"
     }
   ]
 }

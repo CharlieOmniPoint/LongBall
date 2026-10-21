@@ -997,6 +997,7 @@ export function createPreparationState(): PreparationState {
   const seasonId = "synthetic-season-2026-27";
   const profiles: PlayerProfile[] = Array.from({ length: 13 }, (_, index) => {
     const number = String(index + 1).padStart(2, "0");
+    const details = romaFixture.profiles.find(profile => profile.playerId === `synthetic-player-${number}`)!;
     const preferred: PositionCode =
       index === 0
         ? "GK"
@@ -1025,9 +1026,9 @@ export function createPreparationState(): PreparationState {
       playerId: `synthetic-player-${number}`,
       seasonId,
       displayName: romaFixture.players[index].displayName,
-      initials: romaFixture.players[index].initials,
-      shirtNumber: romaFixture.players[index].shirtNumber,
-      foot: romaFixture.players[index].foot as PlayerProfile["foot"],
+      initials: details.initials,
+      shirtNumber: details.shirtNumber,
+      foot: details.foot as PlayerProfile["foot"],
       preferences,
       eligiblePositions:
         index === 0

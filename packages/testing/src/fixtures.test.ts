@@ -29,6 +29,14 @@ describe('M0 fixture import boundary', () => {
     expect(() => assertSyntheticFixture(unknown)).toThrow(/known opponent/);
   });
 
+  it('keeps profile-only details out of match players and rejects orphaned or duplicate profile joins', () => {
+    for (const player of romaFixture.players) expect(Object.keys(player).sort()).toEqual(['available', 'displayName', 'goalkeeperChoice', 'id']);
+    const orphan = structuredClone(romaFixture); orphan.profiles[0].playerId = 'synthetic-player-missing';
+    expect(() => assertSyntheticFixture(orphan)).toThrow(/unique player join/);
+    const duplicate = structuredClone(romaFixture); duplicate.profiles[1].playerId = duplicate.profiles[0].playerId;
+    expect(() => assertSyntheticFixture(duplicate)).toThrow(/unique player join/);
+  });
+
   it('rejects a scenario without an available goalkeeper', () => {
     const invalid = structuredClone(romaFixture);
     invalid.players.forEach((player) => { player.goalkeeperChoice = 0; });

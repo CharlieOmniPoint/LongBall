@@ -46,6 +46,13 @@ describe('explicit generated demo scenario boundary', () => {
     expect(publicMatch).toMatchObject({ score: { for: 0, against: 0 }, sharingRestricted: false, sharingPolicyVersion: 'demo-simulated-scores-v1', opponent: 'Maple FC' });
     for (const forbidden of ['state', 'ownRecord', 'attendance', 'intervals', 'controller']) expect(publicMatch).not.toHaveProperty(forbidden);
     expect(UNAPPROVED_SHARING_POLICY).toMatchObject({ approvedBy: null, approvedAt: null, shareScores: false, shareDerivedResults: false });
+    const acquired = await fetch(`${demo.base}${path}/controller`, { method: 'POST', headers: { Authorization: 'Bearer synthetic-manager-2', 'Content-Type': 'application/json', 'X-Api-Contract-Version': 'longball.events/1.1', 'Idempotency-Key': 'demo-controller-profile-boundary' }, body: JSON.stringify({ deviceId: 'demo-controller-boundary' }) });
+    expect(acquired.status).toBe(200);
+    const snapshot = await demo.get<{ state: { config: { fixture: { kickoff: string }; players: Record<string, unknown>[] } } }>(`${path}/download?deviceId=demo-controller-boundary`, 'manager', 'synthetic-manager-2');
+    expect(snapshot.state.config.fixture.kickoff).toBe('10:00');
+    expect(snapshot.state.config.players[0].displayName).toBe('Oliver Bennett');
+    for (const key of ['initials', 'shirtNumber', 'foot']) expect(snapshot.state.config.players[0]).not.toHaveProperty(key);
+
     const community = await demo.get<ReturnType<typeof getCommunityView>>(`/v1/teams/${SYNTHETIC_IDS.teamId}/community?seasonId=${SYNTHETIC_IDS.seasonId}`, 'player');
     expect(community.matches[0]).toMatchObject({ sharingAllowed: true, mayVote: true });
     expect(community.matches[0].candidates.some((item: { label: string }) => item.label === 'Noah Patel')).toBe(true);

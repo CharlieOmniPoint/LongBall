@@ -28,6 +28,9 @@ export function assertSyntheticFixture(value: typeof fixture): void {
   if (value.players.some((player, index) => !/^synthetic-player-\d{2}$/.test(player.id) || player.displayName !== fixture.players[index]?.displayName)) {
     throw new Error('Use the supplied generated sample identities only.');
   }
+  if (value.profiles.length !== 13 || new Set(value.profiles.map(profile => profile.playerId)).size !== 13 || value.profiles.some(profile => !ids.has(profile.playerId) || !/^[A-Z]{2,3}$/.test(profile.initials) || !Number.isSafeInteger(profile.shirtNumber) || profile.shirtNumber < 1 || !['left', 'right', 'both', 'not_recorded'].includes(profile.foot))) {
+    throw new Error('Sample profiles need an exact unique player join and valid shirt/initial/foot details.');
+  }
   const available = value.players.filter((player) => player.available);
   if (available.length !== 9 || !available.some((player) => player.goalkeeperChoice === 1)) {
     throw new Error('The initial M0 scenario needs nine selected players including a goalkeeper.');

@@ -378,16 +378,22 @@ describe('durable preparation, records, community and own privacy requests', () 
     const report = async () => {
       const response = await client.call(`${teamUrl}/records`, { token: 'synthetic-account-player-01' });
       expect(response.status).toBe(200);
-      return (response.body.participation as { rows: { playerId: string; training: Record<string, number>; trainingRecords: { actualAttendance: string; availabilityResponse: string }[] }[] }).rows[0];
+      return (response.body.participation as { rows: { playerId: string; training: Record<string, number>; trainingRecords: { eventId: string; actualAttendance: string; availabilityResponse: string }[] }[] }).rows[0];
     };
+    const baseline = await report();
     expect((await apply({ type: 'training.saved', training: { id: 'fictional-report-training', seasonId: SYNTHETIC_IDS.seasonId, date: '2026-11-04', time: '18:00', venue: 'Fictional training pitch', recurrenceGroupId: null, expectedProfileIds: [profileId] } })).status).toBe(200);
     expect((await apply({ type: 'training.status_changed', trainingId: 'fictional-report-training', status: 'held' })).status).toBe(200);
     expect((await apply({ type: 'own.training_response_recorded', trainingId: 'fictional-report-training', response: 'available' }, 'synthetic-account-player-01')).status).toBe(200);
-    expect(await report()).toMatchObject({ playerId: 'synthetic-player-01', training: { eligibleEventCount: 1, attendanceRecordedCount: 0, unknownAttendanceCount: 1 }, trainingRecords: [{ actualAttendance: 'not_recorded', availabilityResponse: 'available' }] });
+    const replied = await report();
+    expect(replied).toMatchObject({ playerId: 'synthetic-player-01', training: { eligibleEventCount: baseline.training.eligibleEventCount + 1, attendanceRecordedCount: baseline.training.attendanceRecordedCount, unknownAttendanceCount: baseline.training.unknownAttendanceCount + 1 } });
+    expect(replied.trainingRecords.find(row => row.eventId === 'fictional-report-training')).toMatchObject({ actualAttendance: 'not_recorded', availabilityResponse: 'available' });
     expect((await apply({ type: 'training.attendance_recorded', trainingId: 'fictional-report-training', profileId, attendance: 'present' })).status).toBe(200);
-    expect(await report()).toMatchObject({ training: { eligibleEventCount: 1, attendanceRecordedCount: 1, attendedCount: 1 } });
+    expect(await report()).toMatchObject({ training: { eligibleEventCount: baseline.training.eligibleEventCount + 1, attendanceRecordedCount: baseline.training.attendanceRecordedCount + 1, attendedCount: baseline.training.attendedCount + 1 } });
     expect((await apply({ type: 'training.status_changed', trainingId: 'fictional-report-training', status: 'cancelled' })).status).toBe(200);
-    expect(await report()).toMatchObject({ training: { eligibleEventCount: 0, attendanceRecordedCount: 0, attendedCount: 0 }, trainingRecords: [] });
+    const cancelled = await report();
+    expect(cancelled.training).toEqual(baseline.training);
+    expect(cancelled.trainingRecords).toHaveLength(baseline.trainingRecords.length);
+    expect(cancelled.trainingRecords.find(row => row.eventId === 'fictional-report-training')).toBeUndefined();
     const before = (await client.call(`${teamUrl}/preparation`)).body;
     const beforeRecords = client.api.store.document<RecordsState>(SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId, 'records');
     expect(beforeRecords.trainingAttendance.find(session => session.sessionId === 'fictional-report-training')).toMatchObject({ eventStatus: 'cancelled', expectedPlayerIds: ['synthetic-player-01'], attendance: { 'synthetic-player-01': 'present' } });

@@ -268,7 +268,7 @@ describe("F05 pending child activation", () => {
             fictionalOnly: false,
           } as unknown as ActivationPolicy,
         }),
-    ).toThrow("fictional");
+    ).toThrow("test activation policy");
     expect(
       () =>
         new DevelopmentActivationService({
