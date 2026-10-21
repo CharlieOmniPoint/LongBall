@@ -1,9 +1,9 @@
 {
-  "state": "starting",
-  "url": "",
+  "state": "ready",
+  "url": "https://cookbook-birmingham-pam-pulling.trycloudflare.com",
   "sourceRevision": "e7f9d36d316e1d3c08fa22c9a998db759daaeff0",
   "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/39591436502",
-  "startedAt": "2026-10-21T11:22:23Z",
-  "expiresAt": "",
+  "startedAt": "2026-10-21T11:22:45Z",
+  "expiresAt": "2026-10-21T12:22:45Z",
   "audience": "Adult review of fictional Roma U10 data only"
 }
