@@ -65,6 +65,8 @@ chmod +x /tmp/longball-cloudflared
 export LONGBALL_SYNTHETIC_AUTH=1
 export LONGBALL_API_HOST=127.0.0.1
 export LONGBALL_API_PORT=4173
+# Explicit fictional-only clock exchange fixture, never a production policy default.
+export LONGBALL_FICTIONAL_CLOCK_POLICY='{"id":"fictional-cloud-review-clock-v1","serverClockUncertaintyMs":1000,"maximumRoundTripMs":5000,"maximumMappingAgeMs":3600000,"maximumUncertaintyMs":3000,"maximumDriftPpm":100}'
 export LONGBALL_API_DATABASE="$PWD/.local/fictional-review.sqlite"
 export LONGBALL_MEDIA_DIRECTORY="$PWD/.local/private-review-media"
 export LONGBALL_HEIC_DECODER_FILE="$PWD/.local/heic-runtime/bin/longball-heic"
@@ -129,12 +131,12 @@ if [[ -z "$PREVIEW_URL" ]] || ! python3 -c "from pathlib import Path; import sys
 fi
 export PREVIEW_URL
 export PREVIEW_STARTED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-export PREVIEW_EXPIRES_AT="$(date -u -d '+60 minutes' +%Y-%m-%dT%H:%M:%SZ)"
+export PREVIEW_EXPIRES_AT="$(date -u -d '+300 minutes' +%Y-%m-%dT%H:%M:%SZ)"
 publish_status ready
 printf '## LongBall fictional review\n\n%s\n\nExpires at %s (UTC). No real team data or child accounts.\n' "$PREVIEW_URL" "$PREVIEW_EXPIRES_AT" >>"$GITHUB_STEP_SUMMARY"
 
 # Bounded, free review session; no service subscription or persistent infrastructure.
-for minute in {1..60}; do
+for minute in {1..300}; do
   kill -0 "$server_pid"
   kill -0 "$tunnel_pid"
   kill -0 "$worker_pid"

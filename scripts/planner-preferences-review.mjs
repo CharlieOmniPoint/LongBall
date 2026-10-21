@@ -1,0 +1,81 @@
+import assert from 'node:assert/strict';
+import { existsSync } from 'node:fs';
+import { mkdir, writeFile } from 'node:fs/promises';
+import path from 'node:path';
+import { chromium } from 'playwright';
+import { enterFictionalReview } from './review-entry.mjs';
+
+const baseURL = process.env.LONGBALL_REVIEW_BASE_URL ?? 'http://127.0.0.1:4173';
+const output = path.resolve('.local/planner-preferences-review');
+await mkdir(output, { recursive: true });
+const browser = await chromium.launch({ executablePath: process.env.LONGBALL_CHROMIUM_PATH ?? (existsSync('/usr/bin/chromium') ? '/usr/bin/chromium' : undefined), headless: true, args: ['--no-sandbox'] });
+const page = await browser.newPage({ viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' });
+page.setDefaultTimeout(20_000);
+const errors = [], checks = [];
+page.on('pageerror', error => errors.push(error.message));
+const button = name => page.getByRole('button', { name, exact: true }).click();
+const assertMode = async mode => {
+  await page.getByTestId('planner-position-mode').filter({ hasText: `Position mode: ${mode}.` }).waitFor();
+};
+async function reopenPlanner() {
+  await page.reload({ waitUntil: 'networkidle' });
+  await enterFictionalReview(page);
+  await page.getByTestId('prepare-match').click();
+  await button('Fair-time suggestions');
+  await page.getByTestId('planner-settings-saved').waitFor();
+}
+try {
+  await page.goto(baseURL, { waitUntil: 'networkidle' });
+  await enterFictionalReview(page);
+  await page.getByTestId('prepare-match').click();
+  await page.getByTestId('check-in-all').click();
+  await page.getByTestId('continue-lineup').click();
+  await page.getByTestId('place-seven').click();
+  await page.getByTestId('start-half').click();
+  await button('Fair-time suggestions');
+  assert.equal(await page.getByTestId('planner-settings-saved').count(), 0, 'Proposed settings must not count as confirmed.');
+  await page.getByLabel('Score lead threshold', { exact: true }).fill('1');
+  await button('No');
+  await page.getByTestId('planner-settings-confirm').click();
+  const saved = page.getByTestId('planner-settings-saved');
+  await saved.waitFor();
+  assert.match(await saved.innerText(), /lead 1 · return to normal off/);
+  checks.push('Explicit settings become confirmed only after the real browser journal save.');
+  await button('Back to match');
+  await page.getByTestId('open-goal').click();
+  await button('Open play');
+  await button('Player 02');
+  await page.getByTestId('save-goal').click();
+  await button('Fair-time suggestions');
+  await assertMode('adventurous');
+  await button('Back to match');
+  await page.getByTestId('open-goal').click();
+  await button('Opposition score');
+  await button('Open play');
+  await page.getByTestId('save-goal').click();
+  await button('Fair-time suggestions');
+  await assertMode('adventurous');
+  checks.push('Actual fictional score changes enter adventurous mode and retain it when the lead falls with return-to-normal off.');
+  await button('Back to match');
+  await page.getByTestId('pause-resume').click();
+  await button('Fair-time suggestions');
+  await reopenPlanner();
+  assert.match(await saved.innerText(), /lead 1 · return to normal off/);
+  await assertMode('adventurous');
+  checks.push('Confirmed settings and sticky adventurous mode survive panel closure and a complete page reload.');
+  await page.getByTestId('planner-reset-normal').click();
+  await assertMode('normal');
+  await reopenPlanner();
+  await assertMode('normal');
+  checks.push('An explicit manual reset is committed and remains normal after reload of the same match checkpoint.');
+  assert.deepEqual(errors, []);
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+  await page.screenshot({ path: path.join(output, 'saved-reset-after-reload.png'), fullPage: true, animations: 'disabled' });
+  const result = { status: 'passed', checkedAt: new Date().toISOString(), baseURL, checks, browserErrors: errors, method: 'Real fictional UI controls and browser journal; no domain state injection.', nativeDeviceEvidence: false };
+  await writeFile(path.join(output, 'report.json'), `${JSON.stringify(result, null, 2)}\n`);
+  console.log(JSON.stringify(result, null, 2));
+} catch (error) {
+  await page.screenshot({ path: path.join(output, 'failed.png'), fullPage: true }).catch(() => {});
+  await writeFile(path.join(output, 'report.json'), `${JSON.stringify({ status: 'failed', checks, error: String(error), errors }, null, 2)}\n`);
+  throw error;
+} finally { await browser.close(); }

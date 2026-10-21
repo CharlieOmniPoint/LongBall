@@ -25,6 +25,8 @@ import {
   type PreparationTraining,
   type TrainingDraft,
 } from "@longball/application/preparation";
+import { groupPreparationEvents } from "@longball/application/preparation-presentation";
+import { FormationPositionEditor } from "./FormationPositionEditor";
 import { randomUUID } from "../platform/id";
 import { Button, Card, colors, Icon, Notice, Pill } from "../ui";
 
@@ -76,17 +78,20 @@ function dateLabel(date: string) {
     timeZone: "Europe/London",
   }).format(new Date(`${date}T12:00:00Z`));
 }
-function nextDate(state: PreparationState) {
-  const season = state.seasons.find(
-    (item) => item.id === state.activeSeasonId,
-  )!;
+function todayInLondon() {
   const parts = new Intl.DateTimeFormat("en-GB", {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
     timeZone: "Europe/London",
   }).formatToParts(new Date());
-  const date = `${parts.find((part) => part.type === "year")?.value}-${parts.find((part) => part.type === "month")?.value}-${parts.find((part) => part.type === "day")?.value}`;
+  return `${parts.find((part) => part.type === "year")?.value}-${parts.find((part) => part.type === "month")?.value}-${parts.find((part) => part.type === "day")?.value}`;
+}
+function nextDate(state: PreparationState) {
+  const season = state.seasons.find(
+    (item) => item.id === state.activeSeasonId,
+  )!;
+  const date = todayInLondon();
   return date >= season.startDate && date <= season.endDate
     ? date
     : season.startDate;
@@ -119,6 +124,7 @@ function PreparationContent({
     id: string;
   } | null>(null);
   const [tab, setTab] = useState<"matches" | "training">("matches");
+  const [period, setPeriod] = useState<"upcoming" | "past">("upcoming");
   const [localError, setLocalError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const players = seasonPlayers(state);
@@ -126,6 +132,19 @@ function PreparationContent({
     (item) => item.id === state.activeSeasonId,
   )!;
   const disabled = busy || saving;
+  const scheduleGroups = groupPreparationEvents<
+    PreparationFixture | PreparationTraining
+  >(
+    (tab === "matches" ? state.fixtures : state.training).filter(
+      (event) => event.seasonId === season.id,
+    ),
+    {
+      date: (event) => ("playedDate" in event ? event.playedDate : event.date),
+      time: (event) => ("kickoff" in event ? event.kickoff : event.time),
+      period,
+      today: todayInLondon(),
+    },
+  );
   const commit = async (
     payload: Payload,
     closeEditor = false,
@@ -320,6 +339,19 @@ function PreparationContent({
             Matches and training, with replies and attendance kept separate.
           </Text>
           <Choice
+            label="Schedule period"
+            value={period}
+            options={[
+              { value: "upcoming", label: "Upcoming" },
+              { value: "past", label: "Past" },
+            ]}
+            onChange={setPeriod}
+          />
+          <Text style={s.small}>
+            Dates use Europe/London. Today stays Upcoming; a missing time is
+            never treated as midnight. Undated events stay separate.
+          </Text>
+          <Choice
             label="Event type"
             value={tab}
             options={[
@@ -343,46 +375,47 @@ function PreparationContent({
             }
             testID="preparation-create-event"
           />
-          {tab === "matches"
-            ? state.fixtures
-                .filter((fixture) => fixture.seasonId === season.id)
-                .sort((a, b) => a.playedDate.localeCompare(b.playedDate))
-                .map((fixture) => (
+          {scheduleGroups.map((group) => (
+            <View key={group.date ?? "undated"} style={s.stack}>
+              <Text accessibilityRole="header" style={s.section}>
+                {group.date ? dateLabel(group.date) : "Date not recorded"}
+              </Text>
+              {group.events.map((event) =>
+                "opponent" in event ? (
                   <Pressable
-                    key={fixture.id}
+                    key={event.id}
                     accessibilityRole="button"
-                    accessibilityLabel={`Open fixture ${fixture.opponent}, ${fixture.playedDate}`}
+                    accessibilityLabel={`Open fixture ${event.opponent}, ${event.playedDate}`}
                     onPress={() =>
-                      setSelectedEvent({ kind: "match", id: fixture.id })
+                      setSelectedEvent({ kind: "match", id: event.id })
                     }
                   >
                     <Card>
                       <View style={s.between}>
                         <Text style={s.label}>
-                          {dateLabel(fixture.playedDate)} ·{" "}
-                          {fixture.kickoff ?? "Time not recorded"}
+                          {event.kickoff || "Time not recorded"}
                         </Text>
                         <Pill
                           tone={
-                            fixture.status === "scheduled" ? "brand" : "warning"
+                            event.status === "scheduled" ? "brand" : "warning"
                           }
                         >
-                          {fixture.status}
+                          {event.status}
                         </Pill>
                       </View>
                       <Text style={s.section}>
-                        {state.team.name} vs {fixture.opponent}
+                        {state.team.name} vs {event.opponent}
                       </Text>
                       <Text style={s.muted}>
-                        {fixture.homeAway === "home" ? "Home" : "Away"} ·{" "}
-                        {fixture.format}-a-side · 2 ×{" "}
-                        {fixture.plannedHalfDurationMs / 60_000} min
+                        {event.homeAway === "home" ? "Home" : "Away"} ·{" "}
+                        {event.format}-a-side · 2 ×{" "}
+                        {event.plannedHalfDurationMs / 60_000} min
                       </Text>
                       <View style={s.between}>
                         <Text style={s.small}>
-                          {fixture.selectedProfileIds.length} selected ·{" "}
+                          {event.selectedProfileIds.length} selected ·{" "}
                           {
-                            Object.values(fixture.responses).filter(
+                            Object.values(event.responses).filter(
                               (response) => response === "available",
                             ).length
                           }{" "}
@@ -392,42 +425,36 @@ function PreparationContent({
                       </View>
                     </Card>
                   </Pressable>
-                ))
-            : state.training
-                .filter((training) => training.seasonId === season.id)
-                .sort((a, b) => a.date.localeCompare(b.date))
-                .map((training) => (
+                ) : (
                   <Pressable
-                    key={training.id}
+                    key={event.id}
                     accessibilityRole="button"
-                    accessibilityLabel={`Open training ${training.date}`}
+                    accessibilityLabel={`Open training ${event.date}`}
                     onPress={() =>
-                      setSelectedEvent({ kind: "training", id: training.id })
+                      setSelectedEvent({ kind: "training", id: event.id })
                     }
                   >
                     <Card>
                       <View style={s.between}>
                         <Text style={s.label}>
-                          {dateLabel(training.date)} · {training.time}
+                          {event.time || "Time not recorded"}
                         </Text>
                         <Pill
                           tone={
-                            training.status === "cancelled"
-                              ? "warning"
-                              : "brand"
+                            event.status === "cancelled" ? "warning" : "brand"
                           }
                         >
-                          {training.status}
+                          {event.status}
                         </Pill>
                       </View>
                       <Text style={s.section}>Team training</Text>
                       <Text style={s.muted}>
-                        {training.venue || "Location not recorded"}
+                        {event.venue || "Location not recorded"}
                       </Text>
                       <Text style={s.small}>
-                        {training.expectedProfileIds.length} expected ·{" "}
+                        {event.expectedProfileIds.length} expected ·{" "}
                         {
-                          Object.values(training.attendance).filter(
+                          Object.values(event.attendance).filter(
                             (attendance) => attendance === "present",
                           ).length
                         }{" "}
@@ -435,13 +462,15 @@ function PreparationContent({
                       </Text>
                     </Card>
                   </Pressable>
-                ))}
-          {(tab === "matches" ? state.fixtures : state.training).filter(
-            (event) => event.seasonId === season.id,
-          ).length === 0 && (
+                ),
+              )}
+            </View>
+          ))}
+          {scheduleGroups.length === 0 && (
             <Notice tone="info">
-              No {tab === "matches" ? "fixtures" : "training occurrences"} in
-              this season yet. Add the first event above.
+              No {period}{" "}
+              {tab === "matches" ? "fixtures" : "training occurrences"} in this
+              season. Choose the other period or add an event above.
             </Notice>
           )}
         </>
@@ -1304,6 +1333,7 @@ function FormationForm({
     ...formation,
     slots: formation.slots.map((slot) => ({ ...slot })),
   });
+  const [advanced, setAdvanced] = useState(false);
   const changeSlot = (
     id: string,
     changes: Partial<PreparationFormation["slots"][number]>,
@@ -1337,7 +1367,21 @@ function FormationForm({
           }));
         }}
       />
-      <FormationPreview formation={draft} />
+      <FormationPositionEditor
+        slots={draft.slots}
+        name={draft.name}
+        disabled={disabled}
+        onMove={(slotId, point) => changeSlot(slotId, point)}
+      />
+      <Button
+        label={
+          advanced
+            ? "Hide advanced position coordinates"
+            : "Advanced position coordinates"
+        }
+        variant="secondary"
+        onPress={() => setAdvanced((value) => !value)}
+      />
       <Notice tone="info">
         Each place has its own stable slot. Two CB places remain distinct while
         sharing the CB reporting type. Coordinates run from 0 to 1.
@@ -1356,24 +1400,30 @@ function FormationForm({
             options={positionCodes.map((value) => ({ value, label: value }))}
             onChange={(position) => changeSlot(slot.id, { position })}
           />
-          <View style={s.row}>
-            <View style={s.flex}>
-              <Field
-                label={`X for ${slot.id}`}
-                numeric
-                value={String(slot.x)}
-                onChange={(value) => changeSlot(slot.id, { x: Number(value) })}
-              />
+          {advanced && (
+            <View style={s.row}>
+              <View style={s.flex}>
+                <Field
+                  label={`X for ${slot.id}`}
+                  numeric
+                  value={String(slot.x)}
+                  onChange={(value) =>
+                    changeSlot(slot.id, { x: Number(value) })
+                  }
+                />
+              </View>
+              <View style={s.flex}>
+                <Field
+                  label={`Y for ${slot.id}`}
+                  numeric
+                  value={String(slot.y)}
+                  onChange={(value) =>
+                    changeSlot(slot.id, { y: Number(value) })
+                  }
+                />
+              </View>
             </View>
-            <View style={s.flex}>
-              <Field
-                label={`Y for ${slot.id}`}
-                numeric
-                value={String(slot.y)}
-                onChange={(value) => changeSlot(slot.id, { y: Number(value) })}
-              />
-            </View>
-          </View>
+          )}
         </Card>
       ))}
       <FormActions
@@ -1386,33 +1436,6 @@ function FormationForm({
         onClose={onClose}
       />
     </>
-  );
-}
-function FormationPreview({ formation }: { formation: PreparationFormation }) {
-  return (
-    <View
-      style={s.pitch}
-      accessible
-      accessibilityLabel={`${formation.name}, ${formation.slots.map((slot) => slot.label).join(", ")}`}
-    >
-      <View style={s.pitchBoundary} />
-      <View style={s.pitchHalf} />
-      <View style={s.pitchCircle} />
-      {formation.slots.map((slot) => (
-        <View
-          key={slot.id}
-          style={[
-            s.previewSlot,
-            {
-              left: `${Math.max(0.08, Math.min(0.92, slot.x)) * 100}%`,
-              top: `${Math.max(0.08, Math.min(0.92, slot.y)) * 100}%`,
-            },
-          ]}
-        >
-          <Text style={s.previewLabel}>{slot.label}</Text>
-        </View>
-      ))}
-    </View>
   );
 }
 function FixtureDetail({

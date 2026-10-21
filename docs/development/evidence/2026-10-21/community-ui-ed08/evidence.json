@@ -1,0 +1,67 @@
+{
+  "status": "passed",
+  "runId": "20261021162607388-9fb123c4",
+  "completedAt": "2026-10-21T16:28:26.939Z",
+  "baseURL": "http://127.0.0.1:4173",
+  "api": "http://127.0.0.1:4359",
+  "webBundle": "/_expo/static/js/web/index-ed08a1bd6e5fdc99dbe3a846cdd6e670.js",
+  "webSha256": "0915cc3580c6b2623593393d535c053f4b1b5b5570d0b1b256222625c2d76c76",
+  "apiRuntime": "Actual current TypeScript HTTP handler in a new disposable loopback SQLite fixture; no existing database reset",
+  "sourceHashes": {
+    "apps/api/src/server.ts": "b4453c2b78c1c21475726386920c2edd40cdad80e6290ab74996a5686ae7d580",
+    "apps/api/src/store.ts": "b0066ad6aece53afb97977c01b307eb7f816433d2bd6723f23280820f3149a2e",
+    "apps/api/src/media.ts": "e81531c96b243fc278a6f4af33c0587241e815edab2c4c4487c80f7a70eb7d50",
+    "packages/application/src/community.ts": "af43a86f418c66f28c9f599a1483ff5180c55e0b12771dd12322fe510931e5dd",
+    "scripts/community-ui-fixture.ts": "eca52691f93775f2547433c69f0be2202b17a9dc41569a6dfe3c72a688433035"
+  },
+  "fixturePolicy": "Explicit fictional_review_only community sharing and 30-minute test cutoff set before listen. The separate official-match Q21 sharing policy remains unapproved. No production policy accepted.",
+  "media": "Actual PNG prepare/PUT/ClamAV scan/complete/manager publication over HTTP",
+  "results": [
+    {
+      "width": 320,
+      "checks": [
+        "Candidate selection is a draft; Confirm vote and Confirm changed vote are separate service commands",
+        "Photo and uploader reports use distinct targets and expose only own reference/status",
+        "Gallery-only hide requires confirmation, Cancel is inert, and official records retain their separate permissions",
+        "Restore uploader returns the permitted photo while preserving own report references"
+      ],
+      "ballotPosts": 2,
+      "reportTypes": [
+        "photo",
+        "uploader"
+      ],
+      "ownReportReferences": [
+        "fc18cd55-075d-40f7-9afd-fb43ad7fa811",
+        "0c44076f-78b8-444e-af3a-337f68aee146"
+      ],
+      "hidePosts": 2,
+      "privateChoicesRecordedInEvidence": false
+    },
+    {
+      "width": 390,
+      "checks": [
+        "Candidate selection is a draft; Confirm vote and Confirm changed vote are separate service commands",
+        "Photo and uploader reports use distinct targets and expose only own reference/status",
+        "Gallery-only hide requires confirmation, Cancel is inert, and official records retain their separate permissions",
+        "Restore uploader returns the permitted photo while preserving own report references"
+      ],
+      "ballotPosts": 2,
+      "reportTypes": [
+        "photo",
+        "uploader"
+      ],
+      "ownReportReferences": [
+        "2a4f9c6d-15ec-49a9-b729-9eef175ca61d",
+        "b4ba87fb-67d4-4d13-a50e-497276e82829"
+      ],
+      "hidePosts": 2,
+      "privateChoicesRecordedInEvidence": false
+    }
+  ],
+  "errors": [],
+  "limitations": [
+    "Public synthetic identities, not a real-provider authentication proof",
+    "Browser 320/390 behavior, not physical native accessibility/keyboard proof",
+    "No production sharing or moderation policy approved"
+  ]
+}

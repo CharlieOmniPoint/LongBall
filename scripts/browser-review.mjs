@@ -3,6 +3,7 @@ import { existsSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { chromium } from "playwright";
+import { enterFictionalReview } from "./review-entry.mjs";
 
 /**
  * Synthetic browser journey against a built, locally served application.
@@ -128,6 +129,7 @@ async function openReview(context) {
   const page = await context.newPage();
   page.on("pageerror", (error) => consoleErrors.push(error.message));
   await page.goto(baseURL, { waitUntil: "networkidle" });
+  await enterFictionalReview(page);
   await page.getByTestId("prepare-match").waitFor();
   return page;
 }
@@ -367,6 +369,7 @@ try {
   const journalBeforeReload = await snapshot(page);
   const eventIdsBeforeReload = scopedIds(journalBeforeReload);
   await page.reload({ waitUntil: "networkidle" });
+  await enterFictionalReview(page);
   await page.getByTestId("prepare-match").click();
   await page
     .getByRole("button", { name: "Check the match clock", exact: true })
@@ -603,6 +606,7 @@ try {
     "present",
   );
   await secondTab.reload({ waitUntil: "networkidle" });
+  await enterFictionalReview(secondTab);
   await secondTab.getByTestId("prepare-match").click();
   await secondTab
     .getByRole("radio", { name: "Player 02, Present", exact: true })

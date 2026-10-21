@@ -4,7 +4,8 @@ import { createHmac } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { chromium } from "playwright";
-const base = "http://localhost:4174",
+import { identityTrialAppUrl } from "./identity-trial-support.mjs";
+const base = identityTrialAppUrl(),
   output = resolve(".local/identity/browser-review");
 const fixture = JSON.parse(
   await readFile(".local/identity/trial/manager-fixture.json", "utf8"),
@@ -75,7 +76,9 @@ try {
     process.exit(0);
   }
   await page.goto(base, { waitUntil: "networkidle" });
+  await page.getByTestId("welcome-sign-in").click();
   await page.getByTestId("prepare-oidc-signin").waitFor();
+  await page.getByTestId("connection-settings-toggle").click();
   await page
     .getByLabel("OIDC issuer (HTTPS)", { exact: true })
     .fill(fixture.issuer);
@@ -112,15 +115,11 @@ try {
     () => Promise.resolve(provider.isClosed()),
     "Real PKCE provider browser return did not finish",
   );
-  await page
-    .getByRole("button", { name: "Account and security", exact: true })
-    .waitFor();
+  await page.getByTestId("connected-account").waitFor();
   record(
     "Real provider password/TOTP setup and PKCE browser return establish the API-verified account without vault injection",
   );
-  await page
-    .getByRole("button", { name: "Account and security", exact: true })
-    .click();
+  await page.getByTestId("connected-account").click();
   const statusRead = page.waitForResponse(
     (response) =>
       response.url().endsWith("/v1/privacy/requests") &&

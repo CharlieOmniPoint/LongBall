@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
+import { enterFictionalReview } from './review-entry.mjs';
 import { existsSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
@@ -56,6 +57,7 @@ try {
     page.setDefaultTimeout(20_000);
     try {
       await page.goto(baseURL, { waitUntil: 'networkidle' });
+      await enterFictionalReview(page);
       await page.getByTestId('prepare-match').waitFor();
       const body = await page.locator('body').innerText();
       assert.match(body, /fictional players/, 'Corruption fixtures require a newly isolated fictional roster.');
@@ -67,6 +69,7 @@ try {
       assert.deepEqual(retained.events, original.events, 'The deliberate fixture must preserve every original event.');
       assert.deepEqual(retained.checkpoints, original.checkpoints, 'The deliberate fixture must preserve reserved sequence history.');
       await page.reload({ waitUntil: 'networkidle' });
+      await enterFictionalReview(page);
       await page.getByText(test.message, { exact: true }).waitFor();
       assert.equal(await page.getByTestId('prepare-match').count(), 0);
       assert.equal(await page.getByText('Opening the local Roma fixture…', { exact: true }).count(), 0, 'Corruption must be an explicit error, not an indefinite spinner.');

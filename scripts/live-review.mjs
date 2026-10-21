@@ -3,6 +3,7 @@ import { existsSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { chromium } from 'playwright';
+import { enterFictionalReview } from './review-entry.mjs';
 
 /** Real phone-width browser actions; no domain state is injected or rewritten. */
 const baseURL = process.env.LONGBALL_REVIEW_BASE_URL ?? 'http://127.0.0.1:4173';
@@ -56,6 +57,7 @@ async function open(context) {
   activePage = page;
   page.on('pageerror', error => errors.push(error.message));
   await page.goto(baseURL, { waitUntil: 'networkidle' });
+  await enterFictionalReview(page);
   await page.getByTestId('prepare-match').waitFor();
   await waitState(page, state => state.status === 'preparation', 'Initial match did not load');
   return page;

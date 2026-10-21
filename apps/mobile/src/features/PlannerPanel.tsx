@@ -1,15 +1,57 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { playerMinutes, readClock as deriveClock, rationalToNumber, type Allocation, type ClockReading, type ClockSample, type MatchState } from '@longball/domain';
-import { planMatch, selectMatchPositionMode, updatePlanAlerts, type FutureSegment, type PastTargetSegment, type PlanAlertState, type PlannerInput, type PlannerResult, type PlannerSettings } from '@longball/domain/planner';
+import { planMatch, updatePlanAlerts, type FutureSegment, type PastTargetSegment, type PlanAlertState, type PlannerInput, type PlannerResult, type PlannerSettings } from '@longball/domain/planner';
+import { assertConfirmedPlannerSettings, assertPlannerPreferences, authorizePlannerPreferences, confirmPlannerPreferences, createPlannerPreferences, plannerPreferenceDocumentId, plannerPreferencesAtDecision, plannerPreferenceScope, resetPlannerPositionMode, type ConfirmedPlannerSettings, type PlannerPreferenceBinding, type PlannerPreferences, type PlannerPreferenceScope } from '../platform/planner-preferences';
+import type { Journal } from '../platform/types';
+import { useDocument } from '../useDocument';
 import { getAlertCapability, replaceLocalWarnings, requestAlertPermission } from '../platform/alerts';
 import { Button, Card, Notice, Pill } from '../ui/Button';
 import { colors, typography } from '../ui/tokens';
 
-export interface ConfirmedPlannerSettings {
-  batchPreference: number;
-  leadThreshold: number;
-  returnToNormal: boolean;
+export type { ConfirmedPlannerSettings } from '../platform/planner-preferences';
+
+export interface PlannerPersistence {
+  journal: Journal | null;
+  deviceId: string | null;
+  binding: PlannerPreferenceBinding;
+}
+
+function usePlannerPreferences(matchId: string | undefined, persistence: PlannerPersistence | undefined) {
+  const journal = persistence?.journal ?? null;
+  const deviceId = persistence?.deviceId ?? null;
+  let scopeJson: string | null = null;
+  let scopeError: string | null = null;
+  try {
+    if (matchId && deviceId && persistence) scopeJson = JSON.stringify(plannerPreferenceScope(matchId, deviceId, persistence.binding));
+  } catch (error) { scopeError = error instanceof Error ? error.message : 'Planner settings scope is invalid.'; }
+  const scope = useMemo(() => scopeJson ? JSON.parse(scopeJson) as PlannerPreferenceScope : null, [scopeJson]);
+  const scopeRef = useRef(scope);
+  useEffect(() => { scopeRef.current = scope; }, [scope]);
+  const documentId = scope ? plannerPreferenceDocumentId(scope) : 'planner-preferences-inactive';
+  const [permission, setPermission] = useState<{ journal: Journal; documentId: string; allowed: boolean; error: string | null } | null>(null);
+  useEffect(() => {
+    if (!journal || !scope) return;
+    let active = true;
+    void authorizePlannerPreferences(journal, scope).then(() => {
+      if (active) setPermission({ journal, documentId, allowed: true, error: null });
+    }).catch(error => {
+      if (active) setPermission({ journal, documentId, allowed: false, error: error instanceof Error ? error.message : 'Planner storage could not be checked.' });
+    });
+    return () => { active = false; };
+  }, [journal, scope, documentId]);
+  const permitted = permission?.journal === journal && permission.documentId === documentId && permission.allowed;
+  const document = useDocument<PlannerPreferences>(permitted ? journal : null, deviceId, documentId,
+    () => {
+      if (!scopeRef.current) throw new Error('Select a match before opening planner settings.');
+      return createPlannerPreferences(scopeRef.current);
+    },
+    value => {
+      if (!scopeRef.current) throw new Error('Planner scope is unavailable. Existing settings were retained.');
+      assertPlannerPreferences(value, scopeRef.current);
+    });
+  const error = scopeError ?? (permission?.journal === journal && permission.documentId === documentId ? permission.error : null) ?? document.error;
+  return { ...document, ready: Boolean(permitted && document.state), permissionError: error, storageAvailable: Boolean(journal && scope) };
 }
 
 /** Builds a projection from frozen game snapshots; no availability or recorded time is invented. */
@@ -61,12 +103,16 @@ export function plannerInputFromMatch(match: MatchState, sample: ClockSample, ac
   return { planId: `${match.config.matchId}-suggestion`, planVersion, sourceRevision: match.revision, seed: `${match.config.matchId}-rotation`, nowMs: now, players, slots: match.config.slots.map(slot => ({ slotId: slot.slotId, position: slot.position })), currentLineup: currentLineup.map(item => ({ ...item })), currentSpellStartedMs: spells, actual, pastTargetSegments: history, futureSegments: segments, locks: [], settings };
 }
 
-export function usePlannerModel(match: MatchState | null, sample: ClockSample, clock: ClockReading | null, context: { hasControl?: boolean; alertOwner?: string } = {}) {
+export function usePlannerModel(match: MatchState | null, sample: ClockSample, clock: ClockReading | null, context: { hasControl?: boolean; alertOwner?: string; persistence?: PlannerPersistence; onRetainedChange?: (retained: boolean) => void } = {}) {
   const [batchPreference, setBatchPreference] = useState(2);
   const [threshold, setThreshold] = useState('4');
   const [returnToNormal, setReturnToNormal] = useState<boolean | null>(null);
-  const [confirmed, setConfirmed] = useState<ConfirmedPlannerSettings | null>(null);
-  const [confirmedFor, setConfirmedFor] = useState<string | null>(null);
+  const preferences = usePlannerPreferences(match?.config.matchId, context.persistence);
+  const changePreferences = preferences.change;
+  const preferencesReady = preferences.ready;
+  const preferenceRecord = preferences.state;
+  const confirmed = preferenceRecord?.settings ?? null;
+  const confirmedFor = preferenceRecord?.scope.matchId ?? null;
   const [settingsError, setSettingsError] = useState<string | null>(null);
   const [result, setResult] = useState<PlannerResult | null>(null);
   const [planningError, setPlanningError] = useState<string | null>(null);
@@ -82,30 +128,50 @@ export function usePlannerModel(match: MatchState | null, sample: ClockSample, c
   const sampleRef = useRef(sample);
   const clockRef = useRef(clock);
   const planVersion = useRef(0);
-  const modeRef = useRef<{ matchId: string | null; mode: 'normal' | 'adventurous' }>({ matchId: null, mode: 'normal' });
   const alertState = useRef<PlanAlertState | null>(null);
   const previousStatus = useRef(match?.status);
 
   useEffect(() => { sampleRef.current = sample; clockRef.current = clock; }, [sample, clock]);
-  useEffect(() => { let active = true; void getAlertCapability().then(value => { if (active) setAlertCapability(value); }).catch(error => { if (active) setAlertError(error instanceof Error ? error.message : 'Notification capability could not be checked.'); }); return () => { active = false; }; }, []);
-
+  const preferencesRetained = preferences.busy || preferences.retryPending || preferences.conflict;
+  const onRetainedChange = context.onRetainedChange;
+  useEffect(() => { onRetainedChange?.(preferencesRetained); }, [onRetainedChange, preferencesRetained]);
   useEffect(() => {
     let active = true;
     void Promise.resolve().then(() => {
       if (!active) return;
-      if (!match || !confirmed || confirmedFor !== match.config.matchId || !hasControl || clockRef.current?.recoveryRequired || match.status === 'completed' || match.status === 'abandoned') { setResult(null); setPlanning(false); return; }
+      setBatchPreference(confirmed?.batchPreference ?? 2);
+      setThreshold(String(confirmed?.leadThreshold ?? 4));
+      setReturnToNormal(confirmed?.returnToNormal ?? null);
+      setSettingsError(null);
+    });
+    return () => { active = false; };
+  }, [confirmedFor, confirmed?.batchPreference, confirmed?.leadThreshold, confirmed?.returnToNormal]);
+  useEffect(() => { let active = true; void getAlertCapability().then(value => { if (active) setAlertCapability(value); }).catch(error => { if (active) setAlertError(error instanceof Error ? error.message : 'Notification capability could not be checked.'); }); return () => { active = false; }; }, []);
+
+  useEffect(() => {
+    let active = true;
+    void Promise.resolve().then(async () => {
+      if (!active) return;
+      if (!match || !confirmed || !preferenceRecord || confirmedFor !== match.config.matchId || !hasControl || preferencesRetained || clockRef.current?.recoveryRequired || match.status === 'completed' || match.status === 'abandoned') { setResult(null); setPlanning(false); return; }
       setPlanning(true);
       setPlanningError(null);
-      modeRef.current = selectMatchPositionMode(modeRef.current, { matchId: match.config.matchId, ourScore: match.score.for, oppositionScore: match.score.against, leadThreshold: confirmed.leadThreshold, returnToNormal: confirmed.returnToNormal, manualReset: false });
       try {
-        const input = plannerInputFromMatch(match, sampleRef.current, confirmed, ++planVersion.current, modeRef.current.mode);
+        const decision = { matchId: match.config.matchId, revision: match.revision, ourScore: match.score.for, oppositionScore: match.score.against };
+        const selected = plannerPreferencesAtDecision(preferenceRecord, decision);
+        if (selected.positionMode !== preferenceRecord.positionMode) {
+          setResult(null);
+          const saved = await changePreferences(value => plannerPreferencesAtDecision(value, decision), 'planner.position_mode.changed');
+          if (!saved && active) { setPlanning(false); setPlanningError('Position mode was not saved. Retry the local save before using a new suggestion.'); }
+          return;
+        }
+        const input = plannerInputFromMatch(match, sampleRef.current, confirmed, ++planVersion.current, preferenceRecord.positionMode);
         const planned = planMatch(input);
         if (active) { setResult(planned); setPlanning(false); }
       } catch (error) { if (active) { setResult(null); setPlanning(false); setPlanningError(error instanceof Error ? error.message : 'Planning could not be completed.'); } }
     });
     return () => { active = false; };
     // sample/clock render ticks are deliberately read from refs; they never run the solver.
-  }, [match, confirmed, confirmedFor, requestVersion, hasControl]);
+  }, [match, confirmed, confirmedFor, preferenceRecord, changePreferences, preferencesRetained, requestVersion, hasControl]);
 
   const currentMatchId = match?.config.matchId;
   const currentResult = result?.planId === `${currentMatchId}-suggestion` ? result : null;
@@ -136,19 +202,27 @@ export function usePlannerModel(match: MatchState | null, sample: ClockSample, c
     } else if (update.cancelPrevious) void Promise.resolve().then(() => setLastWarning(null));
   }, [currentResult, clock, matchStatus, currentHalf, revision, hasControl, recoveryRequired]);
 
-  const confirmSettings = useCallback(() => {
+  const confirmSettings = useCallback(async () => {
     const leadThreshold = Number(threshold);
-    if (!Number.isInteger(leadThreshold) || leadThreshold <= 0 || !Number.isInteger(batchPreference) || batchPreference < 1 || batchPreference > 11 || returnToNormal === null) { setSettingsError('Choose a positive whole-number lead threshold, a batch preference and an explicit return-to-normal option.'); return; }
-    if (!currentMatchId) { setSettingsError('Open a match before confirming its settings.'); return; }
-    setConfirmed({ batchPreference, leadThreshold, returnToNormal }); setConfirmedFor(currentMatchId); setSettingsError(null);
-  }, [threshold, batchPreference, returnToNormal, currentMatchId]);
+    if (!currentMatchId || !preferencesReady || !hasControl) { setSettingsError('Open this match with the available controller and journal before confirming settings.'); return false; }
+    try {
+      const proposed = { batchPreference, leadThreshold, returnToNormal };
+      assertConfirmedPlannerSettings(proposed);
+      setSettingsError(null);
+      return await changePreferences(value => confirmPlannerPreferences(value, proposed), 'planner.settings.confirmed');
+    } catch (error) { setSettingsError(error instanceof Error ? error.message : 'Planner settings are invalid.'); return false; }
+  }, [threshold, batchPreference, returnToNormal, currentMatchId, preferencesReady, changePreferences, hasControl]);
+  const resetPositionMode = useCallback(async () => {
+    if (!match || !confirmed || !preferencesReady || !hasControl) return false;
+    return changePreferences(value => resetPlannerPositionMode(value, match.revision), 'planner.position_mode.manually_reset');
+  }, [match, confirmed, preferencesReady, changePreferences, hasControl]);
   const requestNotifications = useCallback(async () => {
     try { setAlertCapability(await requestAlertPermission()); setAlertError(null); setPermissionVersion(value => value + 1); }
     catch (error) { setAlertError(error instanceof Error ? error.message : 'Permission request failed. Keep the visual console open.'); }
   }, []);
   const nextChange = currentResult?.status === 'feasible' && currentResult.sourceRevision === revision ? currentResult.nextChange : null;
   const awaitingHalfTime = Boolean(nextChange?.half === 2 && currentHalf === 1 && matchStatus !== 'half_time');
-  return { match, awaitingHalfTime, batchPreference, setBatchPreference, threshold, setThreshold, returnToNormal, setReturnToNormal, confirmed: currentConfirmed, confirmSettings, settingsError, result: currentResult, planningError, planning, replan: () => setRequestVersion(value => value + 1), nextChange, dueInMs: nextChange ? nextChange.dueMatchActiveMs - (clock?.matchActiveMs ?? 0) : null, alertCapability, alertError, lastWarning, requestNotifications, hasControl, setHasControl, timeCertain: !recoveryRequired };
+  return { match, awaitingHalfTime, batchPreference, setBatchPreference, threshold, setThreshold, returnToNormal, setReturnToNormal, confirmed: currentConfirmed, confirmSettings, settingsError: settingsError ?? preferences.permissionError, preferencesReady: preferences.ready, preferencesSaving: preferences.busy, preferencesRetained, preferencesConflict: preferences.conflict, retryPreferences: preferences.retry, reloadPreferences: preferences.reload, storageAvailable: preferences.storageAvailable, positionMode: preferenceRecord?.positionMode ?? 'normal', resetPositionMode, result: currentResult, planningError, planning, replan: () => setRequestVersion(value => value + 1), nextChange, dueInMs: nextChange ? nextChange.dueMatchActiveMs - (clock?.matchActiveMs ?? 0) : null, alertCapability, alertError, lastWarning, requestNotifications, hasControl, setHasControl, timeCertain: !recoveryRequired };
 }
 export type PlannerModel = ReturnType<typeof usePlannerModel>;
 
@@ -161,28 +235,34 @@ export function PlannerPanel({ model, onReviewLineup }: { model: PlannerModel; o
     <Card>
       <View style={styles.heading}><Text style={typography.section}>Playing-time plan</Text><Pill tone="muted">MANAGER SUGGESTION</Pill></View>
       <Text style={typography.body}>Fair time, with every change confirmed by you.</Text>
+      {!model.preferencesReady && !model.settingsError && <Notice>{model.storageAvailable ? 'Opening this match’s saved planner settings…' : 'Open this device’s match journal before confirming planner settings.'}</Notice>}
+      {model.preferencesRetained && !model.preferencesSaving && !model.preferencesConflict && <Button label="Retry planner settings save" disabled={!model.hasControl} onPress={() => { void model.retryPreferences(); }} />}
+      {model.preferencesConflict && <Button label="Reload saved planner settings; retain conflict" onPress={model.reloadPreferences} />}
       {!model.confirmed || editing ? <View style={styles.stack}>
         <Notice tone="info">Roma’s five-minute playing spells and 15% half buffers are flexible preferences. Choose and confirm the other settings before planning.</Notice>
         <Text style={typography.label}>Preferred batch size · proposed starting value 2</Text>
         <View style={styles.row}>
-          <Button label="−" variant="secondary" disabled={model.batchPreference <= 1} onPress={() => model.setBatchPreference(Math.max(1, model.batchPreference - 1))} />
+          <Button label="−" variant="secondary" disabled={model.preferencesRetained || model.batchPreference <= 1} onPress={() => model.setBatchPreference(Math.max(1, model.batchPreference - 1))} />
           <Text style={styles.settingNumber}>{model.batchPreference}</Text>
-          <Button label="+" variant="secondary" disabled={model.batchPreference >= 11} onPress={() => model.setBatchPreference(Math.min(11, model.batchPreference + 1))} />
+          <Button label="+" variant="secondary" disabled={model.preferencesRetained || model.batchPreference >= 11} onPress={() => model.setBatchPreference(Math.min(11, model.batchPreference + 1))} />
         </View>
         <Text style={typography.muted}>This is a preference, with no hard batch cap or mandatory five-minute grid.</Text>
         <Text style={typography.label}>Score lead for adventurous positions</Text>
-        <TextInput accessibilityLabel="Score lead threshold" keyboardType="number-pad" value={model.threshold} onChangeText={model.setThreshold} style={styles.input} />
+        <TextInput accessibilityLabel="Score lead threshold" keyboardType="number-pad" editable={!model.preferencesRetained} value={model.threshold} onChangeText={model.setThreshold} style={styles.input} />
         <Text style={typography.label}>Return to normal when the lead falls?</Text>
         <View style={styles.row}>
-          <Button label={model.returnToNormal === true ? 'Yes · selected' : 'Yes'} variant={model.returnToNormal === true ? 'primary' : 'secondary'} onPress={() => model.setReturnToNormal(true)} />
-          <Button label={model.returnToNormal === false ? 'No · selected' : 'No'} variant={model.returnToNormal === false ? 'primary' : 'secondary'} onPress={() => model.setReturnToNormal(false)} />
+          <Button label={model.returnToNormal === true ? 'Yes · selected' : 'Yes'} disabled={model.preferencesRetained} variant={model.returnToNormal === true ? 'primary' : 'secondary'} onPress={() => model.setReturnToNormal(true)} />
+          <Button label={model.returnToNormal === false ? 'No · selected' : 'No'} disabled={model.preferencesRetained} variant={model.returnToNormal === false ? 'primary' : 'secondary'} onPress={() => model.setReturnToNormal(false)} />
         </View>
         <Text style={typography.muted}>Position weights and Q07 availability/keeper transitions are labelled synthetic experiments. Confirming these review settings does not approve unresolved product policy.</Text>
         {model.settingsError && <Notice tone="error">{model.settingsError}</Notice>}
-        <Button label="Confirm settings and plan" onPress={() => { model.confirmSettings(); if (model.returnToNormal !== null && Number.isInteger(Number(model.threshold)) && Number(model.threshold) > 0) setEditing(false); }} />
+        <Button label={model.preferencesSaving ? 'Saving settings…' : 'Confirm settings and plan'} testID="planner-settings-confirm" disabled={!model.preferencesReady || !model.hasControl || model.preferencesRetained} onPress={() => { void model.confirmSettings().then(saved => { if (saved) setEditing(false); }); }} />
       </View> : <View style={styles.stack}>
-        <Text style={typography.muted}>Preferred batch {model.confirmed.batchPreference} · lead {model.confirmed.leadThreshold} · return to normal {model.confirmed.returnToNormal ? 'on' : 'off'}. Settings are held for this review session.</Text>
-        <Button label="Review settings" variant="quiet" onPress={() => setEditing(true)} />
+        <Text style={typography.muted} testID="planner-settings-saved">Preferred batch {model.confirmed.batchPreference} · lead {model.confirmed.leadThreshold} · return to normal {model.confirmed.returnToNormal ? 'on' : 'off'}. Saved for this match on this device.</Text>
+        <Text style={typography.muted} testID="planner-position-mode">Position mode: {model.positionMode}. The saved match mode survives closing this panel.</Text>
+        {model.settingsError && <Notice tone="error">{model.settingsError}</Notice>}
+        <Button label="Review settings" variant="quiet" disabled={model.preferencesRetained} onPress={() => setEditing(true)} />
+        <Button label="Reset adventurous mode to normal" testID="planner-reset-normal" variant="secondary" disabled={model.preferencesRetained || !model.hasControl || model.positionMode === 'normal'} onPress={() => { void model.resetPositionMode(); }} />
       </View>}
     </Card>
     {model.planningError && <Notice tone="warning">{model.planningError}</Notice>}

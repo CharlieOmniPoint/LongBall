@@ -1,4 +1,10 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { Platform, StyleSheet, Text, View } from "react-native";
 import {
   validateLineup,
@@ -8,13 +14,16 @@ import {
   type MatchState,
 } from "@longball/domain";
 import {
-  assertNativeLiveAccess,
-  assertNativeLiveCommand,
-} from "@longball/application/connected-live-editor";
+  assertLiveEditorAccess,
+  assertLiveEditorCommand,
+  type LiveEditorMode,
+} from "@longball/application/live-editor-access";
 import type { ConnectedCommand } from "@longball/application/sync";
 import type { Journal, JournalDiagnostics } from "../platform/types";
-import { Button, Card, Notice } from "../ui/Button";
+import { Button, Card, Notice, Pill } from "../ui/Button";
+import { Pitch } from "../ui/Pitch";
 import { colors, typography } from "../ui/tokens";
+import { formatTime } from "../useMatch";
 import { LiveEventsPanel } from "./LiveEventsPanel";
 
 export interface ConnectedLiveEditorProps {
@@ -24,6 +33,7 @@ export interface ConnectedLiveEditorProps {
   onCommand: (command: ConnectedCommand) => Promise<boolean>;
   journal: Journal | null;
   eligible: boolean;
+  mode?: LiveEditorMode;
   teamLabel?: string;
   reviewDraft?: {
     matchId: string;
@@ -31,9 +41,12 @@ export interface ConnectedLiveEditorProps {
     lineup: Allocation[];
   } | null;
   onReviewDraftConsumed?: () => void;
+  /** Opens the parent's existing actual-event confirmation; never records directly. */
+  onReviewClockAction?: (action: "start" | "pause" | "resume" | "end") => void;
+  clockActionReview?: ReactNode;
 }
 
-/** Authenticated native recording only. Browser review keeps the same pure domain rules. */
+/** Native connected recording, or the explicitly isolated fictional browser review. */
 export function ConnectedLiveEditor(props: ConnectedLiveEditorProps) {
   const [observedJournal, setObservedJournal] = useState<{
     journal: Journal;
@@ -49,6 +62,9 @@ export function ConnectedLiveEditor(props: ConnectedLiveEditorProps) {
     lineup: Allocation[];
   } | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
+  const [mode, setMode] = useState<"attendance" | "lineup" | "live">(
+    props.match.status === "preparation" ? "attendance" : "live",
+  );
   const current = useRef(props);
   const saveLock = useRef(false);
   useLayoutEffect(() => {
@@ -57,6 +73,7 @@ export function ConnectedLiveEditor(props: ConnectedLiveEditorProps) {
   const preparation =
     props.match.status === "preparation" || props.match.status === "half_time";
   const terminal = ["completed", "abandoned"].includes(props.match.status);
+  const activeMode = terminal ? "live" : mode;
   const diagnostics =
     observedJournal?.journal === props.journal
       ? observedJournal.diagnostics
@@ -120,7 +137,10 @@ export function ConnectedLiveEditor(props: ConnectedLiveEditorProps) {
   };
   let gate: string | null = null;
   try {
-    assertNativeLiveAccess(props.match, {
+    assertLiveEditorAccess(props.match, {
+      mode: props.mode,
+      allowFictionalReview:
+        process.env.EXPO_PUBLIC_ENVIRONMENT !== "production",
       platform: Platform.OS,
       eligible: props.eligible,
       journalEvidence: diagnostics,
@@ -145,7 +165,10 @@ export function ConnectedLiveEditor(props: ConnectedLiveEditorProps) {
         throw new Error(
           "The recording context changed or another save is pending. Retry after checking the current state.",
         );
-      assertNativeLiveCommand(active.match, command, {
+      assertLiveEditorCommand(active.match, command, {
+        mode: active.mode,
+        allowFictionalReview:
+          process.env.EXPO_PUBLIC_ENVIRONMENT !== "production",
         platform: Platform.OS,
         eligible: active.eligible,
         journalEvidence: evidence,
@@ -180,6 +203,39 @@ export function ConnectedLiveEditor(props: ConnectedLiveEditorProps) {
   );
   const teamLabel =
     props.teamLabel ?? props.match.config.fixture?.teamName ?? "Our team";
+  const squad = props.match.config.players.filter((player) =>
+    props.match.config.selectedPlayerIds.includes(player.id),
+  );
+  const present = squad.filter(
+    (player) => props.match.attendance[player.id] === "present",
+  );
+  const availableBench = present.filter(
+    (player) =>
+      props.match.availability[player.id] &&
+      !savedLineup.some((allocation) => allocation.playerId === player.id),
+  );
+  const unavailable = present.filter(
+    (player) => !props.match.availability[player.id],
+  );
+  const pitchSlots = props.match.config.slots?.map((saved, index) => ({
+    id: saved.slotId,
+    label: saved.label ?? saved.position,
+    name: `${saved.label ?? saved.position} · place ${index + 1}`,
+    x: (saved.x ?? 0.5) * 100,
+    y: Math.min(
+      82,
+      Math.max(5, (saved.y ?? index / props.match.config.pitchPlaces) * 90),
+    ),
+  }));
+  const changedSlotIds = props.match.config.slots
+    ?.filter(
+      (saved) =>
+        draft.find((value) => value.slotId === saved.slotId)?.playerId !==
+        savedLineup.find((value) => value.slotId === saved.slotId)?.playerId,
+    )
+    .map((saved) => saved.slotId);
+  const running = props.match.status.endsWith("_running");
+  const paused = props.match.status.endsWith("_paused");
   const resetDraft = () => {
     setLineupDraft(null);
     setSelectedSlot(null);
@@ -187,41 +243,77 @@ export function ConnectedLiveEditor(props: ConnectedLiveEditorProps) {
   return (
     <View style={styles.stack}>
       <Card>
-        <Text style={typography.section}>
-          {teamLabel} · native match recording
-        </Text>
+        <Text style={typography.section}>{teamLabel} · match day</Text>
+        {props.mode === "fictional-review" && (
+          <Notice>
+            Fictional browser review. Records use an unprotected local preview
+            journal and the fictional service. This does not test phone storage,
+            clock recovery or notification delivery.
+          </Notice>
+        )}
         <Text style={typography.muted}>
-          Events use this saved fixture and roster. Saved on this phone means
-          the secure transaction completed; service acknowledgement is shown
-          separately above.
+          Record actual attendance, lineup changes and match events for this
+          saved fixture. Saved on this phone appears after the record is stored;
+          service confirmation is shown separately above.
         </Text>
         {gate && <Notice tone="warning">{gate}</Notice>}
         {(storageError || saveError) && (
           <Notice tone="error">{storageError || saveError}</Notice>
         )}
-        {diagnostics?.wrongKeyProbe !== "passed" && (
-          <Button
-            label={
-              storageBusy
-                ? "Checking secure storage…"
-                : "Check secure storage for recording"
-            }
-            disabled={storageBusy || !props.journal || Platform.OS === "web"}
-            onPress={() => {
-              void checkStorage();
-            }}
-          />
-        )}
-        <Text style={typography.muted}>
-          This check does not prove phone backup/restore, sleep/reboot clock
-          recovery or notification delivery. Those device checks remain
-          required.
-        </Text>
+        {props.mode !== "fictional-review" &&
+          diagnostics?.wrongKeyProbe !== "passed" && (
+            <Button
+              label={
+                storageBusy
+                  ? "Checking secure storage…"
+                  : "Check secure storage for recording"
+              }
+              disabled={storageBusy || !props.journal || Platform.OS === "web"}
+              onPress={() => {
+                void checkStorage();
+              }}
+            />
+          )}
       </Card>
       {!gate && props.clock && (
         <>
-          {!terminal && (
+          <View style={styles.wrap}>
+            {(["attendance", "lineup", "live"] as const).map((value) => (
+              <Button
+                key={value}
+                testID={`connected-match-${value}`}
+                label={
+                  value === "attendance"
+                    ? `Attendance · ${present.length}/${squad.length}`
+                    : value === "lineup"
+                      ? `Lineup${dirty ? " · draft" : ""}`
+                      : "Live"
+                }
+                variant={activeMode === value ? "primary" : "secondary"}
+                disabled={terminal && value !== "live"}
+                onPress={() => setMode(value)}
+                style={styles.tab}
+              />
+            ))}
+          </View>
+          {suggestedDraft && activeMode !== "lineup" && !terminal && (
             <Card>
+              <Text style={typography.label}>
+                Suggested lineup ready for review
+              </Text>
+              <Text style={typography.muted}>
+                Opening the lineup screen does not change the players on the
+                pitch.
+              </Text>
+              <Button
+                label="Review suggested lineup"
+                variant="secondary"
+                onPress={() => setMode("lineup")}
+              />
+            </Card>
+          )}
+          {!terminal && (
+            <Card style={activeMode !== "attendance" && styles.hidden}>
               <Text style={typography.section}>Actual match check-in</Text>
               <Text style={typography.muted}>
                 Confirm each player on arrival. An availability reply is not
@@ -230,58 +322,54 @@ export function ConnectedLiveEditor(props: ConnectedLiveEditorProps) {
                   ? " During play, this records attendance at the current confirmed active time. Earlier arrival time is not guessed, and a present player stays off the pitch until you confirm a lineup change."
                   : ""}
               </Text>
-              {props.match.config.players
-                .filter((player) =>
-                  props.match.config.selectedPlayerIds.includes(player.id),
-                )
-                .map((player) => (
-                  <View key={player.id} style={styles.player}>
-                    <Text style={typography.label}>
-                      {player.displayName} ·{" "}
-                      {props.match.attendance[player.id].replaceAll("_", " ")}
-                    </Text>
-                    <View style={styles.wrap}>
-                      {(
-                        [
-                          ["present", "Present"],
-                          ["absent", "Absent"],
-                          ["excused", "Excused"],
-                          ["not_recorded", "Not recorded"],
-                        ] as [Attendance, string][]
-                      ).map(([status, label]) => (
-                        <Button
-                          key={status}
-                          label={
-                            props.match.half > 0 && status === "present"
-                              ? "Arrived / present now"
-                              : label
-                          }
-                          variant={
-                            props.match.attendance[player.id] === status
-                              ? "primary"
-                              : "secondary"
-                          }
-                          disabled={
-                            busy ||
-                            props.clock!.recoveryRequired ||
-                            props.match.attendance[player.id] === status
-                          }
-                          onPress={() => {
-                            void record({
-                              type: "attendance.recorded",
-                              playerId: player.id,
-                              status,
-                            });
-                          }}
-                        />
-                      ))}
-                    </View>
+              {squad.map((player) => (
+                <View key={player.id} style={styles.player}>
+                  <Text style={typography.label}>
+                    {player.displayName} ·{" "}
+                    {props.match.attendance[player.id].replaceAll("_", " ")}
+                  </Text>
+                  <View style={styles.wrap}>
+                    {(
+                      [
+                        ["present", "Present"],
+                        ["absent", "Absent"],
+                        ["excused", "Excused"],
+                        ["not_recorded", "Not recorded"],
+                      ] as [Attendance, string][]
+                    ).map(([status, label]) => (
+                      <Button
+                        key={status}
+                        label={
+                          props.match.half > 0 && status === "present"
+                            ? "Arrived / present now"
+                            : label
+                        }
+                        variant={
+                          props.match.attendance[player.id] === status
+                            ? "primary"
+                            : "secondary"
+                        }
+                        disabled={
+                          busy ||
+                          props.clock!.recoveryRequired ||
+                          props.match.attendance[player.id] === status
+                        }
+                        onPress={() => {
+                          void record({
+                            type: "attendance.recorded",
+                            playerId: player.id,
+                            status,
+                          });
+                        }}
+                      />
+                    ))}
                   </View>
-                ))}
+                </View>
+              ))}
             </Card>
           )}
           {!terminal && (
-            <Card>
+            <Card style={activeMode !== "lineup" && styles.hidden}>
               <Text style={typography.section}>
                 {preparation
                   ? "Prepare the saved formation"
@@ -346,27 +434,20 @@ export function ConnectedLiveEditor(props: ConnectedLiveEditorProps) {
                   />
                 </View>
               )}
-              <View style={styles.stack}>
-                {props.match.config.slots!.map((saved) => {
-                  const allocation = draft.find(
-                    (value) => value.slotId === saved.slotId,
-                  );
-                  const player = props.match.config.players.find(
-                    (value) => value.id === allocation?.playerId,
-                  );
-                  return (
-                    <Button
-                      key={saved.slotId}
-                      label={`${saved.label ?? saved.position} · ${player?.displayName ?? "Vacant"}`}
-                      variant={
-                        selectedSlot === saved.slotId ? "primary" : "secondary"
-                      }
-                      disabled={busy}
-                      onPress={() => setSelectedSlot(saved.slotId)}
-                    />
-                  );
-                })}
-              </View>
+              <Pitch
+                lineup={draft}
+                players={props.match.config.players}
+                slots={pitchSlots}
+                formationName={`${props.match.config.pitchPlaces} places · ${dirty ? "unsaved draft" : preparation ? "staged lineup" : "confirmed lineup"}`}
+                selectedSlot={selectedSlot}
+                changedSlotIds={changedSlotIds}
+                onSlotPress={busy ? undefined : setSelectedSlot}
+              />
+              <Text style={typography.muted}>
+                Select a place on the pitch or use List view. A player can
+                occupy one place at a time; review the whole batch before
+                confirming.
+              </Text>
               {slot && (
                 <View style={styles.stack}>
                   <Text style={typography.label}>
@@ -467,13 +548,173 @@ export function ConnectedLiveEditor(props: ConnectedLiveEditorProps) {
               />
             </Card>
           )}
-          <LiveEventsPanel
-            match={props.match}
-            clock={props.clock}
-            onCommand={record}
-            busy={busy}
-            teamLabel={teamLabel}
-          />
+          <View style={[styles.stack, activeMode !== "live" && styles.hidden]}>
+            <Card>
+              <View style={styles.scoreboard}>
+                <Text style={[typography.label, styles.teamName]}>
+                  {teamLabel}
+                </Text>
+                <Text style={typography.score}>
+                  {props.match.score.for}–{props.match.score.against}
+                </Text>
+                <Text style={[typography.label, styles.teamName]}>
+                  {props.match.config.fixture?.opponent ?? "Opposition"}
+                </Text>
+              </View>
+              <Pill
+                tone={
+                  paused || props.clock.recoveryRequired ? "warning" : "brand"
+                }
+              >
+                {props.match.status === "preparation"
+                  ? "Before kickoff"
+                  : props.match.status === "half_time"
+                    ? "Half-time"
+                    : props.match.status === "completed"
+                      ? "Full-time"
+                      : props.match.status === "abandoned"
+                        ? "Match abandoned"
+                        : `${props.match.half === 1 ? "First" : "Second"} half · ${paused ? "referee clock paused" : "in play"}`}
+              </Pill>
+              <Text style={typography.muted}>
+                {props.match.half === 0
+                  ? "Planned half length"
+                  : "Active time this half"}
+              </Text>
+              <Text style={typography.clock}>
+                {formatTime(
+                  props.match.half === 0
+                    ? props.match.config.plannedHalfDurationMs
+                    : props.clock.halfActiveMs,
+                )}
+              </Text>
+              <Text style={typography.body}>
+                {terminal
+                  ? `${formatTime(props.clock.matchActiveMs)} total active match time`
+                  : props.match.status === "half_time"
+                    ? `First half: ${formatTime(props.match.firstHalfDurationMs ?? props.clock.halfActiveMs)} active`
+                    : props.clock.addedMs > 0
+                      ? `+${formatTime(props.clock.addedMs)} beyond the planned half`
+                      : `${formatTime(props.clock.remainingMs)} planned half remaining`}
+              </Text>
+              {!terminal && (
+                <Text style={typography.muted}>
+                  The countdown is a guide. Half-time and full-time always need
+                  your confirmation; they do not happen automatically.
+                </Text>
+              )}
+              {props.clock.recoveryRequired && (
+                <Notice tone="warning">
+                  Time needs checking. The saved checkpoint is retained; review
+                  clock recovery above before recording another event.
+                </Notice>
+              )}
+              {props.onReviewClockAction && !terminal && (
+                <View style={styles.wrap}>
+                  {preparation && (
+                    <Button
+                      label={
+                        props.match.status === "half_time"
+                          ? "Review second-half start"
+                          : "Review kickoff"
+                      }
+                      disabled={busy || props.clock.recoveryRequired}
+                      onPress={() => props.onReviewClockAction?.("start")}
+                      style={styles.action}
+                    />
+                  )}
+                  {(running || paused) && (
+                    <>
+                      <Button
+                        label={
+                          paused
+                            ? "Review clock resume"
+                            : "Review referee pause"
+                        }
+                        variant="secondary"
+                        disabled={busy || props.clock.recoveryRequired}
+                        onPress={() =>
+                          props.onReviewClockAction?.(
+                            paused ? "resume" : "pause",
+                          )
+                        }
+                        style={styles.action}
+                      />
+                      <Button
+                        label={
+                          props.match.half === 1
+                            ? "Review half-time"
+                            : "Review full-time"
+                        }
+                        variant="danger"
+                        disabled={busy || props.clock.recoveryRequired}
+                        onPress={() => props.onReviewClockAction?.("end")}
+                        style={styles.action}
+                      />
+                    </>
+                  )}
+                </View>
+              )}
+              {props.clockActionReview}
+            </Card>
+            <Pitch
+              lineup={savedLineup}
+              players={props.match.config.players}
+              slots={pitchSlots}
+              formationName={`${props.match.config.pitchPlaces} places · ${preparation ? "staged for next start" : "confirmed on pitch"}`}
+              compact
+            />
+            {!terminal && (
+              <Card>
+                <Text style={typography.section}>
+                  {preparation
+                    ? "Available off the staged lineup"
+                    : "Available bench"}{" "}
+                  · {availableBench.length}
+                </Text>
+                <View style={styles.wrap}>
+                  {availableBench.map((player) => (
+                    <Pill key={player.id} tone="muted">
+                      {player.displayName}
+                    </Pill>
+                  ))}
+                </View>
+                {!availableBench.length && (
+                  <Text style={typography.muted}>
+                    No present, available players off this lineup.
+                  </Text>
+                )}
+                {unavailable.length > 0 && (
+                  <Text style={typography.muted}>
+                    Unavailable:{" "}
+                    {unavailable.map((player) => player.displayName).join(", ")}
+                  </Text>
+                )}
+                <Button
+                  label={
+                    dirty
+                      ? "Review unsaved lineup draft"
+                      : "Prepare a lineup change"
+                  }
+                  variant="secondary"
+                  onPress={() => setMode("lineup")}
+                />
+                <Text style={typography.label}>Next change</Text>
+                <Text style={typography.muted}>
+                  {suggestedDraft
+                    ? "A selected suggestion is ready for your lineup review. It has not changed actual participation."
+                    : "Open the planner above to review the current next-change projection. A suggestion never moves players automatically."}
+                </Text>
+              </Card>
+            )}
+            <LiveEventsPanel
+              match={props.match}
+              clock={props.clock}
+              onCommand={record}
+              busy={busy}
+              teamLabel={teamLabel}
+            />
+          </View>
         </>
       )}
     </View>
@@ -481,7 +722,12 @@ export function ConnectedLiveEditor(props: ConnectedLiveEditorProps) {
 }
 const styles = StyleSheet.create({
   stack: { gap: 12 },
+  hidden: { display: "none" },
   wrap: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  tab: { flexGrow: 1, flexBasis: 100 },
+  action: { flexGrow: 1, flexBasis: 140 },
+  scoreboard: { flexDirection: "row", alignItems: "center", gap: 12 },
+  teamName: { flex: 1, textAlign: "center" },
   player: {
     borderTopWidth: 1,
     borderColor: colors.border,

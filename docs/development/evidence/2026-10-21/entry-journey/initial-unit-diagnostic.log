@@ -1,0 +1,33 @@
+$ vitest run
+
+ RUN  v5.0.5 /workspace/LongBall
+
+ ❯ apps/mobile/src/platform/media-client.test.ts (7 tests | 1 failed) 8444ms
+   ❯ authenticated media transport (7)
+     × prepares with role/scope/version and retains explicit request identity without receiving auth tokens as props 8031ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  apps/mobile/src/platform/media-client.test.ts > authenticated media transport > prepares with role/scope/version and retains explicit request identity without receiving auth tokens as props
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ apps/mobile/src/platform/media-client.test.ts:26:3
+     24|
+     25| describe("authenticated media transport", () => {
+     26|   it("prepares with role/scope/version and retains explicit request id…
+       |   ^
+     27|     let call: { url: string; options: RequestInit } | null = null;
+     28|     const client = new MediaUploadClient(
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 58 passed (59)
+      Tests  1 failed | 575 passed (576)
+   Start at  17:15:46
+   Duration  76.91s (tests 50%, transform 23%, import 23%, worker 4%)
+
+    Isolate  59 workers spawned · ~1.45s startup each (spawn + environment, per file)
+             at least ~41.24s faster with isolate: false — reuses workers across files instead of one per file
+
+[ELIFECYCLE] Command failed with exit code 1.

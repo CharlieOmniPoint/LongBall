@@ -16,11 +16,26 @@ import {
   TextInput,
   View,
 } from "react-native";
+import * as Crypto from "expo-crypto";
+import * as SecureStore from "expo-secure-store";
 import {
   currentMemberships,
   type Membership,
   type Principal,
+  type Role,
 } from "@longball/application/access";
+import {
+  createWorkspaceContextPreference,
+  resolveWorkspaceContext,
+  workspaceContextChoices,
+  workspaceContextKey,
+  workspaceContextPreferenceKey,
+  type WorkspaceContextSelection,
+} from "@longball/application/workspace-context";
+import {
+  mergeWorkspaceControllerStatus,
+  workspaceNavigationDecision,
+} from "@longball/application/workspace-navigation";
 import type {
   CommunityActor,
   CommunityCommand,
@@ -90,13 +105,21 @@ import {
 import { Button, Card, Notice, Pill } from "../ui";
 import { colors, typography } from "../ui/tokens";
 import { PreparationScreens } from "./PreparationScreens";
-import { ServicePanel, type ServicePanelProps } from "./ServicePanel";
+import {
+  ServicePanel,
+  type ConnectedControllerState,
+  type ServicePanelProps,
+} from "./ServicePanel";
 import { MediaUpload } from "./MediaUpload";
 import { ConnectedAlbums } from "./ConnectedAlbums";
 import {
   ConnectedMatchCentre,
   type ConnectedMatchCentreDto,
 } from "./ConnectedMatchCentre";
+import { ConnectedManagerHome } from "./ConnectedManagerHome";
+import { groupPreparationEvents } from "@longball/application/preparation-presentation";
+import { ConnectedPlayerHome } from "./ConnectedPlayerHome";
+import { WorkspaceNavigation, type WorkspaceTab } from "./WorkspaceNavigation";
 import {
   ConnectedRecordsScreens,
   type ConnectedRecordsDto,
@@ -111,9 +134,10 @@ import {
   ConnectedClubConfiguration,
   type ConnectedConfigurationDto,
 } from "./ConnectedClubConfiguration";
-import type {
-  ConnectedStaffDto,
-  ConnectedStaffCommand,
+import {
+  ConnectedStaffPanel,
+  type ConnectedStaffDto,
+  type ConnectedStaffCommand,
 } from "./ConnectedStaffPanel";
 import type { SeasonRolloverCommand } from "@longball/application/season-service";
 import { deliverReportExport } from "../platform/report-export";
@@ -125,6 +149,18 @@ import {
 } from "./WorkspaceOutboxBridge";
 
 export interface ConnectedWorkspaceProps {
+  initialConnection?: {
+    baseUrl: string;
+    mode: "synthetic" | "oidc";
+    account: string;
+  };
+  initialRole?: Role;
+  onLeaveWorkspace?: () => void;
+  onOpenAccount?: () => void;
+  /** Keeps the workspace mounted while an exit warning or a retained capability is reviewed. */
+  onNavigationGuardChange?: (
+    guard: ((leave: () => void) => void) | null,
+  ) => void;
   allowSynthetic?: boolean;
   journal?: Journal | null;
   deviceId?: string | null;
@@ -205,28 +241,7 @@ type CommunityPayload = CommunityCommand extends infer C
     ? Omit<C, "id" | "expectedRevision">
     : never
   : never;
-type Tab =
-  | "centre"
-  | "schedule"
-  | "team"
-  | "settings"
-  | "seasons"
-  | "reports"
-  | "community"
-  | "invitations"
-  | "controller";
-function chooseMembership(
-  rows: Membership[],
-  preferred: WorkspaceBinding["role"] | null,
-): Membership | undefined {
-  if (preferred) return rows.find((item) => item.role === preferred);
-  return (
-    rows.find((item) => item.role === "manager") ??
-    rows.find((item) => item.role === "player") ??
-    rows.find((item) => item.role === "spectator") ??
-    rows.find((item) => item.role === "administrator")
-  );
-}
+type Tab = WorkspaceTab;
 interface PendingRequest {
   path: string;
   key: string;
@@ -235,8 +250,6 @@ interface PendingRequest {
   bodyJson?: string;
   protected?: boolean;
 }
-const defaultTeam = "synthetic-roma-u10",
-  defaultSeason = "synthetic-season-2026-27";
 const responseLabels: Record<AvailabilityResponse, string> = {
   available: "Available",
   unavailable: "Unavailable",
@@ -251,6 +264,42 @@ const failureText = (error: unknown) =>
 const serviceActionTime = () => Date.now();
 const dateTime = (ms: number | null) =>
   ms === null ? "Not established" : new Date(ms).toLocaleString("en-GB");
+
+async function contextPreferenceStorageKey(api: string, principal: Principal) {
+  const namespace = workspaceContextPreferenceKey(api, principal);
+  if (Platform.OS === "web") return namespace;
+  return `longball.context.${await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, namespace)}`;
+}
+async function readContextPreference(
+  api: string,
+  principal: Principal,
+): Promise<unknown> {
+  try {
+    const key = await contextPreferenceStorageKey(api, principal);
+    const raw =
+      Platform.OS === "web"
+        ? globalThis.localStorage.getItem(key)
+        : await SecureStore.getItemAsync(key);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+async function saveContextPreference(
+  api: string,
+  principal: Principal,
+  selection: WorkspaceContextSelection,
+): Promise<void> {
+  const key = await contextPreferenceStorageKey(api, principal);
+  const encoded = JSON.stringify(
+    createWorkspaceContextPreference(api, principal, selection),
+  );
+  if (Platform.OS === "web") globalThis.localStorage.setItem(key, encoded);
+  else
+    await SecureStore.setItemAsync(key, encoded, {
+      keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+    });
+}
 
 /** Reads and commands go to the service; this screen does not grant roles or seed its own remote records. */
 export function ConnectedWorkspace(props: ConnectedWorkspaceProps) {
@@ -275,6 +324,10 @@ export function ConnectedWorkspace(props: ConnectedWorkspaceProps) {
     owner: string;
     active: boolean;
   } | null>(null);
+  const externalRetainedChange = useRef(props.onEphemeralRetainedChange);
+  useLayoutEffect(() => {
+    externalRetainedChange.current = props.onEphemeralRetainedChange;
+  }, [props.onEphemeralRetainedChange]);
   const retainedRef = useRef<{ owner: string; active: boolean } | null>(null);
   const onEphemeralRetainedChange = useCallback(
     (active: boolean, owner: string) => {
@@ -282,138 +335,205 @@ export function ConnectedWorkspace(props: ConnectedWorkspaceProps) {
       const value = active ? { owner, active } : null;
       retainedRef.current = value;
       setRetained(value);
+      externalRetainedChange.current?.(active, owner);
     },
     [],
   );
   const connectionHeld = retained?.active === true;
+  const initialBaseUrl = props.initialConnection?.baseUrl;
+  const initialMode = props.initialConnection?.mode;
+  const initialAccount = props.initialConnection?.account;
+  const supplied = useMemo(() => {
+    if (
+      !initialMode ||
+      initialBaseUrl === undefined ||
+      initialAccount === undefined
+    )
+      return { connection: null, error: null };
+    try {
+      const value = {
+        baseUrl: initialBaseUrl,
+        mode: initialMode,
+        account: initialAccount,
+      };
+      if (value.mode === "synthetic" && !allowSynthetic)
+        throw new Error(
+          "Fictional identities are disabled in this application.",
+        );
+      assertStaticReviewApiAddress(
+        value.baseUrl,
+        staticBrowser,
+        Platform.OS === "web" ? globalThis.location.origin : undefined,
+      );
+      const validated = new LongBallServiceClient(value.baseUrl, async () => {
+        throw new Error("Not connected.");
+      });
+      return {
+        connection: { ...value, baseUrl: validated.baseUrl },
+        error: null,
+      };
+    } catch (cause) {
+      return { connection: null, error: failureText(cause) };
+    }
+  }, [
+    initialBaseUrl,
+    initialMode,
+    initialAccount,
+    allowSynthetic,
+    staticBrowser,
+  ]);
+  const activeConnection = props.initialConnection
+    ? supplied.connection
+    : connection;
   return (
     <View style={s.stack} testID="connected-workspace">
-      <Card>
-        <Text style={typography.section}>Service workspace</Text>
-        <Text style={typography.body}>
-          Open the team held by the service. Saved changes can be read on
-          another connected device.
-        </Text>
-        {staticBrowser && (
-          <Notice>
-            This lasting review link runs fictional journeys stored in this
-            browser. Connected service features need an explicit API address or
-            the separate temporary full-service link supplied for review. This
-            static site does not host the API.
-          </Notice>
-        )}
-        <Text style={typography.label}>API URL</Text>
-        <TextInput
-          accessibilityLabel="Workspace API URL"
-          value={baseUrl}
-          editable={!connectionHeld}
-          onChangeText={(value) => {
-            if (!retainedRef.current?.active) setBaseUrl(value);
-          }}
-          autoCapitalize="none"
-          autoCorrect={false}
-          style={s.input}
-        />
-        <View style={s.row}>
-          <Button
-            label="Connected sign-in"
-            variant={mode === "oidc" ? "primary" : "secondary"}
-            disabled={connectionHeld}
-            onPress={() => {
-              if (!retainedRef.current?.active) setMode("oidc");
+      {!props.initialConnection && (
+        <Card>
+          <Text style={typography.section}>Service workspace</Text>
+          <Text style={typography.body}>
+            Open the team held by the service. Saved changes can be read on
+            another connected device.
+          </Text>
+          {staticBrowser && (
+            <Notice>
+              This lasting review link runs fictional journeys stored in this
+              browser. Connected service features need an explicit API address
+              or the separate temporary full-service link supplied for review.
+              This static site does not host the API.
+            </Notice>
+          )}
+          <Text style={typography.label}>API URL</Text>
+          <TextInput
+            accessibilityLabel="Workspace API URL"
+            value={baseUrl}
+            editable={!connectionHeld}
+            onChangeText={(value) => {
+              if (!retainedRef.current?.active) setBaseUrl(value);
             }}
+            autoCapitalize="none"
+            autoCorrect={false}
+            style={s.input}
           />
-          {allowSynthetic && (
+          <View style={s.row}>
             <Button
-              label="Fictional API review"
-              variant={mode === "synthetic" ? "primary" : "secondary"}
+              label="Connected sign-in"
+              variant={mode === "oidc" ? "primary" : "secondary"}
               disabled={connectionHeld}
               onPress={() => {
-                if (!retainedRef.current?.active) setMode("synthetic");
+                if (!retainedRef.current?.active) setMode("oidc");
               }}
             />
+            {allowSynthetic && (
+              <Button
+                label="Fictional API review"
+                variant={mode === "synthetic" ? "primary" : "secondary"}
+                disabled={connectionHeld}
+                onPress={() => {
+                  if (!retainedRef.current?.active) setMode("synthetic");
+                }}
+              />
+            )}
+          </View>
+          {mode === "oidc" ? (
+            <Notice>
+              Sign in under Account security first. Its unlocked credential is
+              sent only to its configured API. Roles and adult authority come
+              from that service.
+            </Notice>
+          ) : allowSynthetic ? (
+            <>
+              <Pill tone="warning">PUBLIC FICTIONAL IDENTITIES</Pill>
+              <Text style={typography.muted}>
+                These selectors work only on an API explicitly running synthetic
+                authentication. They do not authenticate a person or provide
+                real-account security.
+              </Text>
+              <View style={s.row}>
+                {[
+                  ["synthetic-manager-1", "Fictional manager"],
+                  ["synthetic-admin", "Fictional administrator"],
+                  ["synthetic-manager-2", "Fictional manager only"],
+                  ["synthetic-account-player-01", "Fictional Player 01"],
+                  ["synthetic-spectator", "Fictional spectator"],
+                  ["synthetic-account-invitee", "Fictional invite recipient"],
+                ].map(([value, label]) => (
+                  <Button
+                    key={value}
+                    label={label}
+                    variant={account === value ? "primary" : "secondary"}
+                    disabled={connectionHeld}
+                    onPress={() => {
+                      if (!retainedRef.current?.active) setAccount(value);
+                    }}
+                  />
+                ))}
+              </View>
+            </>
+          ) : (
+            <Notice tone="error">
+              Fictional API identities are disabled in this build.
+            </Notice>
           )}
-        </View>
-        {mode === "oidc" ? (
-          <Notice>
-            Sign in under Account security first. Its unlocked credential is
-            sent only to its configured API. Roles and adult authority come from
-            that service.
-          </Notice>
-        ) : allowSynthetic ? (
-          <>
-            <Pill tone="warning">PUBLIC FICTIONAL IDENTITIES</Pill>
-            <Text style={typography.muted}>
-              These selectors work only on an API explicitly running synthetic
-              authentication. They do not authenticate a person or provide
-              real-account security.
-            </Text>
-            <View style={s.row}>
-              {[
-                ["synthetic-manager-1", "Fictional manager"],
-                ["synthetic-account-player-01", "Fictional Player 01"],
-                ["synthetic-spectator", "Fictional spectator"],
-                ["synthetic-account-invitee", "Fictional invite recipient"],
-              ].map(([value, label]) => (
-                <Button
-                  key={value}
-                  label={label}
-                  variant={account === value ? "primary" : "secondary"}
-                  disabled={connectionHeld}
-                  onPress={() => {
-                    if (!retainedRef.current?.active) setAccount(value);
-                  }}
-                />
-              ))}
-            </View>
-          </>
-        ) : (
-          <Notice tone="error">
-            Fictional API identities are disabled in this build.
-          </Notice>
-        )}
-        <Text style={typography.muted}>
-          {staticBrowser
-            ? "Paste the separately supplied full API address. The static review site address and / cannot be used as an API."
-            : "Browser review: use / with the combined app/API server. The standalone API uses port 4310. A physical phone needs the development host address or a USB port mapping."}
-        </Text>
-        {error && <Notice tone="error">{error}</Notice>}
-        <Button
-          label="Open service workspace"
-          testID="workspace-connect"
-          disabled={connectionHeld}
-          onPress={() => {
-            if (retainedRef.current?.active) return;
-            try {
-              if (mode === "synthetic" && !allowSynthetic)
-                throw new Error(
-                  "Fictional API identities are disabled in this build.",
+          <Text style={typography.muted}>
+            {staticBrowser
+              ? "Paste the separately supplied full API address. The static review site address and / cannot be used as an API."
+              : "Browser review: use / with the combined app/API server. The standalone API uses port 4310. A physical phone needs the development host address or a USB port mapping."}
+          </Text>
+          {error && <Notice tone="error">{error}</Notice>}
+          <Button
+            label="Open service workspace"
+            testID="workspace-connect"
+            disabled={connectionHeld}
+            onPress={() => {
+              if (retainedRef.current?.active) return;
+              try {
+                if (mode === "synthetic" && !allowSynthetic)
+                  throw new Error(
+                    "Fictional API identities are disabled in this build.",
+                  );
+                assertStaticReviewApiAddress(
+                  baseUrl,
+                  staticBrowser,
+                  Platform.OS === "web"
+                    ? globalThis.location.origin
+                    : undefined,
                 );
-              assertStaticReviewApiAddress(
-                baseUrl,
-                staticBrowser,
-                Platform.OS === "web" ? globalThis.location.origin : undefined,
-              );
-              const validated = new LongBallServiceClient(baseUrl, async () => {
-                throw new Error("Not connected.");
-              });
-              setConnection({ baseUrl: validated.baseUrl, mode, account });
-              setError(null);
-            } catch (cause) {
-              setError(failureText(cause));
-            }
-          }}
-        />
-      </Card>
-      {connection && (connection.mode !== "synthetic" || allowSynthetic) && (
-        <WorkspaceEntry
-          key={`${connection.baseUrl}|${connection.mode}|${connection.account}|${props.teamId}|${props.seasonId}`}
-          connection={connection}
-          {...props}
-          allowSynthetic={allowSynthetic}
-          onEphemeralRetainedChange={onEphemeralRetainedChange}
-        />
+                const validated = new LongBallServiceClient(
+                  baseUrl,
+                  async () => {
+                    throw new Error("Not connected.");
+                  },
+                );
+                setConnection({ baseUrl: validated.baseUrl, mode, account });
+                setError(null);
+              } catch (cause) {
+                setError(failureText(cause));
+              }
+            }}
+          />
+        </Card>
       )}
+      {supplied.error && (
+        <Card>
+          <Notice tone="error">{supplied.error}</Notice>
+          {props.onLeaveWorkspace && (
+            <Button
+              label="Return to welcome"
+              onPress={props.onLeaveWorkspace}
+            />
+          )}
+        </Card>
+      )}
+      {activeConnection &&
+        (activeConnection.mode !== "synthetic" || allowSynthetic) && (
+          <WorkspaceEntry
+            key={`${activeConnection.baseUrl}|${activeConnection.mode}|${activeConnection.account}|${props.teamId}|${props.seasonId}`}
+            connection={activeConnection}
+            {...props}
+            allowSynthetic={allowSynthetic}
+            onEphemeralRetainedChange={onEphemeralRetainedChange}
+          />
+        )}
     </View>
   );
 }
@@ -542,6 +662,8 @@ function WorkspaceSession({
   oidcSession?: ConnectedSessionSummary;
 }) {
   const [identity, setIdentity] = useState<Identity | null>(null);
+  const lock = useRef(false);
+  const [errors, setErrors] = useState<string[]>([]);
   const [retainedOwner] = useState(randomUUID);
   const brandRetainedRef = useRef(false),
     brandScopeRef = useRef<string | null>(null);
@@ -557,10 +679,65 @@ function WorkspaceSession({
   const [scopeChoice, setScopeChoice] = useState<{
     teamId: string;
     seasonId: string;
+    playerId?: string | null;
   } | null>(null);
   const [roleChoice, setRoleChoice] = useState<WorkspaceBinding["role"] | null>(
     null,
   );
+  const [contextPickerOpen, setContextPickerOpen] = useState(false);
+  const [navigationReview, setNavigationReview] = useState<(() => void) | null>(
+    null,
+  );
+  const [controllerStatus, setControllerStatus] = useState<{
+    source: string;
+    state: ConnectedControllerState;
+  } | null>(null);
+  const controllerStatusRef = useRef<{
+    source: string;
+    state: ConnectedControllerState;
+  } | null>(null);
+  const controllerStateSink = useRef(props.onControllerState);
+  useLayoutEffect(() => {
+    controllerStateSink.current = props.onControllerState;
+  }, [props.onControllerState]);
+  const navigationStateRef = useRef<{
+    memoryPending: boolean;
+    savedPending: boolean;
+    controllerPending: boolean;
+    controllerUnsent: boolean;
+  }>({
+    memoryPending: false,
+    savedPending: false,
+    controllerPending: false,
+    controllerUnsent: false,
+  });
+  const onNavigationGuardChange = props.onNavigationGuardChange;
+  const guardNavigation = useCallback((leave: () => void) => {
+    const current = navigationStateRef.current;
+    const decision = workspaceNavigationDecision({
+      ...current,
+      privateCapability:
+        brandRetainedRef.current ||
+        uploadRetainedRef.current ||
+        Boolean(invitationHeldRef.current?.active),
+      busy: lock.current,
+    });
+    if (decision === "blocked") {
+      setErrors([
+        "Retry or explicitly close the retained private request before changing workspace. Its current capability stays on this screen. Account locking and sign-out remain available.",
+      ]);
+      return;
+    }
+    if (decision === "review_saved") {
+      setNavigationReview(() => leave);
+      return;
+    }
+    leave();
+  }, []);
+  useLayoutEffect(() => {
+    onNavigationGuardChange?.(guardNavigation);
+    return () => onNavigationGuardChange?.(null);
+  }, [guardNavigation, onNavigationGuardChange]);
   const [preparationCache, setPreparation] =
     useState<BoundWorkspaceValue<PreparationState> | null>(null);
   const [ownCache, setOwn] =
@@ -628,10 +805,15 @@ function WorkspaceSession({
     ++generation.current;
     liveBinding.current = null;
   }, []);
-  const [tab, setTab] = useState<Tab>("schedule");
+  const [tab, setTab] = useState<Tab>("home");
+  const [communityInitialSection, setCommunityInitialSection] = useState<
+    "photos" | "awards"
+  >("photos");
+  const [selectedReportMatchId, setSelectedReportMatchId] = useState<
+    string | null
+  >(null);
   const initialRoute = useRef(false);
   const [busy, setBusy] = useState(false);
-  const [errors, setErrors] = useState<string[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
   const [memoryPending, setPending] = useState<PendingRequest | null>(null);
   const [legacyReviewKey, setLegacyReviewKey] = useState<string | null>(null);
@@ -662,29 +844,29 @@ function WorkspaceSession({
   const [serviceMatchId, setServiceMatchId] = useState(
     props.match?.config.matchId ?? "",
   );
-  const lock = useRef(false);
   const oidcSessionId = oidcSession?.sessionId;
   const oidcAccountId = oidcSession?.accountId;
   const oidcIssuer = oidcSession?.issuer;
   const oidcSubject = oidcSession?.subject;
-  const verifiedMemberships = identity
-    ? currentMemberships(
+  const contextChoices = identity
+    ? workspaceContextChoices(
         identity.principal,
         identity.memberships,
         membershipTime,
       )
     : [];
-  const initialMembership = chooseMembership(verifiedMemberships, null);
-  const teamId =
-    scopeChoice?.teamId ??
-    requestedTeamId ??
-    (connection.mode === "synthetic" ? defaultTeam : initialMembership?.teamId);
-  const seasonId =
-    scopeChoice?.seasonId ??
-    requestedSeasonId ??
-    (connection.mode === "synthetic"
-      ? defaultSeason
-      : initialMembership?.seasonId);
+  const selectedContext =
+    scopeChoice && roleChoice
+      ? (contextChoices.find(
+          (item) =>
+            item.teamId === scopeChoice.teamId &&
+            item.seasonId === scopeChoice.seasonId &&
+            item.role === roleChoice &&
+            (item.role !== "player" || item.playerId === scopeChoice.playerId),
+        ) ?? null)
+      : null;
+  const teamId = selectedContext?.teamId;
+  const seasonId = selectedContext?.seasonId;
   const path = (section: string) => {
     if (!teamId || !seasonId)
       throw new Error("The service has not granted a team and season scope.");
@@ -726,6 +908,32 @@ function WorkspaceSession({
           .toString()
           .replace(/\/$/, "")
       : client.baseUrl.replace(/\/$/, "");
+  const controllerSource = `${absoluteApi}\u0000${identity?.principal.accountId}\u0000${identity?.principal.issuer}\u0000${identity?.principal.subject}\u0000${teamId}\u0000${seasonId}\u0000${roleChoice}\u0000${serviceMatchId}`;
+  const currentControllerSource = useRef(controllerSource);
+  useLayoutEffect(() => {
+    currentControllerSource.current = controllerSource;
+  }, [controllerSource]);
+  const handleControllerState = useCallback(
+    (state: ConnectedControllerState) => {
+      const previous = controllerStatusRef.current;
+      const next = mergeWorkspaceControllerStatus(
+        currentControllerSource.current,
+        previous,
+        controllerSource,
+        state,
+      );
+      if (!next || next === previous) return;
+      if (
+        previous?.source === next.source &&
+        JSON.stringify(previous.state) === JSON.stringify(next.state)
+      )
+        return;
+      controllerStatusRef.current = next;
+      setControllerStatus(next);
+      controllerStateSink.current?.(next.state);
+    },
+    [controllerSource],
+  );
   const storageChecked = !props.journal || storage?.journal === props.journal;
   const protectedOutbox = Boolean(
     props.journal &&
@@ -745,18 +953,21 @@ function WorkspaceSession({
       ? outboxStatus
       : null;
   const restored = protectedOutbox ? currentOutbox?.state?.pending : null;
-  const pending: PendingRequest | null =
-    memoryPending ??
-    (restored
-      ? {
-          path: restored.path,
-          key: restored.key,
-          body: JSON.parse(restored.bodyJson) as unknown,
-          bodyJson: restored.bodyJson,
-          label: restored.label,
-          protected: true,
-        }
-      : null);
+  const pending = useMemo<PendingRequest | null>(
+    () =>
+      memoryPending ??
+      (restored
+        ? {
+            path: restored.path,
+            key: restored.key,
+            body: JSON.parse(restored.bodyJson) as unknown,
+            bodyJson: restored.bodyJson,
+            label: restored.label,
+            protected: true,
+          }
+        : null),
+    [memoryPending, restored],
+  );
   useEffect(() => {
     const journal = props.journal;
     if (!journal) return;
@@ -790,7 +1001,14 @@ function WorkspaceSession({
         membershipTime,
       ).filter((item) => item.teamId === teamId && item.seasonId === seasonId)
     : [];
-  const membership = chooseMembership(actor, roleChoice);
+  const membership = selectedContext
+    ? actor.find(
+        (item) =>
+          item.role === selectedContext.role &&
+          (item.role !== "player" ||
+            item.playerId === selectedContext.playerId),
+      )
+    : undefined;
   const manager =
     membership?.role === "manager" &&
     binding?.teamId === teamId &&
@@ -1067,6 +1285,7 @@ function WorkspaceSession({
       setAlbumSelection(
         selectAlbum(albumScope, community.matches, matchId, community.allowed),
       );
+      setCommunityInitialSection("photos");
       setTab("community");
     } catch (cause) {
       setErrors([failureText(cause)]);
@@ -1118,47 +1337,72 @@ function WorkspaceSession({
         "The service identity differs from the current sign-in. Reconnect before opening private workspace data.",
       );
     setIdentity(nextIdentity);
-    const current = currentMemberships(
+    const preference = await readContextPreference(
+      absoluteApi,
       nextIdentity.principal,
-      nextIdentity.memberships,
-      Date.now(),
     );
-    const initial = chooseMembership(current, null);
-    const resolvedTeamId =
-      scopeChoice?.teamId ??
-      requestedTeamId ??
-      (connection.mode === "synthetic" ? defaultTeam : initial?.teamId);
-    const resolvedSeasonId =
-      scopeChoice?.seasonId ??
-      requestedSeasonId ??
-      (connection.mode === "synthetic" ? defaultSeason : initial?.seasonId);
-    if (!resolvedTeamId || !resolvedSeasonId) {
-      setPreparation(null);
-      setOwn(null);
-      setRecords(null);
-      setCommunity(null);
-      setErrors([
-        "The verified service account has no current team and season membership. Activation or assignment must be completed through the configured service.",
-      ]);
+    if (generation.current !== requestGeneration) return;
+    const resolution = resolveWorkspaceContext({
+      apiBaseUrl: absoluteApi,
+      principal: nextIdentity.principal,
+      memberships: nextIdentity.memberships,
+      nowMs: serviceActionTime(),
+      preference,
+      selected:
+        scopeChoice && roleChoice
+          ? {
+              teamId: scopeChoice.teamId,
+              seasonId: scopeChoice.seasonId,
+              role: roleChoice,
+              playerId:
+                roleChoice === "player" ? (scopeChoice.playerId ?? null) : null,
+            }
+          : null,
+      initialRole: props.initialRole,
+      teamId: requestedTeamId,
+      seasonId: requestedSeasonId,
+    });
+    const chosen = resolution.selected;
+    if (!chosen) {
+      setErrors(
+        resolution.choices.length
+          ? []
+          : [
+              "This account has no current team, season and role assignment. A received invitation can still be reviewed below.",
+            ],
+      );
       return;
     }
+    // Establish an explicit header-bound selection before any scoped private read.
+    // State changes repeat /me; neither a stored preference nor a UI role grants access.
+    if (
+      scopeChoice?.teamId !== chosen.teamId ||
+      scopeChoice?.seasonId !== chosen.seasonId ||
+      roleChoice !== chosen.role ||
+      (chosen.role === "player" && scopeChoice?.playerId !== chosen.playerId)
+    ) {
+      setScopeChoice({
+        teamId: chosen.teamId,
+        seasonId: chosen.seasonId,
+        playerId: chosen.playerId,
+      });
+      setRoleChoice(chosen.role);
+      return;
+    }
+    const resolvedTeamId = chosen.teamId;
+    const resolvedSeasonId = chosen.seasonId;
     const scopedPath = (section: string) =>
       `/v1/teams/${encodeURIComponent(resolvedTeamId)}/${section}?seasonId=${encodeURIComponent(resolvedSeasonId)}`;
-    const memberships = current.filter(
-      (item) =>
-        item.teamId === resolvedTeamId && item.seasonId === resolvedSeasonId,
-    );
-    const chosen = chooseMembership(memberships, roleChoice);
     const isManager = chosen?.role === "manager",
       isPlayer = chosen?.role === "player",
       isAdministrator = chosen?.role === "administrator";
     if (!initialRoute.current && chosen) {
       setTab(
         isAdministrator
-          ? "settings"
+          ? "clubs"
           : chosen.role === "spectator"
             ? "centre"
-            : "schedule",
+            : "home",
       );
       initialRoute.current = true;
     }
@@ -1170,11 +1414,21 @@ function WorkspaceSession({
       subject: nextIdentity.principal.subject,
       teamId: resolvedTeamId,
       seasonId: resolvedSeasonId,
-      role: (chosen?.role as WorkspaceBinding["role"]) ?? "spectator",
+      role: chosen.role,
       playerId: chosen?.playerId ?? null,
     };
     liveBinding.current = ticket;
     setBinding(ticket);
+    void saveContextPreference(
+      absoluteApi,
+      nextIdentity.principal,
+      chosen,
+    ).catch(() => {
+      if (generation.current === requestGeneration)
+        setNotice(
+          "Your workspace is open, but this device could not remember the preference. Current service permissions are unchanged.",
+        );
+    });
     const stillCurrent = async () => {
       if (
         generation.current !== requestGeneration ||
@@ -1404,7 +1658,6 @@ function WorkspaceSession({
     scopeChoice,
     requestedTeamId,
     requestedSeasonId,
-    connection.mode,
     roleChoice,
     absoluteApi,
     oidcSessionId,
@@ -1412,6 +1665,7 @@ function WorkspaceSession({
     oidcIssuer,
     oidcSubject,
     invalidateRequests,
+    props.initialRole,
   ]);
   useEffect(() => {
     let live = true;
@@ -1837,46 +2091,45 @@ function WorkspaceSession({
     }
   };
   const switchScope = (
-    destination: { teamId: string; seasonId: string },
+    destination: { teamId: string; seasonId: string; playerId?: string | null },
     role: WorkspaceBinding["role"] | null = null,
   ) => {
-    if (
-      uploadRetainedRef.current ||
-      brandRetainedRef.current ||
-      invitationIsRetained()
-    )
-      return;
-    setAlbumSelection(null);
-    invitationAuthority.current = null;
-    invitationHeldRef.current = null;
-    setInvitationHeld(null);
-    brandScopeRef.current = null;
-    brandRetainedRef.current = false;
-    setBrandRetained(false);
-    albumKeyRef.current = null;
-    uploadRetainedRef.current = false;
-    setUploadRetained(false);
-    invalidateRequests();
-    setBinding(null);
-    setPreparation(null);
-    setOwn(null);
-    setRecords(null);
-    setCommunity(null);
-    setMatches(null);
-    setSeasons(null);
-    setConfiguration(null);
-    setStaff(null);
-    setBranding(null);
-    setServiceMatchId("");
-    setRoleChoice(role);
-    setScopeChoice(destination);
-    setTab(
-      role === "administrator"
-        ? "settings"
-        : role === "spectator"
-          ? "centre"
-          : "schedule",
-    );
+    guardNavigation(() => {
+      setAlbumSelection(null);
+      invitationAuthority.current = null;
+      invitationHeldRef.current = null;
+      setInvitationHeld(null);
+      brandScopeRef.current = null;
+      brandRetainedRef.current = false;
+      setBrandRetained(false);
+      albumKeyRef.current = null;
+      uploadRetainedRef.current = false;
+      setUploadRetained(false);
+      invalidateRequests();
+      setBinding(null);
+      setPreparation(null);
+      setOwn(null);
+      setRecords(null);
+      setCommunity(null);
+      setMatches(null);
+      setSeasons(null);
+      setConfiguration(null);
+      setStaff(null);
+      setBranding(null);
+      setServiceMatchId("");
+      setSelectedReportMatchId(null);
+      setCommunityInitialSection("photos");
+      setRoleChoice(role);
+      setScopeChoice(destination);
+      setContextPickerOpen(false);
+      setTab(
+        role === "administrator"
+          ? "clubs"
+          : role === "spectator"
+            ? "centre"
+            : "home",
+      );
+    });
   };
   const exportReport = async (
     request: ConnectedExportRequest,
@@ -1950,7 +2203,31 @@ function WorkspaceSession({
         currentOutbox.busy ||
         currentOutbox.retryPending ||
         currentOutbox.conflict));
-  const disabled = disabledWithoutInvitation || invitationRetained;
+  const disabled =
+    disabledWithoutInvitation ||
+    invitationRetained ||
+    Boolean(navigationReview);
+  const activeController =
+    controllerStatus?.source === controllerSource
+      ? controllerStatus.state
+      : null;
+  useLayoutEffect(() => {
+    navigationStateRef.current = {
+      memoryPending: Boolean(pending && !pending.protected),
+      savedPending: Boolean(
+        pending?.protected ||
+          currentOutbox?.retryPending ||
+          currentOutbox?.conflict,
+      ),
+      controllerPending: Boolean(activeController?.pendingNetwork),
+      controllerUnsent: Boolean(activeController?.unsent),
+    };
+  }, [
+    pending,
+    currentOutbox?.retryPending,
+    currentOutbox?.conflict,
+    activeController,
+  ]);
   const brandingPanel =
     branding && brandClient && brandScopeKey ? (
       <BrandLogos
@@ -1980,120 +2257,129 @@ function WorkspaceSession({
     );
   return (
     <View style={s.stack} testID="workspace-session">
-      <Card>
-        <Pill tone={connection.mode === "synthetic" ? "warning" : "info"}>
-          {connection.mode === "synthetic"
-            ? "FICTIONAL API REVIEW"
-            : "CONNECTED SERVICE"}
-        </Pill>
-        {branding && brandClient && brandScopeKey && (
-          <View style={s.row}>
+      <Card style={{ padding: 12 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+          {branding && brandClient && brandScopeKey && (
             <AuthenticatedBrandBadge
               client={brandClient}
               reference={branding.effective.logo}
               scopeKey={brandScopeKey}
               assertAccess={assertBrandAccess}
-              label={`${branding.team.name} effective ${branding.effective.source} logo`}
+              label={`${branding.team.name} team badge`}
             />
-            <View style={{ flex: 1 }}>
-              <Text style={typography.section}>
-                {branding.team.name} {branding.team.ageGroup}
-              </Text>
+          )}
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text style={typography.section}>
+              {selectedContext
+                ? preparation
+                  ? `${preparation.team.name} ${preparation.team.ageGroup}`
+                  : own
+                    ? `${own.team.name} ${own.team.ageGroup}`
+                    : configuration
+                      ? `${configuration.team.name} ${configuration.team.ageGroup}`
+                      : (branding?.team.name ?? selectedContext.teamLabel)
+                : identity
+                  ? "Choose your workspace"
+                  : "Checking your account…"}
+            </Text>
+            {selectedContext && (
               <Text style={typography.muted}>
-                {branding.effective.source === "team"
-                  ? "Team logo"
-                  : branding.effective.source === "club"
-                    ? "Club logo inherited"
-                    : "Neutral original badge"}
+                {selectedContext.roleLabel} ·{" "}
+                {own?.season?.label ??
+                  preparation?.seasons.find((item) => item.id === seasonId)
+                    ?.label ??
+                  configuration?.seasons.find((item) => item.id === seasonId)
+                    ?.label ??
+                  selectedContext.seasonLabel}
               </Text>
-            </View>
+            )}
+            <Text
+              style={{ fontSize: 10, lineHeight: 14, color: colors.inkMuted }}
+            >
+              {connection.mode === "synthetic"
+                ? "FICTIONAL API REVIEW"
+                : "CONNECTED SERVICE"}
+            </Text>
+          </View>
+        </View>
+        {selectedContext && contextChoices.length > 1 && (
+          <Button
+            label="Change space"
+            testID="workspace-change-context"
+            variant="quiet"
+            icon="swap"
+            disabled={disabled}
+            onPress={() =>
+              guardNavigation(() => setContextPickerOpen((value) => !value))
+            }
+          />
+        )}
+        {!selectedContext && (
+          <View style={s.row}>
+            <Button
+              label="Account"
+              variant="quiet"
+              onPress={() =>
+                guardNavigation(
+                  props.onOpenAccount ?? (() => setTab("account")),
+                )
+              }
+            />
+            {props.onLeaveWorkspace && (
+              <Button
+                label="Return to welcome"
+                variant="quiet"
+                onPress={() => guardNavigation(props.onLeaveWorkspace!)}
+              />
+            )}
           </View>
         )}
-        <Text style={typography.section}>
-          {identity
-            ? identity.principal.accountId
-            : "Checking service identity…"}
-        </Text>
-        <Text style={typography.muted}>
-          {membership
-            ? `${membership.role} · ${teamId} · ${seasonId}`
-            : "No current team membership returned."}
-        </Text>
-        {identity && (
-          <Text style={typography.muted}>
-            {identity.principal.identityClassification.replaceAll("_", " ")} ·{" "}
-            {identity.principal.strongAuth
-              ? "strong authentication verified by service"
-              : "strong authentication not verified"}
-          </Text>
-        )}
-        {actor.filter((item) =>
-          ["manager", "player", "spectator", "administrator"].includes(
-            item.role,
-          ),
-        ).length > 1 &&
-          teamId &&
-          seasonId && (
-            <View style={s.row}>
-              {actor
-                .filter((item) =>
-                  ["manager", "player", "spectator", "administrator"].includes(
-                    item.role,
-                  ),
-                )
-                .map((item) => (
+        {identity &&
+          (!selectedContext || contextPickerOpen) &&
+          contextChoices.length > 0 && (
+            <View style={s.stack} testID="workspace-context-choices">
+              <Text style={typography.section}>
+                Choose a team, season and role
+              </Text>
+              <Text style={typography.body}>
+                Only current assignments returned by the service are available.
+                Your last valid choice can be remembered on this device.
+              </Text>
+              {contextChoices.map((choice) => (
+                <Card key={workspaceContextKey(choice)}>
+                  {choice.clubLabel && (
+                    <Text style={typography.muted}>{choice.clubLabel}</Text>
+                  )}
+                  <Text style={typography.section}>{choice.teamLabel}</Text>
+                  <Text style={typography.body}>
+                    {choice.seasonLabel} · {choice.roleLabel}
+                  </Text>
                   <Button
-                    key={item.role}
-                    label={`Use ${item.role} experience`}
-                    variant={
-                      membership?.role === item.role ? "primary" : "secondary"
-                    }
+                    label={`Open ${choice.roleLabel} · ${choice.teamLabel} · ${choice.seasonLabel}`}
+                    testID={`workspace-context-${choice.role}-${choice.teamId}-${choice.seasonId}-${choice.playerId ?? "none"}`}
                     disabled={disabled}
+                    variant={
+                      selectedContext &&
+                      workspaceContextKey(selectedContext) ===
+                        workspaceContextKey(choice)
+                        ? "secondary"
+                        : "primary"
+                    }
                     onPress={() =>
                       switchScope(
-                        { teamId, seasonId },
-                        item.role as WorkspaceBinding["role"],
+                        {
+                          teamId: choice.teamId,
+                          seasonId: choice.seasonId,
+                          playerId: choice.playerId,
+                        },
+                        choice.role,
                       )
                     }
                   />
-                ))}
+                </Card>
+              ))}
             </View>
           )}
-        {verifiedMemberships.length > 1 && (
-          <View style={s.row}>
-            {Array.from(
-              new Map(
-                verifiedMemberships
-                  .filter((item) =>
-                    [
-                      "manager",
-                      "player",
-                      "spectator",
-                      "administrator",
-                    ].includes(item.role),
-                  )
-                  .map((item) => [`${item.teamId}:${item.seasonId}`, item]),
-              ).values(),
-            ).map((item) => (
-              <Button
-                key={`${item.teamId}:${item.seasonId}`}
-                label={`${item.teamId} · ${item.seasonId}`}
-                variant={
-                  item.teamId === teamId && item.seasonId === seasonId
-                    ? "primary"
-                    : "secondary"
-                }
-                disabled={disabled}
-                onPress={() => {
-                  switchScope({
-                    teamId: item.teamId,
-                    seasonId: item.seasonId,
-                  });
-                }}
-              />
-            ))}
-          </View>
-        )}
         {props.invitationDestination && (
           <Button
             label="Review received season invitation"
@@ -2108,6 +2394,55 @@ function WorkspaceSession({
           </Notice>
         ))}
         {notice && <Notice>{notice}</Notice>}
+        {(activeController?.unsent || activeController?.pendingNetwork) && (
+          <Notice tone="warning">
+            This match has {activeController.pendingCount} event(s) awaiting
+            acknowledgement
+            {activeController.pendingNetwork
+              ? " and an unresolved service request"
+              : ""}
+            . Saved records remain in this device journal. Upload or review them
+            before changing workspace.
+          </Notice>
+        )}
+        {navigationReview && (
+          <Card>
+            <Text style={typography.section}>
+              Saved requests still need attention
+            </Text>
+            <Text style={typography.body}>
+              Unsynchronised match events or protected requests will remain on
+              this device. Leaving does not upload them or confirm that the
+              service accepted them. Return to this account and workspace to
+              retry.
+            </Text>
+            <Button
+              label="Stay in this workspace"
+              onPress={() => setNavigationReview(null)}
+            />
+            <Button
+              label="Continue; keep saved records"
+              variant="secondary"
+              onPress={() => {
+                if (
+                  brandRetainedRef.current ||
+                  uploadRetainedRef.current ||
+                  invitationIsRetained() ||
+                  navigationStateRef.current.memoryPending ||
+                  lock.current
+                ) {
+                  setErrors([
+                    "A private in-memory request is still retained. Retry or explicitly close it before leaving.",
+                  ]);
+                  return;
+                }
+                const proceed = navigationReview;
+                setNavigationReview(null);
+                proceed();
+              }}
+            />
+          </Card>
+        )}
         {protectedOutbox &&
         binding &&
         currentOutboxId &&
@@ -2120,14 +2455,15 @@ function WorkspaceSession({
             journal={props.journal}
             deviceId={props.deviceId}
             onStatus={setOutboxStatus}
+            showStorageDetails={tab === "more"}
           />
-        ) : (
+        ) : tab === "more" || !selectedContext ? (
           <Text style={typography.muted}>
             {storageChecked
               ? "Service changes use memory-only retry on this connection. Closing this workspace clears unsent or unresolved requests; real browser command bodies are not written to browser persistence."
               : "Checking protected request storage before enabling changes…"}
           </Text>
-        )}
+        ) : null}
         {pending && (
           <>
             <Notice tone="warning">
@@ -2208,70 +2544,277 @@ function WorkspaceSession({
             no server acknowledgement or delivery is claimed.
           </Notice>
         )}
-        <Button
-          label={busy ? "Contacting service…" : "Refresh service views"}
-          variant="secondary"
-          disabled={
-            busy ||
-            Boolean(pending) ||
-            uploadRetained ||
-            brandRetained ||
-            invitationRetained
-          }
-          onPress={() => {
-            void reload();
-          }}
-        />
-        <View style={s.row} accessibilityRole="tablist">
-          {(
-            (administrator
+        {(tab === "more" || tab === "account" || !selectedContext) && (
+          <Button
+            label={busy ? "Contacting service…" : "Refresh service views"}
+            variant="secondary"
+            disabled={
+              busy ||
+              Boolean(pending) ||
+              uploadRetained ||
+              brandRetained ||
+              invitationRetained
+            }
+            onPress={() => {
+              void reload();
+            }}
+          />
+        )}
+      </Card>
+      {expectedBinding && membership && (
+        <View testID="workspace-context-ready">
+          <WorkspaceNavigation
+            role={membership.role}
+            active={tab}
+            disabled={disabled}
+            onSelect={(value) => {
+              if (
+                !uploadRetainedRef.current &&
+                !brandRetainedRef.current &&
+                !invitationIsRetained()
+              ) {
+                if (value === "account" && props.onOpenAccount)
+                  guardNavigation(props.onOpenAccount);
+                else {
+                  if (value === "community")
+                    setCommunityInitialSection("photos");
+                  setTab(value);
+                }
+              }
+            }}
+          />
+        </View>
+      )}
+      {tab === "more" && expectedBinding && (
+        <Card>
+          <View style={s.stack} testID="workspace-more-panel">
+            <Text accessibilityRole="header" style={typography.section}>
+              More
+            </Text>
+            {(manager
               ? [
-                  ["settings", "Club and team"],
+                  ["centre", "Match centre"],
+                  ["community", "Photos and player of the match"],
+                  ["settings", "Team settings"],
                   ["seasons", "Seasons"],
                   ["invitations", "Invitations"],
+                  ...(props.journal && props.deviceId
+                    ? [["controller", "Match recording"]]
+                    : []),
                 ]
               : [
-                  ["centre", "Match centre"],
-                  ["schedule", manager ? "Schedule" : "My schedule"],
-                  ...(manager
-                    ? [
-                        ["team", "Squad"],
-                        ["settings", "Team settings"],
-                        ["seasons", "Seasons"],
-                      ]
-                    : []),
-                  ["reports", "Reports"],
-                  ["community", "Community"],
+                  ["team", "My profile"],
+                  ["reports", "My reports"],
                   ["invitations", "Invitations"],
-                  ...(manager && props.journal && props.deviceId
-                    ? [["controller", "Controller"]]
-                    : []),
-                ]) as [Tab, string][]
-          ).map(([value, label]) => (
+                ]
+            ).map(([value, label]) => (
+              <Button
+                key={value}
+                label={label}
+                testID={`workspace-tab-${value}`}
+                variant="secondary"
+                disabled={disabled}
+                onPress={() => {
+                  if (value === "community")
+                    setCommunityInitialSection("photos");
+                  setTab(value as Tab);
+                }}
+              />
+            ))}
             <Button
-              key={value}
-              label={label}
-              testID={`workspace-tab-${value}`}
-              variant={tab === value ? "primary" : "secondary"}
-              disabled={disabled}
-              onPress={() => {
-                if (
-                  !uploadRetainedRef.current &&
-                  !brandRetainedRef.current &&
-                  !invitationIsRetained()
+              label="Account"
+              icon="lock"
+              testID="workspace-tab-account"
+              variant="secondary"
+              onPress={() =>
+                guardNavigation(
+                  props.onOpenAccount ?? (() => setTab("account")),
                 )
-                  setTab(value);
-              }}
+              }
             />
-          ))}
-        </View>
-      </Card>
+            {props.onLeaveWorkspace && (
+              <Button
+                label="Return to welcome"
+                variant="quiet"
+                onPress={() => guardNavigation(props.onLeaveWorkspace!)}
+              />
+            )}
+          </View>
+        </Card>
+      )}
+      {tab === "home" && manager && preparation && (
+        <ConnectedManagerHome
+          state={preparation}
+          records={records}
+          community={community}
+          nowMs={membershipTime}
+          onOpenSchedule={() => setTab("schedule")}
+          onOpenTeam={() => setTab("team")}
+          onOpenReports={() => setTab("reports")}
+          onOpenCommunity={() => {
+            setCommunityInitialSection("photos");
+            setTab("community");
+          }}
+          onPrepareMatch={() => setTab("schedule")}
+          onResumeMatch={
+            props.journal && props.deviceId
+              ? (matchId: string) => {
+                  setServiceMatchId(matchId);
+                  setTab("controller");
+                }
+              : undefined
+          }
+        />
+      )}
+      {tab === "home" &&
+        membership?.role === "player" &&
+        own &&
+        teamId &&
+        seasonId &&
+        membership.playerId && (
+          <ConnectedPlayerHome
+            key={`${absoluteApi}:${identity?.principal.accountId}:${teamId}:${seasonId}:${membership.playerId}`}
+            own={own}
+            community={community}
+            matches={matches ?? []}
+            scope={{ teamId, seasonId, playerId: membership.playerId }}
+            nowMs={membershipTime}
+            disabled={disabled}
+            displayName={own.profile.displayName}
+            onOpenSchedule={() => setTab("schedule")}
+            onOpenProfile={() => setTab("team")}
+            onOpenGame={() => setTab("centre")}
+            onOpenVote={() => {
+              setCommunityInitialSection("awards");
+              setTab("community");
+            }}
+            onOpenAlbum={openAlbum}
+            onReply={(event, response) => {
+              void mutate(
+                "preparation/own",
+                {
+                  id: randomUUID(),
+                  expectedRevision: own.revision,
+                  ...(event.kind === "match"
+                    ? {
+                        type: "own.fixture_response_recorded",
+                        fixtureId: event.id,
+                        response,
+                      }
+                    : {
+                        type: "own.training_response_recorded",
+                        trainingId: event.id,
+                        response,
+                      }),
+                },
+                "Own availability reply",
+              );
+            }}
+            renderPhoto={(photo) =>
+              communityActor ? (
+                <RemotePhoto
+                  key={`${albumKey}:${photo.id}:${photo.version}`}
+                  client={
+                    new MediaUploadClient(
+                      connection.baseUrl || "/",
+                      communityActor,
+                      authenticatedFetch,
+                    )
+                  }
+                  photoId={photo.id}
+                  revision={photo.version}
+                  mode="gallery"
+                  variant="thumbnail"
+                />
+              ) : null
+            }
+          />
+        )}
+      {tab === "home" && membership?.role === "player" && !own && (
+        <Notice>
+          Your current player home is unavailable. Refresh after the service
+          confirms your own team and season assignment.
+        </Notice>
+      )}
+      {tab === "clubs" && administrator && configuration && (
+        <Card>
+          <Text style={typography.section}>Clubs</Text>
+          <Text style={typography.body}>{configuration.club.name}</Text>
+          <Text style={typography.muted}>
+            This is the club attached to your current service assignment.
+            Private team records require a separate manager role.
+          </Text>
+          <Button
+            label="Edit club and team configuration"
+            disabled={disabled}
+            onPress={() => setTab("settings")}
+          />
+          <Button
+            label="View assigned teams"
+            variant="secondary"
+            disabled={disabled}
+            onPress={() => setTab("team")}
+          />
+        </Card>
+      )}
+      {tab === "people" &&
+        administrator &&
+        (staff ? (
+          <ConnectedStaffPanel
+            value={staff}
+            disabled={disabled}
+            onChange={(command) =>
+              mutate(
+                command.type === "manager.revoked"
+                  ? "managers/revoke"
+                  : "managers",
+                command,
+                "Staff assignment",
+              )
+            }
+          />
+        ) : (
+          <Notice>
+            People are unavailable until the service confirms your administrator
+            assignment.
+          </Notice>
+        ))}
+      {tab === "account" && (
+        <Card>
+          <Text style={typography.section}>Account</Text>
+          <Text style={typography.body}>
+            {selectedContext?.roleLabel ?? "No selected workspace"}
+          </Text>
+          <Text style={typography.muted}>
+            {identity?.principal.accountId ?? "Checking account"}
+          </Text>
+          {props.onOpenAccount && (
+            <Button
+              label="Open account and security"
+              onPress={() => guardNavigation(props.onOpenAccount!)}
+            />
+          )}
+          {props.onLeaveWorkspace && (
+            <Button
+              label="Return to welcome"
+              variant="secondary"
+              onPress={() => guardNavigation(props.onLeaveWorkspace!)}
+            />
+          )}
+        </Card>
+      )}
       {tab === "centre" &&
         membership &&
         membership.role !== "administrator" &&
         (matches ? (
           <ConnectedMatchCentre
             matches={matches}
+            reportView={records}
+            scope={
+              teamId && seasonId
+                ? { teamId, seasonId, playerId: membership.playerId ?? null }
+                : undefined
+            }
             observedAtMs={membershipTime}
             audience={membership.role as ConnectedMatchCentreDto["audience"]}
             busy={disabled}
@@ -2279,7 +2822,15 @@ function WorkspaceSession({
               void reload();
             }}
             onReports={() => setTab("reports")}
-            onPhotos={() => setTab("community")}
+            onPhotos={() => {
+              setCommunityInitialSection("photos");
+              setTab("community");
+            }}
+            onOpenReport={(matchId) => {
+              setSelectedReportMatchId(matchId);
+              setTab("reports");
+            }}
+            onOpenAlbum={openAlbum}
           />
         ) : (
           <Notice>
@@ -2341,6 +2892,8 @@ function WorkspaceSession({
           <OwnPreparation
             key={`${own.profile.id}:${own.revision}`}
             value={own}
+            view={tab === "team" ? "profile" : "schedule"}
+            nowMs={membershipTime}
             disabled={disabled}
             onChange={(command) =>
               mutate("preparation/own", command, "Own preparation change")
@@ -2396,6 +2949,7 @@ function WorkspaceSession({
         (membership && membership.role !== "administrator" && records ? (
           <ConnectedRecordsScreens
             value={records}
+            initialMatchId={selectedReportMatchId ?? undefined}
             audience={membership.role as "manager" | "player" | "spectator"}
             teamLabel={
               preparation
@@ -2428,6 +2982,7 @@ function WorkspaceSession({
             <ConnectedCommunity
               key={`${communityActor.accountId}:${communityActor.teamId}:${communityActor.seasonId}:${communityActor.role}`}
               value={community}
+              initialSection={communityInitialSection}
               actor={communityActor}
               albumScope={albumScope}
               albumSelection={albumSelection}
@@ -2537,7 +3092,10 @@ function WorkspaceSession({
               teamId={teamId}
               seasonId={seasonId}
               allowSynthetic={props.allowSynthetic}
-              onControllerState={props.onControllerState}
+              initialConnection={
+                props.initialConnection ? connection : undefined
+              }
+              onControllerState={handleControllerState}
             />
           ) : (
             <Notice>
@@ -2553,10 +3111,14 @@ function WorkspaceSession({
 
 function OwnPreparation({
   value,
+  view = "schedule",
+  nowMs,
   disabled,
   onChange,
 }: {
   value: OwnPreparationDto;
+  view?: "schedule" | "profile";
+  nowMs: number;
   disabled: boolean;
   onChange: (command: OwnCommand) => Promise<boolean>;
 }) {
@@ -2585,132 +3147,194 @@ function OwnPreparation({
       ))}
     </View>
   );
+  const [schedulePeriod, setSchedulePeriod] = useState<"upcoming" | "past">(
+    "upcoming",
+  );
+  const dayParts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/London",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date(nowMs));
+  const today = `${dayParts.find((part) => part.type === "year")!.value}-${dayParts.find((part) => part.type === "month")!.value}-${dayParts.find((part) => part.type === "day")!.value}`;
+  const events = [
+    ...value.fixtures.map((item) => ({ ...item, kind: "match" as const })),
+    ...value.training.map((item) => ({ ...item, kind: "training" as const })),
+  ];
+  const groups = groupPreparationEvents(events, {
+    period: schedulePeriod,
+    today,
+    date: (event) => (event.kind === "match" ? event.playedDate : event.date),
+    time: (event) => (event.kind === "match" ? event.kickoff : event.time),
+  });
+  const fixtureCard = (fixture: OwnPreparationDto["fixtures"][number]) => (
+    <Card key={fixture.id}>
+      <Text style={typography.section}>
+        {fixture.homeAway === "away" ? "Away to" : "v"} {fixture.opponent}
+      </Text>
+      <Text style={typography.muted}>
+        {fixture.playedDate} · {fixture.kickoff ?? "Time to confirm"} ·{" "}
+        {fixture.venue} · {fixture.status}
+      </Text>
+      <Text style={typography.body}>
+        {fixture.selected ? "Selected by manager" : "Not selected"} · actual
+        attendance: {fixture.attendance.replaceAll("_", " ")}
+      </Text>
+      {fixture.status === "scheduled" ? (
+        responseButtons(fixture.response, (response) => {
+          void command({
+            type: "own.fixture_response_recorded",
+            fixtureId: fixture.id,
+            response,
+          });
+        })
+      ) : (
+        <Text style={typography.muted}>
+          Reply: {responseLabels[fixture.response]}
+        </Text>
+      )}
+    </Card>
+  );
+  const trainingCard = (training: OwnPreparationDto["training"][number]) => (
+    <Card key={training.id}>
+      <Text style={typography.section}>Training · {training.date}</Text>
+      <Text style={typography.muted}>
+        {training.time ?? "Time to confirm"} · {training.venue} ·{" "}
+        {training.status}
+      </Text>
+      <Text style={typography.body}>
+        {training.expected
+          ? "Expected at this occurrence"
+          : "Not in this occurrence"}{" "}
+        · actual attendance: {training.attendance.replaceAll("_", " ")}
+      </Text>
+      {training.status === "scheduled" && training.expected ? (
+        responseButtons(training.response, (response) => {
+          void command({
+            type: "own.training_response_recorded",
+            trainingId: training.id,
+            response,
+          });
+        })
+      ) : (
+        <Text style={typography.muted}>
+          Reply: {responseLabels[training.response]}
+        </Text>
+      )}
+    </Card>
+  );
   return (
     <View style={s.stack} testID="workspace-own-preparation">
-      <Card>
-        <Text style={typography.section}>
-          {value.profile.displayName} · my preferences
-        </Text>
-        <Text style={typography.muted}>
-          {value.team.name} {value.team.ageGroup} · {value.season.label}
-        </Text>
-        <Text style={typography.body}>
-          Shirt {value.profile.shirtNumber ?? "not recorded"} · preferred foot:{" "}
-          {value.profile.foot.replaceAll("_", " ")} · manager-approved
-          positions:{" "}
-          {value.profile.eligiblePositions.join(", ") || "not recorded"}.
-        </Text>
-        <Text style={typography.body}>
-          Choose three distinct positions in order. Goalkeeper eligibility is
-          approved separately by a manager. Changes apply to future preparation;
-          existing match snapshots retain their original profile and lineup.
-        </Text>
-        {preferences.map((selected, rank) => (
-          <View style={s.stack} key={rank}>
-            <Text style={typography.label}>
-              {["First", "Second", "Backup"][rank]} position
-            </Text>
-            <View style={s.row}>
-              {positionCodes.map((position) => (
-                <Button
-                  key={position}
-                  label={position}
-                  variant={selected === position ? "primary" : "secondary"}
-                  disabled={disabled}
-                  onPress={() =>
-                    setPreferences(
-                      (current) =>
-                        current.map((item, index) =>
-                          index === rank ? position : item,
-                        ) as PlayerProfile["preferences"],
-                    )
-                  }
-                />
+      {view === "profile" && (
+        <Card>
+          <Text style={typography.section}>
+            {value.profile.displayName} · my preferences
+          </Text>
+          <Text style={typography.muted}>
+            {value.team.name} {value.team.ageGroup} · {value.season.label}
+          </Text>
+          <Text style={typography.body}>
+            Shirt {value.profile.shirtNumber ?? "not recorded"} · preferred
+            foot: {value.profile.foot.replaceAll("_", " ")} · manager-approved
+            positions:{" "}
+            {value.profile.eligiblePositions.join(", ") || "not recorded"}.
+          </Text>
+          <Text style={typography.body}>
+            Choose three distinct positions in order. Goalkeeper eligibility is
+            approved separately by a manager. Changes apply to future
+            preparation; existing match snapshots retain their original profile
+            and lineup.
+          </Text>
+          {preferences.map((selected, rank) => (
+            <View style={s.stack} key={rank}>
+              <Text style={typography.label}>
+                {["First", "Second", "Backup"][rank]} position
+              </Text>
+              <View style={s.row}>
+                {positionCodes.map((position) => (
+                  <Button
+                    key={position}
+                    label={position}
+                    variant={selected === position ? "primary" : "secondary"}
+                    disabled={disabled}
+                    onPress={() =>
+                      setPreferences(
+                        (current) =>
+                          current.map((item, index) =>
+                            index === rank ? position : item,
+                          ) as PlayerProfile["preferences"],
+                      )
+                    }
+                  />
+                ))}
+              </View>
+            </View>
+          ))}
+          <Button
+            label="Save my position preferences to service"
+            disabled={disabled || new Set(preferences).size !== 3}
+            onPress={() => {
+              void command({ type: "own.preferences_saved", preferences });
+            }}
+          />
+        </Card>
+      )}
+      {view === "schedule" && (
+        <>
+          <Text accessibilityRole="header" style={typography.section}>
+            My schedule
+          </Text>
+          <Notice>
+            Your reply, the manager’s selection and actual attendance are
+            separate records. Your account can change its own reply; attendance
+            is recorded by the manager.
+          </Notice>
+          <View style={s.row}>
+            {(["upcoming", "past"] as const).map((period) => (
+              <Button
+                key={period}
+                label={period === "upcoming" ? "Upcoming" : "Past"}
+                testID={`own-schedule-${period}`}
+                variant={schedulePeriod === period ? "primary" : "secondary"}
+                disabled={disabled}
+                onPress={() => setSchedulePeriod(period)}
+              />
+            ))}
+          </View>
+          {!groups.length && (
+            <Notice>
+              No {schedulePeriod} matches or training are recorded.
+            </Notice>
+          )}
+          {groups.map((group) => (
+            <View
+              key={group.date ?? "undated"}
+              style={s.stack}
+              testID={`own-schedule-group-${group.date ?? "undated"}`}
+            >
+              <Text accessibilityRole="header" style={typography.section}>
+                {group.date ?? "Date to confirm"}
+              </Text>
+              {group.date === null && (
+                <Text style={typography.muted}>
+                  These events have no valid recorded date. Confirm the schedule
+                  before relying on their order.
+                </Text>
+              )}
+              {group.events.map((event) => (
+                <View
+                  key={`${event.kind}:${event.id}`}
+                  testID={`own-schedule-event-${event.kind}-${event.id}`}
+                >
+                  {event.kind === "match"
+                    ? fixtureCard(event)
+                    : trainingCard(event)}
+                </View>
               ))}
             </View>
-          </View>
-        ))}
-        <Button
-          label="Save my position preferences to service"
-          disabled={disabled || new Set(preferences).size !== 3}
-          onPress={() => {
-            void command({ type: "own.preferences_saved", preferences });
-          }}
-        />
-      </Card>
-      <Notice>
-        Your reply, the manager’s selection and actual attendance are separate
-        records. Your account can change its own reply; attendance is recorded
-        by the manager.
-      </Notice>
-      {[...value.fixtures]
-        .sort((a, b) =>
-          `${a.playedDate} ${a.kickoff ?? ""}`.localeCompare(
-            `${b.playedDate} ${b.kickoff ?? ""}`,
-          ),
-        )
-        .map((fixture) => (
-          <Card key={fixture.id}>
-            <Text style={typography.section}>
-              {fixture.homeAway === "away" ? "Away to" : "v"} {fixture.opponent}
-            </Text>
-            <Text style={typography.muted}>
-              {fixture.playedDate} · {fixture.kickoff ?? "Time to confirm"} ·{" "}
-              {fixture.venue} · {fixture.status}
-            </Text>
-            <Text style={typography.body}>
-              {fixture.selected ? "Selected by manager" : "Not selected"} ·
-              actual attendance: {fixture.attendance.replaceAll("_", " ")}
-            </Text>
-            {fixture.status === "scheduled" ? (
-              responseButtons(fixture.response, (response) => {
-                void command({
-                  type: "own.fixture_response_recorded",
-                  fixtureId: fixture.id,
-                  response,
-                });
-              })
-            ) : (
-              <Text style={typography.muted}>
-                Reply: {responseLabels[fixture.response]}
-              </Text>
-            )}
-          </Card>
-        ))}
-      {[...value.training]
-        .sort((a, b) =>
-          `${a.date} ${a.time ?? ""}`.localeCompare(
-            `${b.date} ${b.time ?? ""}`,
-          ),
-        )
-        .map((training) => (
-          <Card key={training.id}>
-            <Text style={typography.section}>Training · {training.date}</Text>
-            <Text style={typography.muted}>
-              {training.time ?? "Time to confirm"} · {training.venue} ·{" "}
-              {training.status}
-            </Text>
-            <Text style={typography.body}>
-              {training.expected
-                ? "Expected at this occurrence"
-                : "Not in this occurrence"}{" "}
-              · actual attendance: {training.attendance.replaceAll("_", " ")}
-            </Text>
-            {training.status === "scheduled" && training.expected ? (
-              responseButtons(training.response, (response) => {
-                void command({
-                  type: "own.training_response_recorded",
-                  trainingId: training.id,
-                  response,
-                });
-              })
-            ) : (
-              <Text style={typography.muted}>
-                Reply: {responseLabels[training.response]}
-              </Text>
-            )}
-          </Card>
-        ))}
+          ))}
+        </>
+      )}
     </View>
   );
 }
@@ -2724,6 +3348,7 @@ function ConnectedCommunity({
   onSelectAlbum,
   disabled,
   onChange,
+  initialSection = "photos",
 }: {
   value: CommunityDto;
   actor: CommunityActor;
@@ -2733,10 +3358,95 @@ function ConnectedCommunity({
   onSelectAlbum: (selection: AlbumSelection | null) => void;
   disabled: boolean;
   onChange: (command: CommunityPayload) => Promise<boolean>;
+  initialSection?: "photos" | "awards";
 }) {
+  const [showPreferences, setShowPreferences] = useState(false);
   const [cutoff, setCutoff] = useState("");
   const [closingAward, setClosingAward] = useState<string | null>(null);
   const [reportReason, setReportReason] = useState("");
+  const scopeKey = albumScopeKey(albumScope);
+  const currentScope = useRef(scopeKey);
+  const mounted = useRef(true);
+  const actionLock = useRef(false);
+  const [actionPending, setActionPending] = useState(false);
+  const [voteDrafts, setVoteDrafts] = useState<
+    Record<string, { candidateId: string; baseChoice: string | null }>
+  >({});
+  const [editingVotes, setEditingVotes] = useState<Record<string, boolean>>({});
+  const [voteFeedback, setVoteFeedback] = useState<
+    Record<string, "sending" | "failed" | undefined>
+  >({});
+  const [reportTarget, setReportTarget] = useState<{
+    scopeKey: string;
+    photoId: string;
+    revision: number;
+    type: "photo" | "uploader";
+    id: string;
+    label: string;
+  } | null>(null);
+  const [concernCategory, setConcernCategory] = useState<
+    "privacy" | "inappropriate" | "other"
+  >("privacy");
+  const [concernExplanation, setConcernExplanation] = useState("");
+  const [concernFailed, setConcernFailed] = useState(false);
+  const [hideTarget, setHideTarget] = useState<{
+    scopeKey: string;
+    photoId: string;
+    revision: number;
+    uploaderAccountId: string;
+    label: string;
+  } | null>(null);
+  useLayoutEffect(() => {
+    currentScope.current = scopeKey;
+  }, [scopeKey]);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+  const current = (ticket: string) =>
+    mounted.current && currentScope.current === ticket;
+  const controlsDisabled = disabled || actionPending;
+  const activeReport =
+    reportTarget?.scopeKey === scopeKey &&
+    value.allowed &&
+    value.gallery.some(
+      (photo) =>
+        photo.id === reportTarget.photoId &&
+        photo.version === reportTarget.revision &&
+        (reportTarget.type === "photo" ? photo.id : photo.uploaderAccountId) ===
+          reportTarget.id,
+    )
+      ? reportTarget
+      : null;
+  const activeHide =
+    hideTarget?.scopeKey === scopeKey &&
+    value.allowed &&
+    hideTarget.uploaderAccountId !== actor.accountId &&
+    value.gallery.some(
+      (photo) =>
+        photo.id === hideTarget.photoId &&
+        photo.version === hideTarget.revision &&
+        photo.uploaderAccountId === hideTarget.uploaderAccountId,
+    )
+      ? hideTarget
+      : null;
+  const send = async (command: CommunityPayload): Promise<boolean> => {
+    if (disabled || actionLock.current || !current(scopeKey)) return false;
+    const ticket = scopeKey;
+    actionLock.current = true;
+    setActionPending(true);
+    try {
+      return (await onChange(command)) && current(ticket);
+    } catch {
+      return false;
+    } finally {
+      actionLock.current = false;
+      if (current(ticket)) setActionPending(false);
+    }
+  };
+
   const [viewed, setViewed] = useState<string[]>([]);
   const [photoAcknowledged, setPhotoAcknowledged] = useState(false);
   const [quietStart, setQuietStart] = useState(
@@ -2748,93 +3458,235 @@ function ConnectedCommunity({
     (/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(quietStart) &&
       /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(quietEnd) &&
       quietStart !== quietEnd);
-  return (
-    <View style={s.stack} testID="workspace-community">
-      <Card>
-        <Text style={typography.section}>{value.teamLabel} community</Text>
-        <Text style={typography.muted}>
-          {value.accountLabel} · {value.seasonLabel} · service revision{" "}
-          {value.revision}
-        </Text>
-        {!value.allowed && (
-          <Notice tone="warning">{value.accessMessage}</Notice>
-        )}
-        {value.matches.some((match) => !match.sharingAllowed) && (
-          <Notice tone="warning">
-            The service withholds match context, scores and derived awards where
-            competition sharing is unapproved. Accepted match finish evidence
-            and an approved policy are required for connected award
-            registration.
-          </Notice>
-        )}
-      </Card>
-      <Card>
-        <Text style={typography.section}>My notification preferences</Text>
-        <Text style={typography.body}>
-          These choices control eligible service notifications. A saved
-          preference does not mean a message has been delivered; device
-          permission and an operational delivery provider are also required.
-        </Text>
-        {(["schedule", "match", "awards", "photos"] as const).map(
-          (category) => (
+  const albumsSection = (
+    <ConnectedAlbums
+      key="community-albums"
+      scope={albumScope}
+      allowed={value.allowed}
+      matches={value.matches}
+      photos={value.gallery}
+      selection={albumSelection}
+      onSelect={onSelectAlbum}
+      disabled={disabled}
+      renderThumbnail={(photo) => (
+        <RemotePhoto
+          key={`${photo.id}:${photo.version}:thumbnail`}
+          client={media}
+          photoId={photo.id}
+          revision={photo.version}
+          mode="gallery"
+          variant="thumbnail"
+        />
+      )}
+      renderPhoto={(photo) => (
+        <View key={photo.id} style={s.divider}>
+          <Text style={typography.label}>{photo.matchLabel}</Text>
+          <Text style={typography.body}>{photo.caption}</Text>
+          <Text style={typography.muted}>
+            {photo.uploaderLabel} · revision {photo.version}
+          </Text>
+          <RemotePhoto
+            key={`${photo.id}:${photo.version}:gallery`}
+            client={media}
+            photoId={photo.id}
+            revision={photo.version}
+            mode="gallery"
+          />
+          <Button
+            label="Report photo"
+            testID={`community-report-photo-${photo.id}`}
+            variant="secondary"
+            disabled={controlsDisabled}
+            onPress={() => {
+              setHideTarget(null);
+              setConcernFailed(false);
+              setConcernCategory("privacy");
+              setConcernExplanation("");
+              setReportTarget({
+                scopeKey,
+                photoId: photo.id,
+                revision: photo.version,
+                type: "photo",
+                id: photo.id,
+                label: photo.caption || "Published photo",
+              });
+            }}
+          />
+          <Button
+            label="Report uploader"
+            testID={`community-report-uploader-${photo.id}`}
+            variant="secondary"
+            disabled={controlsDisabled}
+            onPress={() => {
+              setHideTarget(null);
+              setConcernFailed(false);
+              setConcernCategory("privacy");
+              setConcernExplanation("");
+              setReportTarget({
+                scopeKey,
+                photoId: photo.id,
+                revision: photo.version,
+                type: "uploader",
+                id: photo.uploaderAccountId,
+                label: photo.uploaderLabel,
+              });
+            }}
+          />
+          {photo.uploaderAccountId !== actor.accountId && (
+            <Button
+              label="Hide this uploader"
+              testID={`community-hide-uploader-${photo.id}`}
+              variant="quiet"
+              disabled={controlsDisabled}
+              onPress={() => {
+                setReportTarget(null);
+                setHideTarget({
+                  scopeKey,
+                  photoId: photo.id,
+                  revision: photo.version,
+                  uploaderAccountId: photo.uploaderAccountId,
+                  label: photo.uploaderLabel,
+                });
+              }}
+            />
+          )}
+          {activeReport?.photoId === photo.id && (
             <View
-              key={category}
-              style={[s.row, { justifyContent: "space-between" }]}
+              style={s.divider}
+              testID={`community-concern-form-${photo.id}`}
             >
-              <Text style={typography.label}>{category} updates</Text>
-              <Switch
-                accessibilityLabel={`Service ${category} updates`}
-                value={value.preferences[category]}
-                disabled={disabled}
-                onValueChange={(enabled) => {
-                  void onChange({
-                    type: "preferences.changed",
-                    preferences: { ...value.preferences, [category]: enabled },
+              <Text style={typography.section}>
+                Report {activeReport.type === "photo" ? "photo" : "uploader"}
+              </Text>
+              <Text style={typography.body}>{activeReport.label}</Text>
+              <Text style={typography.muted}>
+                Choose a concern category. Avoid unnecessary personal details.
+                Reporting and hiding are separate actions; your identity is not
+                shown to the uploader.
+              </Text>
+              <View style={s.row}>
+                {(["privacy", "inappropriate", "other"] as const).map(
+                  (category) => (
+                    <Button
+                      key={category}
+                      label={`${category === "privacy" ? "Privacy" : category === "inappropriate" ? "Inappropriate content" : "Other"}${concernCategory === category ? " · selected" : ""}`}
+                      testID={`community-concern-category-${category}`}
+                      variant={
+                        concernCategory === category ? "primary" : "secondary"
+                      }
+                      disabled={controlsDisabled}
+                      onPress={() => setConcernCategory(category)}
+                    />
+                  ),
+                )}
+              </View>
+              <TextInput
+                accessibilityLabel="Concern explanation"
+                value={concernExplanation}
+                onChangeText={setConcernExplanation}
+                maxLength={500}
+                multiline
+                placeholder="Optional explanation · up to 500 characters"
+                style={s.input}
+                editable={!controlsDisabled}
+              />
+              <Button
+                label="Submit report"
+                testID="community-submit-concern"
+                disabled={controlsDisabled || concernExplanation.length > 500}
+                onPress={() => {
+                  const target = activeReport,
+                    ticket = scopeKey;
+                  if (!target) return;
+                  setConcernFailed(false);
+                  void send({
+                    type: "concern.submitted",
+                    concernId: randomUUID(),
+                    targetType: target.type,
+                    targetId: target.id,
+                    category: concernCategory,
+                    explanation: concernExplanation.trim(),
+                  }).then((saved) => {
+                    if (!current(ticket)) return;
+                    if (saved) {
+                      setReportTarget(null);
+                      setConcernExplanation("");
+                    } else setConcernFailed(true);
                   });
                 }}
               />
+              {concernFailed && (
+                <Notice tone="warning">
+                  The report has not been confirmed. Review the service message
+                  and any retained request before submitting again.
+                </Notice>
+              )}
+              <Button
+                label="Cancel report"
+                testID="community-cancel-concern"
+                variant="quiet"
+                disabled={controlsDisabled}
+                onPress={() => {
+                  setReportTarget(null);
+                  setConcernExplanation("");
+                  setConcernFailed(false);
+                }}
+              />
             </View>
-          ),
-        )}
-        <Text style={typography.label}>Quiet hours · Europe/London</Text>
-        <TextInput
-          accessibilityLabel="Service quiet hours start Europe/London"
-          placeholder="Start HH:MM"
-          value={quietStart}
-          onChangeText={setQuietStart}
-          style={s.input}
-          autoCapitalize="none"
-        />
-        <TextInput
-          accessibilityLabel="Service quiet hours end Europe/London"
-          placeholder="End HH:MM"
-          value={quietEnd}
-          onChangeText={setQuietEnd}
-          style={s.input}
-          autoCapitalize="none"
-        />
-        {!validQuietHours && (
-          <Notice tone="warning">
-            Choose two distinct HH:MM times or clear both fields. Use the
-            category switches to pause notifications all day.
-          </Notice>
-        )}
-        <Button
-          label="Save service quiet hours"
-          variant="secondary"
-          disabled={disabled || !validQuietHours}
-          onPress={() => {
-            void onChange({
-              type: "preferences.changed",
-              preferences: {
-                ...value.preferences,
-                quietStart: quietStart || null,
-                quietEnd: quietEnd || null,
-              },
-            });
-          }}
-        />
-      </Card>
+          )}
+          {activeHide?.photoId === photo.id && (
+            <View style={s.divider} testID="community-hide-confirmation">
+              <Text style={typography.section}>
+                Hide {activeHide.label} from your gallery?
+              </Text>
+              <Notice>
+                Their photos will be hidden from this account’s gallery.
+                Official match records and authorised moderation stay available.
+                This does not remove photos for other people or block the
+                uploader’s account.
+              </Notice>
+              <Button
+                label="Confirm gallery-only hide"
+                testID="community-confirm-hide-uploader"
+                disabled={controlsDisabled}
+                onPress={() => {
+                  const target = activeHide,
+                    ticket = scopeKey;
+                  if (!target) return;
+                  void send({
+                    type: "uploader.hidden",
+                    uploaderAccountId: target.uploaderAccountId,
+                    hidden: true,
+                  }).then((saved) => {
+                    if (saved && current(ticket)) setHideTarget(null);
+                  });
+                }}
+              />
+              <Button
+                label="Cancel hide"
+                testID="community-cancel-hide-uploader"
+                variant="quiet"
+                disabled={controlsDisabled}
+                onPress={() => setHideTarget(null)}
+              />
+            </View>
+          )}
+          {actor.role === "manager" && (
+            <Button
+              label="Remove this published service photo"
+              variant="danger"
+              disabled={disabled}
+              onPress={() => {
+                void onChange({ type: "photo.removed", photoId: photo.id });
+              }}
+            />
+          )}
+        </View>
+      )}
+    />
+  );
+  const awardsSection = (
+    <View key="community-awards" style={s.stack} testID="community-awards">
       {value.matches.map((match) => (
         <Card key={match.id}>
           <Text style={typography.section}>{match.label}</Text>
@@ -2862,37 +3714,180 @@ function ConnectedCommunity({
                     : ""}
                 </Text>
               )}
-              {match.mayVote ? (
-                <>
-                  <Text style={typography.label}>
-                    My Players’ Player choice
-                  </Text>
-                  {match.candidates.map((candidate) => (
-                    <Button
-                      key={candidate.id}
-                      label={`${candidate.label}${match.ownChoice === candidate.id ? " · my current choice" : ""}`}
-                      variant={
-                        match.ownChoice === candidate.id
-                          ? "primary"
-                          : "secondary"
-                      }
-                      disabled={disabled}
-                      onPress={() => {
-                        void onChange({
-                          type: "ballot.cast",
-                          matchId: match.id,
-                          candidatePlayerId: candidate.id,
-                        });
-                      }}
-                    />
-                  ))}
-                </>
-              ) : (
-                actor.role === "player" && (
-                  <Text style={typography.muted}>
-                    Voting is unavailable for this account or match window.
-                  </Text>
-                )
+              {actor.role === "player" && (
+                <View style={s.stack} testID={`connected-ballot-${match.id}`}>
+                  {match.ownChoice && (
+                    <View style={s.stack}>
+                      <Text style={typography.label}>
+                        Current choice:{" "}
+                        {match.candidates.find(
+                          (candidate) => candidate.id === match.ownChoice,
+                        )?.label ?? "Your recorded teammate choice"}
+                      </Text>
+                      <Text style={typography.muted}>
+                        Confirmed by the service. This account has one recorded
+                        private choice.
+                      </Text>
+                    </View>
+                  )}
+                  {match.mayVote ? (
+                    !match.ownChoice || editingVotes[match.id] ? (
+                      <>
+                        <Text style={typography.label}>
+                          Choose one teammate who played
+                        </Text>
+                        <Text style={typography.muted}>
+                          Selecting a name is a draft. Your vote counts only
+                          after the service confirms it.
+                        </Text>
+                        {match.candidates.map((candidate) => {
+                          const draft = voteDrafts[match.id];
+                          const selected =
+                            draft?.baseChoice === match.ownChoice &&
+                            draft.candidateId === candidate.id;
+                          return (
+                            <Button
+                              key={candidate.id}
+                              testID={`community-vote-option-${match.id}-${candidate.id}`}
+                              label={`${candidate.label}${selected ? " · selected" : ""}`}
+                              variant={selected ? "primary" : "secondary"}
+                              disabled={controlsDisabled}
+                              onPress={() => {
+                                setVoteDrafts((previous) => ({
+                                  ...previous,
+                                  [match.id]: {
+                                    candidateId: candidate.id,
+                                    baseChoice: match.ownChoice,
+                                  },
+                                }));
+                                setVoteFeedback((previous) => ({
+                                  ...previous,
+                                  [match.id]: undefined,
+                                }));
+                              }}
+                            />
+                          );
+                        })}
+                        <Button
+                          label={
+                            match.ownChoice
+                              ? "Confirm changed vote"
+                              : "Confirm vote"
+                          }
+                          testID={`community-confirm-vote-${match.id}`}
+                          disabled={
+                            controlsDisabled ||
+                            voteDrafts[match.id]?.baseChoice !==
+                              match.ownChoice ||
+                            !match.candidates.some(
+                              (candidate) =>
+                                candidate.id ===
+                                voteDrafts[match.id]?.candidateId,
+                            ) ||
+                            voteDrafts[match.id]?.candidateId ===
+                              match.ownChoice
+                          }
+                          onPress={() => {
+                            const draft = voteDrafts[match.id],
+                              ticket = scopeKey;
+                            if (
+                              !draft ||
+                              draft.baseChoice !== match.ownChoice ||
+                              !match.mayVote ||
+                              !match.candidates.some(
+                                (candidate) =>
+                                  candidate.id === draft.candidateId,
+                              )
+                            )
+                              return;
+                            setVoteFeedback((previous) => ({
+                              ...previous,
+                              [match.id]: "sending",
+                            }));
+                            void send({
+                              type: "ballot.cast",
+                              matchId: match.id,
+                              candidatePlayerId: draft.candidateId,
+                            }).then((saved) => {
+                              if (!current(ticket)) return;
+                              setVoteFeedback((previous) => ({
+                                ...previous,
+                                [match.id]: saved ? undefined : "failed",
+                              }));
+                              if (saved)
+                                setEditingVotes((previous) => ({
+                                  ...previous,
+                                  [match.id]: false,
+                                }));
+                            });
+                          }}
+                        />
+                        {match.ownChoice && (
+                          <Button
+                            label="Keep current vote"
+                            variant="quiet"
+                            disabled={controlsDisabled}
+                            onPress={() => {
+                              setEditingVotes((previous) => ({
+                                ...previous,
+                                [match.id]: false,
+                              }));
+                              setVoteDrafts((previous) => ({
+                                ...previous,
+                                [match.id]: {
+                                  candidateId: match.ownChoice!,
+                                  baseChoice: match.ownChoice,
+                                },
+                              }));
+                            }}
+                          />
+                        )}
+                      </>
+                    ) : (
+                      <Button
+                        label="Change vote"
+                        testID={`community-change-vote-${match.id}`}
+                        variant="secondary"
+                        disabled={controlsDisabled}
+                        onPress={() => {
+                          setEditingVotes((previous) => ({
+                            ...previous,
+                            [match.id]: true,
+                          }));
+                          setVoteDrafts((previous) => ({
+                            ...previous,
+                            [match.id]: {
+                              candidateId: match.ownChoice!,
+                              baseChoice: match.ownChoice,
+                            },
+                          }));
+                        }}
+                      />
+                    )
+                  ) : (
+                    <Text style={typography.muted}>
+                      {match.award
+                        ? "Voting is closed. Any final award is shown above."
+                        : "Voting is unavailable for this account or match window."}
+                    </Text>
+                  )}
+                  {voteFeedback[match.id] === "sending" && (
+                    <Text
+                      accessibilityLiveRegion="polite"
+                      testID={`community-vote-status-${match.id}`}
+                      style={typography.muted}
+                    >
+                      Sending vote for service confirmation…
+                    </Text>
+                  )}
+                  {voteFeedback[match.id] === "failed" && (
+                    <Notice tone="warning">
+                      Your vote has not been confirmed. Review the service
+                      message and retry any retained original request above
+                      before starting another.
+                    </Notice>
+                  )}
+                </View>
               )}
               {actor.role === "manager" &&
                 match.finishQuality === "trusted" &&
@@ -2962,6 +3957,114 @@ function ConnectedCommunity({
           )}
         </Card>
       ))}
+    </View>
+  );
+  return (
+    <View style={s.stack} testID="workspace-community">
+      <Card>
+        <Text style={typography.section}>{value.teamLabel} community</Text>
+        <Text style={typography.muted}>
+          {value.accountLabel} · {value.seasonLabel} · service revision{" "}
+          {value.revision}
+        </Text>
+        {!value.allowed && (
+          <Notice tone="warning">{value.accessMessage}</Notice>
+        )}
+        {value.matches.some((match) => !match.sharingAllowed) && (
+          <Notice tone="warning">
+            The service withholds match context, scores and derived awards where
+            competition sharing is unapproved. Accepted match finish evidence
+            and an approved policy are required for connected award
+            registration.
+          </Notice>
+        )}
+      </Card>
+      {initialSection === "awards"
+        ? [awardsSection, albumsSection]
+        : [albumsSection, awardsSection]}
+      <Button
+        label={
+          showPreferences
+            ? "Hide notification preferences"
+            : "Show notification preferences"
+        }
+        testID="community-toggle-preferences"
+        variant="quiet"
+        disabled={controlsDisabled}
+        onPress={() => setShowPreferences((visible) => !visible)}
+      />
+      {showPreferences && (
+        <Card>
+          <Text style={typography.section}>My notification preferences</Text>
+          <Text style={typography.body}>
+            These choices control eligible service notifications. A saved
+            preference does not mean a message has been delivered; device
+            permission and an operational delivery provider are also required.
+          </Text>
+          {(["schedule", "match", "awards", "photos"] as const).map(
+            (category) => (
+              <View
+                key={category}
+                style={[s.row, { justifyContent: "space-between" }]}
+              >
+                <Text style={typography.label}>{category} updates</Text>
+                <Switch
+                  accessibilityLabel={`Service ${category} updates`}
+                  value={value.preferences[category]}
+                  disabled={disabled}
+                  onValueChange={(enabled) => {
+                    void onChange({
+                      type: "preferences.changed",
+                      preferences: {
+                        ...value.preferences,
+                        [category]: enabled,
+                      },
+                    });
+                  }}
+                />
+              </View>
+            ),
+          )}
+          <Text style={typography.label}>Quiet hours · Europe/London</Text>
+          <TextInput
+            accessibilityLabel="Service quiet hours start Europe/London"
+            placeholder="Start HH:MM"
+            value={quietStart}
+            onChangeText={setQuietStart}
+            style={s.input}
+            autoCapitalize="none"
+          />
+          <TextInput
+            accessibilityLabel="Service quiet hours end Europe/London"
+            placeholder="End HH:MM"
+            value={quietEnd}
+            onChangeText={setQuietEnd}
+            style={s.input}
+            autoCapitalize="none"
+          />
+          {!validQuietHours && (
+            <Notice tone="warning">
+              Choose two distinct HH:MM times or clear both fields. Use the
+              category switches to pause notifications all day.
+            </Notice>
+          )}
+          <Button
+            label="Save service quiet hours"
+            variant="secondary"
+            disabled={disabled || !validQuietHours}
+            onPress={() => {
+              void onChange({
+                type: "preferences.changed",
+                preferences: {
+                  ...value.preferences,
+                  quietStart: quietStart || null,
+                  quietEnd: quietEnd || null,
+                },
+              });
+            }}
+          />
+        </Card>
+      )}
       {actor.role !== "spectator" && value.grants.length > 0 && (
         <Card>
           <Text style={typography.section}>
@@ -2986,86 +4089,41 @@ function ConnectedCommunity({
           ))}
         </Card>
       )}
-      <ConnectedAlbums
-        scope={albumScope}
-        allowed={value.allowed}
-        matches={value.matches}
-        photos={value.gallery}
-        selection={albumSelection}
-        onSelect={onSelectAlbum}
-        disabled={disabled}
-        renderThumbnail={(photo) => (
-          <RemotePhoto
-            key={`${photo.id}:${photo.version}:thumbnail`}
-            client={media}
-            photoId={photo.id}
-            revision={photo.version}
-            mode="gallery"
-            variant="thumbnail"
-          />
-        )}
-        renderPhoto={(photo) => (
-          <View key={photo.id} style={s.divider}>
-            <Text style={typography.label}>{photo.matchLabel}</Text>
-            <Text style={typography.body}>{photo.caption}</Text>
-            <Text style={typography.muted}>
-              {photo.uploaderLabel} · revision {photo.version}
+      <Card>
+        <Text style={typography.section}>My concerns</Text>
+        <Text style={typography.muted}>
+          References and status for reports made by this account. Reporter
+          identity is not disclosed to uploaders.
+        </Text>
+        <View style={s.stack} testID="community-own-concerns">
+          {value.ownConcerns.length ? (
+            value.ownConcerns.map((concern) => (
+              <View
+                key={concern.id}
+                style={s.divider}
+                testID={`community-own-concern-${concern.id}`}
+              >
+                <Pill tone="info">{concern.status.replaceAll("_", " ")}</Pill>
+                <Text style={typography.label}>
+                  {concern.targetType === "photo"
+                    ? "Photo concern"
+                    : "Uploader concern"}
+                </Text>
+                <Text selectable style={typography.muted}>
+                  Reference {concern.id}
+                </Text>
+                <Text style={typography.muted}>
+                  Submitted {dateTime(concern.createdAtMs)}
+                </Text>
+              </View>
+            ))
+          ) : (
+            <Text style={typography.body}>
+              No concerns submitted by this account.
             </Text>
-            <RemotePhoto
-              key={`${photo.id}:${photo.version}:gallery`}
-              client={media}
-              photoId={photo.id}
-              revision={photo.version}
-              mode="gallery"
-            />
-            <Button
-              label={`Hide photos from ${photo.uploaderLabel}`}
-              variant="quiet"
-              disabled={disabled}
-              onPress={() => {
-                void onChange({
-                  type: "uploader.hidden",
-                  uploaderAccountId: photo.uploaderAccountId,
-                  hidden: true,
-                });
-              }}
-            />
-            <TextInput
-              accessibilityLabel={`Concern about photo ${photo.id}`}
-              value={reportReason}
-              onChangeText={setReportReason}
-              multiline
-              placeholder="Explain a privacy or content concern"
-              style={s.input}
-            />
-            <Button
-              label="Report this photo to service review"
-              variant="secondary"
-              disabled={disabled || !reportReason.trim()}
-              onPress={() => {
-                void onChange({
-                  type: "concern.submitted",
-                  concernId: randomUUID(),
-                  targetType: "photo",
-                  targetId: photo.id,
-                  category: "privacy",
-                  explanation: reportReason.trim(),
-                });
-              }}
-            />
-            {actor.role === "manager" && (
-              <Button
-                label="Remove this published service photo"
-                variant="danger"
-                disabled={disabled}
-                onPress={() => {
-                  void onChange({ type: "photo.removed", photoId: photo.id });
-                }}
-              />
-            )}
-          </View>
-        )}
-      />
+          )}
+        </View>
+      </Card>
       {value.submissions.length > 0 && (
         <Card>
           <Text style={typography.section}>My service submissions</Text>

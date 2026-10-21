@@ -41,6 +41,11 @@ export function assertNativeLiveAccess(
     throw new Error(
       "Check secure storage on this phone before recording. An encrypted journal and successful wrong-key check are required.",
     );
+  assertSavedMatchRoster(match);
+}
+
+/** Both editors use the same saved fixture and frozen eligibility requirements. */
+export function assertSavedMatchRoster(match: MatchState): void {
   const { config } = match;
   if (
     !config.fixture?.teamId ||
@@ -77,6 +82,14 @@ export function assertNativeLiveCommand(
   access: NativeLiveAccess,
 ): void {
   assertNativeLiveAccess(match, access);
+  assertMatchCommandRoster(match, command);
+}
+
+/** Canonical identity and roster validation; this does not establish recording authority. */
+export function assertMatchCommandRoster(
+  match: MatchState,
+  command: ConnectedCommand,
+): void {
   if (
     !command ||
     typeof command !== "object" ||
@@ -105,7 +118,8 @@ export function assertNativeLiveCommand(
     )
       selected(command.replacement.scorerPlayerId);
     if (command.replacement.type === "lineup.committed")
-      for (const allocation of command.replacement.lineup) selected(allocation.playerId);
+      for (const allocation of command.replacement.lineup)
+        selected(allocation.playerId);
   }
   if (command.type === "lineup.staged" || command.type === "lineup.committed")
     for (const allocation of command.lineup) selected(allocation.playerId);

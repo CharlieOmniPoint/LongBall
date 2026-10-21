@@ -59,7 +59,7 @@ import { OwnProfile, PlayerExperience } from "./src/features/PlayerExperience";
 import { PlannerPanel, usePlannerModel } from "./src/features/PlannerPanel";
 import { AccountSecurityScreen } from "./src/features/AccountSecurityScreen";
 import { ConnectedWorkspace } from "./src/features/ConnectedWorkspace";
-import { ConnectedApplication } from "./src/ConnectedApplication";
+import { EntryApplication, type LocalReviewEntryProps } from "./src/EntryApplication";
 import {
   parseLongBallDestination,
   type SpectatorInvitationDestination,
@@ -107,27 +107,29 @@ const managerNav: { screen: Screen; label: string; icon: IconName }[] = [
 export default function App() {
   return (
     <SafeAreaProvider>
-      {process.env.EXPO_PUBLIC_ENVIRONMENT === "production" ? (
-        <ConnectedApplication />
-      ) : (
-        <LongBall />
-      )}
+      <EntryApplication renderLocalReview={props => <LongBall key={`${props.initialRole}:${props.entryRevision}`} {...props} />} />
     </SafeAreaProvider>
   );
 }
 
-function LongBall() {
+function LongBall({ initialRole, onLeaveReview, onSignIn, invitationDestination }: LocalReviewEntryProps) {
   const [activeConfig, setActiveConfig] = useState<MatchConfig>(initialConfig);
   const model = useMatch(activeConfig);
   const application = useApplication(model.journal, model.deviceId);
   const app = application.state;
-  const [role, setRole] = useState<CommunityRole>("manager");
+  const [role, setRole] = useState<CommunityRole>(initialRole);
   const { state, clock, busy, send } = model;
-  const planner = usePlannerModel(state, model.sample, clock);
+  const planner = usePlannerModel(state, model.sample, clock, {
+    persistence: {
+      journal: model.journal,
+      deviceId: model.deviceId,
+      binding: { kind: "fictional-local" },
+    },
+  });
   const setPlannerControl = planner.setHasControl;
   const [screen, setScreen] = useState<Screen>("home");
   const [receivedInvitation, setReceivedInvitation] =
-    useState<SpectatorInvitationDestination | null>(null);
+    useState<SpectatorInvitationDestination | null>(invitationDestination ?? null);
   useEffect(() => {
     let active = true;
     const receive = (url: string) => {
@@ -299,6 +301,13 @@ function LongBall() {
           ? "attendance"
           : "lineup",
     );
+  const leaveReview = () => {
+    if (application.busy || model.pendingRetry || busy || planner.preferencesRetained) {
+      setLocalError("A local save still needs attention. Retry the pending save before changing review accounts; planner settings can be retried in Fair-time plan.");
+      return;
+    }
+    onLeaveReview();
+  };
   const testNotification = async () => {
     try {
       const permission = await requestAlertPermission();
@@ -728,7 +737,8 @@ function LongBall() {
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="Change fictional review account"
-                  onPress={() => navigate("more")}
+                  onPress={leaveReview}
+                  disabled={application.busy || model.pendingRetry || busy}
                   style={[s.brand, { minHeight: 48 }]}
                 >
                   <Icon name="ball" size={20} color={colors.brand} />
@@ -751,10 +761,7 @@ function LongBall() {
                     label="Review received service invitation"
                     testID="review-received-service-invitation"
                     variant="secondary"
-                    onPress={() => {
-                      setRole("manager");
-                      navigate("service");
-                    }}
+                    onPress={() => role === "manager" ? navigate("service") : onSignIn()}
                   />
                 </Card>
               )}
@@ -1446,7 +1453,7 @@ function LongBall() {
                   <Button
                     label="Switch fictional review account"
                     variant="secondary"
-                    onPress={() => navigate("more")}
+                    onPress={leaveReview}
                   />
                   {role === "spectator" && (
                     <Button
@@ -1457,7 +1464,7 @@ function LongBall() {
                   )}
                 </>
               )}
-              {screen === "security" && role === "manager" && (
+              {screen === "security" && (
                 <AccountSecurityScreen />
               )}
               {screen === "service" && role === "manager" && (
@@ -1507,7 +1514,7 @@ function LongBall() {
                           key={value}
                           label={
                             value === "manager"
-                              ? "Manager and club admin review"
+                              ? "Manager review"
                               : value === "player"
                                 ? "Player 01 and parent review"
                                 : "Invited spectator review"
@@ -1526,6 +1533,18 @@ function LongBall() {
                       ),
                     )}
                   </Card>
+                  <Button
+                    label="All review accounts, including Administrator"
+                    variant="secondary"
+                    disabled={application.busy || model.pendingRetry || busy}
+                    onPress={leaveReview}
+                  />
+                  <Button
+                    label="Sign in to a real account"
+                    icon="lock"
+                    variant="secondary"
+                    onPress={onSignIn}
+                  />
                   <Button
                     label="Team photos"
                     icon="photo"

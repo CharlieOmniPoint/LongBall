@@ -14,7 +14,9 @@ export async function reviewSpectatorActivationJourney({
   baseUrl = "http://localhost:4174",
   output = resolve(".local/identity/spectator-browser-review"),
 }) {
-  assert.equal(baseUrl, "http://localhost:4174");
+  assert.ok(
+    ["http://localhost:4174", "http://localhost:4175"].includes(baseUrl),
+  );
   assert.equal(
     fixture.issuer,
     "https://localhost:8443/realms/longball-fictional",
@@ -55,6 +57,8 @@ export async function reviewSpectatorActivationJourney({
       `${baseUrl}/#${new URLSearchParams({ longballInvite: "1", teamId, seasonId, code: invitationToken })}`,
       { waitUntil: "networkidle" },
     );
+    // A received link stays on Welcome until its owner chooses sign-in or activation.
+    await page.getByTestId("welcome-activate").click();
     await page
       .getByText("Received spectator invitation", { exact: true })
       .waitFor();
@@ -62,6 +66,7 @@ export async function reviewSpectatorActivationJourney({
       () => Promise.resolve(new URL(page.url()).hash === ""),
       "Invitation fragment was not removed",
     );
+    await page.getByTestId("connection-settings-toggle").click();
     await page
       .getByLabel("OIDC issuer (HTTPS)", { exact: true })
       .fill(fixture.issuer);
@@ -96,6 +101,17 @@ export async function reviewSpectatorActivationJourney({
       activationResponse.request().headers().authorization,
       undefined,
     );
+    await page.getByTestId("show-account-activation").click();
+    assert.equal(
+      await page
+        .getByRole("button", {
+          name: "Set credentials with identity provider",
+          exact: true,
+        })
+        .isVisible(),
+      false,
+    );
+    await page.getByTestId("show-account-activation").click();
     const popupWait = context.waitForEvent("page");
     await page
       .getByRole("button", {
@@ -208,11 +224,6 @@ export async function reviewSpectatorActivationJourney({
     assert.equal(me.principal.identityClassification, "unclassified");
     assert.equal(me.principal.adultVerified, false);
     assert.deepEqual(me.memberships, []);
-    stage = "explicit-service-workspace-connection";
-    await page
-      .getByLabel("Workspace API URL", { exact: true })
-      .fill(fixture.apiBaseUrl);
-    await page.getByTestId("workspace-connect").click();
     stage = "membership-free-invitation-navigation";
     await page
       .getByRole("button", {
@@ -234,6 +245,7 @@ export async function reviewSpectatorActivationJourney({
     else
       await invitations.getByTestId("invitation-token").fill(invitationToken);
     await invitations.getByTestId("invitation-inspect").click();
+    stage = "review-inspected-destination";
     await invitations.getByText(`Team: ${teamId}`, { exact: true }).waitFor();
     assert.equal(
       await invitations.getByTestId("invitation-accept").isDisabled(),
@@ -250,15 +262,36 @@ export async function reviewSpectatorActivationJourney({
         response.url().endsWith("/v1/spectator-invites/accept") &&
         response.request().method() === "POST",
     );
+    const grantedIdentityWait = page.waitForResponse(
+      (response) =>
+        response.url().endsWith("/v1/me") &&
+        response.request().method() === "GET",
+    );
+    stage = "explicit-invitation-acceptance";
     await invitations.getByTestId("invitation-accept").click();
     const acceptResponse = await acceptWait;
     assert.equal(acceptResponse.status(), 200);
     const accepted = await acceptResponse.json();
     assert.equal(accepted.teamId, teamId);
     assert.equal(accepted.seasonId, seasonId);
-    await page
-      .getByText(`spectator · ${teamId} · ${seasonId}`, { exact: true })
-      .waitFor();
+    stage = "accepted-spectator-workspace";
+    const grantedIdentityResponse = await grantedIdentityWait;
+    assert.equal(grantedIdentityResponse.status(), 200);
+    const grantedIdentity = await grantedIdentityResponse.json();
+    assert.equal(grantedIdentity.principal.accountId, activation.accountId);
+    assert.equal(
+      grantedIdentity.principal.identityClassification,
+      "unclassified",
+    );
+    assert.ok(
+      grantedIdentity.memberships.some(
+        (membership) =>
+          membership.role === "spectator" &&
+          membership.teamId === teamId &&
+          membership.seasonId === seasonId,
+      ),
+    );
+    await page.getByTestId("workspace-context-ready").waitFor();
     assert.equal(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth + 1,

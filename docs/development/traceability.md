@@ -1,10 +1,10 @@
 # Capability traceability
 
-> Historical M0 baseline. The 21 October expanded implementation, connected boundaries and remaining gates are tracked in [full-build-plan.md](full-build-plan.md) and [review.md](review.md). The physical-device proof register below remains open.
+> Historical 20 October M0 baseline. Its table records the original slice and the work outstanding then. The 21 October capability checkpoints and active entry/screen-composition candidate are tracked in [full-build-plan.md](full-build-plan.md), [review.md](review.md) and the [entry audit](entry-completion-audit.md). Physical-device acceptance remains open and is currently deferred.
 
-20 October 2026. All F01–F28 remain the integrated pilot target. `Initial` means an intermediate synthetic/local implementation target, not end-to-end product acceptance. API, identity, shared server authority and real-data release are later work unless separately evidenced. The canonical acceptance criteria remain [the source of truth](../longball/LongBall_Mobile_Build_Pack_v0_1.md#capability-backlog-and-end-to-end-acceptance).
+20 October 2026. All F01–F28 remain the integrated pilot target. `Initial` means an intermediate synthetic/local implementation target, not end-to-end product acceptance. At this original baseline, API, identity and shared server authority were later work; their subsequent actual evidence is recorded in the linked registers. Real-data release remains unaccepted. The canonical acceptance criteria remain [the source of truth](../longball/LongBall_Mobile_Build_Pack_v0_1.md#capability-backlog-and-end-to-end-acceptance).
 
-| Capability | UI / rule trace | Initial increment boundary | Remaining end-to-end acceptance |
+| Capability | UI / rule trace | Original initial increment boundary | Outstanding at the original M0 baseline |
 | --- | --- | --- | --- |
 | F01 Club/team configuration and logos | UI09/UI32, D20 | Fictional team context/original neutral badge. | Authorised writes, inheritance/override and asset rights. |
 | F02 Seasons/rollover | UI03/UI25/UI32, D16 | Fixed fictional 2026/27 context. | Immutable prior season, explicit access renewal and chronology. |
@@ -34,6 +34,16 @@
 | F26 Photos/moderation/library | UI27–UI30, SEC13–SEC17 | Retained backlog; no real photos or uploads. | Safe processing, exact-revision approval, deliberate manager publish, gateway, concern/block/removal. |
 | F27 Results/points/form | UI21/UI24/UI25, REP07/RT07 | Retained backlog. | 3/1/0 all ordinary completed games incl friendlies; corrections and Q21 aggregate restrictions. |
 | F28 Historical results | UI23–UI26, REP01/MT25 | Retained backlog. | Summary provenance, unknown attendance/minutes/half score, unassigned scorers and no fresh voting/alerts. |
+
+## Active screen-composition coverage
+
+The `c71f19d` capability checkpoint supplies business rules and service journeys beyond this historical table. The [35-screen audit](entry-completion-audit.md) found a real Welcome/sign-in/activation and connected navigation gap that those 450/219 checks did not cover.
+
+The active candidate has source implemented for UI01–03/UI33–35 entry, explicit verified contexts and all-role account/help; UI04/UI34 connected Manager/admin homes; saved UI12 planning choices and connected UI13/UI14/UI18 pitch/live presentation; UI21 exact-game details/actions; and UI22/UI30 vote confirmation, concern reporting and gallery-only hide confirmation. The [implementation manifest](evidence/2026-10-21/entry-journey/implementation-manifest.json) identifies the checked source. Eight role entries, six anonymous production checks and three shared HTTP matchday groups passed; publication identity/public verification remain pending.
+
+UI06 Upcoming/Past/date grouping, UI11 phone-friendly formation placement and UI05 next-event/score/photo composition now also have implemented candidate source. Scoped preparation/provider/community checks and final role-entry/shared-clock checks passed. The local candidate passed 576 shared/platform tests in 59 files, 220 API tests in 31 files without skips, full lint/types/contracts, source-publication checks and both Hermes JavaScript exports. [All 25 normal browser and four planner reload checks](evidence/2026-10-21/entry-journey/controller-planner-review.json) passed, with seven actual SQLite durability tests. The re-entry fix uses a separate recorded asset; four negative preflight cases passed; final lint/type/native-export refresh and public verification remain pending. These acceptance tasks are engineering scope. Genuine policy decisions and deferred native hardware acceptance remain separate; neither an implemented service nor a visible screen completes them.
+
+Three additional Must source gaps remain open beyond the original entry audit: SEC17 future upload/invitation privilege suspension and enforcement; DS14 per-enrolled-device/account push registration/removal with encrypted token storage; and EV05 canonical prospective `policy.changed` acceptance/handover. Durable local planner preferences do not close EV05. These are active engineering work, not policy or hardware-only gates. All four canonical Should workflows remain unimplemented: roster import, calendar export, recurring-training-series creation and reusable match plans. Original entry-audit coverage and recorded check counts do not establish complete Must implementation or close release gates.
 
 ## Evidence interpretation
 

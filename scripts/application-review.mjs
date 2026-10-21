@@ -3,6 +3,7 @@ import { existsSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { chromium } from 'playwright';
+import { enterFictionalReview } from './review-entry.mjs';
 
 /** UI-only feature journeys. IndexedDB is inspected read-only as persistence evidence. */
 const baseURL = process.env.LONGBALL_REVIEW_BASE_URL ?? 'http://127.0.0.1:4173';
@@ -43,6 +44,7 @@ async function open(context) {
   page.setDefaultTimeout(12_000);
   page.on('pageerror', error => errors.push(error.message));
   await page.goto(baseURL, { waitUntil: 'networkidle' });
+  await enterFictionalReview(page);
   await page.getByTestId('prepare-match').waitFor();
   await until(page, () => true, 'Application document should initialize');
   return page;
@@ -50,8 +52,15 @@ async function open(context) {
 async function button(page, name) { await page.getByRole('button', { name, exact: true }).click(); }
 async function radio(page, name) { await page.getByRole('radio', { name, exact: true }).click(); }
 async function role(page, next) {
-  await button(page, 'Change fictional review account');
-  await page.getByTestId(`review-role-${next}`).click();
+  const more = page.getByRole('button', { name: 'More', exact: true });
+  if (await more.isVisible()) {
+    await more.click();
+    await page.getByTestId(`review-role-${next}`).click();
+  } else {
+    await button(page, 'Change fictional review account');
+    await page.getByTestId(`review-entry-${next}`).click();
+    await page.getByTestId('review-open-local').click();
+  }
 }
 async function more(page, destination) { await button(page, 'More'); await button(page, destination); }
 async function screenshot(page, name) {
@@ -92,6 +101,7 @@ try {
     assert.equal(final.history[0].playedDate, '2026-11-07');
     assert(final.history.length >= 3);
     await page.reload({ waitUntil: 'networkidle' });
+    await enterFictionalReview(page);
     await button(page, 'Schedule');
     await button(page, 'Open fixture Birch FC rehearsal, 2026-11-14');
     await page.getByRole('button', { name: 'Restore as scheduled', exact: true }).waitFor();
@@ -163,7 +173,7 @@ try {
   });
 
   await scenario('05-private-role-projections', async page => {
-    await role(page, 'player'); await button(page, 'Schedule');
+    await role(page, 'player'); await button(page, 'Schedule'); await button(page, 'Training');
     await page.getByRole('button', { name: 'Training: Available', exact: true }).first().click();
     let app = await until(page, value => Object.values(value.preparation.training[0].responses).includes('available'), 'Own training response');
     const profile = app.preparation.profiles.find(item => item.playerId === playerId);
@@ -258,7 +268,7 @@ try {
     const retainedEditor = other.getByRole('button', { name: 'Keep previous values', exact: true });
     if (await retainedEditor.count()) await retainedEditor.click();
     await other.getByRole('button', { name: 'Edit Player 01 accepted tab', exact: true }).waitFor();
-    await page.reload({ waitUntil: 'networkidle' }); await button(page, 'Team'); await page.getByRole('button', { name: 'Edit Player 01 accepted tab', exact: true }).waitFor();
+    await page.reload({ waitUntil: 'networkidle' }); await enterFictionalReview(page); await button(page, 'Team'); await page.getByRole('button', { name: 'Edit Player 01 accepted tab', exact: true }).waitFor();
     assert.equal(Object.values((await stored(page)).events).filter(item => item.disposition === 'quarantined').length, 1);
     return 'Reload preserves accepted team document; stale second-tab write cannot overwrite it and retained rejected projection survives reload.';
   });

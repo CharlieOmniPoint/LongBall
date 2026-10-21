@@ -4,6 +4,7 @@ import { existsSync, createWriteStream } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { chromium } from "playwright";
+import { changeWorkspaceContext, enterFictionalReview, openWorkspaceTab, selectWorkspaceContext } from "./review-entry.mjs";
 
 /** Phone browser + real isolated HTTP API; no application projection is injected.
  * Read-only service/IndexedDB inspection verifies persisted commands and unknown data.
@@ -70,7 +71,7 @@ const button = (name, root = page) =>
   root.getByRole("button", { name, exact: true }).click({ noWaitAfter: true });
 const input = (name, value) =>
   page.getByLabel(name, { exact: true }).fill(value);
-const tab = (name) => page.getByTestId(`workspace-tab-${name}`).click();
+const tab = (name) => openWorkspaceTab(page, name);
 async function settleWorkspace() {
   const refresh = page.getByRole("button", {name: "Refresh service views", exact: true});
   await refresh.waitFor();
@@ -173,6 +174,7 @@ async function exportFile(id) {
 }
 async function enter(account = "Fictional manager") {
   await page.goto(baseURL, { waitUntil: "networkidle" });
+  await enterFictionalReview(page);
   await page.getByTestId("prepare-match").waitFor();
   await button("More");
   await button("Service and controller");
@@ -180,6 +182,7 @@ async function enter(account = "Fictional manager") {
   await button("Fictional API review");
   await button(account);
   await page.getByTestId("workspace-connect").click();
+  if (account !== "Fictional invite recipient") await selectWorkspaceContext(page);
   await page.getByTestId("workspace-tab-reports").waitFor();
   if (account === "Fictional manager")
     await page.getByTestId("preparation-create-event").waitFor();
@@ -452,7 +455,8 @@ try {
         );
         await sleep(Math.min(waitMs, 60_000));
       }
-      await button("Use administrator experience");
+      await changeWorkspaceContext(page, "administrator");
+      await openWorkspaceTab(page, "settings");
       await page.getByTestId("administrator-configuration").waitFor();
       assert.equal(await page.getByTestId("workspace-tab-reports").count(), 0);
       assert.equal(await page.getByTestId("workspace-tab-team").count(), 0);

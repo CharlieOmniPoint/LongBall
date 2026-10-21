@@ -37,6 +37,23 @@ function audience(context: RecordsServiceInput, role: 'player' | 'spectator', ac
   return { ...context, principal: { ...context.principal, accountId, subject: accountId, identityClassification: role === 'player' ? 'child_shared' : 'adult_individual', adultVerified: false, strongAuth: false }, memberships: [{ accountId, teamId: context.state.teamId, seasonId: context.state.seasonId, role, ...(role === 'player' ? { playerId: context.state.players[0].id } : {}), expiresAt: now + 60_000 }] };
 }
 describe('connected records service boundaries', () => {
+  it('projects each authorised accepted fixture without switching report context or approving sharing', () => {
+    const context = withAccepted(), second = structuredClone(context.acceptedMatches[0].match);
+    second.config.matchId = 'synthetic-second-accepted-match';
+    second.config.fixture!.opponent = 'Fictional second opposition';
+    const before = structuredClone(context.state);
+    const input = { ...context, acceptedMatches: [...context.acceptedMatches, { teamId: context.state.teamId, seasonId: context.state.seasonId, match: second }, { teamId: 'other-team', seasonId: context.state.seasonId, match: { ...second, config: { ...second.config, matchId: 'private-other-team' } } }] };
+    const report = recordsServiceView(input).matches.find(value => value.matchId === second.config.matchId)!;
+    expect(report).toMatchObject({ score: { for: 1, against: 0 }, opponent: 'Fictional second opposition', sourceMatchRevision: second.revision });
+    expect(report.goals).toHaveLength(1);
+    expect(report.goals[0].scorerLabel).toBeTruthy();
+    expect(recordsServiceView(input).matches.some(value => value.matchId === 'private-other-team')).toBe(false);
+    for (const role of ['player', 'spectator'] as const) {
+      const filtered = recordsServiceView(audience(input, role)).matches.find(value => value.matchId === second.config.matchId)!;
+      expect(filtered).toMatchObject({ score: null, goals: [] });
+    }
+    expect(context.state).toEqual(before);
+  });
   it('joins only the current filtered final award/album into report and export without private ballot or pending media fields', () => {
     const context = fixture(), state = createCommunityState(now), originalMatchId = state.matches[0].id, matchId = context.state.results[0].id;
     state.matches[0].id = matchId; state.photos.forEach(photo => { if (photo.matchId === originalMatchId) photo.matchId = matchId; });

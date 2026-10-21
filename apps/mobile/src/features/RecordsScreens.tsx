@@ -39,6 +39,7 @@ export interface RecordsScreensProps {
   synthetic?: boolean;
   service?: boolean;
   renderMatchCommunity?: (matchId: string) => ReactNode;
+  initialMatchId?: string;
 }
 type Tab = "results" | "participation";
 type Editor = { record: MatchRecord | null };
@@ -76,9 +77,10 @@ export function RecordsScreens({
   synthetic = true,
   service = false,
   renderMatchCommunity,
+  initialMatchId,
 }: RecordsScreensProps) {
   const [tab, setTab] = useState<Tab>("results");
-  const [selected, setSelected] = useState<string | null>(null);
+  const [selected, setSelected] = useState<string | null>(initialMatchId ?? null);
   const [editor, setEditor] = useState<Editor | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);

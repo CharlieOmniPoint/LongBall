@@ -3,6 +3,7 @@ import { existsSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { chromium } from 'playwright';
+import { enterFictionalReview, openWorkspaceTab, selectWorkspaceContext } from './review-entry.mjs';
 
 // Commands use real UI controls. Read-only API/browser storage checks establish
 // authority and ensure invitation credentials were not persisted by the client.
@@ -23,6 +24,7 @@ async function workspace(account, entry = baseUrl) {
   page.setDefaultTimeout(15000);
   page.on('pageerror', () => errors.push('browser page error'));
   await page.goto(entry, { waitUntil: 'networkidle' });
+  await enterFictionalReview(page);
   await page.getByTestId('prepare-match').waitFor({ timeout: 30000 });
   if (new URL(entry).hash) {
     await page.getByTestId('review-received-service-invitation').click();
@@ -36,7 +38,8 @@ async function workspace(account, entry = baseUrl) {
   await button(page, account).click();
   await page.getByTestId('workspace-connect').click();
   await page.getByTestId('workspace-session').waitFor();
-  await page.getByTestId('workspace-tab-invitations').click();
+  if (account !== 'Fictional invite recipient') await selectWorkspaceContext(page);
+  if (account !== 'Fictional invite recipient') await openWorkspaceTab(page, 'invitations');
   await page.getByTestId('connected-invitations').waitFor();
   return page;
 }

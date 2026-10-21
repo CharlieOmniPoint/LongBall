@@ -34,7 +34,8 @@ export interface ConnectedRecordsDto {
   participation: ReturnType<typeof selectParticipationReport>;
   matches: (WithScorerLabels<
     NonNullable<ReturnType<typeof selectMatchReport>>
-  > & ReportCommunityComposition)[];
+  > &
+    ReportCommunityComposition)[];
   editableState?: RecordsState;
   activeMatch?: MatchState | null;
   contexts?: ConnectedReportContext[];
@@ -66,6 +67,7 @@ export function ConnectedRecordsScreens({
   onExport,
   onOpenController,
   onOpenAlbum,
+  initialMatchId,
 }: {
   value: ConnectedRecordsDto;
   audience: RecordsActor;
@@ -75,7 +77,11 @@ export function ConnectedRecordsScreens({
   onExport: (request: ConnectedExportRequest) => Promise<string>;
   onOpenController?: (matchId: string) => void;
   onOpenAlbum?: (matchId: string) => void;
+  initialMatchId?: string;
 }) {
+  const [requestedMatchId, setRequestedMatchId] = useState<string | null>(
+    initialMatchId ?? null,
+  );
   const [chosen, setChosen] = useState<ConnectedReportContext | null>(null);
   const [fixtureClass, setFixtureClass] =
     useState<FixtureClass>("unclassified");
@@ -93,6 +99,26 @@ export function ConnectedRecordsScreens({
             ...(command.reason ? { reason: command.reason } : {}),
           }
         : command,
+    );
+  if (requestedMatchId)
+    return (
+      <View style={{ gap: 12 }} testID="workspace-reports">
+        <Button
+          label="Back to all records"
+          variant="quiet"
+          onPress={() => setRequestedMatchId(null)}
+        />
+        <ReadOnlyRecords
+          value={value}
+          teamLabel={teamLabel}
+          audience={audience}
+          onOpenAlbum={onOpenAlbum}
+          disabled={disabled}
+          initialMatchId={requestedMatchId}
+          matchOnly
+          onCloseMatch={() => setRequestedMatchId(null)}
+        />
+      </View>
     );
   return (
     <View style={{ gap: 12 }} testID="workspace-reports">
@@ -186,7 +212,14 @@ export function ConnectedRecordsScreens({
           service
           onChange={save}
           busy={disabled}
-          renderMatchCommunity={matchId => <ReportCommunityCard matchId={matchId} value={value.matches.find(report => report.matchId === matchId)} onOpenAlbum={onOpenAlbum} disabled={disabled} />}
+          renderMatchCommunity={(matchId) => (
+            <ReportCommunityCard
+              matchId={matchId}
+              value={value.matches.find((report) => report.matchId === matchId)}
+              onOpenAlbum={onOpenAlbum}
+              disabled={disabled}
+            />
+          )}
         />
       ) : (
         <ReadOnlyRecords
@@ -303,14 +336,22 @@ function ReadOnlyRecords({
   audience,
   onOpenAlbum,
   disabled,
+  initialMatchId,
+  matchOnly = false,
+  onCloseMatch,
 }: {
   value: ConnectedRecordsDto;
   teamLabel: string;
   audience: RecordsActor;
   onOpenAlbum?: (matchId: string) => void;
   disabled: boolean;
+  initialMatchId?: string;
+  matchOnly?: boolean;
+  onCloseMatch?: () => void;
 }) {
-  const [selected, setSelected] = useState<string | null>(null);
+  const [selected, setSelected] = useState<string | null>(
+    initialMatchId ?? null,
+  );
   const report = value.matches.find((item) => item?.matchId === selected);
   const results = value.results;
   const duration = (ms: number) =>
@@ -323,72 +364,81 @@ function ReadOnlyRecords({
     "Recorded team player";
   return (
     <View style={{ gap: 12 }}>
-      <Card>
-        <Text style={typography.section}>{teamLabel} records</Text>
-        <Text style={typography.muted}>
-          {results.visibilityScope} · revision {results.projectionVersion} ·
-          last recorded {results.asOf ?? "not recorded"}
-        </Text>
-        {results.suppressionReason ? (
-          <Notice tone="warning">{results.suppressionReason}</Notice>
-        ) : (
-          results.totals && (
-            <>
-              <Text style={typography.body}>
-                P{results.totals.played} · W{results.totals.wins} · D
-                {results.totals.draws} · L{results.totals.losses} · GF
-                {results.totals.goalsFor} · GA{results.totals.goalsAgainst} · GD
-                {results.totals.goalDifference} · Pts{results.totals.points}
-              </Text>
-              <Text style={typography.muted}>
-                App points use 3/1/0 for ordinary completed games, including
-                friendlies. This is not an official league rank.
-              </Text>
-              <Text style={typography.body}>
-                Recent form:{" "}
-                {results.form
-                  ? results.form.map((item) => item.outcome).join(" · ") ||
-                    "No known completed results"
-                  : "Same-day order not recorded"}
-              </Text>
-            </>
-          )
-        )}
-        {results.unknownScoreCount > 0 && (
-          <Notice tone="warning">
-            {results.unknownScoreCount} completed games have no recorded score;
-            they do not count as draws.
-          </Notice>
-        )}
-        {results.excludedExceptionalMatches > 0 && (
-          <Notice tone="warning">
-            {results.excludedExceptionalMatches} exceptional or abandoned
-            results are excluded from ordinary app points pending their outcome
-            rule.
-          </Notice>
-        )}
-        {results.rows.map((row) => (
-          <View key={row.id} style={{ gap: 8 }}>
-            <Text style={typography.label}>
-              {row.playedDate} · {row.opponent}
-            </Text>
-            <Text style={typography.body}>
-              {score(row.finalScore)} · {row.outcome ?? row.status} ·{" "}
-              {row.detailCompleteness.replaceAll("_", " ")}
-            </Text>
-            <Button
-              label={`Read service report for ${row.opponent}`}
-              variant="secondary"
-              onPress={() => setSelected(row.id)}
-            />
-          </View>
-        ))}
-        {results.scorerTotals?.map((row) => (
-          <Text key={row.playerId} style={typography.body}>
-            {row.label} · {row.knownGoals} known goal credits
+      {!matchOnly && (
+        <Card>
+          <Text style={typography.section}>{teamLabel} records</Text>
+          <Text style={typography.muted}>
+            {results.visibilityScope} · revision {results.projectionVersion} ·
+            last recorded {results.asOf ?? "not recorded"}
           </Text>
-        ))}
-      </Card>
+          {results.suppressionReason ? (
+            <Notice tone="warning">{results.suppressionReason}</Notice>
+          ) : (
+            results.totals && (
+              <>
+                <Text style={typography.body}>
+                  P{results.totals.played} · W{results.totals.wins} · D
+                  {results.totals.draws} · L{results.totals.losses} · GF
+                  {results.totals.goalsFor} · GA{results.totals.goalsAgainst} ·
+                  GD
+                  {results.totals.goalDifference} · Pts{results.totals.points}
+                </Text>
+                <Text style={typography.muted}>
+                  App points use 3/1/0 for ordinary completed games, including
+                  friendlies. This is not an official league rank.
+                </Text>
+                <Text style={typography.body}>
+                  Recent form:{" "}
+                  {results.form
+                    ? results.form.map((item) => item.outcome).join(" · ") ||
+                      "No known completed results"
+                    : "Same-day order not recorded"}
+                </Text>
+              </>
+            )
+          )}
+          {results.unknownScoreCount > 0 && (
+            <Notice tone="warning">
+              {results.unknownScoreCount} completed games have no recorded
+              score; they do not count as draws.
+            </Notice>
+          )}
+          {results.excludedExceptionalMatches > 0 && (
+            <Notice tone="warning">
+              {results.excludedExceptionalMatches} exceptional or abandoned
+              results are excluded from ordinary app points pending their
+              outcome rule.
+            </Notice>
+          )}
+          {results.rows.map((row) => (
+            <View key={row.id} style={{ gap: 8 }}>
+              <Text style={typography.label}>
+                {row.playedDate} · {row.opponent}
+              </Text>
+              <Text style={typography.body}>
+                {score(row.finalScore)} · {row.outcome ?? row.status} ·{" "}
+                {row.detailCompleteness.replaceAll("_", " ")}
+              </Text>
+              <Button
+                label={`Read service report for ${row.opponent}`}
+                variant="secondary"
+                onPress={() => setSelected(row.id)}
+              />
+            </View>
+          ))}
+          {results.scorerTotals?.map((row) => (
+            <Text key={row.playerId} style={typography.body}>
+              {row.label} · {row.knownGoals} known goal credits
+            </Text>
+          ))}
+        </Card>
+      )}
+      {matchOnly && !report && (
+        <Notice>
+          This match report is unavailable in the current authorised team and
+          season. Refresh the service views or choose another permitted record.
+        </Notice>
+      )}
       {report && (
         <Card>
           <Text style={typography.section}>
@@ -433,7 +483,11 @@ function ReadOnlyRecords({
           )}
           {"participation" in report && (
             <>
-              <Text style={typography.label}>My recorded participation</Text>
+              <Text style={typography.label}>
+                {audience === "manager"
+                  ? "Recorded participation"
+                  : "My recorded participation"}
+              </Text>
               {report.participation === null ? (
                 <Text style={typography.body}>
                   Minutes, intervals, selection and actual attendance are not
@@ -465,7 +519,12 @@ function ReadOnlyRecords({
               )}
             </>
           )}
-          <ReportCommunityCard matchId={report.matchId} value={report} onOpenAlbum={onOpenAlbum} disabled={disabled} />
+          <ReportCommunityCard
+            matchId={report.matchId}
+            value={report}
+            onOpenAlbum={onOpenAlbum}
+            disabled={disabled}
+          />
           <Text style={typography.muted}>
             Projection {report.projectionVersion} · record revision{" "}
             {report.revision} · {report.policyId} v{report.policyVersion}
@@ -473,11 +532,14 @@ function ReadOnlyRecords({
           <Button
             label="Close service report"
             variant="quiet"
-            onPress={() => setSelected(null)}
+            onPress={() => {
+              setSelected(null);
+              onCloseMatch?.();
+            }}
           />
         </Card>
       )}
-      {audience !== "spectator" && (
+      {!matchOnly && audience !== "spectator" && (
         <>
           <Text style={typography.section}>My known participation</Text>
           {value.participation.reason ? (

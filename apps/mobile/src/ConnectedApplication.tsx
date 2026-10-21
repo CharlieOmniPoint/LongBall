@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   AppState,
@@ -6,7 +6,6 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
-  Text,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -20,20 +19,57 @@ import { connectedAccountDevicesClient } from "./platform/account-devices";
 import type { Journal } from "./platform/types";
 import { AccountSecurityScreen } from "./features/AccountSecurityScreen";
 import { ConnectedWorkspace } from "./features/ConnectedWorkspace";
+import { LongBallWordmark } from "./features/EntryScreens";
 import { Button, colors, Notice } from "./ui";
 import {
   parseLongBallDestination,
+  type LongBallDestination,
   type ActivationCompletionDestination,
   type ChildActivationDestination,
   type SpectatorInvitationDestination,
 } from "@longball/application/deep-links";
 import { activationRelayChannelName } from "@longball/application/activation-relay";
 
-/** Production builds enter verified connected journeys and never seed fictional accounts. */
-export function ConnectedApplication() {
+export interface ConnectedApplicationProps {
+  onBackToWelcome?: () => void;
+  initialIntent?: "sign-in" | "activate";
+  intentRevision?: number;
+  initialDestination?: LongBallDestination | null;
+  onEnterFictionalReview?: () => void;
+}
+/** Connected journeys keep one memory boundary through welcome/account navigation. */
+export function ConnectedApplication({
+  onBackToWelcome,
+  initialIntent = "sign-in",
+  intentRevision = 0,
+  initialDestination,
+  onEnterFictionalReview,
+}: ConnectedApplicationProps = {}) {
   const [session, setSession] = useState<ConnectedSessionSummary | null>(null);
   const [loading, setLoading] = useState(true);
-  const [account, setAccount] = useState(false);
+  const [account, setAccount] = useState(initialIntent === "activate");
+  const [intent, setIntent] = useState(initialIntent);
+  const [seenIntent, setSeenIntent] = useState({
+    initialIntent,
+    intentRevision,
+  });
+  if (
+    seenIntent.initialIntent !== initialIntent ||
+    seenIntent.intentRevision !== intentRevision
+  ) {
+    setSeenIntent({ initialIntent, intentRevision });
+    setIntent(initialIntent);
+    if (initialIntent === "activate") setAccount(true);
+  }
+  const parentDestination = useRef<LongBallDestination | null>(null);
+  const relayedCompletions = useRef(new Set<string>());
+  const navigationGuard = useRef<((leave: () => void) => void) | null>(null);
+  const setNavigationGuard = useCallback(
+    (guard: ((leave: () => void) => void) | null) => {
+      navigationGuard.current = guard;
+    },
+    [],
+  );
   const [invitation, setInvitation] =
     useState<SpectatorInvitationDestination | null>(null);
   const [childActivation, setChildActivation] =
@@ -52,6 +88,51 @@ export function ConnectedApplication() {
   const [foreground, setForeground] = useState(
     AppState.currentState === "active",
   );
+  const receiveDestination = useCallback(
+    (destination: LongBallDestination, relay: boolean) => {
+      setIntent("activate");
+      if (destination.kind === "invitation") {
+        setInvitation(destination.invitation);
+        setAccount(false);
+        return;
+      }
+      if (destination.kind === "activation-completion") {
+        setActivationCompletion(destination.completion);
+        if (
+          relay &&
+          Platform.OS === "web" &&
+          typeof window !== "undefined" &&
+          typeof BroadcastChannel !== "undefined"
+        ) {
+          const key = JSON.stringify(destination.completion);
+          if (!relayedCompletions.current.has(key)) {
+            try {
+              const channel = new BroadcastChannel(
+                activationRelayChannelName(
+                  `${window.location.origin}${window.location.pathname}`,
+                ),
+              );
+              channel.postMessage(destination.completion);
+              relayedCompletions.current.add(key);
+              setTimeout(() => channel.close(), 500);
+            } catch {
+              /* The retained original capability and manual return fallback remain necessary. */
+            }
+          }
+        }
+      }
+      setAccount(true);
+    },
+    [],
+  );
+  useEffect(() => {
+    if (!initialDestination || parentDestination.current === initialDestination)
+      return;
+    parentDestination.current = initialDestination;
+    // EntryApplication already validated the destination and removed its fragment.
+    // Relay only the same-origin attempt/proof metadata, never the original capability.
+    receiveDestination(initialDestination, true);
+  }, [initialDestination, receiveDestination]);
   useEffect(() => {
     const receive = (url: string) => {
       const destination = parseLongBallDestination(url, {
@@ -77,33 +158,10 @@ export function ConnectedApplication() {
           .filter(Boolean),
       });
       if (!destination) return;
-      if (destination.kind === "invitation") {
-        setInvitation(destination.invitation);
-        setAccount(false);
-      } else {
-        if (destination.kind === "activation-completion")
-          setActivationCompletion(destination.completion);
-        if (
-          destination.kind === "activation-completion" &&
-          Platform.OS === "web" &&
-          typeof window !== "undefined" &&
-          window.location.href === url &&
-          typeof BroadcastChannel !== "undefined"
-        ) {
-          try {
-            const channel = new BroadcastChannel(
-              activationRelayChannelName(
-                `${window.location.origin}${window.location.pathname}`,
-              ),
-            );
-            channel.postMessage(destination.completion);
-            setTimeout(() => channel.close(), 500);
-          } catch {
-            /* Manual capability+return-link recovery remains available; no cross-origin relay. */
-          }
-        }
-        setAccount(true);
-      }
+      receiveDestination(
+        destination,
+        typeof window !== "undefined" && window.location.href === url,
+      );
       // Capture only in memory, then remove capabilities from the current browser address.
       if (
         typeof window !== "undefined" &&
@@ -132,7 +190,7 @@ export function ConnectedApplication() {
       if (typeof window !== "undefined")
         window.removeEventListener("hashchange", browserChange);
     };
-  }, []);
+  }, [receiveDestination]);
 
   useEffect(() => {
     let active = true;
@@ -230,6 +288,28 @@ export function ConnectedApplication() {
     };
   }, [identity, storageAttempt]);
 
+  const workspaceApi = session?.config.apiBaseUrl;
+  const workspaceAccount = session?.accountId;
+  const workspaceConnection = useMemo(
+    () =>
+      identity && workspaceApi && workspaceAccount
+        ? {
+            baseUrl: workspaceApi,
+            mode: "oidc" as const,
+            account: workspaceAccount,
+          }
+        : undefined,
+    [identity, workspaceApi, workspaceAccount],
+  );
+  const requestWelcome = () => {
+    if (!onBackToWelcome) return;
+    if (navigationGuard.current) {
+      setAccount(false);
+      navigationGuard.current(onBackToWelcome);
+    } else onBackToWelcome();
+  };
+  const showAccount = !identity || account;
+
   return (
     <ScrollView
       contentContainerStyle={[
@@ -242,19 +322,39 @@ export function ConnectedApplication() {
       keyboardShouldPersistTaps="handled"
     >
       <View style={styles.header}>
-        <Text style={styles.brand}>LongBall</Text>
-        {identity && (
-          <Button
-            label={account ? "Back to team" : "Account and security"}
-            variant="quiet"
-            onPress={() => setAccount(!account)}
-          />
-        )}
+        <LongBallWordmark compact />
+        <View style={styles.headerActions}>
+          {onBackToWelcome && (
+            <Button
+              label="Back to welcome"
+              variant="quiet"
+              onPress={requestWelcome}
+              testID="back-to-welcome"
+            />
+          )}
+          {identity && (
+            <Button
+              label={account ? "Back to team" : "My account"}
+              variant="quiet"
+              onPress={() => setAccount(!account)}
+              testID="connected-account"
+            />
+          )}
+        </View>
       </View>
       {error && <Notice tone="error">{error}</Notice>}
-      {!loading && (!identity || account) && (
-        <View style={{ display: foreground ? "flex" : "none" }}>
+      {!loading && (
+        <View
+          style={{ display: foreground && showAccount ? "flex" : "none" }}
+          accessibilityElementsHidden={!foreground || !showAccount}
+          importantForAccessibility={
+            foreground && showAccount ? "auto" : "no-hide-descendants"
+          }
+        >
           <AccountSecurityScreen
+            initialIntent={intent}
+            intentRevision={intentRevision}
+            onEnterFictionalReview={onEnterFictionalReview}
             invitationDestination={invitation}
             childActivationDestination={childActivation}
             activationCompletion={activationCompletion}
@@ -267,6 +367,16 @@ export function ConnectedApplication() {
                   session.accountId !== next.accountId)
               )
                 setChildActivation(null);
+              if (
+                next &&
+                !next.locked &&
+                !next.expired &&
+                (!session ||
+                  session.locked ||
+                  session.expired ||
+                  session.sessionId !== next.sessionId)
+              )
+                setAccount(false);
               setSession(next);
             }}
           />
@@ -280,32 +390,48 @@ export function ConnectedApplication() {
         <ActivityIndicator color={colors.brand} />
       ) : !identity || account ? null : !storage ||
         storage.identity !== identity ? (
-        <>
-          {error ? (
-            <Button
-              label="Retry protected storage"
-              onPress={() => setStorageAttempt((value) => value + 1)}
-            />
-          ) : (
-            <ActivityIndicator color={colors.brand} />
-          )}
-        </>
-      ) : (
-        <ConnectedWorkspace
-          key={identity}
-          journal={storage.journal}
-          deviceId={storage.deviceId}
-          allowSynthetic={false}
-          invitationDestination={invitation ?? undefined}
-          onPrepareChildActivation={(destination) => {
-            setChildActivation(destination);
-            setAccount(true);
-          }}
-        />
+        error ? (
+          <Button
+            label="Retry protected storage"
+            onPress={() => setStorageAttempt((value) => value + 1)}
+          />
+        ) : (
+          <ActivityIndicator color={colors.brand} />
+        )
+      ) : null}
+      {identity && storage?.identity === identity && (
+        <View
+          style={{ display: foreground && !showAccount ? "flex" : "none" }}
+          accessibilityElementsHidden={!foreground || showAccount}
+          importantForAccessibility={
+            foreground && !showAccount ? "auto" : "no-hide-descendants"
+          }
+        >
+          <ConnectedWorkspace
+            key={identity}
+            journal={storage.journal}
+            deviceId={storage.deviceId}
+            allowSynthetic={false}
+            initialConnection={workspaceConnection}
+            invitationDestination={invitation ?? undefined}
+            onNavigationGuardChange={setNavigationGuard}
+            onLeaveWorkspace={onBackToWelcome}
+            onOpenAccount={() => {
+              setIntent("sign-in");
+              setAccount(true);
+            }}
+            onPrepareChildActivation={(destination) => {
+              setChildActivation(destination);
+              setIntent("activate");
+              setAccount(true);
+            }}
+          />
+        </View>
       )}
     </ScrollView>
   );
 }
+
 const styles = StyleSheet.create({
   page: {
     padding: 20,
@@ -322,10 +448,10 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     gap: 12,
   },
-  brand: {
-    fontSize: 28,
-    lineHeight: 36,
-    fontWeight: "800",
-    color: colors.brand,
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: 8,
   },
 });

@@ -71,8 +71,17 @@ export function recordsServiceView(input: RecordsServiceInput) {
   const generatedAt = new Date(nowMs).toISOString();
   const stamp = <T extends object>(value: T) => ({ ...value, generatedAt });
   const ids = new Set(state.results.map(record => record.id));
-  if (activeMatch && activeMatch.status !== 'preparation') ids.add(activeMatch.config.matchId);
-  const common = { revision: state.revision, results: stamp(selectSeasonResults(state, viewer)), participation: stamp(selectParticipationReport(state, activeMatch, viewer)), matches: [...ids].map(id => selectMatchReport(state, id, viewer, activeMatch)).filter((item): item is NonNullable<typeof item> => item !== null).map(report => stamp({ ...report, ...composeReportCommunity(report, input.principal.accountId, input.community), goals: report.goals.map(goal => ({ ...goal, scorerLabel: goal.scorerPlayerId ? state.players.find(player => player.id === goal.scorerPlayerId)?.label ?? null : null })) })) };
+  // Match-centre reads must not depend on which fixture the manager last opened
+  // in Reports. Project each already-authorised accepted match without changing
+  // the saved report context or promoting its publication policy.
+  for (const row of input.acceptedMatches)
+    if (row.teamId === state.teamId && row.seasonId === state.seasonId && row.match.status !== 'preparation') ids.add(row.match.config.matchId);
+  const reports = [...ids].map(id => {
+    const match = accepted(input, id);
+    const details = match ? contextFor(state, match, id === state.liveMatch.matchId ? state.liveMatch.fixtureClass : undefined) : null;
+    return selectMatchReport(details ? { ...state, liveMatch: details } : state, id, viewer, match);
+  }).filter((item): item is NonNullable<typeof item> => item !== null);
+  const common = { revision: state.revision, results: stamp(selectSeasonResults(state, viewer)), participation: stamp(selectParticipationReport(state, activeMatch, viewer)), matches: reports.map(report => stamp({ ...report, ...composeReportCommunity(report, input.principal.accountId, input.community), goals: report.goals.map(goal => ({ ...goal, scorerLabel: goal.scorerPlayerId ? state.players.find(player => player.id === goal.scorerPlayerId)?.label ?? null : null })) })) };
   if (viewer.actor !== 'manager') return common;
   return { ...common, editableState: copy(state), activeMatch: activeMatch ? copy(activeMatch) : null,
     contexts: input.acceptedMatches.filter(row => row.teamId === state.teamId && row.seasonId === state.seasonId).flatMap(row => {

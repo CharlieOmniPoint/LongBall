@@ -6,6 +6,7 @@ import { existsSync, createWriteStream } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { chromium } from 'playwright';
+import { enterFictionalReview, openWorkspaceTab, selectWorkspaceContext } from './review-entry.mjs';
 import { installStartupDiagnostics, captureStartupDiagnostics } from './browser-startup-diagnostics.mjs';
 
 /** Real UI/HTTP journeys. IndexedDB and service GETs are inspected read-only.
@@ -91,13 +92,15 @@ async function workspaceOutbox(page, api, accountId = 'synthetic-account-manager
 }
 const waitConnected = (page, alias, api, predicate, label) => poll(() => connected(page, alias, api), value => value && predicate(value), label);
 async function enterWorkspace(page, api, account) {
+  await enterFictionalReview(page);
   await page.getByTestId('prepare-match').waitFor();
   await button(page, 'More'); await button(page, 'Service and controller');
   await input(page, 'Workspace API URL', api);
   await button(page, 'Fictional API review'); await button(page, account);
   await page.getByTestId('workspace-connect').click();
   await page.getByTestId('workspace-session').waitFor();
-  await page.getByTestId(account === 'Fictional manager' ? 'workspace-tab-controller' : 'workspace-tab-community').waitFor();
+  if (account !== 'Fictional invite recipient') await selectWorkspaceContext(page, account === 'Fictional Player 01' ? 'player' : 'manager');
+  if (account !== 'Fictional invite recipient') await page.getByTestId('workspace-context-ready').waitFor();
 }
 async function openWorkspace(api, account = 'Fictional manager') {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' });
@@ -122,7 +125,7 @@ async function openWorkspace(api, account = 'Fictional manager') {
   return { context, page };
 }
 async function openController(page, api, alias, manager = 'Manager A') {
-  await page.getByTestId('workspace-tab-controller').click();
+  await openWorkspaceTab(page, 'controller');
   await input(page, 'Connected match identifier', matchId);
   await input(page, 'LongBall service URL', api);
   await button(page, manager);
@@ -390,7 +393,7 @@ try {
   await scenario('03-workspace-service-preparation-results-and-privacy', async () => {
     const { context, page } = await openWorkspace(primaryAPI);
     try {
-      await page.getByTestId('workspace-tab-schedule').click(); await page.getByTestId('preparation-create-event').click();
+      await openWorkspaceTab(page, 'schedule'); await page.getByTestId('preparation-create-event').click();
       await input(page, 'Opposition', 'Connected Birch rehearsal'); await input(page, 'Match date (YYYY-MM-DD)', '2026-11-07');
       await input(page, 'Kick-off (HH:MM, blank if not recorded)', '11:00'); await input(page, 'Venue', 'Fictional connected south field');
       await page.getByTestId('preparation-save').click();
@@ -404,7 +407,7 @@ try {
       await poll(() => workspaceOutbox(page, primaryAPI), value => value && !value.pending && value.lastSettled?.outcome?.kind === 'accepted', 'Reschedule receipt durably saved before navigation');
       await page.getByTestId('preparation-create-event').waitFor({ state: 'visible' });
       await poll(async () => page.getByTestId('preparation-create-event').isEnabled(), Boolean, 'Refreshed preparation UI finishes its save before changing tabs');
-      await page.getByTestId('workspace-tab-reports').click(); await button(page, 'Add historical result to service');
+      await openWorkspaceTab(page, 'reports'); await button(page, 'Add historical result to service');
       await page.getByTestId('records-past-date').fill('2026-09-20'); await page.getByTestId('records-past-opponent').fill('Connected Willow historical');
       await page.getByTestId('records-past-for').fill('2'); await page.getByTestId('records-past-against').fill('1'); await page.getByRole('radio', { name: 'friendly', exact: true }).click();
       await page.getByTestId('records-past-review-button').click();
@@ -412,7 +415,7 @@ try {
       const records = await poll(() => json(primaryAPI, scoped('records')), value => value.results?.rows?.some(item => item.opponent === 'Connected Willow historical'), 'Historical result persisted via actual service');
       const historical = records.editableState.results.find(item => item.opponent === 'Connected Willow historical');
       assert.equal(historical.participation, null); assert.equal(historical.actualActiveDurationMs, null);
-      await page.getByTestId('workspace-tab-community').click();
+      await openWorkspaceTab(page, 'community');
       await button(page, 'Acknowledge sharing a limited season invitation'); await button(page, 'Create service invitation code');
       const community = await poll(() => json(primaryAPI, scoped('community')), value => value.invitations?.some(item => !item.revokedAtMs), 'Service invitation created');
       const invitation = community.invitations.find(item => !item.revokedAtMs);
@@ -430,7 +433,7 @@ try {
       } finally { await own.context.close(); }
       const invitee = await openWorkspace(primaryAPI, 'Fictional invite recipient');
       try {
-        await invitee.page.getByTestId('workspace-tab-community').click(); await input(invitee.page, 'Service invitation code', invitation.reviewCode);
+        await openWorkspaceTab(invitee.page, 'community'); await input(invitee.page, 'Service invitation code', invitation.reviewCode);
         await button(invitee.page, 'Accept service invitation');
         const member = await poll(() => json(primaryAPI, '/v1/me', 'synthetic-account-invitee'), value => value.memberships?.some(item => item.teamId === teamId && item.seasonId === seasonId && item.role === 'spectator'), 'Invitation grants only addressed season spectator access');
         assert(member.memberships.every(item => item.role === 'spectator'));
@@ -447,7 +450,7 @@ try {
   await scenario('04-private-media-two-explicit-game-albums-without-scanner', async () => {
     const { context, page } = await openWorkspace(primaryAPI);
     try {
-      await page.getByTestId('workspace-tab-community').click();
+      await openWorkspaceTab(page, 'community');
       const before = await json(primaryAPI, scoped('community'));
       const games = before.matches.filter(item => item.sharingAllowed === true).sort((a, b) => (b.playedAtMs ?? -1) - (a.playedAtMs ?? -1) || a.id.localeCompare(b.id)).slice(0, 2);
       assert.equal(games.length, 2, 'Two independently permitted games are needed to prove explicit upload targeting.');
@@ -500,7 +503,7 @@ try {
         assert.equal(committed.ok(), true, 'Workspace mutation reached the API before acknowledgement was lost.');
         await route.abort('failed');
       });
-      await page.getByTestId('workspace-tab-schedule').click(); await page.getByTestId('preparation-create-event').click();
+      await openWorkspaceTab(page, 'schedule'); await page.getByTestId('preparation-create-event').click();
       await input(page, 'Opposition', 'Outbox Alder rehearsal'); await input(page, 'Match date (YYYY-MM-DD)', '2026-11-21');
       await input(page, 'Kick-off (HH:MM, blank if not recorded)', '10:15'); await input(page, 'Venue', 'Fictional durable-outbox field');
       await page.getByTestId('preparation-save').click();
@@ -518,7 +521,8 @@ try {
       assert.equal(await page.getByRole('button', { name: 'Retry exact service request', exact: true }).count(), 0, 'Another account cannot replay the manager retained request.');
       assert.equal((await workspaceOutbox(page, primaryAPI)).pending.bodyJson, retained.bodyJson, 'Account change retains the manager branch without exposing its replay control.');
       await button(page, 'Fictional manager'); await page.getByTestId('workspace-connect').click();
-      await page.getByTestId('workspace-tab-controller').waitFor();
+      await selectWorkspaceContext(page);
+      await page.getByTestId('workspace-context-ready').waitFor();
       await page.getByRole('button', { name: 'Retry exact service request', exact: true }).waitFor();
       const reopened = await poll(() => workspaceOutbox(page, primaryAPI), value => value?.pending?.key === retained.key, 'Reopen exact account/API/team/season outbox');
       assert.equal(reopened.pending.bodyJson, retained.bodyJson); assert.equal(reopened.pending.path, retained.path);

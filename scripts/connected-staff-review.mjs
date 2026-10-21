@@ -5,6 +5,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { createHash, randomUUID } from "node:crypto";
 import path from "node:path";
 import { chromium } from "playwright";
+import { changeWorkspaceContext, enterFictionalReview, openWorkspaceTab, selectWorkspaceContext } from "./review-entry.mjs";
 
 // Real HTTP commands prepare a fictional award/report; browser actions perform staff writes and album navigation.
 const baseURL = process.env.LONGBALL_REVIEW_BASE_URL ?? "http://127.0.0.1:4173";
@@ -213,6 +214,7 @@ try {
   page.setDefaultTimeout(30_000);
   page.on("pageerror", (error) => pageErrors.push(error.message));
   await page.goto(baseURL, { waitUntil: "networkidle" });
+  await enterFictionalReview(page);
   await page.getByTestId("prepare-match").waitFor();
   await click("More");
   await click("Service and controller");
@@ -220,9 +222,11 @@ try {
   await click("Fictional API review");
   await click("Fictional manager");
   await page.getByTestId("workspace-connect").click();
+  await selectWorkspaceContext(page);
   await page.getByTestId("preparation-create-event").waitFor();
   await settled();
-  await click("Use administrator experience");
+  await changeWorkspaceContext(page, "administrator");
+  await openWorkspaceTab(page, "people");
   await page.getByTestId("connected-staff").waitFor();
   await settled();
   let roster = await service("managers", { role: "administrator" });
@@ -324,10 +328,10 @@ try {
     finalRevision: roster.revision,
   });
   console.log("PASSED staff assignment/revocation");
-  await click("Use manager experience");
+  await changeWorkspaceContext(page, "manager");
   await page.getByTestId("preparation-create-event").waitFor();
   await settled();
-  await page.getByTestId("workspace-tab-reports").click();
+  await openWorkspaceTab(page, "reports");
   const records = await service("records");
   const report = records.matches.find((item) => item.matchId === willow);
   assert.equal(report.award.result, "no_valid_votes");

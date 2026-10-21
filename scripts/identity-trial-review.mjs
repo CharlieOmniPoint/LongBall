@@ -15,6 +15,7 @@ import {
   bootstrapToken,
   trialDirectory,
   trialJson,
+  identityTrialAppUrl,
 } from "./identity-trial-support.mjs";
 import { resolve } from "node:path";
 
@@ -31,6 +32,7 @@ if (schemaSmoke && !apiProof)
   throw new Error("Schema smoke requires the actual configured API journey");
 const spectatorUiOnly =
   process.env.LONGBALL_IDENTITY_TRIAL_SPECTATOR_UI_ONLY === "1";
+const appBaseUrl = identityTrialAppUrl();
 if (spectatorUiOnly && (!apiProof || !schemaSmoke || !spectatorProof))
   throw new Error(
     "UI-only proof requires the configured schema/API/spectator trial flags",
@@ -735,6 +737,7 @@ try {
         );
         child.stdin.end(
           JSON.stringify({
+            baseUrl: appBaseUrl,
             fixture: {
               issuer: config.issuer,
               publicClientId: config.publicClientId,

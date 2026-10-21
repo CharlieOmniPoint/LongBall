@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
+import { enterFictionalReview } from './review-entry.mjs';
 import { existsSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -18,6 +19,7 @@ try {
     const started = Date.now();
     await page.goto(baseURL, { waitUntil: 'networkidle' });
     try {
+      await enterFictionalReview(page);
       await page.getByTestId('prepare-match').waitFor({ timeout: 12_000 });
       results.push({ index, status: 'passed', durationMs: Date.now() - started });
       console.log(`PASSED bootstrap ${index}`);

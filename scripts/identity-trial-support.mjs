@@ -4,6 +4,16 @@ export const trialDirectory = resolve(
   import.meta.dirname,
   "../.local/identity/trial",
 );
+/** Exact isolated browser entries only; this never selects a provider or API origin. */
+export function identityTrialAppUrl() {
+  const value =
+    process.env.LONGBALL_IDENTITY_APP_URL ?? "http://localhost:4174";
+  if (!["http://localhost:4174", "http://localhost:4175"].includes(value))
+    throw new Error(
+      "Use an exact configured localhost identity-trial app entry.",
+    );
+  return value;
+}
 export async function readTrial() {
   return JSON.parse(
     await readFile(resolve(trialDirectory, "configuration.json"), "utf8"),
@@ -66,12 +76,31 @@ if (process.argv[1] === resolve(import.meta.filename)) {
   const trial = await configureTrial();
   if (process.argv.includes("--enable-browser-review")) {
     const { config, adminBase, headers } = trial;
-    const clients = await trialJson(`${adminBase}/clients?clientId=${encodeURIComponent(config.publicClientId)}`, { headers });
-    if (clients.length !== 1 || config.issuer !== "https://localhost:8443/realms/longball-fictional") throw new Error("Use only the exact isolated fictional provider client.");
-    const client = await trialJson(`${adminBase}/clients/${clients[0].id}`, { headers });
-    const redirect = "http://localhost:4174/", origin = "http://localhost:4174";
-    await trialJson(`${adminBase}/clients/${client.id}`, { method: "PUT", headers, body: JSON.stringify({ redirectUris: [...new Set([...client.redirectUris, redirect])], webOrigins: [...new Set([...client.webOrigins, origin])] }) });
-    console.log("Registered only the exact localhost4174 callback and web origin for the isolated browser review.");
+    const clients = await trialJson(
+      `${adminBase}/clients?clientId=${encodeURIComponent(config.publicClientId)}`,
+      { headers },
+    );
+    if (
+      clients.length !== 1 ||
+      config.issuer !== "https://localhost:8443/realms/longball-fictional"
+    )
+      throw new Error("Use only the exact isolated fictional provider client.");
+    const client = await trialJson(`${adminBase}/clients/${clients[0].id}`, {
+      headers,
+    });
+    const origin = identityTrialAppUrl(),
+      redirect = `${origin}/`;
+    await trialJson(`${adminBase}/clients/${client.id}`, {
+      method: "PUT",
+      headers,
+      body: JSON.stringify({
+        redirectUris: [...new Set([...client.redirectUris, redirect])],
+        webOrigins: [...new Set([...client.webOrigins, origin])],
+      }),
+    });
+    console.log(
+      "Registered only the selected exact localhost callback and web origin for the isolated browser review.",
+    );
   }
   if (process.argv.includes("--reenrol-fictional-manager")) {
     const { config, adminBase, headers } = trial;

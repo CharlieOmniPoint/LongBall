@@ -4,6 +4,7 @@ node_modules/
 .expo/
 dist/
 dist-web/
+dist-web-identity-entry/
 dist-production-review/
 dist-pages/
 playwright-report/

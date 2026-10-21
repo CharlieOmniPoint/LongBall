@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { chromium } from "playwright";
+import { changeWorkspaceContext, enterFictionalReview, openWorkspaceTab, selectWorkspaceContext } from "./review-entry.mjs";
 
 // UI commands exercise the real scan/derivative/publication service. The API calls below are GET only.
 const baseURL = process.env.LONGBALL_REVIEW_BASE_URL ?? "http://127.0.0.1:4173";
@@ -296,10 +297,9 @@ async function publish(asset, { gateImage = false } = {}) {
   }
 }
 async function settings(role) {
-  await click(`Use ${role} experience`);
+  await changeWorkspaceContext(page, role);
   await settled();
-  if (role === "manager")
-    await page.getByTestId("workspace-tab-settings").click();
+  await openWorkspaceTab(page, "settings");
   await page.getByTestId("brand-logos").waitFor();
   await settled();
 }
@@ -367,6 +367,7 @@ try {
       });
   });
   await page.goto(baseURL, { waitUntil: "networkidle" });
+  await enterFictionalReview(page);
   await page.getByTestId("prepare-match").waitFor();
   await click("More");
   await click("Service and controller");
@@ -374,9 +375,10 @@ try {
   await click("Fictional API review");
   await click("Fictional manager");
   await page.getByTestId("workspace-connect").click();
+  await selectWorkspaceContext(page);
   await page.getByTestId("preparation-create-event").waitFor();
   await settled();
-  await page.getByTestId("workspace-tab-settings").click();
+  await openWorkspaceTab(page, "settings");
   await page.getByTestId("brand-logos").waitFor();
   assert.equal(await page.getByTestId("brand-kind-club_logo").count(), 0);
   assert.equal(await page.getByTestId("brand-kind-team_logo").count(), 1);

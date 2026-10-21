@@ -1,0 +1,41 @@
+{
+  "checkedAt": "2026-10-21T17:20:00.089554+00:00",
+  "sourceParent": "575a010bc768a083026eefd28cf75f14649e480f",
+  "implementationFingerprint": "4de62b8cd6794cde3951460ebb43ba3afd10ef9f54639f328087bc6cac5cb936",
+  "artifact": {
+    "script": "/_expo/static/js/web/index-5d4070e11a23f2c482d209e029bd5c0e.js",
+    "sha256": "429bcdc67c6bbc3eec6b2efd93ac170f42b3d44347c35d02d4f7788a41c7201f",
+    "bytes": 1357040
+  },
+  "passed": {
+    "connectedRoleEntries": 8,
+    "phoneWidths": [
+      320,
+      390
+    ],
+    "connectedMatchdayGroups": 4,
+    "acceptedMatchRevision": 12,
+    "acceptedMatchStatus": "first_half_paused",
+    "sharedPlatformTests": 576,
+    "sharedTestFiles": 59,
+    "apiTests": 220,
+    "apiTestFiles": 31,
+    "normalBrowserChecks": 25,
+    "plannerReloadChecks": 4,
+    "anonymousProductionChecks": 6
+  },
+  "scope": "Connected role entries and four matchday groups ran against this final web artifact. Other suites retain their distinct earlier artifact and source bindings. API sources unchanged since full 220-test pass. No native device evidence.",
+  "diagnostics": [
+    "initial-unit-diagnostic.log",
+    "initial-api-diagnostic.log"
+  ],
+  "pending": [
+    "native JavaScript exports refresh",
+    "public Pages and connected API verification",
+    "SEC17 privilege suspension",
+    "DS14 native push registration",
+    "EV05 canonical policy changes",
+    "four Should features",
+    "physical and operational acceptance"
+  ]
+}

@@ -5,6 +5,6 @@ module.exports = defineConfig([
   expo,
   { settings: { react: { version: require('./apps/mobile/package.json').dependencies.react } } },
   {
-    ignores: ['.local/**', '.venv/**', '**/dist/**', '**/dist-web/**', '**/dist-production-review/**', '**/dist-pages/**', 'docs/longball/**', '**/android/**', '**/ios/**'],
+    ignores: ['.local/**', '.venv/**', '**/dist/**', '**/dist-web/**', '**/dist-web-identity-entry/**', '**/dist-production-review/**', '**/dist-pages/**', 'docs/longball/**', '**/android/**', '**/ios/**'],
   },
 ]);

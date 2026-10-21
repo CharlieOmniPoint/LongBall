@@ -36,6 +36,14 @@ export interface PitchProps {
   changedSlotIds?: string[];
   slots?: PitchSlot[];
   formationName?: string;
+  /** Formation-template placement only; match allocation behavior remains unchanged. */
+  positionEditing?: boolean;
+  onPitchPress?: (point: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  }) => void;
 }
 
 export function Pitch({
@@ -47,9 +55,12 @@ export function Pitch({
   changedSlotIds = [],
   slots = [...defaultSlots],
   formationName = "2–3–1 formation",
+  positionEditing = false,
+  onPitchPress,
 }: PitchProps) {
   const { fontScale } = useWindowDimensions();
   const [showList, setShowList] = useState(false);
+  const [bounds, setBounds] = useState({ width: 0, height: 0 });
   const list = showList || fontScale >= 1.5;
 
   return (
@@ -87,7 +98,14 @@ export function Pitch({
                 onPress={() => onSlotPress?.(slot.id)}
                 disabled={!onSlotPress}
                 accessibilityRole={onSlotPress ? "button" : undefined}
-                accessibilityLabel={`${slot.name}, ${player?.displayName ?? "unfilled"}${changed ? ", pending start" : ""}`}
+                accessibilityLabel={
+                  positionEditing
+                    ? `Choose formation slot ${slot.name}`
+                    : `${slot.name}, ${player?.displayName ?? "unfilled"}${changed ? ", pending start" : ""}`
+                }
+                testID={
+                  positionEditing ? `formation-position-${slot.id}` : undefined
+                }
                 accessibilityState={{ selected: selectedSlot === slot.id }}
                 style={[
                   styles.positionRow,
@@ -96,7 +114,9 @@ export function Pitch({
               >
                 <Text style={styles.positionName}>{slot.name}</Text>
                 <Text style={styles.positionPlayer}>
-                  {player?.displayName ?? "Choose player"}
+                  {positionEditing
+                    ? `${slot.label} · ${Math.round(slot.x)}%, ${Math.round(slot.y)}%`
+                    : (player?.displayName ?? "Choose player")}
                   {changed ? " · Pending" : ""}
                 </Text>
               </Pressable>
@@ -104,7 +124,42 @@ export function Pitch({
           })}
         </View>
       ) : (
-        <View style={[styles.pitch, { height: compact ? 306 : 396 }]}>
+        <View
+          style={[
+            styles.pitch,
+            positionEditing
+              ? { aspectRatio: 0.72 }
+              : { height: compact ? 306 : 396 },
+          ]}
+          onLayout={(event) => setBounds(event.nativeEvent.layout)}
+        >
+          {onPitchPress && (
+            <Pressable
+              style={StyleSheet.absoluteFill}
+              testID="formation-placement-surface"
+              accessibilityRole="button"
+              accessibilityLabel="Place selected formation slot on pitch"
+              onPress={(event) => {
+                // React Native supplies locationX/Y; web Pressable's mouse-click event uses offsetX/Y.
+                const point = event.nativeEvent as typeof event.nativeEvent & {
+                  offsetX?: number;
+                  offsetY?: number;
+                };
+                onPitchPress({
+                  x:
+                    (Number.isFinite(point.locationX)
+                      ? point.locationX
+                      : (point.offsetX ?? NaN)) - 24,
+                  y:
+                    (Number.isFinite(point.locationY)
+                      ? point.locationY
+                      : (point.offsetY ?? NaN)) - 24,
+                  width: bounds.width - 48,
+                  height: bounds.height - 72,
+                });
+              }}
+            />
+          )}
           <Svg
             width="100%"
             height="100%"
@@ -113,6 +168,7 @@ export function Pitch({
             style={StyleSheet.absoluteFill}
             accessible={false}
             aria-hidden
+            pointerEvents="none"
           >
             <Rect width="320" height="400" fill={colors.pitch} />
             {[0, 2, 4, 6].map((stripe) => (
@@ -178,14 +234,28 @@ export function Pitch({
                 onPress={() => onSlotPress?.(slot.id)}
                 disabled={!onSlotPress}
                 accessibilityRole={onSlotPress ? "button" : undefined}
-                accessibilityLabel={`${slot.name}, ${player?.displayName ?? "unfilled"}, ${changed ? "pending start" : "current allocation"}`}
+                accessibilityLabel={
+                  positionEditing
+                    ? `Choose formation slot ${slot.name}`
+                    : `${slot.name}, ${player?.displayName ?? "unfilled"}, ${changed ? "pending start" : "current allocation"}`
+                }
+                testID={
+                  positionEditing ? `formation-position-${slot.id}` : undefined
+                }
                 accessibilityState={{ selected }}
                 style={[
                   styles.slot,
-                  slots.length > 7 && { width: 52, marginLeft: -26 },
+                  (slots.length > 7 || positionEditing) && {
+                    width: 52,
+                    marginLeft: -26,
+                  },
                   {
-                    left: `${slot.x}%`,
-                    top: `${compact && slot.label === "GK" ? 78 : slot.y}%`,
+                    left: positionEditing
+                      ? 24 + (slot.x / 100) * Math.max(0, bounds.width - 48)
+                      : `${slot.x}%`,
+                    top: positionEditing
+                      ? (slot.y / 100) * Math.max(0, bounds.height - 72)
+                      : `${compact && slot.label === "GK" ? 78 : slot.y}%`,
                   },
                 ]}
               >
@@ -198,10 +268,12 @@ export function Pitch({
                   ]}
                 >
                   <Text style={styles.discText}>
-                    {shirt ??
-                      (player
-                        ? player.displayName.slice(0, 2).toUpperCase()
-                        : "+")}
+                    {positionEditing
+                      ? slot.label
+                      : (shirt ??
+                        (player
+                          ? player.displayName.slice(0, 2).toUpperCase()
+                          : "+"))}
                   </Text>
                   {selected && (
                     <View style={styles.selectedMarker}>
@@ -220,7 +292,9 @@ export function Pitch({
       )}
       {onSlotPress && (
         <Text style={styles.hint}>
-          Tap a position to choose or swap a player.
+          {positionEditing
+            ? "Choose a named slot, then tap an empty pitch area. List view and direction buttons offer the same editing controls."
+            : "Tap a position to choose or swap a player."}
         </Text>
       )}
     </View>

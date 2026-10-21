@@ -25,6 +25,7 @@ import {
   defaultAuthRedirect,
   enrollLocalPin,
   getConnectedSessionSummary,
+  subscribeConnectedSessionChanges,
   lockConnectedSession,
   prepareConnectedSignIn,
   removeLocalPin,
@@ -41,6 +42,8 @@ export interface AccountSecurityScreenProps {
   onSessionChange?: (session: ConnectedSessionSummary | null) => void;
   onEnterFictionalReview?: () => void;
   initialConfig?: Partial<OidcClientConfig>;
+  initialIntent?: "sign-in" | "activate";
+  intentRevision?: number;
   childActivationDestination?: ChildActivationDestination | null;
   activationCompletion?: ActivationCompletionDestination | null;
   onActivationCompletionConsumed?: () => void;
@@ -50,6 +53,8 @@ export function AccountSecurityScreen({
   onSessionChange,
   onEnterFictionalReview,
   initialConfig,
+  initialIntent = "sign-in",
+  intentRevision = 0,
   childActivationDestination,
   activationCompletion,
   onActivationCompletionConsumed,
@@ -61,7 +66,11 @@ export function AccountSecurityScreen({
       initialConfig?.clientId ?? process.env.EXPO_PUBLIC_OIDC_CLIENT_ID ?? "",
     apiBaseUrl:
       initialConfig?.apiBaseUrl ?? process.env.EXPO_PUBLIC_API_BASE_URL ?? "",
-    redirectUri: initialConfig?.redirectUri ?? defaultAuthRedirect(),
+    redirectUri:
+      initialConfig?.redirectUri ??
+      (Platform.OS === "web" && typeof window !== "undefined"
+        ? `${window.location.origin}${window.location.pathname}`
+        : defaultAuthRedirect()),
   }));
   const [session, setSession] = useState<ConnectedSessionSummary | null>(null);
   const [prepared, setPrepared] = useState<PreparedSignIn | null>(null);
@@ -71,6 +80,54 @@ export function AccountSecurityScreen({
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [showRecovery, setShowRecovery] = useState(false);
+  const [showPinRecovery, setShowPinRecovery] = useState(false);
+  const [showConnectionSettings, setShowConnectionSettings] = useState(false);
+  const [activationView, setActivationView] = useState({
+    initialIntent,
+    intentRevision,
+    invitationDestination,
+    childActivationDestination,
+    activationCompletion,
+    open:
+      initialIntent === "activate" ||
+      Boolean(
+        invitationDestination ||
+          childActivationDestination ||
+          activationCompletion,
+      ),
+  });
+  if (
+    activationView.initialIntent !== initialIntent ||
+    activationView.intentRevision !== intentRevision ||
+    activationView.invitationDestination !== invitationDestination ||
+    activationView.childActivationDestination !== childActivationDestination ||
+    activationView.activationCompletion !== activationCompletion
+  ) {
+    const newDestination =
+      (activationView.invitationDestination !== invitationDestination &&
+        invitationDestination) ||
+      (activationView.childActivationDestination !==
+        childActivationDestination &&
+        childActivationDestination) ||
+      (activationView.activationCompletion !== activationCompletion &&
+        activationCompletion);
+    const newIntent =
+      activationView.initialIntent !== initialIntent ||
+      activationView.intentRevision !== intentRevision;
+    setActivationView({
+      initialIntent,
+      intentRevision,
+      invitationDestination,
+      childActivationDestination,
+      activationCompletion,
+      open: newDestination
+        ? true
+        : newIntent
+          ? initialIntent === "activate"
+          : activationView.open,
+    });
+  }
+  const showActivation = activationView.open;
   const [showRequests, setShowRequests] = useState(false);
   const [deviceAuth, setDeviceAuth] =
     useState<DeviceAuthenticationAvailability | null>(null);
@@ -96,22 +153,38 @@ export function AccountSecurityScreen({
   }, [onSessionChange]);
   useEffect(() => {
     let active = true;
-    void getConnectedSessionSummary()
-      .then((value) => {
-        if (active) {
-          setSession(value);
-          sessionCallback.current?.(value);
-          if (value) setConfig(value.config);
-        }
-      })
-      .catch(() => {
-        if (active)
+    let request = 0;
+    let previousBinding: string | null = null;
+    const refresh = async () => {
+      const current = ++request;
+      try {
+        const value = await getConnectedSessionSummary();
+        if (!active || current !== request) return;
+        const binding = value
+          ? JSON.stringify([value.issuer, value.accountId, value.sessionId])
+          : null;
+        setSession(value);
+        sessionCallback.current?.(value);
+        if (value && binding !== previousBinding) setConfig(value.config);
+        previousBinding = binding;
+      } catch {
+        if (active && current === request)
           setError(
-            "The remembered sign-in could not be opened. The match journal was retained. Use full sign-in.",
+            "Your remembered sign-in could not be opened. Saved match records were retained. Sign in again with your provider.",
           );
-      });
+      }
+    };
+    void refresh();
+    const unsubscribe = subscribeConnectedSessionChanges(() => {
+      void refresh();
+    });
+    const foreground = AppState.addEventListener("change", (state) => {
+      if (state === "active") void refresh();
+    });
     return () => {
       active = false;
+      unsubscribe();
+      foreground.remove();
     };
   }, []);
   useEffect(() => {
@@ -158,117 +231,225 @@ export function AccountSecurityScreen({
     setPrepared(null);
   };
   const connected = Boolean(session && !session.expired && !session.locked);
+  const configReady = Boolean(
+    config.issuer.trim() &&
+      config.clientId.trim() &&
+      config.apiBaseUrl.trim() &&
+      config.redirectUri.trim(),
+  );
 
   return (
     <View style={s.stack}>
-      <Text style={s.eyebrow}>ACCOUNT · SIGN-IN & DEVICE SECURITY</Text>
+      <Text style={s.eyebrow}>YOUR LONGBALL ACCOUNT</Text>
       <Text accessibilityRole="header" style={s.title}>
         Sign-in & security
       </Text>
       {error && <Notice tone="error">{error}</Notice>}
       {notice && <Notice tone="info">{notice}</Notice>}
       <Card>
-        <View style={s.between}>
-          <Text style={s.section}>Connected sign-in</Text>
-          <Pill tone={connected ? "brand" : "muted"}>
-            {session?.expired
-              ? "Expired"
-              : session?.locked
-                ? "Locally locked"
-                : connected
-                  ? "API verified"
-                  : "Not connected"}
-          </Pill>
-        </View>
-        {session ? (
-          <>
-            <Text style={s.body}>Account {session.accountId}</Text>
-            <Text style={s.small}>
-              {session.identityClassification === "child_shared"
-                ? "Player / shared household account"
-                : session.identityClassification === "adult_individual"
-                  ? "Adult account"
-                  : "Classification not verified"}
-            </Text>
-            <Text style={s.small}>
-              {session.strongAuth
-                ? "Stronger authentication verified by the API"
-                : "Standard authentication · manager authority unavailable"}
-            </Text>
-            <Text style={s.small}>
-              {session.adultVerified
-                ? "Adult eligibility verified by the application"
-                : "No verified adult authority"}
-            </Text>
-            <Text style={s.small}>
-              Session expires{" "}
-              {new Intl.DateTimeFormat("en-GB", {
-                timeZone: "Europe/London",
-                dateStyle: "short",
-                timeStyle: "short",
-              }).format(new Date(session.expiresAtMs))}
-            </Text>
-            <Text style={s.small}>
-              {session.storage === "secure-native"
-                ? "Credentials held in platform secure storage"
-                : "Browser credentials stay in memory and disappear on reload"}
-            </Text>
-            <Text style={s.small}>
-              {session.memberships.length} current application membership
-              {session.memberships.length === 1 ? "" : "s"} · role access is
-              checked again by the API
-            </Text>
-          </>
-        ) : (
-          <Text style={s.body}>
-            Use the configured sign-in provider and LongBall service for your
-            team. Issued household activation can be completed in the section
-            below when that service has an explicitly configured activation
-            process.
-          </Text>
-        )}
-        {session?.expired && (
-          <Notice tone="warning">
-            This session expired. A local PIN cannot renew it. An unlocked
-            remembered session can ask its provider to renew access, or use full
-            sign-in.
+        <Text style={s.section}>
+          {connected ? "Sign-in provider" : "Sign in with your club"}
+        </Text>
+        <Text style={s.body}>
+          Your provider handles your password. LongBall checks your account and
+          current team access when you return.
+        </Text>
+        {!configReady && (
+          <Notice>
+            Your club’s connection details are needed on this device. Open
+            Connection settings and use the details supplied by your club or
+            service operator.
           </Notice>
         )}
-        {session && !session.locked && (
-          <Button
-            label="Recheck and renew with provider"
-            variant="secondary"
-            disabled={busy}
-            onPress={() => {
-              void run(async () => {
-                updateSession(await renewConnectedSession());
-                setNotice(
-                  "Provider renewal and current API identity checks completed. Local PIN failures were retained.",
-                );
-              });
-            }}
-          />
+        <Button
+          label={
+            connected ? "Sign in again with provider" : "Sign in with provider"
+          }
+          icon="shield"
+          disabled={busy || !configReady}
+          onPress={() => {
+            void run(async () => {
+              setPrepared(await prepareConnectedSignIn(config));
+              setNotice(
+                "Ready to continue. Your provider will open from the next button.",
+              );
+            });
+          }}
+          testID="prepare-oidc-signin"
+        />
+        {prepared && (
+          <Card>
+            <Text style={s.section}>Continue with your provider</Text>
+            <Text style={s.small}>{prepared.issuer}</Text>
+            <Text style={s.small}>Return to LongBall after signing in.</Text>
+            <Button
+              label="Continue with provider"
+              icon="arrow"
+              disabled={busy}
+              onPress={() => {
+                void run(async () => {
+                  const value = await prepared.continueInBrowser();
+                  updateSession(value);
+                  setPrepared(null);
+                  setNotice(
+                    "The API verified this account and its current memberships.",
+                  );
+                });
+              }}
+              testID="continue-oidc-signin"
+            />
+          </Card>
         )}
-        {session && (
-          <Button
-            label="Sign out of connected session"
-            variant="secondary"
-            disabled={busy}
-            onPress={() => {
-              void run(async () => {
-                const result = await signOutConnected();
-                updateSession(null);
-                setPrepared(null);
-                setNotice(
-                  result.providerRevocation === "confirmed"
-                    ? "Local credentials removed and provider token revocation acknowledged. The match journal is retained."
-                    : "Local credentials removed. Provider revocation was not confirmed; its browser session may remain active. The match journal is retained.",
-                );
-              });
-            }}
-          />
+        <Button
+          label={
+            showConnectionSettings
+              ? "Hide connection settings"
+              : "Connection settings"
+          }
+          variant="quiet"
+          onPress={() => setShowConnectionSettings((value) => !value)}
+          testID="connection-settings-toggle"
+        />
+        {showConnectionSettings && (
+          <View style={s.stack}>
+            <Text style={s.small}>
+              Advanced connection settings. Only use your trusted club service
+              details; incoming invitations cannot change them.
+            </Text>
+            <Field
+              label="OIDC issuer (HTTPS)"
+              value={config.issuer}
+              onChange={(value) => change("issuer", value)}
+              placeholder="https://identity.example/realms/longball"
+            />
+            <Field
+              label="Public client identifier"
+              value={config.clientId}
+              onChange={(value) => change("clientId", value)}
+              placeholder="longball-mobile"
+            />
+            <Field
+              label="LongBall API base URL (HTTPS)"
+              value={config.apiBaseUrl}
+              onChange={(value) => change("apiBaseUrl", value)}
+              placeholder="https://api.example"
+            />
+            <Field
+              label="Exact registered redirect URI"
+              value={config.redirectUri}
+              onChange={(value) => change("redirectUri", value)}
+            />
+            <Text style={s.small}>
+              Sign-in uses a secure provider browser and checks the return
+              before creating an account session.
+            </Text>
+          </View>
         )}
       </Card>
+      {session && (
+        <Card>
+          <View style={s.between}>
+            <Text style={s.section}>Your account</Text>
+            <Pill tone={connected ? "brand" : "muted"}>
+              {session?.expired
+                ? "Expired"
+                : session?.locked
+                  ? "Locally locked"
+                  : connected
+                    ? "API verified"
+                    : "Not connected"}
+            </Pill>
+          </View>
+          {session ? (
+            <>
+              <Text style={s.body}>Account {session.accountId}</Text>
+              <Text style={s.small}>
+                {session.identityClassification === "child_shared"
+                  ? "Player / shared household account"
+                  : session.identityClassification === "adult_individual"
+                    ? "Adult account"
+                    : "Classification not verified"}
+              </Text>
+              <Text style={s.small}>
+                {session.strongAuth
+                  ? "Stronger authentication verified by the API"
+                  : "Standard authentication · manager authority unavailable"}
+              </Text>
+              <Text style={s.small}>
+                {session.adultVerified
+                  ? "Adult eligibility verified by the application"
+                  : "No verified adult authority"}
+              </Text>
+              <Text style={s.small}>
+                Session expires{" "}
+                {new Intl.DateTimeFormat("en-GB", {
+                  timeZone: "Europe/London",
+                  dateStyle: "short",
+                  timeStyle: "short",
+                }).format(new Date(session.expiresAtMs))}
+              </Text>
+              <Text style={s.small}>
+                {session.storage === "secure-native"
+                  ? "Credentials held in platform secure storage"
+                  : "Browser credentials stay in memory and disappear on reload"}
+              </Text>
+              <Text style={s.small}>
+                {session.memberships.length} current application membership
+                {session.memberships.length === 1 ? "" : "s"} · role access is
+                checked again by the API
+              </Text>
+            </>
+          ) : (
+            <Text style={s.body}>
+              Use the configured sign-in provider and LongBall service for your
+              team. Issued household activation can be completed in the section
+              below when that service has an explicitly configured activation
+              process.
+            </Text>
+          )}
+          {session?.expired && (
+            <Notice tone="warning">
+              This session expired. A local PIN cannot renew it. An unlocked
+              remembered session can ask its provider to renew access, or use
+              full sign-in.
+            </Notice>
+          )}
+          {session && !session.locked && (
+            <Button
+              label="Recheck and renew with provider"
+              variant="secondary"
+              disabled={busy}
+              onPress={() => {
+                void run(async () => {
+                  updateSession(await renewConnectedSession());
+                  setNotice(
+                    "Provider renewal and current API identity checks completed. Local PIN failures were retained.",
+                  );
+                });
+              }}
+            />
+          )}
+          {session && (
+            <Button
+              label="Sign out of connected session"
+              variant="secondary"
+              disabled={busy}
+              onPress={() => {
+                void run(async () => {
+                  const result = await signOutConnected();
+                  updateSession(null);
+                  setPrepared(null);
+                  setNotice(
+                    result.providerRevocation === "confirmed"
+                      ? "Local credentials removed and provider token revocation acknowledged. The match journal is retained."
+                      : "Local credentials removed. Provider revocation was not confirmed; its browser session may remain active. The match journal is retained.",
+                  );
+                });
+              }}
+            />
+          )}
+        </Card>
+      )}
       {session && Platform.OS !== "web" && (
         <Card>
           <Text style={s.section}>Device authentication</Text>
@@ -321,6 +502,20 @@ export function AccountSecurityScreen({
             sign-in, with a 30-second retry delay. This proposed convenience
             policy still needs pilot review and phone testing.
           </Notice>
+          <Button
+            label="Forgot your local PIN?"
+            variant="quiet"
+            onPress={() => setShowPinRecovery((value) => !value)}
+          />
+          {showPinRecovery && (
+            <Notice>
+              Use full provider sign-in to regain access to this account.
+              Replacing or removing the local PIN requires verified strong
+              sign-in where enforced. A PIN cannot reset your account password,
+              renew an expired session or replace the journal key; saved match
+              records stay in place.
+            </Notice>
+          )}
           {session.pinFailures > 0 && (
             <Text style={s.small}>
               {session.pinFailures} failed attempts retained on this device
@@ -420,149 +615,116 @@ export function AccountSecurityScreen({
           session={session}
         />
       )}
-      <Card>
-        <Text style={s.section}>Account data and membership requests</Text>
-        <Text style={s.body}>
-          Request your global account data export or account deletion, or
-          request to leave one selected team and season. Verification and the
-          agreed policy are required; submission does not erase data or remove
-          access.
-        </Text>
-        {!connected && (
-          <Notice>
-            Sign in and unlock this account to submit or review its own service
-            requests. This route is available in the native app and browser.
-          </Notice>
-        )}
-        <Button
-          label={
-            showRequests
-              ? "Hide account requests"
-              : "Review account data and membership requests"
-          }
-          variant="secondary"
-          disabled={busy || !connected}
-          onPress={() => setShowRequests((value) => !value)}
-          testID="open-account-requests"
-        />
-      </Card>
+      {session && (
+        <Card>
+          <Text style={s.section}>Account data and membership requests</Text>
+          <Text style={s.body}>
+            Request your global account data export or account deletion, or
+            request to leave one selected team and season. Verification and the
+            agreed policy are required; submission does not erase data or remove
+            access.
+          </Text>
+          {!connected && (
+            <Notice>
+              Sign in and unlock this account to submit or review its own
+              service requests. This route is available in the native app and
+              browser.
+            </Notice>
+          )}
+          <Button
+            label={
+              showRequests
+                ? "Hide account requests"
+                : "Review account data and membership requests"
+            }
+            variant="secondary"
+            disabled={busy || !connected}
+            onPress={() => setShowRequests((value) => !value)}
+            testID="open-account-requests"
+          />
+        </Card>
+      )}
       {showRequests && session && connected && (
         <AccountRequestsScreen
           session={session}
           onClose={() => setShowRequests(false)}
         />
       )}
-      <Text style={s.section}>Configure secure sign-in</Text>
-      <Field
-        label="OIDC issuer (HTTPS)"
-        value={config.issuer}
-        onChange={(value) => change("issuer", value)}
-        placeholder="https://identity.example/realms/longball"
-      />
-      <Field
-        label="Public client identifier"
-        value={config.clientId}
-        onChange={(value) => change("clientId", value)}
-        placeholder="longball-mobile"
-      />
-      <Field
-        label="LongBall API base URL (HTTPS)"
-        value={config.apiBaseUrl}
-        onChange={(value) => change("apiBaseUrl", value)}
-        placeholder="https://api.example"
-      />
-      <Field
-        label="Exact registered redirect URI"
-        value={config.redirectUri}
-        onChange={(value) => change("redirectUri", value)}
-      />
-      <Notice tone="info">
-        The public client uses authorization code + PKCE S256 in the system
-        browser. State, nonce, issuer, audience and expiry are checked. Current
-        account authority comes from the authenticated API.
-      </Notice>
-      <Button
-        label="Prepare secure sign-in"
-        icon="shield"
-        disabled={busy}
-        onPress={() => {
-          void run(async () => {
-            setPrepared(await prepareConnectedSignIn(config));
-            setNotice(
-              "Sign-in request prepared. Continue with the browser button.",
-            );
-          });
-        }}
-        testID="prepare-oidc-signin"
-      />
-      {prepared && (
-        <Card>
-          <Text style={s.section}>Continue with your provider</Text>
-          <Text style={s.small}>{prepared.issuer}</Text>
-          <Text style={s.small}>Return to {prepared.redirectUri}</Text>
-          <Button
-            label="Continue in system browser"
-            icon="arrow"
-            disabled={busy}
-            onPress={() => {
-              void run(async () => {
-                const value = await prepared.continueInBrowser();
-                updateSession(value);
-                setPrepared(null);
-                setNotice(
-                  "The API verified this account and its current memberships.",
-                );
-              });
-            }}
-            testID="continue-oidc-signin"
-          />
-        </Card>
-      )}
-      {!connected && invitationDestination && (
-        <SpectatorActivationPanel
-          key={JSON.stringify([
-            invitationDestination,
-            config.issuer,
-            config.apiBaseUrl,
-          ])}
-          config={config}
-          invitation={invitationDestination}
-          completion={activationCompletion}
-          onCompletionConsumed={onActivationCompletionConsumed}
-        />
-      )}
-      <ActivationPanel
-        config={config}
-        session={session}
-        childDestination={childActivationDestination}
-        completion={activationCompletion}
-        onCompletionConsumed={(verified) => {
-          if (verified)
-            setNotice(
-              "Provider completion verified. Use full secure sign-in to obtain a separate application session.",
-            );
-          onActivationCompletionConsumed?.();
-        }}
-      />
       <Card>
-        <Text style={s.section}>Activation and recovery</Text>
+        <Text style={s.section}>Have an activation or invitation?</Text>
         <Text style={s.body}>
-          Account activation needs an issued invitation. Household recovery
-          needs the approved verification authority and an operational identity
-          service.
+          Use the account activation issued to you, or review a received
+          spectator invitation. Activation does not grant team access by itself.
         </Text>
         <Button
-          label="Recovery requirements"
+          label={showActivation ? "Hide activation" : "Activate an account"}
+          variant="secondary"
+          onPress={() =>
+            setActivationView((value) => ({ ...value, open: !value.open }))
+          }
+          testID="show-account-activation"
+        />
+      </Card>
+      <View
+        style={{ display: showActivation ? "flex" : "none", gap: 16 }}
+        accessibilityElementsHidden={!showActivation}
+        importantForAccessibility={
+          showActivation ? "auto" : "no-hide-descendants"
+        }
+      >
+        {invitationDestination && (
+          <View
+            style={{ display: connected ? "none" : "flex" }}
+            accessibilityElementsHidden={connected}
+            importantForAccessibility={
+              connected ? "no-hide-descendants" : "auto"
+            }
+          >
+            <SpectatorActivationPanel
+              key={JSON.stringify([
+                invitationDestination,
+                config.issuer,
+                config.apiBaseUrl,
+              ])}
+              config={config}
+              invitation={invitationDestination}
+              completion={activationCompletion}
+              onCompletionConsumed={onActivationCompletionConsumed}
+            />
+          </View>
+        )}
+        <ActivationPanel
+          config={config}
+          session={session}
+          childDestination={childActivationDestination}
+          completion={activationCompletion}
+          onCompletionConsumed={(verified) => {
+            if (verified)
+              setNotice(
+                "Provider completion verified. Use full secure sign-in to obtain a separate application session.",
+              );
+            onActivationCompletionConsumed?.();
+          }}
+        />
+      </View>
+      <Card>
+        <Text style={s.section}>Need help signing in?</Text>
+        <Text style={s.body}>
+          Account recovery is separate from this device’s optional local PIN.
+          Use the recovery process offered by your sign-in provider, or contact
+          the service operator for independently verified help.
+        </Text>
+        <Button
+          label="Account recovery information"
           variant="secondary"
           onPress={() => setShowRecovery(!showRecovery)}
         />
         {showRecovery && (
           <Notice tone="warning">
-            Q05 remains open: who verifies household recovery and what evidence
-            they use must be agreed. A manager cannot take over an existing
-            global child account or reset its credential from this review. No
-            request is submitted by opening these requirements. A pending
-            verification request never resets a credential.
+            A team manager cannot take over an existing household account or
+            reset its password. Recovery requires the configured independent
+            verification process; unresolved requests stay pending. Opening this
+            information submits no request and resets no credential.
           </Notice>
         )}
       </Card>
@@ -582,8 +744,8 @@ export function AccountSecurityScreen({
         </Card>
       )}
       <Text style={s.footnote}>
-        Native device checks remain required for registered redirects,
-        credential storage, PIN interruption, backups and sign-in recovery.
+        Your account and team permissions are checked securely after sign-in.
+        Keep provider passwords and recovery codes private.
       </Text>
     </View>
   );

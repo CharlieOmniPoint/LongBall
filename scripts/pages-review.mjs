@@ -3,6 +3,7 @@ import { existsSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { chromium } from "playwright";
+import { enterFictionalReview } from "./review-entry.mjs";
 
 const baseURL =
   process.env.LONGBALL_PAGES_REVIEW_URL ?? "http://127.0.0.1:4176/LongBall/";
@@ -29,6 +30,7 @@ page.on("response", (response) => {
 });
 try {
   await page.goto(baseURL, { waitUntil: "networkidle" });
+  await enterFictionalReview(page);
   await page.getByTestId("prepare-match").click();
   await page.getByTestId("check-in-all").click();
   await page.getByTestId("continue-lineup").click();

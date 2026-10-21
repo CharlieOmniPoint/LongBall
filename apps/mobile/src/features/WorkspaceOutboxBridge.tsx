@@ -44,9 +44,10 @@ export const WorkspaceOutboxBridge = forwardRef<
     journal: Journal;
     deviceId: string;
     onStatus: (status: WorkspaceOutboxStatus) => void;
+    showStorageDetails?: boolean;
   }
 >(function WorkspaceOutboxBridge(
-  { binding, journal, deviceId, onStatus },
+  { binding, journal, deviceId, onStatus, showStorageDetails = true },
   ref,
 ) {
   const document = useDocument(
@@ -111,11 +112,13 @@ export const WorkspaceOutboxBridge = forwardRef<
   ]);
   return (
     <View style={{ gap: 8 }}>
-      <Text style={typography.muted}>
-        {document.state
-          ? "Exact service requests are retained in this workspace’s protected journal before sending. They are replayed only after a fresh identity and access check."
-          : "Opening protected request storage…"}
-      </Text>
+      {(!document.state || showStorageDetails) && (
+        <Text style={typography.muted}>
+          {document.state
+            ? "Exact service requests are retained in this workspace’s protected journal before sending. They are replayed only after a fresh identity and access check."
+            : "Opening protected request storage…"}
+        </Text>
+      )}
       {document.error && <Notice tone="error">{document.error}</Notice>}
       {document.retryPending && (
         <Button
