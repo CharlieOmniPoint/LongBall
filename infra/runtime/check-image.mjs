@@ -16,7 +16,13 @@ assert.equal(process.getuid(), 1000, "Image checks must run as the unprivileged 
 const health = await fetch("http://127.0.0.1:4310/health");
 assert.equal(health.status, 200);
 const privateResponse = await fetch("http://127.0.0.1:4310/v1/me");
-assert.equal(privateResponse.status, 401, "No configured identity may enter a private route.");
+assert.equal(privateResponse.status, 503, "An unconfigured identity verifier must keep private routes unavailable.");
+const privateError = await privateResponse.json();
+assert.equal(privateError.code, "IDENTITY_NOT_CONFIGURED");
+assert.deepEqual(Object.keys(privateError).sort(), ["code", "message", "requestId", "retryable"]);
+assert.equal(typeof privateError.message, "string");
+assert.equal(typeof privateError.requestId, "string");
+assert.equal(typeof privateError.retryable, "boolean");
 
 async function scan(bytes) {
   return new Promise((yes, no) => {
