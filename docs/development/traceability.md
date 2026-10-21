@@ -1,6 +1,6 @@
 # Capability traceability
 
-> Historical 20 October M0 baseline. Its table records the original slice and the work outstanding then. The 21 October capability checkpoints, released entry and active full-scope closure are tracked in [full-build-plan.md](full-build-plan.md), [review.md](review.md) and the [entry audit](entry-completion-audit.md). Physical-device acceptance remains open and is currently deferred.
+> Historical 20 October M0 baseline. Its table records the original slice and the work outstanding then. The 21 October capability checkpoints, published full implementation are tracked in [full-build-plan.md](full-build-plan.md), [review.md](review.md) and the [entry audit](entry-completion-audit.md). Physical-device acceptance remains open and is currently deferred.
 
 20 October 2026. All F01–F28 remain the integrated pilot target. `Initial` means an intermediate synthetic/local implementation target, not end-to-end product acceptance. At this original baseline, API, identity and shared server authority were later work; their subsequent actual evidence is recorded in the linked registers. Real-data release remains unaccepted. The canonical acceptance criteria remain [the source of truth](../longball/LongBall_Mobile_Build_Pack_v0_1.md#capability-backlog-and-end-to-end-acceptance).
 
@@ -37,11 +37,10 @@
 
 ## Current source and release coverage
 
-The historical table above is not the current gap list. Pages source `d08666f` contains the full functional build and passed [external 390px entry checks](evidence/2026-10-21/full-publication/entry.json). Its API is healthy and discovery status refreshed. Accepted product `e899e29` adds the bounded cache correction; its final publication is pending.
-
+The historical table above is not the current gap list. Pages now serves source `c53841966c822f7a5172584370b6a557833398b4`, containing accepted product `e899e29` and its discovery-cache correction. Actual [external 390px entry](evidence/2026-10-21/full-publication/final-entry.json) passed at 20:21:22 UTC; [all four loaded connected roles](evidence/2026-10-21/full-publication/final-connected-roles.json) passed at 20:28:27 UTC on 21 October, with fresh API/source/CORS checks, no failed API responses, runtime errors or horizontal overflow. The role check made no service writes and left the default fixture unclaimed.
 [Current functional acceptance](evidence/2026-10-21/review-discovery-followup.json) passed 686 shared/platform tests, complete static/boundary checks, 18 browser groups, six anonymous-entry checks, six native-configuration groups and both fresh Hermes exports. All five backend MJS artifacts remain identical to the quiet 284/45 API pass; schema15 operational proof inputs are unchanged. The browser evidence discloses an earlier unreproduced reset and diagnostic separately; no first-run/no-retry claim or count inflation is made.
 
-Current native CI passed Android debug and unsigned iOS Simulator Debug for source `d08666f`; no physical execution is proved. Native signing/physical M0, operating providers/storage/recovery, new production-image validation and unresolved privacy/audience policy remain separate. Hardware testing is deferred. Other-club creation remains future scope. Earlier `f4fbffe` entry/matchday/native records are historical; no policy or paid-service approval is inferred.
+The latest [native CI run](https://github.com/CharlieOmniPoint/LongBall/actions/runs/39669375022) has passed Android; iOS compilation is running. The earlier [source-bound native run](evidence/2026-10-21/full-publication/native-initial.json) passed both Android debug and unsigned iOS Simulator Debug for `d08666f`. No installation or physical execution is proved. Native signing/physical M0, operating providers/storage/recovery, new production-image validation and unresolved privacy/audience policy remain separate. Hardware testing is deferred. Other-club creation remains future scope. Earlier `f4fbffe` entry/matchday/native records are historical; no policy or paid-service approval is inferred.
 
 ## Evidence interpretation
 
