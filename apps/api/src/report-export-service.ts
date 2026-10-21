@@ -54,7 +54,36 @@ function disclosed(value: unknown): unknown {
   const fields = ['score', 'halfTimeScore', 'goals', 'unassignedGoalsFor', 'unassignedGoalsAgainst', 'totals', 'scorerTotals', 'form', 'withheldResultCount', 'dataCoverage'];
   return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, masked && fields.includes(key) ? 'Withheld by competition policy' : disclosed(item)]));
 }
-function asPdf(document: ExportDocument): ReportPdfDocument { return { title: document.title, metadata: document.metadata, sections: document.sections.map(section => ({ title: section.title, rows: flatten(section.value) })) }; }
+const reportLabels: Record<string, string> = {
+  playingMs: 'Playing time (ms)', playedMs: 'Playing time (ms)', goalkeeperMs: 'Goalkeeper time (ms)', outfieldMs: 'Outfield time (ms)',
+  positionMs: 'Time by position (ms)', preferenceMs: 'Time by preference (ms)', halfTimeScore: 'Half-time score',
+  asOf: 'As of', actualAttendance: 'Actual attendance', availabilityResponse: 'Availability response',
+  evidenceState: 'Record completeness', coverageLabel: 'Coverage', suppressionReason: 'Sharing restriction',
+  GK: 'Goalkeeper', LB: 'Left back', CB: 'Centre back', RB: 'Right back', LM: 'Left midfield', CM: 'Centre midfield', RM: 'Right midfield', LW: 'Left wing', ST: 'Striker', RW: 'Right wing',
+};
+const technicalReportField = (label: string) => label.split('.').some(part => { const field = part.replace(/\[\d+\]/g, ''); return /(?:Id|Ids|Fingerprint)$/.test(field) || ['id', 'ids', 'schemaVersion', 'contractVersion', 'policyVersions', 'publicationPolicyVersions'].includes(field); });
+function reportLabel(path: string, section: string): string {
+  const arrayLabels: Record<string, string> = { rows: 'Player', matches: 'Match', gameRecords: 'Game', trainingRecords: 'Training session', timeline: 'Event', goals: 'Goal', intervals: 'Interval' };
+  return path.split('.').filter(Boolean).map(field => {
+    const indexed = /^(.*?)\[(\d+)\]$/.exec(field);
+    if (indexed) return `${arrayLabels[indexed[1]] ?? (indexed[1] ? reportLabel(indexed[1], section) : section === 'Match summary' ? 'Match' : 'Record')} ${indexed[2]}`;
+    return reportLabels[field] ?? (field.replace(/([a-z\d])([A-Z])/g, '$1 $2').replace(/_/g, ' ').replace(/^./, letter => letter.toUpperCase()));
+  }).join(' · ') || 'Record';
+}
+function asPdf(document: ExportDocument): ReportPdfDocument {
+  const source = document.metadata;
+  const team = typeof source.teamName === 'string' ? source.teamName : null;
+  const ageGroup = typeof source.ageGroup === 'string' ? source.ageGroup : null;
+  const teamLabel = team && ageGroup && !team.toLocaleLowerCase('en-GB').endsWith(ageGroup.toLocaleLowerCase('en-GB')) ? `${team} ${ageGroup}` : team;
+  const audiences: Record<string, string> = { manager: 'Team manager', player: 'Player and parent — own records', spectator: 'Spectator — permitted team reports' };
+  const metadata: Record<string, unknown> = {
+    Team: teamLabel, Season: source.seasonLabel ?? null, Club: source.clubName ?? null,
+    generatedAt: source.generatedAt ?? source.requestedAt ?? null, 'As of': source.asOf ?? null,
+    Audience: typeof source.audience === 'string' ? audiences[source.audience] ?? source.audience : null,
+  };
+  for (const row of flatten(source.dataCoverage ?? {}, 'Coverage')) metadata[reportLabel(row.label, 'Report details')] = row.value;
+  return { title: document.title, metadata, sections: document.sections.map(section => ({ title: section.title, rows: flatten(section.value).filter(row => !technicalReportField(row.label)).map(row => ({ label: reportLabel(row.label, section.title), value: row.value })) })) };
+}
 export function reportExportRevision(value: string | undefined): number | undefined {
   if (value === undefined) return undefined;
   if (!/^"(?:0|[1-9]\d{0,14})"$/.test(value) || !Number.isSafeInteger(Number(value.slice(1, -1)))) fail('INVALID_REQUEST', 400, 'Use the exact quoted report projection revision in If-Match.');

@@ -177,7 +177,18 @@ export function recordsServiceExport(input: RecordsServiceInput & { request: Rec
   const matches = request.kind === 'match' ? view.matches.filter(report => report.matchId === request.matchId) : view.matches;
   if (request.kind === 'match' && matches.length !== 1) fail('That permitted match report is unavailable.', 'NOT_FOUND', 404);
   const generatedAt = new Date(nowMs).toISOString();
+  // recordsServiceView has already checked this preparation's exact team/season.
+  // Copy only public display fields, never the preparation/profile document.
+  const preparation = input.preparation;
+  const displayLabel = (value: unknown) => string(value, 150) ? value.trim() : null;
+  const displayContext = preparation ? {
+    clubName: displayLabel(preparation.club.name),
+    teamName: displayLabel(preparation.team.name),
+    ageGroup: displayLabel(preparation.team.ageGroup),
+    seasonLabel: displayLabel(preparation.seasons.find(season => season.id === state.seasonId)?.label),
+  } : {};
   const document = { schemaVersion: 1, reportType: request.kind, teamId: state.teamId, seasonId: state.seasonId, audience: viewer.actor,
+    ...displayContext,
     appliedFilters: { matchId: request.kind === 'match' ? request.matchId : null, playerId: viewer.actor === 'player' ? viewer.playerId : null },
     generatedAt, asOf: request.kind === 'match' ? matches[0].asOf : view.participation.asOf, projectionVersion: state.revision, policyFingerprint: fingerprint,
     policyVersions: state.results.filter(record => request.kind === 'season' || matches.some(report => report.matchId === record.id)).map(record => ({ matchId: record.id, policyId: record.publication.id, policyVersion: record.publication.version, classificationVersion: record.classificationVersion })),

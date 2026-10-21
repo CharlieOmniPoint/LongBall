@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import type { AddressInfo } from 'node:net';
 import { Pool } from 'pg';
 import { afterEach, describe, expect, it } from 'vitest';
-import { PDFDocument } from 'pdf-lib';
+import { PDFDocument, PDFRawStream, decodePDFRawStream } from 'pdf-lib';
 import { createApi, type ApiOptions } from './server';
 import { createPostgresApi } from './postgres-server';
 import { PostgresStore } from './postgres-store';
@@ -21,6 +21,16 @@ afterEach(async () => { for (const close of closes.splice(0).reverse()) await cl
 const scope = { teamId: SYNTHETIC_IDS.teamId, seasonId: SYNTHETIC_IDS.seasonId };
 const teamPath = `/v1/teams/${scope.teamId}/records?seasonId=${scope.seasonId}`;
 const testUrl = process.env.LONGBALL_POSTGRES_TEST_URL;
+function pdfText(pdf: PDFDocument): string {
+  const streams = pdf.context.enumerateIndirectObjects().flatMap(([, value]) => value instanceof PDFRawStream ? [Buffer.from(decodePDFRawStream(value).decode()).toString('utf8')] : []);
+  const characters = new Map<string, string>();
+  for (const stream of streams.filter(value => value.includes('beginbfchar'))) {
+    for (const block of stream.matchAll(/beginbfchar\s+([\s\S]*?)\s+endbfchar/g)) {
+      for (const match of block[1].matchAll(/<([\da-f]+)>\s*<([\da-f]+)>/gi)) characters.set(match[1].toUpperCase(), Buffer.from(match[2], 'hex').swap16().toString('utf16le'));
+    }
+  }
+  return streams.filter(value => !value.includes('beginbfchar')).flatMap(stream => [...stream.matchAll(/<([\da-f]+)>\s*Tj/gi)].map(match => (match[1].toUpperCase().match(/.{4}/g) ?? []).map(glyph => characters.get(glyph) ?? '').join(''))).join('\n');
+}
 async function start(kind: 'sqlite' | 'postgres', configured = true, ttlMs = 3_600_000) {
   const directory = mkdtempSync(join(tmpdir(), 'longball-report-jobs-'));
   closes.push(async () => rmSync(directory, { recursive: true, force: true }));
@@ -96,9 +106,47 @@ for (const kind of ['sqlite', 'postgres'] as const) describe.skipIf(kind === 'po
     expect(await runDueReportExports(client.worker, client.options)).toMatchObject({ completed: 1 });
     const path = `/v1/exports/${first.body.id}`, download = await client.call(path + '/download', viewer); expect(download.status).toBe(200); expect(download.headers.get('Content-Type')).toBe('application/pdf');
     const bytes = await download.arrayBuffer(), pdf = await PDFDocument.load(bytes); expect(pdf.getPageCount()).toBeGreaterThan(0); expect(Buffer.from(bytes).subarray(0, 5).toString()).toBe('%PDF-');
+    const text = pdfText(pdf);
+    expect(text).toContain('Team: Roma U10'); expect(text).toContain('Season: 2026/27'); expect(text).toContain('Club: Richmond Rovers');
+    expect(text).toContain('Withheld by competition policy'); expect(text).toContain('Not recorded');
+    expect(text).not.toContain('halfTimeScore'); expect(text).not.toContain('policyFingerprint'); expect(text).not.toContain('synthetic-player-02');
     await client.execute('UPDATE documents SET revision=revision+1 WHERE team_id=? AND season_id=? AND kind=?', [scope.teamId, scope.seasonId, 'records']);
     expect((await client.json(path, viewer)).body).toMatchObject({ status: 'failed', failureCode: 'EXPORT_SOURCE_CHANGED' });
     expect((await client.json(path + '/download', viewer)).status).toBe(409);
+  });
+  it('formats an own-player PDF with human labels and refuses old names after actual configuration renaming', async () => {
+    const client = await start(kind), viewer = { token: 'synthetic-account-player-01', role: 'player' };
+    const body = { ...scope, kind: 'own_participation', format: 'pdf' };
+    const report = await client.json(teamPath, viewer);
+    const ownRows = (report.body.participation as { rows: { playingMs: number }[] }).rows;
+    expect(ownRows).toHaveLength(1);
+    const first = await client.json('/v1/exports', { ...viewer, body }); expect(first.status).toBe(202);
+    expect(await runDueReportExports(client.worker, client.options)).toMatchObject({ completed: 1 });
+    const path = `/v1/exports/${first.body.id}`, response = await client.call(path + '/download', viewer); expect(response.status).toBe(200);
+    const pdf = await PDFDocument.load(await response.arrayBuffer()), text = pdfText(pdf);
+    expect(text).toContain('Team: Roma U10'); expect(text).toContain('Season: 2026/27'); expect(text).toContain('Club: Richmond Rovers');
+    expect(text).toContain('Audience: Player and parent — own records');
+    expect(text).toContain(`Player 1 · Playing time (ms): ${ownRows[0].playingMs}`);
+    expect(text).not.toContain('Player 2'); expect(text).not.toContain('synthetic-player-02');
+    expect(text).not.toMatch(/rows\[1\]|playingMs|policyFingerprint|schemaVersion|generatedAt|synthetic-roma-u10/);
+    expect(text.match(/Prepared:/g)).toHaveLength(1);
+    expect(pdf.getCreationDate()).toBeInstanceOf(Date);
+    const configurationPath = `/v1/teams/${scope.teamId}/configuration?seasonId=${scope.seasonId}`;
+    const initial = await client.json(configurationPath, { role: 'administrator' }); expect(initial.status).toBe(200);
+    const team = initial.body.team as { defaultPitchPlaces: number; defaultHalfDurationMs: number };
+    const renamedTeam = await client.json(configurationPath, { role: 'administrator', body: { command: { id: randomUUID(), expectedRevision: initial.body.revision, type: 'team.updated', name: 'Roma Academy U10', ageGroup: 'U10', defaultPitchPlaces: team.defaultPitchPlaces, defaultHalfDurationMs: team.defaultHalfDurationMs, logo: null } } });
+    expect(renamedTeam.status).toBe(200);
+    const renamedClub = await client.json(configurationPath, { role: 'administrator', body: { command: { id: randomUUID(), expectedRevision: renamedTeam.body.revision, type: 'club.updated', name: 'Richmond Athletic', logo: null } } });
+    expect(renamedClub.status).toBe(200);
+    expect((await client.json(path, viewer)).body).toMatchObject({ status: 'failed', failureCode: 'EXPORT_SOURCE_CHANGED' });
+    expect((await client.json(path + '/download', viewer)).status).toBe(409);
+    const fresh = await client.json('/v1/exports', { ...viewer, body }); expect(fresh.status).toBe(202);
+    expect(await runDueReportExports(client.worker, client.options)).toMatchObject({ completed: 1 });
+    const current = await client.call(`/v1/exports/${fresh.body.id}/download`, viewer); expect(current.status).toBe(200);
+    const renamedText = pdfText(await PDFDocument.load(await current.arrayBuffer()));
+    expect(renamedText).toContain('Team: Roma Academy U10'); expect(renamedText).not.toContain('U10 U10');
+    expect(renamedText).toContain('Club: Richmond Athletic'); expect(renamedText).toContain('Season: 2026/27');
+    expect(renamedText).not.toContain('synthetic-player-02'); expect(renamedText).not.toContain('Player 2');
   });
   it('rejects illegal kind/role and stale review revisions and fails closed across private-key rotation', async () => {
     const client = await start(kind), body = { ...scope, kind: 'team_participation', format: 'csv' };

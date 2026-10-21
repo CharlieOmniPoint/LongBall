@@ -109,6 +109,69 @@ describe.skipIf(!configured)('SEC10 actual PostgreSQL ancestry, RLS and pooled t
       }
     }
   });
+  it('bounds notification membership candidates by exact team-season without narrowing the administrative default view', async () => {
+    const restricted=new PostgresStore(api),identity={issuer:'urn:longball:synthetic',subject:'synthetic-account-manager',strongAuth:true,authenticatedAt:Date.now()};
+    const principal=await restricted.withIdentityContext(identity,()=>restricted.principal(identity));
+    await owner.query("INSERT INTO memberships(account_id,team_id,season_id,role) VALUES('synthetic-account-manager-2',$1,'fictional-prior-season','manager')",[SYNTHETIC_IDS.teamId]);
+    try{
+      await restricted.withActorContext(principal,{teamId:SYNTHETIC_IDS.teamId,seasonId:SYNTHETIC_IDS.seasonId,requestedRole:'administrator',operation:'staff.read'},async()=>{
+        expect((await restricted.memberships()).some(member=>member.seasonId==='fictional-prior-season')).toBe(true);
+        const spy=vi.spyOn(restricted,'many');
+        try{
+          const bounded=await restricted.memberships(undefined,{teamId:SYNTHETIC_IDS.teamId,seasonId:SYNTHETIC_IDS.seasonId});
+          expect(bounded.length).toBeGreaterThan(5);expect(bounded.every(member=>member.teamId===SYNTHETIC_IDS.teamId&&member.seasonId===SYNTHETIC_IDS.seasonId)).toBe(true);
+          expect(spy.mock.calls.at(-1)).toEqual([expect.stringContaining('WHERE m.team_id=$1 AND m.season_id=$2'),[SYNTHETIC_IDS.teamId,SYNTHETIC_IDS.seasonId]]);
+          const own=await restricted.memberships(principal.accountId,{teamId:SYNTHETIC_IDS.teamId,seasonId:SYNTHETIC_IDS.seasonId});expect(own.every(member=>member.accountId===principal.accountId&&member.seasonId===SYNTHETIC_IDS.seasonId)).toBe(true);
+          expect(await restricted.memberships(undefined,{teamId:'synthetic-other-team',seasonId:SYNTHETIC_IDS.seasonId})).toEqual([]);
+        }finally{spy.mockRestore();}
+      });
+    }finally{await owner.query("DELETE FROM memberships WHERE account_id='synthetic-account-manager-2' AND team_id=$1 AND season_id='fictional-prior-season'",[SYNTHETIC_IDS.teamId]);}
+  });
+  it('retains all eligible notification recipients, exact retries and fresh membership/grant revocation under the scoped query', async () => {
+    const restricted=new PostgresStore(api),identity={issuer:'urn:longball:synthetic',subject:'synthetic-account-manager',strongAuth:true,authenticatedAt:Date.now()};
+    const principal=await restricted.withIdentityContext(identity,()=>restricted.principal(identity));
+    const original=await store.document<CommunityState>(SYNTHETIC_IDS.teamId,SYNTHETIC_IDS.seasonId,'community'),sourceId=randomUUID(),entityId=`fanout-scope-${randomUUID()}`;
+    const run=<T>(work:()=>Promise<T>)=>restricted.withActorContext(principal,{teamId:SYNTHETIC_IDS.teamId,seasonId:SYNTHETIC_IDS.seasonId,requestedRole:'manager',operation:'match.manage'},()=>restricted.transaction(work));
+    try{
+      const eligible=(await owner.query("SELECT DISTINCT account_id FROM memberships WHERE team_id=$1 AND season_id=$2 AND role IN('manager','player','spectator') AND revoked_at IS NULL",[SYNTHETIC_IDS.teamId,SYNTHETIC_IDS.seasonId])).rows.map(row=>row.account_id).sort();
+      expect(await run(()=>restricted.enqueueNotifications(SYNTHETIC_IDS.teamId,SYNTHETIC_IDS.seasonId,'match',entityId,sourceId))).toBe(eligible.length);
+      const jobs=await owner.query("SELECT payload_json FROM jobs WHERE kind='notification.dispatch' AND payload_json->>'entityId'=$1",[entityId]);
+      expect(jobs.rows.map(row=>JSON.parse(row.payload_json).accountId).sort()).toEqual(eligible);
+      expect(jobs.rows.every(row=>JSON.parse(row.payload_json).audience!=='administrator')).toBe(true);
+      expect(jobs.rows.map(row=>JSON.parse(row.payload_json)).find(job=>job.accountId===principal.accountId)).toMatchObject({audience:'manager',playerId:null});
+      expect(await run(()=>restricted.enqueueNotifications(SYNTHETIC_IDS.teamId,SYNTHETIC_IDS.seasonId,'match',entityId,sourceId))).toBe(0);
+      await owner.query("UPDATE memberships SET revoked_at=$1 WHERE account_id='synthetic-account-manager-2' AND team_id=$2 AND season_id=$3",[Date.now(),SYNTHETIC_IDS.teamId,SYNTHETIC_IDS.seasonId]);
+      const revoked:CommunityState={...original,grants:original.grants.map(grant=>grant.accountId==='synthetic-account-spectator'?{...grant,revokedAtMs:Date.now()}:grant)};await store.saveDocument(SYNTHETIC_IDS.teamId,SYNTHETIC_IDS.seasonId,'community',revoked);
+      expect(await run(()=>restricted.enqueueNotifications(SYNTHETIC_IDS.teamId,SYNTHETIC_IDS.seasonId,'match',entityId,randomUUID()))).toBe(eligible.length-2);
+      await restricted.withActorContext(principal,{teamId:SYNTHETIC_IDS.teamId,seasonId:SYNTHETIC_IDS.seasonId,requestedRole:'player',operation:'match.manage'},async()=>{
+        await expect(restricted.transaction(()=>restricted.enqueueNotifications(SYNTHETIC_IDS.teamId,SYNTHETIC_IDS.seasonId,'match',entityId,randomUUID()))).rejects.toMatchObject({code:'42501'});
+      });
+    }finally{
+      await owner.query("DELETE FROM jobs WHERE kind='notification.dispatch' AND payload_json->>'entityId'=$1",[entityId]);
+      await owner.query("UPDATE memberships SET revoked_at=NULL WHERE account_id='synthetic-account-manager-2' AND team_id=$1 AND season_id=$2",[SYNTHETIC_IDS.teamId,SYNTHETIC_IDS.seasonId]);await store.saveDocument(SYNTHETIC_IDS.teamId,SYNTHETIC_IDS.seasonId,'community',original);
+    }
+  });
+  it('batches more than100 scoped recipients without truncation or duplicates', async () => {
+    const restricted=new PostgresStore(api),identity={issuer:'urn:longball:synthetic',subject:'synthetic-account-manager',strongAuth:true,authenticatedAt:Date.now()};
+    const principal=await restricted.withIdentityContext(identity,()=>restricted.principal(identity)),prefix=`batch-${randomUUID()}-`,entityId=randomUUID(),sourceId=randomUUID();
+    await owner.query("INSERT INTO accounts(id,issuer,subject,classification,adult_verified,strong_auth_enrolled) SELECT $1||i,'urn:longball:synthetic',$1||i,'child_shared',0,0 FROM generate_series(1,105) AS series(i)",[prefix]);
+    await owner.query("INSERT INTO memberships(account_id,team_id,season_id,role,player_id) SELECT $1||i,$2,$3,'player',$1||i FROM generate_series(1,105) AS series(i)",[prefix,SYNTHETIC_IDS.teamId,SYNTHETIC_IDS.seasonId]);
+    const run=<T>(work:()=>Promise<T>)=>restricted.withActorContext(principal,{teamId:SYNTHETIC_IDS.teamId,seasonId:SYNTHETIC_IDS.seasonId,requestedRole:'manager',operation:'match.manage'},()=>restricted.transaction(work));
+    try{
+      const total=Number((await owner.query("SELECT count(DISTINCT account_id)::integer AS count FROM memberships WHERE team_id=$1 AND season_id=$2 AND role IN('manager','player','spectator') AND revoked_at IS NULL",[SYNTHETIC_IDS.teamId,SYNTHETIC_IDS.seasonId])).rows[0].count);
+      const spy=vi.spyOn(restricted,'execute');
+      try{
+        expect(await run(()=>restricted.enqueueNotifications(SYNTHETIC_IDS.teamId,SYNTHETIC_IDS.seasonId,'match',entityId,sourceId))).toBe(total);
+        const inserts=spy.mock.calls.filter(([sql])=>sql.startsWith('INSERT INTO jobs'));
+        expect(inserts).toHaveLength(2);expect(inserts.map(([,values])=>JSON.parse(String(values?.[0])).length)).toEqual([100,total-100]);
+      }finally{spy.mockRestore();}
+      expect(await run(()=>restricted.enqueueNotifications(SYNTHETIC_IDS.teamId,SYNTHETIC_IDS.seasonId,'match',entityId,sourceId))).toBe(0);
+      const saved=await owner.query("SELECT count(*)::integer AS count,count(DISTINCT payload_json->>'accountId')::integer AS recipients FROM jobs WHERE kind='notification.dispatch' AND payload_json->>'entityId'=$1",[entityId]);expect(saved.rows[0]).toEqual({count:total,recipients:total});
+    }finally{
+      await owner.query("DELETE FROM jobs WHERE kind='notification.dispatch' AND payload_json->>'entityId'=$1",[entityId]);
+      await owner.query("DELETE FROM memberships WHERE left(account_id,length($1))=$1",[prefix]);await owner.query("DELETE FROM accounts WHERE left(id,length($1))=$1",[prefix]);
+    }
+  });
   it('binds context kinds to the actual database login purpose', async()=>{
     await expect(api.query('SELECT * FROM runtime_roles')).rejects.toMatchObject({code:'42501'});
     await expect(worker.query("UPDATE runtime_roles SET purpose='api'")).rejects.toMatchObject({code:'42501'});

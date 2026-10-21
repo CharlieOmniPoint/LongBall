@@ -6,6 +6,7 @@ import { createRecordsSeed, type HistoricalResultInput, type RecordsCommand } fr
 import { applyRecordsServiceCommand, parseHistoricalResultInput, recordsServiceExport, recordsServiceView, type RecordsServiceInput } from './records-service';
 import { createCommunityState, getCommunityView } from './community';
 import type { ReportCommunitySource } from './report-community';
+import { createPreparationState } from './preparation';
 
 const now = Date.parse('2026-10-21T12:00:00Z');
 function fixture(): RecordsServiceInput {
@@ -136,6 +137,25 @@ describe('connected records service boundaries', () => {
     expect(spectator.body).not.toContain('"participation",'); expect(spectator.body).not.toContain('Oliver Bennett'); expect(spectator.body).toContain('Scores are not shared');
     const single = JSON.parse(recordsServiceExport({ ...context, request: { kind: 'match', matchId: context.state.results[0].id, format: 'json' } }).body);
     expect(single.matches).toHaveLength(1); expect(single.matches[0].participation).toBeNull(); expect(single.matches[0].halfTimeScore).toBeNull(); expect(single.matches[0].goals[0].scorerLabel).toBe('Noah Patel');
+  });
+  it('adds only bounded current public preparation labels to JSON without changing legacy CSV shape or exposing another profile', () => {
+    const context = audience(fixture(), 'player'), preparation = createPreparationState();
+    const own = { ...context, preparation }, request = { kind: 'season' as const, format: 'json' as const };
+    const exported = recordsServiceExport({ ...own, request }), document = JSON.parse(exported.body);
+    expect(document).toMatchObject({ clubName: 'Richmond Rovers', teamName: 'Roma', ageGroup: 'U10', seasonLabel: '2026/27' });
+    expect(document.participation.rows.map((row: {playerId: string}) => row.playerId)).toEqual([context.state.players[0].id]);
+    expect(exported.body).not.toContain('Noah Patel');
+    for (const field of ['profiles', 'medicalNotes', 'ownPreferences', 'clubLogo', 'teamLogo']) expect(document).not.toHaveProperty(field);
+    const renamed = { ...preparation, club: { ...preparation.club, name: 'Riverside Juniors' }, team: { ...preparation.team, name: 'Falcons', ageGroup: 'U11' }, seasons: preparation.seasons.map(season => season.id === context.state.seasonId ? { ...season, label: 'Autumn 2026' } : season) };
+    const fresh = JSON.parse(recordsServiceExport({ ...context, preparation: renamed, request }).body);
+    expect(fresh).toMatchObject({ clubName: 'Riverside Juniors', teamName: 'Falcons', ageGroup: 'U11', seasonLabel: 'Autumn 2026' });
+    const csvRequest = { ...request, format: 'csv' as const };
+    expect(recordsServiceExport({ ...context, preparation: renamed, request: csvRequest }).body).toBe(recordsServiceExport({ ...own, request: csvRequest }).body);
+    const invalid = { ...preparation, club: { ...preparation.club, name: 'Private\nmetadata' }, team: { ...preparation.team, name: 'x'.repeat(151), ageGroup: '' } };
+    expect(JSON.parse(recordsServiceExport({ ...context, preparation: invalid, request }).body)).toMatchObject({ clubName: null, teamName: null, ageGroup: null });
+    expect(() => recordsServiceExport({ ...context, preparation: { ...preparation, team: { ...preparation.team, id: 'another-team' } }, request })).toThrow('outside this report scope');
+    expect(() => recordsServiceExport({ ...context, preparation: { ...preparation, seasons: [] }, request })).toThrow('outside this report scope');
+    expect(JSON.parse(recordsServiceExport({ ...context, request }).body)).not.toHaveProperty('clubName');
   });
   it('rejects stale exports and escaped spreadsheet formulas, and rechecks membership before rebuilding the body', () => {
     const context = fixture(), original = recordsServiceExport({ ...context, request: { kind: 'season', format: 'json' } });

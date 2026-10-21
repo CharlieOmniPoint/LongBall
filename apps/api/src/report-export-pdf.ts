@@ -52,7 +52,7 @@ function inputLines(document: ReportPdfDocument): { title: string; metadata: { l
     return { label, value: text };
   };
   return { title: document.title,
-    metadata: Object.entries(document.metadata).map(([label, value]) => row(label, value)),
+    metadata: Object.entries(document.metadata).map(([label, value]) => row(label === 'generatedAt' ? 'Prepared' : label, value)),
     sections: document.sections.map(section => {
       if (!plain(section) || typeof section.title !== 'string' || !section.title.trim() || section.title.length > 300 || !Array.isArray(section.rows)) return invalid();
       characters += section.title.length;

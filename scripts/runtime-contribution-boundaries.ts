@@ -248,7 +248,7 @@ export async function prepareRuntimeContributions(
   const exportService=new ReportExportService(new ReportExportRepository(api),api,exportOptions);
   const queued=await api.db.withContext(context(player,"player","exports.request"),()=>api.transaction(()=>exportService.create(player,{...scope,kind:'own_participation',format:'csv'},'player')));
   assert.equal((await runDueReportExports(worker,exportOptions)).completed,1);
-  const artifact=await api.db.withContext(context(player,"player","exports.download"),()=>exportService.download(player,queued.id,'player'));
+  const artifact=await api.withActorContext(player,{operation:'exports.download',requestedRole:'player'},()=>exportService.download(player,queued.id,'player'));
   const exportRow=await owner.one('SELECT * FROM report_exports WHERE id=$1',[queued.id]);assert(exportRow);
   assert.equal(exportRow.snapshot_ciphertext,null);assert.equal(exportRow.status,'ready');
   assert(!JSON.stringify(exportRow).includes('playingMs'));
@@ -281,10 +281,10 @@ export async function verifyRuntimeContributions(
   const restoredExport=await owner.one('SELECT * FROM report_exports WHERE id=$1',[checkpoint.exportProof.id]);
   assert.deepEqual(restoredExport,checkpoint.exportProof.row,'Restore preserves exact encrypted derived report bytes.');
   const exports=new ReportExportService(new ReportExportRepository(api),api,checkpoint.exportProof.options);
-  const restoredArtifact=await api.db.withContext(context(player,'player','exports.download'),()=>exports.download(player,checkpoint.exportProof.id,'player'));
+  const restoredArtifact=await api.withActorContext(player,{operation:'exports.download',requestedRole:'player'},()=>exports.download(player,checkpoint.exportProof.id,'player'));
   assert.equal(createHash('sha256').update(restoredArtifact.bytes).digest('hex'),checkpoint.exportProof.sha256);
   const unavailableExports=new ReportExportService(new ReportExportRepository(api),api,{...checkpoint.exportProof.options,encryptionKey:randomBytes(32)});
-  await assert.rejects(api.db.withContext(context(player,'player','exports.download'),()=>unavailableExports.download(player,checkpoint.exportProof.id,'player')),error=>(error as {code?:string}).code==='EXPORT_KEY_CHANGED');
+  await assert.rejects(api.withActorContext(player,{operation:'exports.download',requestedRole:'player'},()=>unavailableExports.download(player,checkpoint.exportProof.id,'player')),error=>(error as {code?:string}).code==='EXPORT_KEY_CHANGED');
   const clearedExport=await owner.one('SELECT status,failure_code,snapshot_ciphertext,artifact_ciphertext,artifact_sha256 FROM report_exports WHERE id=$1',[checkpoint.exportProof.id]);
   assert.deepEqual(clearedExport,{status:'failed',failure_code:'EXPORT_KEY_CHANGED',snapshot_ciphertext:null,artifact_ciphertext:null,artifact_sha256:null});
   const restored = await rows(owner, deviceId);

@@ -20,12 +20,15 @@ const matchId = "synthetic-roma-maple-2026-10-24",
 const directory = path.resolve(process.env.LONGBALL_REVIEW_OUTPUT_DIRECTORY ?? ".local/connected-records-review");
 const runId = new Date().toISOString().replaceAll(/[^0-9]/g, "");
 const scenarioFilter = process.env.LONGBALL_RECORDS_REVIEW_SCENARIO ?? "";
+const scenarioPrefixes = scenarioFilter.split(",").map(value => value.trim()).filter(Boolean);
 const checks = [],
   errors = [];
 const exportJobs = process.env.LONGBALL_REVIEW_EXPORT_JOBS === "1";
 let server, stream, worker, workerStream, exportKeyFile, browser, context, page;
 let inspectionWindowStartedAt = null;
 let sensitiveInvitationVisible = false;
+let namedWorkspaceChoiceVerified = false;
+let expectedTeamName = "Roma U10", expectedClubName = "Richmond Rovers";
 await mkdir(directory, { recursive: true });
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 async function poll(read, predicate, label) {
@@ -228,6 +231,18 @@ async function enter(account = "Alex Morgan · Manager", entry = baseURL) {
   await button("Demo API review");
   await button(account);
   await page.getByTestId("workspace-connect").click();
+  if (account === "Alex Morgan · Manager") {
+    const choices = page.getByTestId("workspace-context-choices");
+    await choices.waitFor();
+    const managerChoice = choices.getByTestId(`workspace-context-manager-${teamId}-${seasonId}-none`);
+    await managerChoice.waitFor();
+    assert.equal((await managerChoice.innerText()).trim(), "Open Manager · Roma U10 · 2026/27", "The choice uses fresh server-owned team and season display names.");
+    assert.match(await choices.innerText(), /Richmond Rovers/);
+    assert.doesNotMatch(await managerChoice.innerText(), /synthetic-/);
+    await managerChoice.scrollIntoViewIfNeeded();
+    await picture("00-readable-own-workspace-choice");
+    namedWorkspaceChoiceVerified = true;
+  }
   if (account !== "Casey Bennett · Invite recipient") await selectWorkspaceContext(page);
   if (account === "Casey Bennett · Invite recipient") {
     await button("Review received season invitation");
@@ -240,7 +255,7 @@ async function enter(account = "Alex Morgan · Manager", entry = baseURL) {
   }
 }
 async function scenario(name, action) {
-  if (scenarioFilter && !name.startsWith(scenarioFilter)) return;
+  if (scenarioPrefixes.length && !scenarioPrefixes.some(prefix => name.startsWith(prefix))) return;
   const detail = await action();
   checks.push({ name, status: "passed", detail });
   console.log(`PASSED ${name}`);
@@ -499,6 +514,7 @@ try {
   await scenario(
     "03-administrator-configuration-explicit-rollover-preserves-source",
     async () => {
+      const sourceMatch = (await json(`/v1/matches/${matchId}`)).state;
       // Automated proof reads are additional traffic beyond phone interaction.
       // Begin this burst in a fresh ordinary120/minute window; never bypass
       // or change the service's rate policy for this rehearsal.
@@ -523,11 +539,11 @@ try {
       });
       assert.equal(safe.profiles, undefined);
       assert.equal(safe.fixtures, undefined);
-      await input("Club name", "Roma Community · fictional review");
+      await input("Club name", "Richmond Rovers Community");
       await button("Save administrator club configuration");
       await poll(
         () => json(scoped("configuration"), { role: "administrator" }),
-        (dto) => dto.club.name === "Roma Community · fictional review",
+        (dto) => dto.club.name === "Richmond Rovers Community",
         "Safe club configuration saved",
       );
       await settleWorkspace();
@@ -544,6 +560,8 @@ try {
         "Safe team configuration saved",
       );
       await settleWorkspace();
+      expectedTeamName = "Roma Juniors U10";
+      expectedClubName = "Richmond Rovers Community";
       const sourcePrep = await json(scoped("preparation"));
       const sourceRecords = await json(scoped("records"));
       const sourceCommunity = await json(scoped("community"));
@@ -615,7 +633,7 @@ try {
         sourceCommunity.grants,
       );
       const unchangedMatch = (await json(`/v1/matches/${matchId}`)).state;
-      assert.equal(unchangedMatch.status, "completed");
+      assert.deepEqual(unchangedMatch, sourceMatch, "Configuration and rollover preserve the entire existing match state.");
       assert.equal(
         unchangedMatch.config.plannedHalfDurationMs,
         1_500_000,
@@ -782,8 +800,14 @@ try {
       await enter("Casey Bennett · Invite recipient", recipientEntry.href);
       await page.getByTestId("invitation-token").fill(invitationCode);
       await page.getByTestId("invitation-inspect").click();
-      await page.getByText(`Team: ${teamId}`, { exact: true }).waitFor();
-      await page.getByText(`Season: ${seasonId}`, { exact: true }).waitFor();
+      const reviewed = page.getByTestId("invitation-reviewed-context");
+      await reviewed.waitFor();
+      const reviewedText = await reviewed.innerText();
+      assert(reviewedText.includes(expectedTeamName), "The invitation shows the current server-reviewed team name and age group.");
+      assert(reviewedText.includes(expectedClubName), "The invitation reflects the current club configuration.");
+      assert.match(reviewedText, /2026\/27/);
+      assert.match(reviewedText, /Invited by: Team manager/);
+      assert(reviewedText.includes(`References: team ${teamId} · season ${seasonId}`));
       assert.equal(await page.getByTestId("invitation-accept").isDisabled(), true, "Inspection does not accept the invitation.");
       await page.getByLabel("Confirm the service-reviewed invitation destination", { exact: true }).check();
       await page.getByTestId("invitation-accept").click();
@@ -803,6 +827,7 @@ try {
           (item) => item.role === "spectator" && item.seasonId === seasonId,
         ),
       );
+      assert(after.memberships.every(item => item.teamName === expectedTeamName && item.clubName === expectedClubName && item.seasonLabel === "2026/27"), "The fresh recipient identity contains the same readable exact workspace names.");
       await settleWorkspace();
       await tab("community");
       await page.getByTestId("workspace-community").waitFor();
@@ -821,6 +846,7 @@ try {
         explicitlyAddressedSeason: seasonId,
         grantedRole: "spectator",
         acceptanceCodePersisted: false,
+        serverReviewedReadableContext: true,
       };
     },
   );
@@ -848,6 +874,7 @@ try {
         api,
         viewport: { width: 390, height: 844 },
         scenarioFilter,
+        namedWorkspaceChoiceVerified,
         checks,
         browserErrors: errors,
         nativeDeviceTested: false,

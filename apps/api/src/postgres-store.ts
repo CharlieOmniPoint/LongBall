@@ -205,11 +205,13 @@ async principal(identity: VerifiedIdentity): Promise<Principal> {
         throw new AccessError('ACCOUNT_UNAVAILABLE', 403, 'The account is not active for this service.');
     return { accountId: account.id, issuer: account.issuer, subject: account.subject, identityClassification: account.classification, adultVerified: Boolean(account.adult_verified), strongAuth: identity.strongAuth, authenticatedAt: identity.authenticatedAt, status: account.status };
 }
-async memberships(accountId?: string): Promise<Membership[]> {
-    // Own-account hot paths constrain candidate rows before the unchanged RLS
-    // predicates and current grant checks. Administrative callers retain the
-    // complete RLS-filtered team view by omitting this optional bound parameter.
-    const rows=await this.many("SELECT m.*,CASE WHEN m.role='spectator' THEN longball.spectator_grant_active(m.account_id,m.club_id,m.team_id,m.season_id) ELSE true END AS grant_active FROM memberships m" + (accountId === undefined ? "" : " WHERE m.account_id=$1"), accountId === undefined ? [] : [accountId]) as unknown as {account_id:string;team_id:string;season_id:string;role:Membership['role'];player_id:string|null;expires_at:number|null;revoked_at:number|null;grant_active:boolean}[];
+async memberships(accountId?: string, scope?: {teamId: string; seasonId: string}): Promise<Membership[]> {
+    // Bound candidate rows before unchanged RLS and current grant checks. Omit
+    // both filters for the complete administrative view; neither filter grants authority.
+    const values:string[]=[],predicates:string[]=[];
+    if(accountId!==undefined){values.push(accountId);predicates.push(`m.account_id=$${values.length}`);}
+    if(scope){values.push(scope.teamId,scope.seasonId);predicates.push(`m.team_id=$${values.length-1}`,`m.season_id=$${values.length}`);}
+    const rows=await this.many("SELECT m.*,CASE WHEN m.role='spectator' THEN longball.spectator_grant_active(m.account_id,m.club_id,m.team_id,m.season_id) ELSE true END AS grant_active FROM memberships m" + (predicates.length ? " WHERE "+predicates.join(' AND ') : ""), values) as unknown as {account_id:string;team_id:string;season_id:string;role:Membership['role'];player_id:string|null;expires_at:number|null;revoked_at:number|null;grant_active:boolean}[];
     return rows.map(row=>({accountId:row.account_id,teamId:row.team_id,seasonId:row.season_id,role:row.role,playerId:row.player_id??undefined,expiresAt:row.expires_at,revokedAt:row.role==='spectator'&&!row.grant_active?row.revoked_at??Math.max(1,this.now()):row.revoked_at}));
 }
 async myMemberships(principal: Principal): Promise<Membership[]> { return currentMemberships(principal, (await this.memberships(principal.accountId)), this.now()); }
@@ -766,12 +768,13 @@ async enqueueNotifications(teamId: string, seasonId: string, category: TeamNotif
     if(typeof observed!=='number'||!Number.isSafeInteger(observed)||observed<0)throw new Error('DATABASE_CLOCK_UNAVAILABLE');
     const recipients = new Map<string, Membership>();
     const priority = { manager: 3, player: 2, spectator: 1, administrator: 0 };
-    for (const member of (await this.memberships()).filter(item => item.teamId === teamId && item.seasonId === seasonId && ['manager', 'player', 'spectator'].includes(item.role) && item.revokedAt == null && (item.expiresAt == null || item.expiresAt > observed))) {
+    for (const member of (await this.memberships(undefined,{teamId,seasonId})).filter(item => item.teamId === teamId && item.seasonId === seasonId && ['manager', 'player', 'spectator'].includes(item.role) && item.revokedAt == null && (item.expiresAt == null || item.expiresAt > observed))) {
         const current = recipients.get(member.accountId);
         if (!current || priority[member.role] > priority[current.role])
             recipients.set(member.accountId, member);
     }
     let inserted = 0;
+    const pending:ReturnType<typeof createTeamNotificationJob>[]=[];
     for (const member of recipients.values()) {
         if (member.role === 'administrator' || member.role === 'player' && !member.playerId)
             continue;
@@ -779,10 +782,15 @@ async enqueueNotifications(teamId: string, seasonId: string, category: TeamNotif
         const job = createTeamNotificationJob({ id: randomUUID(), businessKey, accountId: member.accountId, teamId, seasonId, audience: member.role, playerId: member.role === 'player' ? member.playerId! : null, category, entityId, dueAtMs: observed });
         if(workerJob){
             const result=await this.one('SELECT longball.enqueue_award_notification($1,$2,$3::jsonb,$4) AS changes',[job.id,businessKey,JSON.stringify(job),job.dueAtMs]);inserted+=Number(result?.changes??0);
-        }else{
-            const result = (await this.execute("INSERT INTO jobs(id,business_key,kind,payload_json,due_at) VALUES($1,$2,'notification.dispatch',$3,$4) ON CONFLICT(business_key) DO NOTHING", [job.id, businessKey, JSON.stringify(job), job.dueAtMs]));
-            inserted += Number(result.changes);
-        }
+        }else pending.push(job);
+    }
+    // Every generated recipient still crosses the same per-row ancestry trigger,
+    // RLS and unique business key. Bounded statements remove network round trips;
+    // the caller's domain transaction keeps state, all chunks and receipt atomic.
+    for(let offset=0;offset<pending.length;offset+=100){
+        const batch=pending.slice(offset,offset+100);
+        const result=await this.execute("INSERT INTO jobs(id,business_key,kind,payload_json,due_at) SELECT incoming.value->>'id',incoming.value->>'businessKey','notification.dispatch',incoming.value,(incoming.value->>'dueAtMs')::bigint FROM jsonb_array_elements($1::jsonb) AS incoming(value) ON CONFLICT(business_key) DO NOTHING",[JSON.stringify(batch)]);
+        inserted+=Number(result.changes);
     }
     return inserted;
 }
