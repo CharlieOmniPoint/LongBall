@@ -364,16 +364,17 @@ export async function verifyRuntimeContributions(
     { code: "42501" },
   );
   const leaseToken = randomBytes(32).toString("hex");
+  const claimNow = Date.now();
   const claimed = await worker.db.withContext(
     {
       kind: "worker_claim",
       jobKind: "notification.dispatch",
-      nowMs: Date.now(),
+      nowMs: claimNow,
     },
     () =>
       worker.one("SELECT * FROM longball.claim_due_job($1,$2,$3)", [
         "notification.dispatch",
-        Date.now(),
+        claimNow,
         leaseToken,
       ]),
   );
