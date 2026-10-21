@@ -16,6 +16,7 @@ export type WorkspaceTab =
   | "reports"
   | "community"
   | "invitations"
+  | "privileges"
   | "controller"
   | "more";
 type Item = { tab: WorkspaceTab; label: string; icon: IconName };

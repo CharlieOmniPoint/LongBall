@@ -1,3 +1,4 @@
+import { SqliteTeamPrivilegeRepository } from './team-privileges-repository';
 import { createHash } from 'node:crypto';
 import { AccessError, type Principal } from '../../../packages/application/src/access';
 import type { CommunityState } from '../../../packages/application/src/community';
@@ -21,6 +22,7 @@ export class SqliteInvitationRepository implements InvitationRepository {
   constructor(private readonly source: DevelopmentStore, private readonly runtime: RuntimeStore) { source.database.exec(SQLITE_INVITATIONS_DDL); }
   transaction<T>(work: () => Promise<T>): Promise<T> { return this.runtime.transaction(work); }
   actor(session: InvitationSession, accepting = false) { return this.runtime.communityActor(session.principal, session.teamId, session.seasonId, session.role, accepting); }
+  invitationAllowed(session: InvitationSession) { return new SqliteTeamPrivilegeRepository(this.source,this.runtime).own(session,'invitations'); }
   async state(teamId: string, seasonId: string) {
     const state = await this.runtime.communityState(teamId, seasonId);
     const rows = this.source.database.prepare('SELECT * FROM spectator_invitations WHERE team_id=? AND season_id=?').all(teamId, seasonId);

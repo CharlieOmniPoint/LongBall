@@ -1,3 +1,5 @@
+import { TeamPrivilegeService } from './team-privileges-service';
+import { PostgresTeamPrivilegeRepository } from './postgres-team-privileges';
 import { dirname, join } from 'node:path';
 import { createRuntimeApi,createBrandMedia, type ApiOptions } from './server';
 import { PostgresStore } from './postgres-store';
@@ -23,6 +25,7 @@ export async function createPostgresApi(options: ApiOptions & { connectionString
     const branding=createBrandMedia(options,port,new PostgresBrandRepository(store.db));
     const spectator=new SpectatorActivationService({repository:new PostgresSpectatorActivationRepository(store),provider:options.activationProvider,policy:options.activationPolicy,now:store.now});
     const invitations=new SpectatorInvitationService({...options,repository:new PostgresInvitationRepository(store),now:store.now});
-    return createRuntimeApi(options, store, port, media, activation,undefined,{branding,spectator,invitations});
+    const privileges=new TeamPrivilegeService(new PostgresTeamPrivilegeRepository(store),store.now);
+    return createRuntimeApi(options, store, port, media, activation,undefined,{branding,spectator,invitations,privileges});
   } catch (error) { await store.close(); throw error; }
 }

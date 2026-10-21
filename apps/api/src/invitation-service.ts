@@ -13,6 +13,7 @@ export interface InvitationReceipt { signature: string; response: RedactedInvite
 export interface InvitationRepository {
   transaction<T>(work: () => Promise<T>): Promise<T>;
   actor(session: InvitationSession, accepting?: boolean): Promise<CommunityActor>;
+  invitationAllowed(session: InvitationSession, lock?: boolean): Promise<boolean>;
   state(teamId: string, seasonId: string, lock?: boolean): Promise<CommunityState>;
   save(session: InvitationSession, state: CommunityState, changedIds: string[], policyVersion: string | null): Promise<void>;
   receipt(accountId: string, operation: string, key: string): Promise<InvitationReceipt | null>;
@@ -67,11 +68,12 @@ export class SpectatorInvitationService {
     const actor = await this.options.repository.actor(session);
     if (!['manager', 'player'].includes(actor.role)) unavailable();
     const state = await this.options.repository.state(session.teamId, session.seasonId), now = this.now();
+    const invitationAllowed = await this.options.repository.invitationAllowed(session);
     return { kind: 'spectator-invitations', teamId: session.teamId, seasonId: session.seasonId, revision: state.revision, invitations: state.invitations.filter(invite => invite.teamId === session.teamId && invite.seasonId === session.seasonId && (actor.role === 'manager' || invite.inviterAccountId === actor.accountId)).map((invite): InvitationSummary => {
       const view = publicInvitation(invite, now);
       const pending = invite.acceptedBy === null && invite.acceptedAtMs === null && (invite.revokedAtMs === null || invite.credential.kind === 'legacy_retired' && invite.credential.requiresReissue);
       const season = state.seasons.find(item => item.id === session.seasonId && item.teamId === session.teamId);
-      return { id: invite.id, teamId: invite.teamId, seasonId: invite.seasonId, expiresAt: new Date(invite.expiresAtMs).toISOString(), status: view.requiresReissue ? 'requires_reissue' : view.state as InvitationSummary['status'], canReissue: Boolean(pending && season && season.accessEndsAtMs > now && !state.invitations.some(other => other.reissuedFromInvitationId === invite.id)), canRevoke: actor.role === 'manager' && invite.revokedAtMs === null };
+      return { id: invite.id, teamId: invite.teamId, seasonId: invite.seasonId, expiresAt: new Date(invite.expiresAtMs).toISOString(), status: view.requiresReissue ? 'requires_reissue' : view.state as InvitationSummary['status'], canReissue: Boolean(invitationAllowed && pending && season && season.accessEndsAtMs > now && !state.invitations.some(other => other.reissuedFromInvitationId === invite.id)), canRevoke: actor.role === 'manager' && invite.revokedAtMs === null };
     }) };
   }
   async issue(session: InvitationSession, key: string, value: unknown, sourceInvitationId?: string): Promise<{ status: 200|201; body: InviteCreated|RedactedInviteReceipt }> {
@@ -86,6 +88,7 @@ export class SpectatorInvitationService {
       const operation = this.operation(sourceInvitationId ? 'reissue' : 'issue', session, sourceInvitationId);
       const { prior, signature } = await this.prior(session, operation, key, input);
       if (prior) return { status: 200, body: prior.response as RedactedInviteReceipt };
+      if (!await repo.invitationAllowed(session, true)) throw new AccessError('TEAM_INVITATIONS_SUSPENDED',403,'Creating or reissuing invitations is suspended in this team. Existing invitations and grants retain their separate recorded status.');
       const now = this.now(), season = state.seasons.find(item => item.id === session.seasonId && item.teamId === session.teamId);
       if (!season || season.accessEndsAtMs <= now) return unavailable();
       const expiresAtMs = Math.min(now + input.expiresInHours * 3_600_000, season.accessEndsAtMs);

@@ -1,3 +1,4 @@
+import { parseTeamPrivilegeCommand } from './team-privileges';
 import { assertAdultAuthority, assertTeamRole, type Membership, type Principal } from './access';
 import { parseBrandingCommand } from './branding';
 import { workspaceBindingIsCurrent, workspaceSessionAllows, type WorkspaceBinding, type WorkspaceSessionAccess } from './workspace-boundary';
@@ -89,12 +90,13 @@ function assertPath(path: unknown, value: WorkspaceOutboxScope): asserts path is
   assert(text(path, 2048));
   const prefix = `/v1/teams/${encodeURIComponent(value.teamId)}/`;
   const branding = ['club_logo', 'team_logo'].flatMap(kind => ['publish', 'remove'].map(action => `branding/${kind}/${action}`));
-  assert(['preparation', 'preparation/own', 'community', 'records', 'seasons', 'configuration', 'managers', 'managers/revoke', ...branding].some(section => path === `${prefix}${section}?seasonId=${encodeURIComponent(value.seasonId)}`));
+  assert(['preparation', 'preparation/own', 'community', 'records', 'seasons', 'configuration', 'managers', 'managers/revoke', 'privileges', ...branding].some(section => path === `${prefix}${section}?seasonId=${encodeURIComponent(value.seasonId)}`));
   const staff = path.startsWith(`${prefix}managers?`) || path.startsWith(`${prefix}managers/revoke?`);
   const clubLogo = path.startsWith(`${prefix}branding/club_logo/`), teamLogo = path.startsWith(`${prefix}branding/team_logo/`);
   if (clubLogo) assert(value.role === 'administrator');
   if (teamLogo) assert(value.role === 'manager');
   if (staff) assert(value.role === 'administrator');
+  if(path.startsWith(`${prefix}privileges?`))assert(value.role==='manager');
   if (value.role === 'administrator') assert(path.startsWith(`${prefix}configuration?`) || path.startsWith(`${prefix}seasons?`) || staff || clubLogo);
   if (value.role === 'player') assert(path.startsWith(`${prefix}preparation/own?`) || path.startsWith(`${prefix}community?`));
   if (value.role === 'spectator') assert(path.startsWith(`${prefix}community?`));
@@ -140,6 +142,11 @@ function assertStaffCommand(path: string, bodyJson: string, owner: WorkspaceOutb
   assert(command.type === (assign ? 'manager.assigned' : 'manager.revoked'));
   if (revoke) assert(command.confirmRevocation === true && text(command.reason, 500) && command.reason.trim().length >= 5);
 }
+function assertTeamPrivilegeRequest(path:string,bodyJson:string,owner:WorkspaceOutboxScope):void{
+  const command=(JSON.parse(bodyJson) as {command:Record<string,unknown>}).command;
+  if(path.startsWith(`/v1/teams/${encodeURIComponent(owner.teamId)}/privileges?`)){assert(owner.role==='manager');parseTeamPrivilegeCommand(command);}
+  else assert(command.type!=='privilege.suspended'&&command.type!=='privilege.reinstated');
+}
 function assertBrandingRequest(path: string, bodyJson: string, owner: WorkspaceOutboxScope): void {
   const prefix = `/v1/teams/${encodeURIComponent(owner.teamId)}/branding/`;
   const command = (JSON.parse(bodyJson) as { command: Record<string, unknown> }).command;
@@ -156,6 +163,7 @@ function validateRequest(value: unknown, owner: WorkspaceOutboxScope): asserts v
   assert(serializeBody(JSON.parse(value.bodyJson), value.key, true) === value.bodyJson);
   assertStaffCommand(value.path, value.bodyJson, owner);
   assertBrandingRequest(value.path, value.bodyJson, owner);
+  assertTeamPrivilegeRequest(value.path,value.bodyJson,owner);
   assert(['awaiting_receipt', 'uncertain', 'access_blocked'].includes(value.status as string));
   assert(value.lastAttemptAtMs === null || time(value.lastAttemptAtMs));
   if (value.lastFailure !== null) {
@@ -196,6 +204,7 @@ export function enqueueWorkspaceRequest(state: WorkspaceOutboxState, binding: Wo
   assert(commandType !== 'invite.created' && commandType !== 'invite.accepted');
   assertStaffCommand(input.path, bodyJson, state.scope);
   assertBrandingRequest(input.path, bodyJson, state.scope);
+  assertTeamPrivilegeRequest(input.path,bodyJson,state.scope);
   if (state.pending) {
     assert(state.pending.key === input.key && state.pending.path === input.path && state.pending.bodyJson === bodyJson && state.pending.label === input.label);
     return state;

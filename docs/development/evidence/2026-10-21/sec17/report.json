@@ -1,0 +1,36 @@
+{
+  "kind": "fictional-sec17-phone-browser",
+  "observedAt": "2026-10-21T18:11:55.161Z",
+  "widths": [
+    320,
+    390
+  ],
+  "checks": [
+    {
+      "width": 320,
+      "check": "Reasoned manager upload suspension and explicit reinstatement reached current player status; no player moderation controls",
+      "passed": true
+    },
+    {
+      "width": 320,
+      "check": "Invitation create held after explicit suspension and enabled after explicit reinstatement; phone layout has no horizontal overflow",
+      "passed": true
+    },
+    {
+      "width": 390,
+      "check": "Reasoned manager upload suspension and explicit reinstatement reached current player status; no player moderation controls",
+      "passed": true
+    },
+    {
+      "width": 390,
+      "check": "Invitation create held after explicit suspension and enabled after explicit reinstatement; phone layout has no horizontal overflow",
+      "passed": true
+    }
+  ],
+  "pageErrors": [],
+  "bundleSha256": "80c111a1d89608814cde4e3b4ff89e33528ab7f19aacd2a68312f2c2729c3932",
+  "limits": [
+    "Synthetic SQLite browser review; restricted PostgreSQL behaviour is covered separately by actual HTTP tests.",
+    "No native device, real child data, real identity-provider or platform-wide safeguarding case proof."
+  ]
+}

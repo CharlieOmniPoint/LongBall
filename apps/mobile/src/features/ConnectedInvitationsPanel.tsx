@@ -22,6 +22,7 @@ export interface ConnectedInvitationsPanelProps {
   teamId: string | null;
   seasonId: string | null;
   canIssue: boolean;
+  contributionsAllowed?: boolean;
   invitationDestination?: { teamId: string; seasonId: string; code: string };
   onChanged: (acceptedDestination?: {
     teamId: string;
@@ -399,6 +400,13 @@ function InvitationSession(props: ConnectedInvitationsPanelProps) {
             Invite someone to this team and season. They sign in to an existing
             account or set up their invited account, then explicitly accept.
           </Text>
+          {props.contributionsAllowed === false && (
+            <Notice tone="warning">
+              Creating or reissuing invitations is currently held or awaiting a
+              current privilege check. Existing invitations can still be
+              reviewed and revoked.
+            </Notice>
+          )}
           <Text style={typography.label}>Link lifetime in hours</Text>
           <TextInput
             accessibilityLabel="Invitation link lifetime in hours"
@@ -416,7 +424,12 @@ function InvitationSession(props: ConnectedInvitationsPanelProps) {
           <Button
             label="Create one-time spectator link"
             testID="invitation-create"
-            disabled={blocked || !!issued || selectedHours === null}
+            disabled={
+              blocked ||
+              !!issued ||
+              selectedHours === null ||
+              props.contributionsAllowed === false
+            }
             onPress={() => {
               if (selectedHours !== null)
                 void perform(() =>
@@ -440,7 +453,12 @@ function InvitationSession(props: ConnectedInvitationsPanelProps) {
                   label="Review reissuing this invitation"
                   testID={`invitation-reissue-${invitation.id}`}
                   variant="secondary"
-                  disabled={blocked || !!issued || selectedHours === null}
+                  disabled={
+                    blocked ||
+                    !!issued ||
+                    selectedHours === null ||
+                    props.contributionsAllowed === false
+                  }
                   onPress={() => setReview({ kind: "reissue", invitation })}
                 />
               )}

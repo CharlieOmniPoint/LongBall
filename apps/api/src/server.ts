@@ -1,3 +1,6 @@
+import { TeamPrivilegeService } from './team-privileges-service';
+import { SqliteTeamPrivilegeRepository } from './team-privileges-repository';
+import { parseTeamPrivilegeCommand } from '../../../packages/application/src/team-privileges';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { randomUUID } from 'node:crypto';
 import { readFileSync, realpathSync, statSync } from 'node:fs';
@@ -107,10 +110,12 @@ export function createApi(options:ApiOptions) {
  const repository=new SqliteInvitationRepository(source,runtime.store);
  const ready=runtime.serialize(()=>repository.initialize());void ready.catch(()=>undefined);
  const invitations=new SpectatorInvitationService({...options,repository,now});
- return createRuntimeApi(options,source,runtime.store,media,activation,work=>ready.then(()=>runtime.serialize(work)),{branding,invitations});
+ const privileges=new TeamPrivilegeService(new SqliteTeamPrivilegeRepository(source,runtime.store),now);
+ return createRuntimeApi(options,source,runtime.store,media,activation,work=>ready.then(()=>runtime.serialize(work)),{branding,invitations,privileges});
 }
-export function createRuntimeApi<T>(options:ApiOptions,source:T,store:RuntimeStore,media:RuntimeMedia,activation:RuntimeActivation,serialize:<R>(work:()=>Promise<R>)=>Promise<R> = work=>work(),services:{branding?:BrandMediaService;spectator?:RuntimeSpectatorActivation;invitations?:SpectatorInvitationService}={}) {
+export function createRuntimeApi<T>(options:ApiOptions,source:T,store:RuntimeStore,media:RuntimeMedia,activation:RuntimeActivation,serialize:<R>(work:()=>Promise<R>)=>Promise<R> = work=>work(),services:{branding?:BrandMediaService;spectator?:RuntimeSpectatorActivation;invitations?:SpectatorInvitationService;privileges?:TeamPrivilegeService}={}) {
  const now=options.now??Date.now;
+ const privilegeService=()=>{if(!services.privileges)throw new AccessError('TEAM_PRIVILEGES_UNAVAILABLE',503,'Current team privileges are unavailable.');return services.privileges;};
  const verifyIdentity=options.verifyIdentity??(options.oidc?createOidcVerifier({...options.oidc,now}):null);
 const windows = new Map<string, {
         begins: number;
@@ -357,7 +362,17 @@ const windows = new Map<string, {
             }
             else if (parts[0] === 'v1' && parts[1] === 'teams' && parts[2]) {
                 const teamId = parts[2];
-                if(parts[3]==='spectator-invites'){
+                if(parts[3]==='privileges'){
+                    const session={principal,teamId,seasonId,role};
+                    if(request.method==='GET'&&parts.length===4)result=await privilegeService().view(session);
+                    else if(request.method==='GET'&&parts[4]==='own'&&parts.length===5)result=await privilegeService().own(session);
+                    else if(request.method==='POST'&&parts.length===4){
+                      if(Object.keys(body!).length!==1||!Object.hasOwn(body!,'command'))throw new AccessError('INVALID_REQUEST',400,'Use only the captured team privilege command.');
+                      const command=parseTeamPrivilegeCommand(body!.command);if(command.id!==requireContract())throw new AccessError('INVALID_REQUEST',400,'Use the captured command identity.');
+                      result=await mutate(url.pathname,()=>privilegeService().command(session,command));
+                    }else throw new AccessError('NOT_FOUND',404,'The requested team operation is unavailable.');
+                }
+                else if(parts[3]==='spectator-invites'){
                     const invitations=services.invitations;if(!invitations)throw new AccessError('INVITATION_NOT_CONFIGURED',503,'Invitation processing is unavailable.');
                     const session={principal,teamId,seasonId,role};
                     if(request.method==='GET'&&parts.length===4)result=await invitations.list(session);
@@ -401,23 +416,28 @@ const windows = new Map<string, {
                 }
                 else if (parts[3] === 'media') {
                     const actor = (await store.communityActor(principal, teamId, seasonId, role));
+                    const privilegeSession={principal,teamId,seasonId,role};
+                    if(request.method!=='GET')await privilegeService().assertAllowed(privilegeSession,'uploads');
                     const community = async () => (await store.communityState(teamId, seasonId));
                     if (request.method === 'GET' && parts[4] === 'uploads' && !parts[5])
                         result = { items: (await media.listOwn((await community()), actor)) };
                     else if (request.method === 'POST' && parts[4] === 'uploads' && parts[5] === 'prepare') {
                         const key = requireContract();
                         // The media manifest hashes/rotates the write token; never store it in generic response receipts.
-                        result = (await store.transaction(async () => (await media.prepare((await community()), actor, { ...body, requestId: key } as MediaPrepareInput))));
+                        result = await store.transaction(async () => { await privilegeService().assertAllowed(privilegeSession,'uploads',true);return media.prepare(await community(),actor,{...body,requestId:key} as MediaPrepareInput); });
                     }
                     else if (request.method === 'PUT' && parts[4] === 'uploads' && parts[5]) {
                         requireContract();
                         result = await (await media.upload((await community()), actor, parts[5], header(request, 'x-media-upload-token') ?? '', request));
+                        await privilegeService().assertAllowed(privilegeSession,'uploads');
                     }
                     else if (request.method === 'POST' && parts[4] === 'uploads' && parts[5] && parts[6] === 'complete') {
                         const key = requireContract();
+                        if(Object.keys(body!).length)throw new AccessError('INVALID_REQUEST',400,'Media completion accepts no caller-reported processing evidence.');
                         const processed = await (await media.complete((await community()), actor, parts[5], header(request, 'x-media-upload-token') ?? ''));
                         result = (await store.idempotent(principal, scopedOperation(url.pathname), key, body, async () => {
                             const freshActor = (await store.communityActor(principal, teamId, seasonId, role));
+                            await privilegeService().assertAllowed(privilegeSession,'uploads',true);
                             const next = applyCommunityCommand((await community()), freshActor, processed.command, now());
                             (await store.saveDocument(teamId, seasonId, 'community', next));
                             (await media.link(parts[5], next));
@@ -464,7 +484,7 @@ const windows = new Map<string, {
                 else if (request.method === 'GET' && parts[3] === 'community')
                     result = (await store.community(principal, teamId, seasonId, role));
                 else if (request.method === 'POST' && parts[3] === 'community') {
-                    (await mutate(url.pathname, async () => (await store.communityCommand(principal, teamId, seasonId, body!.command as CommunityCommand, role))));
+                    await mutate(url.pathname,async()=>{const command=body!.command as CommunityCommand;if(['photo.submitted','photo.revised','photo.published'].includes(command.type))await privilegeService().assertAllowed({principal,teamId,seasonId,role},'uploads',true);return store.communityCommand(principal,teamId,seasonId,command,role);});
                     // A cached receipt never bypasses a current grant check or returns an old private view.
                     result = (await store.community(principal, teamId, seasonId, role));
                 }

@@ -18,7 +18,7 @@ import {
   type MediaPrepareInput,
   type PreparedMediaUpload,
 } from "./media";
-import { installMediaSecurity, verifyMediaSecurity,installHeicMedia } from './postgres-security';
+import { installMediaSecurity, verifyMediaSecurity,installHeicMedia,installTeamPrivilegeMedia } from './postgres-security';
 import type { PgDatabase } from "./pg";
 import { processPrivateImage } from './image-bytes';
 
@@ -68,8 +68,8 @@ export class PgMediaService {
       const versions = await this.database.query<{ version: number }>(
         'SELECT version FROM longball.media_schema_migrations ORDER BY version',
       );
-      if (versions.rows.some(row => row.version > 3)) throw new Error('Media schema is newer than this build.');
-      if (![2,3].every(version=>versions.rows.some(row => row.version === version))) throw new Error('Run the separate media migrator before starting the runtime.');
+      if (versions.rows.some(row => row.version > 4)) throw new Error('Media schema is newer than this build.');
+      if (![2,3,4].every(version=>versions.rows.some(row => row.version === version))) throw new Error('Run the separate media migrator before starting the runtime.');
       await verifyMediaSecurity(this.database);
       return;
     }
@@ -80,7 +80,7 @@ export class PgMediaService {
       const versions = await this.database.query<{ version: number }>(
         "SELECT version FROM longball.media_schema_migrations ORDER BY version",
       );
-      if (versions.rows.some((row) => row.version > 3))
+      if (versions.rows.some((row) => row.version > 4))
         throw new Error(
           "Media schema is newer than this build; preserve it and use a compatible version.",
         );
@@ -103,6 +103,10 @@ export class PgMediaService {
       if(!versions.rows.some(row=>row.version===3)){
         await installHeicMedia(this.database);
         await this.database.query('INSERT INTO longball.media_schema_migrations(version) VALUES(3)');
+      }
+      if(!versions.rows.some(row=>row.version===4)){
+        await installTeamPrivilegeMedia(this.database);
+        await this.database.query('INSERT INTO longball.media_schema_migrations(version) VALUES(4)');
       }
     });
   }

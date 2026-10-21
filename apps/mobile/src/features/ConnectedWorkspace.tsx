@@ -1,3 +1,11 @@
+import { TeamPrivilegesPanel } from "./TeamPrivilegesPanel";
+import {
+  assertOwnTeamPrivileges,
+  assertTeamPrivilegesView,
+  type OwnTeamPrivileges,
+  type TeamPrivilegesView,
+  type TeamPrivilegeCommand,
+} from "@longball/application/team-privileges";
 import {
   useCallback,
   useEffect,
@@ -753,6 +761,10 @@ function WorkspaceSession({
     useState<BoundWorkspaceValue<RecordsDto> | null>(null);
   const [communityCache, setCommunity] =
     useState<BoundWorkspaceValue<CommunityDto> | null>(null);
+  const [ownPrivilegesCache, setOwnPrivileges] =
+    useState<BoundWorkspaceValue<OwnTeamPrivileges> | null>(null);
+  const [teamPrivilegesCache, setTeamPrivileges] =
+    useState<BoundWorkspaceValue<TeamPrivilegesView> | null>(null);
   const [matchesCache, setMatches] = useState<BoundWorkspaceValue<
     ConnectedMatchCentreDto[]
   > | null>(null);
@@ -1064,6 +1076,22 @@ function WorkspaceSession({
     identity?.memberships ?? [],
     membershipTime,
   );
+  const ownPrivileges = readWorkspaceValue(
+    ownPrivilegesCache,
+    expectedBinding,
+    identity?.principal ?? null,
+    identity?.memberships ?? [],
+    membershipTime,
+  );
+  const teamPrivileges = manager
+    ? readWorkspaceValue(
+        teamPrivilegesCache,
+        expectedBinding,
+        identity?.principal ?? null,
+        identity?.memberships ?? [],
+        membershipTime,
+      )
+    : null;
   const matches = readWorkspaceValue(
     matchesCache,
     expectedBinding,
@@ -1328,6 +1356,8 @@ function WorkspaceSession({
     setOwn(null);
     setRecords(null);
     setCommunity(null);
+    setOwnPrivileges(null);
+    setTeamPrivileges(null);
     setMatches(null);
     setSeasons(null);
     setConfiguration(null);
@@ -1500,6 +1530,8 @@ function WorkspaceSession({
         setOwn(null);
         setRecords(null);
         setCommunity(null);
+        setOwnPrivileges(null);
+        setTeamPrivileges(null);
         setMatches(null);
         setSeasons(null);
         setConfiguration(null);
@@ -1634,6 +1666,28 @@ function WorkspaceSession({
             if (generation.current === requestGeneration)
               faults.push(`Staff: ${failureText(cause)}`);
           }),
+      );
+    if (!isAdministrator)
+      tasks.push(
+        client
+          .request<OwnTeamPrivileges>(scopedPath("privileges/own"))
+          .then(async (value) => {
+            assertOwnTeamPrivileges(value, resolvedTeamId, resolvedSeasonId);
+            const attached = await attach(value);
+            if (attached) setOwnPrivileges(attached);
+          })
+          .catch((cause) => readFault("Contribution privileges", cause, true)),
+      );
+    if (isManager)
+      tasks.push(
+        client
+          .request<TeamPrivilegesView>(scopedPath("privileges"))
+          .then(async (value) => {
+            assertTeamPrivilegesView(value, resolvedTeamId, resolvedSeasonId);
+            const attached = await attach(value);
+            if (attached) setTeamPrivileges(attached);
+          })
+          .catch((cause) => readFault("Team privilege decisions", cause, true)),
       );
     if (isManager)
       tasks.push(
@@ -1989,7 +2043,8 @@ function WorkspaceSession({
       | ConnectedRecordsCommand
       | SeasonRolloverCommand
       | ConnectedStaffCommand
-      | BrandingCommand,
+      | BrandingCommand
+      | TeamPrivilegeCommand,
     label: string,
   ): Promise<boolean> => {
     if (
@@ -2119,6 +2174,8 @@ function WorkspaceSession({
       setOwn(null);
       setRecords(null);
       setCommunity(null);
+      setOwnPrivileges(null);
+      setTeamPrivileges(null);
       setMatches(null);
       setSeasons(null);
       setConfiguration(null);
@@ -2673,6 +2730,7 @@ function WorkspaceSession({
                   ["settings", "Team settings"],
                   ["seasons", "Seasons"],
                   ["invitations", "Invitations"],
+                  ["privileges", "Upload and invitation privileges"],
                   ...(props.journal && props.deviceId
                     ? [["controller", "Match recording"]]
                     : []),
@@ -2813,6 +2871,23 @@ function WorkspaceSession({
             : "Your current player home is unavailable. Refresh after the service confirms your own team and season assignment."}
         </Notice>
       )}
+      {tab === "privileges" &&
+        manager &&
+        (teamPrivileges ? (
+          <TeamPrivilegesPanel
+            key={`${absoluteApi}:${identity?.principal.accountId}:${teamId}:${seasonId}`}
+            value={teamPrivileges}
+            disabled={disabled}
+            onChange={(command) =>
+              mutate("privileges", command, "Team privilege decision")
+            }
+          />
+        ) : (
+          <Notice>
+            Current team privilege decisions are unavailable. Refresh to verify
+            your manager assignment.
+          </Notice>
+        ))}
       {tab === "clubs" && administrator && configuration && (
         <Card>
           <Text style={typography.section}>Clubs</Text>
@@ -3098,6 +3173,7 @@ function WorkspaceSession({
                 matches={community.matches}
                 selection={selectedAlbum ? albumSelection : null}
                 allowed={community.allowed}
+                contributionsAllowed={ownPrivileges?.uploadsAllowed === true}
                 onRetainedChange={onUploadRetained}
                 onChanged={reload}
               />
@@ -3119,6 +3195,7 @@ function WorkspaceSession({
             canIssue={
               invitationRole === "manager" || invitationRole === "player"
             }
+            contributionsAllowed={ownPrivileges?.invitationsAllowed === true}
             invitationDestination={props.invitationDestination}
             onRetainedChange={onInvitationRetained}
             onChanged={async (acceptedScope) => {

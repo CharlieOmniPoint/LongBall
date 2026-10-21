@@ -23,6 +23,7 @@ export async function applyRuntimeGrants(database: PgDatabase, roles: { apiRole:
     // including API-only predicates that return false for a worker login.
     const helpers = ['runtime_purpose()','context_json()','context_now()','actor_valid()','context_matches(text,text,text)','actor_role(text,text,text)','actor_admin(text,text,text)','actor_manager(text,text,text)','invite_capability(text,text,text)','worker_job_valid(text,text,text)','worker_kind()','worker_account(text,text,text,text)','spectator_grant_active(text,text,text,text)','activation_account(text,boolean)','spectator_activation_account(text,boolean)','invitation_live(text,text)','account_visible(text)','document_write(text,text,text,text)','worker_match(text,text,text,text)'];
     await database.query(`GRANT EXECUTE ON FUNCTION ${helpers.map(name => `longball.${name}`).join(',')} TO ${api},${worker}`);
+    await database.query(`GRANT EXECUTE ON FUNCTION longball.media_completion_write(text,text,text,text) TO ${api},${worker}`);
     await database.query(`GRANT EXECUTE ON FUNCTION longball.media_gallery_allowed(text,integer,text,text,text,text,text) TO ${api}`);
     await database.query(`GRANT EXECUTE ON FUNCTION longball.branding_member(text,text),longball.branding_authority(text,text,text),longball.branding_context(text,text) TO ${api}`);
     await database.query(`GRANT EXECUTE ON FUNCTION longball.team_privilege_manager(text,text),longball.team_privilege_target(text,text,text),longball.team_privilege_allowed(text,text,text,boolean) TO ${api}`);

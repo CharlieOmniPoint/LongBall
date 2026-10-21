@@ -14,6 +14,7 @@ export interface ScopedWorkspaceInvitationsProps {
   teamId: string | null;
   seasonId: string | null;
   canIssue: boolean;
+  contributionsAllowed?: boolean;
   invitationDestination?: { teamId: string; seasonId: string; code: string };
   onChanged: (acceptedScope?: {
     teamId: string;
@@ -68,6 +69,7 @@ function ScopedInvitationsContent(props: ScopedWorkspaceInvitationsProps) {
       teamId={props.teamId}
       seasonId={props.seasonId}
       canIssue={props.canIssue}
+      contributionsAllowed={props.contributionsAllowed}
       invitationDestination={props.invitationDestination}
       onChanged={props.onChanged}
       onRetainedChange={props.onRetainedChange}

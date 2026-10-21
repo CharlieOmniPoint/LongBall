@@ -15,6 +15,16 @@ const queued = () => enqueueWorkspaceRequest(createWorkspaceOutbox(binding), bin
 const reopened = (state: WorkspaceOutboxState): WorkspaceOutboxState => JSON.parse(JSON.stringify(state)) as WorkspaceOutboxState;
 
 describe('protected workspace acknowledgement outbox', () => {
+  it('retains exact team privilege decisions only in their manager scope and rejects alternate-route authority',()=>{
+    const manager={...binding,role:'manager' as const,playerId:null};
+    const command={id:'privilege-decision-001',type:'privilege.suspended',expectedRevision:2,targetAccountId:'target-account',privilege:'uploads',reasonCode:'content_review',privateNote:'restricted operational note',confirm:true};
+    const input={path:'/v1/teams/roma-u10/privileges?seasonId=2026-27',key:command.id,label:'Team privilege decision',body:{command}};
+    const next=enqueueWorkspaceRequest(createWorkspaceOutbox(manager),manager,input,now);
+    expect(next.pending?.bodyJson).toBe(JSON.stringify(input.body));validateWorkspaceOutbox(reopened(next));
+    for(const role of ['player','spectator','administrator'] as const){const outsider={...binding,role};expect(()=>enqueueWorkspaceRequest(createWorkspaceOutbox(outsider),outsider,input,now)).toThrow();}
+    expect(()=>enqueueWorkspaceRequest(createWorkspaceOutbox(manager),manager,{...input,path:'/v1/teams/roma-u10/community?seasonId=2026-27'},now)).toThrow();
+    expect(()=>enqueueWorkspaceRequest(createWorkspaceOutbox(manager),manager,{...input,body:{command:{...command,role:'manager'}}},now)).toThrow();
+  });
   it('restores legacy invitation evidence but refuses replay without changing its exact retained request', () => {
     const legacy = { ...request, body: { command: { id: request.key, expectedRevision: 7, type: 'invite.created', invitationId: 'legacy-invite', reviewCode: 'fictional-old-code', expiresAtMs: now + 1000 } } };
     expect(() => enqueueWorkspaceRequest(createWorkspaceOutbox(binding), binding, legacy, now)).toThrow();

@@ -44,6 +44,7 @@ export interface MediaUploadProps {
   matches: AlbumMatch[];
   selection: AlbumSelection | null;
   allowed: boolean;
+  contributionsAllowed?: boolean;
   onRetainedChange?: (retained: boolean, scopeKey: string) => void;
   onChanged?: () => void | Promise<void>;
   allowLibraryPicker?: boolean;
@@ -105,6 +106,10 @@ function MediaUploadContent(props: MediaUploadProps) {
         "This upload screen has closed. Reopen the current authorised album.",
       );
     const current = live.current;
+    if (current.contributionsAllowed === false)
+      throw new Error(
+        "Photo contributions are held in this team. The original private request remains retained; refresh after a manager reinstates the privilege.",
+      );
     assertAlbumUploadTarget(
       current.albumScope,
       current.matches,
@@ -234,12 +239,24 @@ function MediaUploadContent(props: MediaUploadProps) {
         The service fails closed when its safety scanner is unavailable. No raw
         upload is served through the gallery.
       </Notice>
+      {props.contributionsAllowed === false && (
+        <Notice tone="warning">
+          Photo contributions are currently held or awaiting a current privilege
+          check. Existing private upload records stay retained. Refresh after a
+          manager reinstates the privilege.
+        </Notice>
+      )}
       {synthetic && (
         <Button
           label="Choose generated fictional PNG"
           testID="media-generated-image"
           variant="secondary"
-          disabled={busy || retainedAction || !target}
+          disabled={
+            busy ||
+            retainedAction ||
+            !target ||
+            props.contributionsAllowed === false
+          }
           onPress={() => {
             setImage(generatedFictionalImage());
             setReceipt(null);
@@ -252,7 +269,12 @@ function MediaUploadContent(props: MediaUploadProps) {
           <Button
             label="Choose a local JPEG, PNG or HEIC"
             variant="secondary"
-            disabled={busy || retainedAction || !target}
+            disabled={
+              busy ||
+              retainedAction ||
+              !target ||
+              props.contributionsAllowed === false
+            }
             onPress={() =>
               void run(async () => {
                 const picked = await pickMediaImage();
@@ -264,7 +286,12 @@ function MediaUploadContent(props: MediaUploadProps) {
             <Button
               label="Review a picker result after Android activity recovery"
               variant="quiet"
-              disabled={busy || retainedAction || !target}
+              disabled={
+                busy ||
+                retainedAction ||
+                !target ||
+                props.contributionsAllowed === false
+              }
               onPress={() =>
                 void run(async () => {
                   const picked = await recoverPickedMediaImage();
@@ -314,7 +341,14 @@ function MediaUploadContent(props: MediaUploadProps) {
       <Button
         label="Upload privately and request processing"
         testID="media-upload-image"
-        disabled={busy || !target || !image || !acknowledged || retainedAction}
+        disabled={
+          busy ||
+          !target ||
+          !image ||
+          !acknowledged ||
+          retainedAction ||
+          props.contributionsAllowed === false
+        }
         onPress={() =>
           void run(async () => {
             // Capture before hashing: an awaited digest must never retarget the original click.
@@ -359,7 +393,7 @@ function MediaUploadContent(props: MediaUploadProps) {
           <Button
             label="Retry the retained upload request"
             variant="secondary"
-            disabled={busy}
+            disabled={busy || props.contributionsAllowed === false}
             onPress={() => {
               const job = retained.current;
               if (job)

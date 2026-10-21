@@ -45,6 +45,7 @@ export function requestDatabaseScope(input:{method:string;parts:string[];seasonI
       case 'seasons':scope.operation=method==='GET'?'season.options':'season.create';if(method==='POST'&&opaque(command?.idForSeason))scope.newSeasonId=command.idForSeason;break;
       case 'preparation':scope.operation=`preparation.${parts[4]==='own'?'own.':''}${method==='GET'?'read':'write'}`;break;
       case 'records':scope.operation=method==='GET'?(parts[4]==='export'?'records.export':'records.read'):'records.write';break;
+      case 'privileges':scope.operation=method==='GET'?(parts[4]==='own'?'privileges.own':'privileges.read'):'privileges.write';break;
       case 'community':scope.operation=method==='GET'?'community.read':'community.write';break;
       case 'spectator-invites':scope.operation=method==='GET'?'invite.list':method==='DELETE'?'invite.revoke':parts[5]==='reissue'?'invite.reissue':'invite.issue';break;
       case 'media':scope.operation=parts[4]==='photos'?'media.gateway':method==='GET'?'media.list':method==='PUT'?'media.upload':parts[5]==='prepare'?'media.prepare':'media.complete';break;

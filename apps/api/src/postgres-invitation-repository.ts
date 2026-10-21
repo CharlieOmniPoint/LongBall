@@ -1,3 +1,4 @@
+import { PostgresTeamPrivilegeRepository } from './postgres-team-privileges';
 import type { Principal } from '../../../packages/application/src/access';
 import type { CommunityState } from '../../../packages/application/src/community';
 import { assertInvitationMirror, invitationChangedRows, invitationGrantProjection, type InvitationReceipt, type InvitationRepository, type InvitationSession } from './invitation-service';
@@ -8,6 +9,7 @@ export class PostgresInvitationRepository implements InvitationRepository {
   constructor(private readonly store: PostgresStore) {}
   transaction<T>(work: () => Promise<T>): Promise<T> { return this.store.transaction(work); }
   actor(session: InvitationSession, accepting = false) { return this.store.communityActor(session.principal, session.teamId, session.seasonId, session.role, accepting); }
+  invitationAllowed(session: InvitationSession,lock=false) { return new PostgresTeamPrivilegeRepository(this.store).own(session,'invitations',lock); }
   async state(teamId: string, seasonId: string, lock = false): Promise<CommunityState> {
     if (lock) await this.store.one("SELECT team_id FROM documents WHERE team_id=$1 AND season_id=$2 AND kind='community' FOR UPDATE", [teamId, seasonId]);
     const state = await this.store.communityState(teamId, seasonId);
