@@ -1,9 +1,9 @@
 {
-  "state": "ready",
-  "url": "https://fraser-rights-guy-gay.trycloudflare.com",
-  "sourceRevision": "2f3780243d748d9554198510e3b1054af6ef9917",
-  "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/39669374849",
-  "startedAt": "2026-10-21T20:24:02Z",
-  "expiresAt": "2026-10-22T01:24:02Z",
-  "audience": "Adult review of fictional Roma U10 data only"
+  "state": "starting",
+  "url": "",
+  "sourceRevision": "ad3ee0b8170aed6097730dcf6f1a5e76383051b9",
+  "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/39693154348",
+  "startedAt": "2026-10-21T23:27:48Z",
+  "expiresAt": "",
+  "audience": "LongBall demo review with simulated Roma U10 teams and matches"
 }
