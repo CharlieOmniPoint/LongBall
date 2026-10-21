@@ -1,0 +1,505 @@
+{
+  "status": "passed",
+  "sourceRevision": "e899e29f71ac50de7de4c7737ee4eb907d7e7823",
+  "startedAt": "2026-10-21T20:08:18.748592+00:00",
+  "completedAt": "2026-10-21T20:09:21.538416+00:00",
+  "web": {
+    "entry": "/_expo/static/js/web/index-41ad15fa0a5993656c0efd5cf072c5ce.js",
+    "sha256": "6197af1b94e092646bdb866d2f1a2c6bc0591bf64a13781a51e36c6c8f73aa2b"
+  },
+  "api": {
+    "entry": "/workspace/LongBall/apps/api/dist/api.mjs",
+    "sha256": "d1568c20879d2e1df83843fc31e35a6fa053751785560988f53093c546e10798"
+  },
+  "ancillaryArtifact": {
+    "entry": "apps/api/dist/media-worker.mjs",
+    "bytes": 3467,
+    "sha256": "4b878815f5255ec427900db496df40c278176e381bfc3b7f6809912fe4cea5ed",
+    "scope": "Checksum binding only; these browser groups do not exercise media processing."
+  },
+  "namedGroups": 18,
+  "groups": [
+    {
+      "suite": "role-entry",
+      "namedGroups": 8,
+      "seconds": 17.57,
+      "report": ".local/final-verification/discovery-e899e29f-20261021T200818Z-rerun1/role-entry/report.json",
+      "checks": [
+        {
+          "role": "manager",
+          "width": 320,
+          "passed": true,
+          "requests": [
+            {
+              "method": "GET",
+              "path": "/health",
+              "role": null
+            },
+            {
+              "method": "GET",
+              "path": "/v1/me",
+              "role": null
+            },
+            {
+              "method": "GET",
+              "path": "/v1/me",
+              "role": "manager"
+            },
+            {
+              "method": "GET",
+              "path": "/v1/teams/synthetic-roma-u10/community?seasonId=synthetic-season-2026-27",
+              "role": "manager"
+            },
+            {
+              "method": "GET",
+              "path": "/v1/teams/synthetic-roma-u10/records?seasonId=synthetic-season-2026-27",
+              "role": "manager"
+            },
+            {
+              "method": "GET",
+              "path": "/v1/teams/synthetic-roma-u10/branding?seasonId=synthetic-season-2026-27",
+              "role": "manager"
+            },
+            {
+              "method": "GET",
+              "path": "/v1/teams/synthetic-roma-u10/matches?seasonId=synthetic-season-2026-27",
+              "role": "manager"
+            },
+            {
+              "method": "GET",
+              "path": "/v1/teams/synthetic-roma-u10/seasons/rollover-options?seasonId=synthetic-season-2026-27",
+              "role": "manager"
+            },
+            {
+              "method": "GET",
+              "path": "/v1/teams/synthetic-roma-u10/privileges/own?seasonId=synthetic-season-2026-27",
+              "role": "manager"
+            },
+            {
+              "method": "GET",
+              "path": "/v1/teams/synthetic-roma-u10/privileges?seasonId=synthetic-season-2026-27",
+              "role": "manager"
+            },
+            {
+              "method": "GET",
+              "path": "/v1/teams/synthetic-roma-u10/preparation?seasonId=synthetic-season-2026-27",
+              "role": "manager"
+            }
+          ]
+        },
+        {
+          "role": "administrator",
+          "width": 320,
+          "passed": true,
+          "requests": [
+            {
+              "method": "GET",
+              "path": "/health",
+              "role": null
+            },
+            {
+              "method": "GET",
+              "path": "/v1/me",
+              "role": null
+            },
+            {
+              "method": "GET",
+              "path": "/v1/me",
+              "role": "administrator"
+            },
+            {
+              "method": "GET",
+              "path": "/v1/teams/synthetic-roma-u10/branding?seasonId=synthetic-season-2026-27",
+              "role": "administrator"
+            },
+            {
+              "method": "GET",
+              "path": "/v1/teams/synthetic-roma-u10/seasons/rollover-options?seasonId=synthetic-season-2026-27",
+              "role": "administrator"
+            },
+            {
+              "method": "GET",
+              "path": "/v1/teams/synthetic-roma-u10/configuration?seasonId=synthetic-season-2026-27",
+              "role": "administrator"
+            },
+            {
+              "method": "GET",
+              "path": "/v1/teams/synthetic-roma-u10/managers?seasonId=synthetic-season-2026-27",
+              "role": "administrator"
+            }
+          ]
+        },
+        {
+          "role": "player",
+          "width": 320,
+          "passed": true,
+          "requests": [
+            {
+              "method": "GET",
+              "path": "/health",
+              "role": null
+            },
+            {
+              "method": "GET",
+              "path": "/v1/me",
+              "role": null
+            },
+            {
+              "method": "GET",
+              "path": "/v1/me",
+              "role": "player"
+            },
+            {
+              "method": "GET",
+              "path": "/v1/teams/synthetic-roma-u10/community?seasonId=synthetic-season-2026-27",
+              "role": "player"
+            },
+            {
+              "method": "GET",
+              "path": "/v1/teams/synthetic-roma-u10/records?seasonId=synthetic-season-2026-27",
+              "role": "player"
+            },
+            {
+              "method": "GET",
+              "path": "/v1/teams/synthetic-roma-u10/branding?seasonId=synthetic-season-2026-27",
+              "role": "player"
+            },
+            {
+              "method": "GET",
+              "path": "/v1/teams/synthetic-roma-u10/matches?seasonId=synthetic-season-2026-27",
+              "role": "player"
+            },
+            {
+              "method": "GET",
+              "path": "/v1/teams/synthetic-roma-u10/privileges/own?seasonId=synthetic-season-2026-27",
+              "role": "player"
+            },
+            {
+              "method": "GET",
+              "path": "/v1/teams/synthetic-roma-u10/preparation/own?seasonId=synthetic-season-2026-27",
+              "role": "player"
+            }
+          ]
+        },
+        {
+          "role": "spectator",
+          "width": 320,
+          "passed": true,
+          "requests": [
+            {
+              "method": "GET",
+              "path": "/health",
+              "role": null
+            },
+            {
+              "method": "GET",
+              "path": "/v1/me",
+              "role": null
+            },
+            {
+              "method": "GET",
+              "path": "/v1/me",
+              "role": "spectator"
+            },
+            {
+              "method": "GET",
+              "path": "/v1/teams/synthetic-roma-u10/community?seasonId=synthetic-season-2026-27",
+              "role": "spectator"
+            },
+            {
+              "method": "GET",
+              "path": "/v1/teams/synthetic-roma-u10/records?seasonId=synthetic-season-2026-27",
+              "role": "spectator"
+            },
+            {
+              "method": "GET",
+              "path": "/v1/teams/synthetic-roma-u10/branding?seasonId=synthetic-season-2026-27",
+              "role": "spectator"
+            },
+            {
+              "method": "GET",
+              "path": "/v1/teams/synthetic-roma-u10/matches?seasonId=synthetic-season-2026-27",
+              "role": "spectator"
+            },
+            {
+              "method": "GET",
+              "path": "/v1/teams/synthetic-roma-u10/privileges/own?seasonId=synthetic-season-2026-27",
+              "role": "spectator"
+            }
+          ]
+        },
+        {
+          "role": "manager",
+          "width": 390,
+          "passed": true,
+          "requests": [
+            {
+              "method": "GET",
+              "path": "/health",
+              "role": null
+            },
+            {
+              "method": "GET",
+              "path": "/v1/me",
+              "role": null
+            },
+            {
+              "method": "GET",
+              "path": "/v1/me",
+              "role": "manager"
+            },
+            {
+              "method": "GET",
+              "path": "/v1/teams/synthetic-roma-u10/community?seasonId=synthetic-season-2026-27",
+              "role": "manager"
+            },
+            {
+              "method": "GET",
+              "path": "/v1/teams/synthetic-roma-u10/records?seasonId=synthetic-season-2026-27",
+              "role": "manager"
+            },
+            {
+              "method": "GET",
+              "path": "/v1/teams/synthetic-roma-u10/branding?seasonId=synthetic-season-2026-27",
+              "role": "manager"
+            },
+            {
+              "method": "GET",
+              "path": "/v1/teams/synthetic-roma-u10/matches?seasonId=synthetic-season-2026-27",
+              "role": "manager"
+            },
+            {
+              "method": "GET",
+              "path": "/v1/teams/synthetic-roma-u10/seasons/rollover-options?seasonId=synthetic-season-2026-27",
+              "role": "manager"
+            },
+            {
+              "method": "GET",
+              "path": "/v1/teams/synthetic-roma-u10/privileges/own?seasonId=synthetic-season-2026-27",
+              "role": "manager"
+            },
+            {
+              "method": "GET",
+              "path": "/v1/teams/synthetic-roma-u10/privileges?seasonId=synthetic-season-2026-27",
+              "role": "manager"
+            },
+            {
+              "method": "GET",
+              "path": "/v1/teams/synthetic-roma-u10/preparation?seasonId=synthetic-season-2026-27",
+              "role": "manager"
+            }
+          ]
+        },
+        {
+          "role": "administrator",
+          "width": 390,
+          "passed": true,
+          "requests": [
+            {
+              "method": "GET",
+              "path": "/health",
+              "role": null
+            },
+            {
+              "method": "GET",
+              "path": "/v1/me",
+              "role": null
+            },
+            {
+              "method": "GET",
+              "path": "/v1/me",
+              "role": "administrator"
+            },
+            {
+              "method": "GET",
+              "path": "/v1/teams/synthetic-roma-u10/branding?seasonId=synthetic-season-2026-27",
+              "role": "administrator"
+            },
+            {
+              "method": "GET",
+              "path": "/v1/teams/synthetic-roma-u10/seasons/rollover-options?seasonId=synthetic-season-2026-27",
+              "role": "administrator"
+            },
+            {
+              "method": "GET",
+              "path": "/v1/teams/synthetic-roma-u10/configuration?seasonId=synthetic-season-2026-27",
+              "role": "administrator"
+            },
+            {
+              "method": "GET",
+              "path": "/v1/teams/synthetic-roma-u10/managers?seasonId=synthetic-season-2026-27",
+              "role": "administrator"
+            }
+          ]
+        },
+        {
+          "role": "player",
+          "width": 390,
+          "passed": true,
+          "requests": [
+            {
+              "method": "GET",
+              "path": "/health",
+              "role": null
+            },
+            {
+              "method": "GET",
+              "path": "/v1/me",
+              "role": null
+            },
+            {
+              "method": "GET",
+              "path": "/v1/me",
+              "role": "player"
+            },
+            {
+              "method": "GET",
+              "path": "/v1/teams/synthetic-roma-u10/community?seasonId=synthetic-season-2026-27",
+              "role": "player"
+            },
+            {
+              "method": "GET",
+              "path": "/v1/teams/synthetic-roma-u10/records?seasonId=synthetic-season-2026-27",
+              "role": "player"
+            },
+            {
+              "method": "GET",
+              "path": "/v1/teams/synthetic-roma-u10/branding?seasonId=synthetic-season-2026-27",
+              "role": "player"
+            },
+            {
+              "method": "GET",
+              "path": "/v1/teams/synthetic-roma-u10/matches?seasonId=synthetic-season-2026-27",
+              "role": "player"
+            },
+            {
+              "method": "GET",
+              "path": "/v1/teams/synthetic-roma-u10/privileges/own?seasonId=synthetic-season-2026-27",
+              "role": "player"
+            },
+            {
+              "method": "GET",
+              "path": "/v1/teams/synthetic-roma-u10/preparation/own?seasonId=synthetic-season-2026-27",
+              "role": "player"
+            }
+          ]
+        },
+        {
+          "role": "spectator",
+          "width": 390,
+          "passed": true,
+          "requests": [
+            {
+              "method": "GET",
+              "path": "/health",
+              "role": null
+            },
+            {
+              "method": "GET",
+              "path": "/v1/me",
+              "role": null
+            },
+            {
+              "method": "GET",
+              "path": "/v1/me",
+              "role": "spectator"
+            },
+            {
+              "method": "GET",
+              "path": "/v1/teams/synthetic-roma-u10/community?seasonId=synthetic-season-2026-27",
+              "role": "spectator"
+            },
+            {
+              "method": "GET",
+              "path": "/v1/teams/synthetic-roma-u10/records?seasonId=synthetic-season-2026-27",
+              "role": "spectator"
+            },
+            {
+              "method": "GET",
+              "path": "/v1/teams/synthetic-roma-u10/branding?seasonId=synthetic-season-2026-27",
+              "role": "spectator"
+            },
+            {
+              "method": "GET",
+              "path": "/v1/teams/synthetic-roma-u10/matches?seasonId=synthetic-season-2026-27",
+              "role": "spectator"
+            },
+            {
+              "method": "GET",
+              "path": "/v1/teams/synthetic-roma-u10/privileges/own?seasonId=synthetic-season-2026-27",
+              "role": "spectator"
+            }
+          ]
+        }
+      ],
+      "runtimeErrors": []
+    },
+    {
+      "suite": "matchday",
+      "namedGroups": 4,
+      "seconds": 13.01,
+      "report": ".local/final-verification/discovery-e899e29f-20261021T200818Z-rerun1/matchday/report.json",
+      "checks": [
+        "Opening an unprepared fixture cannot claim its controller; saved formation and player snapshots are required first.",
+        "Selected manager account downloads the real service fixture, explicitly claims recording, and records actual attendance through the shared editor.",
+        "A complete eligible staged lineup is saved locally; the independent service read remains unchanged before explicit upload.",
+        "The focused match hides team navigation; Back to team and return preserve the running clock without another event. Explicit kickoff and referee pause use the existing confirmation, journal and canonical upload; an independent HTTP read verifies accepted attendance, lineup, time and unchanged score."
+      ],
+      "runtimeErrors": []
+    },
+    {
+      "suite": "policy-handover",
+      "namedGroups": 2,
+      "seconds": 11.82,
+      "report": ".local/final-verification/discovery-e899e29f-20261021T200818Z-rerun1/policy-handover/report.json",
+      "checks": [
+        "Connected UI confirms a reason and explicit soft values through its durable canonical outbox; independent HTTP verifies service acceptance and bound actor.",
+        "A distinct browser phone explicitly accepts addressed controller handover and opens the same accepted policy history and settings."
+      ],
+      "runtimeErrors": []
+    },
+    {
+      "suite": "accepted-view",
+      "namedGroups": 4,
+      "seconds": 20.36,
+      "report": ".local/final-verification/discovery-e899e29f-20261021T200818Z-rerun1/accepted-view/evidence.json",
+      "checks": [
+        "Manager A prepared attendance and lineup through existing local/HTTP controller primitives before kick-off",
+        "320px non-controller manager sees accepted pitch/list/bench and static checkpoint; local request panel sends no POST; forbidden write is denied by actual HTTP without changing accepted state",
+        "Before-kickoff addressed offer/accept works with exact account/device; wrong device is denied and only confirmed recipient epoch2 unlocks recording",
+        "390px former recorder refreshes to Viewing after transfer, without editing controls or changes to the accepted lineup"
+      ],
+      "runtimeErrors": []
+    }
+  ],
+  "runtimeErrors": [],
+  "executionHistory": {
+    "initialCombinedAttempt": {
+      "status": "failed",
+      "output": ".local/final-verification/discovery-e899e29f-20261021T200210Z",
+      "stage": "spectator320 role entry",
+      "observation": "Unhandled Playwright route.fetch ECONNRESET on records GET; no product cause proved.",
+      "apiFollowup": "API health200; independent same spectator records GET200/4046bytes. Owned orphan API stopped after verification."
+    },
+    "diagnosticRoleEntry": {
+      "status": "passed",
+      "namedGroups": 8,
+      "output": ".local/final-verification/discovery-e899e29f-20261021T200210Z/diagnostic-role-entry",
+      "safeRouteEvents": 330,
+      "routeErrors": 0,
+      "primaryFailures": 0,
+      "pendingRoutesAtEachContextClose": 0,
+      "finding": "Original reset unreproduced; context-close cause not proved. Diagnostic uses no retries and records/fails route errors."
+    },
+    "unchangedCompleteRerun": 1,
+    "productOrTrackedHarnessChangesAfterFailure": false
+  },
+  "limitations": [
+    "Isolated fictional development accounts and fresh SQLite HTTP services; exact bounded status interception and tunnel forwarding alter transport only.",
+    "The initial combined attempt failed with an unreproduced Playwright route.fetch ECONNRESET; the accepted run is one unchanged full rerun after a separately recorded successful diagnostic role run.",
+    "Browser evidence does not establish physical iPhone/Android behavior, native encrypted storage or sharing, provider authentication, running handover, push delivery or production service configuration.",
+    "These intercepted local checks do not independently establish public GitHub edge-cache freshness; the pinned cache-key implementation has separate unit and external transport evidence.",
+    "Policy approval gates remain unchanged; Q07 keeper transitions remain refused."
+  ],
+  "totalSuiteSeconds": 62.76
+}
