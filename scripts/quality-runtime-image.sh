@@ -17,12 +17,22 @@ node infra/runtime/create-secrets.mjs
 # The clean checkout has no .env or provider configuration. Explicitly empty
 # these fields again before resolving the private rehearsal configuration.
 LONGBALL_OIDC_ISSUER= LONGBALL_OIDC_AUDIENCE= LONGBALL_OIDC_JWKS_URI= LONGBALL_API_ORIGINS= \
-  docker compose --file infra/runtime/compose.yaml config --format json > "$output/resolved-private.json"
+  docker compose --profile '*' --file infra/runtime/compose.yaml config --format json > "$output/resolved-private.json"
 LONGBALL_QUALITY_IMAGE="$image" node --input-type=module <<'JS'
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 const path = '.local/quality/runtime/';
 const config = JSON.parse(readFileSync(path + 'resolved-private.json', 'utf8'));
+for (const name of ['migrate', 'api', 'worker', 'database', 'scanner'])
+  if (!config.services?.[name]) throw new Error(`Resolved rehearsal must retain its ${name} service.`);
+if (config.networks?.private?.internal !== true) throw new Error('The isolated rehearsal requires an internal private network.');
+for (const [serviceName, secretName] of [['migrate', 'migrator_url'], ['api', 'api_url'], ['worker', 'worker_url']]) {
+  const service = config.services[serviceName];
+  if (service.image !== 'longball-runtime:local') throw new Error('Unexpected runtime image selector.');
+  const secrets = service.secrets?.map(entry => typeof entry === 'string' ? entry : entry.source);
+  if (secrets?.length !== 1 || secrets[0] !== secretName) throw new Error('Runtime roles must retain separate database secret selectors.');
+  if (resolve(config.secrets?.[secretName]?.file ?? '') !== resolve('.local/runtime/deployment-secrets', secretName)) throw new Error('Rehearsal secret selector escaped its fresh deployment directory.');
+}
 delete config.name;
 delete config.services['runtime-proof'];
 delete config.networks.egress;
