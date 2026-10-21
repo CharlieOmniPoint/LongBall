@@ -63,10 +63,12 @@
     },
     "ios": {
       "jobId": 119462856381,
-      "status": "in_progress",
-      "conclusion": null
+      "status": "completed",
+      "conclusion": "success"
     },
-    "actualPhysicalDeviceEvidence": false
+    "actualPhysicalDeviceEvidence": false,
+    "latestEvidence": "native-final.json",
+    "latestCheckedAt": "2026-10-21T20:41:37Z"
   },
   "limits": [
     "All accounts, players and photos are fictional; adult review only.",
