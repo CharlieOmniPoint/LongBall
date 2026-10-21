@@ -8,6 +8,7 @@ export PREVIEW_STARTED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 export PREVIEW_EXPIRES_AT=""
 server_pid=""
 tunnel_pid=""
+worker_pid=""
 
 publish_status() {
   export PREVIEW_STATE="$1"
@@ -34,6 +35,7 @@ cleanup() {
   trap - EXIT
   if [[ -n "$tunnel_pid" ]]; then kill "$tunnel_pid" 2>/dev/null || true; fi
   if [[ -n "$server_pid" ]]; then kill "$server_pid" 2>/dev/null || true; fi
+  if [[ -n "$worker_pid" ]]; then kill "$worker_pid" 2>/dev/null || true; fi
   if [[ $result -eq 0 ]]; then
     publish_status stopped || true
   else
@@ -46,14 +48,40 @@ trap 'exit 130' INT TERM
 
 publish_status starting
 
+if [[ -f preview/source.bundle.base64 ]]; then
+  base64 --decode preview/source.bundle.base64 >/tmp/longball-source.bundle
+  printf '%s  %s\n' "$(cat preview/source.bundle.sha256)" /tmp/longball-source.bundle | sha256sum --check
+  git bundle verify /tmp/longball-source.bundle
+  source_branch="$(cat preview/source-branch.txt)"
+  source_revision="$(cat preview/source-head.txt)"
+  git check-ref-format --branch "$source_branch"
+  git fetch /tmp/longball-source.bundle "$source_branch"
+  test "$(git rev-parse FETCH_HEAD)" = "$source_revision"
+  git push origin "${source_revision}:refs/heads/${source_branch}"
+fi
+
 curl --fail --location --retry 3 --max-time 120 \
   https://github.com/cloudflare/cloudflared/releases/download/2026.10.2/cloudflared-linux-amd64 \
   --output /tmp/longball-cloudflared
 printf '%s\n' '35fbdd2beb378436c7da377d7358cea8e33f9c94a6705d1d8036bf9b0d6d8005  /tmp/longball-cloudflared' | sha256sum --check
 chmod +x /tmp/longball-cloudflared
 
-python3 preview/serve.py site >/tmp/longball-http.log 2>&1 &
+export LONGBALL_SYNTHETIC_AUTH=1
+export LONGBALL_API_HOST=127.0.0.1
+export LONGBALL_API_PORT=4173
+export LONGBALL_API_DATABASE="$PWD/.local/fictional-review.sqlite"
+export LONGBALL_STATIC_DIRECTORY="$PWD/site"
+node backend/api.mjs >/tmp/longball-http.log 2>&1 &
 server_pid=$!
+server_ready=false
+for attempt in {1..60}; do
+  if curl --silent --fail --max-time 2 http://127.0.0.1:4173/health >/tmp/longball-health.json; then server_ready=true; break; fi
+  if ! kill -0 "$server_pid" 2>/dev/null; then cat /tmp/longball-http.log; exit 1; fi
+  sleep 1
+done
+if [[ "$server_ready" != true ]]; then cat /tmp/longball-http.log; exit 1; fi
+node backend/worker.mjs >/tmp/longball-worker.log 2>&1 &
+worker_pid=$!
 /tmp/longball-cloudflared tunnel --no-autoupdate --url http://127.0.0.1:4173 >/tmp/longball-tunnel.log 2>&1 &
 tunnel_pid=$!
 
@@ -79,5 +107,6 @@ printf '## LongBall fictional review\n\n%s\n\nExpires at %s (UTC). No real team 
 for minute in {1..60}; do
   kill -0 "$server_pid"
   kill -0 "$tunnel_pid"
+  kill -0 "$worker_pid"
   sleep 60
 done

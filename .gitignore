@@ -4,6 +4,7 @@ node_modules/
 .expo/
 dist/
 dist-web/
+dist-production-review/
 playwright-report/
 test-results/
 coverage/

@@ -2,6 +2,7 @@
   "expo": {
     "name": "LongBall Synthetic Lab",
     "slug": "longball-synthetic-lab",
+    "scheme": "longball",
     "version": "0.0.1",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
@@ -24,7 +25,15 @@
       "expo-dev-client",
       ["expo-sqlite", { "useSQLCipher": true }],
       ["expo-secure-store", { "configureAndroidBackup": true }],
-      "expo-notifications"
+      "expo-notifications",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Choose a team photo to submit for approval.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ]
     ]
   }
 }

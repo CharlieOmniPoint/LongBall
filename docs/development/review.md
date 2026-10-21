@@ -1,58 +1,60 @@
-# Review the initial LongBall journey
+# Review LongBall
 
-20 October 2026. Development branch: `dev/longball-m0-journey`. The supplied pack is preserved under `docs/longball`; all F01–F28 remain in the [traceability register](traceability.md). This increment implements a local fictional manager journey and M0 experiments. Physical M0, the full manager pilot and the integrated pilot are not complete.
+21 October 2026. Development branch: `dev/longball-m0-journey`. This is the expanded fictional development build following the initial M0 journey. It preserves native iPhone/Android and the complete agreed F01–F28 target. The [feature register](full-build-plan.md) separates implemented controls, connected service integration and remaining release gates. Physical M0 and production release are incomplete.
 
-## Run and review
+## Cloud review
+
+Use the verified HTTPS session linked in the chat. Its current URL, state, source revision, Actions run and expiry are recorded in `preview/longball-m0:preview-status.json`; only `ready` before expiry is usable. A new build/session has a new address. The free runner session lasts up to one hour and its database is temporary. Development source remains in cloud Codex and the development branch. No Windows setup, Sites project or paid service is required.
+
+The default app is a local fictional manager rehearsal. **More → Connected service** opens a distinct HTTP-backed workspace and controller rehearsal; local actions are not silently uploaded into accepted service history. Public fictional account selectors grant no access to real users or data. All Roma U10 players, matches, images and accounts are synthetic.
+
+1. **Home → Prepare match:** explicitly check in selected players; availability replies do not establish attendance. Continue, place starters, tap a pitch place or use list view, then start. Pause/resume and both half endings are deliberate. Zero continues into added time; the second planned half is unchanged by the actual first half.
+2. **Schedule / Team / Settings:** create and reschedule fixtures, maintain training occurrences, record distinct replies and attendance, edit profiles/preferences/eligibility, save 5–11-place formations and prepare immutable match snapshots. Existing recorded matches are not reset by later preparation edits.
+3. **Live / Planner:** review proposals before confirming changes, record goals/own goals, late-entry times, corrections/voids, availability departures/returns and explicit vacancies. Abandonment retains actual history. Planner results distinguish validated candidates, proved impossibility and an indeterminate budget limit; no suggestion moves a child automatically.
+4. **Reports:** inspect detailed participation, own records, historical results and corrections. Missing historical minutes/attendance stay unknown. Ordinary completed games, including friendlies, use 3/1/0. Unapproved shared results and derived summaries remain withheld under Q21.
+5. **More:** try separate fictional player/spectator views, season invitations/revocation, private changeable ballots, explicit fictional cutoff controls, joint awards and exact-revision moderated illustrations. A real binary upload remains private when no scanner is configured. The native feasibility lab exposes deliberate notification/encryption probes.
+6. **Connected service:** use `/` on the combined cloud review. Download current server data, make scoped edits or own-player replies, inspect accepted history and exercise controller claim, queued writes, exact retry, handover and retained conflicts. Production browser mode cannot open the private native controller cache; full synthetic controller rehearsal is explicitly labelled.
+
+Each browser origin has independent IndexedDB data. Clearing/eviction/private browsing can lose it. A changed tunnel address does not migrate it. Browser reload or backgrounding cannot prove native clock continuity. Unsynchronised records and conflicting branches are retained rather than guessed or discarded.
+
+## Local commands
 
 ```bash
 cd /workspace/LongBall
+bash scripts/setup.sh             # fresh workspace only
 source scripts/dev-env.sh
-# On a fresh machine: bash scripts/setup.sh
+pnpm check
 pnpm build:web
-pnpm preview:web
+pnpm build:api
+LONGBALL_SYNTHETIC_AUTH=1 LONGBALL_STATIC_DIRECTORY="$PWD/apps/mobile/dist-web" pnpm dev:api
 ```
 
-Open `http://localhost:4173` only on the machine running that command. It does not reach this cloud workspace from the desktop app. For cloud review, use the verified HTTPS URL in the separate `preview/longball-m0` branch's `preview-status.json` while its status is `ready` and before its expiry. The [cloud review instructions](../../infra/browser-review.md) describe the one-hour, free fictional-data session and its limits. No Windows setup is required for that link.
+Open `http://127.0.0.1:4310` on that machine. A cloud workspace's localhost is not a desktop sharing link. The worker can run with `pnpm dev:worker` against the same database. `pnpm dev` starts Metro for a custom native development client; physical phones need a reachable Metro/API host. Expo Go cannot exercise SQLCipher.
 
-1. **Prepare match** opens actual check-in. Nine fictional players are selected, but nobody is inferred present from an availability reply. Mark players individually or explicitly check in the selected nine.
-2. Continue to lineup, place the first seven, then tap a place or use List view to choose/swap players. Missing places and an ineligible goalkeeper cannot start the half.
-3. Start the first half. Pause/resume deliberately; navigating back to the team leaves the clock running. Tap a pitch place to stage a live change, review it and confirm once.
-4. End the half manually with confirmation. Change the second-half draft during the break; no playing or bench minutes accrue. Start a fresh planned 25-minute second half regardless of the actual first-half duration.
-5. At zero, recording continues with added time and a visible warning. End manually. Reports shows the local actual participation record. This is not the complete REP01–REP07 service.
-6. Reopen a running browser session to exercise **Time needs checking**. Supply referee active elapsed time and explicitly confirm that lineup/availability stayed unchanged. Otherwise retain the journal for later reconciliation; this slice cannot reconstruct an unknown history.
-
-Browser records live in IndexedDB, per origin and browser. They are unprotected, independent fictional rehearsals and may be cleared/evicted. A failed write offers the exact same-ID retry. Another tab's stale write is retained in quarantine without replacing the current projection; explicitly reload the saved match to continue. No saved action is described as remotely synced.
-
-For native development, `pnpm dev` starts Metro for a custom client. Rebuild native binaries after module/plugin changes. Expo Go cannot exercise SQLCipher. **More → Feasibility lab** exposes a disposable encryption/wrong-key probe and explicit notification permission/test/cancel controls. These have not been exercised on a phone.
+A production entry export uses `EXPO_PUBLIC_ENVIRONMENT=production pnpm --filter mobile exec expo export --platform web --output-dir dist-production-review`. It requires connected sign-in, disables fictional accounts and opens no recording journal before sign-in. Identity issuer/client/redirects must be explicitly configured; secrets never belong in public Expo variables.
 
 ## Executed checks
 
-Environment: Linux cloud workspace, Node 24.19.0, pnpm 11.25.0, synthetic Roma fixture only; no phone or signing identity connected.
+Linux managed cloud, Node24.19.0, pnpm11.25.0, fictional data; no physical phone or signing identity connected. Final source/export identifiers are recorded with the shared review candidate.
 
-| Check | Observed result and limit |
+| Check | Evidence and practical limit |
 | --- | --- |
-| `pnpm install --frozen-lockfile` | Passed with the pinned lockfile. |
-| `pnpm check` | Lint, root/mobile TypeScript, 38 tests across four files, fixture generation, preserved-pack checksums/full OpenAPI structural validation and Android/iOS JavaScript exports. These are separate from native compilation. |
-| Domain tests | Manual halves/pauses/overtime, unchanged second duration, halftime staging, command idempotency, interval conservation, continuity refusal, reviewed clock correction and all six fairness arithmetic vectors. No complete planner or phone timing benchmark claimed. |
-| Adapter tests | Ten cases using actual Node SQLite and the same keyed-connection queue boundary, transaction-failure rollback/retry, simultaneous writes, deduplication/conflicting IDs, sequences across epochs, rejected/stale branch retention, schema refusal, damaged/quota browser-document writes. Node SQLite is not SQLCipher/device durability evidence. |
-| `pnpm build:web` | Passed; static export under `apps/mobile/dist-web`. HTTP smoke check returned 200. |
-| Cloud HTTPS review, 21 October | [Recorded evidence](evidence/2026-10-21/cloud-review.json). Independent public browser completed explicit check-in → seven-player draft → running first-half clock → pause. Actual 390×844 viewport had no horizontal overflow and no reported runtime errors. Runner startup was repaired by replacing an unavailable ripgrep dependency with Python. The URL is a one-hour session, not a lasting address or native proof. |
-| `node scripts/browser-review.mjs` (`pnpm test:e2e`) | Passed ten checks in Chromium 154.0.8037.57 with a virtual clock. Main rehearsal: actual first half 23:40, no three-minute pause/seven-minute break accrual, fresh second 25:00, explicit reopen recovery, wall-clock rollback, +01:12 added time and manual 49:52 finish. All 21 main records are unique and ordered; recorded seven-place participation conserves time. Also passed real IndexedDB failed-write retry/quarantined-tab scenarios, 320/390/1440 layout checks and visible 48-unit primary controls. No browser runtime errors. This is accelerated automation, not a 50-minute physical rehearsal. |
-| `pnpm dev` + Android Metro HTTP bundle request | Server started and returned a bundle containing the implemented synthetic fixture/journey. No custom client was installed. |
-| Android prebuild/autolinking | Passed; SQLCipher configuration, backup settings and local native module are present in generated projects. |
-| Android debug compilation | Blocked after SDK/JDK/trust-store repairs by an environment-policy HTTP 403 for the official React Native AAR host `repo.reactnative.dev`. No APK produced. See [exact attempts](android-build-evidence.md). |
-| Dependency inventory/licences | Refreshed under ignored `.local/dependency-inventory.json` and `.local/dependency-licenses.json`. These are inventories, not a clean vulnerability attestation or complete release SBOM. |
+| Lint / TypeScript | Final root/mobile lint and TypeScript passed. ESLint reads the pinned mobile React version; generated exports are excluded. |
+| Shared/domain/platform tests | Expanded suite: 219 passed in the final full checkpoint, including live events, planner, preparation, records, community, security, scope and journals. Additional integration regressions are recorded in the final checkpoint. |
+| API / access / worker | 79 passed in the final full checkpoint: real Node HTTP/SQLite, scoped roles and idempotent replay, controller epochs, event audit, effective time, transactional rollback, concurrent migrations, backup/reopen, OIDC verification, activation-provider boundary, private media processing and worker retries. These do not prove production PostgreSQL or real provider/scanner operation. |
+| Supplied pack / contracts | All15 archive members preserved,14 archived checksums passed, all6 fairness vectors inspected and full OpenAPI3.1 structural validation passed. The archived checker retains its historical `not_run` list; the wrapper separately executes the full validator. Companion event transport1.1 deliberately resolves C-001 without changing the archive. |
+| Native JavaScript export | Android and iOS exports passed after expanded dependencies. These are JavaScript/Hermes bundles, not native compilation or installed-phone proof. |
+| Browser feature journeys | Final export `f8f0a16481bae90ff4ebe5a3a137543c` passed all10 original match checks,6 live-event journeys and9 full application journeys, with no runtime errors. Production export `c343f02ba0ffe790b8bfdfe21c6c1995` passed all4 anonymous-entry checks. The same export passed all5 actual HTTP journeys, including in-flight offline suffix capture, exact retry, handover/quarantine, own-only views and workspace reopening. All reports are preserved in [the final checkpoint](evidence/2026-10-21/expanded/checkpoint.json). |
+| Production anonymous entry | Four checks passed: connected sign-in required, no fictional identities/seed, no pre-login IndexedDB journal,390px layout without overflow/runtime errors. No configured identity is implied. |
+| Cloud review | Runner verifies API health and public HTML before announcing ready. Independent public-browser evidence is recorded for each verified candidate; a running tunnel is not an uptime or storage guarantee. |
+| Native compilation | Earlier managed-cloud Android attempt was blocked by policy refusal of the official React Native artifact host. Prepared independent public CI imports the exact checksummed development commit and compiles on a standard runner. Actual outcome must be recorded; a workflow file alone is not a pass. iOS compilation needs macOS/Xcode. |
 
-The archived artifact checker prints its original `not_run` list; `scripts/validate-contracts.py` separately executes the full OpenAPI validator. Structural validation does not resolve [C-001](decisions.md#contract-issue-requiring-implementation-resolution) or establish running API behaviour.
+Browser suites operate real controls and durable records, not injected domain states. Commands: `node scripts/browser-review.mjs`, `node scripts/live-review.mjs`, `node scripts/application-review.mjs`, `node scripts/connected-review.mjs` and `node scripts/production-entry-review.mjs`. They write reports/screenshots under ignored `.local/`. The first four expect the review export on4173; connected review starts its own isolated API databases. Production entry review expects the separately exported production build on4174. Chromium is required (`pnpm exec playwright install chromium`, or set `LONGBALL_CHROMIUM_PATH`). Accelerated browser time is not a physical50-minute match rehearsal.
 
-Saved browser evidence: [results](evidence/2026-10-20/browser-results.json), [home](evidence/2026-10-20/home.png), [lineup](evidence/2026-10-20/lineup.png), [live controls](evidence/2026-10-20/live.png), [desktop](evidence/2026-10-20/desktop.png). Reruns write fresh reports/screenshots under `.local/review`. The browser suite needs a running review server and a Playwright Chromium installation; this workspace used `/usr/bin/chromium`. Else install the matching browser with `pnpm exec playwright install chromium`, or select `LONGBALL_CHROMIUM_PATH`.
+## Remaining release gates
 
-## Incomplete and next eligible work
+The [native proof register](implementation-scope.md#native-m0-proof-register) remains open: actual SQLCipher/wrong-key/key-loss/backup exclusions, sleep/lock/kill/reboot timing, full50-minute clock error bound, native offline recovery, Focus/battery/permission-denied notifications, photo picker/cache and outdoor/large-text/accessibility on both phone platforms.
 
-The [physical-device proof register](implementation-scope.md#native-m0-proof-register) remains open: SQLCipher activation/reopen/wrong-key refusal, independent key lifecycle/loss, database/WAL/key backup and transfer exclusions, sleep/lock/process kill/reboot continuity, actual notification/Focus/battery behaviour, 50-minute clock accuracy, outdoor accessibility and battery measurements. iOS compilation requires macOS/Xcode; Apple's required-reason declarations for native boot/uptime evidence also need review.
+The development SQLite API and worker do not establish production PostgreSQL migration/RLS/load/restore or hosted private object retention. OIDC verification and provider ports do not configure or prove a live identity provider, username-only required actions, household recovery or adult verification. Malware scanning fails closed until a maintained scanner/database is configured and validated. Authenticated binary delivery and metadata stripping are tested development behaviours, not approval for real child photos.
 
-After the native artifact host is allowed in environment settings, rerun the documented Android build and install on a phone. Prepare a Mac/native iPhone build, then execute the M0 device matrix. The prepared 90/60/30/0 reminder adapter is not connected to a validated planner; full foreground sound/haptic acceptance is incomplete. The ten-second lab notification is a disposable experiment and never changes a lineup.
-
-M1–M4 still need identity/permissions, editable team/season/profile/formations/fixtures/training, complete goal and availability workflows, deterministic substitution solving, accepted server event sync/controller handover, audited corrections, role-filtered reports/history, spectators, private awards and moderated media. API/access/native end-to-end/restore/release suites are unimplemented or unrun; no empty successful scripts stand in for them. Native/background requirements cannot be accepted through a browser result.
-
-Q05–Q10, Q14–Q15, Q18, Q20 and Q21 remain as detailed in [decisions](decisions.md). In particular, the proposed +59-minute vote cutoff is not approved; confirmed award finalisation remains original full time +60 minutes. No infrastructure/store purchases, production credentials or real child data were introduced. The separate public cloud review contains only the fictional browser export; it is not a production deployment.
+Q05–Q10,Q14–Q15,Q18,Q20 and Q21 remain in [decisions.md](decisions.md). No proposed+59-minute cutoff, recovery authority, injury retention, under-strength rule or U10 result audience is approved by a default or experiment. Some connected workflows remain intentionally unavailable pending those choices and trusted clock evidence; the feature register names other incomplete integrations. No production credentials, real child data, paid hosting, store enrolment or release publication was introduced.

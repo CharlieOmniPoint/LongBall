@@ -3,7 +3,13 @@ name: LongBall temporary cloud review
 on:
   push:
     branches: [preview/longball-m0]
-    paths: ['site/**', 'preview/**', '.github/workflows/cloud-preview.yml']
+    paths:
+      [
+        "site/**",
+        "backend/**",
+        "preview/**",
+        ".github/workflows/cloud-preview.yml",
+      ]
   workflow_dispatch:
 
 permissions:
@@ -21,5 +27,12 @@ jobs:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           ref: ${{ github.ref_name }}
+          fetch-depth: 0
+      - name: Use the pinned Node runtime
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "24.19.0"
+      - name: Install the isolated decoder runtime
+        run: npm ci --prefix backend --omit=dev --ignore-scripts --no-audit --no-fund
       - name: Serve the fictional export for one hour
         run: bash preview/run.sh

@@ -1,5 +1,7 @@
 # Architecture and M0 preparation
 
+> Historical M0 baseline. The 21 October expanded implementation, connected boundaries and remaining gates are tracked in [full-build-plan.md](full-build-plan.md) and [review.md](review.md). The physical-device proof register below remains open.
+
 The supplied [canonical build pack](../longball/LongBall_Mobile_Build_Pack_v0_1.md) is the product and behaviour reference. Its D01–D28 decisions remain distinct from proposed technical choices and unanswered Q-series decisions. The extracted files in `docs/longball` preserve the archive; `PROPOSED_AGENTS.md` remains reference material.
 
 The repository now implements the local synthetic initial journey and M0 clock, journal and notification experiments. See the [review guide](review.md), [scope/proof register](implementation-scope.md) and [full capability traceability](traceability.md). It does **not** complete physical M0, implement all F01–F28, or establish release readiness. No paid hosting, production credentials, real player data or store enrolment is required.

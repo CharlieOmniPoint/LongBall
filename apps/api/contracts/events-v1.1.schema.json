@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://longball.invalid/contracts/events-v1.1.schema.json",
+  "title": "LongBall incremental command envelope 1.1",
+  "description": "Deliberate C-001 companion: engineVersion is required immutable provenance. This incremental command transport adapts the shared reducer, including local preparation commands, and does not claim that the archived v0.1 OpenAPI Event variants accept an added property. Original archived artifacts remain unchanged. The service assigns receipt time and accepted revision. Unknown versions are retained in quarantine. Real controller handover, identity and release gates remain separately documented.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contractVersion", "schemaVersion", "engineVersion", "eventId", "matchId", "deviceId", "controllerEpoch", "clientSequence", "previousEventId", "baseRevision", "effectiveHalf", "halfElapsedMs", "matchElapsedMs", "effectiveAt", "recordedAt", "timeQuality", "clockEvidence", "command"],
+  "properties": {
+    "contractVersion": { "const": "longball.events/1.1" },
+    "schemaVersion": { "const": 1 },
+    "engineVersion": { "type": "string", "minLength": 1, "maxLength": 80 },
+    "eventId": { "$ref": "#/$defs/id" },
+    "matchId": { "$ref": "#/$defs/id" },
+    "deviceId": { "type": "string", "pattern": "^[A-Za-z0-9_-]+$", "minLength": 1, "maxLength": 120 },
+    "controllerEpoch": { "type": "integer", "minimum": 1 },
+    "clientSequence": { "type": "integer", "minimum": 1 },
+    "previousEventId": { "oneOf": [ { "$ref": "#/$defs/id" }, { "type": "null" } ] },
+    "baseRevision": { "type": "integer", "minimum": 0 },
+    "effectiveHalf": { "type": "integer", "enum": [0, 1, 2] },
+    "halfElapsedMs": { "type": "integer", "minimum": 0 },
+    "matchElapsedMs": { "type": "integer", "minimum": 0 },
+    "effectiveAt": { "type": ["string", "null"], "format": "date-time" },
+    "recordedAt": { "type": "string", "format": "date-time" },
+    "timeQuality": { "enum": ["anchored", "estimated", "reviewRequired"] },
+    "clockEvidence": {
+      "type": "object", "additionalProperties": false,
+      "required": ["monotonicMs", "anchorId", "continuityId"],
+      "properties": {
+        "monotonicMs": { "type": "number", "minimum": 0 },
+        "anchorId": { "$ref": "#/$defs/id" },
+        "continuityId": { "oneOf": [ { "$ref": "#/$defs/id" }, { "type": "null" } ] }
+      }
+    },
+    "command": {
+      "type": "object",
+      "required": ["id", "type", "sample"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "type": { "enum": ["attendance.recorded", "availability.changed", "lineup.staged", "half.started", "half.paused", "half.resumed", "half.ended", "lineup.committed", "goal.recorded", "clock.recovery_required", "clock.corrected", "event.corrected", "event.voided", "policy.changed", "match.abandoned"] },
+        "sample": {
+          "type": "object", "additionalProperties": false, "required": ["monotonicMs", "sessionId", "wallTimeMs"],
+          "properties": { "monotonicMs": { "type": "number", "minimum": 0 }, "sessionId": { "$ref": "#/$defs/id" }, "wallTimeMs": { "type": "integer", "minimum": 0 } }
+        }
+      },
+      "description": "Type-specific fields are checked by the selected versioned deterministic reducer. This schema describes the transport boundary; it is not evidence of complete production OpenAPI endpoint coverage."
+    }
+  },
+  "$defs": { "id": { "type": "string", "pattern": "^[A-Za-z0-9_-]+$", "minLength": 1, "maxLength": 150 } }
+}

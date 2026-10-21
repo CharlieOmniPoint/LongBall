@@ -1,10 +1,12 @@
 import type {
   Allocation, ClockReading, ClockSample, MatchConfig, MatchEvent, MatchState,
-  PlayerMinutes, Rational, TargetInterval, TargetResult,
+  PlayerMinutes, Rational, TargetInterval, TargetResult, GoalRecord, AvailabilityRecord,
+  EffectiveMatchTime, MatchAuditEntry,
 } from './types';
+import { cloneValue, effectiveTime, goalRecord, scoresFromGoals } from './live-events';
 export type * from './types';
 
-export const ENGINE_VERSION = 'm0-experiment-1';
+export const ENGINE_VERSION = 'synthetic-live-2';
 
 function integer(value: number, label: string): void {
   if (!Number.isSafeInteger(value) || value < 0) throw new Error(`${label} must be a nonnegative safe integer.`);
@@ -26,6 +28,11 @@ function selectedPlayer(state: MatchState, id: string): void {
   if (!state.config.selectedPlayerIds.includes(id)) throw new Error('Player is outside this selected match squad.');
 }
 function cloneLineup(lineup: Allocation[]): Allocation[] { return lineup.map(item => ({ ...item })); }
+function keeperChoice(config: MatchConfig, playerId: string): number {
+  const snapshot = config.profileSnapshot?.find(profile => profile.playerId === playerId);
+  if (snapshot?.preferences.length) return snapshot.preferences.indexOf('GK') + 1;
+  return config.players.find(player => player.id === playerId)?.goalkeeperChoice ?? 0;
+}
 
 export function createMatch(config: MatchConfig): MatchState {
   if (!config.matchId || config.pitchPlaces < 5 || config.pitchPlaces > 11 || !Number.isInteger(config.pitchPlaces)) throw new Error('Match format must have 5–11 pitch places.');
@@ -34,17 +41,34 @@ export function createMatch(config: MatchConfig): MatchState {
   const ids = config.players.map(player => player.id);
   if (new Set(ids).size !== ids.length || new Set(config.selectedPlayerIds).size !== config.selectedPlayerIds.length) throw new Error('Player identifiers must be unique.');
   if (config.selectedPlayerIds.some(id => !ids.includes(id))) throw new Error('Selected players must belong to this roster.');
-  if (config.fixedKeeperId !== null && !config.players.some(player => player.id === config.fixedKeeperId && config.selectedPlayerIds.includes(player.id) && (player.goalkeeperChoice === 1 || player.goalkeeperChoice === 2))) throw new Error('Fixed keeper must be a selected first- or second-choice goalkeeper.');
+  if (config.initialAttendance && Object.entries(config.initialAttendance).some(([id, status]) => !config.selectedPlayerIds.includes(id) || !['present', 'absent', 'excused', 'not_selected', 'not_recorded'].includes(status))) throw new Error('Initial attendance must be explicit valid check-in for the selected squad.');
+  if (config.slots && (config.slots.length !== config.pitchPlaces || new Set(config.slots.map(slot => slot.slotId)).size !== config.slots.length || config.slots.filter(slot => slot.position === 'GK').length !== 1 || config.slots.some(slot => !slot.slotId || !slot.position))) throw new Error('Saved formation needs one distinct slot per pitch place and exactly one goalkeeper.');
+  if (config.profileSnapshot && (new Set(config.profileSnapshot.map(profile => profile.playerId)).size !== config.profileSnapshot.length || config.profileSnapshot.some(profile => !ids.includes(profile.playerId) || profile.preferences.length > 3 || new Set(profile.preferences).size !== profile.preferences.length || new Set(profile.eligiblePositions).size !== profile.eligiblePositions.length))) throw new Error('Match profile snapshots must belong to distinct roster players with distinct preferences and eligibility.');
+  if (config.fixedKeeperId !== null && (!config.selectedPlayerIds.includes(config.fixedKeeperId) || ![1, 2].includes(keeperChoice(config, config.fixedKeeperId)))) throw new Error('Fixed keeper must be a selected first- or second-choice goalkeeper.');
   return {
-    config: { ...config, players: config.players.map(player => ({ ...player })), selectedPlayerIds: [...config.selectedPlayerIds] },
+    config: cloneValue(config),
     status: 'preparation', revision: 0,
-    attendance: Object.fromEntries(ids.map(id => [id, 'not_recorded'])),
+    attendance: Object.fromEntries(ids.map(id => [id, config.initialAttendance?.[id] ?? 'not_recorded'])),
     availability: Object.fromEntries(ids.map(id => [id, config.selectedPlayerIds.includes(id)])),
     stagedLineup: [], lineup: [], half: 0, halfActiveMs: 0, matchActiveMs: 0,
     firstHalfDurationMs: null, anchor: null, recoveryRequired: false,
     intervals: [], targetIntervals: [], score: { for: 0, against: 0 }, halfTimeScore: null,
-    completedAtMs: null, completedTimeQuality: null, recoveryReason: null, appliedEvents: {},
+    completedAtMs: null, completedTimeQuality: null, abandonedAtMs: null, abandonReason: null, recoveryReason: null, appliedEvents: {},
+    schemaVersion: 2, goals: [], availabilityHistory: [], eventHistory: [], audit: [],
   };
+}
+
+/** M0 retained original commands in appliedEvents. Upgrade by replay, never by inventing history. */
+export function upgradeMatchState(previous: MatchState): MatchState {
+  if (previous.schemaVersion === 2 && previous.goals && previous.availabilityHistory && previous.eventHistory && previous.audit) return previous;
+  let events: MatchEvent[];
+  try { events = Object.values(previous.appliedEvents).map(signature => JSON.parse(signature) as MatchEvent); }
+  catch { throw new Error('Legacy command history cannot be read. Preserve the journal and reconcile it before continuing.'); }
+  const replayed = replayMatch(previous.config, events);
+  for (const field of ['status', 'revision', 'half', 'halfActiveMs', 'matchActiveMs', 'firstHalfDurationMs', 'completedAtMs', 'completedTimeQuality', 'recoveryRequired', 'recoveryReason', 'attendance', 'availability', 'anchor', 'score', 'halfTimeScore', 'lineup', 'stagedLineup', 'intervals', 'targetIntervals'] as const) {
+    if (canonical(replayed[field]) !== canonical(previous[field])) throw new Error(`Legacy replay differs at ${field}. Preserve the original journal for explicit reconciliation.`);
+  }
+  return replayed;
 }
 
 /** Validation is strict for the initial journey; under-strength exceptions need Q07. */
@@ -60,16 +84,19 @@ export function validateLineup(state: MatchState, lineup: Allocation[], requireC
       if (state.attendance[item.playerId] !== 'present') errors.push(`${item.playerId}: confirm actual attendance first.`);
       if (!state.availability[item.playerId]) errors.push(`${item.playerId}: player is unavailable.`);
     }
+    if (state.config.slots && !state.config.slots.some(slot => slot.slotId === item.slotId && slot.position === item.position)) errors.push('Allocation must use its saved formation slot and position.');
+    const profile = state.config.profileSnapshot?.find(snapshot => snapshot.playerId === item.playerId);
+    if (profile && !profile.eligiblePositions.includes(item.position)) errors.push(`${item.playerId}: position is outside the saved match eligibility.`);
   }
   const keepers = lineup.filter(item => item.position === 'GK');
   if (requireComplete && keepers.length !== 1) errors.push('Choose exactly one goalkeeper.');
   if (keepers.length > 1) errors.push('Only one goalkeeper place is allowed.');
   for (const keeper of keepers) {
     const player = state.config.players.find(item => item.id === keeper.playerId);
-    if (!player || (player.goalkeeperChoice !== 1 && player.goalkeeperChoice !== 2)) errors.push('Goalkeeper cover requires a first- or second-choice eligible keeper.');
+    if (!player || ![1, 2].includes(keeperChoice(state.config, keeper.playerId))) errors.push('Goalkeeper cover requires a first- or second-choice eligible keeper.');
     if (state.config.fixedKeeperId && keeper.playerId !== state.config.fixedKeeperId) errors.push('The fixed keeper policy cannot be changed by moving a pitch piece.');
   }
-  const qualifying = state.config.players.filter(player => available(state, player.id) && (player.goalkeeperChoice === 1 || player.goalkeeperChoice === 2));
+  const qualifying = state.config.players.filter(player => available(state, player.id) && [1, 2].includes(keeperChoice(state.config, player.id)));
   if (state.config.fixedKeeperId && qualifying.length > 1) errors.push('Multiple qualifying available keepers require a reviewed shared-keeper policy.');
   return [...new Set(errors)];
 }
@@ -132,12 +159,13 @@ function assertLineup(state: MatchState, lineup: Allocation[]): void {
 }
 function canonical(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`;
-  if (value !== null && typeof value === 'object') return `{${Object.entries(value).sort(([left], [right]) => left.localeCompare(right)).map(([key, item]) => `${JSON.stringify(key)}:${canonical(item)}`).join(',')}}`;
+  if (value !== null && typeof value === 'object') return `{${Object.entries(value).filter(([, item]) => item !== undefined).sort(([left], [right]) => left.localeCompare(right)).map(([key, item]) => `${JSON.stringify(key)}:${canonical(item)}`).join(',')}}`;
   return JSON.stringify(value);
 }
 
 /** Local experiment command reducer. Persist event and returned projection atomically. */
 export function reduceMatch(previous: MatchState, event: MatchEvent): MatchState {
+  previous = upgradeMatchState(previous);
   if (!event.id) throw new Error('Event id is required.');
   const signature = canonical(event);
   if (previous.appliedEvents[event.id]) {
@@ -145,20 +173,58 @@ export function reduceMatch(previous: MatchState, event: MatchEvent): MatchState
     return previous;
   }
   assertSample(event.sample);
-  if (previous.status === 'completed') throw new Error('Completed match is read-only; audited corrections are not implemented in M0.');
+  if ((previous.status === 'completed' || previous.status === 'abandoned') && event.type !== 'event.corrected' && event.type !== 'event.voided' && event.type !== 'goal.recorded') throw new Error('Completed or abandoned play is read-only. Use an audited correction without reopening the clock.');
   let state = previous;
-  if (event.type !== 'clock.recovery_required' && event.type !== 'clock.corrected') state = accrue(previous, event.sample);
+  let auditEffective: EffectiveMatchTime | null | undefined;
+  let auditPrior: unknown = null;
+  let auditValue: unknown = event;
+  if (event.type === 'availability.changed' && event.effective) {
+    if (previous.half === 0) throw new Error('Preparation availability has no active-time boundary.');
+    const latest = accrue(previous, event.sample);
+    const boundary = effectiveTime(latest, event.effective);
+    if (boundary.half !== previous.half || boundary.matchElapsedMs < previous.matchActiveMs) throw new Error('Historical availability crosses a recorded boundary. Preserve actual intervals and use explicit history reconciliation; no minutes were changed.');
+    if (!isRunning(previous) && boundary.matchElapsedMs !== previous.matchActiveMs) throw new Error('Paused or half-time availability must use the current active-time boundary.');
+    if (isRunning(previous)) {
+      if (!previous.anchor) throw new Error('A continuous anchor is required for an effective availability boundary.');
+      const boundarySample = { ...event.sample, monotonicMs: Math.floor(previous.anchor.sample.monotonicMs) + boundary.matchElapsedMs - previous.anchor.matchActiveMs };
+      state = accrue(previous, boundarySample);
+    } else state = latest;
+    auditEffective = boundary;
+  } else if (event.type !== 'clock.recovery_required' && event.type !== 'clock.corrected') state = accrue(previous, event.sample);
   switch (event.type) {
     case 'attendance.recorded': {
       selectedPlayer(state, event.playerId);
+      if (!['present', 'absent', 'excused', 'not_selected', 'not_recorded'].includes(event.status)) throw new Error('Attendance status is invalid.');
       state = { ...state, attendance: { ...state.attendance, [event.playerId]: event.status } };
       if (event.status !== 'present') state = { ...state, lineup: state.lineup.filter(item => item.playerId !== event.playerId), stagedLineup: state.stagedLineup.filter(item => item.playerId !== event.playerId) };
       break;
     }
     case 'availability.changed': {
       selectedPlayer(state, event.playerId);
+      if (typeof event.available !== 'boolean') throw new Error('Availability must be explicitly true or false.');
+      const reason = event.reason ?? 'other';
+      if (!['arrival', 'departure', 'injury', 'return', 'other'].includes(reason)) throw new Error('Availability reason must be an approved category.');
+      if ((reason === 'arrival' || reason === 'return') && !event.available) throw new Error('Arrival or return requires confirmed availability.');
+      if ((reason === 'departure' || reason === 'injury') && event.available) throw new Error('Injury or departure requires unavailable status.');
+      const record: AvailabilityRecord = {
+        eventId: event.id, latestEventId: event.id, playerId: event.playerId,
+        available: event.available, previousAvailability: state.availability[event.playerId], reason,
+        effective: auditEffective ?? (state.half === 0 ? null : effectiveTime(state)), recordedAtMs: event.sample.wallTimeMs,
+      };
+      auditPrior = { available: record.previousAvailability, lineup: cloneLineup(state.lineup) };
       state = { ...state, availability: { ...state.availability, [event.playerId]: event.available } };
       if (!event.available) state = { ...state, lineup: state.lineup.filter(item => item.playerId !== event.playerId), stagedLineup: state.stagedLineup.filter(item => item.playerId !== event.playerId) };
+      if (event.replacementLineup) {
+        ensureLive(state);
+        assertLineup(state, event.replacementLineup);
+        state = { ...state, lineup: cloneLineup(event.replacementLineup) };
+      }
+      state = { ...state, availabilityHistory: [...state.availabilityHistory ?? [], record] };
+      auditEffective = record.effective;
+      auditValue = record;
+      // A captured boundary may precede entry within this still-uncommitted segment.
+      // Close that segment using the newly confirmed availability/lineup; never use wall time.
+      state = accrue(state, event.sample);
       break;
     }
     case 'lineup.staged': {
@@ -196,6 +262,12 @@ export function reduceMatch(previous: MatchState, event: MatchEvent): MatchState
       else state = { ...state, status: 'completed', anchor: null, completedAtMs: event.sample.wallTimeMs, completedTimeQuality: 'reviewRequired' };
       break;
     }
+    case 'match.abandoned': {
+      if (state.half === 0) throw new Error('Only a started match can be abandoned; cancel an unplayed fixture separately.');
+      if (!['weather', 'safety', 'insufficient_players', 'other'].includes(event.reason) || (event.note?.length ?? 0) > 200) throw new Error('Abandonment requires an approved reason category and a note of at most 200 characters.');
+      state = { ...state, status: 'abandoned', anchor: null, abandonedAtMs: event.sample.wallTimeMs, abandonReason: event.reason };
+      break;
+    }
     case 'lineup.committed': {
       ensureLive(state);
       if (event.sourceRevision !== previous.revision) throw new Error('Lineup draft is stale. Review against the current match revision.');
@@ -204,8 +276,67 @@ export function reduceMatch(previous: MatchState, event: MatchEvent): MatchState
       break;
     }
     case 'goal.recorded': {
-      ensureLive(state);
-      state = { ...state, score: { for: state.score.for + (event.beneficiary === 'us' ? 1 : 0), against: state.score.against + (event.beneficiary === 'opposition' ? 1 : 0) } };
+      const recorded = goalRecord(state, event, event.id, event.sample.wallTimeMs);
+      if ((!isRunning(state) && !isPaused(state)) || recorded.effective.half !== state.half) {
+        if (!event.effective || !event.lateEntryReason?.trim()) throw new Error('A goal entered outside its active half needs its actual effective time and a late-entry reason.');
+      }
+      const goals = [...state.goals ?? [], recorded];
+      state = { ...state, goals, ...scoresFromGoals(state, goals) };
+      auditEffective = recorded.effective;
+      auditValue = recorded;
+      break;
+    }
+    case 'event.corrected': {
+      if (!event.reason.trim() || event.reason.length > 500) throw new Error('An audited correction needs a reason of 1–500 characters.');
+      const goal = state.goals?.find(item => item.eventId === event.targetEventId || item.latestEventId === event.targetEventId);
+      if (goal) {
+        if (event.replacement.type !== 'goal.recorded') throw new Error('A correction cannot change the original event family.');
+        if (goal.voided && event.restoreVoided !== true) throw new Error('Restoring a voided goal requires explicit restoreVoided confirmation.');
+        const corrected = goalRecord(state, { ...goal, ...event.replacement, effective: event.replacement.effective ?? goal.effective }, goal.eventId, goal.recordedAtMs);
+        const replacement = { ...corrected, latestEventId: event.id };
+        const goals = state.goals!.map(item => item.eventId === goal.eventId ? replacement : item);
+        state = { ...state, goals, ...scoresFromGoals(state, goals) };
+        auditEffective = replacement.effective;
+        auditPrior = goal;
+        auditValue = replacement;
+        break;
+      }
+      const availability = state.availabilityHistory?.find(item => item.eventId === event.targetEventId || item.latestEventId === event.targetEventId);
+      if (availability) {
+        if (event.replacement.type !== 'availability.changed') throw new Error('A correction cannot change the original event family.');
+        const replacement = event.replacement;
+        if (replacement.playerId !== availability.playerId || replacement.available !== availability.available || replacement.replacementLineup ||
+          (replacement.effective && canonical(replacement.effective) !== canonical(availability.effective))) {
+          throw new Error('Historical availability or lineup correction needs explicit interval reconciliation. Actual participation was retained unchanged.');
+        }
+        const reason = replacement.reason ?? availability.reason;
+        if (!['arrival', 'departure', 'injury', 'return', 'other'].includes(reason) ||
+          ((reason === 'arrival' || reason === 'return') && !availability.available) ||
+          ((reason === 'injury' || reason === 'departure') && availability.available)) throw new Error('Corrected availability reason conflicts with its recorded state.');
+        const corrected = { ...availability, reason, latestEventId: event.id };
+        state = { ...state, availabilityHistory: state.availabilityHistory!.map(item => item.eventId === availability.eventId ? corrected : item) };
+        auditEffective = corrected.effective;
+        auditPrior = availability;
+        auditValue = corrected;
+        break;
+      }
+      if (state.eventHistory?.some(item => item.id === event.targetEventId)) throw new Error('This historical interval or half transition needs explicit reconciliation of the affected play. No recorded minutes were changed.');
+      throw new Error('Correction target was not found in this match history.');
+    }
+    case 'event.voided': {
+      if (!event.reason.trim() || event.reason.length > 500) throw new Error('Voiding an event needs an audited reason of 1–500 characters.');
+      const goal = state.goals?.find(item => item.eventId === event.targetEventId || item.latestEventId === event.targetEventId);
+      if (!goal) {
+        if (state.eventHistory?.some(item => item.id === event.targetEventId)) throw new Error('Voiding a participation or half event requires explicit interval reconciliation. Original history was retained.');
+        throw new Error('Void target was not found in this match history.');
+      }
+      if (goal.voided) throw new Error('This goal is already voided.');
+      const replacement = { ...goal, voided: true, latestEventId: event.id };
+      const goals = state.goals!.map(item => item.eventId === goal.eventId ? replacement : item);
+      state = { ...state, goals, ...scoresFromGoals(state, goals) };
+      auditEffective = replacement.effective;
+      auditPrior = goal;
+      auditValue = replacement;
       break;
     }
     case 'clock.recovery_required': {
@@ -232,12 +363,34 @@ export function reduceMatch(previous: MatchState, event: MatchEvent): MatchState
       state = { ...state, halfActiveMs: event.halfActiveMs, matchActiveMs: newMatchMs, recoveryRequired: false, recoveryReason: null, anchor: isRunning(state) ? { sample: { ...event.sample }, halfActiveMs: event.halfActiveMs, matchActiveMs: newMatchMs } : null };
       break;
     }
+    default: throw new Error('Unsupported match command type.');
   }
-  return { ...state, revision: previous.revision + 1, appliedEvents: { ...previous.appliedEvents, [event.id]: signature } };
+  const audit: MatchAuditEntry = {
+    eventId: event.id, type: event.type, revision: previous.revision + 1, recordedAtMs: event.sample.wallTimeMs,
+    actorId: event.actorId ?? null,
+    effective: auditEffective === undefined ? (state.half === 0 ? null : effectiveTime(state)) : auditEffective,
+    targetEventId: 'targetEventId' in event ? event.targetEventId : null,
+    reason: 'reason' in event ? event.reason ?? null : event.type === 'goal.recorded' ? event.lateEntryReason ?? null : null,
+    priorValue: cloneValue(auditPrior), value: cloneValue(auditValue),
+  };
+  return {
+    ...state, revision: previous.revision + 1,
+    appliedEvents: { ...previous.appliedEvents, [event.id]: signature },
+    eventHistory: [...previous.eventHistory ?? [], cloneValue(event)],
+    audit: [...previous.audit ?? [], audit],
+  };
 }
 
 export function replayMatch(config: MatchConfig, events: MatchEvent[]): MatchState {
   return events.reduce(reduceMatch, createMatch(config));
+}
+
+/** Includes voided records for authorised audit; callers filter active goals for ordinary reports. */
+export function goalRecords(state: MatchState): GoalRecord[] { return cloneValue(upgradeMatchState(state).goals ?? []); }
+export function matchEventHistory(state: MatchState): MatchEvent[] { return cloneValue(upgradeMatchState(state).eventHistory ?? []); }
+export function matchTimeline(state: MatchState): MatchAuditEntry[] {
+  return cloneValue(upgradeMatchState(state).audit ?? []).sort((left, right) =>
+    (left.effective?.matchElapsedMs ?? -1) - (right.effective?.matchElapsedMs ?? -1) || left.revision - right.revision);
 }
 
 export function playerMinutes(state: MatchState, sample: ClockSample): PlayerMinutes[] {

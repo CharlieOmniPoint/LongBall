@@ -1,5 +1,7 @@
 # Capability traceability
 
+> Historical M0 baseline. The 21 October expanded implementation, connected boundaries and remaining gates are tracked in [full-build-plan.md](full-build-plan.md) and [review.md](review.md). The physical-device proof register below remains open.
+
 20 October 2026. All F01–F28 remain the integrated pilot target. `Initial` means an intermediate synthetic/local implementation target, not end-to-end product acceptance. API, identity, shared server authority and real-data release are later work unless separately evidenced. The canonical acceptance criteria remain [the source of truth](../longball/LongBall_Mobile_Build_Pack_v0_1.md#capability-backlog-and-end-to-end-acceptance).
 
 | Capability | UI / rule trace | Initial increment boundary | Remaining end-to-end acceptance |

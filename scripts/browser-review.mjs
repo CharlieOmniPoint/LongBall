@@ -24,6 +24,13 @@ const consoleErrors = [];
 const checks = [];
 await mkdir(outputDirectory, { recursive: true });
 
+// Application preparation and each fixture share one journal document. Sequences
+// are reserved per match/device, so identical sequence numbers in other scopes are valid.
+function scopedEntries(record) {
+  return Object.entries(record?.events ?? {}).filter(([, event]) => event.matchId === matchId);
+}
+function scopedIds(record) { return scopedEntries(record).map(([eventId]) => eventId); }
+
 async function snapshot(page) {
   return page.evaluate(async (requestedMatchId) => {
     // IndexedDB is the browser journal's transaction boundary. Inspect real saved
@@ -356,7 +363,7 @@ try {
 
   await page.clock.fastForward(300_000);
   const journalBeforeReload = await snapshot(page);
-  const eventIdsBeforeReload = Object.keys(journalBeforeReload.events);
+  const eventIdsBeforeReload = scopedIds(journalBeforeReload);
   await page.reload({ waitUntil: "networkidle" });
   await page.getByTestId("prepare-match").click();
   await page
@@ -429,7 +436,7 @@ try {
     "Seven occupied places must reconcile with recorded participation.",
   );
   const journal = await snapshot(page);
-  const events = Object.values(journal.events).sort(
+  const events = scopedEntries(journal).map(([, event]) => event).sort(
     (a, b) => a.sequence - b.sequence,
   );
   assert.equal(
@@ -443,7 +450,7 @@ try {
       event.previousEventId,
       index === 0
         ? null
-        : Object.entries(journal.events).find(
+        : scopedEntries(journal).find(
             ([, prior]) => prior.sequence === index,
           )?.[0],
     );
@@ -462,10 +469,12 @@ try {
   const failurePage = await openReview(failureContext);
   await failurePage.getByTestId("prepare-match").click();
   const beforeFailure = await snapshot(failurePage);
-  await failurePage.evaluate(() => {
+  await failurePage.evaluate(({ requestedMatchId, previousIds }) => {
     globalThis.__longballFailReviewWrite = true;
     const rejectFirstWrite = (value) => {
       if (!globalThis.__longballFailReviewWrite) return;
+      if (!Object.entries(value?.events ?? {}).some(([eventId, event]) =>
+        event.matchId === requestedMatchId && !previousIds.includes(eventId))) return;
       globalThis.__longballFailReviewWrite = false;
       globalThis.__longballAttemptedRecord = value;
       throw new DOMException(
@@ -484,7 +493,7 @@ try {
         rejectFirstWrite(JSON.parse(value));
       return originalSet.call(this, key, value);
     };
-  });
+  }, { requestedMatchId: matchId, previousIds: scopedIds(beforeFailure) });
   await failurePage
     .getByRole("radio", { name: "Player 01, Present", exact: true })
     .click();
@@ -497,16 +506,16 @@ try {
     "A rejected write cannot appear saved.",
   );
   assert.deepEqual(
-    Object.keys((await snapshot(failurePage)).events),
-    Object.keys(beforeFailure.events),
+    scopedIds(await snapshot(failurePage)),
+    scopedIds(beforeFailure),
     "A failed write must retain original history.",
   );
   const attemptedEventId = await failurePage.evaluate(
-    (previousIds) =>
-      Object.keys(globalThis.__longballAttemptedRecord.events).find(
-        (id) => !previousIds.includes(id),
-      ),
-    Object.keys(beforeFailure.events),
+    ({ previousIds, requestedMatchId }) =>
+      Object.entries(globalThis.__longballAttemptedRecord.events).find(
+        ([id, event]) => event.matchId === requestedMatchId && !previousIds.includes(id),
+      )?.[0],
+    { previousIds: scopedIds(beforeFailure), requestedMatchId: matchId },
   );
   assert(
     attemptedEventId,
@@ -523,8 +532,8 @@ try {
   );
   const afterRetry = await snapshot(failurePage);
   assert.equal(
-    Object.keys(afterRetry.events).length,
-    Object.keys(beforeFailure.events).length + 1,
+    scopedIds(afterRetry).length,
+    scopedIds(beforeFailure).length + 1,
   );
   assert(
     afterRetry.events[attemptedEventId],
@@ -558,7 +567,7 @@ try {
   do {
     concurrentJournal = await snapshot(secondTab);
     if (
-      Object.values(concurrentJournal.events).some(
+      scopedEntries(concurrentJournal).map(([, event]) => event).some(
         (event) => event.disposition === "quarantined",
       )
     )
@@ -573,12 +582,12 @@ try {
     "A stale tab cannot overwrite a newer projection.",
   );
   assert.equal(
-    Object.keys(concurrentJournal.events).length,
+    scopedIds(concurrentJournal).length,
     3,
     "The stale branch must remain in the journal alongside the winning action.",
   );
   const [quarantinedId, quarantined] =
-    Object.entries(concurrentJournal.events).find(
+    scopedEntries(concurrentJournal).find(
       ([, event]) => event.disposition === "quarantined",
     ) ?? [];
   assert(quarantined, "The rejected branch must be quarantined.");
@@ -602,7 +611,7 @@ try {
     "A refreshed tab could not apply its new action",
   );
   concurrentJournal = await snapshot(secondTab);
-  const fourth = Object.values(concurrentJournal.events).find(
+  const fourth = scopedEntries(concurrentJournal).map(([, event]) => event).find(
     (event) => event.sequence === 4,
   );
   assert(fourth, "New writes cannot reuse a rejected sequence.");

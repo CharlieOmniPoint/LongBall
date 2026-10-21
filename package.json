@@ -24,10 +24,17 @@
     "mobile:config": "pnpm --filter mobile exec expo config --type prebuild",
     "build": "pnpm --filter mobile build:bundle",
     "build:web": "pnpm --filter mobile build:web",
+    "build:api": "node scripts/build-api.mjs",
+    "dev:api": "tsx apps/api/src/main.ts",
+    "dev:worker": "tsx apps/worker/src/main.ts",
+    "test:api": "vitest run --config apps/api/vitest.config.ts",
+    "test:access": "vitest run --config apps/api/vitest.config.ts packages/application/src/access.test.ts apps/api/src/oidc.test.ts",
+    "test:migration": "vitest run --config apps/api/vitest.config.ts apps/api/src/server.test.ts -t 'restor|migrat|rolls back'",
     "preview:web": "python3 -m http.server 4173 --bind 0.0.0.0 --directory apps/mobile/dist-web",
-    "check": "pnpm lint && pnpm typecheck && pnpm test:unit && pnpm test:contracts && pnpm fixtures:synthetic && pnpm build"
+    "check": "pnpm lint && pnpm typecheck && pnpm test:unit && pnpm test:api && pnpm test:contracts && pnpm fixtures:synthetic && pnpm build && pnpm build:api"
   },
   "devDependencies": {
+    "esbuild": "0.28.2",
     "@types/node": "24.19.2",
     "eslint": "9.39.5",
     "eslint-config-expo": "58.0.4",

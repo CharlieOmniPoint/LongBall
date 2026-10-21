@@ -1,5 +1,7 @@
 # M0 implementation scope and native evidence
 
+> Historical M0 baseline. The 21 October expanded implementation, connected boundaries and remaining gates are tracked in [full-build-plan.md](full-build-plan.md) and [review.md](review.md). The physical-device proof register below remains open.
+
 20 October 2026. This is an intermediate synthetic implementation of [LongBall](../longball/README.md), retaining native iPhone and Android targets and the complete F01–F28 integrated pilot. It is not an M0 completion or release approval. See [decisions](decisions.md) and [capability traceability](traceability.md).
 
 ## Initial journey and behavioural acceptance

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Modal,
@@ -18,12 +18,42 @@ import {
 } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import {
-  playerMinutes,
   validateLineup,
   type Allocation,
   type Attendance,
+  type MatchConfig,
 } from "@longball/domain";
 import { romaFixture } from "@longball/testing";
+import {
+  fixtureMatchConfig,
+  reconcileSeason,
+  defaultPlayerId,
+} from "@longball/application/application";
+import {
+  prepareFixtureSnapshot,
+  reducePreparation,
+  type PreparationCommand,
+} from "@longball/application/preparation";
+import {
+  reduceRecords,
+  type RecordsCommand,
+} from "@longball/application/records";
+import {
+  syntheticCommunityActors,
+  type CommunityRole,
+  type CommunityState,
+} from "@longball/application/community";
+import { randomUUID } from "./src/platform/id";
+import { useApplication } from "./src/useApplication";
+import { PreparationScreens } from "./src/features/PreparationScreens";
+import { RecordsScreens } from "./src/features/RecordsScreens";
+import { CommunityScreens } from "./src/features/CommunityScreens";
+import { LiveEventsPanel } from "./src/features/LiveEventsPanel";
+import { OwnProfile, PlayerExperience } from "./src/features/PlayerExperience";
+import { PlannerPanel, usePlannerModel } from "./src/features/PlannerPanel";
+import { AccountSecurityScreen } from "./src/features/AccountSecurityScreen";
+import { ConnectedWorkspace } from "./src/features/ConnectedWorkspace";
+import { ConnectedApplication } from "./src/ConnectedApplication";
 import { Button, Card, colors, Icon, Notice, Pill, Pitch } from "./src/ui";
 import type { IconName } from "./src/ui/Icon";
 import {
@@ -31,6 +61,7 @@ import {
   slots,
   suggestedStartingLineup,
   useMatch,
+  initialConfig,
 } from "./src/useMatch";
 import {
   requestAlertPermission,
@@ -45,8 +76,18 @@ type Screen =
   | "schedule"
   | "team"
   | "reports"
-  | "more";
-const nav: { screen: Screen; label: string; icon: IconName }[] = [
+  | "more"
+  | "photos"
+  | "invitations"
+  | "awards"
+  | "settings"
+  | "account"
+  | "lab"
+  | "planner"
+  | "service"
+  | "profile"
+  | "security";
+const managerNav: { screen: Screen; label: string; icon: IconName }[] = [
   { screen: "home", label: "Home", icon: "home" },
   { screen: "schedule", label: "Schedule", icon: "calendar" },
   { screen: "team", label: "Team", icon: "users" },
@@ -56,14 +97,24 @@ const nav: { screen: Screen; label: string; icon: IconName }[] = [
 export default function App() {
   return (
     <SafeAreaProvider>
-      <LongBall />
+      {process.env.EXPO_PUBLIC_ENVIRONMENT === "production" ? (
+        <ConnectedApplication />
+      ) : (
+        <LongBall />
+      )}
     </SafeAreaProvider>
   );
 }
 
 function LongBall() {
-  const model = useMatch();
+  const [activeConfig, setActiveConfig] = useState<MatchConfig>(initialConfig);
+  const model = useMatch(activeConfig);
+  const application = useApplication(model.journal, model.deviceId);
+  const app = application.state;
+  const [role, setRole] = useState<CommunityRole>("manager");
   const { state, clock, busy, send } = model;
+  const planner = usePlannerModel(state, model.sample, clock);
+  const setPlannerControl = planner.setHasControl;
   const [screen, setScreen] = useState<Screen>("home");
   const [slot, setSlot] = useState<string | null>(null);
   const [draft, setDraft] = useState<{
@@ -71,6 +122,10 @@ function LongBall() {
     revision: number;
   } | null>(null);
   const [confirmEnd, setConfirmEnd] = useState(false);
+  const [confirmAbandon, setConfirmAbandon] = useState(false);
+  const [abandonReason, setAbandonReason] = useState<
+    "weather" | "safety" | "insufficient_players" | "other"
+  >("weather");
   const [recovery, setRecovery] = useState(false);
   const [recoveryTime, setRecoveryTime] = useState("");
   const [reason, setReason] = useState("");
@@ -79,6 +134,64 @@ function LongBall() {
   const [bulkBusy, setBulkBusy] = useState(false);
   const [probe, setProbe] = useState<string | null>(null);
   const [alertStatus, setAlertStatus] = useState<string | null>(null);
+  const nav: { screen: Screen; label: string; icon: IconName }[] =
+    role === "manager"
+      ? managerNav
+      : role === "player"
+        ? [
+            { screen: "home", label: "Home", icon: "home" },
+            { screen: "schedule", label: "Schedule", icon: "calendar" },
+            { screen: "reports", label: "My game", icon: "ball" },
+            { screen: "photos", label: "Photos", icon: "photo" },
+            { screen: "more", label: "More", icon: "more" },
+          ]
+        : [
+            { screen: "home", label: "Scores", icon: "ball" },
+            { screen: "reports", label: "Results", icon: "chart" },
+            { screen: "photos", label: "Photos", icon: "photo" },
+            { screen: "account", label: "Account", icon: "users" },
+          ];
+  const actor = app
+    ? {
+        ...syntheticCommunityActors(app.community)[role],
+        seasonId: app.preparation.activeSeasonId,
+      }
+    : null;
+  const records = app?.recordsBySeason[app.preparation.activeSeasonId];
+  const fixture = state?.config.fixture;
+  const opponent = fixture?.opponent ?? "Maple FC";
+  const capacity = state?.config.pitchPlaces ?? 7;
+  const plannedHalf = formatTime(
+    state?.config.plannedHalfDurationMs ?? 1_500_000,
+  );
+  const matchSlots = state?.config.slots ?? slots;
+  const legacySlots =
+    matchSlots.length === slots.length &&
+    matchSlots.every((slot, index) => slot.slotId === slots[index].slotId);
+  const pitchSlots = legacySlots
+    ? undefined
+    : state?.config.slots?.map((slot, index) => ({
+        id: slot.slotId,
+        label: slot.label ?? slot.position,
+        name: `${slot.position} position ${index + 1}`,
+        x: (slot.x ?? 0.5) * 100,
+        y: Math.min(82, Math.max(5, (slot.y ?? index / capacity) * 90)),
+      }));
+
+  useEffect(() => {
+    const saved = app?.activeMatchConfig;
+    let active = true;
+    if (saved && saved.matchId !== activeConfig.matchId)
+      queueMicrotask(() => {
+        if (active) setActiveConfig(saved);
+      });
+    return () => {
+      active = false;
+    };
+  }, [app?.activeMatchConfig, activeConfig.matchId]);
+  useEffect(() => {
+    setPlannerControl(role === "manager" && !model.conflict);
+  }, [role, model.conflict, setPlannerControl]);
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const desktop = Platform.OS === "web" && width >= 980;
@@ -88,7 +201,8 @@ function LongBall() {
   ).length;
   const started = Boolean(state && state.status !== "preparation");
   const halfTime = state?.status === "half_time";
-  const completed = state?.status === "completed";
+  const completed =
+    state?.status === "completed" || state?.status === "abandoned";
   const running = state?.status.endsWith("_running") ?? false;
   const matchMode = ["live", "lineup", "attendance"].includes(screen);
   const allocation = state
@@ -104,9 +218,25 @@ function LongBall() {
   );
   const validation = state ? validateLineup(state, allocation) : [];
   const name = (id: string) =>
-    romaFixture.players.find((player) => player.id === id)?.displayName ??
+    state?.config.players.find((player) => player.id === id)?.displayName ??
     "Unassigned";
   const navigate = (value: Screen) => {
+    if (
+      role !== "manager" &&
+      [
+        "attendance",
+        "lineup",
+        "live",
+        "team",
+        "settings",
+        "lab",
+        "planner",
+        "service",
+      ].includes(value)
+    ) {
+      setLocalError("This action belongs to the assigned team manager.");
+      return;
+    }
     setLocalError(null);
     setScreen(value);
   };
@@ -116,7 +246,7 @@ function LongBall() {
         ? halfTime
           ? "lineup"
           : "live"
-        : present < 7
+        : present < capacity
           ? "attendance"
           : "lineup",
     );
@@ -156,7 +286,8 @@ function LongBall() {
   };
   const choosePlayer = async (playerId: string) => {
     if (!state || !slot) return;
-    const target = slots.find((item) => item.slotId === slot)!;
+    const target = matchSlots.find((item) => item.slotId === slot)!;
+    if (!target) return;
     const old = allocation.find((item) => item.slotId === slot);
     const existing = allocation.find((item) => item.playerId === playerId);
     const next = allocation.filter(
@@ -169,6 +300,207 @@ function LongBall() {
     if (!started || halfTime)
       await send({ type: "lineup.staged", lineup: next });
     else setDraft({ lineup: next, revision: state.revision });
+  };
+  const changePreparation = async (command: PreparationCommand) => {
+    if (role !== "manager") {
+      setLocalError("Only the assigned manager can administer this team.");
+      return false;
+    }
+    if (command.type === "season.rolled_over" && started && !completed) {
+      setLocalError(
+        "Finish or explicitly hand over the active match before changing season.",
+      );
+      return false;
+    }
+    return application.change((current) => {
+      const preparation = reducePreparation(current.preparation, command);
+      let next = reconcileSeason({ ...current, preparation });
+      const seasonId = preparation.activeSeasonId;
+      const seasonRecords = next.recordsBySeason[seasonId];
+      const labels = new Map(
+        seasonRecords.players.map((player) => [player.id, player]),
+      );
+      preparation.profiles
+        .filter((profile) => profile.seasonId === seasonId)
+        .forEach((profile) =>
+          labels.set(profile.playerId, {
+            id: profile.playerId,
+            label: profile.displayName,
+          }),
+        );
+      next = {
+        ...next,
+        recordsBySeason: {
+          ...next.recordsBySeason,
+          [seasonId]: { ...seasonRecords, players: [...labels.values()] },
+        },
+      };
+      if (command.type.startsWith("training.")) {
+        const records = next.recordsBySeason[seasonId];
+        const profilePlayerId = (id: string) =>
+          preparation.profiles.find((profile) => profile.id === id)?.playerId ??
+          id;
+        const updated = reduceRecords(records, {
+          type: "training.evidence.replace",
+          commandId: randomUUID(),
+          at: new Date().toISOString(),
+          actor: "manager",
+          evidence: preparation.training
+            .filter((session) => session.seasonId === seasonId)
+            .map((session) => ({
+              sessionId: session.id,
+              playedDate: session.date,
+              eventStatus: session.status,
+              expectedPlayerIds:
+                session.expectedProfileIds.map(profilePlayerId),
+              attendance: Object.fromEntries(
+                Object.entries(session.attendance).map(([id, value]) => [
+                  profilePlayerId(id),
+                  value,
+                ]),
+              ),
+              responses: Object.fromEntries(
+                Object.entries(session.responses).map(([id, value]) => [
+                  profilePlayerId(id),
+                  value,
+                ]),
+              ),
+            })),
+        });
+        next = {
+          ...next,
+          recordsBySeason: { ...next.recordsBySeason, [seasonId]: updated },
+        };
+      }
+      return next;
+    }, command.type);
+  };
+  const openFixture = async (fixtureId: string) => {
+    if (
+      role !== "manager" ||
+      application.busy ||
+      application.retryPending ||
+      model.pendingRetry ||
+      model.conflict
+    )
+      return;
+    if (state && started && !completed && state.config.matchId !== fixtureId) {
+      setLocalError(
+        "An active match is already retained on this controller. Finish or hand it over before opening another match.",
+      );
+      return;
+    }
+    let nextConfig: MatchConfig | null = null;
+    if (
+      await application.change((current) => {
+        const snapshot =
+          [...current.preparation.snapshots]
+            .reverse()
+            .find((item) => item.fixtureId === fixtureId) ??
+          prepareFixtureSnapshot(current.preparation, fixtureId);
+        nextConfig = fixtureMatchConfig(current.preparation, snapshot);
+        const seasonId = snapshot.seasonId;
+        const records = reduceRecords(current.recordsBySeason[seasonId], {
+          type: "live.context.set",
+          commandId: randomUUID(),
+          at: new Date().toISOString(),
+          actor: "manager",
+          details: {
+            matchId: fixtureId,
+            playedDate: snapshot.fixture.playedDate,
+            opponent: snapshot.fixture.opponent,
+            homeAway: snapshot.fixture.homeAway,
+            fixtureClass: "unclassified",
+          },
+        });
+        return {
+          ...current,
+          activeMatchConfig: nextConfig,
+          recordsBySeason: { ...current.recordsBySeason, [seasonId]: records },
+        };
+      }, "application.fixture.opened")
+    ) {
+      if (nextConfig) setActiveConfig(nextConfig);
+      setScreen("attendance");
+      setLocalError(null);
+      setSlot(null);
+      setDraft(null);
+    }
+  };
+  const changeRecords = async (command: RecordsCommand) => {
+    if (role !== "manager") {
+      setLocalError("Only an assigned manager can change official records.");
+      return false;
+    }
+    return application.change((current) => {
+      const seasonId = current.preparation.activeSeasonId;
+      const records = reduceRecords(current.recordsBySeason[seasonId], command);
+      return {
+        ...current,
+        recordsBySeason: { ...current.recordsBySeason, [seasonId]: records },
+      };
+    }, command.type);
+  };
+  const changeOwnPreparation = async (command: PreparationCommand) => {
+    if (role !== "player" || !app) return false;
+    const profileId =
+      command.type === "profile.saved"
+        ? command.profile.id
+        : "profileId" in command
+          ? command.profileId
+          : null;
+    const ownProfile = app.preparation.profiles.find(
+      (profile) =>
+        profile.id === profileId &&
+        profile.playerId === defaultPlayerId &&
+        profile.seasonId === app.preparation.activeSeasonId,
+    );
+    if (
+      !ownProfile ||
+      ![
+        "fixture.response_recorded",
+        "training.response_recorded",
+        "profile.saved",
+      ].includes(command.type)
+    ) {
+      setLocalError(
+        "You can change only your own response or permitted profile fields.",
+      );
+      return false;
+    }
+    if (command.type === "profile.saved") {
+      const {
+        preferences: _beforePreferences,
+        foot: _beforeFoot,
+        ...before
+      } = ownProfile;
+      const {
+        preferences: _afterPreferences,
+        foot: _afterFoot,
+        ...after
+      } = command.profile;
+      if (JSON.stringify(before) !== JSON.stringify(after)) {
+        setLocalError("Profile identity and eligibility require your manager.");
+        return false;
+      }
+    }
+    return application.change(
+      (current) => ({
+        ...current,
+        preparation: reducePreparation(current.preparation, command),
+      }),
+      command.type,
+    );
+  };
+  const changeCommunity = async (next: CommunityState) => {
+    const sourceRevision = app?.community.revision;
+    return application.change((current) => {
+      if (current.community.revision !== sourceRevision)
+        throw new Error(
+          "Community records changed. Reload the saved version before trying again.",
+        );
+      return { ...current, community: next };
+    }, "application.community.changed");
   };
   const recover = async () => {
     const value = /^(\d{1,3}):([0-5]\d)$/.exec(recoveryTime.trim());
@@ -204,9 +536,13 @@ function LongBall() {
   const fixtureView = (
     <View style={s.fixtureHeading}>
       <Text style={s.fixtureTitle}>
-        Roma <Text style={s.vs}>vs</Text> Maple FC
+        {fixture?.teamName ?? "Roma"} <Text style={s.vs}>vs</Text> {opponent}
       </Text>
-      <Text style={s.muted}>Sat 24 Oct · 10:00 · Home</Text>
+      <Text style={s.muted}>
+        {fixture
+          ? `${fixture.playedDate} · ${fixture.kickoff ?? "Time not recorded"} · ${fixture.homeAway}`
+          : "Sat 24 Oct · 10:00 · Home"}
+      </Text>
     </View>
   );
   const benchView = (
@@ -240,7 +576,7 @@ function LongBall() {
       </Text>
       <View style={s.scoreTeam}>
         <Icon name="shield" size={35} color={colors.inkMuted} />
-        <Text style={s.label}>Maple FC</Text>
+        <Text style={s.label}>{opponent}</Text>
       </View>
     </View>
   );
@@ -265,7 +601,7 @@ function LongBall() {
           <View style={s.steps}>
             {[
               "Check in your team",
-              "Prepare the starting seven",
+              `Prepare ${capacity} starters`,
               "Keep the real match time",
             ].map((label, i) => (
               <View key={label} style={s.row}>
@@ -277,7 +613,7 @@ function LongBall() {
             ))}
           </View>
           <View style={s.reviewNote}>
-            <Pill tone="muted">M0 · FICTIONAL REVIEW</Pill>
+            <Pill tone="muted">FICTIONAL ROMA REVIEW</Pill>
             <Text style={s.small}>
               Shared interface and match rules with the native app. Browser
               storage is for synthetic review. Native device checks remain open.
@@ -286,7 +622,9 @@ function LongBall() {
         </View>
       )}
       <View style={[s.app, { paddingTop: insets.top }]}>
-        {!state ? (
+        {!state ||
+        state.config.matchId !== activeConfig.matchId ||
+        (!app && !application.error) ? (
           <View style={s.loading}>
             <Icon name="ball" size={48} color={colors.brand} />
             <Text style={s.title}>LongBall</Text>
@@ -319,19 +657,34 @@ function LongBall() {
               </View>
             ) : (
               <View style={s.header}>
-                <View style={s.row}>
+                <View style={[s.row, { flex: 1, minWidth: 0 }]}>
                   <View style={s.badge}>
                     <Text style={s.badgeText}>RR</Text>
                   </View>
-                  <View>
-                    <Text style={s.team}>Roma U10</Text>
-                    <Text style={s.footnote}>Richmond Rovers · 26/27</Text>
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text style={s.team}>
+                      {app
+                        ? `${app.preparation.team.name} ${app.preparation.team.ageGroup}`
+                        : "Roma U10"}
+                    </Text>
+                    <Text style={s.footnote}>
+                      {app?.preparation.club.name ?? "Richmond Rovers"} ·{" "}
+                      {app?.preparation.seasons.find(
+                        (season) =>
+                          season.id === app.preparation.activeSeasonId,
+                      )?.label ?? "26/27"}
+                    </Text>
                   </View>
                 </View>
-                <View style={s.brand}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Change fictional review account"
+                  onPress={() => navigate("more")}
+                  style={[s.brand, { minHeight: 48 }]}
+                >
                   <Icon name="ball" size={20} color={colors.brand} />
                   <Text style={s.wordmark}>LongBall</Text>
-                </View>
+                </Pressable>
               </View>
             )}
             <ScrollView
@@ -363,7 +716,34 @@ function LongBall() {
                   )}
                 </>
               )}
-              {screen === "home" && (
+              {application.error && (
+                <>
+                  <Notice tone="error">{application.error}</Notice>
+                  {application.retryPending && (
+                    <Button
+                      label="Retry unsaved team change"
+                      variant="secondary"
+                      onPress={() => {
+                        void application.retry();
+                      }}
+                    />
+                  )}
+                  {application.conflict && (
+                    <Button
+                      label="Reload saved team records; retain conflict"
+                      variant="secondary"
+                      onPress={application.reload}
+                    />
+                  )}
+                  {!app && (
+                    <Button
+                      label="Retry opening team records"
+                      onPress={application.reload}
+                    />
+                  )}
+                </>
+              )}
+              {screen === "home" && role === "manager" && (
                 <>
                   <View style={s.intro}>
                     <Text style={s.eyebrow}>YOUR TEAM, READY TO PLAY</Text>
@@ -380,17 +760,30 @@ function LongBall() {
                         <View style={s.iconTile}>
                           <Icon name="calendar" color={colors.brand} />
                         </View>
-                        <Text style={s.date}>SAT 24 OCT · 10:00</Text>
+                        <Text style={s.date}>
+                          {fixture
+                            ? `${fixture.playedDate} · ${fixture.kickoff ?? "Time TBC"}`
+                            : "SAT 24 OCT · 10:00"}
+                        </Text>
                       </View>
-                      <Pill tone="brand">HOME</Pill>
+                      <Pill tone="brand">
+                        {fixture?.homeAway.toUpperCase() ?? "HOME"}
+                      </Pill>
                     </View>
-                    <Text style={s.matchTitle}>Roma vs Maple FC</Text>
-                    <Text style={s.muted}>7-a-side · 2 × 25 minutes</Text>
+                    <Text style={s.matchTitle}>
+                      {fixture?.teamName ?? "Roma"} vs {opponent}
+                    </Text>
+                    <Text style={s.muted}>
+                      {capacity}-a-side · 2 × {plannedHalf} planned
+                    </Text>
                     <View style={s.stats}>
                       {[
                         { n: selected.length, label: "Selected" },
                         { n: present, label: "Checked in" },
-                        { n: `${allocation.length}/7`, label: "Lineup" },
+                        {
+                          n: `${allocation.length}/${capacity}`,
+                          label: "Lineup",
+                        },
                       ].map((item) => (
                         <View key={item.label} style={s.statCell}>
                           <Text style={s.stat}>{item.n}</Text>
@@ -445,9 +838,10 @@ function LongBall() {
                           {halfTime ? "Second-half lineup" : "Starting lineup"}
                         </Text>
                         <Text style={s.small}>
-                          {allocation.length === 7
-                            ? "Seven places prepared · 2–3–1"
-                            : "Set your seven · 2–3–1 formation"}
+                          {allocation.length === capacity
+                            ? `${capacity} places prepared`
+                            : `Set ${capacity} starters`}
+                          {legacySlots ? " · 2–3–1" : ` · ${capacity}-a-side`}
                         </Text>
                       </View>
                       <Icon name="chevron" size={20} />
@@ -457,7 +851,8 @@ function LongBall() {
                     <View style={s.row}>
                       <Icon name="shield" size={18} color={colors.brand} />
                       <Text style={s.small}>
-                        13 fictional players · Season 26/27
+                        {state.config.players.length} fictional players · Season
+                        26/27
                       </Text>
                     </View>
                     <Text style={s.footnote}>
@@ -466,13 +861,13 @@ function LongBall() {
                   </View>
                 </>
               )}
-              {(screen === "attendance" || screen === "team") && (
+              {screen === "attendance" && role === "manager" && (
                 <>
                   <Text style={s.eyebrow}>ROMA U10 · MATCH SQUAD</Text>
                   <Text accessibilityRole="header" style={s.title}>
-                    {screen === "team" ? "Your team" : "Who’s here?"}
+                    Who’s here?
                   </Text>
-                  <Text style={s.muted}>Roma vs Maple FC · 24 October</Text>
+                  {fixtureView}
                   <View style={s.between}>
                     <View>
                       <Text style={s.stat}>
@@ -590,14 +985,14 @@ function LongBall() {
                       label="Continue to lineup"
                       icon="arrow"
                       onPress={() => navigate("lineup")}
-                      disabled={present < 7 || busy}
+                      disabled={present < capacity || busy}
                       testID="continue-lineup"
                     />
                   )}
-                  {present < 7 && (
+                  {present < capacity && (
                     <Text style={s.small}>
-                      Confirm seven present players, including Player 01 in
-                      goal.
+                      Confirm {capacity} present players, including an eligible
+                      goalkeeper.
                     </Text>
                   )}
                 </>
@@ -623,7 +1018,7 @@ function LongBall() {
                         </View>
                         <View>
                           <Text style={s.small}>Second half planned</Text>
-                          <Text style={s.section}>25:00</Text>
+                          <Text style={s.section}>{plannedHalf}</Text>
                         </View>
                       </View>
                     </Card>
@@ -633,11 +1028,17 @@ function LongBall() {
                       {present} present · {allocation.length} on pitch ·{" "}
                       {bench.length} bench
                     </Text>
-                    <Text style={s.small}>2–3–1</Text>
+                    <Text style={s.small}>
+                      {legacySlots ? "2–3–1" : `${capacity}-a-side`}
+                    </Text>
                   </View>
                   {allocation.length === 0 && (
                     <Button
-                      label="Place the first seven"
+                      label={
+                        capacity === 7
+                          ? "Place the first seven"
+                          : `Place ${capacity} starters`
+                      }
                       variant="secondary"
                       icon="users"
                       onPress={() => {
@@ -646,13 +1047,19 @@ function LongBall() {
                           lineup: suggestedStartingLineup(state),
                         });
                       }}
-                      disabled={present < 7 || busy}
+                      disabled={present < capacity || busy}
                       testID="place-seven"
                     />
                   )}
                   <Pitch
                     lineup={allocation}
                     players={state.config.players}
+                    slots={pitchSlots}
+                    formationName={
+                      state.config.slots
+                        ? `${capacity}-a-side formation`
+                        : undefined
+                    }
                     onSlotPress={setSlot}
                     selectedSlot={slot ?? undefined}
                   />
@@ -669,17 +1076,18 @@ function LongBall() {
                     <View style={s.row}>
                       <Icon name="shield" color={colors.brand} />
                       <View style={s.flex}>
-                        <Text style={s.cardTitle}>One fixed keeper</Text>
+                        <Text style={s.cardTitle}>Goalkeeper eligibility</Text>
                         <Text style={s.small}>
-                          Player 01 · first-choice goalkeeper
+                          Choose an eligible keeper from this match’s saved
+                          profile snapshot.
                         </Text>
                       </View>
                     </View>
                   </Card>
                   {validation.length > 0 && (
                     <Notice tone="info">
-                      Choose seven present, available players with one eligible
-                      goalkeeper before starting.
+                      Choose {capacity} present, available players with one
+                      eligible goalkeeper before starting.
                     </Notice>
                   )}
 
@@ -697,7 +1105,9 @@ function LongBall() {
                   <View style={s.between}>
                     <Text accessibilityRole="header" style={s.title}>
                       {completed
-                        ? "Full time"
+                        ? state.status === "abandoned"
+                          ? "Match abandoned"
+                          : "Full time"
                         : halfTime
                           ? "Half-time"
                           : "Match live"}
@@ -760,7 +1170,7 @@ function LongBall() {
                     <>
                       <Notice tone="warning">
                         The break adds no minutes. Prepare changes, then start a
-                        fresh 25-minute second half.
+                        fresh {plannedHalf} second half.
                       </Notice>
                       <Button
                         label="Prepare second half"
@@ -782,6 +1192,12 @@ function LongBall() {
                       <Pitch
                         lineup={state.lineup}
                         players={state.config.players}
+                        slots={pitchSlots}
+                        formationName={
+                          state.config.slots
+                            ? `${capacity}-a-side formation`
+                            : undefined
+                        }
                         compact
                         onSlotPress={
                           completed || clock.recoveryRequired
@@ -792,11 +1208,60 @@ function LongBall() {
                       {benchView}
                     </>
                   )}
+                  <LiveEventsPanel
+                    match={state}
+                    clock={clock}
+                    onCommand={send}
+                    busy={busy}
+                  />
+                  {!completed && (
+                    <Button
+                      label="Abandon match…"
+                      variant="quiet"
+                      disabled={busy || clock.recoveryRequired}
+                      onPress={() => setConfirmAbandon(true)}
+                    />
+                  )}
+                  {!completed && (
+                    <Button
+                      label="Fair-time suggestions"
+                      variant="secondary"
+                      icon="swap"
+                      onPress={() => navigate("planner")}
+                    />
+                  )}
+                  {planner.nextChange && !completed && (
+                    <Card>
+                      <Text style={s.cardTitle}>
+                        {(planner.dueInMs ?? 0) <= 0
+                          ? "Planned change is due"
+                          : `Next change in ${formatTime(planner.dueInMs ?? 0)}`}
+                      </Text>
+                      <Text style={s.small}>
+                        {planner.nextChange.explanation}
+                      </Text>
+                      <Button
+                        label="Review suggested change"
+                        disabled={
+                          busy ||
+                          planner.result?.sourceRevision !== state.revision ||
+                          Boolean(clock.recoveryRequired)
+                        }
+                        onPress={() =>
+                          setDraft({
+                            lineup: planner.nextChange!.lineup,
+                            revision: planner.result!.sourceRevision,
+                          })
+                        }
+                      />
+                    </Card>
+                  )}
                   {completed && (
                     <>
                       <Notice tone="info">
                         Rehearsal complete. The journal and minutes are
-                        retained. Awards and server sync are later milestones.
+                        retained. Open reports for the saved record, or Awards
+                        for the private voting journey.
                       </Notice>
                       <Button
                         label="View local match record"
@@ -810,101 +1275,248 @@ function LongBall() {
                   </Text>
                 </>
               )}
-              {screen === "schedule" && (
+              {app &&
+                role === "manager" &&
+                ["schedule", "team", "settings"].includes(screen) && (
+                  <PreparationScreens
+                    state={app.preparation}
+                    onChange={changePreparation}
+                    view={
+                      screen === "team"
+                        ? "team"
+                        : screen === "settings"
+                          ? "settings"
+                          : "schedule"
+                    }
+                    onOpenMatch={(fixtureId) => {
+                      void openFixture(fixtureId);
+                    }}
+                    busy={application.busy}
+                    error={application.error}
+                  />
+                )}
+              {app &&
+                role === "player" &&
+                (screen === "home" || screen === "schedule") && (
+                  <PlayerExperience
+                    state={app.preparation}
+                    playerId={defaultPlayerId}
+                    view={screen}
+                    onChange={changeOwnPreparation}
+                    onReports={() => navigate("reports")}
+                    onAwards={() => navigate("awards")}
+                    busy={application.busy}
+                  />
+                )}
+              {app && role === "player" && screen === "profile" && (
+                <OwnProfile
+                  state={app.preparation}
+                  playerId={defaultPlayerId}
+                  onChange={changeOwnPreparation}
+                  busy={application.busy}
+                />
+              )}
+              {screen === "planner" && role === "manager" && (
                 <>
-                  <Text style={s.eyebrow}>SEASON 26/27</Text>
-                  <Text accessibilityRole="header" style={s.title}>
-                    Schedule
-                  </Text>
-                  <Text style={s.muted}>Your next football day.</Text>
-                  <Card>
-                    <View style={s.between}>
-                      <Text style={s.date}>SATURDAY 24 OCTOBER</Text>
-                      <Pill tone="brand">Home</Pill>
-                    </View>
-                    {fixtureView}
-                    <Text style={s.muted}>Arrival 09:30 · Kick-off 10:00</Text>
-                    <Text style={s.small}>
-                      7-a-side · 50 planned minutes · fictional fixture
-                    </Text>
-                    <Button
-                      label={
-                        completed
-                          ? "View match record"
-                          : started
-                            ? "Resume match"
-                            : "Prepare match"
+                  <Button
+                    label="Back to match"
+                    variant="quiet"
+                    icon="left"
+                    onPress={() => navigate(started ? "live" : "lineup")}
+                  />
+                  <PlannerPanel
+                    model={planner}
+                    onReviewLineup={(lineup, sourceRevision) => {
+                      if (!state || sourceRevision !== state.revision) {
+                        setLocalError(
+                          "The source lineup changed. Replan before reviewing this change.",
+                        );
+                        return;
                       }
-                      onPress={completed ? () => navigate("reports") : prepare}
-                      icon="arrow"
-                    />
-                  </Card>
-                  <Notice tone="info">
-                    This review contains one fictional fixture. Fixture editing
-                    and training remain in the next preparation milestones.
-                  </Notice>
+                      if (!started || halfTime) {
+                        void send({ type: "lineup.staged", lineup });
+                        navigate("lineup");
+                      } else {
+                        setDraft({ lineup, revision: sourceRevision });
+                        navigate("live");
+                      }
+                    }}
+                  />
                 </>
               )}
-              {screen === "reports" && (
+              {app &&
+                records &&
+                (screen === "reports" ||
+                  (screen === "home" && role === "spectator")) && (
+                  <RecordsScreens
+                    state={records}
+                    onChange={role === "manager" ? changeRecords : undefined}
+                    match={
+                      state.config.fixture?.seasonId &&
+                      state.config.fixture.seasonId !==
+                        app.preparation.activeSeasonId
+                        ? null
+                        : state
+                    }
+                    actor={role}
+                    playerId={role === "player" ? defaultPlayerId : undefined}
+                    busy={application.busy}
+                  />
+                )}
+              {screen === "account" && (
                 <>
-                  <Text style={s.eyebrow}>ROMA U10 · THIS REHEARSAL</Text>
-                  <Text accessibilityRole="header" style={s.title}>
-                    Match record
-                  </Text>
-                  {fixtureView}
-                  <Card>
-                    {scoreView}
-                    <View style={s.between}>
-                      <Text style={s.muted}>
-                        {completed
-                          ? "Final active duration"
-                          : "Current active duration"}
-                      </Text>
-                      <Text style={s.section}>
-                        {formatTime(clock?.matchActiveMs ?? 0)}
-                      </Text>
-                    </View>
-                    <Text style={s.small}>
-                      {completed
-                        ? "Local completed match"
-                        : "In progress · not a final report"}{" "}
-                      · Manager view
-                    </Text>
-                  </Card>
-                  <Text style={s.section}>Actual participation</Text>
-                  {playerMinutes(state, model.sample).map((item) => (
-                    <View key={item.playerId} style={s.reportRow}>
-                      <View style={s.flex}>
-                        <Text style={s.cardTitle}>{name(item.playerId)}</Text>
-                        <Text style={s.small}>
-                          {state.attendance[item.playerId] === "present"
-                            ? "Present"
-                            : state.attendance[item.playerId] === "absent"
-                              ? "Known absent"
-                              : "Attendance not recorded"}{" "}
-                          ·{" "}
-                          {Object.entries(item.positionMs)
-                            .map(
-                              ([position, duration]) =>
-                                `${position} ${formatTime(duration)}`,
-                            )
-                            .join(" · ") || "No recorded position time"}
-                        </Text>
-                      </View>
-                      <Text style={s.reportTime}>
-                        {formatTime(item.playingMs)}
-                      </Text>
-                    </View>
-                  ))}
-                  <Notice tone="info">
-                    Minutes derive from recorded active intervals. The full
-                    fair-time planner, season reports and corrections remain to
-                    be implemented.
-                  </Notice>
-                  {localStatus}
+                  <Button
+                    label="Switch fictional review account"
+                    variant="secondary"
+                    onPress={() => navigate("more")}
+                  />
+                  {role === "spectator" && (
+                    <Button
+                      label="Accept a spectator invitation"
+                      variant="secondary"
+                      onPress={() => navigate("invitations")}
+                    />
+                  )}
                 </>
               )}
+              {screen === "security" && role === "manager" && (
+                <AccountSecurityScreen />
+              )}
+              {screen === "service" && role === "manager" && (
+                <ConnectedWorkspace
+                  journal={model.journal}
+                  deviceId={model.deviceId}
+                  match={state}
+                />
+              )}
+              {app &&
+                actor &&
+                ["photos", "invitations", "awards", "account"].includes(
+                  screen,
+                ) && (
+                  <CommunityScreens
+                    state={app.community}
+                    actor={actor}
+                    onChange={changeCommunity}
+                    section={
+                      screen === "photos"
+                        ? "photos"
+                        : screen === "invitations"
+                          ? "invitations"
+                          : screen === "awards"
+                            ? "awards"
+                            : "account"
+                    }
+                  />
+                )}
               {screen === "more" && (
+                <>
+                  <Text style={s.eyebrow}>YOUR TEAM SPACE</Text>
+                  <Text accessibilityRole="header" style={s.title}>
+                    More
+                  </Text>
+                  <Card>
+                    <Text style={s.section}>Fictional review experience</Text>
+                    <Text style={s.small}>
+                      Explore separate sample accounts. Real access requires
+                      verified sign-in and server permissions.
+                    </Text>
+                    {(["manager", "player", "spectator"] as const).map(
+                      (value) => (
+                        <Button
+                          key={value}
+                          label={
+                            value === "manager"
+                              ? "Manager and club admin review"
+                              : value === "player"
+                                ? "Player 01 and parent review"
+                                : "Invited spectator review"
+                          }
+                          variant={role === value ? "primary" : "secondary"}
+                          testID={`review-role-${value}`}
+                          disabled={application.busy || model.pendingRetry}
+                          onPress={() => {
+                            setRole(value);
+                            setScreen("home");
+                            setLocalError(null);
+                            setSlot(null);
+                            setDraft(null);
+                          }}
+                        />
+                      ),
+                    )}
+                  </Card>
+                  <Button
+                    label="Team photos"
+                    icon="photo"
+                    variant="secondary"
+                    onPress={() => navigate("photos")}
+                  />
+                  {role === "player" && (
+                    <Button
+                      label="My profile and preferences"
+                      icon="users"
+                      variant="secondary"
+                      onPress={() => navigate("profile")}
+                    />
+                  )}
+                  {role !== "spectator" && (
+                    <Button
+                      label="Invitations and access"
+                      icon="users"
+                      variant="secondary"
+                      onPress={() => navigate("invitations")}
+                    />
+                  )}
+                  <Button
+                    label="Players’ award"
+                    icon="trophy"
+                    variant="secondary"
+                    onPress={() => navigate("awards")}
+                  />
+                  {role === "manager" && (
+                    <>
+                      <Button
+                        label="Team and season settings"
+                        icon="settings"
+                        variant="secondary"
+                        onPress={() => navigate("settings")}
+                      />
+                      <Button
+                        label="Fair-time plan"
+                        icon="swap"
+                        variant="secondary"
+                        onPress={() => navigate("planner")}
+                      />
+                      <Button
+                        label="Service and controller"
+                        icon="shield"
+                        variant="secondary"
+                        onPress={() => navigate("service")}
+                      />
+                      <Button
+                        label="Connected sign-in and device security"
+                        icon="lock"
+                        variant="secondary"
+                        onPress={() => navigate("security")}
+                      />
+                      <Button
+                        label="Native feasibility lab"
+                        icon="info"
+                        variant="quiet"
+                        onPress={() => navigate("lab")}
+                      />
+                    </>
+                  )}
+                  <Button
+                    label="My account and privacy"
+                    icon="lock"
+                    variant="secondary"
+                    onPress={() => navigate("account")}
+                  />
+                </>
+              )}
+              {screen === "lab" && role === "manager" && (
                 <>
                   <Text style={s.eyebrow}>SYNTHETIC DEVELOPMENT BUILD</Text>
                   <Text accessibilityRole="header" style={s.title}>
@@ -1001,10 +1613,10 @@ function LongBall() {
                     <Text style={s.section}>Try the journey</Text>
                     {[
                       "Check in the selected squad.",
-                      "Place seven starters and swap a pitch piece.",
+                      `Place ${capacity} starters and swap a pitch piece.`,
                       "Start, pause and resume the first half.",
                       "End early; stage changes during the break.",
-                      "Start a fresh 25-minute second half.",
+                      `Start a fresh ${plannedHalf} second half.`,
                       "Reload a running browser session to check recovery.",
                     ].map((text, i) => (
                       <Text key={text} style={s.body}>
@@ -1027,7 +1639,7 @@ function LongBall() {
                 ]}
               >
                 <Button
-                  label={`Start ${halfTime ? "second" : "first"} half · 25:00`}
+                  label={`Start ${halfTime ? "second" : "first"} half · ${plannedHalf}`}
                   icon="play"
                   onPress={() => {
                     void send({ type: "half.started" }).then((ok) => {
@@ -1043,7 +1655,7 @@ function LongBall() {
                 />
                 <Text style={s.centerSmall}>
                   {validation.length
-                    ? "Complete seven valid places, including the goalkeeper."
+                    ? `Complete ${capacity} valid places, including the goalkeeper.`
                     : "All staged positions commit together on Start."}
                 </Text>
               </View>
@@ -1074,7 +1686,12 @@ function LongBall() {
                       label="Change lineup"
                       icon="swap"
                       disabled={busy || clock.recoveryRequired}
-                      onPress={() => setSlot("lw")}
+                      onPress={() =>
+                        setSlot(
+                          matchSlots.find((item) => item.position !== "GK")
+                            ?.slotId ?? matchSlots[0].slotId,
+                        )
+                      }
                     />
                   </View>
                   <View style={s.flex}>
@@ -1143,12 +1760,49 @@ function LongBall() {
         )}
       </View>
       <Sheet
+        visible={confirmAbandon}
+        onClose={() => setConfirmAbandon(false)}
+        title="Abandon this match?"
+      >
+        <Notice tone="warning">
+          This stops recording and retains actual time, score and the audit. The
+          result and awards stay unresolved until the outcome policy is set.
+        </Notice>
+        {(["weather", "safety", "insufficient_players", "other"] as const).map(
+          (value) => (
+            <Button
+              key={value}
+              label={value.replaceAll("_", " ")}
+              variant={abandonReason === value ? "primary" : "secondary"}
+              onPress={() => setAbandonReason(value)}
+            />
+          ),
+        )}
+        <Button
+          label="Confirm abandonment"
+          variant="danger"
+          disabled={busy}
+          onPress={() => {
+            void send({ type: "match.abandoned", reason: abandonReason }).then(
+              (saved) => {
+                if (saved) setConfirmAbandon(false);
+              },
+            );
+          }}
+        />
+        <Button
+          label="Keep recording"
+          variant="secondary"
+          onPress={() => setConfirmAbandon(false)}
+        />
+      </Sheet>
+      <Sheet
         visible={slot !== null}
         onClose={() => setSlot(null)}
         title="Choose a player"
       >
         <Text style={s.muted}>
-          {slots.find((item) => item.slotId === slot)?.position} ·{" "}
+          {matchSlots.find((item) => item.slotId === slot)?.position} ·{" "}
           {started && !halfTime ? "Review before applying" : "Pending start"}
         </Text>
         <Text style={s.small}>
@@ -1246,12 +1900,12 @@ function LongBall() {
           {formatTime(clock?.halfActiveMs ?? 0)} played
         </Text>
         <Text style={s.section}>
-          Roma {state?.score.for} : {state?.score.against} Maple FC
+          Roma {state?.score.for} : {state?.score.against} {opponent}
         </Text>
         <Notice tone="warning">
           Confirm at the referee’s whistle.{" "}
           {state?.half === 1
-            ? "The second half will still start at 25:00."
+            ? `The second half will still start at ${plannedHalf}.`
             : "The local match record will become read-only."}
         </Notice>
         {model.error && <Notice tone="error">{model.error}</Notice>}
