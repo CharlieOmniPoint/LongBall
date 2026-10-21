@@ -1,0 +1,18 @@
+{
+  "sourceCommit": "f4fbffe99ae977d89172afb86f78bbf262b275e1",
+  "transportCommit": "b73fbc9aefc2f0858c9c959dfe306012f3817193",
+  "run": 39643618920,
+  "android": {
+    "job": 119373326088,
+    "conclusion": "success"
+  },
+  "ios": {
+    "job": 119373326234,
+    "conclusion": "cancelled",
+    "stepsStarted": 0,
+    "annotation": "The job was not acquired by Runner of type hosted even after multiple attempts",
+    "notice": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times."
+  },
+  "publicRunPage": "Skip to content\nNavigation Menu\nPlatform\nSolutions\nResources\nOpen Source\nEnterprise\nPricing\nSearch\n/\nSign in\nSign up\nCharlieOmniPoint\nLongBall\nRepository navigation\nCode\nIssues\nPull requests\n1\n (1)\nActions\nProjects\nSecurity and quality\nInsights\nLongBall native compilation feasibility\nPublish explicit LongBall welcome and connected role review journeys … #5\nSign in to view logs\nSummary\nAll jobs\nandroid native compile\nios native compile\nRun details\nUsage\nWorkflow file\nLockfile\nTriggered via push \nCharlieOmniPoint\npushed\n b73fbc9\npreview/longball-m0\nStatus\nFailure\nTotal duration\n15m 2s\nArtifacts\n–\nnative-feasibility.yml\non: push\nMatrix: compile\n2 jobs completed\nShow all jobs\n\nOh hello! Nice to see you.\n\nMade with ❤️ by humans.txt\n\nAnnotations\n2 errors, 1 warning, and 3 notices\nios native compile\nThe job was not acquired by Runner of type hosted even after multiple attempts\n\n\nLongBall native compilation feasibility\nInternal server error. Correlation ID: 63fc8c13-3081-41ef-942b-5fcfd4a80542\n\n\nandroid native compile\nNode.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5, actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00, actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/\nShow more\n\n\nios native compile\nDue to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.\n\n\nios native compile\nDue to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.\n\n\nios native compile\nDue to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.\n",
+  "scope": "iOS job did not run; no source-compilation result is inferred. Existing Hermes exports and prior exact-source native proofs remain separate."
+}
