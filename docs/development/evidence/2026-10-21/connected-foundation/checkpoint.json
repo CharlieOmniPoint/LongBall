@@ -1,0 +1,69 @@
+{
+  "status": "fictional review candidate; continued implementation required",
+  "parentCommit": "3b2d83d591074a6fe887c4f3e6300626d4e138af",
+  "sourceCommit": "Assigned by the subsequent publication build-info.json; this evidence is part of that candidate.",
+  "unit": {
+    "passed": 332,
+    "files": 37
+  },
+  "api": {
+    "passed": 143,
+    "files": 17,
+    "actualPostgresql": true
+  },
+  "lint": "passed",
+  "rootAndMobileTypeScript": "passed",
+  "nativeJavaScriptExports": {
+    "android": "9a03cf81d0d65ea93c5ffa47c829c8f3",
+    "ios": "26f7ac99ec586628aa63461559966938",
+    "physicalDeviceProof": false
+  },
+  "sha256": {
+    "apps/mobile/dist-web/_expo/static/js/web/index-574b3e4289da41fb548779d3b27caa53.js": "34f026256d1eb1dca1a1686a6d2a02a4ec2f8389c715a9c70497c224abb92427",
+    "apps/api/dist/api.mjs": "bcf92d7d6937c965c88637c089168636122c29c06b817291faee480ebe7df558",
+    "apps/mobile/dist-production-review/_expo/static/js/web/index-a3ec3741c511df6df4452e267ddf4e1c.js": "1e57888252be4199298bece6b8c0ba7365270f8e2781b4c3dfcbb00417df2e59",
+    "apps/mobile/dist-pages/_expo/static/js/web/index-1f994eab9ecd0cbe816e06ec65de3984.js": "f8bd697cd127aa88cc3ef07dd704ca909261b8d3ffae69de1b2a3588dcdcf9f2"
+  },
+  "browserChecks": {
+    "match": {
+      "file": "match.json",
+      "status": "passed"
+    },
+    "live": {
+      "file": "live.json",
+      "status": "passed"
+    },
+    "application": {
+      "file": "application.json",
+      "status": null
+    },
+    "production": {
+      "file": "production.json",
+      "status": true
+    },
+    "pagesLocal": {
+      "file": "pagesLocal.json",
+      "status": "passed"
+    }
+  },
+  "additionalEvidence": [
+    "../connected-staff-albums-574b/summary.json",
+    "../identity/account-requests-browser.json",
+    "../runtime/privacy-migration-004.json"
+  ],
+  "knownOpenImplementation": [
+    "SEC10 transaction-scoped PostgreSQL tenant RLS is in progress; application object checks and restricted grants already exist.",
+    "Malformed saved device identity or mismatched saved fixture require explicit retained-data startup errors; guard fix prepared for next increment."
+  ],
+  "unresolvedIncident": {
+    "description": "One fresh browser context stayed at Opening the local Roma fixture beyond20seconds; no runtime exception captured. Cause unproved.",
+    "followup": "Same-source20/20 instrumented cold starts passed without reload, reset or reseed. Pass-through IDB and bounded read-only diagnostics added. First incident preserved in album-review.",
+    "approvedAsFixed": false
+  },
+  "releaseAcceptance": {
+    "nativeM0Physical": false,
+    "production": false,
+    "realChildData": false,
+    "ownerPoliciesApproved": false
+  }
+}

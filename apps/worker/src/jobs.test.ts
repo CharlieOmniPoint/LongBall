@@ -57,7 +57,7 @@ describe('durable award deadline worker', () => {
   });
   it('recovers an expired lease and retains bounded failed jobs for review', () => {
     const test = setup();
-    test.store.database.prepare('INSERT INTO jobs(id,business_key,kind,payload_json,due_at,state,attempts,lease_until) VALUES(?,?,?,?,?,?,?,?)').run('unknown-job', 'unknown-business', 'unsupported', '{}', test.now - 1, 'leased', 0, test.now - 1);
+    test.store.database.prepare('INSERT INTO jobs(id,business_key,kind,payload_json,due_at,state,attempts,lease_until) VALUES(?,?,?,?,?,?,?,?)').run('unknown-job', 'unknown-business', 'award.finalise', '{}', test.now - 1, 'leased', 0, test.now - 1);
     expect(runDueJobs(test.store, test.now)).toEqual({ completed: 0, retried: 1, failed: 0 });
     test.setTime(test.now + 10_000); expect(runDueJobs(test.store, test.now).retried).toBe(1);
     test.setTime(test.now + 10_000); expect(runDueJobs(test.store, test.now).failed).toBe(1);

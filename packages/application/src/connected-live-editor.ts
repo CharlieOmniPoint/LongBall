@@ -104,6 +104,8 @@ export function assertNativeLiveCommand(
       command.replacement.scorerPlayerId
     )
       selected(command.replacement.scorerPlayerId);
+    if (command.replacement.type === "lineup.committed")
+      for (const allocation of command.replacement.lineup) selected(allocation.playerId);
   }
   if (command.type === "lineup.staged" || command.type === "lineup.committed")
     for (const allocation of command.lineup) selected(allocation.playerId);

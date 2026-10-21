@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createMatch, ENGINE_VERSION, reduceMatch, type MatchEvent } from '../../domain/src/index';
-import { applyMutationResponse, applyUploadReceipt, attachGrant, createConnectedDocument, effectiveEventTime, LongBallServiceClient, mergeDownload, prepareServiceRequest, queueConnectedCommand, selectAcceptedBranch, ServiceError, settleDefiniteRefusal, WIRE_CONTRACT_VERSION, type ConnectedMatchDocument, type HttpFetch, type MatchDownload, type UploadReceipt } from './sync';
+import { applyMutationResponse, applyUploadReceipt, attachGrant, createConnectedDocument, effectiveEventTime, LongBallServiceClient, mergeDownload, prepareServiceRequest, queueConnectedCommand, retainClockMapping, selectAcceptedBranch, ServiceError, settleDefiniteRefusal, WIRE_CONTRACT_VERSION, type ConnectedMatchDocument, type HttpFetch, type MatchDownload, type UploadReceipt } from './sync';
 
 const now = 1_800_000_000_000;
 const state = createMatch({ matchId: 'synthetic-wire-match', players: Array.from({ length: 9 }, (_, index) => ({ id: `p${index + 1}`, displayName: `Player ${index + 1}`, goalkeeperChoice: index === 0 ? 1 : 0 })), selectedPlayerIds: Array.from({ length: 9 }, (_, index) => `p${index + 1}`), pitchPlaces: 7, plannedHalfDurationMs: 1_500_000, fixedKeeperId: 'p1' });
@@ -178,5 +178,45 @@ describe('canonical connected outbox separate from M0 local history', () => {
     let document = queueConnectedCommand(ready(), { type: 'attendance.recorded', playerId: 'p1', status: 'present' }, sample(), 'retained'); document = prepareServiceRequest(document, 'upload', 'receipt-key');
     expect(() => applyUploadReceipt(document, { results: [], revision: 1, pendingReview: false }, new Date(now).toISOString())).toThrow('exact retained');
     expect(document.outbox[0].disposition).toBe('pending'); expect(document.pendingRequest).not.toBeNull();
+  });
+});
+
+describe('engine upgrade preserves immutable older wire evidence', () => {
+  it('blocks mixed-engine capture/replay while permitting exact original upload and retained version quarantine', () => {
+    let old = queueConnectedCommand(ready(), { type: 'attendance.recorded', playerId: 'p1', status: 'present' }, sample(), 'v2-pending-event');
+    old = { ...old, outbox: old.outbox.map(entry => ({ ...entry, envelope: { ...entry.envelope, engineVersion: 'synthetic-live-2' } })) };
+    const original = JSON.stringify(old.outbox), candidate = old.localState;
+    expect(() => queueConnectedCommand(old, { type: 'attendance.recorded', playerId: 'p2', status: 'present' }, sample(), 'new-v3')).toThrow('older-engine');
+    const downloadedCurrent = mergeDownload(old, downloaded());
+    expect(downloadedCurrent.localState).toBe(candidate); expect(downloadedCurrent.reconciliationRequired).toBe(true);
+    expect(JSON.stringify(downloadedCurrent.outbox)).toBe(original);
+    const request = prepareServiceRequest(old, 'upload', 'retained-v2-upload-key');
+    expect((request.pendingRequest!.body as { events: { engineVersion:string }[] }).events[0].engineVersion).toBe('synthetic-live-2');
+    const retained = applyUploadReceipt(request, { results: [{ eventId: 'v2-pending-event', clientSequence: 1, disposition: 'quarantined', reason: 'UNSUPPORTED_EVENT_VERSION', revision: null, duplicate: false }], revision: 0, pendingReview: true }, new Date(now).toISOString());
+    expect(retained.outbox[0]).toMatchObject({ disposition: 'quarantined', reason: 'UNSUPPORTED_EVENT_VERSION', envelope: { engineVersion: 'synthetic-live-2', eventId: 'v2-pending-event', clientSequence: 1 } });
+    expect(retained.localState).toBe(candidate); expect(retained.reconciliationRequired).toBe(true); expect(retained.allocatedSequence).toBe(1);
+  });
+});
+
+describe('persisted controller/session clock mapping proof', () => {
+  const mapping = { challengeId:'verified-challenge', policyId:'fictional-explicit-clock-trial', matchId:state.config.matchId, deviceId:'device-a', controllerEpoch:1, continuityId:'wire-session', establishedAtMs:now, validUntilMs:now+3_600_000, offsetMinimumMs:now-10, offsetMaximumMs:now+10, sampleMonotonicMs:20 };
+  it('uses the retained challenge only for new same-scope samples and never rewrites an existing pending request', () => {
+    const pending = prepareServiceRequest(queueConnectedCommand(ready(), {type:'attendance.recorded',playerId:'p1',status:'present'}, sample(0), 'before-exchange'), 'upload','before-exchange-key');
+    const original = JSON.stringify(pending.pendingRequest), originalEnvelope = JSON.stringify(pending.outbox[0]);
+    const saved = retainClockMapping(pending,mapping,sample(20));
+    const reopened = JSON.parse(JSON.stringify(saved)) as ConnectedMatchDocument;
+    const next = queueConnectedCommand(reopened,{type:'attendance.recorded',playerId:'p2',status:'present'},sample(30),'after-exchange');
+    expect(next.outbox[1].envelope.clockEvidence.anchorId).toBe(mapping.challengeId);
+    expect(JSON.stringify(next.pendingRequest)).toBe(original); expect(JSON.stringify(next.outbox[0])).toBe(originalEnvelope);
+    expect(queueConnectedCommand(saved,{type:'attendance.recorded',playerId:'p2',status:'present'},{...sample(30),sessionId:'new-boot'},'new-boot-event').outbox[1].envelope.clockEvidence.anchorId).toBe('anchor-device-a');
+    expect(queueConnectedCommand(saved,{type:'attendance.recorded',playerId:'p2',status:'present'},sample(3_600_001),'expired-event').outbox[1].envelope.clockEvidence.anchorId).toBe('anchor-device-a');
+    expect(() => retainClockMapping(saved,{...mapping,controllerEpoch:2},sample(30))).toThrow('current controller');
+    expect(() => retainClockMapping(saved,{...mapping,deviceId:'other'},sample(30))).toThrow('current controller');
+    expect(() => retainClockMapping(saved,mapping,sample(3_600_001))).toThrow('lifetime');
+  });
+  it('clears active proof on a new epoch while retaining original proof receipts', () => {
+    const saved = retainClockMapping(ready(),mapping,sample(20));
+    const moved = attachGrant(saved,{epoch:2,deviceId:'device-a',controllerToken:'new-token',checkpoint:saved.serverCheckpoint});
+    expect(moved.clockMapping).toBeNull(); expect(moved.clockMappingHistory).toEqual([mapping]);
   });
 });

@@ -4,9 +4,10 @@ import type {
   EffectiveMatchTime, MatchAuditEntry,
 } from './types';
 import { cloneValue, effectiveTime, goalRecord, scoresFromGoals } from './live-events';
+import { reprojectParticipation } from './participation-corrections';
 export type * from './types';
 
-export const ENGINE_VERSION = 'synthetic-live-2';
+export const ENGINE_VERSION = 'synthetic-live-3';
 
 function integer(value: number, label: string): void {
   if (!Number.isSafeInteger(value) || value < 0) throw new Error(`${label} must be a nonnegative safe integer.`);
@@ -173,12 +174,13 @@ export function reduceMatch(previous: MatchState, event: MatchEvent): MatchState
     return previous;
   }
   assertSample(event.sample);
-  if ((previous.status === 'completed' || previous.status === 'abandoned') && event.type !== 'event.corrected' && event.type !== 'event.voided' && event.type !== 'goal.recorded') throw new Error('Completed or abandoned play is read-only. Use an audited correction without reopening the clock.');
+  if ((previous.status === 'completed' || previous.status === 'abandoned') && event.type !== 'event.corrected' && event.type !== 'event.voided' && event.type !== 'goal.recorded' && !((event.type === 'lineup.committed' || event.type === 'availability.changed') && event.effective && event.sourceRevision !== undefined && event.lateEntryReason?.trim())) throw new Error('Completed or abandoned play is read-only. Use an audited correction without reopening the clock.');
   let state = previous;
   let auditEffective: EffectiveMatchTime | null | undefined;
   let auditPrior: unknown = null;
   let auditValue: unknown = event;
-  if (event.type === 'availability.changed' && event.effective) {
+  const reviewedParticipationEntry = (event.type === 'lineup.committed' || event.type === 'availability.changed') && event.effective !== undefined && event.sourceRevision !== undefined && Boolean(event.lateEntryReason?.trim());
+  if (event.type === 'availability.changed' && event.effective && !reviewedParticipationEntry) {
     if (previous.half === 0) throw new Error('Preparation availability has no active-time boundary.');
     const latest = accrue(previous, event.sample);
     const boundary = effectiveTime(latest, event.effective);
@@ -200,6 +202,12 @@ export function reduceMatch(previous: MatchState, event: MatchEvent): MatchState
       break;
     }
     case 'availability.changed': {
+      if (reviewedParticipationEntry) {
+        const corrected = reprojectParticipation(state, event, validateLineup);
+        state = corrected.state; auditEffective = corrected.effective; auditPrior = corrected.priorValue;
+        auditValue = { inserted: corrected.value, earliestAffected: corrected.earliestAffected };
+        break;
+      }
       selectedPlayer(state, event.playerId);
       if (typeof event.available !== 'boolean') throw new Error('Availability must be explicitly true or false.');
       const reason = event.reason ?? 'other';
@@ -269,6 +277,12 @@ export function reduceMatch(previous: MatchState, event: MatchEvent): MatchState
       break;
     }
     case 'lineup.committed': {
+      if (event.effective) {
+        const corrected = reprojectParticipation(state, event, validateLineup);
+        state = corrected.state; auditEffective = corrected.effective; auditPrior = corrected.priorValue;
+        auditValue = { inserted: corrected.value, earliestAffected: corrected.earliestAffected };
+        break;
+      }
       ensureLive(state);
       if (event.sourceRevision !== previous.revision) throw new Error('Lineup draft is stale. Review against the current match revision.');
       assertLineup(state, event.lineup);
@@ -307,7 +321,12 @@ export function reduceMatch(previous: MatchState, event: MatchEvent): MatchState
         const replacement = event.replacement;
         if (replacement.playerId !== availability.playerId || replacement.available !== availability.available || replacement.replacementLineup ||
           (replacement.effective && canonical(replacement.effective) !== canonical(availability.effective))) {
-          throw new Error('Historical availability or lineup correction needs explicit interval reconciliation. Actual participation was retained unchanged.');
+          const corrected = reprojectParticipation(state, event, validateLineup);
+          state = corrected.state;
+          auditEffective = corrected.effective;
+          auditPrior = corrected.priorValue;
+          auditValue = { correction: corrected.value, earliestAffected: corrected.earliestAffected };
+          break;
         }
         const reason = replacement.reason ?? availability.reason;
         if (!['arrival', 'departure', 'injury', 'return', 'other'].includes(reason) ||
@@ -320,6 +339,14 @@ export function reduceMatch(previous: MatchState, event: MatchEvent): MatchState
         auditValue = corrected;
         break;
       }
+      if (event.replacement.type === 'lineup.committed' || event.replacement.type === 'availability.changed' && event.sourceRevision !== undefined) {
+        const corrected = reprojectParticipation(state, event, validateLineup);
+        state = corrected.state;
+        auditEffective = corrected.effective;
+        auditPrior = corrected.priorValue;
+        auditValue = { correction: corrected.value, earliestAffected: corrected.earliestAffected };
+        break;
+      }
       if (state.eventHistory?.some(item => item.id === event.targetEventId)) throw new Error('This historical interval or half transition needs explicit reconciliation of the affected play. No recorded minutes were changed.');
       throw new Error('Correction target was not found in this match history.');
     }
@@ -327,6 +354,14 @@ export function reduceMatch(previous: MatchState, event: MatchEvent): MatchState
       if (!event.reason.trim() || event.reason.length > 500) throw new Error('Voiding an event needs an audited reason of 1–500 characters.');
       const goal = state.goals?.find(item => item.eventId === event.targetEventId || item.latestEventId === event.targetEventId);
       if (!goal) {
+        if (state.eventHistory?.some(item => item.id === event.targetEventId && (item.type === 'lineup.committed' || item.type === 'availability.changed' || item.type === 'event.corrected'))) {
+          const corrected = reprojectParticipation(state, event, validateLineup);
+          state = corrected.state;
+          auditEffective = corrected.effective;
+          auditPrior = corrected.priorValue;
+          auditValue = { correction: corrected.value, earliestAffected: corrected.earliestAffected };
+          break;
+        }
         if (state.eventHistory?.some(item => item.id === event.targetEventId)) throw new Error('Voiding a participation or half event requires explicit interval reconciliation. Original history was retained.');
         throw new Error('Void target was not found in this match history.');
       }
@@ -370,7 +405,7 @@ export function reduceMatch(previous: MatchState, event: MatchEvent): MatchState
     actorId: event.actorId ?? null,
     effective: auditEffective === undefined ? (state.half === 0 ? null : effectiveTime(state)) : auditEffective,
     targetEventId: 'targetEventId' in event ? event.targetEventId : null,
-    reason: 'reason' in event ? event.reason ?? null : event.type === 'goal.recorded' ? event.lateEntryReason ?? null : null,
+    reason: 'lateEntryReason' in event && event.lateEntryReason?.trim() ? event.lateEntryReason : 'reason' in event ? event.reason ?? null : null,
     priorValue: cloneValue(auditPrior), value: cloneValue(auditValue),
   };
   return {

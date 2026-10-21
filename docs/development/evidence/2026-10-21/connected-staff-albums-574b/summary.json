@@ -1,0 +1,32 @@
+{
+  "at": "2026-10-21T10:00:54.967Z",
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "webBundle": "index-574b3e4289da41fb548779d3b27caa53.js",
+  "apiBundleSha256": "bcf92d7d6937c965c88637c089168636122c29c06b817291faee480ebe7df558",
+  "checks": [
+    {
+      "name": "staff-existing-adult-assignment-revocation-and-four-account-limit",
+      "status": "passed",
+      "requestKeysAndRevisions": true,
+      "managerCount": 4,
+      "finalRevision": 2
+    },
+    {
+      "name": "filtered-report-final-award-and-exact-published-game-album-navigation",
+      "status": "passed",
+      "award": "no_valid_votes",
+      "unapprovedChildBallotRefused": true,
+      "publishedPhotos": 1,
+      "bytesServed": false
+    }
+  ],
+  "pageErrors": [],
+  "syntheticOnly": true,
+  "sourceCandidate": "uncommitted development source; native/provider acceptance unproved",
+  "branch": "dev/longball-m0-journey",
+  "baseCommit": "3b2d83d591074a6fe887c4f3e6300626d4e138af",
+  "webBundleSha256": "34f026256d1eb1dca1a1686a6d2a02a4ec2f8389c715a9c70497c224abb92427"
+}

@@ -1,0 +1,7 @@
+{
+  "name": "longball-fictional-review-runtime",
+  "private": true,
+  "version": "0.0.0",
+  "engines": { "node": ">=24 <25" },
+  "dependencies": { "sharp": "0.35.5", "pg": "8.23.1" }
+}

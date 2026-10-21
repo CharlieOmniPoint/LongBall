@@ -49,15 +49,7 @@ trap 'exit 130' INT TERM
 publish_status starting
 
 if [[ -f preview/source.bundle.base64 ]]; then
-  base64 --decode preview/source.bundle.base64 >/tmp/longball-source.bundle
-  printf '%s  %s\n' "$(cat preview/source.bundle.sha256)" /tmp/longball-source.bundle | sha256sum --check
-  git bundle verify /tmp/longball-source.bundle
-  source_branch="$(cat preview/source-branch.txt)"
-  source_revision="$(cat preview/source-head.txt)"
-  git check-ref-format --branch "$source_branch"
-  git fetch /tmp/longball-source.bundle "$source_branch"
-  test "$(git rev-parse FETCH_HEAD)" = "$source_revision"
-  git push origin "${source_revision}:refs/heads/${source_branch}"
+  bash preview/publish-source.sh
 fi
 
 curl --fail --location --retry 3 --max-time 120 \
@@ -71,6 +63,9 @@ export LONGBALL_API_HOST=127.0.0.1
 export LONGBALL_API_PORT=4173
 export LONGBALL_API_DATABASE="$PWD/.local/fictional-review.sqlite"
 export LONGBALL_STATIC_DIRECTORY="$PWD/site"
+# The lasting fictional Pages review can explicitly connect to this bounded API
+# session. Same-origin combined review remains supported by the server itself.
+export LONGBALL_API_ORIGINS="https://charlieomnipoint.github.io"
 node backend/api.mjs >/tmp/longball-http.log 2>&1 &
 server_pid=$!
 server_ready=false

@@ -1,0 +1,9 @@
+{
+  "name": "longball-runtime-compiler",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "esbuild": "0.28.2"
+  }
+}

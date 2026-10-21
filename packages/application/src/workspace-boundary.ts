@@ -8,7 +8,7 @@ export interface WorkspaceBinding {
   subject: string;
   teamId: string;
   seasonId: string;
-  role: "manager" | "player" | "spectator";
+  role: "administrator" | "manager" | "player" | "spectator";
   playerId: string | null;
 }
 export interface BoundWorkspaceValue<T> {
@@ -89,10 +89,23 @@ export function workspaceBindingIsCurrent(
   );
   if (!membership) return false;
   return (
-    binding.role !== "manager" ||
+    !["manager", "administrator"].includes(binding.role) ||
     (principal.identityClassification === "adult_individual" &&
       principal.adultVerified &&
       principal.strongAuth)
+  );
+}
+/** Invitation acceptance has no prior scoped outbox: never await an outbox that cannot exist yet. */
+export function workspaceNeedsProtectedOutbox(
+  protectedStorage: boolean,
+  binding: WorkspaceBinding | null,
+  principal: Principal | null,
+  memberships: Membership[],
+  nowMs: number,
+): boolean {
+  return (
+    protectedStorage &&
+    workspaceBindingIsCurrent(binding, principal, memberships, nowMs)
   );
 }
 /** Used at response attachment and again at render; a late reply cannot change its original identity/scope. */

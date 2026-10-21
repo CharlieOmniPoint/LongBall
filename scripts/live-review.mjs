@@ -75,7 +75,9 @@ async function start(page) {
   await page.getByTestId('place-seven').click();
   await waitState(page, state => state.stagedLineup.length === 7, 'Lineup did not stage');
   const date = new Date('2026-10-24T09:00:00.000Z');
-  await page.clock.install({ time: date });
+  // pauseAt advances from installation time. Leave headroom for the browser
+  // protocol round trip before freezing the clock at the match start time.
+  await page.clock.install({ time: new Date(date.getTime() - 3_600_000) });
   await page.clock.pauseAt(date);
   await page.getByTestId('start-half').click();
   return waitState(page, state => state.status === 'first_half_running', 'First half did not start');

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   AppState,
+  Linking,
   ScrollView,
   StyleSheet,
   Text,
@@ -18,12 +19,24 @@ import type { Journal } from "./platform/types";
 import { AccountSecurityScreen } from "./features/AccountSecurityScreen";
 import { ConnectedWorkspace } from "./features/ConnectedWorkspace";
 import { Button, colors, Notice } from "./ui";
+import {
+  parseLongBallDestination,
+  type ActivationCompletionDestination,
+  type ChildActivationDestination,
+  type SpectatorInvitationDestination,
+} from "@longball/application/deep-links";
 
 /** Production builds enter verified connected journeys and never seed fictional accounts. */
 export function ConnectedApplication() {
   const [session, setSession] = useState<ConnectedSessionSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [account, setAccount] = useState(false);
+  const [invitation, setInvitation] =
+    useState<SpectatorInvitationDestination | null>(null);
+  const [childActivation, setChildActivation] =
+    useState<ChildActivationDestination | null>(null);
+  const [activationCompletion, setActivationCompletion] =
+    useState<ActivationCompletionDestination | null>(null);
   const [storage, setStorage] = useState<{
     journal: Journal;
     deviceId: string;
@@ -36,6 +49,52 @@ export function ConnectedApplication() {
   const [foreground, setForeground] = useState(
     AppState.currentState === "active",
   );
+  useEffect(() => {
+    const receive = (url: string) => {
+      const destination = parseLongBallDestination(url, {
+        httpsOrigins: (process.env.EXPO_PUBLIC_LINK_ORIGINS ?? "")
+          .split(",")
+          .map((value: string) => value.trim())
+          .filter(Boolean),
+      });
+      if (!destination) return;
+      if (destination.kind === "invitation") {
+        setInvitation(destination.invitation);
+        setAccount(false);
+      } else {
+        if (destination.kind === "activation-completion")
+          setActivationCompletion(destination.completion);
+        setAccount(true);
+      }
+      // Capture only in memory, then remove capabilities from the current browser address.
+      if (
+        typeof window !== "undefined" &&
+        window.location.href === url &&
+        window.location.hash
+      )
+        window.history.replaceState(
+          null,
+          "",
+          window.location.pathname + window.location.search,
+        );
+    };
+    let active = true;
+    void Linking.getInitialURL().then((url) => {
+      if (active && url) receive(url);
+    });
+    const subscription = Linking.addEventListener("url", (event) =>
+      receive(event.url),
+    );
+    const browserChange = () => receive(window.location.href);
+    if (typeof window !== "undefined")
+      window.addEventListener("hashchange", browserChange);
+    return () => {
+      active = false;
+      subscription.remove();
+      if (typeof window !== "undefined")
+        window.removeEventListener("hashchange", browserChange);
+    };
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -147,20 +206,33 @@ export function ConnectedApplication() {
         )}
       </View>
       {error && <Notice tone="error">{error}</Notice>}
+      {!loading && (!identity || account) && (
+        <View style={{ display: foreground ? "flex" : "none" }}>
+          <AccountSecurityScreen
+            childActivationDestination={childActivation}
+            activationCompletion={activationCompletion}
+            onActivationCompletionConsumed={() => setActivationCompletion(null)}
+            onSessionChange={(next) => {
+              if (
+                session &&
+                (!next ||
+                  session.issuer !== next.issuer ||
+                  session.accountId !== next.accountId)
+              )
+                setChildActivation(null);
+              setSession(next);
+            }}
+          />
+        </View>
+      )}
       {!foreground ? (
         <Notice>
           Unlock your account to continue when LongBall is active.
         </Notice>
       ) : loading ? (
         <ActivityIndicator color={colors.brand} />
-      ) : !identity || account ? (
-        <AccountSecurityScreen
-          onSessionChange={(next) => {
-            setSession(next);
-            if (next && !next.locked && !next.expired) setAccount(false);
-          }}
-        />
-      ) : !storage || storage.identity !== identity ? (
+      ) : !identity || account ? null : !storage ||
+        storage.identity !== identity ? (
         <>
           {error ? (
             <Button
@@ -177,6 +249,11 @@ export function ConnectedApplication() {
           journal={storage.journal}
           deviceId={storage.deviceId}
           allowSynthetic={false}
+          invitationDestination={invitation ?? undefined}
+          onPrepareChildActivation={(destination) => {
+            setChildActivation(destination);
+            setAccount(true);
+          }}
         />
       )}
     </ScrollView>

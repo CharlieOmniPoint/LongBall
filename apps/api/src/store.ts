@@ -8,9 +8,17 @@ import { romaFixture } from '../../../packages/testing/src/index';
 import type { VerifiedIdentity } from './oidc';
 import { createPreparationState, reducePreparation, trainingAttendanceEvidence, type PreparationCommand, type PreparationState, type PositionCode, type AvailabilityResponse } from '../../../packages/application/src/preparation';
 import { applyCommunityCommand, createCommunityState, getCommunityView, authorizeCommunityMedia, communityCanAccess, type CommunityActor, type CommunityCommand, type CommunityState } from '../../../packages/application/src/community';
-import { createRecordsSeed, reduceRecords, selectParticipationReport, selectSeasonResults, selectMatchReport, type RecordsCommand, type RecordsState, type RecordsViewer } from '../../../packages/application/src/records';
+import { createRecordsSeed, reduceRecords, type RecordsState, type RecordsViewer } from '../../../packages/application/src/records';
 import { effectiveEventTime } from '../../../packages/application/src/sync';
 import { fixtureMatchConfig } from '../../../packages/application/src/application';
+import { applyConfigurationServiceCommand, configurationServiceView, planSeasonRollover, seasonRolloverOptions, type SeasonRolloverCommand, type SeasonRolloverContext } from '../../../packages/application/src/season-service';
+import { applyRecordsServiceCommand, recordsServiceExport, recordsServiceView, type RecordsExportRequest, type RecordsServiceCommand, type RecordsServiceInput } from '../../../packages/application/src/records-service';
+import { issueClockChallenge as makeClockChallenge, acknowledgeClockChallenge as acceptClockChallenge, type ClockChallenge, type ContinuousUtcMapping, type TrustedTimePolicy } from './trusted-time';
+import { Q08_RECONCILIATION_POLICY, previewReconciliation, type ReconciliationProposal, type ReconciliationProposalInput, type ReconciliationSnapshot, type ReconciliationSubmission } from '../../../packages/application/src/reconciliation';
+import { deriveFinishedMatchContext, finishEligibilityChanged } from './finished-match-context';
+import { createTeamNotificationJob, type TeamNotificationCategory } from '../../../packages/application/src/team-notifications';
+import { managerRoster as projectManagerRoster, type StaffAccountEvidence } from '../../../packages/application/src/staff';
+import { prepareAccountPrivacyRequest, projectAccountPrivacyRequests, type PrivacyRequestRecord } from '../../../packages/application/src/privacy-requests';
 
 export const EVENT_CONTRACT_VERSION = 'longball.events/1.1';
 export const SYNTHETIC_IDS = { teamId: 'synthetic-roma-u10', seasonId: 'synthetic-season-2026-27', matchId: 'synthetic-roma-maple-2026-10-24' } as const;
@@ -101,7 +109,7 @@ export class DevelopmentStore {
     this.transaction(() => {
     // Read the version only after acquiring the migration lock; API and worker can start together.
     const version = Number((this.database.prepare('PRAGMA user_version').get() as { user_version: number }).user_version);
-    if (version > 5) throw new Error('This store version is newer than this application; preserve it and use a compatible build.');
+    if (version > 7) throw new Error('This store version is newer than this application; preserve it and use a compatible build.');
     if (version === 0) this.database.exec(`
       CREATE TABLE accounts(id TEXT PRIMARY KEY,issuer TEXT NOT NULL,subject TEXT NOT NULL,classification TEXT NOT NULL CHECK(classification IN ('child_shared','adult_individual','unclassified')),adult_verified INTEGER NOT NULL DEFAULT 0,status TEXT NOT NULL DEFAULT 'active',UNIQUE(issuer,subject));
       CREATE TABLE teams(id TEXT PRIMARY KEY,name TEXT NOT NULL);
@@ -128,6 +136,25 @@ export class DevelopmentStore {
     if (version < 3) this.database.exec('ALTER TABLE accounts ADD COLUMN strong_auth_enrolled INTEGER NOT NULL DEFAULT 0; PRAGMA user_version=3;');
     if (version < 4) this.database.exec('CREATE TABLE devices(id TEXT PRIMARY KEY,account_id TEXT NOT NULL REFERENCES accounts(id)); PRAGMA user_version=4;');
     if (version < 5) this.database.exec('ALTER TABLE events ADD COLUMN actor_id TEXT REFERENCES accounts(id); PRAGMA user_version=5;');
+    if (version < 6) this.database.exec(`
+      CREATE TABLE clock_challenges(id TEXT PRIMARY KEY,match_id TEXT NOT NULL REFERENCES matches(id),account_id TEXT NOT NULL REFERENCES accounts(id),challenge_json TEXT NOT NULL,consumed_at INTEGER);
+      CREATE TABLE clock_mappings(challenge_id TEXT PRIMARY KEY REFERENCES clock_challenges(id),match_id TEXT NOT NULL REFERENCES matches(id),mapping_json TEXT NOT NULL,created_at INTEGER NOT NULL);
+      CREATE TABLE reconciliation_proposals(id TEXT PRIMARY KEY,match_id TEXT NOT NULL REFERENCES matches(id),actor_id TEXT NOT NULL REFERENCES accounts(id),signature TEXT NOT NULL,receipt_json TEXT NOT NULL,created_at INTEGER NOT NULL);
+      PRAGMA user_version=6;
+    `);
+    if (version < 7) this.database.exec(`
+      ALTER TABLE privacy_requests ADD COLUMN team_id TEXT REFERENCES teams(id);
+      ALTER TABLE privacy_requests ADD COLUMN season_id TEXT;
+      ALTER TABLE privacy_requests ADD COLUMN affected_memberships_json TEXT;
+      UPDATE privacy_requests SET status='needs_scope' WHERE kind='leave_team' AND status='pending_verification_and_policy' AND (team_id IS NULL OR season_id IS NULL);
+      CREATE TABLE privacy_pending_keys(business_key TEXT PRIMARY KEY,request_id TEXT NOT NULL UNIQUE REFERENCES privacy_requests(id));
+      INSERT INTO privacy_pending_keys(business_key,request_id)
+        SELECT json_array(account_id,kind,'all_memberships'),id FROM (
+          SELECT id,account_id,kind,ROW_NUMBER() OVER(PARTITION BY account_id,kind ORDER BY created_at,id) AS n
+          FROM privacy_requests WHERE status='pending_verification_and_policy' AND kind IN ('export','delete_account')
+        ) WHERE n=1;
+      PRAGMA user_version=7;
+    `);
     });
   }
   async backup(destination: string): Promise<void> {
@@ -198,16 +225,16 @@ export class DevelopmentStore {
   managerMatch(principal: Principal, matchId: string): MatchRow {
     const row = this.match(matchId); assertCanManageTeam(principal, this.memberships(), row.team_id, row.season_id, this.now()); return row;
   }
-  matchDto(principal: Principal, matchId: string): Record<string, unknown> {
+  matchDto(principal: Principal, matchId: string, requestedRole?: string): Record<string, unknown> {
     const row = this.match(matchId);
-    return filterMatchForPrincipal({ principal, memberships: this.memberships(), teamId: row.team_id, seasonId: row.season_id, state: JSON.parse(row.state_json) as MatchState, policy: JSON.parse(row.sharing_policy_json) as SharingPolicy, lastSyncAt: row.last_sync_at, now: this.now() });
+    return filterMatchForPrincipal({ principal, memberships: this.memberships(), teamId: row.team_id, seasonId: row.season_id, state: JSON.parse(row.state_json) as MatchState, policy: JSON.parse(row.sharing_policy_json) as SharingPolicy, lastSyncAt: row.last_sync_at, now: this.now(), requestedRole });
   }
   download(principal: Principal, matchId: string, deviceId: string): Record<string, unknown> {
     const row = this.managerMatch(principal, matchId);
     if (!validDeviceId(deviceId)) bad('A device identifier of at most 120 canonical characters is required.');
     const stream = this.database.prepare('SELECT sequence,previous_event_id FROM streams WHERE match_id=? AND device_id=?').get(matchId, deviceId) as StreamRow | undefined;
     const grant = this.database.prepare('SELECT epoch,account_id,device_id,frozen FROM controller_grants WHERE match_id=?').get(matchId);
-    return { contractVersion: EVENT_CONTRACT_VERSION, schemaVersion: 1, engineVersion: ENGINE_VERSION, matchId, teamId: row.team_id, seasonId: row.season_id, state: JSON.parse(row.state_json), acceptedRevision: (JSON.parse(row.state_json) as MatchState).revision, deviceCheckpoint: { clientSequence: stream?.sequence ?? 0, previousEventId: stream?.previous_event_id ?? null }, controller: grant ?? null, downloadedAt: new Date(this.now()).toISOString(), clockAnchor: { serverTime: new Date(this.now()).toISOString(), quality: 'observation_only', continuousMappingEstablished: false }, syntheticOnly: true };
+    return { contractVersion: EVENT_CONTRACT_VERSION, schemaVersion: 1, engineVersion: ENGINE_VERSION, matchId, teamId: row.team_id, seasonId: row.season_id, state: JSON.parse(row.state_json), acceptedRevision: (JSON.parse(row.state_json) as MatchState).revision, deviceCheckpoint: { clientSequence: stream?.sequence ?? 0, previousEventId: stream?.previous_event_id ?? null }, controller: grant ?? null, downloadedAt: new Date(this.now()).toISOString(), clockAnchor: { serverTime: new Date(this.now()).toISOString(), quality: 'observation_only', continuousMappingEstablished: false } };
   }
   audit(principal: Principal, action: string, objectId: string, outcome: string): void {
     this.database.prepare('INSERT INTO audit(id,actor_id,action,object_id,outcome,created_at) VALUES(?,?,?,?,?,?)').run(randomUUID(), principal.accountId, action, objectId, outcome, this.now());
@@ -242,6 +269,101 @@ export class DevelopmentStore {
     const grant = this.database.prepare('SELECT * FROM controller_grants WHERE match_id=?').get(matchId) as GrantRow | undefined;
     if (!grant || grant.account_id !== principal.accountId || !token || digest(token) !== grant.capability_hash) throw new AccessError('CONTROLLER_REQUIRED', 409, 'Only the selected manager and enrolled device may write this match.');
     return grant;
+  }
+  issueClockChallenge(principal: Principal, matchId: string, token: string | undefined, input: { deviceId:string;controllerEpoch:number;continuityId:string }, policy:TrustedTimePolicy|undefined): ClockChallenge {
+    const grant=this.assertController(principal,matchId,token);
+    if (!policy) throw new AccessError('CLOCK_POLICY_REQUIRED',503,'An explicitly configured trusted-time policy is required before establishing an anchor.');
+    if (!input || Object.keys(input).some(key=>!['deviceId','controllerEpoch','continuityId'].includes(key)) || !validDeviceId(input.deviceId) || !validId(input.continuityId) || input.deviceId!==grant.device_id || input.controllerEpoch!==grant.epoch || grant.frozen) throw new AccessError('CLOCK_SCOPE_CONFLICT',409,'Use the current unfrozen controller device, epoch and continuous-clock identity.');
+    const challenge=makeClockChallenge({accountId:principal.accountId,deviceId:grant.device_id,matchId,controllerEpoch:grant.epoch,continuityId:input.continuityId},randomUUID(),this.now(),policy);
+    this.database.prepare('INSERT INTO clock_challenges(id,match_id,account_id,challenge_json) VALUES(?,?,?,?)').run(challenge.id,matchId,principal.accountId,JSON.stringify(challenge));
+    return challenge;
+  }
+  acknowledgeClockChallenge(principal:Principal,matchId:string,token:string|undefined,challengeId:string,sample:{receivedMonotonicMs:number;sentMonotonicMs:number},policy:TrustedTimePolicy|undefined): ContinuousUtcMapping {
+    const grant=this.assertController(principal,matchId,token);
+    if (!policy) throw new AccessError('CLOCK_POLICY_REQUIRED',503,'An explicitly configured trusted-time policy is required before establishing an anchor.');
+    if (!sample || Object.keys(sample).some(key=>!['receivedMonotonicMs','sentMonotonicMs'].includes(key))) bad('Use the documented continuous-clock receipt and send observations.');
+    const row=this.database.prepare('SELECT challenge_json,consumed_at FROM clock_challenges WHERE id=? AND match_id=? AND account_id=?').get(challengeId,matchId,principal.accountId) as {challenge_json:string;consumed_at:number|null}|undefined;
+    if(!row)throw new AccessError('NOT_FOUND',404,'That challenge is unavailable.');
+    const challenge=JSON.parse(row.challenge_json) as ClockChallenge;
+    if(row.consumed_at!==null)throw new AccessError('CLOCK_CHALLENGE_CONSUMED',409,'That clock exchange was consumed. Retrying the same request key returns its receipt.');
+    if(challenge.controllerEpoch!==grant.epoch||challenge.deviceId!==grant.device_id||grant.frozen)throw new AccessError('CLOCK_SCOPE_CONFLICT',409,'The controller changed before the clock exchange completed.');
+    let mapping:ContinuousUtcMapping;
+    try {mapping=acceptClockChallenge(challenge,sample,this.now(),policy);}catch{throw new AccessError('CLOCK_EXCHANGE_REJECTED',422,'The clock exchange expired or its evidence exceeds the configured uncertainty bounds.');}
+    this.database.prepare('UPDATE clock_challenges SET consumed_at=? WHERE id=? AND consumed_at IS NULL').run(this.now(),challengeId);
+    this.database.prepare('INSERT INTO clock_mappings(challenge_id,match_id,mapping_json,created_at) VALUES(?,?,?,?)').run(challengeId,matchId,JSON.stringify(mapping),this.now());
+    this.audit(principal,'clock.mapping_established',matchId,policy.id);
+    return mapping;
+  }
+  reconciliation(principal:Principal,matchId:string):ReconciliationSnapshot {
+    const row=this.managerMatch(principal,matchId);const state=JSON.parse(row.state_json) as MatchState;
+    const events=this.database.prepare("SELECT event_id,device_id,client_sequence,envelope_json,reason,received_at FROM events WHERE match_id=? AND disposition='quarantined' ORDER BY received_at,client_sequence").all(matchId) as {event_id:string;device_id:string;client_sequence:number;envelope_json:string;reason:string;received_at:number}[];
+    const conflicts=this.database.prepare('SELECT id,original_json,reason,created_at FROM conflicting_submissions WHERE match_id=? ORDER BY created_at,id').all(matchId) as {id:string;original_json:string;reason:string;created_at:number}[];
+    const submissions:ReconciliationSubmission[]=[...events.map(event=>{const original=JSON.parse(event.envelope_json) as EventEnvelope;return {submissionId:event.event_id,matchId,eventId:event.event_id,deviceId:event.device_id,clientSequence:event.client_sequence,controllerEpoch:original.controllerEpoch??null,reason:event.reason,original,originalDigest:digest(canonical(original)),receivedAt:new Date(event.received_at).toISOString()};}),...conflicts.map(conflict=>{const original=JSON.parse(conflict.original_json) as Partial<EventEnvelope>;return {submissionId:conflict.id,matchId,eventId:typeof original.eventId==='string'?original.eventId:null,deviceId:typeof original.deviceId==='string'?original.deviceId:null,clientSequence:typeof original.clientSequence==='number'?original.clientSequence:null,controllerEpoch:typeof original.controllerEpoch==='number'?original.controllerEpoch:null,reason:conflict.reason,original,originalDigest:digest(canonical(original)),receivedAt:new Date(conflict.created_at).toISOString()};})];
+    const proposals=(this.database.prepare('SELECT receipt_json FROM reconciliation_proposals WHERE match_id=? ORDER BY created_at,id').all(matchId) as {receipt_json:string}[]).map(item=>JSON.parse(item.receipt_json) as ReconciliationProposal);
+    return {matchId,acceptedRevision:state.revision,submissions,proposals,policy:Q08_RECONCILIATION_POLICY};
+  }
+  proposeReconciliation(principal:Principal,matchId:string,input:ReconciliationProposalInput):ReconciliationProposal {
+    const row=this.managerMatch(principal,matchId);const state=JSON.parse(row.state_json) as MatchState;
+    if(!input||Object.keys(input).some(key=>!['proposalId','baseRevision','sourceSubmissionIds','reason','resolution','commands'].includes(key)))bad('Use only the documented immutable reconciliation proposal fields.');
+    const signature=digest(canonical(input));
+    const existing=this.database.prepare('SELECT signature,receipt_json FROM reconciliation_proposals WHERE id=? AND match_id=? AND actor_id=?').get(input.proposalId,matchId,principal.accountId) as {signature:string;receipt_json:string}|undefined;
+    if(existing){if(existing.signature!==signature)throw new AccessError('RECONCILIATION_PROPOSAL_CONFLICT',409,'That proposal identity already preserves different review evidence.');return JSON.parse(existing.receipt_json) as ReconciliationProposal;}
+    const snapshot=this.reconciliation(principal,matchId);const preview=previewReconciliation(state,input,snapshot.submissions,{actorId:principal.accountId,recordedAtMs:this.now()});
+    if(!preview.valid)throw new AccessError('RECONCILIATION_PREVIEW_REJECTED',422,preview.issues.join(' ').slice(0,1500));
+    const {projectedState:discarded,...savedPreview}=preview;void discarded;
+    const receipt:ReconciliationProposal={input,matchId,actorId:principal.accountId,createdAt:new Date(this.now()).toISOString(),sourceDigests:input.sourceSubmissionIds.map(id=>({submissionId:id,originalDigest:snapshot.submissions.find(item=>item.submissionId===id)!.originalDigest})),acceptedStateDigest:digest(canonical(state)),preview:savedPreview,status:'prepared',appliedRevision:null};
+    this.database.prepare('INSERT INTO reconciliation_proposals(id,match_id,actor_id,signature,receipt_json,created_at) VALUES(?,?,?,?,?,?)').run(input.proposalId,matchId,principal.accountId,signature,JSON.stringify(receipt),this.now());
+    this.audit(principal,'reconciliation.proposal_prepared',matchId,'q08_authority_unapproved');return receipt;
+  }
+  recordFinishedContext(principal:Principal,matchId:string,policy:TrustedTimePolicy|undefined):{status:string;finishQuality?:string} {
+    const row=this.managerMatch(principal,matchId);const state=JSON.parse(row.state_json) as MatchState;
+    if(state.status!=='completed')return {status:'not_finished'};
+    this.refreshDetailedArchive(row,state);
+    const community=this.communityState(row.team_id,row.season_id);
+    const existing=community.matches.find(item=>item.id===matchId);
+    const quarantine=this.database.prepare("SELECT event_id FROM events WHERE match_id=? AND disposition='quarantined' LIMIT 1").get(matchId);
+    const conflict=this.database.prepare('SELECT id FROM conflicting_submissions WHERE match_id=? LIMIT 1').get(matchId);
+    const unresolved=Boolean(quarantine||conflict);
+    if(existing){
+      const retainedFinishId=state.eventHistory?.filter(event=>event.type==='half.ended').at(-1)?.id;
+      const retainedFinish=retainedFinishId?this.database.prepare("SELECT envelope_json FROM events WHERE event_id=? AND match_id=? AND disposition='accepted'").get(retainedFinishId,matchId) as {envelope_json:string}|undefined:undefined;
+      const currentGrant=this.database.prepare('SELECT epoch FROM controller_grants WHERE match_id=?').get(matchId) as {epoch:number}|undefined;
+      const sourceEpoch=retainedFinish?(JSON.parse(retainedFinish.envelope_json) as EventEnvelope).controllerEpoch:null;
+      const quality=unresolved?'conflicted':state.recoveryRequired||sourceEpoch!==currentGrant?.epoch||finishEligibilityChanged(state,existing)?'review_required':existing.finishQuality;
+      if(quality!==existing.finishQuality){
+        const next:CommunityState={...community,revision:community.revision+1,matches:community.matches.map(match=>match.id===matchId?{...match,finishQuality:quality}:match),audit:[...community.audit,{id:randomUUID(),actorAccountId:null,action:'service.finish_evidence_flagged_without_reopening',atMs:this.now()}]};
+        this.saveDocument(row.team_id,row.season_id,'community',next);
+      }
+      return {status:'original_context_preserved',finishQuality:quality};
+    }
+    const finishId=state.eventHistory?.filter(event=>event.type==='half.ended').at(-1)?.id;
+    const finishRow=finishId?this.database.prepare("SELECT envelope_json,actor_id FROM events WHERE event_id=? AND match_id=? AND disposition='accepted'").get(finishId,matchId) as {envelope_json:string;actor_id:string|null}|undefined:undefined;
+    const finish=finishRow?JSON.parse(finishRow.envelope_json) as EventEnvelope:null;
+    const mappingRow=finish?this.database.prepare('SELECT mapping_json FROM clock_mappings WHERE challenge_id=? AND match_id=?').get(finish.clockEvidence.anchorId,matchId) as {mapping_json:string}|undefined:undefined;
+    const grant=this.database.prepare('SELECT epoch FROM controller_grants WHERE match_id=?').get(matchId) as {epoch:number}|undefined;
+    const preparation=this.document<PreparationState>(row.team_id,row.season_id,'preparation');
+    const fixture=preparation.fixtures.find(item=>item.id===matchId&&item.seasonId===row.season_id);
+    const playedDate=state.config.fixture?.playedDate??fixture?.playedDate;
+    if(!playedDate)return {status:'accepted_fixture_date_required'};
+    // A saved calendar date is a schedule sort key, never an observed kickoff or actual full time.
+    const scheduledAtMs=Date.parse(`${playedDate}T00:00:00Z`);
+    const context=deriveFinishedMatchContext({state,acceptedFinish:finish,acceptedFinishActorId:finishRow?.actor_id??null,teamId:row.team_id,seasonId:row.season_id,currentControllerEpoch:grant?.epoch??0,unresolvedConflicts:unresolved,mapping:mappingRow?JSON.parse(mappingRow.mapping_json) as ContinuousUtcMapping:null,policy:policy??null,serverNowMs:this.now(),scheduledAtMs,sharing:'manager_only',sharingPolicyVersion:0});
+    const next:CommunityState={...community,revision:community.revision+1,matches:[...community.matches,{...context,voteCutoffAtMs:null,cutoffSource:'unresolved',finalisationDeadlineAtMs:context.actualFullTimeAtMs===null?null:context.actualFullTimeAtMs+3_600_000}],audit:[...community.audit,{id:randomUUID(),actorAccountId:null,action:'service.accepted_finish_registered_manager_only',atMs:this.now()}]};
+    this.saveDocument(row.team_id,row.season_id,'community',next);
+    return {status:'registered_from_accepted_history',finishQuality:context.finishQuality};
+  }
+  private refreshDetailedArchive(row:MatchRow,match:MatchState):void{
+    const saved=this.database.prepare("SELECT value_json FROM documents WHERE team_id=? AND season_id=? AND kind='records'").get(row.team_id,row.season_id) as {value_json:string}|undefined;
+    if(!saved)return;
+    const records=JSON.parse(saved.value_json) as RecordsState;const archived=records.results.find(item=>item.id===match.config.matchId&&item.recordMode==='detailed_live');
+    if(!archived||(archived.sourceMatchRevision??-1)>=match.revision)return;
+    if(match.recoveryRequired){
+      if(archived.detailCompleteness!=='review_required'){const reviewed:RecordsState={...records,revision:records.revision+1,results:records.results.map(item=>item.id===archived.id?{...item,detailCompleteness:'review_required',revision:item.revision+1}:item)};this.saveDocument(row.team_id,row.season_id,'records',reviewed);}
+      return;
+    }
+    const context={matchId:archived.id,playedDate:archived.playedDate,opponent:archived.opponent,homeAway:archived.homeAway,fixtureClass:archived.fixtureClass};
+    const updated=reduceRecords({...records,liveMatch:context},{type:'live.archive',commandId:`accepted-archive-${digest(canonical([archived.id,match.revision]))}`,at:new Date(this.now()).toISOString(),actor:'manager',match,reason:'Existing detailed archive refreshed from the newer accepted canonical match revision; original source events and prior archive audit remain retained.'});
+    const projected:RecordsState={...updated,liveMatch:records.liveMatch};this.saveDocument(row.team_id,row.season_id,'records',projected);
   }
   upload(principal: Principal, matchId: string, token: string | undefined, values: unknown[]): { results: UploadResult[]; revision: number; pendingReview: boolean } {
     const row = this.managerMatch(principal, matchId);
@@ -293,6 +415,7 @@ export class DevelopmentStore {
     }
     if (results.some(item => item.disposition === 'accepted' && !item.duplicate)) this.database.prepare('UPDATE matches SET state_json=?,last_sync_at=? WHERE id=?').run(JSON.stringify(state), this.now(), matchId);
     this.audit(principal, 'events.uploaded', matchId, results.some(item => item.disposition === 'quarantined') ? 'review_required' : 'accepted');
+    if(results.some(item=>item.disposition==='accepted'&&!item.duplicate))this.enqueueNotifications(row.team_id,row.season_id,'match',matchId,`accepted-revision-${state.revision}`);
     return { results, revision: state.revision, pendingReview: results.some(item => item.disposition === 'quarantined') };
   }
   quarantine(principal: Principal, matchId: string): unknown[] {
@@ -348,24 +471,74 @@ export class DevelopmentStore {
     this.audit(principal, 'controller.recovered', matchId, 'reconciliation_required');
     return { epoch, deviceId, controllerToken: capability, reconciliationRequired: true, checkpoint: this.download(principal, matchId, deviceId).deviceCheckpoint };
   }
-  assignManager(actor: Principal, teamId: string, seasonId: string, accountId: string): Record<string, unknown> {
+  private staffRevision(teamId:string,seasonId:string):number {
+    const row=this.database.prepare("SELECT revision FROM documents WHERE team_id=? AND season_id=? AND kind='staff'").get(teamId,seasonId) as {revision:number}|undefined;
+    return row?.revision??0;
+  }
+  private bumpStaffRevision(teamId:string,seasonId:string):number {
+    const revision=this.staffRevision(teamId,seasonId)+1;
+    this.saveDocument(teamId,seasonId,'staff',{revision});return revision;
+  }
+  managers(principal:Principal,teamId:string,seasonId:string,requestedRole?:string):ReturnType<typeof projectManagerRoster> {
+    assertTeamRole(principal,this.memberships(),teamId,seasonId,['administrator'],this.now());assertAdultAuthority(principal,false,this.now());
+    const accounts=this.database.prepare('SELECT * FROM accounts WHERE id IN (SELECT account_id FROM memberships WHERE team_id=?)').all(teamId) as unknown as AccountRow[];
+    const community=this.document<CommunityState>(teamId,seasonId,'community');
+    const evidence:StaffAccountEvidence[]=accounts.map(account=>({accountId:account.id,label:community.accounts.find(item=>item.id===account.id)?.label??'Verified adult account',status:account.status,identityClassification:account.classification,adultVerified:Boolean(account.adult_verified),strongAuthEnrolled:Boolean(account.strong_auth_enrolled)}));
+    return projectManagerRoster({principal,memberships:this.memberships(),accounts:evidence,teamId,seasonId,nowMs:this.now(),revision:this.staffRevision(teamId,seasonId),requestedRole});
+  }
+  assignManager(actor: Principal, teamId: string, seasonId: string, accountId: string, expectedRevision?:number): Record<string, unknown> {
+    assertTeamRole(actor,this.memberships(),teamId,seasonId,['administrator'],this.now());assertAdultAuthority(actor,true,this.now());
+    if(!validId(accountId))bad('A canonical account identifier is required.');
+    if(expectedRevision!==undefined&&(!nonnegative(expectedRevision)||expectedRevision!==this.staffRevision(teamId,seasonId)))throw new AccessError('STALE_REVISION',409,'Refresh the current staff assignments before changing them.');
     const account = this.database.prepare('SELECT * FROM accounts WHERE id=?').get(accountId) as AccountRow | undefined;
     if (!account) throw new AccessError('NOT_FOUND', 404, 'The requested object is unavailable.');
     const target: Principal = { accountId: account.id, issuer: account.issuer, subject: account.subject, identityClassification: account.classification, adultVerified: !!account.adult_verified, strongAuth: !!account.strong_auth_enrolled, authenticatedAt: this.now(), status: account.status };
     assertCanAssignManager(actor, target, this.memberships(), teamId, seasonId, this.now());
-    this.database.prepare("INSERT INTO memberships(account_id,team_id,season_id,role) VALUES(?,?,?,'manager') ON CONFLICT(account_id,team_id,season_id,role) DO UPDATE SET revoked_at=NULL,expires_at=NULL").run(accountId, teamId, seasonId);
-    this.audit(actor, 'manager.assigned', teamId, 'accepted');
-    return { accountId, teamId, seasonId, role: 'manager' };
+    const alreadyActive=this.memberships().some(item=>item.accountId===accountId&&item.teamId===teamId&&item.seasonId===seasonId&&item.role==='manager'&&item.revokedAt==null&&(item.expiresAt==null||item.expiresAt>this.now()));
+    if(!alreadyActive){
+      this.database.prepare("INSERT INTO memberships(account_id,team_id,season_id,role) VALUES(?,?,?,'manager') ON CONFLICT(account_id,team_id,season_id,role) DO UPDATE SET revoked_at=NULL,expires_at=NULL").run(accountId, teamId, seasonId);
+      this.bumpStaffRevision(teamId,seasonId);this.audit(actor, 'manager.assigned', teamId, 'accepted');
+    }
+    return { accountId, teamId, seasonId, role: 'manager',revision:this.staffRevision(teamId,seasonId),acceptedAt:new Date(this.now()).toISOString() };
   }
-  privacyRequest(principal: Principal, kind: 'export' | 'delete_account' | 'leave_team', policyVersion: string | null): Record<string, unknown> {
-    if (!['export', 'delete_account', 'leave_team'].includes(kind)) bad('Unsupported privacy request.');
-    const id = randomUUID();
-    // Q05/Q09 verification, retention and cross-team erasure policy remain open: capture, never silently erase.
-    this.database.prepare('INSERT INTO privacy_requests VALUES(?,?,?,?,?,?,?)').run(id, principal.accountId, kind, 'pending_verification_and_policy', policyVersion, null, this.now());
-    this.audit(principal, 'privacy.requested', id, 'pending_verification_and_policy');
-    return { requestId: id, kind, status: 'pending_verification_and_policy', verificationRequired: true, erased: false };
+  revokeManager(actor:Principal,teamId:string,seasonId:string,input:{accountId:string;reason:string;confirmRevocation:true},expectedRevision?:number):Record<string,unknown>{
+    assertTeamRole(actor,this.memberships(),teamId,seasonId,['administrator'],this.now());assertAdultAuthority(actor,true,this.now());
+    if(!input||Object.keys(input).some(key=>!['accountId','reason','confirmRevocation'].includes(key))||!validId(input.accountId)||input.confirmRevocation!==true||typeof input.reason!=='string'||input.reason.trim().length<5||input.reason.length>500)bad('Confirm a scoped manager revocation and record its evidence reason.');
+    if(expectedRevision!==undefined&&(!nonnegative(expectedRevision)||expectedRevision!==this.staffRevision(teamId,seasonId)))throw new AccessError('STALE_REVISION',409,'Refresh the current staff assignments before changing them.');
+    const member=this.database.prepare("SELECT account_id,revoked_at FROM memberships WHERE account_id=? AND team_id=? AND season_id=? AND role='manager'").get(input.accountId,teamId,seasonId) as {account_id:string;revoked_at:number|null}|undefined;
+    if(!member)throw new AccessError('NOT_FOUND',404,'That manager assignment is outside this scope.');
+    if(member.revoked_at===null){
+      this.database.prepare("UPDATE memberships SET revoked_at=? WHERE account_id=? AND team_id=? AND season_id=? AND role='manager'").run(this.now(),input.accountId,teamId,seasonId);
+      this.database.prepare('UPDATE controller_grants SET frozen=1 WHERE account_id=? AND match_id IN (SELECT id FROM matches WHERE team_id=? AND season_id=?)').run(input.accountId,teamId,seasonId);
+      this.bumpStaffRevision(teamId,seasonId);this.audit(actor,'manager.assignment_revoked',input.accountId,input.reason.trim());
+    }
+    return {accountId:input.accountId,teamId,seasonId,role:'manager',revision:this.staffRevision(teamId,seasonId),acceptedAt:new Date(this.now()).toISOString(),revoked:true,controllerFrozen:true,otherSeasonAssignmentsRetained:true,remainingActiveTeamSeasons:this.memberships().filter(item=>item.accountId===input.accountId&&item.teamId===teamId&&item.role==='manager'&&item.revokedAt==null&&(item.expiresAt==null||item.expiresAt>this.now())).map(item=>item.seasonId)};
   }
-  privacyRequests(principal: Principal): unknown[] { return this.database.prepare('SELECT id,kind,status,policy_version,verified_at,created_at FROM privacy_requests WHERE account_id=? ORDER BY created_at').all(principal.accountId); }
+  private privacyRecords(principal:Principal):PrivacyRequestRecord[]{
+    const rows=this.database.prepare('SELECT id,account_id,kind,status,team_id,season_id,affected_memberships_json,created_at FROM privacy_requests WHERE account_id=? ORDER BY created_at,id').all(principal.accountId) as unknown as {id:string;account_id:string;kind:PrivacyRequestRecord['kind'];status:PrivacyRequestRecord['status'];team_id:string|null;season_id:string|null;affected_memberships_json:string|null;created_at:number}[];
+    return rows.map(row=>({requestId:row.id,accountId:row.account_id,kind:row.kind,status:row.status,scope:row.kind==='leave_team'?(row.team_id&&row.season_id?{type:'team_season' as const,teamId:row.team_id,seasonId:row.season_id}:null):{type:'all_memberships' as const},affectedMemberships:row.affected_memberships_json===null?null:JSON.parse(row.affected_memberships_json),createdAtMs:row.created_at}));
+  }
+  privacyRequest(principal:Principal,input:unknown):ReturnType<typeof projectAccountPrivacyRequests>['items'][number]{
+    const plan=prepareAccountPrivacyRequest({principal,memberships:this.memberships(),input,nowMs:this.now()});
+    const pending=this.database.prepare("SELECT p.id FROM privacy_pending_keys k JOIN privacy_requests p ON p.id=k.request_id WHERE k.business_key=? AND p.account_id=? AND p.status='pending_verification_and_policy'").get(plan.businessKey,principal.accountId) as {id:string}|undefined;
+    let requestId=pending?.id;
+    if(!requestId){
+      const retained=plan.scope.type==='team_season'
+        ?this.database.prepare("SELECT id FROM privacy_requests WHERE account_id=? AND kind=? AND team_id=? AND season_id=? AND status='pending_verification_and_policy' ORDER BY created_at,id LIMIT 1").get(principal.accountId,plan.kind,plan.scope.teamId,plan.scope.seasonId) as {id:string}|undefined
+        :this.database.prepare("SELECT id FROM privacy_requests WHERE account_id=? AND kind=? AND team_id IS NULL AND season_id IS NULL AND status='pending_verification_and_policy' ORDER BY created_at,id LIMIT 1").get(principal.accountId,plan.kind) as {id:string}|undefined;
+      requestId=retained?.id;
+    }
+    if(!requestId){
+      requestId=randomUUID();
+      this.database.prepare('INSERT INTO privacy_requests(id,account_id,kind,status,policy_version,verified_at,created_at,team_id,season_id,affected_memberships_json) VALUES(?,?,?,?,NULL,NULL,?,?,?,?)').run(requestId,principal.accountId,plan.kind,plan.status,this.now(),plan.scope.type==='team_season'?plan.scope.teamId:null,plan.scope.type==='team_season'?plan.scope.seasonId:null,JSON.stringify(plan.affectedMemberships));
+      this.audit(principal,'privacy.requested',requestId,'pending_verification_and_policy');
+    }
+    this.database.prepare('INSERT INTO privacy_pending_keys(business_key,request_id) VALUES(?,?) ON CONFLICT(business_key) DO UPDATE SET request_id=excluded.request_id').run(plan.businessKey,requestId);
+    return this.privacyRequests(principal).items.find(item=>item.requestId===requestId)!;
+  }
+  privacyRequests(principal:Principal):ReturnType<typeof projectAccountPrivacyRequests>{
+    return projectAccountPrivacyRequests({principal,memberships:this.memberships(),records:this.privacyRecords(principal),nowMs:this.now()});
+  }
   /** Explicit setup seam: an authorised operator imports verified provider-to-account mappings; no token creates authority. */
   bindIdentity(accountId: string, issuer: string, subject: string): void { this.database.prepare('UPDATE accounts SET issuer=?,subject=? WHERE id=?').run(issuer, subject, accountId); }
   bindDevice(principal: Principal, deviceId: string): void {
@@ -373,9 +546,9 @@ export class DevelopmentStore {
     if (device && device.account_id !== principal.accountId) throw new AccessError('DEVICE_ACCOUNT_CONFLICT', 409, 'Enrol a separate device identity for this account.');
     this.database.prepare('INSERT INTO devices(id,account_id) VALUES(?,?) ON CONFLICT(id) DO NOTHING').run(deviceId, principal.accountId);
   }
-  teamMatches(principal: Principal, teamId: string, seasonId: string): unknown[] {
+  teamMatches(principal: Principal, teamId: string, seasonId: string, requestedRole?: string): unknown[] {
     assertTeamRole(principal, this.memberships(), teamId, seasonId, ['manager', 'player', 'spectator'], this.now());
-    return (this.database.prepare('SELECT id FROM matches WHERE team_id=? AND season_id=? ORDER BY id LIMIT 100').all(teamId, seasonId) as { id: string }[]).map(row => this.matchDto(principal, row.id));
+    return (this.database.prepare('SELECT id FROM matches WHERE team_id=? AND season_id=? ORDER BY id LIMIT 100').all(teamId, seasonId) as { id: string }[]).map(row => this.matchDto(principal, row.id, requestedRole));
   }
   document<T>(teamId: string, seasonId: string, kind: string): T {
     const row = this.database.prepare('SELECT value_json FROM documents WHERE team_id=? AND season_id=? AND kind=?').get(teamId, seasonId, kind) as { value_json: string } | undefined;
@@ -385,9 +558,56 @@ export class DevelopmentStore {
   saveDocument(teamId: string, seasonId: string, kind: string, state: { revision: number }): void {
     this.database.prepare('INSERT INTO documents(team_id,season_id,kind,revision,value_json) VALUES(?,?,?,?,?) ON CONFLICT(team_id,season_id,kind) DO UPDATE SET revision=excluded.revision,value_json=excluded.value_json').run(teamId, seasonId, kind, state.revision, JSON.stringify(state));
   }
+  enqueueNotifications(teamId:string,seasonId:string,category:TeamNotificationCategory,entityId:string,sourceId:string):number{
+    const recipients=new Map<string,Membership>();
+    const priority={manager:3,player:2,spectator:1,administrator:0};
+    for(const member of this.memberships().filter(item=>item.teamId===teamId&&item.seasonId===seasonId&&['manager','player','spectator'].includes(item.role)&&item.revokedAt==null&&(item.expiresAt==null||item.expiresAt>this.now()))){const current=recipients.get(member.accountId);if(!current||priority[member.role]>priority[current.role])recipients.set(member.accountId,member);}
+    let inserted=0;
+    for(const member of recipients.values()){
+      if(member.role==='administrator'||member.role==='player'&&!member.playerId)continue;
+      const businessKey=`notify:${digest(canonical([teamId,seasonId,category,entityId,sourceId,member.accountId,member.role]))}`;
+      const job=createTeamNotificationJob({id:randomUUID(),businessKey,accountId:member.accountId,teamId,seasonId,audience:member.role,playerId:member.role==='player'?member.playerId!:null,category,entityId,dueAtMs:this.now()});
+      const result=this.database.prepare("INSERT INTO jobs(id,business_key,kind,payload_json,due_at) VALUES(?,?,'notification.dispatch',?,?) ON CONFLICT(business_key) DO NOTHING").run(job.id,businessKey,JSON.stringify(job),job.dueAtMs);inserted+=Number(result.changes);
+    }
+    return inserted;
+  }
   preparation(principal: Principal, teamId: string, seasonId: string): PreparationState {
     assertCanManageTeam(principal, this.memberships(), teamId, seasonId, this.now());
     return this.document<PreparationState>(teamId, seasonId, 'preparation');
+  }
+  configuration(principal: Principal, teamId: string, seasonId: string,role?:string): ReturnType<typeof configurationServiceView> {
+    if(role)assertTeamRole(principal,this.memberships(),teamId,seasonId,role==='manager'||role==='administrator'?[role]:[],this.now());
+    const state = this.document<PreparationState>(teamId, seasonId, 'preparation');
+    return configurationServiceView({principal,memberships:this.memberships(),preparation:state,seasonId,nowMs:this.now()});
+  }
+  configurationCommand(principal: Principal, teamId: string, seasonId: string, command: PreparationCommand,role?:string): ReturnType<typeof configurationServiceView> {
+    this.configuration(principal, teamId, seasonId,role);
+    if (!command || !['club.updated', 'team.updated'].includes(command.type)) bad('Only club or team configuration can be changed in this context.');
+    if(role&&command.type==='club.updated'&&role!=='administrator')throw new AccessError('NOT_FOUND',404,'Choose the current administrator context to administer the club.');
+    const state = applyConfigurationServiceCommand({principal,memberships:this.memberships(),preparation:this.document<PreparationState>(teamId,seasonId,'preparation'),seasonId,nowMs:this.now(),command});
+    this.saveDocument(teamId, seasonId, 'preparation', state);
+    this.audit(principal, command.type, teamId, 'administrator_configuration_accepted');
+    return this.configuration(principal, teamId, seasonId,role);
+  }
+  private seasonContext(principal: Principal, teamId: string, seasonId: string): SeasonRolloverContext {
+    const community = this.communityState(teamId, seasonId);
+    const accounts = this.database.prepare('SELECT * FROM accounts').all() as unknown as AccountRow[];
+    const preparationDocuments = this.database.prepare("SELECT value_json FROM documents WHERE team_id=? AND kind='preparation'").all(teamId) as { value_json:string }[];
+    const existingSeasons = preparationDocuments.flatMap(row => (JSON.parse(row.value_json) as PreparationState).seasons.map(season => ({ teamId,id:season.id,startYear:season.startYear })));
+    return { principal, memberships: this.memberships(), existingSeasons, nowMs: this.now(), preparation: this.document<PreparationState>(teamId, seasonId, 'preparation'), records: this.document<RecordsState>(teamId, seasonId, 'records'), community,
+      accounts: accounts.map(account => ({ accountId: account.id, label: community.accounts.find(item => item.id === account.id)?.label ?? 'Verified account', status: account.status, identityClassification: account.classification, adultVerified: Boolean(account.adult_verified), strongAuthEnrolled: Boolean(account.strong_auth_enrolled) })) };
+  }
+  seasonOptions(principal: Principal, teamId: string, seasonId: string): ReturnType<typeof seasonRolloverOptions> { return seasonRolloverOptions(this.seasonContext(principal, teamId, seasonId)); }
+  createSeason(principal: Principal, teamId: string, seasonId: string, command: SeasonRolloverCommand): ReturnType<typeof planSeasonRollover>['receipt'] {
+    const context = this.seasonContext(principal, teamId, seasonId);
+    const plan = planSeasonRollover({ ...context, command });
+    if (this.database.prepare('SELECT kind FROM documents WHERE team_id=? AND season_id=? LIMIT 1').get(teamId, plan.receipt.seasonId)) throw new AccessError('SEASON_EXISTS', 409, 'That destination season already has saved documents.');
+    for (const member of plan.memberships) this.database.prepare('INSERT INTO memberships(account_id,team_id,season_id,role,player_id,expires_at,revoked_at) VALUES(?,?,?,?,?,?,?)').run(member.accountId, member.teamId, member.seasonId, member.role, member.playerId ?? null, member.expiresAt ?? null, member.revokedAt ?? null);
+    this.saveDocument(teamId, plan.receipt.seasonId, 'preparation', plan.preparation);
+    this.saveDocument(teamId, plan.receipt.seasonId, 'records', plan.records);
+    this.saveDocument(teamId, plan.receipt.seasonId, 'community', plan.community);
+    this.audit(principal, 'season.created_from_explicit_assignments', plan.receipt.seasonId, 'accepted_no_spectator_renewal');
+    return plan.receipt;
   }
   /** Called inside the preparation mutation transaction; current labels never rewrite saved match evidence. */
   private projectPreparationRecords(teamId: string, seasonId: string, preparation: PreparationState, sourceCommandId: string): void {
@@ -434,6 +654,10 @@ export class DevelopmentStore {
     if (command.type.startsWith('training.') || command.type.startsWith('profile.')) this.projectPreparationRecords(teamId, seasonId, state, command.id);
     this.saveDocument(teamId, seasonId, 'preparation', state);
     this.audit(principal, command.type, teamId, 'accepted');
+    if(command.type==='fixture.saved')this.enqueueNotifications(teamId,seasonId,'schedule',command.fixture.id,command.id);
+    else if(command.type==='fixture.status_changed'||command.type==='fixture.selection_saved')this.enqueueNotifications(teamId,seasonId,'schedule',command.fixtureId,command.id);
+    else if(command.type==='training.saved')this.enqueueNotifications(teamId,seasonId,'schedule',command.training.id,command.id);
+    else if(command.type==='training.status_changed')this.enqueueNotifications(teamId,seasonId,'schedule',command.trainingId,command.id);
     return state;
   }
   ownPreparation(principal: Principal, teamId: string, seasonId: string): Record<string, unknown> {
@@ -510,6 +734,8 @@ export class DevelopmentStore {
       this.database.prepare('INSERT INTO jobs(id,business_key,kind,payload_json,due_at) VALUES(?,?,?,?,?) ON CONFLICT(business_key) DO NOTHING').run(randomUUID(), key, 'award.finalise', JSON.stringify({ teamId, seasonId, matchId: match.id }), match.voteCutoffAtMs!);
     }
     this.audit(principal, command.type, teamId, 'accepted');
+    if(command.type==='photo.submitted'||command.type==='photo.revised'||command.type==='photo.published'||command.type==='photo.reviewed'&&command.decision==='approve')this.enqueueNotifications(teamId,seasonId,'photos',command.photoId,command.id);
+    if(command.type==='award.finalised')this.enqueueNotifications(teamId,seasonId,'awards',command.matchId,command.id);
     return { ...getCommunityView(state, actor, this.now()), revision: state.revision };
   }
   synchronizeSpectatorMemberships(state: CommunityState): void {
@@ -534,25 +760,18 @@ export class DevelopmentStore {
     const actor = this.communityActor(principal, teamId, seasonId, role);
     return { actor: actor.role, playerId: actor.playerId, teamId, seasonId };
   }
-  records(principal: Principal, teamId: string, seasonId: string, role?: string): Record<string, unknown> {
+  private recordsContext(principal: Principal, teamId: string, seasonId: string, role?: string): RecordsServiceInput {
     const viewer = this.recordsViewer(principal, teamId, seasonId, role);
-    const state = this.document<RecordsState>(teamId, seasonId, 'records');
-    const matchRow = this.database.prepare('SELECT state_json FROM matches WHERE id=? AND team_id=? AND season_id=?').get(state.liveMatch.matchId, teamId, seasonId) as { state_json: string } | undefined;
-    const match = matchRow ? JSON.parse(matchRow.state_json) as MatchState : null;
-    return { revision: state.revision, results: selectSeasonResults(state, viewer), participation: selectParticipationReport(state, match, viewer), matches: state.results.map(record => selectMatchReport(state, record.id, viewer, match)), ...(viewer.actor === 'manager' ? { editableState: state } : {}) };
+    const rows = this.database.prepare('SELECT state_json FROM matches WHERE team_id=? AND season_id=? ORDER BY id').all(teamId, seasonId) as { state_json: string }[];
+    const community=this.communityState(teamId,seasonId);
+    const actor=this.communityActor(principal,teamId,seasonId,viewer.actor);
+    const filtered=getCommunityView(community,actor,this.now());
+    return { principal, memberships: this.memberships(), nowMs: this.now(), requestedRole: viewer.actor, state: this.document<RecordsState>(teamId, seasonId, 'records'), acceptedMatches: rows.map(row => ({ teamId, seasonId, match: JSON.parse(row.state_json) as MatchState })),community:{accountId:principal.accountId,teamId,seasonId,audience:viewer.actor,playerId:viewer.playerId??null,revision:community.revision,view:{allowed:filtered.allowed,matches:filtered.matches,gallery:filtered.gallery}} };
   }
-  recordsCommand(principal: Principal, teamId: string, seasonId: string, command: RecordsCommand): Record<string, unknown> {
-    assertCanManageTeam(principal, this.memberships(), teamId, seasonId, this.now());
-    const previous = this.document<RecordsState>(teamId, seasonId, 'records');
-    if (!command || !['historical.add', 'historical.correct', 'live.archive', 'live.context.set', 'publication.set', 'training.evidence.replace'].includes(command.type)) bad('Unsupported records command.');
-    let bound: RecordsCommand = { ...command, actor: 'manager', at: new Date(this.now()).toISOString() };
-    if (command.type === 'live.archive') {
-      const match = this.managerMatch(principal, command.match.config.matchId);
-      if (match.team_id !== teamId || match.season_id !== seasonId) throw new AccessError('NOT_FOUND', 404, 'The requested object is unavailable.');
-      bound = { ...bound, match: JSON.parse(match.state_json) } as RecordsCommand;
-    }
-    if (command.type === 'publication.set' && command.policy.confirmed) throw new AccessError('POLICY_APPROVAL_REQUIRED', 503, 'The competition sharing policy requires an independently approved operator record; a manager command cannot approve open Q21.');
-    const state = reduceRecords(previous, bound);
+  records(principal: Principal, teamId: string, seasonId: string, role?: string): Record<string, unknown> { return recordsServiceView(this.recordsContext(principal, teamId, seasonId, role)); }
+  recordsExport(principal: Principal, teamId: string, seasonId: string, request: RecordsExportRequest, role?: string): ReturnType<typeof recordsServiceExport> { return recordsServiceExport({ ...this.recordsContext(principal, teamId, seasonId, role), request }); }
+  recordsCommand(principal: Principal, teamId: string, seasonId: string, command: RecordsServiceCommand, role?: string): Record<string, unknown> {
+    const state = applyRecordsServiceCommand({ ...this.recordsContext(principal, teamId, seasonId, role), command });
     this.saveDocument(teamId, seasonId, 'records', state);
     this.audit(principal, command.type, teamId, 'accepted');
     return this.records(principal, teamId, seasonId, 'manager');

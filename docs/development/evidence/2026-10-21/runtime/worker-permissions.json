@@ -1,0 +1,1 @@
+{"role":"longball_worker","passed":["restricted_role_attributes","cannot_create_schema_objects","cannot_create_public_objects","cannot_alter_schema","cannot_change_migration_version","worker_cannot_change_accounts","worker_cannot_read_private_media_manifests","worker_cannot_delete_jobs","worker_job_and_document_operations"]}

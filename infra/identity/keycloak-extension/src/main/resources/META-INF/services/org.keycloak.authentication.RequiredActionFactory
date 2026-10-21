@@ -1,0 +1,3 @@
+dev.longball.identity.LongBallActivation$PasswordAction
+dev.longball.identity.LongBallActivation$RecoveryAction
+dev.longball.identity.LongBallActivation$FinishAction

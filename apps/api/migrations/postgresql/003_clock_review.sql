@@ -1,0 +1,3 @@
+CREATE TABLE clock_challenges(id text PRIMARY KEY,match_id text NOT NULL REFERENCES matches(id),account_id text NOT NULL REFERENCES accounts(id),challenge_json jsonb NOT NULL,consumed_at bigint);
+CREATE TABLE clock_mappings(challenge_id text PRIMARY KEY REFERENCES clock_challenges(id),match_id text NOT NULL REFERENCES matches(id),mapping_json jsonb NOT NULL,created_at bigint NOT NULL);
+CREATE TABLE reconciliation_proposals(id text PRIMARY KEY,match_id text NOT NULL REFERENCES matches(id),actor_id text NOT NULL REFERENCES accounts(id),signature text NOT NULL,receipt_json jsonb NOT NULL,created_at bigint NOT NULL);

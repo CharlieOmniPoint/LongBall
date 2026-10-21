@@ -1,0 +1,74 @@
+{
+  "status": "passed",
+  "observedAt": "2026-10-21T08:53:54.914Z",
+  "syntheticOnly": true,
+  "checks": [
+    {
+      "name": "maintained-engine-clean-and-eicar",
+      "detail": {
+        "clean": {
+          "verdict": "clean",
+          "engine": "clamav:1.5.4/db:28157"
+        },
+        "eicar": {
+          "verdict": "rejected",
+          "engine": "clamav:1.5.4/db:28157"
+        },
+        "fixture": "standard harmless antivirus test pattern"
+      }
+    },
+    {
+      "name": "postgres-private-media-and-atomic-link",
+      "detail": {
+        "serverVersion": "18.6 (Debian 18.6-1.pgdg13+2)",
+        "derivedFormat": "jpeg",
+        "dimensions": [
+          32,
+          64
+        ],
+        "metadataStripped": true,
+        "pendingPrivate": true,
+        "explicitPublish": true,
+        "rollbackPreservedUnlinkedState": true,
+        "tokenHashOnly": true,
+        "scanner": "clamav:1.5.4/db:28157"
+      }
+    },
+    {
+      "name": "real-detection-sanitization-and-unavailable-fail-closed",
+      "detail": {
+        "standardEicarRejectedByRealScanner": true,
+        "pngOverlayDetectionClaimed": false,
+        "reencodedDerivativeOmitsOverlay": true,
+        "unpublishedCandidatePrivate": true,
+        "unavailableRetainsPrivateOriginal": true
+      }
+    },
+    {
+      "name": "real-concurrent-transaction-smoke",
+      "detail": {
+        "concurrentTransactions": 50,
+        "committedIncrements": 50,
+        "elapsedMs": 1333,
+        "productionLoadAcceptance": false
+      }
+    },
+    {
+      "name": "actual-pg-dump-restore-with-paired-private-objects",
+      "detail": {
+        "customArchiveSha256": "963f8fdfcbd7cb6ee0f75b4aa44df328dbc81ea773f7decf508334c397c00b27",
+        "restoredCommunityProjection": true,
+        "restoredManifestRows": 3,
+        "restoredCounter": 50,
+        "exactPublishedDerivativeSha256": "b0272eac7747fa4f2217c81c2388794bd32d685f7cd86ef79ffe2ad4ccf94050",
+        "databaseOnlyBackupClaimed": false
+      }
+    }
+  ],
+  "limitations": [
+    "Loopback disposable runtime uses explicit fictional accounts and trust authentication.",
+    "ClamAV DB metadata/signatures are recorded separately; this is not an operating update/monitoring SLA.",
+    "Fifty transactions are a correctness smoke test, not production capacity acceptance.",
+    "Restore includes both PostgreSQL and private files; encrypted offsite backup/retention/recovery operations remain unproved."
+  ]
+}

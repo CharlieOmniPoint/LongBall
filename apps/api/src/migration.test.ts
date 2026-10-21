@@ -15,7 +15,7 @@ describe('development SQLite expand migrations', () => {
       const results = await Promise.all([1, 2].map(() => promisify(execFile)(process.execPath, ['--import', 'tsx', '--input-type=module', '-e', source, path], { cwd: process.cwd(), timeout: 10_000, maxBuffer: 65_536 })));
       expect(results.map(result => result.stdout.trim())).toEqual(['ok', 'ok']);
       const store = new DevelopmentStore(path);
-      expect(store.database.prepare('PRAGMA user_version').get()).toEqual({ user_version: 5 });
+      expect(store.database.prepare('PRAGMA user_version').get()).toEqual({ user_version: 7 });
       expect(store.database.prepare('SELECT COUNT(*) AS n FROM documents').get()).toEqual({ n: 3 }); store.close();
     } finally { rmSync(directory, { recursive: true, force: true }); }
   }, 15_000);
@@ -38,10 +38,10 @@ describe('development SQLite expand migrations', () => {
       const projection = original.match(SYNTHETIC_IDS.matchId).state_json;
       original.database.prepare('INSERT INTO events(event_id,match_id,device_id,client_sequence,envelope_json,signature,disposition,reason,revision,received_at) VALUES(?,?,?,?,?,?,?,?,?,?)').run('retained-offline-event', SYNTHETIC_IDS.matchId, 'old-device', 7, '{"original":"retained bytes"}', 'original-signature', 'quarantined', 'UNSUPPORTED_EVENT_VERSION', null, 1_800_000_000_000);
       // Recreate the earlier v1 layout by removing only columns/tables introduced by expand migrations.
-      original.database.exec('ALTER TABLE events DROP COLUMN actor_id; ALTER TABLE accounts DROP COLUMN strong_auth_enrolled; DROP TABLE devices; DROP TABLE documents; PRAGMA user_version=1;');
+      original.database.exec('ALTER TABLE events DROP COLUMN actor_id; ALTER TABLE accounts DROP COLUMN strong_auth_enrolled; DROP TABLE clock_mappings; DROP TABLE clock_challenges; DROP TABLE reconciliation_proposals; DROP TABLE devices; DROP TABLE documents; DROP TABLE privacy_pending_keys; ALTER TABLE privacy_requests DROP COLUMN team_id; ALTER TABLE privacy_requests DROP COLUMN season_id; ALTER TABLE privacy_requests DROP COLUMN affected_memberships_json; PRAGMA user_version=1;');
       original.close();
       const migrated = new DevelopmentStore(path);
-      expect(migrated.database.prepare('PRAGMA user_version').get()).toEqual({ user_version: 5 });
+      expect(migrated.database.prepare('PRAGMA user_version').get()).toEqual({ user_version: 7 });
       expect(migrated.match(SYNTHETIC_IDS.matchId).state_json).toBe(projection);
       expect(migrated.database.prepare('SELECT envelope_json,disposition,reason,client_sequence FROM events WHERE event_id=?').get('retained-offline-event')).toEqual({ envelope_json: '{"original":"retained bytes"}', disposition: 'quarantined', reason: 'UNSUPPORTED_EVENT_VERSION', client_sequence: 7 });
       // Newly required eligibility is not silently approved for an existing adult account.
@@ -59,5 +59,21 @@ describe('development SQLite expand migrations', () => {
       expect(retained.prepare('PRAGMA user_version').get()).toEqual({ user_version: 99 });
       expect(retained.prepare('SELECT value FROM future_evidence').get()).toEqual({ value: 'keep me' }); retained.close();
     } finally { rmSync(directory, { recursive: true, force: true }); }
+  });
+  it('retains legacy request history, selects the earliest pending global request and marks unscoped leave for review',()=>{
+    const directory=mkdtempSync(join(tmpdir(),'longball-privacy-migration-')),path=join(directory,'old.sqlite');
+    try{
+      const original=new DevelopmentStore(path);original.seedSynthetic();
+      original.database.exec('DROP TABLE privacy_pending_keys; ALTER TABLE privacy_requests DROP COLUMN team_id; ALTER TABLE privacy_requests DROP COLUMN season_id; ALTER TABLE privacy_requests DROP COLUMN affected_memberships_json; PRAGMA user_version=6;');
+      const insert=original.database.prepare('INSERT INTO privacy_requests VALUES(?,?,?,?,NULL,NULL,?)');
+      insert.run('legacy-export-b','synthetic-account-player-01','export','pending_verification_and_policy',10);
+      insert.run('legacy-export-a','synthetic-account-player-01','export','pending_verification_and_policy',10);
+      insert.run('legacy-leave','synthetic-account-player-01','leave_team','pending_verification_and_policy',11);
+      insert.run('retained-nonpending','synthetic-account-player-01','leave_team','operator_review_recorded',12);original.close();
+      const migrated=new DevelopmentStore(path);
+      expect(migrated.database.prepare('SELECT id,status FROM privacy_requests ORDER BY id').all()).toEqual([{id:'legacy-export-a',status:'pending_verification_and_policy'},{id:'legacy-export-b',status:'pending_verification_and_policy'},{id:'legacy-leave',status:'needs_scope'},{id:'retained-nonpending',status:'operator_review_recorded'}]);
+      expect(migrated.database.prepare('SELECT * FROM privacy_pending_keys').all()).toEqual([{business_key:'["synthetic-account-player-01","export","all_memberships"]',request_id:'legacy-export-a'}]);
+      expect(migrated.database.prepare('SELECT affected_memberships_json FROM privacy_requests').all()).toEqual(Array.from({length:4},()=>({affected_memberships_json:null})));migrated.close();
+    }finally{rmSync(directory,{recursive:true,force:true});}
   });
 });

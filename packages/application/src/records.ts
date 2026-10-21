@@ -193,6 +193,8 @@ export function createRecordsSeed(): RecordsState {
 /** Capture only observed intervals. An active console is a checkpoint, not a fabricated live remote clock. */
 export function snapshotLiveMatch(state: RecordsState, match: MatchState, at: string): MatchRecord {
   if (match.config.matchId !== state.liveMatch.matchId) throw new Error('Set this match’s recorded fixture details before reporting it.');
+  const previousRecord = state.results.find(record => record.id === match.config.matchId);
+  const sameClassification = previousRecord?.fixtureClass === state.liveMatch.fixtureClass;
   const sample = match.anchor?.sample ?? { monotonicMs: 0, sessionId: 'records-checkpoint', wallTimeMs: 0 };
   const started = match.status !== 'preparation';
   const targets = started ? currentTargets(match, sample) : [];
@@ -210,8 +212,8 @@ export function snapshotLiveMatch(state: RecordsState, match: MatchState, at: st
   return {
     ...input, id: match.config.matchId, teamId: state.teamId, seasonId: state.seasonId,
     recordMode: 'detailed_live', detailCompleteness: match.recoveryRequired ? 'review_required' : 'complete',
-    publication: state.results.find(record => record.id === match.config.matchId)?.publication ?? managerOnlyPublication(state.liveMatch.fixtureClass),
-    classificationVersion: state.results.find(record => record.id === match.config.matchId)?.classificationVersion ?? 1,
+    publication: sameClassification ? clone(previousRecord!.publication) : managerOnlyPublication(state.liveMatch.fixtureClass),
+    classificationVersion: previousRecord ? previousRecord.classificationVersion + Number(!sameClassification) : 1,
     selectedPlayerIds: [...match.config.selectedPlayerIds], attendance: { ...match.attendance },
     participation: started ? playerMinutes(match, sample).map(player => {
       const saved = match.config.players.find(item => item.id === player.playerId);
@@ -278,7 +280,7 @@ export function reduceRecords(previous: RecordsState, command: RecordsCommand): 
       if (command.match.status !== 'completed' || command.match.recoveryRequired) throw new Error('Finish the match and resolve clock uncertainty before archiving a final participation record.');
       before = state.results.find(record => record.id === command.match.config.matchId) ?? null;
       if (before?.recordMode === 'historical_summary') throw new Error('A historical summary already uses this match identifier; explicit reconciliation is required.');
-      if (before && (before.sourceMatchRevision ?? -1) >= command.match.revision) throw new Error('This match revision is already archived.');
+      if (before && ((before.sourceMatchRevision ?? -1) > command.match.revision || before.sourceMatchRevision === command.match.revision && before.fixtureClass === state.liveMatch.fixtureClass)) throw new Error('This match revision is already archived.');
       after = { ...snapshotLiveMatch(state, command.match, command.at), enteredAt: before?.enteredAt ?? command.at, revision: (before?.revision ?? 0) + 1 };
       state = { ...state, results: [...state.results.filter(record => record.id !== after?.id), after] };
       reason = command.reason?.trim() || 'Local completed match captured from recorded intervals.';

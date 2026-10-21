@@ -6,6 +6,7 @@ import { execFile, spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { performance } from 'node:perf_hooks';
+import { Socket } from 'node:net';
 import { DatabaseSync } from 'node:sqlite';
 import { AccessError } from '../../../packages/application/src/access';
 import { authorizeCommunityMedia, communityCanAccess, type CommunityActor, type CommunityCommand, type CommunityState } from '../../../packages/application/src/community';
@@ -28,7 +29,7 @@ export interface MediaPrepareInput {
   sourceRevision?: number;
 }
 export interface PreparedMediaUpload { uploadId: string; photoId: string; uploadToken: string; expiresAtMs: number; maxBytes: number; displayRevision: number }
-interface UploadRow {
+export interface UploadRow {
   id: string; request_id: string; request_signature: string; owner_id: string; team_id: string; season_id: string; match_id: string;
   photo_id: string; source_revision: number | null; display_revision: number; status: string; expected_bytes: number;
   expected_sha: string; declared_mime: string; caption: string; token_hash: string; expires_at: number; created_at: number;
@@ -85,7 +86,7 @@ export function createClamAvScanner(executable: string, options: { timeoutMs?: n
       const version = await (versionCheck ??= identify());
       if (!version) return { verdict: 'unavailable', engine: 'clamav_unverified' };
       return new Promise(resolveVerdict => {
-      const child = spawn(executable, ['--no-summary', '--stdout', '--max-filesize=16M', '--max-scansize=16M', '--max-files=1', '--max-recursion=1', '--alert-exceeds-max=yes', '-'], { stdio: ['pipe', 'pipe', 'pipe'], shell: false, windowsHide: true });
+      const child = spawn(executable, ['--no-summary', '--stdout', '--max-filesize=16M', '--max-scansize=16M', '--max-files=32', '--max-recursion=4', '--alert-exceeds-max=yes', '-'], { stdio: ['pipe', 'pipe', 'pipe'], shell: false, windowsHide: true });
       let finished = false;
       let outputBytes = 0;
       let scanOutput = '';
@@ -104,6 +105,58 @@ export function createClamAvScanner(executable: string, options: { timeoutMs?: n
     },
   };
 }
+
+/** Persistent maintained clamd: database loading happens once, outside request time. */
+export function createClamAvDaemonScanner(options: { host?: string; port?: number; socketPath?: string; timeoutMs?: number }): MediaScanner {
+  const timeoutMs = Math.max(100, Math.min(options.timeoutMs ?? 15_000, MEDIA_LIMITS.scannerTimeoutMs));
+  if (options.socketPath ? !isAbsolute(options.socketPath) || Boolean(options.host || options.port) :
+    typeof options.host !== 'string' || !options.host.trim() || options.host.length > 253 || !Number.isInteger(options.port) || options.port! < 1 || options.port! > 65535) {
+    fail('SCANNER_CONFIGURATION_INVALID', 503, 'Configure one explicit private ClamAV daemon endpoint.');
+  }
+  const exchange = (command: 'VERSION' | 'INSTREAM', bytes?: Buffer): Promise<string | null> => new Promise(resolveReply => {
+    const socket = new Socket();
+    let received = Buffer.alloc(0);
+    let finished = false;
+    const finish = (reply: string | null) => {
+      if (finished) return;
+      finished = true; clearTimeout(timer); socket.destroy(); resolveReply(reply);
+    };
+    const timer = setTimeout(() => finish(null), timeoutMs);
+    socket.on('error', () => finish(null));
+    socket.on('close', () => finish(null));
+    socket.on('data', chunk => {
+      if (received.length + chunk.length > 8192) return finish(null);
+      received = Buffer.concat([received, chunk]);
+      const ending = received.indexOf(0);
+      if (ending >= 0) finish(ending === received.length - 1 ? received.subarray(0, ending).toString('utf8') : null);
+    });
+    socket.once('connect', () => {
+      socket.write(`z${command}\0`);
+      if (command === 'INSTREAM') {
+        for (let offset = 0; offset < bytes!.length; offset += 64 * 1024) {
+          const chunk = bytes!.subarray(offset, offset + 64 * 1024);
+          const size = Buffer.alloc(4); size.writeUInt32BE(chunk.length);
+          socket.write(size); socket.write(chunk);
+        }
+        socket.write(Buffer.alloc(4));
+      }
+    });
+    if (options.socketPath) socket.connect(options.socketPath);
+    else socket.connect({ host: options.host!, port: options.port! });
+  });
+  return { scan: async bytes => {
+    if (!Buffer.isBuffer(bytes) || bytes.length < 1 || bytes.length > MEDIA_LIMITS.maxBytes) return { verdict: 'unavailable', engine: 'clamav_unverified' };
+    const versionReply = await exchange('VERSION');
+    const version = versionReply && /^ClamAV ([0-9][0-9A-Za-z.+_-]*)\/([0-9]+)\/(.+)$/.exec(versionReply);
+    if (!version || !Number.isFinite(Date.parse(version[3]))) return { verdict: 'unavailable', engine: 'clamav_unverified' };
+    const engine = `clamav:${version[1]}/db:${version[2]}`;
+    const reply = await exchange('INSTREAM', bytes);
+    return { verdict: reply === 'stream: OK' ? 'clean' : /^stream: [^\r\n]+ FOUND$/.test(reply ?? '') ? 'rejected' : 'unavailable', engine };
+  } };
+}
+
+/** Shared byte/type/authority rules for synchronous development and async PostgreSQL manifests. */
+export const mediaInternals = { executeFile, hash, id, fail, auth, sameToken, bounded, actualMime, rejectAnimatedPng };
 
 /** Private local object store for development; later buckets use the same gateway. */
 export class DevelopmentMediaService {

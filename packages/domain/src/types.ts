@@ -130,18 +130,21 @@ export interface MatchAuditEntry {
 interface EventBase { id: string; sample: ClockSample; actorId?: string }
 export type MatchEvent = EventBase & (
   | { type: 'attendance.recorded'; playerId: string; status: Attendance }
-  | ({ type: 'availability.changed' } & AvailabilityDetails)
+  | ({ type: 'availability.changed'; sourceRevision?: number; lateEntryReason?: string } & AvailabilityDetails)
   | { type: 'lineup.staged'; lineup: Allocation[] }
   | { type: 'half.started' }
   | { type: 'half.paused' }
   | { type: 'half.resumed' }
   | { type: 'half.ended' }
   | { type: 'match.abandoned'; reason: 'weather' | 'safety' | 'insufficient_players' | 'other'; note?: string }
-  | { type: 'lineup.committed'; lineup: Allocation[]; sourceRevision: number }
+  | { type: 'lineup.committed'; lineup: Allocation[]; sourceRevision: number; effective?: EffectiveMatchTime; lateEntryReason?: string }
   | ({ type: 'goal.recorded'; lateEntryReason?: string } & GoalDetails)
   | { type: 'event.corrected'; targetEventId: string; reason: string; restoreVoided?: boolean;
-      replacement: ({ type: 'goal.recorded' } & GoalDetails) | ({ type: 'availability.changed' } & AvailabilityDetails) }
-  | { type: 'event.voided'; targetEventId: string; reason: string }
+      /** A retrospective participation draft must still refer to the reviewed history revision. */
+      sourceRevision?: number;
+      replacement: ({ type: 'goal.recorded' } & GoalDetails) | ({ type: 'availability.changed' } & AvailabilityDetails)
+        | { type: 'lineup.committed'; lineup: Allocation[]; effective: EffectiveMatchTime } }
+  | { type: 'event.voided'; targetEventId: string; reason: string; sourceRevision?: number }
   | { type: 'clock.recovery_required'; reason: string }
   | { type: 'clock.corrected'; halfActiveMs: number; reason: string; confirmUnchangedLineup: true }
 );

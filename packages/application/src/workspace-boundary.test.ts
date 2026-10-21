@@ -4,6 +4,7 @@ import {
   attachWorkspaceValue,
   readWorkspaceValue,
   workspaceSessionAllows,
+  workspaceNeedsProtectedOutbox,
   type WorkspaceBinding,
   type WorkspaceSessionAccess,
 } from "./workspace-boundary";
@@ -168,6 +169,44 @@ describe("connected workspace response and private-cache boundary", () => {
         "private",
       ),
     ).toBeNull();
+  });
+  it("requires protected outbox readiness only for a currently authorised membership, keeping unassigned invitation setup usable", () => {
+    expect(
+      workspaceNeedsProtectedOutbox(true, binding, principal, memberships, now),
+    ).toBe(true);
+    expect(
+      workspaceNeedsProtectedOutbox(
+        false,
+        binding,
+        principal,
+        memberships,
+        now,
+      ),
+    ).toBe(false);
+    expect(workspaceNeedsProtectedOutbox(true, null, principal, [], now)).toBe(
+      false,
+    );
+    expect(
+      workspaceNeedsProtectedOutbox(true, binding, principal, [], now),
+    ).toBe(false);
+    expect(
+      workspaceNeedsProtectedOutbox(
+        true,
+        binding,
+        principal,
+        memberships,
+        now + 100,
+      ),
+    ).toBe(false);
+    expect(
+      workspaceNeedsProtectedOutbox(
+        true,
+        binding,
+        { ...principal, status: "disabled" },
+        memberships,
+        now,
+      ),
+    ).toBe(false);
   });
   it("requires a currently unlocked same-API OIDC session independently of a previously successful fetch", () => {
     expect(workspaceSessionAllows(session, "https://api.example/", now)).toBe(

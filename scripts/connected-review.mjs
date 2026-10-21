@@ -1,23 +1,27 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
+import { Buffer } from 'node:buffer';
 import { spawn } from 'node:child_process';
 import { existsSync, createWriteStream } from 'node:fs';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { chromium } from 'playwright';
+import { installStartupDiagnostics, captureStartupDiagnostics } from './browser-startup-diagnostics.mjs';
 
 /** Real UI/HTTP journeys. IndexedDB and service GETs are inspected read-only.
  * Each API uses a fresh isolated fictional database; no app state is injected.
  * A lost HTTP response is simulated only after route.fetch confirms server commit.
  */
 const baseURL = process.env.LONGBALL_REVIEW_BASE_URL ?? 'http://127.0.0.1:4173';
-const primaryAPI = process.env.LONGBALL_REVIEW_API_URL ?? 'http://127.0.0.1:4310';
-const controlAPI = process.env.LONGBALL_REVIEW_CONTROL_API_URL ?? 'http://127.0.0.1:4311';
+const primaryAPI = process.env.LONGBALL_REVIEW_API_URL ?? 'http://127.0.0.1:4320';
+const controlAPI = process.env.LONGBALL_REVIEW_CONTROL_API_URL ?? 'http://127.0.0.1:4321';
 const matchId = 'synthetic-roma-maple-2026-10-24';
 const teamId = 'synthetic-roma-u10', seasonId = 'synthetic-season-2026-27';
 const directory = path.resolve('.local/connected-review');
 const runId = new Date().toISOString().replaceAll(/[^0-9]/g, '');
 const checks = [], errors = [], servers = [];
-let activePage;
+let artifacts = null;
+let activePage, workspaceOpenSequence = 0;
 await mkdir(directory, { recursive: true });
 const browser = await chromium.launch({ executablePath: process.env.LONGBALL_CHROMIUM_PATH ?? (existsSync('/usr/bin/chromium') ? '/usr/bin/chromium' : undefined), headless: true, args: ['--no-sandbox'] });
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -40,17 +44,27 @@ async function json(api, route, token = 'synthetic-manager-1') {
 const download = (api, alias) => json(api, `/v1/matches/${matchId}/download?deviceId=${encodeURIComponent(alias)}`);
 const scoped = section => `/v1/teams/${teamId}/${section}?seasonId=${seasonId}`;
 async function startAPI(api, name) {
-  if (process.env.LONGBALL_REVIEW_EXTERNAL_API === '1') return;
+  if (process.env.LONGBALL_REVIEW_EXTERNAL_API === '1') {
+    const health = await (await fetch(`${api}/health`)).json();
+    assert.equal(health.syntheticOnly, true, 'The explicit external review API must advertise fictional authentication.');
+    assert.equal((await download(api, 'fresh-stream-probe')).acceptedRevision, 0, 'The explicit external review API must have an isolated fresh match.');
+    return;
+  }
   const url = new URL(api);
   assert(['127.0.0.1', 'localhost'].includes(url.hostname), 'The fictional rehearsal may only start local APIs.');
   const database = path.join(directory, `${runId}-${name}.sqlite`);
   const stream = createWriteStream(path.join(directory, `${name}-api.log`));
-  const child = spawn(process.execPath, ['apps/api/dist/api.mjs'], { cwd: process.cwd(), env: { ...process.env, NODE_ENV: 'development', LONGBALL_SYNTHETIC_AUTH: '1', LONGBALL_API_HOST: '127.0.0.1', LONGBALL_API_PORT: url.port, LONGBALL_API_DATABASE: database, LONGBALL_MEDIA_DIRECTORY: path.join(directory, `${runId}-${name}-media`), LONGBALL_API_ORIGINS: `${new URL(baseURL).origin},http://localhost:4173,http://127.0.0.1:4173`, LONGBALL_CLAMSCAN_PATH: '' }, stdio: ['ignore', 'pipe', 'pipe'] });
+  const child = spawn(process.execPath, [process.env.LONGBALL_REVIEW_API_ENTRY ?? 'apps/api/dist/api.mjs'], { cwd: process.cwd(), env: { ...process.env, NODE_ENV: 'development', LONGBALL_SYNTHETIC_AUTH: '1', LONGBALL_DATABASE_URL: '', LONGBALL_DATABASE_URL_FILE: '', LONGBALL_DATABASE_MIGRATION_MODE: 'apply', LONGBALL_CLAMD_SOCKET: '', LONGBALL_CLAMD_HOST: '', LONGBALL_CLAMD_PORT: '', LONGBALL_FICTIONAL_CLOCK_POLICY: api === controlAPI ? JSON.stringify({ id: 'fictional-connected-review-clock-v1', serverClockUncertaintyMs: 1000, maximumRoundTripMs: 5000, maximumMappingAgeMs: 3600000, maximumUncertaintyMs: 3000, maximumDriftPpm: 100 }) : '', LONGBALL_API_HOST: '127.0.0.1', LONGBALL_API_PORT: url.port, LONGBALL_API_DATABASE: database, LONGBALL_MEDIA_DIRECTORY: path.join(directory, `${runId}-${name}-media`), LONGBALL_API_ORIGINS: `${new URL(baseURL).origin},http://localhost:4173,http://127.0.0.1:4173`, LONGBALL_CLAMSCAN_PATH: '' }, stdio: ['ignore', 'pipe', 'pipe'] });
+  let startupText = '', childFailure = null;
+  child.stdout.on('data', data => { startupText = `${startupText}${data.toString()}`.slice(-2000); });
+  child.on('error', error => { childFailure = error; });
   child.stdout.pipe(stream); child.stderr.pipe(stream);
   servers.push({ child, stream });
   await poll(async () => {
+    if (childFailure) throw childFailure;
     if (child.exitCode !== null) throw new Error(`Isolated API ${name} exited ${child.exitCode}; see ${name}-api.log.`);
-    try { const response = await fetch(`${api}/health`); return response.ok; } catch { return false; }
+    if (!startupText.includes(`LongBall API http://127.0.0.1:${url.port}`)) return false;
+    try { const response = await fetch(`${api}/health`); if (!response.ok) return false; const health = await response.json(); assert.equal(health.syntheticOnly, true, 'Only an explicitly fictional API may run this mutation rehearsal.'); return true; } catch (error) { if (error.code === 'ERR_ASSERTION') throw error; return false; }
   }, Boolean, `Start isolated ${name} API`);
   const initial = await download(api, 'fresh-stream-probe');
   assert.equal(initial.acceptedRevision, 0, 'Use an isolated API database, never reset or overwrite an existing match.');
@@ -90,8 +104,21 @@ async function openWorkspace(api, account = 'Fictional manager') {
   const page = await context.newPage(); activePage = page;
   page.setDefaultTimeout(20_000);
   page.on('pageerror', error => errors.push(error.message));
-  await page.goto(baseURL, { waitUntil: 'networkidle' });
-  await enterWorkspace(page, api, account);
+  const observations = await installStartupDiagnostics(page);
+  const opening = ++workspaceOpenSequence;
+  try {
+    await page.goto(baseURL, { waitUntil: 'networkidle' });
+    await enterWorkspace(page, api, account);
+  } catch (error) {
+    const label = `${runId}-workspace-open-${opening}`;
+    await page.screenshot({ path: path.join(directory, `${label}.png`) }).catch(() => {});
+    await captureStartupDiagnostics(page, label, directory, observations);
+    await page.waitForTimeout(5000);
+    await captureStartupDiagnostics(page, `${label}-later`, directory, observations);
+    error.startupDiagnostics = label;
+    await context.close();
+    throw error;
+  }
   return { context, page };
 }
 async function openController(page, api, alias, manager = 'Manager A') {
@@ -138,11 +165,16 @@ async function accept(page, alias, api, transferId, epoch) {
 }
 async function scenario(name, work) {
   try { const detail = await work(); checks.push({ name, status: 'passed', detail }); }
-  catch (error) { await activePage?.screenshot({ path: path.join(directory, `${name}-failed.png`), animations: 'disabled' }).catch(() => {}); checks.push({ name, status: 'failed', error: error.message }); }
+  catch (error) { await activePage?.screenshot({ path: path.join(directory, `${name}-failed.png`), animations: 'disabled' }).catch(() => {}); checks.push({ name, status: 'failed', error: error.message, ...(error.startupDiagnostics ? { startupDiagnostics: error.startupDiagnostics } : {}) }); }
   console.log(`${checks.at(-1).status.toUpperCase()} ${name}${checks.at(-1).error ? `: ${checks.at(-1).error}` : ''}`);
 }
 
 try {
+  const webHtml = await (await fetch(baseURL)).text();
+  const scriptPath = /src="([^"]*\/index-[^"]+\.js)"/.exec(webHtml)?.[1];
+  assert(scriptPath, 'Review HTML must expose its actual bundled entry.');
+  const scriptUrl = new URL(scriptPath, baseURL).href;
+  artifacts = { web: { url: scriptUrl, sha256: createHash('sha256').update(Buffer.from(await (await fetch(scriptUrl)).arrayBuffer())).digest('hex') }, api: { entry: process.env.LONGBALL_REVIEW_API_ENTRY ?? 'apps/api/dist/api.mjs', sha256: createHash('sha256').update(await readFile(process.env.LONGBALL_REVIEW_API_ENTRY ?? 'apps/api/dist/api.mjs')).digest('hex') } };
   await startAPI(primaryAPI, 'journey'); await startAPI(controlAPI, 'controller');
   await scenario('01-canonical-match-and-lost-response', async () => {
     const alias = 'connected-browser-journey-a';
@@ -155,7 +187,7 @@ try {
       await button(page, 'Stage first seven present players');
       await waitConnected(page, alias, primaryAPI, doc => doc.localState.stagedLineup?.length === 7, 'Explicit staged lineup');
       const date = new Date('2026-10-24T09:00:00.000Z');
-      await page.clock.install({ time: date }); await page.clock.pauseAt(date);
+      await page.clock.install({ time: new Date(date.getTime() - 3_600_000) }); await page.clock.pauseAt(date);
       await confirm(page, 'Review kickoff', alias, primaryAPI, 'first_half_running');
       await page.clock.fastForward(20_000); await button(page, 'Record fictional team goal');
       await waitConnected(page, alias, primaryAPI, doc => doc.localState.goals.length === 1, 'Live goal queued');
@@ -230,6 +262,38 @@ try {
       assert.equal(final.state.intervals.filter(interval => interval.state === 'playing').reduce((total, interval) => total + interval.endMs - interval.startMs, 0), 7 * 3_003_000);
       assert.deepEqual((await stored(page)).projections[matchId], legacy, 'Legacy M0 history was never uploaded or rewritten.');
       await picture(page, '01-canonical-completed');
+      const finish = final.state.completedAtMs, originalHistory = structuredClone(final.state.eventHistory);
+      await page.getByTestId('history-missing-lineup').click();
+      await button(page, 'Half 1');
+      await page.getByTestId('history-effective-time').fill('05:00.000');
+      const outgoing = doc.localState.lineup.at(-1), incoming = doc.localState.config.selectedPlayerIds.find(id => !doc.localState.lineup.some(item => item.playerId === id));
+      assert(outgoing && incoming);
+      await page.getByTestId(`history-slot-${outgoing.slotId}`).click(); await page.getByTestId(`history-player-${incoming}`).click();
+      await page.getByTestId('history-evidence-reason').fill('Fictional referee and touchline records confirm the missed first-half substitution.');
+      await page.getByTestId('history-preview').click(); await page.getByText('VALIDATED PREVIEW · NOTHING APPLIED', { exact: true }).waitFor();
+      assert.equal((await connected(page, alias, primaryAPI)).localState.revision, final.state.revision, 'Preview cannot change accepted/local history.');
+      await page.getByTestId('history-confirm').click();
+      doc = await waitConnected(page, alias, primaryAPI, value => value.localState.revision === final.state.revision + 1, 'Explicit reviewed missing participation fact queued');
+      const insertion = doc.outbox.at(-1).envelope;
+      assert.equal(insertion.effectiveHalf, 1); assert.equal(insertion.halfElapsedMs, 300_000); assert.equal(insertion.command.sourceRevision, final.state.revision);
+      doc = await upload(page, alias, primaryAPI);
+      await page.getByTestId(`history-fact-${insertion.eventId}`).click(); await page.getByTestId('history-effective-time').fill('07:00.000');
+      await page.getByTestId('history-evidence-reason').fill('Fictional reviewed source corrects the actual substitution time to seven minutes.');
+      await page.getByTestId('history-preview').click(); await page.getByText('VALIDATED PREVIEW · NOTHING APPLIED', { exact: true }).waitFor();
+      await page.getByTestId('history-confirm').click();
+      await waitConnected(page, alias, primaryAPI, value => value.localState.revision === final.state.revision + 2, 'Compensating correction saved');
+      doc = await upload(page, alias, primaryAPI);
+      const corrected = await download(primaryAPI, alias);
+      assert.equal(corrected.state.status, 'completed'); assert.equal(corrected.state.completedAtMs, finish); assert.equal(corrected.state.matchActiveMs, final.state.matchActiveMs);
+      assert.deepEqual(corrected.state.eventHistory.slice(0, originalHistory.length), originalHistory, 'Original accepted history is immutable.');
+      const incomingMs = corrected.state.intervals.filter(item => item.playerId === incoming && item.state === 'playing').reduce((sum, item) => sum + item.endMs - item.startMs, 0);
+      assert.equal(incomingMs, 1_503_000 - 420_000, 'Retrospective time changes rebuild first-half play and preserve actual second-half kickoff allocations.');
+      assert(corrected.state.audit.at(-1).priorValue); assert.equal(corrected.state.audit.at(-1).actorId, 'synthetic-account-manager');
+      for (const playerId of corrected.state.config.selectedPlayerIds) assert.equal(corrected.state.intervals.filter(item => item.playerId === playerId).reduce((sum, item) => sum + item.endMs - item.startMs, 0), corrected.state.matchActiveMs);
+      assert.equal(corrected.state.intervals.filter(item => item.state === 'playing').reduce((sum, item) => sum + item.endMs - item.startMs, 0), 7 * corrected.state.matchActiveMs);
+      await page.getByTestId('history-accepted-timeline').click();
+      await page.getByRole('button', { name: /event\.corrected · revision/ }).last().click();
+      await picture(page, '01-retrospective-participation-correction');
       const retainedOutbox = JSON.stringify(doc.outbox);
       // A transport-only403 fixture tests cache closure; it does not claim a real membership was revoked.
       await page.route(`${primaryAPI}/v1/me`, async route => {
@@ -241,7 +305,7 @@ try {
       assert.equal(await page.getByText('Connected match rehearsal', { exact: true }).count(), 0, 'Known access denial hides the private match view.');
       assert.equal(JSON.stringify((await connected(page, alias, primaryAPI)).outbox), retainedOutbox, 'Access denial retains the canonical audit/outbox.');
       await picture(page, '01-authority-denial-hides-private-cache');
-      return { acceptedRevision: final.acceptedRevision, clientSequence: final.deviceCheckpoint.clientSequence, firstHalfMs: 1_503_000, secondHalfMs: 1_500_000, pauseExcludedMs: 300_000, score: final.state.score, identicalRetry: true, offlineSuffixEvents: 3, offlineSuffixReplayedOverAuthoritativePrefix: true, authoritativeActorAudit: true, legacyM0Unchanged: true, trustedUtc: false, cacheClosureAfterHttp403Fixture: true, realMembershipRevocationTested: false };
+      return { acceptedRevision: final.acceptedRevision, clientSequence: final.deviceCheckpoint.clientSequence, firstHalfMs: 1_503_000, secondHalfMs: 1_500_000, pauseExcludedMs: 300_000, score: final.state.score, identicalRetry: true, offlineSuffixEvents: 3, offlineSuffixReplayedOverAuthoritativePrefix: true, authoritativeActorAudit: true, legacyM0Unchanged: true, trustedUtc: false, cacheClosureAfterHttp403Fixture: true, realMembershipRevocationTested: false, lateSubstitutionThenAuditedCorrectionOverHttp: true, originalHistoryRetained: true, correctedOccupiedPlayerMs: 7 * corrected.state.matchActiveMs };
     } finally { releaseLostResponse(); await context.close(); }
   });
 
@@ -251,13 +315,21 @@ try {
     const a = first.page, b = second.page;
     try {
       await openController(a, controlAPI, aliasA); await acquire(a, aliasA, controlAPI);
+      await button(a, 'Acknowledge fictional session-clock experiment'); await a.getByTestId('clock-exchange').click();
+      await a.getByText(/Exchange received under fictional-connected-review-clock-v1/).waitFor();
+      assert.equal((await json(controlAPI, `/v1/matches/${matchId}/clock/policy`)).status, 'configured_trial');
+      const retainedMapping = (await connected(a, aliasA, controlAPI)).clockMapping; assert(retainedMapping?.challengeId);
+      assert.equal((await connected(a, aliasA, controlAPI)).clockMappingHistory.length, 1);
       await recordPresent(a, aliasA, controlAPI); const before = await upload(a, aliasA, controlAPI);
+      assert(before.outbox.every(entry => entry.envelope.clockEvidence.anchorId === retainedMapping.challengeId));
       const sequence = before.allocatedSequence;
       const transfer = await offer(a, aliasA, controlAPI, 'synthetic-account-manager-2', aliasB);
       await openController(b, controlAPI, aliasB, 'Manager B'); await accept(b, aliasB, controlAPI, transfer, 2);
       await recordPresent(b, aliasB, controlAPI); await upload(b, aliasB, controlAPI);
       const back = await offer(b, aliasB, controlAPI, 'synthetic-account-manager', aliasA);
       await accept(a, aliasA, controlAPI, back, 3);
+      assert.equal((await connected(a, aliasA, controlAPI)).clockMapping, null, 'A new controller epoch cannot reuse the old active clock proof.');
+      assert.equal((await connected(a, aliasA, controlAPI)).clockMappingHistory[0].challengeId, retainedMapping.challengeId, 'Old clock receipts remain retained.');
       const oldEvents = (await connected(a, aliasA, controlAPI)).outbox.length;
       await recordPresent(a, aliasA, controlAPI);
       let doc = await connected(a, aliasA, controlAPI);
@@ -283,8 +355,35 @@ try {
       await button(a, 'Read service quarantine');
       const quarantine = await json(controlAPI, `/v1/matches/${matchId}/quarantine`);
       assert.equal(quarantine.items.length, quarantined.length);
+      await a.getByTestId('reconciliation-download').click();
+      const evidence = await json(controlAPI, `/v1/matches/${matchId}/reconciliation`);
+      assert.equal(evidence.policy.status, 'unapproved'); assert.equal(evidence.submissions.length, quarantine.items.length);
+      await a.getByTestId(`reconciliation-source-${evidence.submissions[0].submissionId}`).click();
+      await a.getByTestId('reconciliation-reason').fill('Fictional old-device evidence remains disputed; preserve it without merging or granting reviewer authority.');
+      await a.getByTestId('reconciliation-preview').click(); await a.getByText('VALIDATED PREVIEW · NOTHING APPLIED', { exact: true }).waitFor();
+      const requests = []; let dropProposalResponse = true;
+      await a.route(`${controlAPI}/v1/matches/${matchId}/reconciliation/proposals`, async route => {
+        if (route.request().method() !== 'POST') { await route.continue(); return; }
+        requests.push({ key: route.request().headers()['idempotency-key'], body: route.request().postData() });
+        if (!dropProposalResponse) { await route.continue(); return; }
+        dropProposalResponse = false; const committed = await route.fetch(); assert.equal(committed.ok(), true); await route.abort('failed');
+      });
+      await a.getByTestId('reconciliation-save').click();
+      await a.getByTestId('reconciliation-retry').waitFor();
+      await poll(async () => a.getByTestId('reconciliation-retry').isEnabled(), Boolean, 'Proposal response loss retains exact request');
+      const prepared = await json(controlAPI, `/v1/matches/${matchId}/reconciliation`);
+      assert.equal(prepared.proposals.length, 1); assert.equal(prepared.proposals[0].status, 'prepared');
+      await a.reload({ waitUntil: 'networkidle' }); await enterWorkspace(a, controlAPI, 'Fictional manager'); await openController(a, controlAPI, aliasA);
+      await a.getByTestId('reconciliation-retry').click();
+      await poll(async () => a.getByTestId('reconciliation-retry').count(), value => value === 0, 'Proposal receipt saved after exact retained retry');
+      assert.equal(requests.length, 2); assert.deepEqual(requests[0], requests[1]);
+      const reviewed = await json(controlAPI, `/v1/matches/${matchId}/reconciliation`);
+      assert.equal(reviewed.proposals.length, 1); assert.equal(reviewed.submissions.length, evidence.submissions.length);
+      assert.deepEqual((await download(controlAPI, aliasA)).state, accepted.state, 'A prepared proposal cannot change accepted play or clear quarantine.');
+      const refusedApply = await fetch(`${controlAPI}/v1/matches/${matchId}/reconciliation/apply`, { method: 'POST', headers: { Authorization: 'Bearer synthetic-manager-1', 'Content-Type':'application/json', 'X-Api-Contract-Version':'longball.events/1.1', 'Idempotency-Key': `q08-unapproved-${runId}` }, body: JSON.stringify({ proposalId: reviewed.proposals[0].input.proposalId, expectedRevision: accepted.acceptedRevision, events: [] }) });
+      assert.equal(refusedApply.status, 503); assert.match((await refusedApply.json()).code, /Q08|POLICY|AUTHORITY/);
       await picture(a, '02-stale-controller-retained');
-      return { acceptedRevision: after.acceptedRevision, epochs: [1, 2, 3, 4], sequenceBeforeHandback: sequence, nextSequenceOnHandback: sequence + 1, finalReservedSequence: doc.allocatedSequence, quarantined: quarantine.items.length, acceptedProjectionUnchanged: true, managerReviewRequired: true };
+      return { acceptedRevision: after.acceptedRevision, epochs: [1, 2, 3, 4], sequenceBeforeHandback: sequence, nextSequenceOnHandback: sequence + 1, finalReservedSequence: doc.allocatedSequence, quarantined: quarantine.items.length, acceptedProjectionUnchanged: true, managerReviewRequired: true, immutableProposalOverHttp: true, exactProposalRetryAfterReload: true, q08Apply503: true, quarantineNotClearedByProposal: true, fictionalClockExchangeOverHttp: true, nativeClockContinuityTested: false };
     } finally { await first.context.close(); await second.context.close(); }
   });
 
@@ -302,10 +401,14 @@ try {
       prep = await poll(() => json(primaryAPI, scoped('preparation')), value => value.fixtures?.find(item => item.id === fixture.id)?.playedDate === '2026-11-14', 'Service fixture rescheduled with same identity');
       assert.equal(prep.fixtures.filter(item => item.id === fixture.id).length, 1);
       assert.equal(prep.fixtures.find(item => item.id === fixture.id).history[0].playedDate, '2026-11-07');
+      await poll(() => workspaceOutbox(page, primaryAPI), value => value && !value.pending && value.lastSettled?.outcome?.kind === 'accepted', 'Reschedule receipt durably saved before navigation');
+      await page.getByTestId('preparation-create-event').waitFor({ state: 'visible' });
+      await poll(async () => page.getByTestId('preparation-create-event').isEnabled(), Boolean, 'Refreshed preparation UI finishes its save before changing tabs');
       await page.getByTestId('workspace-tab-reports').click(); await button(page, 'Add historical result to service');
-      await input(page, 'Service result Played date (YYYY-MM-DD)', '2026-09-20'); await input(page, 'Service result Opponent', 'Connected Willow historical');
-      await input(page, 'Service result Goals for', '2'); await input(page, 'Service result Goals against', '1'); await button(page, 'friendly');
-      await button(page, 'Save historical result to service');
+      await page.getByTestId('records-past-date').fill('2026-09-20'); await page.getByTestId('records-past-opponent').fill('Connected Willow historical');
+      await page.getByTestId('records-past-for').fill('2'); await page.getByTestId('records-past-against').fill('1'); await page.getByRole('radio', { name: 'friendly', exact: true }).click();
+      await page.getByTestId('records-past-review-button').click();
+      await page.getByTestId('records-past-save').click();
       const records = await poll(() => json(primaryAPI, scoped('records')), value => value.results?.rows?.some(item => item.opponent === 'Connected Willow historical'), 'Historical result persisted via actual service');
       const historical = records.editableState.results.find(item => item.opponent === 'Connected Willow historical');
       assert.equal(historical.participation, null); assert.equal(historical.actualActiveDurationMs, null);
@@ -341,19 +444,45 @@ try {
     } finally { await context.close(); }
   });
 
-  await scenario('04-private-media-fails-closed-without-scanner', async () => {
+  await scenario('04-private-media-two-explicit-game-albums-without-scanner', async () => {
     const { context, page } = await openWorkspace(primaryAPI);
     try {
       await page.getByTestId('workspace-tab-community').click();
-      await page.getByTestId('media-generated-image').click(); await page.getByLabel('Connected image policy acknowledgement', { exact: true }).check();
-      await page.getByTestId('media-upload-image').click();
-      const uploads = await poll(() => json(primaryAPI, scoped('media/uploads')), value => value.items?.some(item => item.failureCode === 'SCANNER_REQUIRED'), 'Unscanned upload is retained privately and rejected for publication');
-      const item = uploads.items.find(value => value.failureCode === 'SCANNER_REQUIRED');
-      await page.getByTestId('media-refresh-uploads').click(); await page.getByText(/SCANNER_REQUIRED/).waitFor();
-      const community = await json(primaryAPI, scoped('community'));
-      assert(!community.photos?.some(photo => photo.id === item.photoId && photo.status === 'published'));
-      await picture(page, '04-private-unscanned-media');
-      return { uploadStatus: item.status, failureCode: item.failureCode, published: false, actualAntivirusDatabaseValidated: false };
+      const before = await json(primaryAPI, scoped('community'));
+      const games = before.matches.filter(item => item.sharingAllowed === true).sort((a, b) => (b.playedAtMs ?? -1) - (a.playedAtMs ?? -1) || a.id.localeCompare(b.id)).slice(0, 2);
+      assert.equal(games.length, 2, 'Two independently permitted games are needed to prove explicit upload targeting.');
+      assert.equal(await page.getByTestId('album-selected-game').count(), 0, 'No first-game upload target is selected automatically.');
+      const preparations = [];
+      await page.route(url => url.origin === new URL(primaryAPI).origin && url.pathname === `/v1/teams/${teamId}/media/uploads/prepare`, async route => {
+        if (route.request().method() === 'POST') preparations.push({ key: route.request().headers()['idempotency-key'], body: JSON.parse(route.request().postData()) });
+        await route.continue();
+      });
+      const uploadIds = [];
+      for (const [index, game] of games.entries()) {
+        await page.getByTestId(`album-game-${game.id}`).click();
+        await page.getByTestId('album-selected-game').getByText(game.label, { exact: true }).waitFor();
+        await page.getByTestId('media-generated-image').click();
+        await input(page, 'Connected image caption', `Fictional game album ${index + 1}`);
+        await page.getByLabel('Connected image policy acknowledgement', { exact: true }).check();
+        await page.getByTestId('media-upload-image').click();
+        const uploads = await poll(() => json(primaryAPI, scoped('media/uploads')), value => value.items?.filter(item => item.failureCode === 'SCANNER_REQUIRED').length === index + 1, 'Unscanned upload stays private under its selected game');
+        const item = uploads.items.find(value => !uploadIds.includes(value.uploadId));
+        assert(item); uploadIds.push(item.uploadId);
+        await page.getByTestId('media-refresh-uploads').click(); await page.getByText(/SCANNER_REQUIRED/).first().waitFor();
+        assert.equal(await page.getByTestId(`album-game-${games[1 - index].id}`).isEnabled(), false, 'A retained upload cannot be silently moved to another game.');
+        await page.getByTestId('media-close-retained').click();
+        await poll(async () => page.getByRole('button', { name: 'Retry the retained upload request', exact: true }).count(), value => value === 0, 'Explicitly close local capability while retaining the private service record');
+      }
+      assert.equal(preparations.length, 2); assert.notEqual(preparations[0].key, preparations[1].key);
+      assert.deepEqual(preparations.map(item => item.body.matchId), games.map(item => item.id));
+      assert.deepEqual(preparations.map(item => item.body.caption), ['Fictional game album 1', 'Fictional game album 2']);
+      assert(preparations.every(item => item.body.policyAcknowledged === true));
+      const after = await json(primaryAPI, scoped('community'));
+      assert.deepEqual(after.gallery.map(photo => [photo.id, photo.matchId, photo.version]), before.gallery.map(photo => [photo.id, photo.matchId, photo.version]), 'Private processing failures do not create published album photos or inflate counts.');
+      const ownUploads = await json(primaryAPI, scoped('media/uploads'));
+      assert.equal(ownUploads.items.length, 2); assert(ownUploads.items.every(item => item.failureCode === 'SCANNER_REQUIRED'));
+      await picture(page, '04-two-explicit-private-game-albums');
+      return { selectedGameIds: games.map(item => item.id), preparedGameIds: preparations.map(item => item.body.matchId), explicitChoiceRequired: true, retainedJobCannotRetarget: true, distinctPrivateUploadIds: uploadIds, failureCode: 'SCANNER_REQUIRED', publishedGalleryUnchanged: true, actualAntivirusDatabaseValidated: false };
     } finally { await context.close(); }
   });
 
@@ -411,7 +540,7 @@ try {
   assert.equal(errors.length, 0, `Browser runtime errors: ${errors.join('; ')}`);
 } catch (error) { checks.push({ name: 'harness', status: 'failed', error: error.message }); }
 finally {
-  await writeFile(path.join(directory, 'results.json'), `${JSON.stringify({ baseURL, primaryAPI, controlAPI, runId, checks, errors, limitations: ['Fictional development authentication; no real identity provider rehearsal.', 'Browser-controlled monotonic time validates rules and HTTP boundaries, not native clock continuity.', 'Phone reboot, SQLCipher, background alerts, lock-screen and physical-device continuity still require native device evidence.', 'Unconfigured antivirus blocks media processing; no publication or malware-scanner claim.'] }, null, 2)}\n`);
+  await writeFile(path.join(directory, 'results.json'), `${JSON.stringify({ baseURL, primaryAPI, controlAPI, runId, artifacts, checks, errors, limitations: ['Fictional development authentication; no real identity provider rehearsal.', 'Browser-controlled monotonic time validates rules and HTTP boundaries, not native clock continuity.', 'Control API clock exchange uses an explicitly fictional trial policy; it approves no Q08 authority or production clock/sharing policy.', 'Phone reboot, SQLCipher, background alerts, lock-screen and physical-device continuity still require native device evidence.', 'Unconfigured antivirus blocks media processing; no publication or malware-scanner claim.'] }, null, 2)}\n`);
   await browser.close();
   for (const { child, stream } of servers) {
     child.kill('SIGTERM');

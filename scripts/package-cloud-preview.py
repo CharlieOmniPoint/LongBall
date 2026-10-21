@@ -3,12 +3,17 @@
 This prepares files only. It never creates hosting, credentials or paid resources.
 """
 import base64
+import argparse
 import hashlib
 import json
+import os
 import subprocess
 from pathlib import Path
 
 root = Path(__file__).resolve().parents[1]
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--with-pages', action='store_true', help='Include the lasting static review after the owner enables GitHub Pages Actions publishing.')
+arguments = parser.parse_args()
 
 
 def git(*args):
@@ -22,8 +27,17 @@ if not branch.startswith("dev/"):
     raise SystemExit("Package from a development branch.")
 head = git("rev-parse", "HEAD")
 # Build from the checked, committed tree instead of relabelling an older export.
-for command in [["pnpm", "build:web"], ["pnpm", "build:api"]]:
-    subprocess.run(command, cwd=root, check=True)
+build_directory = root / '.local/cloud-preview-build' / head
+web_directory = build_directory / 'site'
+api_directory = build_directory / 'backend'
+pages_directory = build_directory / 'pages-site'
+# Keep the currently reviewed exports untouched while preparing publication.
+# A source-specific directory also avoids mixing two candidates' generated files.
+subprocess.run(["pnpm", "--filter", "mobile", "exec", "expo", "export", "--platform", "web", "--output-dir", str(web_directory)], cwd=root, check=True)
+subprocess.run(["pnpm", "build:api"], cwd=root, check=True, env={**os.environ, 'LONGBALL_API_BUILD_DIRECTORY': str(api_directory)})
+if arguments.with_pages:
+    subprocess.run(["pnpm", "--filter", "mobile", "exec", "expo", "export", "--platform", "web", "--output-dir", str(pages_directory)],
+                   cwd=root, check=True, env={**os.environ, 'LONGBALL_WEB_BASE_PATH': '/LongBall', 'EXPO_PUBLIC_REVIEW_STATIC': '1'})
 if git("rev-parse", "HEAD") != head or git("status", "--porcelain"):
     raise SystemExit("Source changed during the build; retain outputs and package again after committing.")
 bundle = root / ".local/longball-source.bundle"
@@ -36,11 +50,14 @@ def include(path, content):
     entries.append({"path": path, "mode": "100644", "type": "blob", "content": content})
 
 
-for local, destination in [
-    ("apps/mobile/dist-web", "site"),
-    ("apps/api/dist", "backend"),
-]:
-    directory = root / local
+exports = [
+    (web_directory, "site"),
+    (api_directory, "backend"),
+]
+if arguments.with_pages:
+    exports.append((pages_directory, "pages-site"))
+for local, destination in exports:
+    directory = Path(local)
     if not directory.exists():
         raise SystemExit(f"Build {local} first.")
     for path in sorted(directory.rglob("*")):
@@ -51,12 +68,18 @@ for local, destination in [
 
 for source, destination in [
     ("infra/cloud-preview/run.sh", "preview/run.sh"),
+    ("infra/cloud-preview/publish-source.sh", "preview/publish-source.sh"),
     ("infra/cloud-preview/workflow.yml", ".github/workflows/cloud-preview.yml"),
     ("infra/cloud-preview/backend/package.json", "backend/package.json"),
     ("infra/cloud-preview/backend/package-lock.json", "backend/package-lock.json"),
     ("infra/ci/native-feasibility.yml", ".github/workflows/native-feasibility.yml"),
 ]:
     include(destination, (root / source).read_text())
+if arguments.with_pages:
+    include('.github/workflows/pages-review.yml', (root / 'infra/cloud-preview/pages-workflow.yml').read_text())
+
+for path in sorted((root / "apps/api/migrations/postgresql").glob("*.sql")):
+    include(f"migrations/postgresql/{path.name}", path.read_text())
 
 raw = bundle.read_bytes()
 include("preview/source.bundle.base64", base64.b64encode(raw).decode() + "\n")
@@ -65,6 +88,9 @@ include("preview/source-head.txt", head + "\n")
 include("preview/source-branch.txt", branch + "\n")
 include("preview/native-build-request.txt", json.dumps({"source": head, "upload_artifacts": False}) + "\n")
 include("site/build-info.json", json.dumps({"sourceCommit": head, "sourceBranch": branch, "synthetic": True, "nativeTargets": ["iPhone", "Android"], "production": False}, indent=2) + "\n")
+if arguments.with_pages:
+    include("pages-site/build-info.json", json.dumps({"sourceCommit": head, "sourceBranch": branch, "synthetic": True, "nativeTargets": ["iPhone", "Android"], "production": False, "basePath": "/LongBall", "connectedBackendIncluded": False}, indent=2) + "\n")
+    include("pages-site/.nojekyll", "")
 output = root / ".local/cloud-preview-payload.json"
 output.write_text(json.dumps(entries, ensure_ascii=True))
 print(json.dumps({"payload": str(output), "characters": len(output.read_text()), "sourceCommit": head, "bundleBytes": len(raw), "files": len(entries)}))

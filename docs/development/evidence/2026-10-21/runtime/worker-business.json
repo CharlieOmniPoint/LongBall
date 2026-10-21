@@ -1,0 +1,1 @@
+{"kind":"longball-worker-role-proof","backend":"postgresql","awards":{"completed":1,"retried":0,"failed":0},"notifications":{"accepted":0,"blocked":4,"retried":0,"suppressed":14,"reviewRequired":0,"failed":0},"workerDdlDenied":true,"workerAccountWriteDenied":true,"apiEvidenceDeleteDenied":true,"actualPushDelivered":false}

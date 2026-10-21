@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Platform, StyleSheet, Text, TextInput, View } from 'react-native';
 import * as Crypto from 'expo-crypto';
-import { applyMutationResponse, assertConnectedDocument, canCaptureConnectedEvents, connectedClock, createConnectedDocument, LongBallServiceClient, mergeDownload, prepareServiceRequest, queueConnectedCommand, selectAcceptedBranch, ServiceError, settleDefiniteRefusal, type ConnectedCommand, type ConnectedMatchDocument, type DurableRequest, type HttpFetch } from '@longball/application/sync';
+import { applyMutationResponse, assertConnectedDocument, canCaptureConnectedEvents, connectedClock, createConnectedDocument, LongBallServiceClient, mergeDownload, prepareServiceRequest, queueConnectedCommand, retainClockMapping, selectAcceptedBranch, ServiceError, settleDefiniteRefusal, type ConnectedCommand, type ConnectedMatchDocument, type DurableRequest, type HttpFetch } from '@longball/application/sync';
 import { assertControllerDownloadScope, controllerAuthorityWasDenied, controllerCacheDocumentId, controllerCachePlatformAllowed, controllerCacheScope, controllerSessionAllowsCache, type ControllerCacheScope, type ControllerIdentity } from '@longball/application/connected-scope';
 import { queueNativeLiveCommand } from '@longball/application/connected-live-editor';
-import type { Allocation, ClockSample, MatchState } from '@longball/domain';
+import { establishContinuousClockMapping } from '@longball/application/clock-exchange';
+import { assertStaticReviewApiAddress } from '@longball/application/static-review';
+import { ENGINE_VERSION, type Allocation, type ClockSample, type MatchState } from '@longball/domain';
 import { connectedFetch, getConnectedSessionSummary } from '../platform/auth/client';
 import { readClock } from '../platform/clock';
 import { randomUUID } from '../platform/id';
@@ -14,6 +16,7 @@ import { Button, Card, Notice, Pill } from '../ui/Button';
 import { colors, typography } from '../ui/tokens';
 import { ConnectedLiveEditor } from './ConnectedLiveEditor';
 import { PlannerPanel, usePlannerModel } from './PlannerPanel';
+import { HistoryReviewPanel } from './HistoryReviewPanel';
 
 export interface ConnectedControllerState {
   scope: 'connected-rehearsal'; matchId: string; deviceId: string; epoch: number | null;
@@ -36,7 +39,8 @@ function formatMs(ms: number): string { const seconds = Math.floor(Math.max(0, m
 /** Canonical HTTP rehearsal. It never uploads the older M0 local-command namespace. */
 export function ServicePanel(props: ServicePanelProps) {
   const allowSynthetic = props.allowSynthetic ?? process.env.EXPO_PUBLIC_ENVIRONMENT !== 'production';
-  const [baseUrl, setBaseUrl] = useState(Platform.OS === 'web' ? '/' : 'http://127.0.0.1:4310');
+  const staticBrowser = Platform.OS === 'web' && process.env.EXPO_PUBLIC_REVIEW_STATIC === '1';
+  const [baseUrl, setBaseUrl] = useState(staticBrowser ? '' : Platform.OS === 'web' ? '/' : 'http://127.0.0.1:4310');
   const [mode, setMode] = useState<'synthetic' | 'oidc'>(allowSynthetic ? 'synthetic' : 'oidc');
   const [account, setAccount] = useState('synthetic-manager-1');
   const [deviceAlias, setDeviceAlias] = useState('');
@@ -52,6 +56,7 @@ export function ServicePanel(props: ServicePanelProps) {
     if (connecting || !props.deviceId) return;
     setConnecting(true); setConnection(null); setConfigurationError(null);
     try {
+      assertStaticReviewApiAddress(baseUrl, staticBrowser, Platform.OS === 'web' ? globalThis.location.origin : undefined);
       if (!platformAllowsCache) throw new Error('The connected match controller requires the native encrypted journal. This browser supports fictional controller review only.');
       if (!matchId || !teamId || !seasonId) throw new Error('Select a service fixture and its team and season before opening its controller.');
       if (!allowSynthetic && mode === 'synthetic') throw new Error('Fictional identities are disabled in this environment. Choose connected sign-in.');
@@ -77,11 +82,12 @@ export function ServicePanel(props: ServicePanelProps) {
   return <View style={styles.stack}>
     <Card>
       <Text style={typography.section}>{allowSynthetic ? 'Connected service rehearsal' : 'Connected match controller'}</Text>
-      <Pill tone="info">{allowSynthetic ? 'FICTIONAL DATA · CANONICAL HTTP' : 'AUTHENTICATED SERVICE · CANONICAL HTTP'}</Pill>
+      <Pill tone="info">{staticBrowser ? 'STATIC REVIEW · FICTIONAL DATA STAYS LOCAL' : allowSynthetic ? 'FICTIONAL DATA · CANONICAL HTTP' : 'AUTHENTICATED SERVICE · CANONICAL HTTP'}</Pill>
+      {staticBrowser && <Notice>This lasting browser link runs fictional journeys locally. It does not include the connected API. Paste a separately supplied service address below; a temporary full-API review link may be provided separately.</Notice>}
       <Text style={typography.body}>Download the selected service match and claim its controller. Access requires the current verified manager account for this team and season.</Text>
       <Text style={typography.label}>Service URL</Text>
       <TextInput accessibilityLabel="LongBall service URL" autoCapitalize="none" autoCorrect={false} value={baseUrl} onChangeText={setBaseUrl} style={styles.input} />
-      <Text style={typography.muted}>Use / with the combined browser/API review server, or the local API on port4310. A physical phone needs the development host URL or adb reverse; localhost means the phone itself.</Text>
+      <Text style={typography.muted}>{staticBrowser ? 'Enter the separately supplied HTTPS API address, or an explicit local development API address. This static host and / are not API endpoints.' : 'Use / with the combined browser/API review server, or the local API on port4310. A physical phone needs the development host URL or adb reverse; localhost means the phone itself.'}</Text>
       <View style={styles.row}>
         {allowSynthetic && <Button label={effectiveMode === 'synthetic' ? 'Fictional identity · selected' : 'Fictional identity'} variant={effectiveMode === 'synthetic' ? 'primary' : 'secondary'} onPress={() => { if (allowSynthetic) { setConnection(null); setMode('synthetic'); } }} />}
         <Button label={effectiveMode === 'oidc' ? 'Connected sign-in · selected' : 'Connected sign-in'} variant={effectiveMode === 'oidc' ? 'primary' : 'secondary'} onPress={() => { setConnection(null); setMode('oidc'); }} />
@@ -97,7 +103,7 @@ export function ServicePanel(props: ServicePanelProps) {
       {!allowSynthetic && <Text style={typography.muted}>The recording device is enrolled separately for this verified account, issuer and API. A shared phone does not reuse another account’s device identity or controller cache.</Text>}
       {configurationError && <Notice tone="error">{configurationError}</Notice>}
       {!platformAllowsCache && <Notice>Use the native application for the connected match controller. The browser keeps authenticated workspace views in memory; it does not open or persist a real account’s controller match in review storage. Fictional browser rehearsal remains available in development.</Notice>}
-      <Button label={connecting ? 'Verifying service identity…' : 'Open this service connection'} disabled={connecting || !platformAllowsCache || !props.journal || !props.deviceId || !matchId || !teamId || !seasonId} onPress={() => { void openConnection(); }} />
+      <Button label={connecting ? 'Verifying service identity…' : 'Open this service connection'} disabled={connecting || staticBrowser && !baseUrl.trim() || !platformAllowsCache || !props.journal || !props.deviceId || !matchId || !teamId || !seasonId} onPress={() => { void openConnection(); }} />
     </Card>
     {connection && (allowSynthetic || connection.mode === 'oidc') && connection.scope.matchId === matchId && connection.scope.teamId === teamId && connection.scope.seasonId === seasonId && <AuthorizedRehearsal key={controllerCacheDocumentId(connection.scope)} connection={connection} journal={props.journal} physicalDeviceId={props.deviceId} matchId={matchId} onControllerState={props.onControllerState} />}
   </View>;
@@ -149,6 +155,8 @@ function ConnectedRehearsal({ connection, journal, physicalDeviceId, matchId, on
   const [unchangedLineup, setUnchangedLineup] = useState(false);
   const [actionConfirmation, setActionConfirmation] = useState<{ label: string; command: ConnectedCommand } | null>(null);
   const [sample, setSample] = useState(clockSample);
+  const [fictionalClockAcknowledged, setFictionalClockAcknowledged] = useState(false);
+  const activeController = useRef<{epoch:number|null;confirmed:boolean;connection:ConnectionConfig}|null>(null);
   const [reviewDraft, setReviewDraft] = useState<{ matchId: string; sourceRevision: number; lineup: Allocation[] } | null>(null);
   const networkLock = useRef(false);
   const authorityDeniedRef = useRef(false);
@@ -171,12 +179,14 @@ function ConnectedRehearsal({ connection, journal, physicalDeviceId, matchId, on
   }, [connection]);
   const productionBrowserReadOnly = connection.mode === 'oidc' && Platform.OS === 'web';
   const current = document.state;
+  const clockMapping = current?.clockMapping ?? null;
   const localMatch = current?.localState;
   const clock = current ? connectedClock(current, sample) : null;
   useEffect(() => { const interval = setInterval(() => setSample(clockSample()), 500); return () => clearInterval(interval); }, []);
   const epoch = current?.grant?.epoch ?? null;
   const controllerConfirmed = current?.controllerConfirmed ?? false;
   const reconciliationRequired = current?.reconciliationRequired ?? false;
+  useLayoutEffect(() => { activeController.current = { epoch, confirmed: controllerConfirmed && !reconciliationRequired && !authorityDenied, connection }; }, [epoch, controllerConfirmed, reconciliationRequired, authorityDenied, connection]);
   useEffect(() => { setReviewDraft(null); }, [epoch, controllerConfirmed, reconciliationRequired]);
   useEffect(() => { onControllerState?.({ scope: 'connected-rehearsal', matchId, deviceId: connection.wireDeviceId, epoch, hasControl: controllerConfirmed && !reconciliationRequired && !productionBrowserReadOnly && !authorityDenied, reconciliationRequired }); }, [onControllerState, matchId, connection.wireDeviceId, epoch, controllerConfirmed, reconciliationRequired, productionBrowserReadOnly, authorityDenied]);
 
@@ -239,6 +249,25 @@ function ConnectedRehearsal({ connection, journal, physicalDeviceId, matchId, on
     const saved = await document.change(value => { prepared = prepareServiceRequest(value, kind, randomUUID(), details); return prepared; }, 'connected.request.prepared');
     if (saved && prepared) await execute(prepared);
   }, [document, execute, productionBrowserReadOnly]);
+  const exchangeClock = useCallback(async () => {
+    const origin = activeController.current, grant = current?.grant;
+    if (!origin?.confirmed || !grant) throw new Error('Claim the current controller and download its accepted checkpoint before establishing clock evidence.');
+    const expectedContinuity = readClock().continuityId;
+    const assertCurrent = () => {
+      const active = activeController.current;
+      if (!mountedRef.current || authorityDeniedRef.current || active?.connection !== origin.connection || !active.confirmed || active.epoch !== origin.epoch || readClock().continuityId !== expectedContinuity) throw new Error('The account, controller or continuous clock changed. Local recording is preserved; start a new exchange.');
+    };
+    const mapping = await establishContinuousClockMapping({
+      mutate: (path, body, idempotencyKey) => client.execute({ kind: 'clock_exchange', path, body, idempotencyKey }, grant),
+      observe: () => { const observed = readClock(); return { sample: { monotonicMs: observed.monotonicMs, sessionId: observed.continuityId, wallTimeMs: Date.now() }, verifiedContinuous: observed.verifiedContinuous }; },
+      nextId: randomUUID, assertCurrent,
+    }, { matchId, deviceId: connection.wireDeviceId, controllerEpoch: grant.epoch }, { permitFictionalSessionClock: connection.mode === 'synthetic' && fictionalClockAcknowledged });
+    assertCurrent();
+    const saved = await document.change(value => retainClockMapping(value, mapping, clockSample()), 'connected.clock_mapping.retained');
+    assertCurrent();
+    if (!saved) throw new Error('The clock receipt was not durably retained. Retry the protected local save before relying on its finish evidence.');
+    setNotice('Server-time exchange completed for this controller and continuous clock session. The server will validate its policy, expiry and finish event; local recording never waits for this exchange.');
+  }, [client, current?.grant, matchId, connection.wireDeviceId, connection.mode, fictionalClockAcknowledged, document]);
   const record = useCallback(async (command: ConnectedCommand) => {
     if (productionBrowserReadOnly || authorityDeniedRef.current) return false;
     const capturedSample = clockSample(), eventId = randomUUID();
@@ -275,6 +304,7 @@ function ConnectedRehearsal({ connection, journal, physicalDeviceId, matchId, on
         <Text style={typography.label}>Server revision {current.acceptedRevision} · local wire sequence {current.allocatedSequence} · epoch {current.grant?.epoch ?? 'none'}</Text>
         <Text style={typography.body}>{current.controllerConfirmed ? 'Controller capability confirmed at the last service check.' : 'This device has no currently confirmed writing capability.'}</Text>
         <Text style={typography.muted}>Offline revocation cannot be detected immediately. Reconnect to check the server epoch. The downloaded server timestamp is an observation, not a verified native UTC mapping.</Text>
+        {current.outbox.some(entry => entry.disposition === 'pending' && entry.envelope.engineVersion !== ENGINE_VERSION) && <Notice tone="warning">An older-engine pending stream remains byte-for-byte retained. Upload its original request for explicit version quarantine/review. This build will not relabel those events or mix them with new-engine capture. Accepted history and reserved device sequences remain intact.</Notice>}
         <Text style={typography.body}>{pendingCount} pending · {rejected.length} retained quarantine · {current.outbox.filter(entry => entry.disposition === 'accepted').length} acknowledged</Text>
         <Button label="Upload pending canonical events" disabled={busy || productionBrowserReadOnly || !pendingCount || Boolean(current.pendingRequest)} onPress={() => { void run(() => request('upload')); }} />
         {current.pendingRequest && <Button label={`Retry same ${current.pendingRequest.kind} request`} disabled={busy || productionBrowserReadOnly} onPress={() => { void run(() => execute(current)); }} />}
@@ -283,6 +313,11 @@ function ConnectedRehearsal({ connection, journal, physicalDeviceId, matchId, on
         {current.pendingRequest?.kind === 'upload' && <Notice>The original upload and key stay fixed. Actual clock, lineup and goal events can continue saving locally behind that batch while its receipt is uncertain.</Notice>}
         {current.acceptedState && !current.authoritativeDownloadRequired && current.acceptedState.revision === current.acceptedRevision && !pendingCount && !current.pendingRequest && <Button label="Select accepted checkpoint; retain candidate audit" variant="secondary" disabled={busy} onPress={() => { void document.change(selectAcceptedBranch, 'connected.accepted_branch.selected'); }} />}
       </>}
+      <Text style={typography.label}>Continuous finish-time evidence</Text>
+      <Text style={typography.muted}>A downloaded UTC timestamp is only an observation. This exchange measures server-time bounds against the phone’s current continuous clock. It does not pause play or block offline event capture. A reboot, controller change or uncertain clock needs a new exchange. A new mapping applies to future events; already queued full-time records keep their original evidence.</Text>
+      {connection.mode === 'synthetic' && <Button label={fictionalClockAcknowledged ? 'Fictional session-clock experiment acknowledged' : 'Acknowledge fictional session-clock experiment'} variant="secondary" onPress={() => setFictionalClockAcknowledged(value => !value)} />}
+      <Button label="Establish continuous server-time evidence" testID="clock-exchange" variant="secondary" disabled={busy || !editable || connection.mode === 'synthetic' && !fictionalClockAcknowledged} onPress={() => { void run(exchangeClock); }} />
+      {clockMapping && clockMapping.controllerEpoch === epoch && clockMapping.continuityId === sample.sessionId && <Notice>Exchange received under {clockMapping.policyId}; server validity ends {new Date(clockMapping.validUntilMs).toISOString()}. Finish-time acceptance is checked by the service. This evidence does not approve competition sharing or award policy.</Notice>}
       <Button label="Read service quarantine" variant="secondary" disabled={busy || !current} onPress={() => { void run(async () => { const result = await client.quarantine(matchId); setQuarantineCount(result.items.length); }); }} />
       {quarantineCount !== null && <Text style={typography.muted}>{quarantineCount} retained service quarantine records. Review requires an authorised manager; no branch is discarded.</Text>}
       {rejected.map(entry => <Notice key={entry.envelope.eventId} tone="warning">Sequence {entry.envelope.clientSequence}: {entry.reason ?? 'requires review'}</Notice>)}
@@ -333,6 +368,13 @@ function ConnectedRehearsal({ connection, journal, physicalDeviceId, matchId, on
       }} />
       <ConnectedLiveEditor match={localMatch} clock={clock} busy={captureBusy} onCommand={record} journal={journal} eligible={editable} teamLabel={localMatch.config.fixture?.teamName} reviewDraft={reviewDraft} onReviewDraftConsumed={() => setReviewDraft(null)} />
     </>}
+    {localMatch && current && <HistoryReviewPanel match={localMatch} accepted={current.acceptedState} eligible={editable} busy={Boolean(captureBusy)} onCommand={record}
+      client={client} journal={journal} physicalDeviceId={physicalDeviceId} documentId={documentId}
+      verifyAuthority={async () => {
+        const actor = await client.me<ControllerIdentity>();
+        const scope = controllerCacheScope(actor, connection.scope, Date.now());
+        if (controllerCacheDocumentId(scope) !== controllerCacheDocumentId(connection.scope)) throw Object.assign(new Error('Authenticated review scope changed. Reopen the connection.'), { code: 'CONTROLLER_SCOPE_DENIED' });
+      }} onAuthorityFailure={closeDeniedCache} />}
     {current && <Card>
       <Text style={typography.section}>Controller handover and recovery</Text>
       <Text style={typography.muted}>The development service supports handover before kickoff, while already genuinely paused, or at half-time. Running transfer requires a verified cross-device clock exchange and is explicitly refused.</Text>

@@ -1,0 +1,113 @@
+{
+  "baseURL": "http://127.0.0.1:4173",
+  "primaryAPI": "http://127.0.0.1:4320",
+  "controlAPI": "http://127.0.0.1:4321",
+  "runId": "20261021091850213",
+  "artifacts": {
+    "web": {
+      "url": "http://127.0.0.1:4173/_expo/static/js/web/index-4108b23540176f94638dc263073b3912.js",
+      "sha256": "7136f6d6f2ce9207f943e8d2b034fd43feb0f06edb14efd3620925b02e036c7e"
+    },
+    "api": {
+      "entry": "apps/api/dist/api.mjs",
+      "sha256": "0ab39063e4bc217333a15f121fd49ade321eaf07e986ddb41bac18e2ef8a3697"
+    }
+  },
+  "checks": [
+    {
+      "name": "01-canonical-match-and-lost-response",
+      "status": "passed",
+      "detail": {
+        "acceptedRevision": 21,
+        "clientSequence": 21,
+        "firstHalfMs": 1503000,
+        "secondHalfMs": 1500000,
+        "pauseExcludedMs": 300000,
+        "score": {
+          "for": 3,
+          "against": 0
+        },
+        "identicalRetry": true,
+        "offlineSuffixEvents": 3,
+        "offlineSuffixReplayedOverAuthoritativePrefix": true,
+        "authoritativeActorAudit": true,
+        "legacyM0Unchanged": true,
+        "trustedUtc": false,
+        "cacheClosureAfterHttp403Fixture": true,
+        "realMembershipRevocationTested": false,
+        "lateSubstitutionThenAuditedCorrectionOverHttp": true,
+        "originalHistoryRetained": true,
+        "correctedOccupiedPlayerMs": 21021000
+      }
+    },
+    {
+      "name": "02-handover-sequence-and-stale-quarantine",
+      "status": "passed",
+      "detail": {
+        "acceptedRevision": 27,
+        "epochs": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "sequenceBeforeHandback": 9,
+        "nextSequenceOnHandback": 10,
+        "finalReservedSequence": 27,
+        "quarantined": 9,
+        "acceptedProjectionUnchanged": true,
+        "managerReviewRequired": true,
+        "immutableProposalOverHttp": true,
+        "exactProposalRetryAfterReload": true,
+        "q08Apply503": true,
+        "quarantineNotClearedByProposal": true,
+        "fictionalClockExchangeOverHttp": true,
+        "nativeClockContinuityTested": false
+      }
+    },
+    {
+      "name": "03-workspace-service-preparation-results-and-privacy",
+      "status": "passed",
+      "detail": {
+        "fixtureId": "737b0a32-4be4-46dc-b3c3-f4073a4b0f08",
+        "sameIdentityAfterReschedule": true,
+        "historicalSummaryUnknownMinutes": true,
+        "ownPlayerDataOnly": true,
+        "rsvpDistinctFromAttendance": true,
+        "invitationAcceptedOverHttp": true,
+        "q21SharingWithheld": true
+      }
+    },
+    {
+      "name": "04-private-media-fails-closed-without-scanner",
+      "status": "passed",
+      "detail": {
+        "uploadStatus": "uploaded",
+        "failureCode": "SCANNER_REQUIRED",
+        "published": false,
+        "actualAntivirusDatabaseValidated": false
+      }
+    },
+    {
+      "name": "05-workspace-durable-outbox-reload-and-exact-retry",
+      "status": "passed",
+      "detail": {
+        "fixtureId": "1b3e0199-bdca-4692-ad51-d56901660230",
+        "retainedAcrossReload": true,
+        "otherAccountCannotReplay": true,
+        "identicalWireKeyAndBody": true,
+        "finalServiceRevision": 4,
+        "noDuplicateFixtureOrHistory": true,
+        "acknowledgementDurableAfterSecondReload": true
+      }
+    }
+  ],
+  "errors": [],
+  "limitations": [
+    "Fictional development authentication; no real identity provider rehearsal.",
+    "Browser-controlled monotonic time validates rules and HTTP boundaries, not native clock continuity.",
+    "Control API clock exchange uses an explicitly fictional trial policy; it approves no Q08 authority or production clock/sharing policy.",
+    "Phone reboot, SQLCipher, background alerts, lock-screen and physical-device continuity still require native device evidence.",
+    "Unconfigured antivirus blocks media processing; no publication or malware-scanner claim."
+  ]
+}

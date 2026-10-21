@@ -506,6 +506,7 @@ export function applyCommunityCommand(state: CommunityState, actor: CommunityAct
       const time = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
       requireRule((preferences.quietStart === null && preferences.quietEnd === null) ||
         (typeof preferences.quietStart === 'string' && typeof preferences.quietEnd === 'string' && time.test(preferences.quietStart) && time.test(preferences.quietEnd)), 'invalid', 'Use HH:MM for both quiet-hour boundaries, or leave both empty.');
+      requireRule(preferences.quietStart === null || preferences.quietStart !== preferences.quietEnd, 'invalid', 'Quiet hours need distinct boundaries; use channel switches to pause all day.');
       next.preferences[actor.accountId] = { ...preferences };
       break;
     }

@@ -71,12 +71,15 @@ export const UNAPPROVED_SHARING_POLICY: SharingPolicy = {
 export function filterMatchForPrincipal(input: {
   principal: Principal; memberships: Membership[]; teamId: string; seasonId: string;
   state: MatchState; policy: SharingPolicy; lastSyncAt: number | null; now?: number;
+  requestedRole?: string;
 }): Record<string, unknown> {
   const now = input.now ?? Date.now();
-  const role = assertTeamRole(input.principal, input.memberships, input.teamId, input.seasonId, ['manager', 'player', 'spectator'], now);
   const current = currentMemberships(input.principal, input.memberships, now);
-  const manager = current.some(item => item.teamId === input.teamId && item.seasonId === input.seasonId && item.role === 'manager');
-  if (manager) {
+  const available = current.filter(item => item.teamId === input.teamId && item.seasonId === input.seasonId && ['manager','player','spectator'].includes(item.role));
+  const chosen = input.requestedRole ? available.find(item => item.role === input.requestedRole) : available.find(item => item.role === 'manager') ?? available.find(item => item.role === 'player') ?? available[0];
+  if (!chosen) throw new AccessError('NOT_FOUND', 404, 'The requested object is unavailable.');
+  const role = assertTeamRole(input.principal, input.memberships, input.teamId, input.seasonId, [chosen.role], now);
+  if (role.role === 'manager') {
     assertAdultAuthority(input.principal, false, now);
     return { matchId: input.state.config.matchId, teamId: input.teamId, seasonId: input.seasonId, audience: 'manager', revision: input.state.revision, state: input.state, lastRecorderSyncAt: input.lastSyncAt };
   }
@@ -89,6 +92,7 @@ export function filterMatchForPrincipal(input: {
     sharingPolicyVersion: input.policy.version,
     sharingRestricted: !scoresAllowed,
     lastRecorderSyncAt: input.lastSyncAt,
+    ...(input.state.config.fixture ? { opponent: input.state.config.fixture.opponent, playedDate: input.state.config.fixture.playedDate, homeAway: input.state.config.fixture.homeAway } : {}),
     freshness: input.lastSyncAt !== null && now - input.lastSyncAt <= 15_000 ? 'last_synced' : 'updates_delayed',
   };
   // Do not extrapolate a live clock or expose event payloads, teammate records, votes or injury reasons.

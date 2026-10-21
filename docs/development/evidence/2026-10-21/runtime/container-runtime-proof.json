@@ -1,0 +1,130 @@
+{
+  "status": "passed",
+  "observedAt": "2026-10-21T09:18:57.538986+00:00",
+  "syntheticOnly": true,
+  "productionImage": "sha256:ac0680fb8a262917aa0edded026ca8db5b02cb1c05f0240b3909a9b197771182",
+  "processes": {
+    "api": {
+      "user": "node",
+      "readOnlyRoot": true,
+      "schemaStartup": "verify-only",
+      "publishedPort": "127.0.0.1:4310",
+      "credential": "api-url-file-only"
+    },
+    "worker": {
+      "user": "node",
+      "readOnlyRoot": true,
+      "schemaStartup": "verify-only",
+      "publishedPorts": [],
+      "credential": "worker-url-file-only"
+    },
+    "migrator": {
+      "credential": "separate-schema-owner-url-file",
+      "superuser": false,
+      "canCreateDatabase": false,
+      "canCreateRole": false
+    }
+  },
+  "http": {
+    "health": 200,
+    "backend": "postgresql",
+    "syntheticOnly": false,
+    "privateWithoutOidc": 503,
+    "privateCode": "IDENTITY_NOT_CONFIGURED"
+  },
+  "permissions": {
+    "api": {
+      "role": "longball_api",
+      "passed": [
+        "restricted_role_attributes",
+        "cannot_create_schema_objects",
+        "cannot_create_public_objects",
+        "cannot_alter_schema",
+        "cannot_change_migration_version",
+        "api_cannot_delete_domain_rows",
+        "api_cannot_rewrite_audit",
+        "api_insert_update_and_feature_verification"
+      ]
+    },
+    "worker": {
+      "role": "longball_worker",
+      "passed": [
+        "restricted_role_attributes",
+        "cannot_create_schema_objects",
+        "cannot_create_public_objects",
+        "cannot_alter_schema",
+        "cannot_change_migration_version",
+        "worker_cannot_change_accounts",
+        "worker_cannot_read_private_media_manifests",
+        "worker_cannot_delete_jobs",
+        "worker_job_and_document_operations"
+      ]
+    }
+  },
+  "businessWorker": {
+    "kind": "longball-worker-role-proof",
+    "backend": "postgresql",
+    "awards": {
+      "completed": 1,
+      "retried": 0,
+      "failed": 0
+    },
+    "notifications": {
+      "accepted": 0,
+      "blocked": 4,
+      "retried": 0,
+      "suppressed": 14,
+      "reviewRequired": 0,
+      "failed": 0
+    },
+    "workerDdlDenied": true,
+    "workerAccountWriteDenied": true,
+    "apiEvidenceDeleteDenied": true,
+    "actualPushDelivered": false
+  },
+  "scannerPrivateConnectivity": {
+    "address": "scanner:3310",
+    "version": "ClamAV 1.5.4/28157/Sun Oct 18 06:24:14 2026",
+    "publishedPort": false,
+    "dockerHealth": "healthy",
+    "healthCommand": "clamdscan --config-file=/run/longball-clamd.conf --ping=1"
+  },
+  "runtimeImageDecoder": {
+    "runtime": "production-image",
+    "user": "node",
+    "sharp": "0.35.5",
+    "isolatedWorkerExecuted": true,
+    "dimensions": [
+      16,
+      32
+    ],
+    "metadataStripped": true,
+    "workerResult": {
+      "width": 16,
+      "height": 32
+    }
+  },
+  "limitations": [
+    "No OIDC provider configured for this production-style rehearsal; private endpoints are deliberately blocked.",
+    "No actual push delivered and no provider delivery claim.",
+    "Role separation is not a claim of PostgreSQL row-level security.",
+    "Paired dump/object restore was executed separately with the disposable administrator; restricted deployment recovery drill, offsite encryption/retention and RPO/RTO acceptance remain pending.",
+    "Vendor signatures are verified; ongoing signature update/monitoring SLA is not established.",
+    "No hosted or paid service provisioned."
+  ],
+  "identityTrialDatabaseBootstrap": {
+    "database": "longball_identity_trial",
+    "dedicatedRestrictedRoleCount": 3,
+    "centralMigrations": [
+      2,
+      3
+    ],
+    "mediaMigration": 1,
+    "activationMigration": 1,
+    "fixtureSeededByDatabaseHelper": false,
+    "servingSuperuser": false,
+    "selectorsCommitted": false
+  },
+  "businessWorkerCheckpointImage": "sha256:3194181e8c2aa1a68ab04b3eae935bdd8618aecc5531cddee87da8e8984462b8",
+  "sharedGrantHelperRefactor": "rebuild and idempotent non-superuser migration passed; final API/worker refreshed and permission/decoder checks repeated"
+}

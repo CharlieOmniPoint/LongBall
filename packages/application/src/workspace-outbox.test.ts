@@ -14,6 +14,30 @@ const queued = () => enqueueWorkspaceRequest(createWorkspaceOutbox(binding), bin
 const reopened = (state: WorkspaceOutboxState): WorkspaceOutboxState => JSON.parse(JSON.stringify(state)) as WorkspaceOutboxState;
 
 describe('protected workspace acknowledgement outbox', () => {
+  it('retains exact staff assignments and rechecks selected administrator plus recent strong authority before replay', () => {
+    const adminBinding = { ...binding, role: 'administrator' as const, playerId: null };
+    const adminPrincipal: Principal = { ...principal, identityClassification: 'adult_individual', adultVerified: true, strongAuth: true };
+    const adminMemberships: Membership[] = [{ ...memberships[0], role: 'administrator', playerId: undefined }];
+    const input = { key: 'staff-request-0001', path: '/v1/teams/roma-u10/managers?seasonId=2026-27', label: 'Assign existing verified adult', body: { command: { id: 'staff-request-0001', expectedRevision: 8, type: 'manager.assigned', accountId: 'existing-adult' } } };
+    const state = enqueueWorkspaceRequest(createWorkspaceOutbox(adminBinding), adminBinding, input, now);
+    const uncertain = reopened(recordWorkspaceOutcome(state, input.key, { kind: 'unconfirmed', reason: 'network' }, now));
+    const context = { ...auth, binding: adminBinding, principal: adminPrincipal, memberships: adminMemberships };
+    expect(authorizeWorkspaceReplay(uncertain, context).bodyJson).toBe(JSON.stringify(input.body));
+    for (const changes of [{ principal: { ...adminPrincipal, authenticatedAt: now - 300_001 } }, { principal: { ...adminPrincipal, strongAuth: false } }, { memberships: [] }]) expect(() => authorizeWorkspaceReplay(uncertain, { ...context, ...changes })).toThrow();
+    const managerBinding = { ...adminBinding, role: 'manager' as const };
+    expect(() => enqueueWorkspaceRequest(createWorkspaceOutbox(managerBinding), managerBinding, input, now)).toThrow();
+    expect(() => enqueueWorkspaceRequest(createWorkspaceOutbox(adminBinding), adminBinding, { ...input, path: '/v1/teams/roma-u10/configuration?seasonId=2026-27' }, now)).toThrow();
+    expect(() => enqueueWorkspaceRequest(createWorkspaceOutbox(adminBinding), adminBinding, { ...input, body: { command: { ...input.body.command, expectedRevision: -1 } } }, now)).toThrow();
+  });
+  it('binds staff revocation to its specific path, original reason, revision and explicit confirmation', () => {
+    const adminBinding = { ...binding, role: 'administrator' as const, playerId: null };
+    const input = { key: 'staff-request-0002', path: '/v1/teams/roma-u10/managers/revoke?seasonId=2026-27', label: 'Revoke this season manager role', body: { command: { id: 'staff-request-0002', expectedRevision: 9, type: 'manager.revoked', accountId: 'existing-adult', reason: 'Reviewed departure from the club', confirmRevocation: true } } };
+    const state = enqueueWorkspaceRequest(createWorkspaceOutbox(adminBinding), adminBinding, input, now);
+    expect(reopened(state).pending?.bodyJson).toBe(JSON.stringify(input.body));
+    expect(() => enqueueWorkspaceRequest(createWorkspaceOutbox(adminBinding), adminBinding, { ...input, path: '/v1/teams/roma-u10/managers?seasonId=2026-27' }, now)).toThrow();
+    expect(() => enqueueWorkspaceRequest(createWorkspaceOutbox(adminBinding), adminBinding, { ...input, body: { command: { ...input.body.command, confirmRevocation: false } } }, now)).toThrow();
+    expect(() => enqueueWorkspaceRequest(createWorkspaceOutbox(adminBinding), adminBinding, { ...input, body: { command: { ...input.body.command, reason: 'no' } } }, now)).toThrow();
+  });
   it('retains the exact key, command bytes and revision across uncertainty and close/reopen', () => {
     const first = queued();
     const uncertain = recordWorkspaceOutcome(first, request.key, { kind: 'unconfirmed', reason: 'network' }, now + 1);
@@ -181,5 +205,19 @@ describe('protected workspace acknowledgement outbox', () => {
     expect(workspaceOutboxStorageAllowed({ platform: 'web', synthetic: false, diagnostics })).toBe(false);
     expect(workspaceOutboxStorageAllowed({ platform: 'web', synthetic: false, diagnostics: { ...diagnostics, mode: 'synthetic-browser' } })).toBe(false);
     expect(workspaceOutboxStorageAllowed({ platform: 'web', synthetic: true, diagnostics: { ...diagnostics, mode: 'synthetic-browser', cipherVersion: null, wrongKeyProbe: 'unsupported', backupExcluded: false } })).toBe(true);
+  });
+  it('retains administrator configuration/rollover requests separately and requires fresh explicit administrator authority', () => {
+    const adminBinding = { ...binding, role: 'administrator' as const, playerId: null };
+    const adminPrincipal: Principal = { ...principal, identityClassification: 'adult_individual', adultVerified: true, strongAuth: true };
+    const adminMemberships: Membership[] = [{ ...memberships[0], role: 'administrator', playerId: undefined }];
+    const rollover = { ...request, path: '/v1/teams/roma-u10/seasons?seasonId=2026-27', body: { command: { id: request.key, type: 'season.rolled_over' } } };
+    const state = enqueueWorkspaceRequest(createWorkspaceOutbox(adminBinding), adminBinding, rollover, now);
+    const context = { ...auth, binding: adminBinding, principal: adminPrincipal, memberships: adminMemberships };
+    expect(authorizeWorkspaceReplay(state, context).key).toBe(request.key);
+    expect(() => authorizeWorkspaceReplay(state, { ...context, principal: { ...adminPrincipal, authenticatedAt: now - 300_001 } })).toThrow('Recent');
+    expect(() => authorizeWorkspaceReplay(state, { ...context, memberships: [] })).toThrow();
+    expect(() => enqueueWorkspaceRequest(createWorkspaceOutbox(adminBinding), adminBinding, request, now)).toThrow();
+    const configuration = { ...rollover, path: '/v1/teams/roma-u10/configuration?seasonId=2026-27' };
+    expect(enqueueWorkspaceRequest(createWorkspaceOutbox(adminBinding), adminBinding, configuration, now).pending).not.toBeNull();
   });
 });

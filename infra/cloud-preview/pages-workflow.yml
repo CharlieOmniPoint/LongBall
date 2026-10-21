@@ -1,0 +1,50 @@
+name: LongBall lasting fictional browser review
+
+on:
+  push:
+    branches: [preview/longball-m0]
+    paths: ["pages-site/**", ".github/workflows/pages-review.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: longball-fictional-pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    if: github.repository == 'CharlieOmniPoint/LongBall' && github.ref == 'refs/heads/preview/longball-m0' && github.event.repository.private == false
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Check fictional export provenance
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          site = Path('pages-site')
+          info = json.loads((site / 'build-info.json').read_text())
+          assert info['synthetic'] is True and info['production'] is False
+          assert info['basePath'] == '/LongBall'
+          assert info['sourceCommit'] == Path('preview/source-head.txt').read_text().strip()
+          assert not any(path.is_symlink() for path in site.rglob('*'))
+          assert sum(path.stat().st_size for path in site.rglob('*') if path.is_file()) < 50_000_000
+          assert '/LongBall/_expo/' in (site / 'index.html').read_text()
+          PY
+      - name: Read enabled GitHub Pages configuration
+        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6
+      - uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4
+        with:
+          path: pages-site
+          retention-days: 1
+      - name: Publish the fictional static review
+        id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4

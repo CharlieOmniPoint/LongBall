@@ -1,3 +1,4 @@
+import type { ClockMappingReceipt } from './clock-exchange';
 import { ENGINE_VERSION, readClock, reduceMatch, type ClockSample, type MatchEvent, type MatchState } from '../../domain/src/index';
 
 export const WIRE_CONTRACT_VERSION = 'longball.events/1.1' as const;
@@ -28,7 +29,7 @@ export interface CanonicalOutboxEntry {
   reason: string | null;
   acceptedRevision: number | null;
 }
-export interface DurableRequest { idempotencyKey: string; path: string; body: unknown; kind: 'acquire' | 'upload' | 'handover' | 'accept' | 'recover' }
+export interface DurableRequest { idempotencyKey: string; path: string; body: unknown; kind: 'acquire' | 'upload' | 'handover' | 'accept' | 'recover' | 'reconciliation_proposal' | 'clock_exchange' }
 /** This namespace is independent of the legacy M0 local-command journal stream. */
 export interface ConnectedMatchDocument {
   revision: number;
@@ -48,6 +49,8 @@ export interface ConnectedMatchDocument {
   serverCheckpoint: DeviceCheckpoint;
   outbox: CanonicalOutboxEntry[];
   grant: ControllerGrant | null;
+  clockMapping?: ClockMappingReceipt | null;
+  clockMappingHistory?: ClockMappingReceipt[];
   controllerConfirmed: boolean;
   reconciliationRequired: boolean;
   downloadedAt: string | null;
@@ -65,12 +68,16 @@ export class ServiceError extends Error {
 
 export function effectiveEventTime(previous: MatchState, next: MatchState, event: MatchEvent): { half: 0 | 1 | 2; halfElapsedMs: number; matchElapsedMs: number } {
   let effective: { half: 1 | 2; halfElapsedMs: number; matchElapsedMs: number } | null | undefined;
-  if (event.type === 'goal.recorded' || event.type === 'availability.changed') effective = event.effective;
+  if (event.type === 'goal.recorded' || event.type === 'availability.changed' || event.type === 'lineup.committed') effective = event.effective;
   if (event.type === 'event.corrected') effective = event.replacement.effective;
   if ((event.type === 'event.corrected' || event.type === 'event.voided') && !effective) {
     const goal = previous.goals?.find(record => record.eventId === event.targetEventId || record.latestEventId === event.targetEventId);
     const availability = previous.availabilityHistory?.find(record => record.eventId === event.targetEventId || record.latestEventId === event.targetEventId);
     effective = goal?.effective ?? availability?.effective;
+    if (!effective) {
+      const target = previous.audit?.find(record => record.eventId === event.targetEventId);
+      effective = target?.effective;
+    }
   }
   return effective ? { half: effective.half, halfElapsedMs: effective.halfElapsedMs, matchElapsedMs: effective.matchElapsedMs } : { half: next.half, halfElapsedMs: next.halfActiveMs, matchElapsedMs: next.matchActiveMs };
 }
@@ -146,6 +153,7 @@ export function mergeDownload(previous: ConnectedMatchDocument, download: MatchD
       let checkpoint = download.deviceCheckpoint;
       for (const entry of previous.outbox.filter(item => item.disposition === 'pending')) {
         const envelope = entry.envelope;
+        if (envelope.engineVersion !== ENGINE_VERSION) throw new Error('The original pending engine version requires explicit review; never relabel old wire evidence.');
         if (envelope.clientSequence !== checkpoint.clientSequence + 1 || envelope.previousEventId !== checkpoint.previousEventId || envelope.baseRevision !== projection.revision || envelope.controllerEpoch !== previous.grant?.epoch) throw new Error('Suffix differs from the accepted checkpoint.');
         const next = reduceMatch(projection, envelope.command);
         const effective = effectiveEventTime(projection, next, envelope.command);
@@ -172,7 +180,7 @@ export function attachGrant(document: ConnectedMatchDocument, grant: ControllerG
   const pending = document.outbox.some(entry => entry.disposition === 'pending');
   const movedEpoch = document.grant && document.grant.epoch !== grant.epoch;
   const serverAhead = grant.checkpoint.clientSequence > document.allocatedSequence;
-  return { ...document, grant, controllerConfirmed: true, authoritativeDownloadRequired: true, captureBlockedUntilDownload: true,
+  return { ...document, grant, clockMapping: document.clockMapping?.controllerEpoch === grant.epoch ? document.clockMapping : null, controllerConfirmed: true, authoritativeDownloadRequired: true, captureBlockedUntilDownload: true,
     allocatedSequence: Math.max(document.allocatedSequence, grant.checkpoint.clientSequence),
     previousEventId: serverAhead ? grant.checkpoint.previousEventId : document.previousEventId,
     serverCheckpoint: grant.checkpoint,
@@ -181,7 +189,23 @@ export function attachGrant(document: ConnectedMatchDocument, grant: ControllerG
   };
 }
 
+/** Retain the server receipt without changing a previously allocated envelope. */
+export function retainClockMapping(document: ConnectedMatchDocument, mapping: ClockMappingReceipt, sample: ClockSample): ConnectedMatchDocument {
+  if (!document.controllerConfirmed || !document.grant || document.reconciliationRequired || mapping.matchId !== document.matchId || mapping.deviceId !== document.deviceId || mapping.controllerEpoch !== document.grant.epoch || mapping.continuityId !== sample.sessionId || !/^[a-zA-Z0-9_-]{1,150}$/.test(mapping.challengeId) || !mapping.policyId || ![mapping.establishedAtMs,mapping.validUntilMs,mapping.offsetMinimumMs,mapping.offsetMaximumMs,mapping.sampleMonotonicMs].every(Number.isFinite) || mapping.validUntilMs <= mapping.establishedAtMs || mapping.offsetMaximumMs < mapping.offsetMinimumMs || sample.monotonicMs < mapping.sampleMonotonicMs || !mappingWithinLifetime(mapping, sample)) throw new Error('Clock receipt differs from the current controller, continuous session or original lifetime. Existing clock evidence is retained.');
+  const existing = document.clockMappingHistory?.find(item => item.challengeId === mapping.challengeId);
+  if (existing && JSON.stringify(existing) !== JSON.stringify(mapping)) throw new Error('Clock mapping identity was reused with different evidence. Retain both for review.');
+  return { ...document, clockMapping: { ...mapping }, clockMappingHistory: existing ? document.clockMappingHistory : [...document.clockMappingHistory ?? [], { ...mapping }] };
+}
+function mappingWithinLifetime(mapping: ClockMappingReceipt, sample: ClockSample): boolean {
+  return Number.isFinite(sample.monotonicMs) && sample.monotonicMs >= mapping.sampleMonotonicMs && sample.monotonicMs - mapping.sampleMonotonicMs <= mapping.validUntilMs - mapping.establishedAtMs && sample.monotonicMs + mapping.offsetMaximumMs <= mapping.validUntilMs;
+}
+function currentClockAnchor(document: ConnectedMatchDocument, sample: ClockSample): string {
+  const mapping = document.clockMapping;
+  return mapping && mapping.matchId === document.matchId && mapping.deviceId === document.deviceId && mapping.controllerEpoch === document.grant?.epoch && mapping.continuityId === sample.sessionId && mappingWithinLifetime(mapping, sample) ? mapping.challengeId : `anchor-${document.deviceId}`;
+}
+
 function assertCaptureAllowed(document: ConnectedMatchDocument): void {
+  if (document.outbox.some(entry => entry.disposition === 'pending' && entry.envelope.engineVersion !== ENGINE_VERSION)) throw new Error('An older-engine pending stream is retained byte-for-byte. Submit its original upload for version quarantine or review it explicitly before recording with the new engine.');
   if (!document.localState || !document.grant || !document.controllerConfirmed) throw new Error('Download the match and acquire/accept its explicit controller capability before recording.');
   if (document.reconciliationRequired || document.pendingRequest && document.pendingRequest.kind !== 'upload') throw new Error('Resolve the retained request or reconciliation branch before recording another command.');
   if (document.captureBlockedUntilDownload ?? document.authoritativeDownloadRequired) throw new Error('Download the authoritative accepted snapshot before recording another command.');
@@ -210,13 +234,14 @@ export function queueConnectedCommand(document: ConnectedMatchDocument, command:
     baseRevision: document.localState.revision,
     effectiveHalf: effective.half, halfElapsedMs: effective.halfElapsedMs, matchElapsedMs: effective.matchElapsedMs,
     effectiveAt: null, recordedAt: new Date(sample.wallTimeMs).toISOString(), timeQuality: 'reviewRequired',
-    clockEvidence: { monotonicMs: sample.monotonicMs, anchorId: `anchor-${document.deviceId}`, continuityId: sample.sessionId }, command: event,
+    clockEvidence: { monotonicMs: sample.monotonicMs, anchorId: currentClockAnchor(document, sample), continuityId: sample.sessionId }, command: event,
   };
   return { ...document, localState: next, allocatedSequence: envelope.clientSequence, previousEventId: eventId,
     outbox: [...document.outbox, { envelope, disposition: 'pending', reason: null, acceptedRevision: null }] };
 }
 
 export function prepareServiceRequest(document: ConnectedMatchDocument, kind: DurableRequest['kind'], idempotencyKey: string, details: Record<string, unknown> = {}): ConnectedMatchDocument {
+  if (kind === 'reconciliation_proposal' || kind === 'clock_exchange') throw new Error('History proposals use their separate durable review document, not the controller request stream.');
   if (document.pendingRequest) throw new Error('Retry the same retained HTTP request before creating another.');
   if (!/^[a-zA-Z0-9_-]{8,150}$/.test(idempotencyKey)) throw new Error('Use a stable canonical idempotency key.');
   const base = `/v1/matches/${encodeURIComponent(document.matchId)}`;
@@ -270,6 +295,7 @@ export function connectedClock(document: ConnectedMatchDocument, sample: ClockSa
 export function applyMutationResponse(document: ConnectedMatchDocument, response: unknown, receivedAt: string): ConnectedMatchDocument {
   const request = document.pendingRequest;
   if (!request) throw new Error('No retained mutation request matches the response.');
+  if (request.kind === 'reconciliation_proposal' || request.kind === 'clock_exchange') throw new Error('Proposal receipts belong to the separate review document; controller authority is unchanged.');
   if (request.kind === 'upload') return applyUploadReceipt(document, response as UploadReceipt, receivedAt);
   if (!response || typeof response !== 'object') throw new Error('Mutation returned an invalid response; retain the original request.');
   let next: ConnectedMatchDocument;

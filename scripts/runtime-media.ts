@@ -1,0 +1,140 @@
+/** Actual disposable PostgreSQL/ClamAV proof; never points at a real-data database. */
+import assert from 'node:assert/strict';
+import { createHash, randomUUID } from 'node:crypto';
+import { cp, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { spawn } from 'node:child_process';
+import { createRequire } from 'node:module';
+import { resolve } from 'node:path';
+import { PostgresStore, SYNTHETIC_IDS } from '../apps/api/src/postgres-store';
+import { PgMediaService } from '../apps/api/src/postgres-media';
+import { createClamAvDaemonScanner } from '../apps/api/src/media';
+import { applyCommunityCommand, createCommunityState, syntheticCommunityActors, type CommunityState } from '../packages/application/src/community';
+
+const requireApi = createRequire(resolve('apps/api/package.json'));
+const { Pool } = requireApi('pg');
+const sharp = requireApi('sharp');
+const source = new URL(process.env.LONGBALL_POSTGRES_TEST_URL ?? 'postgresql://127.0.0.1:55432/longball_runtime_test');
+assert(['127.0.0.1', 'localhost', '[::1]'].includes(source.hostname), 'Runtime proof requires a disposable local PostgreSQL server');
+assert.equal(source.pathname, '/longball_runtime_test', 'Use the dedicated runtime test connection selector');
+assert(!source.password, 'This disposable proof uses loopback-only test authentication');
+const runId = Date.now().toString();
+const databaseName = `longball_media_${runId}`;
+const restoredName = `${databaseName}_restored`;
+const container = process.env.LONGBALL_RUNTIME_POSTGRES_CONTAINER ?? 'longball-postgres-runtime';
+assert(/^[a-zA-Z0-9_-]+$/.test(container));
+const directory = resolve(`.local/runtime/proofs/${runId}`);
+await mkdir(directory, { recursive: true, mode: 0o700 });
+const adminUrl = new URL(source); adminUrl.pathname = '/postgres';
+const admin = new Pool({ connectionString: adminUrl.toString() });
+const testUrl = new URL(source); testUrl.pathname = `/${databaseName}`;
+const restoredUrl = new URL(source); restoredUrl.pathname = `/${restoredName}`;
+const now = Date.parse('2026-10-21T10:00:00Z');
+const checks: { name: string; detail: Record<string, unknown> }[] = [];
+const hash = (bytes: Uint8Array) => createHash('sha256').update(bytes).digest('hex');
+const scanner = createClamAvDaemonScanner({ host: process.env.LONGBALL_CLAMD_HOST ?? '127.0.0.1', port: Number(process.env.LONGBALL_CLAMD_PORT ?? 53310) });
+let store: PostgresStore | null = null;
+let restored: PostgresStore | null = null;
+
+async function docker(args: string[], input?: Buffer): Promise<Buffer> {
+  return new Promise((resolveOutput, reject) => {
+    const child = spawn('env', ['-u', 'DOCKER_HOST', '-u', 'DOCKER_CONTEXT', '-u', 'DOCKER_TLS', '-u', 'DOCKER_TLS_VERIFY', '-u', 'DOCKER_CERT_PATH', 'docker', '--host=unix:///var/run/docker.sock', ...args], { stdio: ['pipe', 'pipe', 'pipe'] });
+    const output: Buffer[] = []; let size = 0; let error = '';
+    child.stdout.on('data', bytes => { size += bytes.length; if (size > 64 * 1024 * 1024) child.kill('SIGKILL'); else output.push(bytes); });
+    child.stderr.on('data', bytes => { if (error.length < 8_192) error += bytes.toString(); });
+    child.on('error', reject);
+    child.on('close', code => code === 0 ? resolveOutput(Buffer.concat(output)) : reject(new Error(`Runtime tool failed (${code}): ${error.slice(0, 300)}`)));
+    child.stdin.on('error', () => {}); child.stdin.end(input);
+  });
+}
+async function* bytesSource(bytes: Buffer) { yield bytes.subarray(0, 17); yield bytes.subarray(17); }
+try {
+  await admin.query(`CREATE DATABASE ${databaseName}`);
+  store = await PostgresStore.open(testUrl.toString(), () => now); await store.seedSynthetic();
+  const serverVersion = (await store.db.query<{ server_version: string }>('SHOW server_version')).rows[0].server_version;
+  const mediaDirectory = resolve(directory, 'media');
+  const service = await PgMediaService.open({ directory: mediaDirectory, database: store.db, scanner, now: () => now });
+  let state = createCommunityState(now); const actors = syntheticCommunityActors(state);
+  await store.saveDocument(SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId, 'community', state);
+  const eicar = Buffer.from('WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo=', 'base64');
+  assert.equal(createHash('md5').update(eicar).digest('hex'), '44d88612fea8a8f36de82e1278abb02f');
+  const cleanVerdict = await scanner.scan(Buffer.from('Fictional LongBall scanner probe. No people.'), { mimeType: 'image/png', sha256: 'runtime' });
+  const infectedVerdict = await scanner.scan(eicar, { mimeType: 'image/png', sha256: 'runtime' });
+  assert.equal(cleanVerdict.verdict, 'clean'); assert.equal(infectedVerdict.verdict, 'rejected');
+  checks.push({ name: 'maintained-engine-clean-and-eicar', detail: { clean: cleanVerdict, eicar: infectedVerdict, fixture: 'standard harmless antivirus test pattern' } });
+  const original = await sharp({ create: { width: 64, height: 32, channels: 3, background: '#176B45' } }).withMetadata({ orientation: 6 }).withExif({ IFD0: { Artist: 'FICTIONAL_METADATA_TO_STRIP' } }).jpeg().toBuffer();
+  const input = (bytes: Buffer, mimeType = 'image/jpeg') => ({ requestId: randomUUID(), matchId: state.matches[0].id, byteSize: bytes.length, mimeType, sha256: hash(bytes), caption: 'Fictional generated image; no people', policyAcknowledged: true as const });
+  const prepared = await service.prepare(state, actors.manager, input(original));
+  const manifest = (await store.db.query<{ token_hash: string }>('SELECT token_hash FROM longball.media_uploads WHERE id=$1', [prepared.uploadId])).rows[0];
+  assert.notEqual(manifest.token_hash, prepared.uploadToken); assert.equal(manifest.token_hash.length, 64);
+  await service.upload(state, actors.manager, prepared.uploadId, prepared.uploadToken, bytesSource(original));
+  const completion = await service.complete(state, actors.manager, prepared.uploadId, prepared.uploadToken);
+  await assert.rejects(service.gateway(state, actors.spectator, prepared.photoId, 'display'));
+  await assert.rejects(store.transaction(async () => {
+    const candidate = applyCommunityCommand(state, actors.manager, completion.command, now);
+    await store!.saveDocument(SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId, 'community', candidate);
+    await service.link(prepared.uploadId, candidate);
+    throw new Error('intentional runtime transaction interruption');
+  }), /intentional runtime transaction interruption/);
+  assert.equal((await store.db.query<{ status: string }>('SELECT status FROM longball.media_uploads WHERE id=$1', [prepared.uploadId])).rows[0].status, 'processed');
+  assert(!(await store.document<CommunityState>(SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId, 'community')).photos.some(photo => photo.id === prepared.photoId));
+  await store.transaction(async () => {
+    state = applyCommunityCommand(state, actors.manager, completion.command, now);
+    await store!.saveDocument(SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId, 'community', state); await service.link(prepared.uploadId, state);
+  });
+  const privateImage = await service.gateway(state, actors.manager, prepared.photoId, 'display', 'own');
+  const metadata = await sharp(privateImage.body).metadata();
+  assert.equal(metadata.width, 32); assert.equal(metadata.height, 64);
+  for (const field of ['exif', 'icc', 'xmp', 'orientation'] as const) assert.equal(metadata[field], undefined);
+  assert.equal(privateImage.headers['Cache-Control'], 'private, no-store');
+  await assert.rejects(service.gateway(state, actors.spectator, prepared.photoId, 'display'));
+  state = applyCommunityCommand(state, actors.manager, { id: randomUUID(), type: 'photo.published', photoId: prepared.photoId, sourceRevision: 1, policyAcknowledged: true }, now);
+  await store.saveDocument(SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId, 'community', state);
+  const published = await service.gateway(state, actors.spectator, prepared.photoId, 'display');
+  assert.equal(hash(published.body), hash(privateImage.body));
+  checks.push({ name: 'postgres-private-media-and-atomic-link', detail: { serverVersion, derivedFormat: metadata.format, dimensions: [metadata.width, metadata.height], metadataStripped: true, pendingPrivate: true, explicitPublish: true, rollbackPreservedUnlinkedState: true, tokenHashOnly: true, scanner: cleanVerdict.engine } });
+  const png = await sharp({ create: { width: 32, height: 32, channels: 3, background: '#D8E6D9' } }).png().toBuffer();
+  const contaminated = Buffer.concat([png, eicar]);
+  const rejected = await service.prepare(state, actors.manager, input(contaminated, 'image/png'));
+  await service.upload(state, actors.manager, rejected.uploadId, rejected.uploadToken, bytesSource(contaminated));
+  await service.complete(state, actors.manager, rejected.uploadId, rejected.uploadToken);
+  const overlayManifest = (await store.db.query<{ status: string; display_key: string }>('SELECT status,display_key FROM longball.media_uploads WHERE id=$1', [rejected.uploadId])).rows[0];
+  assert.equal(overlayManifest.status, 'processed');
+  assert(!(await readFile(resolve(mediaDirectory, overlayManifest.display_key))).includes(eicar));
+  assert(!state.photos.some(photo => photo.id === rejected.photoId));
+  const unavailable = await PgMediaService.open({ directory: mediaDirectory, database: store.db, scanner: createClamAvDaemonScanner({ host: '127.0.0.1', port: 1, timeoutMs: 100 }), now: () => now });
+  const retained = await unavailable.prepare(state, actors.manager, input(png, 'image/png'));
+  await unavailable.upload(state, actors.manager, retained.uploadId, retained.uploadToken, bytesSource(png));
+  await assert.rejects(unavailable.complete(state, actors.manager, retained.uploadId, retained.uploadToken), error => (error as { code?: string }).code === 'SCANNER_UNAVAILABLE');
+  assert.equal((await store.db.query<{ status: string }>('SELECT status FROM longball.media_uploads WHERE id=$1', [retained.uploadId])).rows[0].status, 'uploaded');
+  checks.push({ name: 'real-detection-sanitization-and-unavailable-fail-closed', detail: { standardEicarRejectedByRealScanner: true, pngOverlayDetectionClaimed: false, reencodedDerivativeOmitsOverlay: true, unpublishedCandidatePrivate: true, unavailableRetainsPrivateOriginal: true } });
+  await store.db.query('CREATE TABLE longball.runtime_proof_counter(id integer PRIMARY KEY,value integer NOT NULL)');
+  await store.db.query('INSERT INTO longball.runtime_proof_counter VALUES(1,0)');
+  const concurrentAt = performance.now();
+  await Promise.all(Array.from({ length: 50 }, () => store!.transaction(async () => { await store!.db.query('UPDATE longball.runtime_proof_counter SET value=value+1 WHERE id=1'); })));
+  assert.equal((await store.db.query<{ value: number }>('SELECT value FROM longball.runtime_proof_counter WHERE id=1')).rows[0].value, 50);
+  checks.push({ name: 'real-concurrent-transaction-smoke', detail: { concurrentTransactions: 50, committedIncrements: 50, elapsedMs: Math.round(performance.now() - concurrentAt), productionLoadAcceptance: false } });
+  const dump = await docker(['exec', container, 'pg_dump', '-U', 'postgres', '-d', databaseName, '--format=custom', '--no-owner', '--no-privileges']);
+  await writeFile(resolve(directory, 'postgres.dump'), dump, { mode: 0o600 });
+  const objectBackup = resolve(directory, 'media-object-backup'); await cp(mediaDirectory, objectBackup, { recursive: true });
+  await admin.query(`CREATE DATABASE ${restoredName}`);
+  await docker(['exec', '-i', container, 'pg_restore', '-U', 'postgres', '-d', restoredName, '--no-owner', '--no-privileges'], dump);
+  const restoredMediaDirectory = resolve(directory, 'restored-media'); await cp(objectBackup, restoredMediaDirectory, { recursive: true });
+  restored = await PostgresStore.open(restoredUrl.toString(), () => now);
+  const restoredService = await PgMediaService.open({ directory: restoredMediaDirectory, database: restored.db, scanner, now: () => now });
+  const restoredState = await restored.document<CommunityState>(SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId, 'community');
+  const restoredImage = await restoredService.gateway(restoredState, actors.spectator, prepared.photoId, 'display');
+  assert.equal(hash(restoredImage.body), hash(published.body));
+  assert.equal((await restored.db.query<{ value: number }>('SELECT value FROM longball.runtime_proof_counter WHERE id=1')).rows[0].value, 50);
+  assert.equal((await restored.db.query<{ count: number }>('SELECT count(*)::integer AS count FROM longball.media_uploads')).rows[0].count, 3);
+  const dumpHeader = (await readFile(resolve(directory, 'postgres.dump'))).subarray(0, 5).toString(); assert.equal(dumpHeader, 'PGDMP');
+  checks.push({ name: 'actual-pg-dump-restore-with-paired-private-objects', detail: { customArchiveSha256: hash(dump), restoredCommunityProjection: true, restoredManifestRows: 3, restoredCounter: 50, exactPublishedDerivativeSha256: hash(restoredImage.body), databaseOnlyBackupClaimed: false } });
+  const result = { status: 'passed', observedAt: new Date().toISOString(), syntheticOnly: true, checks, limitations: ['Loopback disposable runtime uses explicit fictional accounts and trust authentication.', 'ClamAV DB metadata/signatures are recorded separately; this is not an operating update/monitoring SLA.', 'Fifty transactions are a correctness smoke test, not production capacity acceptance.', 'Restore includes both PostgreSQL and private files; encrypted offsite backup/retention/recovery operations remain unproved.'] };
+  await writeFile(resolve(directory, 'report.json'), `${JSON.stringify(result, null, 2)}\n`, { mode: 0o600 });
+  await writeFile('.local/runtime/latest-media-proof.json', `${JSON.stringify(result, null, 2)}\n`, { mode: 0o600 });
+  console.log(JSON.stringify(result));
+} catch (error) {
+  await writeFile(resolve(directory, 'report.json'), `${JSON.stringify({ status: 'failed', checks, error: error instanceof Error ? error.message.slice(0, 500) : 'Runtime proof failed' }, null, 2)}\n`, { mode: 0o600 });
+  throw error;
+} finally {
+  await restored?.close(); await store?.close(); await admin.end();
+}

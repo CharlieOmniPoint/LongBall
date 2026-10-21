@@ -5,6 +5,7 @@ node_modules/
 dist/
 dist-web/
 dist-production-review/
+dist-pages/
 playwright-report/
 test-results/
 coverage/

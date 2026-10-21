@@ -25,3 +25,21 @@ subprocess.run(
 )
 validate(yaml.safe_load((root / 'contracts/openapi.yaml').read_text()))
 print('Full OpenAPI 3.1 validation passed')
+runtime_contract = root.parents[1] / 'apps/api/contracts/runtime.openapi.yaml'
+class UniqueRuntimeLoader(yaml.SafeLoader):
+    """Reject accidentally overwritten keys in the maintained extension."""
+
+
+def unique_mapping(loader, node, deep=False):
+    result = {}
+    for key_node, value_node in node.value:
+        key = loader.construct_object(key_node, deep=deep)
+        if key in result:
+            raise ValueError(f'Duplicate runtime contract key: {key}')
+        result[key] = loader.construct_object(value_node, deep=deep)
+    return result
+
+
+UniqueRuntimeLoader.add_constructor(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, unique_mapping)
+validate(yaml.load(runtime_contract.read_text(), Loader=UniqueRuntimeLoader))
+print('Runtime extension OpenAPI 3.1 validation passed')

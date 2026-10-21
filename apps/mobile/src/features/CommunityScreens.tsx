@@ -14,6 +14,8 @@ export interface CommunityScreensProps {
   actor: CommunityActor;
   section?: 'all' | 'photos' | 'invitations' | 'awards' | 'account';
   nowMs?: number;
+  /** A parent-validated game reference; current role/policy is checked again below. */
+  albumMatchId?: string;
 }
 
 /** Original vector illustrations only; this never renders an unapproved raw upload. */
@@ -56,10 +58,10 @@ function DialogSheet({ children }: { children: ReactNode }) {
 export function CommunityScreens(props: CommunityScreensProps) {
   // A changed account/context gets a fresh component. Private drafts/exports and
   // modal content must never survive a role switch for even a render.
-  return <CommunityContent key={`${props.actor.accountId}:${props.actor.role}:${props.actor.teamId}:${props.actor.seasonId}`} {...props} />;
+  return <CommunityContent key={`${props.actor.accountId}:${props.actor.role}:${props.actor.teamId}:${props.actor.seasonId}:${props.albumMatchId ?? 'all'}`} {...props} />;
 }
 
-function CommunityContent({ state, onChange, actor, section = 'all', nowMs }: CommunityScreensProps) {
+function CommunityContent({ state, onChange, actor, section = 'all', nowMs, albumMatchId }: CommunityScreensProps) {
   const [clock, setClock] = useState(() => nowMs ?? Date.now());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -83,6 +85,7 @@ function CommunityContent({ state, onChange, actor, section = 'all', nowMs }: Co
   const [exportPreview, setExportPreview] = useState<string | null>(null);
   const [quietStart, setQuietStart] = useState(state.preferences[actor.accountId]?.quietStart ?? '');
   const [quietEnd, setQuietEnd] = useState(state.preferences[actor.accountId]?.quietEnd ?? '');
+  const [chosenMatchId, setChosenMatchId] = useState<string | null>(null);
   useEffect(() => {
     if (nowMs !== undefined) return;
     const interval = setInterval(() => setClock(Date.now()), 10_000);
@@ -90,7 +93,11 @@ function CommunityContent({ state, onChange, actor, section = 'all', nowMs }: Co
   }, [nowMs]);
   const view = getCommunityView(state, actor, nowMs ?? clock);
   const included = (name: Exclude<CommunityScreensProps['section'], undefined | 'all'>) => section === 'all' || section === name;
-  const viewer = view.gallery.find(item => item.id === viewerId);
+  const permittedMatches = view.matches.filter(match => match.sharingAllowed);
+  const explicitMatchId = albumMatchId ?? chosenMatchId;
+  const selectedMatch = explicitMatchId ? permittedMatches.find(match => match.id === explicitMatchId) : permittedMatches.length === 1 ? permittedMatches[0] : null;
+  const gallery = explicitMatchId ? selectedMatch ? view.gallery.filter(photo => photo.matchId === selectedMatch.id) : [] : view.gallery;
+  const viewer = gallery.find(item => item.id === viewerId);
   const submit = async (command: CommunityCommand) => {
     if (busy) return false;
     setBusy(true); setError(null); setSaved(null);
@@ -120,6 +127,7 @@ function CommunityContent({ state, onChange, actor, section = 'all', nowMs }: Co
         <Switch accessibilityLabel={`${key} updates`} value={view.preferences[key]} disabled={busy} onValueChange={value => void run({ type: 'preferences.changed', preferences: { ...view.preferences, [key]: value } })} />
       </View>)}
       <Text style={s.muted}>Preferences are saved locally. Remote push delivery is not connected.</Text>
+      <Text style={s.label}>Quiet hours · Europe/London</Text>
       <TextInput style={s.input} value={quietStart} onChangeText={setQuietStart} placeholder="Quiet hours start HH:MM" placeholderTextColor={colors.inkMuted} accessibilityLabel="Quiet hours start" autoCapitalize="none" />
       <TextInput style={s.input} value={quietEnd} onChangeText={setQuietEnd} placeholder="Quiet hours end HH:MM" placeholderTextColor={colors.inkMuted} accessibilityLabel="Quiet hours end" autoCapitalize="none" />
       <Button label="Save quiet hours" variant="secondary" disabled={busy} onPress={() => void run({ type: 'preferences.changed', preferences: { ...view.preferences, quietStart: quietStart || null, quietEnd: quietEnd || null } })} />
@@ -194,7 +202,7 @@ function CommunityContent({ state, onChange, actor, section = 'all', nowMs }: Co
           <Text style={s.label}>Result due by: {dateTime(match.deadlineAtMs)}</Text>
           {match.finishQuality !== 'trusted' && <Notice tone="warning">Full-time evidence needs review. The award is blocked; the original deadline is retained.</Notice>}
           {match.award ? <View style={s.stack}><Pill>{match.award.result === 'no_valid_votes' ? 'No valid votes received' : match.award.winnerLabels.length > 1 ? 'Joint players’ players of the match' : 'Players’ player of the match'}</Pill>{match.award.winnerLabels.map(label => <Text key={label} style={s.winner}>{label}</Text>)}{match.award.deadlineMissed && <Notice tone="warning">Finalisation was late. The original full-time deadline has not been extended.</Notice>}<Text style={s.muted}>Finalised {dateTime(match.award.finalisedAtMs)}. This sealed result does not reopen when a report is edited.</Text></View> : <>
-            {match.cutoffSource === 'unresolved' && <Notice tone="warning">Q15 is still open: +59 minutes is a proposal. A manager can set a deliberate fictional cutoff below or close voting after full time. No automatic production cutoff is accepted here.</Notice>}
+            {match.cutoffSource === 'unresolved' && <Notice tone="warning">The voting cutoff is unresolved: +59 minutes is a proposal. A manager can set a deliberate fictional cutoff below or close voting after full time. No automatic production cutoff is accepted here.</Notice>}
             {actor.role === 'manager' && match.fullTimeAtMs !== null && match.finishQuality === 'trusted' && <>
               {match.cutoffSource === 'unresolved' && <><TextInput style={s.input} keyboardType="numeric" value={cutoffMinutes[match.id] ?? ''} onChangeText={value => setCutoffMinutes(previous => ({ ...previous, [match.id]: value }))} placeholder="Explicit demo cutoff: 1–59 minutes after full time" placeholderTextColor={colors.inkMuted} accessibilityLabel="Fictional ballot cutoff minutes" /><Button label="Set this fictional ballot cutoff" testID="community-configure-cutoff" variant="secondary" disabled={busy || !cutoffMinutes[match.id]?.trim()} onPress={() => void run({ type: 'award.cutoffConfigured', matchId: match.id, minutesAfterFullTime: Number(cutoffMinutes[match.id]) })} /></>}
               <Button label="Close voting and finalise award" testID="community-finalise-award" disabled={busy} onPress={() => setCloseAward(match.id)} />
@@ -210,17 +218,20 @@ function CommunityContent({ state, onChange, actor, section = 'all', nowMs }: Co
     </View>}
     {view.allowed && included('photos') && <View style={s.stack}>
       <Text style={s.heading}>Game albums</Text>
+      {selectedMatch && <Text style={s.label}>Selected game: {selectedMatch.label}</Text>}
+      {explicitMatchId && !selectedMatch && <Notice tone="warning">This game album is unavailable under the current role or competition policy.</Notice>}
+      {!albumMatchId && permittedMatches.length > 1 && <View style={s.wrap}>{permittedMatches.map(match => <Button key={match.id} label={`Choose game album ${match.label}`} variant={selectedMatch?.id === match.id ? 'primary' : 'secondary'} onPress={() => { setChosenMatchId(match.id); setViewerId(null); }} />)}</View>}
       <Notice>Fictional media rehearsal: original vector illustrations only. Real device picking, upload processing and safety scanning are not connected. No real children’s photos are used.</Notice>
-      <Text style={s.label}>{view.gallery.length} published {view.gallery.length === 1 ? 'illustration' : 'illustrations'}</Text>
-      {!view.gallery.length && <Card><Text style={s.body}>No published photos available to this account.</Text><Text style={s.muted}>Grant expiry, competition policy and hidden uploaders are checked for each item.</Text></Card>}
-      {view.gallery.map(photo => <Card key={photo.id}><Pressable accessibilityRole="button" accessibilityLabel={`Open ${photo.caption || 'published illustration'}`} onPress={() => setViewerId(photo.id)}><FictionalImage art={photo.art} /></Pressable><Text style={s.label}>{photo.matchLabel}</Text><Text style={s.muted}>{dateTime(photo.playedAtMs)} · {photo.uploaderLabel}</Text><Text style={s.body}>{photo.caption}</Text><Button label="Open illustration and safety actions" variant="secondary" onPress={() => setViewerId(photo.id)} /></Card>)}
+      {(!explicitMatchId || selectedMatch) && <Text style={s.label}>{gallery.length} published {gallery.length === 1 ? 'illustration' : 'illustrations'}</Text>}
+      {!gallery.length && (!explicitMatchId || selectedMatch) && <Card><Text style={s.body}>No published photos available to this account.</Text><Text style={s.muted}>Grant expiry, competition policy and hidden uploaders are checked for each item.</Text></Card>}
+      {gallery.map(photo => <Card key={photo.id}><Pressable accessibilityRole="button" accessibilityLabel={`Open ${photo.caption || 'published illustration'}`} onPress={() => setViewerId(photo.id)}><FictionalImage art={photo.art} /></Pressable><Text style={s.label}>{photo.matchLabel}</Text><Text style={s.muted}>{dateTime(photo.playedAtMs)} · {photo.uploaderLabel}</Text><Text style={s.body}>{photo.caption}</Text><Button label="Open illustration and safety actions" variant="secondary" onPress={() => setViewerId(photo.id)} /></Card>)}
       {actor.role !== 'spectator' && <Card>
         <Text style={s.heading}>Prepare a submission</Text>
-        <Text style={s.muted}>Use the first fictional completed match. Players submit for review; managers prepare a draft and publish it explicitly.</Text>
+        <Text style={s.muted}>{selectedMatch ? `For ${selectedMatch.label}.` : 'Choose a permitted game album first.'} Players submit for review; managers prepare a draft and publish it explicitly.</Text>
         <View style={s.wrap}>{(['pitch', 'ball', 'cones'] as const).map(value => <Pressable key={value} accessibilityRole="radio" accessibilityLabel={`Choose ${value} illustration`} accessibilityState={{ checked: art === value }} onPress={() => setArt(value)} style={[s.artOption, art === value && s.choiceSelected]}><FictionalImage art={value} small /><Text style={s.label}>{value}</Text></Pressable>)}</View>
         <TextInput style={s.input} value={caption} onChangeText={setCaption} maxLength={160} placeholder="Optional caption · no personal details" placeholderTextColor={colors.inkMuted} accessibilityLabel="Illustration caption" />
         <View style={s.settingRow}><Text style={[s.body, { flex: 1 }]}>I reviewed this illustration and the content rules.</Text><Switch accessibilityLabel="Content policy reviewed" value={policyAcknowledged} onValueChange={setPolicyAcknowledged} /></View>
-        <Button label={actor.role === 'manager' ? 'Save unpublished manager draft' : 'Submit illustration for approval'} testID="community-submit-photo" disabled={busy || !policyAcknowledged || !view.matches.length} onPress={() => void run({ type: 'photo.submitted', photoId: randomUUID(), matchId: view.matches[0].id, art, caption, policyAcknowledged: true })} />
+        <Button label={actor.role === 'manager' ? 'Save unpublished manager draft' : 'Submit illustration for approval'} testID="community-submit-photo" disabled={busy || !policyAcknowledged || !selectedMatch} onPress={() => { if (selectedMatch) void run({ type: 'photo.submitted', photoId: randomUUID(), matchId: selectedMatch.id, art, caption, policyAcknowledged: true }); }} />
       </Card>}
       {actor.role !== 'spectator' && <Card><Text style={s.heading}>My submissions</Text>
         {!view.submissions.length && <Text style={s.body}>No submissions yet.</Text>}

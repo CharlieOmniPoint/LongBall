@@ -1,8 +1,16 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   AppState,
   Image,
   Platform,
+  Switch,
   StyleSheet,
   Text,
   TextInput,
@@ -26,13 +34,7 @@ import {
   type PreparationSeason,
   type PreparationState,
 } from "@longball/application/preparation";
-import type {
-  HistoricalResultInput,
-  RecordsCommand,
-  selectMatchReport,
-  selectParticipationReport,
-  selectSeasonResults,
-} from "@longball/application/records";
+import type { RecordsCommand } from "@longball/application/records";
 import {
   LongBallServiceClient,
   ServiceError,
@@ -49,10 +51,19 @@ import {
   readWorkspaceValue,
   sameWorkspaceBinding,
   workspaceBindingIsCurrent,
+  workspaceNeedsProtectedOutbox,
   workspaceSessionAllows,
   type BoundWorkspaceValue,
   type WorkspaceBinding,
 } from "@longball/application/workspace-boundary";
+import {
+  albumScopeKey,
+  resolveAlbumSelection,
+  selectAlbum,
+  type AlbumScope,
+  type AlbumSelection,
+} from "@longball/application/album-selection";
+import { assertStaticReviewApiAddress } from "@longball/application/static-review";
 import { base64Url } from "@longball/application/security";
 import { MediaUploadClient } from "../platform/media-client";
 import { randomUUID } from "../platform/id";
@@ -69,6 +80,32 @@ import { colors, typography } from "../ui/tokens";
 import { PreparationScreens } from "./PreparationScreens";
 import { ServicePanel, type ServicePanelProps } from "./ServicePanel";
 import { MediaUpload } from "./MediaUpload";
+import { ConnectedAlbums } from "./ConnectedAlbums";
+import {
+  ConnectedMatchCentre,
+  type ConnectedMatchCentreDto,
+} from "./ConnectedMatchCentre";
+import {
+  ConnectedRecordsScreens,
+  type ConnectedRecordsDto,
+  type ConnectedRecordsCommand,
+  type ConnectedExportRequest,
+} from "./ConnectedRecordsScreens";
+import {
+  ConnectedSeasonRollover,
+  type ConnectedSeasonOptions,
+} from "./ConnectedSeasonRollover";
+import {
+  ConnectedClubConfiguration,
+  type ConnectedConfigurationDto,
+} from "./ConnectedClubConfiguration";
+import type {
+  ConnectedStaffDto,
+  ConnectedStaffCommand,
+} from "./ConnectedStaffPanel";
+import type { SeasonRolloverCommand } from "@longball/application/season-service";
+import { deliverReportExport } from "../platform/report-export";
+import { assertReportExportAccess } from "../platform/report-export-access";
 import {
   WorkspaceOutboxBridge,
   type WorkspaceOutboxPort,
@@ -83,6 +120,12 @@ export interface ConnectedWorkspaceProps {
   teamId?: string;
   seasonId?: string;
   onControllerState?: ServicePanelProps["onControllerState"];
+  invitationDestination?: { teamId: string; seasonId: string; code: string };
+  onPrepareChildActivation?: (scope: {
+    teamId: string;
+    seasonId: string;
+    playerId: string;
+  }) => void;
 }
 type Connection = {
   baseUrl: string;
@@ -95,12 +138,7 @@ type Identity = {
   serverTime: string;
 };
 type CommunityDto = ReturnType<typeof getCommunityView> & { revision: number };
-type RecordsDto = {
-  revision: number;
-  results: ReturnType<typeof selectSeasonResults>;
-  participation: ReturnType<typeof selectParticipationReport>;
-  matches: ReturnType<typeof selectMatchReport>[];
-};
+type RecordsDto = ConnectedRecordsDto;
 interface OwnPreparationDto {
   kind: "player-preparation";
   revision: number;
@@ -154,12 +192,26 @@ type CommunityPayload = CommunityCommand extends infer C
     : never
   : never;
 type Tab =
+  | "centre"
   | "schedule"
   | "team"
   | "settings"
+  | "seasons"
   | "reports"
   | "community"
   | "controller";
+function chooseMembership(
+  rows: Membership[],
+  preferred: WorkspaceBinding["role"] | null,
+): Membership | undefined {
+  if (preferred) return rows.find((item) => item.role === preferred);
+  return (
+    rows.find((item) => item.role === "manager") ??
+    rows.find((item) => item.role === "player") ??
+    rows.find((item) => item.role === "spectator") ??
+    rows.find((item) => item.role === "administrator")
+  );
+}
 interface PendingRequest {
   path: string;
   key: string;
@@ -180,8 +232,8 @@ const failureText = (error: unknown) =>
   error instanceof Error
     ? error.message
     : "The service request could not complete.";
-const duration = (ms: number) =>
-  `${Math.floor(ms / 60_000)}:${String(Math.floor((ms % 60_000) / 1000)).padStart(2, "0")}`;
+// Service handlers read fresh authority time after awaited network/vault work.
+const serviceActionTime = () => Date.now();
 const dateTime = (ms: number | null) =>
   ms === null ? "Not established" : new Date(ms).toLocaleString("en-GB");
 
@@ -190,9 +242,15 @@ export function ConnectedWorkspace(props: ConnectedWorkspaceProps) {
   const allowSynthetic =
     props.allowSynthetic ??
     process.env.EXPO_PUBLIC_ENVIRONMENT !== "production";
+  const staticBrowser =
+    Platform.OS === "web" && process.env.EXPO_PUBLIC_REVIEW_STATIC === "1";
   const [baseUrl, setBaseUrl] = useState(
     process.env.EXPO_PUBLIC_API_BASE_URL ||
-      (Platform.OS === "web" ? "/" : "http://127.0.0.1:4310"),
+      (staticBrowser
+        ? ""
+        : Platform.OS === "web"
+          ? "/"
+          : "http://127.0.0.1:4310"),
   );
   const [mode, setMode] = useState<Connection["mode"]>("oidc");
   const [account, setAccount] = useState("synthetic-manager-1");
@@ -206,6 +264,14 @@ export function ConnectedWorkspace(props: ConnectedWorkspaceProps) {
           Open the team held by the service. Saved changes can be read on
           another connected device.
         </Text>
+        {staticBrowser && (
+          <Notice>
+            This lasting review link runs fictional journeys stored in this
+            browser. Connected service features need an explicit API address or
+            the separate temporary full-service link supplied for review. This
+            static site does not host the API.
+          </Notice>
+        )}
         <Text style={typography.label}>API URL</Text>
         <TextInput
           accessibilityLabel="Workspace API URL"
@@ -265,9 +331,9 @@ export function ConnectedWorkspace(props: ConnectedWorkspaceProps) {
           </Notice>
         )}
         <Text style={typography.muted}>
-          Browser review: use / with the combined app/API server. The standalone
-          API uses port 4310. A physical phone needs the development host
-          address or a USB port mapping.
+          {staticBrowser
+            ? "Paste the separately supplied full API address. The static review site address and / cannot be used as an API."
+            : "Browser review: use / with the combined app/API server. The standalone API uses port 4310. A physical phone needs the development host address or a USB port mapping."}
         </Text>
         {error && <Notice tone="error">{error}</Notice>}
         <Button
@@ -279,6 +345,11 @@ export function ConnectedWorkspace(props: ConnectedWorkspaceProps) {
                 throw new Error(
                   "Fictional API identities are disabled in this build.",
                 );
+              assertStaticReviewApiAddress(
+                baseUrl,
+                staticBrowser,
+                Platform.OS === "web" ? globalThis.location.origin : undefined,
+              );
               const validated = new LongBallServiceClient(baseUrl, async () => {
                 throw new Error("Not connected.");
               });
@@ -430,6 +501,9 @@ function WorkspaceSession({
     teamId: string;
     seasonId: string;
   } | null>(null);
+  const [roleChoice, setRoleChoice] = useState<WorkspaceBinding["role"] | null>(
+    null,
+  );
   const [preparationCache, setPreparation] =
     useState<BoundWorkspaceValue<PreparationState> | null>(null);
   const [ownCache, setOwn] =
@@ -438,6 +512,26 @@ function WorkspaceSession({
     useState<BoundWorkspaceValue<RecordsDto> | null>(null);
   const [communityCache, setCommunity] =
     useState<BoundWorkspaceValue<CommunityDto> | null>(null);
+  const [matchesCache, setMatches] = useState<BoundWorkspaceValue<
+    ConnectedMatchCentreDto[]
+  > | null>(null);
+  const [seasonCache, setSeasons] =
+    useState<BoundWorkspaceValue<ConnectedSeasonOptions> | null>(null);
+  const [configurationCache, setConfiguration] =
+    useState<BoundWorkspaceValue<ConnectedConfigurationDto> | null>(null);
+  const [staffCache, setStaff] =
+    useState<BoundWorkspaceValue<ConnectedStaffDto> | null>(null);
+  const [albumSelection, setAlbumSelection] = useState<AlbumSelection | null>(
+    null,
+  );
+  const [uploadRetained, setUploadRetained] = useState(false);
+  const uploadRetainedRef = useRef(false);
+  const albumKeyRef = useRef<string | null>(null);
+  const onUploadRetained = useCallback((active: boolean, scopeKey: string) => {
+    if (albumKeyRef.current !== scopeKey) return;
+    uploadRetainedRef.current = active;
+    setUploadRetained(active);
+  }, []);
   const [binding, setBinding] = useState<WorkspaceBinding | null>(null);
   const generation = useRef(0);
   const liveBinding = useRef<WorkspaceBinding | null>(null);
@@ -446,6 +540,7 @@ function WorkspaceSession({
     liveBinding.current = null;
   }, []);
   const [tab, setTab] = useState<Tab>("schedule");
+  const initialRoute = useRef(false);
   const [busy, setBusy] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
@@ -475,10 +570,7 @@ function WorkspaceSession({
         membershipTime,
       )
     : [];
-  const initialMembership =
-    verifiedMemberships.find((item) => item.role === "manager") ??
-    verifiedMemberships.find((item) => item.role === "player") ??
-    verifiedMemberships.find((item) => item.role === "spectator");
+  const initialMembership = chooseMembership(verifiedMemberships, null);
   const teamId =
     scopeChoice?.teamId ??
     requestedTeamId ??
@@ -498,23 +590,30 @@ function WorkspaceSession({
     (url: string, options: RequestInit) => Promise<Response>
   >(
     () => async (url, options) => {
+      const requestOptions = {
+        ...options,
+        headers: {
+          ...Object.fromEntries(new Headers(options.headers).entries()),
+          ...(roleChoice ? { "X-Longball-Role": roleChoice } : {}),
+        },
+      };
       if (connection.mode === "oidc") {
         const absolute =
           url.startsWith("/") && Platform.OS === "web"
             ? new URL(url, globalThis.location.origin).toString()
             : url;
-        return connectedFetch(absolute, options);
+        return connectedFetch(absolute, requestOptions);
       }
       return fetch(url, {
-        ...options,
+        ...requestOptions,
         redirect: "error",
         headers: {
-          ...Object.fromEntries(new Headers(options.headers).entries()),
+          ...requestOptions.headers,
           Authorization: `Bearer ${connection.account}`,
         },
       });
     },
-    [connection],
+    [connection, roleChoice],
   );
   const client = useMemo(
     () => new LongBallServiceClient(connection.baseUrl, authenticatedFetch),
@@ -590,10 +689,7 @@ function WorkspaceSession({
         membershipTime,
       ).filter((item) => item.teamId === teamId && item.seasonId === seasonId)
     : [];
-  const membership =
-    actor.find((item) => item.role === "manager") ??
-    actor.find((item) => item.role === "player") ??
-    actor.find((item) => item.role === "spectator");
+  const membership = chooseMembership(actor, roleChoice);
   const manager =
     membership?.role === "manager" &&
     binding?.teamId === teamId &&
@@ -605,7 +701,9 @@ function WorkspaceSession({
       membershipTime,
     );
   const expectedBinding =
-    binding?.teamId === teamId && binding?.seasonId === seasonId
+    binding?.teamId === teamId &&
+    binding?.seasonId === seasonId &&
+    binding?.role === membership?.role
       ? binding
       : null;
   const preparation = readWorkspaceValue(
@@ -639,8 +737,48 @@ function WorkspaceSession({
     identity?.memberships ?? [],
     membershipTime,
   );
+  const matches = readWorkspaceValue(
+    matchesCache,
+    expectedBinding,
+    identity?.principal ?? null,
+    identity?.memberships ?? [],
+    membershipTime,
+  );
+  const seasonOptions = readWorkspaceValue(
+    seasonCache,
+    expectedBinding,
+    identity?.principal ?? null,
+    identity?.memberships ?? [],
+    membershipTime,
+  );
+  const configuration = readWorkspaceValue(
+    configurationCache,
+    expectedBinding,
+    identity?.principal ?? null,
+    identity?.memberships ?? [],
+    membershipTime,
+  );
+  const staff = readWorkspaceValue(
+    staffCache,
+    expectedBinding,
+    identity?.principal ?? null,
+    identity?.memberships ?? [],
+    membershipTime,
+  );
+  const administrator =
+    membership?.role === "administrator" &&
+    workspaceBindingIsCurrent(
+      expectedBinding,
+      identity?.principal ?? null,
+      identity?.memberships ?? [],
+      membershipTime,
+    );
   const communityActor: CommunityActor | null =
-    identity && membership && teamId && seasonId
+    identity &&
+    membership &&
+    membership.role !== "administrator" &&
+    teamId &&
+    seasonId
       ? {
           accountId: identity.principal.accountId,
           teamId,
@@ -649,6 +787,46 @@ function WorkspaceSession({
           playerId: membership.playerId,
         }
       : null;
+
+  const albumScope: AlbumScope | null =
+    communityActor && identity
+      ? {
+          apiBaseUrl: `${absoluteApi}`,
+          accountId: identity.principal.accountId,
+          issuer: identity.principal.issuer,
+          subject: identity.principal.subject,
+          teamId: communityActor.teamId,
+          seasonId: communityActor.seasonId,
+          role: communityActor.role,
+          playerId: communityActor.playerId,
+        }
+      : null;
+  const albumKey = albumScope ? albumScopeKey(albumScope) : null;
+  // Keep the stable choice above refreshable DTO children; permission is resolved on every render.
+  useLayoutEffect(() => {
+    if (albumKey) albumKeyRef.current = albumKey;
+  }, [albumKey]);
+  const selectedAlbum =
+    albumScope && community
+      ? resolveAlbumSelection(
+          albumScope,
+          community.matches,
+          albumSelection,
+          community.allowed,
+        )
+      : null;
+  const openAlbum = (matchId: string) => {
+    try {
+      if (!albumScope || !community)
+        throw new Error("Refresh the current permitted game albums first.");
+      setAlbumSelection(
+        selectAlbum(albumScope, community.matches, matchId, community.allowed),
+      );
+      setTab("community");
+    } catch (cause) {
+      setErrors([failureText(cause)]);
+    }
+  };
 
   useEffect(() => {
     const timer = setInterval(() => setMembershipTime(Date.now()), 1_000);
@@ -678,6 +856,10 @@ function WorkspaceSession({
     setOwn(null);
     setRecords(null);
     setCommunity(null);
+    setMatches(null);
+    setSeasons(null);
+    setConfiguration(null);
+    setStaff(null);
     const nextIdentity = await client.me<Identity>();
     if (generation.current !== requestGeneration) return;
     if (
@@ -695,10 +877,7 @@ function WorkspaceSession({
       nextIdentity.memberships,
       Date.now(),
     );
-    const initial =
-      current.find((item) => item.role === "manager") ??
-      current.find((item) => item.role === "player") ??
-      current.find((item) => item.role === "spectator");
+    const initial = chooseMembership(current, null);
     const resolvedTeamId =
       scopeChoice?.teamId ??
       requestedTeamId ??
@@ -723,12 +902,20 @@ function WorkspaceSession({
       (item) =>
         item.teamId === resolvedTeamId && item.seasonId === resolvedSeasonId,
     );
-    const isManager = memberships.some((item) => item.role === "manager"),
-      isPlayer = memberships.some((item) => item.role === "player");
-    const chosen =
-      memberships.find((item) => item.role === "manager") ??
-      memberships.find((item) => item.role === "player") ??
-      memberships.find((item) => item.role === "spectator");
+    const chosen = chooseMembership(memberships, roleChoice);
+    const isManager = chosen?.role === "manager",
+      isPlayer = chosen?.role === "player",
+      isAdministrator = chosen?.role === "administrator";
+    if (!initialRoute.current && chosen) {
+      setTab(
+        isAdministrator
+          ? "settings"
+          : chosen.role === "spectator"
+            ? "centre"
+            : "schedule",
+      );
+      initialRoute.current = true;
+    }
     const ticket: WorkspaceBinding = {
       generation: requestGeneration,
       apiBaseUrl: absoluteApi,
@@ -783,33 +970,147 @@ function WorkspaceSession({
           )
         : null;
     const faults: string[] = [];
-    const tasks: Promise<void>[] = [
-      client
-        .request<CommunityDto>(scopedPath("community"))
-        .then(async (value) => {
-          const attached = await attach(value);
-          if (attached) setCommunity(attached);
-        })
-        .catch((cause) => {
-          if (generation.current === requestGeneration)
-            faults.push(`Community: ${failureText(cause)}`);
-        }),
-      client
-        .request<RecordsDto>(scopedPath("records"))
-        .then(async (reply) => {
-          const attached = await attach({
-            revision: reply.revision,
-            results: reply.results,
-            participation: reply.participation,
-            matches: reply.matches,
-          });
-          if (attached) setRecords(attached);
-        })
-        .catch((cause) => {
-          if (generation.current === requestGeneration)
-            faults.push(`Reports: ${failureText(cause)}`);
-        }),
-    ];
+    const readFault = (
+      section: string,
+      cause: unknown,
+      scopedPrivateList = false,
+    ) => {
+      if (generation.current !== requestGeneration) return;
+      faults.push(`${section}: ${failureText(cause)}`);
+      if (
+        scopedPrivateList &&
+        chosen &&
+        cause instanceof ServiceError &&
+        [401, 403, 404].includes(cause.status)
+      ) {
+        // An already attached parallel reply must close when this same authorised
+        // ticket receives a known scope denial. Individual photo/entity reads
+        // and a new account's invitation setup do not use this list-read gate.
+        invalidateRequests();
+        setBinding(null);
+        setPreparation(null);
+        setOwn(null);
+        setRecords(null);
+        setCommunity(null);
+        setMatches(null);
+        setSeasons(null);
+        setConfiguration(null);
+        setStaff(null);
+        setErrors([
+          ...faults,
+          "Private workspace views were closed because the service refused this scope. Refresh service views to verify current access. Retained requests remain unchanged.",
+        ]);
+      }
+    };
+    const tasks: Promise<void>[] = isAdministrator
+      ? []
+      : [
+          client
+            .request<CommunityDto>(scopedPath("community"))
+            .then(async (value) => {
+              const attached = await attach(value);
+              if (attached) setCommunity(attached);
+            })
+            .catch((cause) => readFault("Community", cause, true)),
+          client
+            .request<RecordsDto>(scopedPath("records"))
+            .then(async (reply) => {
+              if (
+                reply.results.visibilityScope !== ticket.role ||
+                (!isManager && (reply.editableState || reply.activeMatch))
+              )
+                throw new Error(
+                  "The service returned a report outside the selected role. The view was discarded.",
+                );
+              const attached = await attach({
+                revision: reply.revision,
+                results: reply.results,
+                participation: reply.participation,
+                matches: reply.matches,
+                ...(isManager
+                  ? {
+                      editableState: reply.editableState,
+                      activeMatch: reply.activeMatch,
+                      contexts: reply.contexts,
+                    }
+                  : {}),
+                playerLabels: reply.playerLabels,
+              });
+              if (attached) setRecords(attached);
+            })
+            .catch((cause) => readFault("Reports", cause, true)),
+        ];
+    if (!isAdministrator)
+      tasks.push(
+        client
+          .request<{ items: ConnectedMatchCentreDto[] }>(scopedPath("matches"))
+          .then(async (reply) => {
+            if (
+              reply.items.some(
+                (item) =>
+                  item.audience !== ticket.role ||
+                  (ticket.role !== "manager" && item.state),
+              )
+            )
+              throw new Error(
+                "The service returned match data outside the selected role. The view was discarded.",
+              );
+            const attached = await attach(reply.items);
+            if (attached) setMatches(attached);
+          })
+          .catch((cause) => readFault("Matches", cause, true)),
+      );
+    if (isManager || isAdministrator)
+      tasks.push(
+        client
+          .request<ConnectedSeasonOptions>(
+            scopedPath("seasons/rollover-options"),
+          )
+          .then(async (value) => {
+            const attached = await attach(value);
+            if (attached) setSeasons(attached);
+          })
+          .catch((cause) => {
+            if (generation.current === requestGeneration)
+              faults.push(`Seasons: ${failureText(cause)}`);
+          }),
+      );
+    if (isAdministrator)
+      tasks.push(
+        client
+          .request<ConnectedConfigurationDto>(scopedPath("configuration"))
+          .then(async (value) => {
+            const attached = await attach(value);
+            if (attached) setConfiguration(attached);
+          })
+          .catch((cause) => {
+            if (generation.current === requestGeneration)
+              faults.push(`Configuration: ${failureText(cause)}`);
+          }),
+      );
+    if (isAdministrator)
+      tasks.push(
+        client
+          .request<ConnectedStaffDto>(scopedPath("managers"))
+          .then(async (value) => {
+            if (
+              value.kind !== "manager-roster" ||
+              value.teamId !== ticket.teamId ||
+              value.seasonId !== ticket.seasonId ||
+              !Number.isSafeInteger(value.revision) ||
+              value.revision < 0
+            )
+              throw new Error(
+                "The staff roster differs from this authorised scope. It was discarded.",
+              );
+            const attached = await attach(value);
+            if (attached) setStaff(attached);
+          })
+          .catch((cause) => {
+            if (generation.current === requestGeneration)
+              faults.push(`Staff: ${failureText(cause)}`);
+          }),
+      );
     if (isManager)
       tasks.push(
         client
@@ -818,10 +1119,7 @@ function WorkspaceSession({
             const attached = await attach(value);
             if (attached) setPreparation(attached);
           })
-          .catch((cause) => {
-            if (generation.current === requestGeneration)
-              faults.push(`Preparation: ${failureText(cause)}`);
-          }),
+          .catch((cause) => readFault("Preparation", cause, true)),
       );
     if (!isManager && isPlayer)
       tasks.push(
@@ -835,10 +1133,7 @@ function WorkspaceSession({
             const attached = await attach(value);
             if (attached) setOwn(attached);
           })
-          .catch((cause) => {
-            if (generation.current === requestGeneration)
-              faults.push(`Own preparation: ${failureText(cause)}`);
-          }),
+          .catch((cause) => readFault("Own preparation", cause, true)),
       );
     await Promise.all(tasks);
     if (await stillCurrent()) setErrors(faults);
@@ -848,11 +1143,13 @@ function WorkspaceSession({
     requestedTeamId,
     requestedSeasonId,
     connection.mode,
+    roleChoice,
     absoluteApi,
     oidcSessionId,
     oidcAccountId,
     oidcIssuer,
     oidcSubject,
+    invalidateRequests,
   ]);
   useEffect(() => {
     let live = true;
@@ -891,7 +1188,7 @@ function WorkspaceSession({
         (request.body as { command?: { type?: string } }).command?.type ===
         "invite.accepted";
       const fresh = await client.me<Identity>();
-      const verifiedAtMs = Date.now();
+      const verifiedAtMs = serviceActionTime();
       if (
         !identity ||
         fresh.principal.accountId !== identity.principal.accountId ||
@@ -909,7 +1206,7 @@ function WorkspaceSession({
       if (
         connection.mode === "oidc" &&
         (!session ||
-          !workspaceSessionAllows(session, absoluteApi, Date.now()) ||
+          !workspaceSessionAllows(session, absoluteApi, serviceActionTime()) ||
           session?.sessionId !== oidcSessionId ||
           session.accountId !== fresh.principal.accountId ||
           session.issuer !== fresh.principal.issuer ||
@@ -931,7 +1228,7 @@ function WorkspaceSession({
             binding,
             fresh.principal,
             fresh.memberships,
-            Date.now(),
+            serviceActionTime(),
           )
         )
           throw new ServiceError(
@@ -955,7 +1252,7 @@ function WorkspaceSession({
             principal: fresh.principal,
             memberships: fresh.memberships,
             verifiedAtMs,
-            nowMs: Date.now(),
+            nowMs: serviceActionTime(),
             synthetic: connection.mode === "synthetic",
             session,
           }).bodyJson;
@@ -1087,11 +1384,14 @@ function WorkspaceSession({
       | PreparationCommand
       | OwnCommand
       | CommunityCommand
-      | RecordsCommand,
+      | RecordsCommand
+      | ConnectedRecordsCommand
+      | SeasonRolloverCommand
+      | ConnectedStaffCommand,
     label: string,
     destination?: { teamId: string; seasonId: string },
   ): Promise<boolean> => {
-    if (lock.current || pending) return false;
+    if (lock.current || pending || uploadRetainedRef.current) return false;
     lock.current = true;
     setBusy(true);
     setErrors([]);
@@ -1114,7 +1414,7 @@ function WorkspaceSession({
             binding,
             identity?.principal ?? null,
             identity?.memberships ?? [],
-            Date.now(),
+            serviceActionTime(),
           ))
       )
         throw new Error(
@@ -1173,7 +1473,7 @@ function WorkspaceSession({
       "Community change",
     );
   const reload = async () => {
-    if (lock.current || pending) return;
+    if (lock.current || pending || uploadRetainedRef.current) return;
     lock.current = true;
     setBusy(true);
     try {
@@ -1186,11 +1486,97 @@ function WorkspaceSession({
       setBusy(false);
     }
   };
+  const switchScope = (
+    destination: { teamId: string; seasonId: string },
+    role: WorkspaceBinding["role"] | null = null,
+  ) => {
+    if (uploadRetainedRef.current) return;
+    setAlbumSelection(null);
+    albumKeyRef.current = null;
+    uploadRetainedRef.current = false;
+    setUploadRetained(false);
+    invalidateRequests();
+    setBinding(null);
+    setPreparation(null);
+    setOwn(null);
+    setRecords(null);
+    setCommunity(null);
+    setMatches(null);
+    setSeasons(null);
+    setConfiguration(null);
+    setStaff(null);
+    setServiceMatchId("");
+    setRoleChoice(role);
+    setScopeChoice(destination);
+    setTab(
+      role === "administrator"
+        ? "settings"
+        : role === "spectator"
+          ? "centre"
+          : "schedule",
+    );
+  };
+  const exportReport = async (
+    request: ConnectedExportRequest,
+  ): Promise<string> => {
+    const source = liveBinding.current;
+    if (!source)
+      throw new Error("Open a current authorised workspace before exporting.");
+    const parameters = new URLSearchParams({
+      kind: request.kind,
+      format: request.format,
+      expectedProjectionVersion: String(request.expectedProjectionVersion),
+      ...(request.matchId ? { matchId: request.matchId } : {}),
+    });
+    const artifact = await client.request<{
+      kind: string;
+      fileName: string;
+      contentType: string;
+      body: string;
+      teamId: string;
+      seasonId: string;
+      audience: string;
+      projectionVersion: number;
+    }>(`${path("records/export")}&${parameters}`);
+    const assertAccess = () =>
+      assertReportExportAccess({
+        source,
+        currentBinding: () => liveBinding.current,
+        principal: identity?.principal ?? null,
+        memberships: identity?.memberships ?? [],
+        nowMs: Date.now,
+        session:
+          connection.mode === "oidc"
+            ? {
+                requiredSessionId: oidcSessionId ?? "",
+                read: getConnectedSessionSummary,
+              }
+            : null,
+      });
+    if (
+      artifact.kind !== "records-export" ||
+      artifact.teamId !== source.teamId ||
+      artifact.seasonId !== source.seasonId ||
+      artifact.audience !== source.role ||
+      artifact.projectionVersion !== request.expectedProjectionVersion
+    )
+      throw new Error(
+        "The export receipt differs from the requested audience or projection. The file was discarded.",
+      );
+    return deliverReportExport(artifact, assertAccess);
+  };
   const disabled =
+    uploadRetained ||
     busy ||
     Boolean(pending) ||
     !storageChecked ||
-    (protectedOutbox &&
+    (workspaceNeedsProtectedOutbox(
+      protectedOutbox,
+      expectedBinding,
+      identity?.principal ?? null,
+      identity?.memberships ?? [],
+      membershipTime,
+    ) &&
       (!currentOutbox?.state ||
         currentOutbox.busy ||
         currentOutbox.retryPending ||
@@ -1221,13 +1607,50 @@ function WorkspaceSession({
               : "strong authentication not verified"}
           </Text>
         )}
+        {actor.filter((item) =>
+          ["manager", "player", "spectator", "administrator"].includes(
+            item.role,
+          ),
+        ).length > 1 &&
+          teamId &&
+          seasonId && (
+            <View style={s.row}>
+              {actor
+                .filter((item) =>
+                  ["manager", "player", "spectator", "administrator"].includes(
+                    item.role,
+                  ),
+                )
+                .map((item) => (
+                  <Button
+                    key={item.role}
+                    label={`Use ${item.role} experience`}
+                    variant={
+                      membership?.role === item.role ? "primary" : "secondary"
+                    }
+                    disabled={disabled}
+                    onPress={() =>
+                      switchScope(
+                        { teamId, seasonId },
+                        item.role as WorkspaceBinding["role"],
+                      )
+                    }
+                  />
+                ))}
+            </View>
+          )}
         {verifiedMemberships.length > 1 && (
           <View style={s.row}>
             {Array.from(
               new Map(
                 verifiedMemberships
                   .filter((item) =>
-                    ["manager", "player", "spectator"].includes(item.role),
+                    [
+                      "manager",
+                      "player",
+                      "spectator",
+                      "administrator",
+                    ].includes(item.role),
                   )
                   .map((item) => [`${item.teamId}:${item.seasonId}`, item]),
               ).values(),
@@ -1242,15 +1665,7 @@ function WorkspaceSession({
                 }
                 disabled={disabled}
                 onPress={() => {
-                  ++generation.current;
-                  liveBinding.current = null;
-                  setBinding(null);
-                  setPreparation(null);
-                  setOwn(null);
-                  setRecords(null);
-                  setCommunity(null);
-                  setServiceMatchId("");
-                  setScopeChoice({
+                  switchScope({
                     teamId: item.teamId,
                     seasonId: item.seasonId,
                   });
@@ -1258,6 +1673,26 @@ function WorkspaceSession({
               />
             ))}
           </View>
+        )}
+        {props.invitationDestination && (
+          <Card>
+            <Text style={typography.label}>Received season invitation</Text>
+            <Text style={typography.body}>
+              Review the invitation’s exact destination before accepting.
+              Opening this review does not grant access or send its code.
+            </Text>
+            <Button
+              label="Review received season invitation"
+              disabled={disabled}
+              onPress={() => {
+                const destination = props.invitationDestination!;
+                setInviteTeamId(destination.teamId);
+                setInviteSeasonId(destination.seasonId);
+                setInviteCode(destination.code);
+                setTab("community");
+              }}
+            />
+          </Card>
         )}
         {errors.map((error, index) => (
           <Notice key={`${index}:${error}`} tone="error">
@@ -1320,40 +1755,89 @@ function WorkspaceSession({
         <Button
           label={busy ? "Contacting service…" : "Refresh service views"}
           variant="secondary"
-          disabled={disabled}
+          disabled={busy || Boolean(pending) || uploadRetained}
           onPress={() => {
             void reload();
           }}
         />
         <View style={s.row} accessibilityRole="tablist">
           {(
-            [
-              ["schedule", manager ? "Schedule" : "My schedule"],
-              ...(manager
-                ? [
-                    ["team", "Squad"],
-                    ["settings", "Team settings"],
-                  ]
-                : []),
-              ["reports", "Reports"],
-              ["community", "Community"],
-              ...(manager && props.journal && props.deviceId
-                ? [["controller", "Controller"]]
-                : []),
-            ] as [Tab, string][]
+            (administrator
+              ? [
+                  ["settings", "Club and team"],
+                  ["seasons", "Seasons"],
+                ]
+              : [
+                  ["centre", "Match centre"],
+                  ["schedule", manager ? "Schedule" : "My schedule"],
+                  ...(manager
+                    ? [
+                        ["team", "Squad"],
+                        ["settings", "Team settings"],
+                        ["seasons", "Seasons"],
+                      ]
+                    : []),
+                  ["reports", "Reports"],
+                  ["community", "Community"],
+                  ...(manager && props.journal && props.deviceId
+                    ? [["controller", "Controller"]]
+                    : []),
+                ]) as [Tab, string][]
           ).map(([value, label]) => (
             <Button
               key={value}
               label={label}
               testID={`workspace-tab-${value}`}
               variant={tab === value ? "primary" : "secondary"}
-              onPress={() => setTab(value)}
+              disabled={disabled}
+              onPress={() => {
+                if (!uploadRetainedRef.current) setTab(value);
+              }}
             />
           ))}
         </View>
       </Card>
+      {tab === "centre" &&
+        membership &&
+        membership.role !== "administrator" &&
+        (matches ? (
+          <ConnectedMatchCentre
+            matches={matches}
+            observedAtMs={membershipTime}
+            audience={membership.role as ConnectedMatchCentreDto["audience"]}
+            busy={disabled}
+            onRefresh={() => {
+              void reload();
+            }}
+            onReports={() => setTab("reports")}
+            onPhotos={() => setTab("community")}
+          />
+        ) : (
+          <Notice>
+            Match updates are unavailable in this current authorised context.
+          </Notice>
+        ))}
       {(tab === "schedule" || tab === "team" || tab === "settings") &&
-        (manager && preparation ? (
+        (administrator && configuration ? (
+          <ConnectedClubConfiguration
+            key={`${configuration.team.id}:${configuration.revision}`}
+            value={configuration}
+            disabled={disabled}
+            staff={staff}
+            onStaffChange={(command) =>
+              mutate(
+                command.type === "manager.revoked"
+                  ? "managers/revoke"
+                  : "managers",
+                command,
+                "Staff assignment",
+              )
+            }
+            onChange={(command) =>
+              mutate("configuration", command, "Configuration change")
+            }
+          />
+        ) : manager && preparation ? (
           <PreparationScreens
             storage="service"
             state={preparation}
@@ -1362,6 +1846,17 @@ function WorkspaceSession({
               mutate("preparation", command, "Preparation change")
             }
             busy={disabled}
+            onPrepareRollover={() => setTab("seasons")}
+            onPrepareChildActivation={
+              props.onPrepareChildActivation && teamId && seasonId
+                ? (playerId) =>
+                    props.onPrepareChildActivation?.({
+                      teamId,
+                      seasonId,
+                      playerId,
+                    })
+                : undefined
+            }
             onOpenMatch={
               props.journal && props.deviceId
                 ? (fixtureId) => {
@@ -1387,13 +1882,69 @@ function WorkspaceSession({
               : "Preparation is unavailable for this account. Check the service message above."}
           </Notice>
         ))}
+      {tab === "seasons" &&
+        (seasonOptions && (manager || administrator) ? (
+          <ConnectedSeasonRollover
+            key={`${seasonOptions.sourceSeasonId}:${seasonOptions.revision}`}
+            options={seasonOptions}
+            disabled={disabled}
+            onSave={async (command) => {
+              const saved = await mutate("seasons", command, "New season");
+              if (saved && teamId && identity) {
+                const id = identity.principal.accountId;
+                const nextRole = command.managerAccountIds.includes(id)
+                  ? "manager"
+                  : command.administratorAccountIds.includes(id)
+                    ? "administrator"
+                    : command.playerAssignments.some(
+                          (item) => item.accountId === id,
+                        )
+                      ? "player"
+                      : null;
+                if (nextRole)
+                  switchScope(
+                    { teamId, seasonId: command.idForSeason },
+                    nextRole,
+                  );
+                else
+                  setNotice(
+                    `New season ${seasonOptions.nextSeason.label} was saved. Your account was not assigned a role there; source-season access remains separate.`,
+                  );
+              }
+              return saved;
+            }}
+          />
+        ) : (
+          <Notice>
+            Season assignment options are unavailable in this context. The
+            service checks administrator authority and recent stronger
+            authentication.
+          </Notice>
+        ))}
       {tab === "reports" &&
-        (membership && records ? (
-          <ConnectedReports
+        (membership && membership.role !== "administrator" && records ? (
+          <ConnectedRecordsScreens
             value={records}
-            manager={manager}
+            audience={membership.role as "manager" | "player" | "spectator"}
+            teamLabel={
+              preparation
+                ? `${preparation.team.name} ${preparation.team.ageGroup}`
+                : own
+                  ? `${own.team.name} ${own.team.ageGroup}`
+                  : (community?.teamLabel ?? "Team")
+            }
             disabled={disabled}
             onChange={(command) => mutate("records", command, "Result")}
+            onExport={exportReport}
+            onOpenAlbum={openAlbum}
+            onOpenController={
+              manager && props.journal && props.deviceId
+                ? (matchId) => {
+                    setServiceMatchId(matchId);
+                    setTab("controller");
+                  }
+                : undefined
+            }
           />
         ) : (
           <Notice>
@@ -1402,11 +1953,14 @@ function WorkspaceSession({
         ))}
       {tab === "community" && (
         <>
-          {community && communityActor ? (
+          {community && communityActor && albumScope ? (
             <ConnectedCommunity
               key={`${communityActor.accountId}:${communityActor.teamId}:${communityActor.seasonId}:${communityActor.role}`}
               value={community}
               actor={communityActor}
+              albumScope={albumScope}
+              albumSelection={albumSelection}
+              onSelectAlbum={setAlbumSelection}
               media={
                 new MediaUploadClient(
                   connection.baseUrl || "/",
@@ -1425,13 +1979,17 @@ function WorkspaceSession({
           {community?.allowed &&
             communityActor &&
             communityActor.role !== "spectator" &&
-            community.matches[0] && (
+            albumScope && (
               <MediaUpload
                 actor={communityActor}
                 apiBaseUrl={connection.baseUrl || "/"}
                 synthetic={connection.mode === "synthetic"}
                 allowLibraryPicker={props.allowSynthetic === false}
-                matchId={community.matches[0].id}
+                albumScope={albumScope}
+                matches={community.matches}
+                selection={selectedAlbum ? albumSelection : null}
+                allowed={community.allowed}
+                onRetainedChange={onUploadRetained}
                 onChanged={reload}
               />
             )}
@@ -1502,15 +2060,8 @@ function WorkspaceSession({
                   destination,
                 ).then((saved) => {
                   if (!saved) return;
-                  ++generation.current;
-                  liveBinding.current = null;
-                  setBinding(null);
-                  setPreparation(null);
-                  setOwn(null);
-                  setRecords(null);
-                  setCommunity(null);
-                  setServiceMatchId("");
-                  setScopeChoice(destination);
+                  setInviteCode("");
+                  switchScope(destination, "spectator");
                 });
               }}
             />
@@ -1623,8 +2174,15 @@ function OwnPreparation({
           {value.team.name} {value.team.ageGroup} · {value.season.label}
         </Text>
         <Text style={typography.body}>
+          Shirt {value.profile.shirtNumber ?? "not recorded"} · preferred foot:{" "}
+          {value.profile.foot.replaceAll("_", " ")} · manager-approved
+          positions:{" "}
+          {value.profile.eligiblePositions.join(", ") || "not recorded"}.
+        </Text>
+        <Text style={typography.body}>
           Choose three distinct positions in order. Goalkeeper eligibility is
-          approved separately by a manager.
+          approved separately by a manager. Changes apply to future preparation;
+          existing match snapshots retain their original profile and lineup.
         </Text>
         {preferences.map((selected, rank) => (
           <View style={s.stack} key={rank}>
@@ -1664,302 +2222,75 @@ function OwnPreparation({
         records. Your account can change its own reply; attendance is recorded
         by the manager.
       </Notice>
-      {value.fixtures.map((fixture) => (
-        <Card key={fixture.id}>
-          <Text style={typography.section}>
-            {fixture.homeAway === "away" ? "Away to" : "v"} {fixture.opponent}
-          </Text>
-          <Text style={typography.muted}>
-            {fixture.playedDate} · {fixture.kickoff ?? "Time to confirm"} ·{" "}
-            {fixture.venue} · {fixture.status}
-          </Text>
-          <Text style={typography.body}>
-            {fixture.selected ? "Selected by manager" : "Not selected"} · actual
-            attendance: {fixture.attendance.replaceAll("_", " ")}
-          </Text>
-          {fixture.status === "scheduled" ? (
-            responseButtons(fixture.response, (response) => {
-              void command({
-                type: "own.fixture_response_recorded",
-                fixtureId: fixture.id,
-                response,
-              });
-            })
-          ) : (
-            <Text style={typography.muted}>
-              Reply: {responseLabels[fixture.response]}
-            </Text>
-          )}
-        </Card>
-      ))}
-      {value.training.map((training) => (
-        <Card key={training.id}>
-          <Text style={typography.section}>Training · {training.date}</Text>
-          <Text style={typography.muted}>
-            {training.time ?? "Time to confirm"} · {training.venue} ·{" "}
-            {training.status}
-          </Text>
-          <Text style={typography.body}>
-            {training.expected
-              ? "Expected at this occurrence"
-              : "Not in this occurrence"}{" "}
-            · actual attendance: {training.attendance.replaceAll("_", " ")}
-          </Text>
-          {training.status === "scheduled" && training.expected ? (
-            responseButtons(training.response, (response) => {
-              void command({
-                type: "own.training_response_recorded",
-                trainingId: training.id,
-                response,
-              });
-            })
-          ) : (
-            <Text style={typography.muted}>
-              Reply: {responseLabels[training.response]}
-            </Text>
-          )}
-        </Card>
-      ))}
-    </View>
-  );
-}
-
-function ConnectedReports({
-  value,
-  manager,
-  disabled,
-  onChange,
-}: {
-  value: RecordsDto;
-  manager: boolean;
-  disabled: boolean;
-  onChange: (command: RecordsCommand) => Promise<boolean>;
-}) {
-  const [selected, setSelected] = useState<string | null>(null);
-  const [adding, setAdding] = useState(false);
-  const report = value.matches.find((item) => item?.matchId === selected);
-  return (
-    <View style={s.stack} testID="workspace-reports">
-      <Card>
-        <Text style={typography.section}>Service results</Text>
-        <Text style={typography.muted}>
-          Projection {value.results.projectionVersion} · as of{" "}
-          {value.results.asOf ?? "no completed recording"} ·{" "}
-          {value.results.visibilityScope}
-        </Text>
-        {value.results.suppressionReason && (
-          <Notice tone="warning">
-            {value.results.suppressionReason} Q21 is unresolved; this screen
-            cannot approve sharing.
-          </Notice>
-        )}
-        {value.results.totals && (
-          <Text style={typography.body}>
-            {value.results.totals.played} played · {value.results.totals.wins}{" "}
-            wins · {value.results.totals.draws} draws ·{" "}
-            {value.results.totals.losses} losses ·{" "}
-            {value.results.totals.goalsFor} for /{" "}
-            {value.results.totals.goalsAgainst} against
-          </Text>
-        )}
-        {value.results.rows.map((row) => (
-          <View key={row.id} style={s.divider}>
-            <Text style={typography.label}>
-              {row.playedDate} · {row.opponent}
-            </Text>
-            <Text style={typography.body}>
-              {row.finalScore
-                ? `${row.finalScore.for} – ${row.finalScore.against}`
-                : "Score not recorded"}{" "}
-              · {row.status} · {row.detailCompleteness.replaceAll("_", " ")}
-            </Text>
-            <Button
-              label={`Read service report for ${row.opponent}`}
-              variant="quiet"
-              onPress={() => setSelected(row.id)}
-            />
-          </View>
-        ))}
-        {manager && (
-          <Button
-            label="Add historical result to service"
-            variant="secondary"
-            disabled={disabled}
-            onPress={() => setAdding((current) => !current)}
-          />
-        )}
-      </Card>
-      {adding && manager && (
-        <HistoricalResultForm
-          disabled={disabled}
-          onSave={async (input) => {
-            const saved = await onChange({
-              type: "historical.add",
-              commandId: randomUUID(),
-              actor: "manager",
-              at: new Date().toISOString(),
-              recordId: randomUUID(),
-              input,
-            });
-            if (saved) setAdding(false);
-            return saved;
-          }}
-        />
-      )}
-      {report && (
-        <Card>
-          <Text style={typography.section}>
-            {report.playedDate} · {report.opponent}
-          </Text>
-          <Text style={typography.body}>
-            {report.score
-              ? `${report.score.for} – ${report.score.against}`
-              : (report.suppressionReason ?? "Score not recorded")}
-          </Text>
-          <Text style={typography.muted}>
-            {report.recordMode.replaceAll("_", " ")} ·{" "}
-            {report.detailCompleteness.replaceAll("_", " ")}
-          </Text>
-          {"participation" in report &&
-            report.participation?.map((row) => (
-              <Text key={row.playerId} style={typography.body}>
-                {row.playerId} · {duration(row.playedMs)} played · GK{" "}
-                {duration(row.positionMs.GK ?? 0)}
-              </Text>
-            ))}
-          <Button
-            label="Close service match report"
-            variant="quiet"
-            onPress={() => setSelected(null)}
-          />
-        </Card>
-      )}
-      <Card>
-        <Text style={typography.section}>
-          {manager ? "Squad participation" : "My participation"}
-        </Text>
-        {value.participation.reason && (
-          <Notice>{value.participation.reason}</Notice>
-        )}
-        {value.participation.rows.map((row) => (
-          <View key={row.playerId} style={s.divider}>
-            <Text style={typography.label}>{row.label}</Text>
-            <Text style={typography.body}>
-              {row.matchesWithParticipationRecorded > 0
-                ? `${duration(row.playingMs)} played · GK ${duration(row.goalkeeperMs)} · outfield ${duration(row.outfieldMs)}`
-                : "Playing time and positions: not recorded"}
-            </Text>
-            <Text style={typography.muted}>
-              Games attended {row.games.attendedCount}/
-              {row.games.attendanceRecordedCount} recorded · training{" "}
-              {row.training.attendedCount}/
-              {row.training.attendanceRecordedCount} recorded
-            </Text>
-            <Text style={typography.muted}>{row.coverageLabel}</Text>
-          </View>
-        ))}
-        {!value.participation.rows.length && !value.participation.reason && (
-          <Text style={typography.muted}>
-            No participation evidence returned.
-          </Text>
-        )}
-      </Card>
-    </View>
-  );
-}
-
-function HistoricalResultForm({
-  disabled,
-  onSave,
-}: {
-  disabled: boolean;
-  onSave: (input: HistoricalResultInput) => Promise<boolean>;
-}) {
-  const [date, setDate] = useState(""),
-    [opponent, setOpponent] = useState(""),
-    [goalsFor, setGoalsFor] = useState(""),
-    [goalsAgainst, setGoalsAgainst] = useState("");
-  const [homeAway, setHomeAway] =
-    useState<HistoricalResultInput["homeAway"]>("home");
-  const [fixtureClass, setFixtureClass] =
-    useState<HistoricalResultInput["fixtureClass"]>("unclassified");
-  return (
-    <Card>
-      <Text style={typography.section}>Record a past result</Text>
-      <Text style={typography.body}>
-        A summary result carries no invented lineups, minutes, attendance or
-        award window. Sharing remains manager only until its competition policy
-        is approved.
-      </Text>
-      {[
-        ["Played date (YYYY-MM-DD)", date, setDate],
-        ["Opponent", opponent, setOpponent],
-        ["Goals for", goalsFor, setGoalsFor],
-        ["Goals against", goalsAgainst, setGoalsAgainst],
-      ].map(([label, text, setter]) => (
-        <View key={label as string}>
-          <Text style={typography.label}>{label as string}</Text>
-          <TextInput
-            accessibilityLabel={`Service result ${label}`}
-            value={text as string}
-            onChangeText={setter as (value: string) => void}
-            style={s.input}
-          />
-        </View>
-      ))}
-      <View style={s.row}>
-        {(["home", "away", "neutral"] as const).map((option) => (
-          <Button
-            key={option}
-            label={option}
-            variant={homeAway === option ? "primary" : "secondary"}
-            disabled={disabled}
-            onPress={() => setHomeAway(option)}
-          />
-        ))}
-      </View>
-      <View style={s.row}>
-        {(["unclassified", "development", "friendly", "trophy"] as const).map(
-          (option) => (
-            <Button
-              key={option}
-              label={option}
-              variant={fixtureClass === option ? "primary" : "secondary"}
-              disabled={disabled}
-              onPress={() => setFixtureClass(option)}
-            />
+      {[...value.fixtures]
+        .sort((a, b) =>
+          `${a.playedDate} ${a.kickoff ?? ""}`.localeCompare(
+            `${b.playedDate} ${b.kickoff ?? ""}`,
           ),
-        )}
-      </View>
-      <Button
-        label="Save historical result to service"
-        disabled={
-          disabled ||
-          !opponent.trim() ||
-          !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
-          !/^\d{1,2}$/.test(goalsFor) ||
-          !/^\d{1,2}$/.test(goalsAgainst)
-        }
-        onPress={() => {
-          void onSave({
-            playedDate: date,
-            opponent: opponent.trim(),
-            homeAway,
-            fixtureClass,
-            recordedKickoff: null,
-            sameDayOrder: null,
-            status: "completed",
-            specialOutcome: "ordinary",
-            finalScore: {
-              for: Number(goalsFor),
-              against: Number(goalsAgainst),
-            },
-            halfTimeScore: null,
-            goals: [],
-          });
-        }}
-      />
-    </Card>
+        )
+        .map((fixture) => (
+          <Card key={fixture.id}>
+            <Text style={typography.section}>
+              {fixture.homeAway === "away" ? "Away to" : "v"} {fixture.opponent}
+            </Text>
+            <Text style={typography.muted}>
+              {fixture.playedDate} · {fixture.kickoff ?? "Time to confirm"} ·{" "}
+              {fixture.venue} · {fixture.status}
+            </Text>
+            <Text style={typography.body}>
+              {fixture.selected ? "Selected by manager" : "Not selected"} ·
+              actual attendance: {fixture.attendance.replaceAll("_", " ")}
+            </Text>
+            {fixture.status === "scheduled" ? (
+              responseButtons(fixture.response, (response) => {
+                void command({
+                  type: "own.fixture_response_recorded",
+                  fixtureId: fixture.id,
+                  response,
+                });
+              })
+            ) : (
+              <Text style={typography.muted}>
+                Reply: {responseLabels[fixture.response]}
+              </Text>
+            )}
+          </Card>
+        ))}
+      {[...value.training]
+        .sort((a, b) =>
+          `${a.date} ${a.time ?? ""}`.localeCompare(
+            `${b.date} ${b.time ?? ""}`,
+          ),
+        )
+        .map((training) => (
+          <Card key={training.id}>
+            <Text style={typography.section}>Training · {training.date}</Text>
+            <Text style={typography.muted}>
+              {training.time ?? "Time to confirm"} · {training.venue} ·{" "}
+              {training.status}
+            </Text>
+            <Text style={typography.body}>
+              {training.expected
+                ? "Expected at this occurrence"
+                : "Not in this occurrence"}{" "}
+              · actual attendance: {training.attendance.replaceAll("_", " ")}
+            </Text>
+            {training.status === "scheduled" && training.expected ? (
+              responseButtons(training.response, (response) => {
+                void command({
+                  type: "own.training_response_recorded",
+                  trainingId: training.id,
+                  response,
+                });
+              })
+            ) : (
+              <Text style={typography.muted}>
+                Reply: {responseLabels[training.response]}
+              </Text>
+            )}
+          </Card>
+        ))}
+    </View>
   );
 }
 
@@ -1967,20 +2298,36 @@ function ConnectedCommunity({
   value,
   actor,
   media,
+  albumScope,
+  albumSelection,
+  onSelectAlbum,
   disabled,
   onChange,
 }: {
   value: CommunityDto;
   actor: CommunityActor;
   media: MediaUploadClient;
+  albumScope: AlbumScope;
+  albumSelection: AlbumSelection | null;
+  onSelectAlbum: (selection: AlbumSelection | null) => void;
   disabled: boolean;
   onChange: (command: CommunityPayload) => Promise<boolean>;
 }) {
   const [cutoff, setCutoff] = useState("");
+  const [closingAward, setClosingAward] = useState<string | null>(null);
   const [reportReason, setReportReason] = useState("");
   const [confirmInvite, setConfirmInvite] = useState(false);
   const [viewed, setViewed] = useState<string[]>([]);
   const [photoAcknowledged, setPhotoAcknowledged] = useState(false);
+  const [quietStart, setQuietStart] = useState(
+    value.preferences.quietStart ?? "",
+  );
+  const [quietEnd, setQuietEnd] = useState(value.preferences.quietEnd ?? "");
+  const validQuietHours =
+    (!quietStart && !quietEnd) ||
+    (/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(quietStart) &&
+      /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(quietEnd) &&
+      quietStart !== quietEnd);
   return (
     <View style={s.stack} testID="workspace-community">
       <Card>
@@ -1992,11 +2339,81 @@ function ConnectedCommunity({
         {!value.allowed && (
           <Notice tone="warning">{value.accessMessage}</Notice>
         )}
-        <Notice tone="warning">
-          Q21 sharing policy is unresolved. Withheld match context, scores and
-          derived awards remain withheld. Accepted match finish evidence and an
-          approved policy are required before connected award registration.
-        </Notice>
+        {value.matches.some((match) => !match.sharingAllowed) && (
+          <Notice tone="warning">
+            The service withholds match context, scores and derived awards where
+            competition sharing is unapproved. Accepted match finish evidence
+            and an approved policy are required for connected award
+            registration.
+          </Notice>
+        )}
+      </Card>
+      <Card>
+        <Text style={typography.section}>My notification preferences</Text>
+        <Text style={typography.body}>
+          These choices control eligible service notifications. A saved
+          preference does not mean a message has been delivered; device
+          permission and an operational delivery provider are also required.
+        </Text>
+        {(["schedule", "match", "awards", "photos"] as const).map(
+          (category) => (
+            <View
+              key={category}
+              style={[s.row, { justifyContent: "space-between" }]}
+            >
+              <Text style={typography.label}>{category} updates</Text>
+              <Switch
+                accessibilityLabel={`Service ${category} updates`}
+                value={value.preferences[category]}
+                disabled={disabled}
+                onValueChange={(enabled) => {
+                  void onChange({
+                    type: "preferences.changed",
+                    preferences: { ...value.preferences, [category]: enabled },
+                  });
+                }}
+              />
+            </View>
+          ),
+        )}
+        <Text style={typography.label}>Quiet hours · Europe/London</Text>
+        <TextInput
+          accessibilityLabel="Service quiet hours start Europe/London"
+          placeholder="Start HH:MM"
+          value={quietStart}
+          onChangeText={setQuietStart}
+          style={s.input}
+          autoCapitalize="none"
+        />
+        <TextInput
+          accessibilityLabel="Service quiet hours end Europe/London"
+          placeholder="End HH:MM"
+          value={quietEnd}
+          onChangeText={setQuietEnd}
+          style={s.input}
+          autoCapitalize="none"
+        />
+        {!validQuietHours && (
+          <Notice tone="warning">
+            Choose two distinct HH:MM times or clear both fields. Use the
+            category switches to pause notifications all day.
+          </Notice>
+        )}
+        <Button
+          label="Save service quiet hours"
+          variant="secondary"
+          disabled={disabled || !validQuietHours}
+          onPress={() => {
+            void onChange({
+              type: "preferences.changed",
+              preferences: {
+                ...value.preferences,
+                quietStart: quietStart || null,
+                quietEnd: quietEnd || null,
+              },
+            });
+          }}
+        />
       </Card>
       {value.matches.map((match) => (
         <Card key={match.id}>
@@ -2084,6 +2501,41 @@ function ConnectedCommunity({
                         });
                       }}
                     />
+                    {closingAward === match.id ? (
+                      <>
+                        <Notice tone="warning">
+                          Closing seals the latest valid private choices and
+                          records a winner, joint winners or no valid votes. It
+                          cannot reopen voting or move the original finalisation
+                          deadline.
+                        </Notice>
+                        <Button
+                          label="Confirm service ballot close and finalise"
+                          disabled={disabled}
+                          onPress={() => {
+                            void onChange({
+                              type: "award.finalised",
+                              matchId: match.id,
+                            }).then((saved) => {
+                              if (saved) setClosingAward(null);
+                            });
+                          }}
+                        />
+                        <Button
+                          label="Keep service ballot open"
+                          variant="quiet"
+                          disabled={disabled}
+                          onPress={() => setClosingAward(null)}
+                        />
+                      </>
+                    ) : (
+                      <Button
+                        label="Review closing this service ballot"
+                        variant="secondary"
+                        disabled={disabled}
+                        onPress={() => setClosingAward(match.id)}
+                      />
+                    )}
                   </>
                 )}
             </>
@@ -2164,14 +2616,25 @@ function ConnectedCommunity({
           ))}
         </Card>
       )}
-      <Card>
-        <Text style={typography.section}>Service photo gallery</Text>
-        {!value.gallery.length && (
-          <Text style={typography.muted}>
-            No published photos are visible in this service view.
-          </Text>
+      <ConnectedAlbums
+        scope={albumScope}
+        allowed={value.allowed}
+        matches={value.matches}
+        photos={value.gallery}
+        selection={albumSelection}
+        onSelect={onSelectAlbum}
+        disabled={disabled}
+        renderThumbnail={(photo) => (
+          <RemotePhoto
+            key={`${photo.id}:${photo.version}:thumbnail`}
+            client={media}
+            photoId={photo.id}
+            revision={photo.version}
+            mode="gallery"
+            variant="thumbnail"
+          />
         )}
-        {value.gallery.map((photo) => (
+        renderPhoto={(photo) => (
           <View key={photo.id} style={s.divider}>
             <Text style={typography.label}>{photo.matchLabel}</Text>
             <Text style={typography.body}>{photo.caption}</Text>
@@ -2231,8 +2694,8 @@ function ConnectedCommunity({
               />
             )}
           </View>
-        ))}
-      </Card>
+        )}
+      />
       {value.submissions.length > 0 && (
         <Card>
           <Text style={typography.section}>My service submissions</Text>
@@ -2432,12 +2895,14 @@ function RemotePhoto({
   photoId,
   revision,
   mode,
+  variant = "display",
   onViewed,
 }: {
   client: MediaUploadClient;
   photoId: string;
   revision: number;
   mode: "own" | "gallery" | "review";
+  variant?: "thumbnail" | "display";
   onViewed?: () => void;
 }) {
   const [uri, setUri] = useState<string | null>(null);
@@ -2450,7 +2915,9 @@ function RemotePhoto({
         label={
           busy
             ? "Checking current image access…"
-            : "View authorised service image"
+            : variant === "thumbnail"
+              ? "View authorised thumbnail"
+              : "View authorised service image"
         }
         variant="secondary"
         disabled={busy}
@@ -2461,7 +2928,7 @@ function RemotePhoto({
           setError(null);
           setUri(null);
           void client
-            .image(photoId, revision, "display", mode)
+            .image(photoId, revision, variant, mode)
             .then((bytes) => {
               const encoded = base64Url(bytes)
                 .replaceAll("-", "+")
@@ -2486,7 +2953,7 @@ function RemotePhoto({
             accessibilityLabel={`Authorised service photo revision ${revision}`}
             style={{
               width: "100%",
-              height: 240,
+              height: variant === "thumbnail" ? 120 : 240,
               resizeMode: "contain",
               backgroundColor: colors.bench,
             }}

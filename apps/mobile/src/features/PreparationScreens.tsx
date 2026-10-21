@@ -36,6 +36,8 @@ export interface PreparationScreensProps {
   busy?: boolean;
   error?: string | null;
   storage?: "journal" | "service";
+  onPrepareRollover?: () => void;
+  onPrepareChildActivation?: (playerId: string) => void;
 }
 type Payload = PreparationCommand extends infer Command
   ? Command extends PreparationCommand
@@ -106,6 +108,8 @@ function PreparationContent({
   busy = false,
   error,
   storage = "journal",
+  onPrepareRollover,
+  onPrepareChildActivation,
 }: PreparationScreensProps) {
   const [editor, setEditor] = useState<Editor>(null);
   const [selectedEvent, setSelectedEvent] = useState<{
@@ -472,6 +476,14 @@ function PreparationContent({
                 variant="secondary"
                 onPress={() => setEditor({ type: "profile", value: profile })}
               />
+              {onPrepareChildActivation && (
+                <Button
+                  label={`Prepare sign-in activation for ${profile.displayName}`}
+                  variant="secondary"
+                  disabled={disabled}
+                  onPress={() => onPrepareChildActivation(profile.playerId)}
+                />
+              )}
               <Button
                 label={`Archive ${profile.displayName}`}
                 variant="quiet"
@@ -646,7 +658,11 @@ function PreparationContent({
             icon="calendar"
             variant="secondary"
             disabled={disabled}
-            onPress={() => setEditor({ type: "rollover" })}
+            onPress={() =>
+              onPrepareRollover
+                ? onPrepareRollover()
+                : setEditor({ type: "rollover" })
+            }
           />
           <Notice tone="warning">
             Rollover preserves past team-season records. Spectator access needs

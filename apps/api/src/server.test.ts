@@ -464,9 +464,44 @@ describe('durable preparation, records, community and own privacy requests', () 
     const stored = client.api.store.document<{ matches: { id: string }[] }>(SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId, 'community');
     expect(stored.matches.some(match => match.id === 'manufactured-finish')).toBe(false);
   });
+  it('serves an administrator-only scoped staff roster and acknowledges revisioned staff retries',async()=>{
+    const client=await start();const path=`${teamUrl}/managers`;
+    expect((await client.call(path,{token:'synthetic-manager-2'})).status).toBe(404);
+    expect((await client.call(path,{token:'synthetic-account-player-01'})).status).toBe(404);
+    expect((await client.call(path,{role:'manager'})).status).toBe(404);
+    const roster=await client.call(path,{token:'synthetic-admin',role:'administrator'});expect(roster.status).toBe(200);
+    expect(roster.body).toMatchObject({kind:'manager-roster',revision:0,maximumManagers:4,activeTeamManagerCount:4,canMutate:true});
+    expect((roster.body.managers as unknown[])).toHaveLength(4);const serialized=JSON.stringify(roster.body);expect(serialized).not.toContain('synthetic-player');expect(serialized).not.toContain('synthetic-account-manager-5');expect(serialized).not.toContain('synthetic-account-other-manager');expect(serialized).not.toContain('subject');
+    client.api.store.database.prepare("INSERT INTO memberships(account_id,team_id,season_id,role) VALUES(?,?,?,'manager')").run('synthetic-account-manager-4',SYNTHETIC_IDS.teamId,'fictional-other-season');
+    const key=randomUUID(),body={command:{id:key,type:'manager.revoked',expectedRevision:0,accountId:'synthetic-account-manager-4',reason:'Explicit departure from this season only',confirmRevocation:true}};
+    const revoked=await client.call(`${path}/revoke`,{token:'synthetic-admin',role:'administrator',key,body});expect(revoked.status).toBe(200);expect(revoked.body).toMatchObject({commandId:key,revision:1,remainingActiveTeamSeasons:['fictional-other-season']});
+    expect(await client.call(`${path}/revoke`,{token:'synthetic-admin',role:'administrator',key,body})).toEqual(revoked);
+    const refreshed=await client.call(path,{token:'synthetic-admin'});expect(refreshed.body.activeTeamManagerCount).toBe(4);expect((refreshed.body.managers as {accountId:string;status:string;otherActiveSeasonIds:string[]}[]).find(item=>item.accountId==='synthetic-account-manager-4')).toMatchObject({status:'revoked',otherActiveSeasonIds:['fictional-other-season']});
+    const stale=randomUUID();expect((await client.call(path,{token:'synthetic-admin',key:stale,body:{command:{id:stale,type:'manager.assigned',expectedRevision:0,accountId:'synthetic-account-manager-4'}}})).body.code).toBe('STALE_REVISION');
+    expect((await client.call(path,{token:'synthetic-admin',body:{accountId:'synthetic-account-manager-5'}})).body.code).toBe('MANAGER_LIMIT');
+    client.api.store.database.prepare("UPDATE accounts SET adult_verified=0 WHERE id='synthetic-account-admin'").run();expect((await client.call(path,{token:'synthetic-admin'})).status).toBe(403);
+  });
+  it('captures explicitly confirmed own privacy scopes, deduplicates pending business requests and retains uncertain history',async()=>{
+    const client=await start(),path='/v1/privacy/requests',token='synthetic-account-player-01';
+    expect((await client.call(path,{token,body:{kind:'leave_team'}})).status).toBe(400);
+    expect((await client.call(path,{token,body:{kind:'delete_account'}})).status).toBe(400);
+    expect((await client.call(path,{token,body:{kind:'leave_team',teamId:'synthetic-other-team',seasonId:SYNTHETIC_IDS.seasonId,confirmLeave:true}})).status).toBe(404);
+    expect((await client.call(path,{token,body:{kind:'export',scope:'all_memberships',confirmAllMemberships:true,accountId:'synthetic-account-player-02'}})).status).toBe(400);
+    client.api.store.database.prepare("INSERT INTO memberships(account_id,team_id,season_id,role,player_id,revoked_at) VALUES(?,?,?,'player',?,?)").run(token,SYNTHETIC_IDS.teamId,'fictional-revoked-season','synthetic-player-01',now-1);
+    const global={kind:'export',scope:'all_memberships',confirmAllMemberships:true},key=randomUUID();const first=await client.call(path,{token,key,body:global});expect(first.status).toBe(200);expect(first.body).toMatchObject({scope:{type:'all_memberships'},fulfilled:false,erased:false});expect(first.body.affectedMemberships).toHaveLength(2);
+    expect(await client.call(path,{token,key,body:global})).toEqual(first);expect((await client.call(path,{token,body:global})).body).toEqual(first.body);
+    expect((await client.call(path,{token,key,body:{kind:'delete_account',scope:'all_memberships',confirmAllMemberships:true}})).body.code).toBe('IDEMPOTENCY_CONFLICT');
+    const leave={kind:'leave_team',teamId:SYNTHETIC_IDS.teamId,seasonId:SYNTHETIC_IDS.seasonId,confirmLeave:true},leaveKey=randomUUID();const scoped=await client.call(path,{token,key:leaveKey,body:leave});expect(scoped.body).toMatchObject({scope:{type:'team_season',teamId:SYNTHETIC_IDS.teamId,seasonId:SYNTHETIC_IDS.seasonId},verificationRequired:true});
+    expect(client.api.store.database.prepare('SELECT COUNT(*) AS n FROM privacy_requests').get()).toEqual({n:2});
+    client.api.store.database.prepare("UPDATE memberships SET revoked_at=? WHERE account_id=? AND season_id=?").run(now,token,SYNTHETIC_IDS.seasonId);
+    expect((await client.call(path,{token,key:leaveKey,body:leave})).status).toBe(404);
+    const listed=await client.call(path,{token});expect(listed.body.memberships).toHaveLength(2);expect((listed.body.items as {requestId:string;affectedMemberships:{status:string}[]}[]).find(item=>item.requestId===scoped.body.requestId)?.affectedMemberships[0].status).toBe('active');
+    expect((await client.call(path,{token:'synthetic-account-player-02'})).body.items).toEqual([]);
+    expect(client.api.store.database.prepare('SELECT status FROM accounts WHERE id=?').get(token)).toEqual({status:'active'});
+  });
   it('captures own export/deletion requests without erasing records or approving retention', async () => {
     const client = await start();
-    const requested = await client.call('/v1/privacy/requests', { token: 'synthetic-account-player-01', body: { kind: 'delete_account' } });
+    const requested = await client.call('/v1/privacy/requests', { token: 'synthetic-account-player-01', body: { kind: 'delete_account',scope:'all_memberships',confirmAllMemberships:true } });
     expect(requested.status).toBe(200); expect(requested.body).toMatchObject({ status: 'pending_verification_and_policy', erased: false, verificationRequired: true });
     expect((await client.call('/v1/privacy/requests', { token: 'synthetic-account-player-02' })).body.items).toHaveLength(0);
     expect(client.api.store.database.prepare("SELECT status FROM accounts WHERE id='synthetic-account-player-01'").get()).toEqual({ status: 'active' });

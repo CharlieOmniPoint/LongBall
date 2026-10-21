@@ -1,4 +1,4 @@
-import type { Membership, Principal } from './access';
+import { assertAdultAuthority, assertTeamRole, type Membership, type Principal } from './access';
 import { workspaceBindingIsCurrent, workspaceSessionAllows, type WorkspaceBinding, type WorkspaceSessionAccess } from './workspace-boundary';
 
 /** Local acknowledgement uncertainty only. A queued vote is never a counted vote. */
@@ -62,7 +62,7 @@ function apiIdentity(value: string): string {
 function scope(binding: WorkspaceBinding | WorkspaceOutboxScope): WorkspaceOutboxScope {
   assert(record(binding));
   assert(text(binding.accountId) && text(binding.issuer, 1024) && text(binding.subject, 512) && text(binding.teamId) && text(binding.seasonId));
-  assert(['manager', 'player', 'spectator'].includes(binding.role));
+  assert(['administrator', 'manager', 'player', 'spectator'].includes(binding.role));
   assert(binding.role === 'player' ? text(binding.playerId) : binding.playerId === null);
   return { apiBaseUrl: apiIdentity(binding.apiBaseUrl), accountId: binding.accountId, issuer: binding.issuer, subject: binding.subject, teamId: binding.teamId, seasonId: binding.seasonId, role: binding.role, playerId: binding.playerId };
 }
@@ -85,7 +85,10 @@ export function createWorkspaceOutbox(binding: WorkspaceBinding | WorkspaceOutbo
 function assertPath(path: unknown, value: WorkspaceOutboxScope): asserts path is string {
   assert(text(path, 2048));
   const prefix = `/v1/teams/${encodeURIComponent(value.teamId)}/`;
-  assert(['preparation', 'preparation/own', 'community', 'records'].some(section => path === `${prefix}${section}?seasonId=${encodeURIComponent(value.seasonId)}`));
+  assert(['preparation', 'preparation/own', 'community', 'records', 'seasons', 'configuration', 'managers', 'managers/revoke'].some(section => path === `${prefix}${section}?seasonId=${encodeURIComponent(value.seasonId)}`));
+  const staff = path.startsWith(`${prefix}managers?`) || path.startsWith(`${prefix}managers/revoke?`);
+  if (staff) assert(value.role === 'administrator');
+  if (value.role === 'administrator') assert(path.startsWith(`${prefix}configuration?`) || path.startsWith(`${prefix}seasons?`) || staff);
   if (value.role === 'player') assert(path.startsWith(`${prefix}preparation/own?`) || path.startsWith(`${prefix}community?`));
   if (value.role === 'spectator') assert(path.startsWith(`${prefix}community?`));
 }
@@ -120,11 +123,22 @@ function serializeBody(body: unknown, requestKey: string): string {
   assert(utf8Size(encoded) <= 262_144);
   return encoded;
 }
+function assertStaffCommand(path: string, bodyJson: string, owner: WorkspaceOutboxScope): void {
+  const prefix = `/v1/teams/${encodeURIComponent(owner.teamId)}/`;
+  const assign = path.startsWith(`${prefix}managers?`), revoke = path.startsWith(`${prefix}managers/revoke?`);
+  const command = (JSON.parse(bodyJson) as { command: Record<string, unknown> }).command;
+  if (!assign && !revoke) { assert(command.type !== 'manager.assigned' && command.type !== 'manager.revoked'); return; }
+  exactFields(command, revoke ? ['id', 'expectedRevision', 'type', 'accountId', 'reason', 'confirmRevocation'] : ['id', 'expectedRevision', 'type', 'accountId']);
+  assert(time(command.expectedRevision) && typeof command.accountId === 'string' && /^[A-Za-z0-9_-]{1,150}$/.test(command.accountId));
+  assert(command.type === (assign ? 'manager.assigned' : 'manager.revoked'));
+  if (revoke) assert(command.confirmRevocation === true && text(command.reason, 500) && command.reason.trim().length >= 5);
+}
 function validateRequest(value: unknown, owner: WorkspaceOutboxScope): asserts value is WorkspaceOutboxRequest {
   assert(record(value)); exactFields(value, ['path', 'key', 'bodyJson', 'label', 'createdAtMs', 'status', 'lastAttemptAtMs', 'lastFailure']); assertPath(value.path, owner);
   assert(key(value.key) && text(value.label, 100) && time(value.createdAtMs));
   assert(typeof value.bodyJson === 'string' && utf8Size(value.bodyJson) <= 262_144);
   assert(serializeBody(JSON.parse(value.bodyJson), value.key) === value.bodyJson);
+  assertStaffCommand(value.path, value.bodyJson, owner);
   assert(['awaiting_receipt', 'uncertain', 'access_blocked'].includes(value.status as string));
   assert(value.lastAttemptAtMs === null || time(value.lastAttemptAtMs));
   if (value.lastFailure !== null) {
@@ -154,6 +168,7 @@ export function enqueueWorkspaceRequest(state: WorkspaceOutboxState, binding: Wo
   validateWorkspaceOutbox(state); assert(sameScope(state.scope, scope(binding)) && time(nowMs));
   assertPath(input.path, state.scope); assert(key(input.key) && text(input.label, 100));
   const bodyJson = serializeBody(input.body, input.key);
+  assertStaffCommand(input.path, bodyJson, state.scope);
   if (state.pending) {
     assert(state.pending.key === input.key && state.pending.path === input.path && state.pending.bodyJson === bodyJson && state.pending.label === input.label);
     return state;
@@ -168,6 +183,10 @@ export function authorizeWorkspaceReplay(state: WorkspaceOutboxState, auth: Work
   assert(state.pending && sameScope(state.scope, scope(auth.binding)) && time(auth.nowMs) && time(auth.verifiedAtMs));
   assert(auth.verifiedAtMs <= auth.nowMs && auth.nowMs - auth.verifiedAtMs <= 30_000);
   assert(workspaceBindingIsCurrent(auth.binding, auth.principal, auth.memberships, auth.nowMs));
+  if (['seasons', 'managers', 'managers/revoke'].some(section => state.pending!.path === `/v1/teams/${encodeURIComponent(state.scope.teamId)}/${section}?seasonId=${encodeURIComponent(state.scope.seasonId)}`)) {
+    assertTeamRole(auth.principal, auth.memberships, state.scope.teamId, state.scope.seasonId, ['administrator'], auth.nowMs);
+    assertAdultAuthority(auth.principal, true, auth.nowMs);
+  }
   if (!auth.synthetic) {
     assert(workspaceSessionAllows(auth.session, state.scope.apiBaseUrl, auth.nowMs));
     assert(auth.session?.accountId === state.scope.accountId && auth.session.issuer === state.scope.issuer && auth.session.subject === state.scope.subject);

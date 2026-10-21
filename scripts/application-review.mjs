@@ -62,6 +62,7 @@ async function scenario(name, work) {
   if (scenarioFilter && !name.startsWith(scenarioFilter)) return;
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' });
   let page;
+  context.on('page', opened => { page ??= opened; });
   try { page = await open(context); const detail = await work(page, context); await screenshot(page, name); results.push({ name, status: 'passed', detail }); }
   catch (failure) { if (page) await page.screenshot({ path: path.join(output, `${name}-failed.png`), animations: 'disabled' }).catch(() => {}); results.push({ name, status: 'failed', error: failure.message }); }
   finally { await context.close(); }

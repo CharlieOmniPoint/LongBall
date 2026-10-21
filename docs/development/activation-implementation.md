@@ -87,17 +87,22 @@ knowing an account UUID confers recovery authority.
 
 ## Provider and release decisions still open
 
-`ActivationProvider` is a contract with a deterministic in-memory fixture in
-tests. No real provider activation, email delivery, household verification,
-recovery-code issuance or credential has been exercised. A generic Keycloak
-Admin password-reset endpoint does not establish a safe username-only
-household activation flow. This implementation does not label it as one.
-Before writing a real adapter, verify the supported maintained provider flow
-for disabled username-only provisioning, token-bound credential setup without
-child email, cancellation/tombstones, independently verified completion and
-once-only recovery material. If Keycloak requires a custom authenticator/action
-token provider or SPI, review that explicitly rather than inventing an Admin
-REST flow. A provider without these capabilities leaves activation unavailable.
+`ActivationProvider` now has a server-only Keycloak HTTP adapter and a pinned
+Keycloak 26.8.1 fictional trial extension. Actual HTTPS tests exercised disabled
+username-only provisioning, provider password and recovery-code setup,
+cancellation of an already-open obsolete form after reissue, hashed provider
+completion evidence, action-token replay refusal, separate child PKCE sign-in,
+and adult TOTP with fresh password+OTP AMR. The combined trial also passed through
+the actual PostgreSQL API with a restricted runtime role, verifying the child
+classification and manager-denial boundary. This is not email delivery,
+independent household verification, production-provider selection or phone proof.
+See [the identity trial instructions](../../infra/identity/README.md).
+
+Keycloak required a custom action-token/required-action extension; its official
+SPIs are internal and may change without notice. The exact version is pinned and
+requires ongoing compatibility testing. A generic Admin password-reset call is
+not used as household activation. A provider without the guarded capabilities
+leaves activation unavailable.
 
 The agreed verified household delivery process, Q05 verification owner/evidence,
 Q09 data/lifecycle policy, Q10 operator/owner, global-account linking approval,
@@ -112,9 +117,10 @@ Token-hash and failed-operation retention remains an explicit unresolved
 lifecycle decision; no automatic deletion policy is silently selected. These
 tables use a separate `lb_activation_schema` version and the development store's
 transaction/backup mechanism. They do not change `PRAGMA user_version`. A
-production PostgreSQL migration, external identity-database restore comparison,
-rate/abuse controls at deployment and provider/household device tests remain
-required. API responses must retain no-store/no-referrer handling and tokens,
+PostgreSQL implementation uses its own transactional feature migration and a
+SELECT-only runtime verification mode; actual read-only transaction initialization
+was tested. External identity-database restore comparison, deployment rate/abuse
+controls and provider/household device tests remain required. API responses must retain no-store/no-referrer handling and tokens,
 provider URLs, proof bodies and credentials must stay out of access logs and
 analytics.
 
@@ -128,4 +134,8 @@ cancellation failures, an in-flight cancellation race, token expiry/replay,
 provider completion evidence, prevention of reactivating a disabled account,
 exact-ID link/recovery capture and current-authority checks after an external
 call. The provider fixture proves these service contracts; it is not proof that
-a deployed identity provider supports them.
+a deployed identity provider supports them. Separately, the actual PostgreSQL
+suite passed five tests, the Keycloak transport fixtures passed four, destination
+parsing passed ten, and the real pinned provider/API harness passed nine journey
+checks. The identity README gives the exact reproduction commands and records
+which evidence remains missing.

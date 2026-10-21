@@ -36,10 +36,12 @@ import {
 } from "@longball/application/preparation";
 import {
   reduceRecords,
+  selectMatchReport,
   type RecordsCommand,
 } from "@longball/application/records";
 import {
   syntheticCommunityActors,
+  getCommunityView,
   type CommunityRole,
   type CommunityState,
 } from "@longball/application/community";
@@ -47,6 +49,9 @@ import { randomUUID } from "./src/platform/id";
 import { useApplication } from "./src/useApplication";
 import { PreparationScreens } from "./src/features/PreparationScreens";
 import { RecordsScreens } from "./src/features/RecordsScreens";
+import { ReportCommunityCard } from "./src/features/ReportCommunityCard";
+import { composeReportCommunity } from "@longball/application/report-community";
+import { resolveAlbumSelection, selectAlbum, type AlbumSelection, type AlbumScope } from "@longball/application/album-selection";
 import { CommunityScreens } from "./src/features/CommunityScreens";
 import { LiveEventsPanel } from "./src/features/LiveEventsPanel";
 import { OwnProfile, PlayerExperience } from "./src/features/PlayerExperience";
@@ -134,6 +139,7 @@ function LongBall() {
   const [bulkBusy, setBulkBusy] = useState(false);
   const [probe, setProbe] = useState<string | null>(null);
   const [alertStatus, setAlertStatus] = useState<string | null>(null);
+  const [localAlbumSelection, setLocalAlbumSelection] = useState<AlbumSelection | null>(null);
   const nav: { screen: Screen; label: string; icon: IconName }[] =
     role === "manager"
       ? managerNav
@@ -158,6 +164,9 @@ function LongBall() {
       }
     : null;
   const records = app?.recordsBySeason[app.preparation.activeSeasonId];
+  const localCommunityView = app && actor ? getCommunityView(app.community, actor, model.sample.wallTimeMs) : null;
+  const localAlbumScope: AlbumScope | null = actor ? { apiBaseUrl: 'https://fictional-review.invalid', accountId: actor.accountId, issuer: 'urn:longball:fictional-review', subject: actor.accountId, teamId: actor.teamId, seasonId: actor.seasonId, role: actor.role, playerId: actor.playerId ?? null } : null;
+  const localAlbum = localAlbumScope && localCommunityView ? resolveAlbumSelection(localAlbumScope, localCommunityView.matches, localAlbumSelection, localCommunityView.allowed) : null;
   const fixture = state?.config.fixture;
   const opponent = fixture?.opponent ?? "Maple FC";
   const capacity = state?.config.pitchPlaces ?? 7;
@@ -1361,6 +1370,18 @@ function LongBall() {
                     actor={role}
                     playerId={role === "player" ? defaultPlayerId : undefined}
                     busy={application.busy}
+                    renderMatchCommunity={matchId => {
+                      const report = selectMatchReport(records, matchId, { actor: role, playerId: role === 'player' ? defaultPlayerId : undefined, teamId: records.teamId, seasonId: records.seasonId }, state.config.fixture?.seasonId && state.config.fixture.seasonId !== app.preparation.activeSeasonId ? null : state);
+                      if (!report || !actor || !localCommunityView) return null;
+                      const summary = composeReportCommunity(report, actor.accountId, { accountId: actor.accountId, teamId: actor.teamId, seasonId: actor.seasonId, audience: actor.role, playerId: actor.playerId ?? null, revision: app.community.revision, view: localCommunityView });
+                      return <ReportCommunityCard matchId={matchId} value={summary} onOpenAlbum={selectedMatchId => {
+                        try {
+                          if (!localAlbumScope) throw new Error('Choose the current fictional team context.');
+                          setLocalAlbumSelection(selectAlbum(localAlbumScope, localCommunityView.matches, selectedMatchId, localCommunityView.allowed));
+                          navigate('photos');
+                        } catch (failure) { setLocalError(failure instanceof Error ? failure.message : 'This game album is unavailable in the current view.'); }
+                      }} />;
+                    }}
                   />
                 )}
               {screen === "account" && (
@@ -1398,6 +1419,7 @@ function LongBall() {
                     state={app.community}
                     actor={actor}
                     onChange={changeCommunity}
+                    albumMatchId={screen === 'photos' ? localAlbum?.id : undefined}
                     section={
                       screen === "photos"
                         ? "photos"

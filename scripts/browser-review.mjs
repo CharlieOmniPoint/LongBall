@@ -233,7 +233,9 @@ try {
   );
 
   const fixedTime = new Date("2026-10-24T09:00:00.000Z");
-  await page.clock.install({ time: fixedTime });
+  // Install before the pause target so protocol scheduling cannot put that
+  // target in the past on a busy review host.
+  await page.clock.install({ time: new Date(fixedTime.getTime() - 3_600_000) });
   await page.clock.pauseAt(fixedTime);
   await page.getByTestId("start-half").click();
   state = await waitState(

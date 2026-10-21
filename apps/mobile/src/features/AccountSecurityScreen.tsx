@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { Platform, StyleSheet, Text, TextInput, View } from "react-native";
 import type { OidcClientConfig } from "@longball/application/security";
+import type {
+  ActivationCompletionDestination,
+  ChildActivationDestination,
+} from "@longball/application/deep-links";
+import { ActivationPanel } from "./ActivationPanel";
+import { AccountRequestsScreen } from "./AccountRequestsScreen";
 import {
   defaultAuthRedirect,
   enrollLocalPin,
@@ -20,11 +26,17 @@ export interface AccountSecurityScreenProps {
   onSessionChange?: (session: ConnectedSessionSummary | null) => void;
   onEnterFictionalReview?: () => void;
   initialConfig?: Partial<OidcClientConfig>;
+  childActivationDestination?: ChildActivationDestination | null;
+  activationCompletion?: ActivationCompletionDestination | null;
+  onActivationCompletionConsumed?: () => void;
 }
 export function AccountSecurityScreen({
   onSessionChange,
   onEnterFictionalReview,
   initialConfig,
+  childActivationDestination,
+  activationCompletion,
+  onActivationCompletionConsumed,
 }: AccountSecurityScreenProps) {
   const [config, setConfig] = useState<OidcClientConfig>(() => ({
     issuer: initialConfig?.issuer ?? process.env.EXPO_PUBLIC_OIDC_ISSUER ?? "",
@@ -42,6 +54,7 @@ export function AccountSecurityScreen({
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [showRecovery, setShowRecovery] = useState(false);
+  const [showRequests, setShowRequests] = useState(false);
   const sessionCallback = useRef(onSessionChange);
   useEffect(() => {
     sessionCallback.current = onSessionChange;
@@ -173,9 +186,10 @@ export function AccountSecurityScreen({
           </>
         ) : (
           <Text style={s.body}>
-            Sign in through an existing OpenID provider and a configured
-            LongBall API. No provider or account is provisioned from this
-            screen.
+            Use the configured sign-in provider and LongBall service for your
+            team. Issued household activation can be completed in the section
+            below when that service has an explicitly configured activation
+            process.
           </Text>
         )}
         {session?.expired && (
@@ -317,6 +331,38 @@ export function AccountSecurityScreen({
           )}
         </Card>
       )}
+      <Card>
+        <Text style={s.section}>Account data and membership requests</Text>
+        <Text style={s.body}>
+          Request your global account data export or account deletion, or
+          request to leave one selected team and season. Verification and the
+          agreed policy are required; submission does not erase data or remove
+          access.
+        </Text>
+        {!connected && (
+          <Notice>
+            Sign in and unlock this account to submit or review its own service
+            requests. This route is available in the native app and browser.
+          </Notice>
+        )}
+        <Button
+          label={
+            showRequests
+              ? "Hide account requests"
+              : "Review account data and membership requests"
+          }
+          variant="secondary"
+          disabled={busy || !connected}
+          onPress={() => setShowRequests((value) => !value)}
+          testID="open-account-requests"
+        />
+      </Card>
+      {showRequests && session && connected && (
+        <AccountRequestsScreen
+          session={session}
+          onClose={() => setShowRequests(false)}
+        />
+      )}
       <Text style={s.section}>Configure secure sign-in</Text>
       <Field
         label="OIDC issuer (HTTPS)"
@@ -383,6 +429,19 @@ export function AccountSecurityScreen({
           />
         </Card>
       )}
+      <ActivationPanel
+        config={config}
+        session={session}
+        childDestination={childActivationDestination}
+        completion={activationCompletion}
+        onCompletionConsumed={(verified) => {
+          if (verified)
+            setNotice(
+              "Provider completion verified. Use full secure sign-in to obtain a separate application session.",
+            );
+          onActivationCompletionConsumed?.();
+        }}
+      />
       <Card>
         <Text style={s.section}>Activation and recovery</Text>
         <Text style={s.body}>
@@ -400,7 +459,8 @@ export function AccountSecurityScreen({
             Q05 remains open: who verifies household recovery and what evidence
             they use must be agreed. A manager cannot take over an existing
             global child account or reset its credential from this review. No
-            recovery request has been submitted.
+            request is submitted by opening these requirements. A pending
+            verification request never resets a credential.
           </Notice>
         )}
       </Card>

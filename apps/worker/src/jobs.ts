@@ -7,7 +7,7 @@ export function runDueJobs(store: DevelopmentStore, nowMs = Date.now(), maximum 
   const result = { completed: 0, retried: 0, failed: 0 };
   for (let number = 0; number < maximum; number++) {
     const job = store.transaction(() => {
-      const found = store.database.prepare("SELECT id,kind,payload_json,attempts FROM jobs WHERE (state='pending' AND due_at<=?) OR (state='leased' AND lease_until<=?) ORDER BY due_at,id LIMIT 1").get(nowMs, nowMs) as Job | undefined;
+      const found = store.database.prepare("SELECT id,kind,payload_json,attempts FROM jobs WHERE kind='award.finalise' AND ((state='pending' AND due_at<=?) OR (state='leased' AND lease_until<=?)) ORDER BY due_at,id LIMIT 1").get(nowMs, nowMs) as Job | undefined;
       if (!found) return null;
       store.database.prepare("UPDATE jobs SET state='leased',attempts=attempts+1,lease_until=? WHERE id=?").run(nowMs + 30_000, found.id);
       return { ...found, attempts: found.attempts + 1 };
@@ -22,6 +22,7 @@ export function runDueJobs(store: DevelopmentStore, nowMs = Date.now(), maximum 
         if (!match || match.voteCutoffAtMs === null || match.finishQuality !== 'trusted') throw new Error('AWARD_REVIEW_REQUIRED');
         const next = finalizeDueCommunityAwards(state, nowMs);
         store.saveDocument(payload.teamId, payload.seasonId, 'community', next);
+        for(const award of next.awards.filter(award=>!state.awards.some(previous=>previous.matchId===award.matchId)))store.enqueueNotifications(payload.teamId,payload.seasonId,'awards',award.matchId,`award-finalised-${award.matchId}-${award.voteCutoffAtMs}`);
         if (!next.awards.some(award => award.matchId === payload.matchId)) throw new Error('AWARD_NOT_DUE_OR_UNRESOLVED');
         store.database.prepare("UPDATE jobs SET state='completed',lease_until=NULL,last_error_code=NULL WHERE id=?").run(job.id);
       });

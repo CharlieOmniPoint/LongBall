@@ -1,0 +1,361 @@
+openapi: 3.1.0
+info:
+  title: LongBall implemented runtime extensions
+  version: 1.1.0
+  description: >-
+    Runtime additions beside the unchanged supplied canonical contract. Server
+    authorization, explicit policy decisions and native-device acceptance remain
+    independent. Ordinary mutations require the event contract version and an exact
+    stable idempotency key. Schema details for preparation and records commands are
+    maintained by their strict parsers in packages/application/src.
+servers:
+  - url: /v1
+security:
+  - bearerAuth: []
+paths:
+  /matches/{matchId}/clock/challenges:
+    parameters:
+      - {$ref: '#/components/parameters/MatchId'}
+      - {$ref: '#/components/parameters/ContractVersion'}
+      - {$ref: '#/components/parameters/IdempotencyKey'}
+      - {$ref: '#/components/parameters/ControllerToken'}
+    post:
+      operationId: issueControllerClockChallenge
+      summary: Establish a single-use server-observed continuous-clock challenge
+      description: Requires current controller authority and an explicitly configured trusted-time policy. Device wall time is never evidence.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [deviceId, controllerEpoch, continuityId]
+              properties:
+                deviceId: {$ref: '#/components/schemas/Identifier'}
+                controllerEpoch: {type: integer, minimum: 1}
+                continuityId: {$ref: '#/components/schemas/Identifier'}
+      responses:
+        '200': {description: Server-issued scoped challenge with original issue/expiry and policy identity}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '503': {$ref: '#/components/responses/PolicyRequired'}
+  /matches/{matchId}/clock/challenges/{challengeId}/acknowledge:
+    parameters:
+      - {$ref: '#/components/parameters/MatchId'}
+      - {name: challengeId, in: path, required: true, schema: {$ref: '#/components/schemas/Identifier'}}
+      - {$ref: '#/components/parameters/ContractVersion'}
+      - {$ref: '#/components/parameters/IdempotencyKey'}
+      - {$ref: '#/components/parameters/ControllerToken'}
+    post:
+      operationId: acknowledgeControllerClockChallenge
+      summary: Consume a challenge and persist a bounded continuous-clock mapping
+      description: >-
+        A challenge is consumed transactionally. Replaying the exact request key
+        returns its receipt. A new request cannot consume it again. The original
+        controller, device, epoch and continuity must still match.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [receivedMonotonicMs, sentMonotonicMs]
+              properties:
+                receivedMonotonicMs: {type: number, minimum: 0}
+                sentMonotonicMs: {type: number, minimum: 0}
+      responses:
+        '200': {description: 'Persisted mapping with original validity, offset interval and policy identity'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '503': {$ref: '#/components/responses/PolicyRequired'}
+  /teams/{teamId}/seasons/rollover-options:
+    parameters:
+      - {$ref: '#/components/parameters/TeamId'}
+      - {$ref: '#/components/parameters/SeasonId'}
+    get:
+      operationId: getSeasonRolloverOptions
+      summary: Read authorised current-season assignment candidates
+      responses:
+        '200': {description: 'Destination boundaries, existing destination, verified account bindings and current manager slots'}
+        '404': {$ref: '#/components/responses/Unavailable'}
+  /teams/{teamId}/seasons:
+    parameters:
+      - {$ref: '#/components/parameters/TeamId'}
+      - {$ref: '#/components/parameters/SeasonId'}
+      - {$ref: '#/components/parameters/ContractVersion'}
+      - {$ref: '#/components/parameters/IdempotencyKey'}
+    post:
+      operationId: createExplicitlyAssignedSeason
+      summary: Create the next season without rewriting source history or copying spectator grants
+      description: Requires a current administrator and recent stronger adult sign-in. At most four active manager accounts across the team; no automatic revocation or promotion.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [command]
+              properties:
+                command:
+                  type: object
+                  additionalProperties: false
+                  required: [id, type, expectedPreparationRevision, idForSeason, startYear, copyPlayers, managerAccountIds, administratorAccountIds, playerAssignments, confirmSpectatorRenewal]
+                  properties:
+                    id: {$ref: '#/components/schemas/Identifier'}
+                    type: {const: season.rolled_over}
+                    expectedPreparationRevision: {type: integer, minimum: 0}
+                    idForSeason: {$ref: '#/components/schemas/Identifier', maxLength: 80}
+                    startYear: {type: integer, minimum: 2020, maximum: 2100}
+                    copyPlayers: {type: boolean}
+                    managerAccountIds: {type: array, maxItems: 4, uniqueItems: true, items: {$ref: '#/components/schemas/Identifier'}}
+                    administratorAccountIds: {type: array, minItems: 1, uniqueItems: true, items: {$ref: '#/components/schemas/Identifier'}}
+                    playerAssignments:
+                      type: array
+                      items:
+                        type: object
+                        additionalProperties: false
+                        required: [accountId, playerId]
+                        properties:
+                          accountId: {$ref: '#/components/schemas/Identifier'}
+                          playerId: {$ref: '#/components/schemas/Identifier'}
+                    confirmSpectatorRenewal: {const: true}
+      responses:
+        '200': {description: 'Created destination season and explicit assignment counts, without source mutation'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /teams/{teamId}/configuration:
+    parameters:
+      - {$ref: '#/components/parameters/TeamId'}
+      - {$ref: '#/components/parameters/SeasonId'}
+    get:
+      operationId: getAdministratorConfiguration
+      summary: Read club/team configuration without granting private manager report access
+      responses:
+        '200': {description: Permitted configuration and formation templates only}
+        '404': {$ref: '#/components/responses/Unavailable'}
+    post:
+      operationId: updateAdministratorConfiguration
+      summary: Save an allowlisted configuration command under current administrator authority
+      parameters:
+        - {$ref: '#/components/parameters/ContractVersion'}
+        - {$ref: '#/components/parameters/IdempotencyKey'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object, required: [command], properties: {command: {type: object}}}
+      responses:
+        '200': {description: Fresh permitted configuration projection}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /teams/{teamId}/records/export:
+    parameters:
+      - {$ref: '#/components/parameters/TeamId'}
+      - {$ref: '#/components/parameters/SeasonId'}
+      - {$ref: '#/components/parameters/SelectedRole'}
+    get:
+      operationId: exportPermittedRecords
+      summary: Build an authorised JSON or CSV report from current policy and role
+      description: Players receive their own named participation only; spectators receive no named participation. Withheld scores also withhold revealing derived totals. Unknown history stays unknown. No raw state, ballots or manager audit is exported.
+      parameters:
+        - {name: kind, in: query, required: true, schema: {enum: [season, match]}}
+        - {name: format, in: query, required: true, schema: {enum: [json, csv]}}
+        - {name: matchId, in: query, schema: {$ref: '#/components/schemas/Identifier'}}
+        - {name: expectedProjectionVersion, in: query, schema: {type: integer, minimum: 0}}
+        - {name: expectedPolicyFingerprint, in: query, schema: {type: string}}
+      responses:
+        '200': {description: 'No-store JSON envelope containing the export body and its audience, policy, version, coverage and generation metadata'}
+  /matches/{matchId}/reconciliation:
+    parameters:
+      - {$ref: '#/components/parameters/MatchId'}
+    get:
+      operationId: getReconciliationEvidence
+      summary: Read retained original submissions and immutable reviewed proposals
+      responses:
+        '200': {description: 'Current accepted revision, original submission digests, prepared proposals and unresolved Q08 authority policy'}
+        '404': {$ref: '#/components/responses/Unavailable'}
+  /matches/{matchId}/reconciliation/proposals:
+    parameters:
+      - {$ref: '#/components/parameters/MatchId'}
+      - {$ref: '#/components/parameters/ContractVersion'}
+      - {$ref: '#/components/parameters/IdempotencyKey'}
+    post:
+      operationId: prepareReconciliationProposal
+      summary: Save a deliberate history review without changing accepted match history
+      description: >-
+        Original submissions and accepted-state digests bind the preview. Saving a
+        proposal does not approve the reviewer policy, consume canonical event
+        positions or remove quarantined evidence.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [proposalId, baseRevision, sourceSubmissionIds, reason, resolution, commands]
+              properties:
+                proposalId: {$ref: '#/components/schemas/Identifier'}
+                baseRevision: {type: integer, minimum: 0}
+                sourceSubmissionIds: {type: array, minItems: 1, uniqueItems: true, items: {$ref: '#/components/schemas/Identifier'}}
+                reason: {type: string, minLength: 1}
+                resolution: {enum: [duplicate, retain_conflict, import_confirmed_events]}
+                commands:
+                  type: array
+                  description: Strictly validated deliberate command intents without caller-supplied identity, sample or stream authority
+                  items: {type: object, required: [type], properties: {type: {type: string}}}
+      responses:
+        '200': {description: Immutable proposal receipt and server-recomputed conservation preview}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /matches/{matchId}/reconciliation/apply:
+    parameters:
+      - {$ref: '#/components/parameters/MatchId'}
+      - {$ref: '#/components/parameters/ContractVersion'}
+      - {$ref: '#/components/parameters/IdempotencyKey'}
+    post:
+      operationId: applyReconciliationWhenApproved
+      summary: Preserve a separate final authority gate for unresolved history
+      description: Currently returns Q08_AUTHORITY_UNAPPROVED. Assigned manager access and preparing a proposal do not approve final reconciliation authority.
+      responses:
+        '503': {$ref: '#/components/responses/PolicyRequired'}
+  /teams/{teamId}/managers:
+    parameters:
+      - {$ref: '#/components/parameters/TeamId'}
+      - {$ref: '#/components/parameters/SeasonId'}
+    get:
+      operationId: readScopedManagerRoster
+      summary: Read current season assignments and associated verified adult candidates
+      description: Requires current administrator authority and stronger adult authentication. No child fields or global account directory are returned. The distinct active team-wide manager cap is four; other-season assignments retain their place.
+      responses:
+        '200': {description: 'Authoritative revision, manager assignments, safe associated candidates and cap'}
+        '404': {$ref: '#/components/responses/Unavailable'}
+    post:
+      operationId: assignExplicitSeasonManager
+      summary: Assign a verified adult account in the selected team and season
+      description: Requires current administrator authority and recent stronger adult authentication. Revisioned commands are retained for exact retry; stale revisions do not overwrite newer staff changes.
+      parameters:
+        - {$ref: '#/components/parameters/ContractVersion'}
+        - {$ref: '#/components/parameters/IdempotencyKey'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/StaffCommand'}
+      responses:
+        '200': {description: Audited revisioned assignment receipt}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '404': {$ref: '#/components/responses/Unavailable'}
+  /teams/{teamId}/managers/revoke:
+    parameters:
+      - {$ref: '#/components/parameters/TeamId'}
+      - {$ref: '#/components/parameters/SeasonId'}
+      - {$ref: '#/components/parameters/ContractVersion'}
+      - {$ref: '#/components/parameters/IdempotencyKey'}
+    post:
+      operationId: revokeExplicitSeasonManager
+      summary: Audit an explicit manager revocation for the requested season
+      description: Requires a current administrator and recent stronger adult sign-in. Freezes affected controller writes. Other-season memberships are retained and may continue to occupy a manager slot.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/StaffCommand'}
+      responses:
+        '200': {description: Audited revisioned season-scoped revocation receipt}
+        '404': {$ref: '#/components/responses/Unavailable'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /privacy/requests:
+    get:
+      operationId: readOwnAccountPrivacyRequests
+      summary: Read only the signed-in account's requests and affected own memberships
+      description: Legacy unscoped leave requests require explicit scope. Duplicate retained requests remain visible for review. A pending request never establishes fulfilment, erasure or a retention decision.
+      responses:
+        '200': {description: Own-account request statuses and current own membership list}
+        '403': {$ref: '#/components/responses/Unavailable'}
+    post:
+      operationId: submitOwnScopedPrivacyRequest
+      summary: Submit an explicitly confirmed account export, account deletion or selected team-season leave request
+      description: Global requests include all memberships. Leave requests require a current own membership in the exact team and season. Durable pending-business-key deduplication preserves one canonical pending request across response loss and new transport keys; existing audit rows remain intact.
+      parameters:
+        - {$ref: '#/components/parameters/ContractVersion'}
+        - {$ref: '#/components/parameters/IdempotencyKey'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: object
+                  additionalProperties: false
+                  required: [kind, scope, confirmAllMemberships]
+                  properties:
+                    kind: {enum: [export, delete_account]}
+                    scope: {const: all_memberships}
+                    confirmAllMemberships: {const: true}
+                - type: object
+                  additionalProperties: false
+                  required: [kind, teamId, seasonId, confirmLeave]
+                  properties:
+                    kind: {const: leave_team}
+                    teamId: {$ref: '#/components/schemas/Identifier'}
+                    seasonId: {$ref: '#/components/schemas/Identifier'}
+                    confirmLeave: {const: true}
+      responses:
+        '200': {description: Pending request receipt with verificationRequired true and fulfilled/erased false}
+        '404': {$ref: '#/components/responses/Unavailable'}
+        '409': {$ref: '#/components/responses/Conflict'}
+
+components:
+  securitySchemes:
+    bearerAuth: {type: http, scheme: bearer, bearerFormat: JWT}
+  schemas:
+    Identifier: {type: string, pattern: '^[A-Za-z0-9_-]{1,150}$'}
+    StaffCommand:
+      type: object
+      additionalProperties: false
+      required: [command]
+      properties:
+        command:
+          oneOf:
+            - type: object
+              additionalProperties: false
+              required: [type, id, expectedRevision, accountId]
+              properties:
+                type: {const: manager.assigned}
+                id: {$ref: '#/components/schemas/Identifier'}
+                expectedRevision: {type: integer, minimum: 0}
+                accountId: {$ref: '#/components/schemas/Identifier'}
+            - type: object
+              additionalProperties: false
+              required: [type, id, expectedRevision, accountId, reason, confirmRevocation]
+              properties:
+                type: {const: manager.revoked}
+                id: {$ref: '#/components/schemas/Identifier'}
+                expectedRevision: {type: integer, minimum: 0}
+                accountId: {$ref: '#/components/schemas/Identifier'}
+                reason: {type: string, minLength: 1}
+                confirmRevocation: {const: true}
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code: {type: string}
+        message: {type: string}
+        retryable: {type: boolean}
+  parameters:
+    MatchId: {name: matchId, in: path, required: true, schema: {$ref: '#/components/schemas/Identifier'}}
+    TeamId: {name: teamId, in: path, required: true, schema: {$ref: '#/components/schemas/Identifier'}}
+    SeasonId: {name: seasonId, in: query, required: true, schema: {$ref: '#/components/schemas/Identifier'}}
+    SelectedRole: {name: X-Longball-Role, in: header, schema: {enum: [manager, player, spectator]}}
+    ContractVersion: {name: X-Api-Contract-Version, in: header, required: true, schema: {const: longball.events/1.1}}
+    IdempotencyKey: {name: Idempotency-Key, in: header, required: true, schema: {type: string, pattern: '^[A-Za-z0-9_-]{8,150}$'}}
+    ControllerToken: {name: X-Controller-Token, in: header, required: true, schema: {type: string}}
+  responses:
+    Conflict:
+      description: Current revision, controller authority, challenge validity or exact request differs; retain uncertain local work
+      content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}
+    PolicyRequired:
+      description: An explicit operator policy is absent; implementation does not approve it
+      content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}
+    Unavailable:
+      description: Current identity, membership or object scope does not permit this resource
+      content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}
