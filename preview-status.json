@@ -1,9 +1,9 @@
 {
-  "state": "stopped",
-  "url": "https://dennis-klein-initiatives-recipient.trycloudflare.com",
-  "sourceRevision": "423a434f15c864e8bc61cae5b7adfaa47f3578d5",
-  "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/39605988102",
-  "startedAt": "2026-10-21T13:16:03Z",
-  "expiresAt": "2026-10-21T14:16:03Z",
+  "state": "starting",
+  "url": "",
+  "sourceRevision": "9141b8a0a96c30ed53ab1cfebd284651e5fa2bc1",
+  "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/39615563105",
+  "startedAt": "2026-10-21T14:19:33Z",
+  "expiresAt": "",
   "audience": "Adult review of fictional Roma U10 data only"
 }
