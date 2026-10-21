@@ -251,12 +251,22 @@ jobs:
           import hashlib
           import os
           import pathlib
+          import re
 
           sqlite = pathlib.Path("../node_modules/expo-sqlite")
           for name in ["sqlite3.c", "sqlite3.h"]:
               assert (sqlite / "ios" / name).read_bytes() == (sqlite / "vendor/sqlcipher" / name).read_bytes(), "Pod must compile vendored SQLCipher, not plain SQLite"
           logs = pathlib.Path(os.environ["RUNNER_TEMP"]) / "longball-native-logs"
-          assert "SQLITE_HAS_CODEC=1" in (logs / "ios-pods.log").read_text()
+          # CocoaPods may omit Pod::UI.message output. Verify the actual
+          # Release compiler configuration, rather than console verbosity.
+          candidates = list(pathlib.Path("Pods/Target Support Files/ExpoSQLite").glob("*.release.xcconfig"))
+          assert len(candidates) == 1, "Expected one generated ExpoSQLite Release configuration"
+          flags = candidates[0].read_text()
+          cflags = re.search(r"^OTHER_CFLAGS\s*=\s*(.+)$", flags, re.M)
+          assert cflags, "Generated SQLCipher compiler flags are missing"
+          for required in ["-DSQLITE_HAS_CODEC=1", "-DSQLCIPHER_CRYPTO_CC", "-DSQLITE_EXTRA_INIT=sqlcipher_extra_init", "-DSQLITE_EXTRA_SHUTDOWN=sqlcipher_extra_shutdown"]:
+              assert required in cflags[1].split(), f"Required SQLCipher compiler flag missing: {required}"
+          (logs / "sqlcipher-release.xcconfig").write_text(flags)
           print("SQLCipher vendored source and codec build flag verified; physical encryption remains unproved.")
           PYCODE
 
@@ -353,7 +363,7 @@ jobs:
               "ownerAppleCredentialsUsed": False,
           })
           (destination / "build-proof.json").write_text(json.dumps(proof, indent=2) + "\n")
-          for name in ["tools.log", "test-configuration.json", "test-configuration.diff", "iphoneos-mach-o.txt", "prebuild.log", "ios-pods.log", "iphoneos-build.log"]:
+          for name in ["tools.log", "test-configuration.json", "test-configuration.diff", "sqlcipher-release.xcconfig", "iphoneos-mach-o.txt", "prebuild.log", "ios-pods.log", "iphoneos-build.log"]:
               log = logs / name
               with log.open("rb") as handle:
                   handle.seek(max(0, log.stat().st_size - 2 * 1024 * 1024))
