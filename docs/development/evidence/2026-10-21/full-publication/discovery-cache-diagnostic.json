@@ -1,0 +1,26 @@
+{
+  "checkedAt": "2026-10-21T19:52:45.123Z",
+  "statusHttp": 200,
+  "status": {
+    "state": "ready",
+    "url": "https://prophet-hearing-processed-eugene.trycloudflare.com",
+    "sourceRevision": "b73fbc9aefc2f0858c9c959dfe306012f3817193",
+    "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/39643618870",
+    "startedAt": "2026-10-21T17:28:28Z",
+    "expiresAt": "2026-10-21T22:28:28Z",
+    "audience": "Adult review of fictional Roma U10 data only"
+  },
+  "discoveredHealth": {
+    "error": "TypeError: Failed to fetch"
+  },
+  "directNewHealth": {
+    "status": 200,
+    "body": "{\"status\":\"ok\",\"service\":\"longball-api\",\"contractVersion\":\"longball.events/1.1\",\"backend\":\"fictional-sqlite\",\"syntheticOnly\":true}"
+  },
+  "observedOutcome": "Role chooser correctly withheld Open connected demo after the cached previous service failed health verification. Direct new service was healthy; this is a public status-cache issue, not an identity grant.",
+  "firstRoleAttempt": {
+    "exitCode": 1,
+    "error": "Open connected demo unavailable after stale status selected retired service",
+    "loadedRolesProved": false
+  }
+}

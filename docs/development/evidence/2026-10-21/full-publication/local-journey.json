@@ -1,0 +1,34 @@
+{
+  "passed": true,
+  "checkedAt": "2026-10-21T19:48:43.257Z",
+  "source": "d08666f02aa1a229ee66b031cd2e238c7c263cfa",
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "journey": [
+    "Welcome",
+    "explicit fictional Manager",
+    "local rehearsal",
+    "prepare match",
+    "check in",
+    "starting lineup",
+    "place seven",
+    "start half",
+    "pause clock"
+  ],
+  "script": "/LongBall/_expo/static/js/web/index-24e195296fefd8de20dcc9709aa99fff.js",
+  "sha256": "d43a8d2f7bbf21bfb19df969aa629847de77c2dd317f438b2d1c8f161793d77d",
+  "clockAction": "Resume clock",
+  "phase": "first_half_paused",
+  "sharedServiceModified": false,
+  "overflow": false,
+  "initialImmediateCheck": {
+    "expected": "Resume clock",
+    "observed": "Pause clock",
+    "resolution": "The first assertion read the label immediately after the click. A later observation showed Paused/Resume without another clock action. Completion checks wait for this visible state; no source change.",
+    "firstAttemptExitCode": 1,
+    "laterCompletionExitCode": 0
+  },
+  "nativeDeviceEvidence": false
+}
