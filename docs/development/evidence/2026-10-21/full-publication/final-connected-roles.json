@@ -1,0 +1,84 @@
+{
+  "passed": true,
+  "checkedAt": "2026-10-21T20:28:27.313Z",
+  "source": "c53841966c822f7a5172584370b6a557833398b4",
+  "api": "https://fraser-rights-guy-gay.trycloudflare.com",
+  "actualPublicCors": true,
+  "healthStatus": 200,
+  "health": {
+    "status": "ok",
+    "service": "longball-api",
+    "contractVersion": "longball.events/1.1",
+    "backend": "fictional-sqlite",
+    "syntheticOnly": true
+  },
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "checks": [
+    {
+      "role": "manager",
+      "loaded": true,
+      "overflow": false
+    },
+    {
+      "role": "administrator",
+      "loaded": true,
+      "overflow": false
+    },
+    {
+      "role": "player",
+      "loaded": true,
+      "overflow": false
+    },
+    {
+      "role": "spectator",
+      "loaded": true,
+      "overflow": false
+    }
+  ],
+  "anonymousPinnedDiscoveryRequests": [
+    "https://raw.githubusercontent.com/CharlieOmniPoint/LongBall/preview/longball-m0/preview-status.json?reviewCheck=1792614503072-1",
+    "https://raw.githubusercontent.com/CharlieOmniPoint/LongBall/preview/longball-m0/preview-status.json?reviewCheck=1792614503072-1",
+    "https://raw.githubusercontent.com/CharlieOmniPoint/LongBall/preview/longball-m0/preview-status.json?reviewCheck=1792614504254-1",
+    "https://raw.githubusercontent.com/CharlieOmniPoint/LongBall/preview/longball-m0/preview-status.json?reviewCheck=1792614504254-1",
+    "https://raw.githubusercontent.com/CharlieOmniPoint/LongBall/preview/longball-m0/preview-status.json?reviewCheck=1792614505488-1",
+    "https://raw.githubusercontent.com/CharlieOmniPoint/LongBall/preview/longball-m0/preview-status.json?reviewCheck=1792614505488-1",
+    "https://raw.githubusercontent.com/CharlieOmniPoint/LongBall/preview/longball-m0/preview-status.json?reviewCheck=1792614506655-1",
+    "https://raw.githubusercontent.com/CharlieOmniPoint/LongBall/preview/longball-m0/preview-status.json?reviewCheck=1792614506655-1"
+  ],
+  "canonicalStatus": {
+    "state": "ready",
+    "url": "https://fraser-rights-guy-gay.trycloudflare.com",
+    "sourceRevision": "2f3780243d748d9554198510e3b1054af6ef9917",
+    "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/39669374849",
+    "startedAt": "2026-10-21T20:24:02Z",
+    "expiresAt": "2026-10-22T01:24:02Z",
+    "audience": "Adult review of fictional Roma U10 data only"
+  },
+  "freshStatus": {
+    "state": "ready",
+    "url": "https://fraser-rights-guy-gay.trycloudflare.com",
+    "sourceRevision": "2f3780243d748d9554198510e3b1054af6ef9917",
+    "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/39669374849",
+    "startedAt": "2026-10-21T20:24:02Z",
+    "expiresAt": "2026-10-22T01:24:02Z",
+    "audience": "Adult review of fictional Roma U10 data only"
+  },
+  "failedApiResponses": [],
+  "serviceWrites": 0,
+  "defaultFixtureControllerClaimed": false,
+  "runtimeErrors": [],
+  "verificationScriptCorrection": "An earlier metadata evaluation passed two arguments after the role loop. This corrected complete report passes one object argument; no application source or service mutation changed.",
+  "nativeDeviceEvidence": false,
+  "uniqueAnonymousPinnedDiscoveryRequests": [
+    "https://raw.githubusercontent.com/CharlieOmniPoint/LongBall/preview/longball-m0/preview-status.json?reviewCheck=1792614503072-1",
+    "https://raw.githubusercontent.com/CharlieOmniPoint/LongBall/preview/longball-m0/preview-status.json?reviewCheck=1792614504254-1",
+    "https://raw.githubusercontent.com/CharlieOmniPoint/LongBall/preview/longball-m0/preview-status.json?reviewCheck=1792614505488-1",
+    "https://raw.githubusercontent.com/CharlieOmniPoint/LongBall/preview/longball-m0/preview-status.json?reviewCheck=1792614506655-1"
+  ],
+  "observedServiceRequestEvents": 74,
+  "observedSuccessfulApiResponseEvents": 62,
+  "eventCountScope": "Request/response event counters are observations and may contain instrumentation duplicates; no distinct network-transaction count is asserted."
+}

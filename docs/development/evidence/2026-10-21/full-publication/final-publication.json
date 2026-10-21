@@ -1,0 +1,80 @@
+{
+  "recordedAt": "2026-10-21T20:32:18.534666+00:00",
+  "status": "published-and-externally-verified-fictional-review",
+  "pagesUrl": "https://charlieomnipoint.github.io/LongBall/",
+  "packagedSourceCommit": "c53841966c822f7a5172584370b6a557833398b4",
+  "productSourceCommit": "e899e29f71ac50de7de4c7737ee4eb907d7e7823",
+  "transportCommit": "2f3780243d748d9554198510e3b1054af6ef9917",
+  "sourceBundleSha256": "ddf6f38fad24f700dd8afedccd48cd2eeb3f45ee242ad0ba2e2466de135eeaee",
+  "sourceBundleBytes": 5413988,
+  "pages": {
+    "runId": 39669374705,
+    "conclusion": "success",
+    "entryEvidence": "final-entry.json",
+    "assetSha256": "9ab07712ed0f074c259e1bbdd94d052e2358c83dd95ca40ce9e55c1def715bf1"
+  },
+  "api": {
+    "state": "ready",
+    "url": "https://fraser-rights-guy-gay.trycloudflare.com",
+    "sourceRevision": "2f3780243d748d9554198510e3b1054af6ef9917",
+    "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/39669374849",
+    "startedAt": "2026-10-21T20:24:02Z",
+    "expiresAt": "2026-10-22T01:24:02Z",
+    "audience": "Adult review of fictional Roma U10 data only",
+    "buildInfoSourceCommit": "c53841966c822f7a5172584370b6a557833398b4",
+    "healthStatus": 200,
+    "contractVersion": "longball.events/1.1",
+    "actualPublicCors": true,
+    "disposableFictionalDatabase": true
+  },
+  "connectedRoles": {
+    "passed": true,
+    "checkedAt": "2026-10-21T20:28:27.313Z",
+    "roles": [
+      "manager",
+      "administrator",
+      "player",
+      "spectator"
+    ],
+    "evidence": "final-connected-roles.json",
+    "runtimeErrors": [],
+    "failedApiResponses": [],
+    "serviceWrites": 0,
+    "defaultFixtureControllerClaimed": false
+  },
+  "pinnedDiscovery": {
+    "cacheFix": "Bounded public query key on the exact pinned anonymous status endpoint; health remains exact and unqueried.",
+    "uniqueAppDiscoveryUrlsObserved": 4,
+    "metadataUrlCanonical": true,
+    "earlierFailure": "discovery-cache-diagnostic.json",
+    "sourceTests": "../review-discovery-followup.json"
+  },
+  "artifacts": "final-packaged-artifacts.json",
+  "nativeCompilation": {
+    "previousRun": 39664214737,
+    "previousScope": "Android arm64 Debug and unsigned x86_64 iOS Simulator Debug passed; mobile/native/dependency Git objects match the discovery follow-up.",
+    "previousEvidence": "native-initial.json",
+    "latestRun": 39669375022,
+    "latestSourceCommit": "c53841966c822f7a5172584370b6a557833398b4",
+    "android": {
+      "jobId": 119462856065,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    "ios": {
+      "jobId": 119462856381,
+      "status": "in_progress",
+      "conclusion": null
+    },
+    "actualPhysicalDeviceEvidence": false
+  },
+  "limits": [
+    "All accounts, players and photos are fictional; adult review only.",
+    "GitHub Pages is lasting static review. The separate connected service expires at the recorded time and has a disposable database.",
+    "No production identity/push/durable hosting or real child-data environment is configured.",
+    "Physical native testing is deferred; signing/distribution and operating-policy gates remain open.",
+    "New production schema15 image rehearsal was not run due to recorded workspace disk constraints; separate actual host/schema15 proofs passed."
+  ],
+  "productionRelease": false,
+  "paidServicesProvisioned": false
+}

@@ -1,0 +1,53 @@
+{
+  "sourceCommit": "c53841966c822f7a5172584370b6a557833398b4",
+  "payloadBytes": 12267741,
+  "files": [
+    {
+      "path": "site/_expo/static/js/web/index-41ad15fa0a5993656c0efd5cf072c5ce.js",
+      "bytes": 1486641,
+      "sha256": "6197af1b94e092646bdb866d2f1a2c6bc0591bf64a13781a51e36c6c8f73aa2b"
+    },
+    {
+      "path": "site/index.html",
+      "bytes": 1300,
+      "sha256": "01b5c87e75e67173c38ec656a5070264a04cda6ce246b2bca83bf5eead58e991"
+    },
+    {
+      "path": "pages-site/_expo/static/js/web/index-7fab0edf4a9d3e7235135358806137b5.js",
+      "bytes": 1487073,
+      "sha256": "9ab07712ed0f074c259e1bbdd94d052e2358c83dd95ca40ce9e55c1def715bf1"
+    },
+    {
+      "path": "pages-site/index.html",
+      "bytes": 1309,
+      "sha256": "48d74a895c3b718aed3df9307b4771651b9d5af8930587b53c531e3885796109"
+    },
+    {
+      "path": "backend/api.mjs",
+      "bytes": 782954,
+      "sha256": "d1568c20879d2e1df83843fc31e35a6fa053751785560988f53093c546e10798"
+    },
+    {
+      "path": "backend/heic-worker.mjs",
+      "bytes": 1326,
+      "sha256": "af403995a2780164fdddbce814fbf6f4c5789fcc00dcb49c9235dfb76a0e751d"
+    },
+    {
+      "path": "backend/media-worker.mjs",
+      "bytes": 3467,
+      "sha256": "4b878815f5255ec427900db496df40c278176e381bfc3b7f6809912fe4cea5ed"
+    },
+    {
+      "path": "backend/migrate.mjs",
+      "bytes": 454025,
+      "sha256": "a54633d40ef12adeeb82da9338cd12e2d0b814a53e00f18b1e25d9328119e9a4"
+    },
+    {
+      "path": "backend/worker.mjs",
+      "bytes": 503718,
+      "sha256": "326967e27c649efdf3c9269629c0c6637638d0a26a760f183686928d9f92c479"
+    }
+  ],
+  "bundleBytes": 5413988,
+  "bundleSha256": "ddf6f38fad24f700dd8afedccd48cd2eeb3f45ee242ad0ba2e2466de135eeaee"
+}
