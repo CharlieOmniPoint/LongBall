@@ -1,0 +1,15 @@
+# Accepted match viewing and addressed handover
+
+An authorised second manager now has a normal **Viewing · accepted match** screen instead of an empty recording pane. It selects only `acceptedState` at its exact accepted revision. A pending or quarantined local candidate is never substituted. The accepted pitch, accessible position list, available checked-in bench, unavailable players and unchecked-player count remain distinct.
+
+The half clock and remaining time are the saved accepted checkpoint. Another recorder's clock is never extrapolated on this device. The screen labels the download timestamp and age as an observation that may lag behind the recorder; it does not claim a live clock or known last-recorder-sync time.
+
+`mergeDownload` copies an optional `controllerObservation` into the same saved document update as the accepted state, revision and download time. Only epoch, account ID, device ID and frozen status are copied. Extra capability/token properties are discarded; invalid display metadata refuses the merge without resetting retained data. Older caches without the optional field remain supported. This field never participates in event eligibility or grants authority.
+
+**Request handover** opens local instructions with this verified manager account and device ID. It explicitly sends no message or notification. The current recorder uses the existing addressed-offer operation; the recipient can enter that reference in the normal panel and explicitly accept through the existing authenticated operation. A wrong account/device cannot accept. Recording becomes available only after the actual capability receipt and authoritative checkpoint download. Existing exact-request retry, handover and reconciliation behavior is unchanged.
+
+The panel explains that ordinary transfer is supported before kickoff, at half-time or when the referee clock is already genuinely paused. It never instructs a manager to pause play for a phone change. Running transfer remains behind the existing verified cross-device clock gate.
+
+The new view remains inside the existing manager/session/native-storage admission wrappers. It does not open real controller data in production browser review storage. It introduces no backend endpoint, messaging system, account service or paid resource. A recognised accepted policy can be displayed read-only without exposing a policy-edit or replan port; old checkpoints receive no invented policy defaults or approvals.
+
+Validation: 24 focused sync/view tests passed, including accepted-versus-local separation, static foreign clock, bench/attendance distinctions, metadata allowlisting, denied capture, old cache support and accepted policy summary. Root/mobile TypeScript, scoped ESLint and whitespace checks passed. [Four actual two-manager browser/HTTP groups](evidence/2026-10-21/accepted-manager-view/README.md) passed at 320/390 px. The browser proof used fictional identities and an accepted preparation checkpoint, not native hardware or running transfer. Physical-device viewing, storage and handover operating evidence remain separate.

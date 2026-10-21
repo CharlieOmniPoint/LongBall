@@ -1,0 +1,18 @@
+{
+  "status": "passed",
+  "completedAt": "2026-10-21T18:10:59.211Z",
+  "checks": [
+    "Manager A prepared attendance and lineup through existing local/HTTP controller primitives before kick-off",
+    "320px non-controller manager sees accepted pitch/list/bench and static checkpoint; local request panel sends no POST; forbidden write is denied by actual HTTP without changing accepted state",
+    "Before-kickoff addressed offer/accept works with exact account/device; wrong device is denied and only confirmed recipient epoch2 unlocks recording",
+    "390px former recorder refreshes to Viewing after transfer, without editing controls or changes to the accepted lineup"
+  ],
+  "errors": [],
+  "webBundle": "/_expo/static/js/web/index-eb1a18b79ec7636e393b14e3846dd781.js",
+  "webSha256": "5bc1bc9ef67fc62919076745cdfd729809c62d44b3edbbb062ecf7a4bd45f806",
+  "limitations": [
+    "Fictional browser controller storage and public identities; not native storage or real authentication proof",
+    "No running transfer, referee clock pause, message or notification was introduced",
+    "Request panel stores no capability; only normal existing addressed accept/offer operations grant authority"
+  ]
+}

@@ -15,6 +15,8 @@ export interface WireReceipt { eventId: string; clientSequence: number; disposit
 export interface UploadReceipt { results: WireReceipt[]; revision: number; pendingReview: boolean }
 export interface DeviceCheckpoint { clientSequence: number; previousEventId: string | null }
 export interface ControllerGrant { epoch: number; deviceId: string; controllerToken: string; checkpoint: DeviceCheckpoint; reconciliationRequired?: boolean }
+/** Last downloaded recorder metadata is display-only; it is never a capability. */
+export interface ControllerObservation { epoch: number; accountId: string; deviceId: string; frozen: boolean }
 export interface MatchDownload {
   contractVersion: typeof WIRE_CONTRACT_VERSION; schemaVersion: 1; engineVersion: string;
   matchId: string; state: MatchState; acceptedRevision: number; deviceCheckpoint: DeviceCheckpoint;
@@ -54,6 +56,7 @@ export interface ConnectedMatchDocument {
   controllerConfirmed: boolean;
   reconciliationRequired: boolean;
   downloadedAt: string | null;
+  controllerObservation?: ControllerObservation | null;
   pendingRequest: DurableRequest | null;
   lastReceiptAt: string | null;
   lastTransferId: string | null;
@@ -127,17 +130,25 @@ export function createConnectedDocument(deviceId: string, matchId: string, baseU
 }
 export function assertConnectedDocument(value: ConnectedMatchDocument): void {
   if (value.kind !== 'longball-canonical-connected-v1' || !Number.isSafeInteger(value.revision) || !value.deviceId || !value.matchId || !Array.isArray(value.outbox) || !Number.isSafeInteger(value.allocatedSequence) || value.allocatedSequence < 0) throw new Error('Connected rehearsal document is incompatible. Preserve it for recovery; no legacy M0 data is uploaded.');
+  if (value.controllerObservation != null) assertControllerObservation(value.controllerObservation);
   const ids = new Set<string>();
   for (const entry of value.outbox) {
     if (entry.envelope.matchId !== value.matchId || entry.envelope.deviceId !== value.deviceId || ids.has(entry.envelope.eventId) || entry.envelope.clientSequence > value.allocatedSequence) throw new Error('Canonical outbox chain is inconsistent. Preserve it for reconciliation.');
     ids.add(entry.envelope.eventId);
   }
 }
+function assertControllerObservation(value: ControllerObservation): void {
+  const id = (input: unknown) => typeof input === 'string' && input.length >= 1 && input.length <= 150 && !/[^A-Za-z0-9_.:-]/.test(input);
+  if (!value || Object.keys(value).some(key => !['epoch', 'accountId', 'deviceId', 'frozen'].includes(key)) || !Number.isSafeInteger(value.epoch) || value.epoch < 1 || !id(value.accountId) || !id(value.deviceId) || typeof value.frozen !== 'boolean') throw new Error('Saved recorder display metadata is invalid. Retain the journal and refresh the matching connection.');
+}
 
 export function mergeDownload(previous: ConnectedMatchDocument, download: MatchDownload): ConnectedMatchDocument {
   if (download.contractVersion !== WIRE_CONTRACT_VERSION || download.schemaVersion !== 1 || download.engineVersion !== ENGINE_VERSION || download.matchId !== previous.matchId || download.state.config.matchId !== previous.matchId) throw new Error('Downloaded contract/engine/match differs from this client. Existing journal retained.');
   const pending = previous.outbox.some(entry => entry.disposition === 'pending');
   const controller = download.controller;
+  const controllerObservation: ControllerObservation | null = controller ? { epoch: controller.epoch, accountId: controller.account_id, deviceId: controller.device_id, frozen: controller.frozen === 1 } : null;
+  if (controller && ![0, 1].includes(controller.frozen)) throw new Error('Downloaded recorder display metadata is invalid. Existing journal retained.');
+  if (controllerObservation) assertControllerObservation(controllerObservation);
   const assigned = Boolean(previous.grant && controller && controller.device_id === previous.deviceId && controller.epoch === previous.grant.epoch && !controller.frozen);
   const disagreement = pending && download.acceptedRevision !== previous.acceptedRevision;
   const serverAhead = download.deviceCheckpoint.clientSequence > previous.allocatedSequence;
@@ -172,7 +183,7 @@ export function mergeDownload(previous: ConnectedMatchDocument, download: MatchD
     previousEventId: serverAhead ? download.deviceCheckpoint.previousEventId : previous.previousEventId,
     serverCheckpoint: download.deviceCheckpoint, controllerConfirmed: assigned,
     reconciliationRequired: previous.reconciliationRequired || disagreement || checkpointBehindKnownReceipt || missingLocalStream || replayFailed || pending && !assigned || pending && serverAhead,
-    downloadedAt: download.downloadedAt,
+    downloadedAt: download.downloadedAt, controllerObservation,
   };
 }
 

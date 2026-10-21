@@ -14,6 +14,8 @@ import type { Journal } from '../platform/types';
 import { useDocument } from '../useDocument';
 import { Button, Card, Notice, Pill } from '../ui/Button';
 import { colors, typography } from '../ui/tokens';
+import { acceptedMatchView } from '@longball/application/accepted-match-view';
+import { AcceptedMatchView } from './AcceptedMatchView';
 import { ConnectedLiveEditor } from './ConnectedLiveEditor';
 import { PlannerPanel, usePlannerModel, type PlannerPersistence, type PlannerPolicyPort } from './PlannerPanel';
 import { HistoryReviewPanel } from './HistoryReviewPanel';
@@ -343,7 +345,7 @@ function ConnectedRehearsal({ connection, journal, physicalDeviceId, matchId, co
     else if (action === 'end' && (localMatch.status.endsWith('_running') || localMatch.status.endsWith('_paused')) && !clock?.recoveryRequired) setActionConfirmation({ label: `End ${localMatch.half === 1 ? 'first half' : 'match'} at active ${formatMs(clock?.halfActiveMs ?? localMatch.halfActiveMs)} and score ${localMatch.score.for}–${localMatch.score.against}?`, command: { type: 'half.ended' } });
   };
   const clockActionReview = actionConfirmation && <View style={styles.stack}><Notice tone="warning">{actionConfirmation.label}</Notice><Button label="Confirm the actual event now" disabled={captureBusy || !editable} onPress={() => { const command = actionConfirmation.command; void record(command).then(saved => { if (saved) setActionConfirmation(null); }); }} /><Button label="Cancel review" variant="quiet" onPress={() => setActionConfirmation(null)} /></View>;
-  const sharedEditor = localMatch && sharedEditorAvailable && <>
+  const sharedEditor = localMatch && current?.controllerConfirmed && sharedEditorAvailable && <>
     <ConnectedLiveEditor mode={fictionalEditor ? 'fictional-review' : 'native'} match={localMatch} clock={clock} busy={captureBusy} onCommand={record} journal={journal} eligible={editable} teamLabel={localMatch.config.fixture?.teamName} onReviewClockAction={reviewClockAction} clockActionReview={clockActionReview} reviewDraft={reviewDraft} onReviewDraftConsumed={() => setReviewDraft(null)} />
     <ConnectedPlanner policy={{ commit: record, busy: document.busy, retryPending: document.retryPending, conflict: Boolean(document.conflict), retry: document.retry, reload: document.reload, acceptedRevision: current.acceptedRevision }} match={localMatch} sample={sample} clock={clock} eligible={editable} persistence={{ journal, deviceId: physicalDeviceId, binding: { kind: 'connected', mode: connection.mode, controllerScope: connection.scope } }} onRetainedChange={setPlannerRetained} onReviewLineup={(lineup, sourceRevision) => {
       if (!editable || sourceRevision !== localMatch.revision) { setNetworkError('The match or controller changed. Replan before opening this suggested lineup.'); return; }
@@ -359,20 +361,21 @@ function ConnectedRehearsal({ connection, journal, physicalDeviceId, matchId, co
   return <View style={styles.stack}>
     {controlled && <Card>
       <Text style={typography.section}>Match recording</Text>
-      <Text style={typography.body}>{current?.controllerConfirmed ? 'This device holds the current match controller.' : 'Take control before recording attendance, lineups and the match clock.'}</Text>
+      <Text style={typography.body}>{current?.controllerConfirmed ? 'This device holds the current match controller.' : 'Viewing the accepted match. Recording requires a confirmed controller capability.'}</Text>
       {(networkError || document.error) && <Notice tone="error">{networkError || document.error}</Notice>}
       {notice && <Notice>{notice}</Notice>}
       {preparationRequired && <Notice tone="warning">Open this fixture in Schedule and choose Open match preparation to save its formation and player snapshots before taking control.</Notice>}
       {!localMatch && <Button label="Open the selected match" testID="recording-download" disabled={busy || !current} onPress={() => { void run(download); }} />}
-      {!current?.controllerConfirmed && <Button label="Take control of this match" testID="recording-acquire" disabled={busy || productionBrowserReadOnly || !localMatch || preparationRequired || Boolean(current?.pendingRequest)} onPress={() => { void run(() => request('acquire')); }} />}
+      {!current?.controllerConfirmed && !current?.controllerObservation && <Button label="Take control of this match" testID="recording-acquire" disabled={busy || productionBrowserReadOnly || !localMatch || preparationRequired || Boolean(current?.pendingRequest)} onPress={() => { void run(() => request('acquire')); }} />}
       {current?.controllerConfirmed && <Button label={pendingCount ? `Save ${pendingCount} recorded match changes` : 'Match changes acknowledged'} testID="recording-upload" disabled={busy || productionBrowserReadOnly || !pendingCount || Boolean(current.pendingRequest)} onPress={() => { void run(() => request('upload')); }} />}
       {current?.pendingRequest && <Button label="Retry retained match request" disabled={busy || productionBrowserReadOnly} onPress={() => { void run(() => execute(current)); }} />}
       {document.retryPending && <Button label="Retry local document save" onPress={() => { void document.retry(); }} />}
       {document.conflict && <Button label="Reload saved document; retain rejected branch" onPress={document.reload} />}
       {current?.reconciliationRequired && <Notice tone="warning">Recording is paused for reconciliation. The saved local and accepted records are retained separately; review recording details.</Notice>}
-      {clock?.recoveryRequired && <Notice tone="warning">Time needs checking. Open recording details to record a referee-confirmed checkpoint.</Notice>}
+      {current?.controllerConfirmed && clock?.recoveryRequired && <Notice tone="warning">Time needs checking. Open recording details to record a referee-confirmed checkpoint.</Notice>}
       <Button label={showRecordingDetails ? 'Hide recording and sync details' : 'Recording and sync details'} testID="controller-recording-details" variant="quiet" onPress={() => setShowRecordingDetails(value => !value)} />
     </Card>}
+    {current && !current.controllerConfirmed && <AcceptedMatchView view={acceptedMatchView(current, sample.wallTimeMs)} accountId={connection.scope.accountId} deviceId={connection.wireDeviceId} busy={busy || productionBrowserReadOnly || document.retryPending || Boolean(document.conflict)} pending={Boolean(current.pendingRequest)} onRefresh={() => { void run(download); }} onOpenDetails={() => setShowRecordingDetails(true)} onAccept={(reference) => { void run(() => request('accept', { transferId: reference })); }} />}
     {controlled && sharedEditor}
     {(!controlled || showRecordingDetails) && <>
     <Card>
@@ -407,7 +410,7 @@ function ConnectedRehearsal({ connection, journal, physicalDeviceId, matchId, co
       {quarantineCount !== null && <Text style={typography.muted}>{quarantineCount} retained service quarantine records. Review requires an authorised manager; no branch is discarded.</Text>}
       {rejected.map(entry => <Notice key={entry.envelope.eventId} tone="warning">Sequence {entry.envelope.clientSequence}: {entry.reason ?? 'requires review'}</Notice>)}
     </Card>
-    {localMatch && <Card>
+    {localMatch && current?.controllerConfirmed && <Card>
       <Text style={typography.section}>{connection.mode === 'synthetic' ? 'Connected match rehearsal' : 'Connected match'}</Text>
       <Text style={typography.body}>{localMatch.status.replaceAll('_', ' ')} · {localMatch.score.for}–{localMatch.score.against} · active {formatMs(clock?.matchActiveMs ?? localMatch.matchActiveMs)}</Text>
       <Notice tone="info">These controls write canonical events into this connected document. They do not turn the earlier local match into a synchronised match.</Notice>
