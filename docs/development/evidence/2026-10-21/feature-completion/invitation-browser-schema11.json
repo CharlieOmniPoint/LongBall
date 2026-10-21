@@ -1,0 +1,32 @@
+{
+  "checkedAt": "2026-10-21T12:16:37.037Z",
+  "status": "passed",
+  "baseUrl": "http://127.0.0.1:4173/",
+  "apiUrl": "http://127.0.0.1:4349",
+  "fictionalOnly": true,
+  "widths": [
+    320,
+    390
+  ],
+  "checks": [
+    "UI issue with explicit lifetime",
+    "one-time display locks outer connection/account/tab controls",
+    "no capability persisted to browser storage",
+    "UI explicit reissue invalidates old capability",
+    "memberless signed-in recipient cannot issue",
+    "server inspection before explicit acceptance",
+    "authoritative membership appears after acceptance",
+    "no horizontal overflow or page errors"
+  ],
+  "credentialValuesRecorded": false,
+  "sourceStatus": "Uncommitted feature increment following 298985d; precise compiled artifacts below",
+  "artifacts": {
+    "webBundle": "45a9347d318e44fd94fd1060d4eb6b5f",
+    "webBundleSha256": "1de9d2bda2b381692373c31fe5f5da96bb87251d1008d5bd104b74e4ae9f56d6",
+    "apiSha256": "517a3e6c6a52918aea1f732cac68fb214ab000d041dbc99882fc60a018d6e411"
+  },
+  "limits": [
+    "Fictional loopback SQLite identities; real first-time provider journey has separate evidence",
+    "Physical delivery, native share/picker and configured production services not proved"
+  ]
+}

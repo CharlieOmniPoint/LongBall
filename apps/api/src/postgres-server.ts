@@ -1,9 +1,14 @@
 import { dirname, join } from 'node:path';
-import { createRuntimeApi, type ApiOptions } from './server';
+import { createRuntimeApi,createBrandMedia, type ApiOptions } from './server';
 import { PostgresStore } from './postgres-store';
 import { PgMediaService } from './postgres-media';
 import { PostgresActivationService } from './postgres-activation';
 import type { RuntimeStore } from './runtime-store';
+import { PostgresBrandRepository } from './postgres-brand-repository';
+import { SpectatorActivationService } from './spectator-activation';
+import { PostgresSpectatorActivationRepository } from './postgres-spectator-activation';
+import { SpectatorInvitationService } from './invitation-service';
+import { PostgresInvitationRepository } from './postgres-invitation-repository';
 
 export async function createPostgresApi(options: ApiOptions & { connectionString: string; migrationMode?:'apply'|'verify'; seedSynthetic?:boolean; allowOwnerTestFixture?:true }) {
   const store = await PostgresStore.open(options.connectionString, options.now, {migrationMode:options.migrationMode});
@@ -15,6 +20,9 @@ export async function createPostgresApi(options: ApiOptions & { connectionString
     const media = await PgMediaService.open({ directory: options.mediaDirectory ?? join(dirname(options.databasePath), 'media'), database: store.db, scanner: options.mediaScanner, now: options.now });
     const activation = await new PostgresActivationService({ store, provider: options.activationProvider, policy: options.activationPolicy }).initialize();
     const port: RuntimeStore = store;
-    return createRuntimeApi(options, store, port, media, activation);
+    const branding=createBrandMedia(options,port,new PostgresBrandRepository(store.db));
+    const spectator=new SpectatorActivationService({repository:new PostgresSpectatorActivationRepository(store),provider:options.activationProvider,policy:options.activationPolicy,now:store.now});
+    const invitations=new SpectatorInvitationService({...options,repository:new PostgresInvitationRepository(store),now:store.now});
+    return createRuntimeApi(options, store, port, media, activation,undefined,{branding,spectator,invitations});
   } catch (error) { await store.close(); throw error; }
 }

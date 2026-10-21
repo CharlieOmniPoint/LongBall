@@ -103,12 +103,12 @@ describe('private image ingestion', () => {
     }
   });
 
-  it('rejects spoofed SVG/HTML/GIF bytes before the decoder and rejects unsupported HEIC preparation', async () => {
+  it('rejects spoofed SVG/HTML/GIF bytes before the decoder and rejects unsupported AVIF preparation', async () => {
     const bytes = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><image href="https://example.invalid/private"/></svg>');
     const review = await lab(bytes);
     const prepared = await review.prepareUpload();
     await expect(review.service.complete(review.state, review.actors.manager, prepared.uploadId, prepared.uploadToken)).rejects.toMatchObject({ code: 'MEDIA_TYPE_MISMATCH', status: 415 });
-    expect(() => review.service.prepare(review.state, review.actors.manager, review.input(bytes, { mimeType: 'image/heic' }))).toThrow(/HEIC is not enabled/);
+    expect(() => review.service.prepare(review.state, review.actors.manager, review.input(bytes, { mimeType: 'image/avif' }))).toThrow(/JPEG, PNG or supported still HEIC/);
   });
 
   it('rejects animated PNG and invalid/oversized dimensions while keeping no community publication', async () => {

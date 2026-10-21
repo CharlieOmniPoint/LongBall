@@ -2,14 +2,14 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import { mkdtemp, rm, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { Pool } from 'pg';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { Pool,type QueryResultRow } from 'pg';
+import { afterAll, beforeAll, describe, expect, it,vi } from 'vitest';
 import { PgDatabase, type PgApplicationContext } from './pg';
 import { PostgresStore, SYNTHETIC_IDS } from './postgres-store';
 import { PgMediaService } from './postgres-media';
 import { PostgresActivationService } from './postgres-activation';
 import { createTeamNotificationJob } from '../../../packages/application/src/team-notifications';
-import type { CommunityState } from '../../../packages/application/src/community';
+import { applyCommunityCommand,type CommunityState } from '../../../packages/application/src/community';
 import { applyRuntimeGrants } from './runtime-grants';
 const configured = process.env.LONGBALL_POSTGRES_TEST_URL;
 
@@ -71,6 +71,7 @@ describe.skipIf(!configured)('SEC10 actual PostgreSQL ancestry, RLS and pooled t
     await expect(api.query('SELECT * FROM runtime_roles')).rejects.toMatchObject({code:'42501'});
     await expect(worker.query("UPDATE runtime_roles SET purpose='api'")).rejects.toMatchObject({code:'42501'});
     for(const forged of [context(),{kind:'identity' as const,issuer:'urn:longball:synthetic',subject:'synthetic-account-manager',nowMs:Date.now()}])await worker.withContext(forged,async()=>{expect((await worker.query('SELECT id FROM accounts')).rowCount).toBe(0);expect((await worker.query('SELECT * FROM documents')).rowCount).toBe(0);expect((await worker.query('SELECT id FROM matches')).rowCount).toBe(0);});
+    await worker.withContext({kind:'invitation_activation',tokenHash:'a'.repeat(64),completionVerified:true,activationId:randomUUID(),nowMs:Date.now()},async()=>{expect((await worker.query("SELECT spectator_activation_account('synthetic-account-manager',true) AS allowed,invitation_live(repeat('a',64)) AS live")).rows[0]).toEqual({allowed:false,live:false});expect((await worker.query('SELECT id FROM accounts')).rowCount).toBe(0);});
     const id=randomUUID(),now=Date.now(),cap=randomBytes(32).toString('hex');
     await owner.query("INSERT INTO jobs(id,business_key,kind,payload_json,due_at) VALUES($1,$1,'award.finalise',$2,$3)",[id,JSON.stringify({teamId:SYNTHETIC_IDS.teamId,seasonId:SYNTHETIC_IDS.seasonId,matchId:SYNTHETIC_IDS.matchId}),now]);
     const claimed=await worker.withContext({kind:'worker_claim',jobKind:'award.finalise',nowMs:now},()=>worker.query('SELECT * FROM claim_due_job($1,$2,$3)',['award.finalise',now,cap]));
@@ -90,6 +91,26 @@ describe.skipIf(!configured)('SEC10 actual PostgreSQL ancestry, RLS and pooled t
     expect((await owner.query('SELECT award_source_job_id FROM jobs WHERE id=$1',[fanout.id])).rows).toEqual([{award_source_job_id:id}]);
     await api.withContext(job,async()=>{expect((await api.query('SELECT id FROM jobs')).rowCount).toBe(0);expect((await api.query('SELECT * FROM documents')).rowCount).toBe(0);expect((await api.query('SELECT id FROM matches')).rowCount).toBe(0);});
     await owner.query("UPDATE jobs SET state='completed',lease_until=NULL WHERE id=$1",[id]);
+  });
+  it('rolls back the community link when fresh PostgreSQL authority filters the final manifest update to zero',async()=>{
+    const before=await store.document<CommunityState>(SYNTHETIC_IDS.teamId,SYNTHETIC_IDS.seasonId,'community');
+    const uploadId=randomUUID(),photoId=`atomic-photo-${uploadId}`,actor={accountId:'synthetic-account-manager',role:'manager' as const,teamId:SYNTHETIC_IDS.teamId,seasonId:SYNTHETIC_IDS.seasonId};
+    const next=applyCommunityCommand(before,actor,{id:randomUUID(),type:'photo.submitted',matchId:before.matches[0].id,photoId,art:'pitch',caption:'Fictional transaction fixture',policyAcknowledged:true},Date.now());
+    await owner.query(`INSERT INTO media_uploads(id,request_id,request_signature,owner_id,team_id,season_id,match_id,photo_id,display_revision,status,expected_bytes,expected_sha,declared_mime,caption,token_hash,expires_at,created_at) VALUES($1,$1,'fixture',$2,$3,$4,$5,$6,1,'processed',1,repeat('a',64),'image/png','Fictional transaction fixture',repeat('b',64),$7,$8)`,[uploadId,actor.accountId,actor.teamId,actor.seasonId,before.matches[0].id,photoId,Date.now()+60000,Date.now()]);
+    const media=await PgMediaService.open({directory,database:api}),query=api.query.bind(api);let boundaryReached=false;
+    const spy=vi.spyOn(api,'query').mockImplementation(async<T extends QueryResultRow>(sql:string,values?:readonly unknown[])=>{
+      if(sql.includes("UPDATE longball.media_uploads SET status='linked'")){
+        boundaryReached=true;
+        await owner.query('UPDATE memberships SET revoked_at=$1 WHERE account_id=$2 AND team_id=$3 AND season_id=$4',[Date.now(),actor.accountId,actor.teamId,actor.seasonId]);
+      }
+      return query<T>(sql,values);
+    });
+    try{
+      await expect(api.withContext(context({operation:'media.complete'}),()=>api.transaction(async()=>{await new PostgresStore(api).saveDocument(actor.teamId,actor.seasonId,'community',next);await media.link(uploadId,next);}))).rejects.toMatchObject({code:'MEDIA_LINK_CONFLICT'});
+      expect(boundaryReached).toBe(true);
+      expect(await store.document<CommunityState>(actor.teamId,actor.seasonId,'community')).toEqual(before);
+      expect((await owner.query('SELECT status FROM media_uploads WHERE id=$1',[uploadId])).rows[0].status).toBe('processed');
+    }finally{spy.mockRestore();await owner.query('UPDATE memberships SET revoked_at=NULL WHERE account_id=$1 AND team_id=$2 AND season_id=$3',[actor.accountId,actor.teamId,actor.seasonId]);}
   });
   it('uses independent database time so future observations cannot claim or write a not-yet-due award',async()=>{
     const now=Date.now(),due=now+600000,id=randomUUID(),cap=randomBytes(32).toString('hex');

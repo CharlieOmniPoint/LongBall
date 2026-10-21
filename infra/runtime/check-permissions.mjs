@@ -28,12 +28,12 @@ try {
   await denied('cannot_alter_schema', 'ALTER TABLE longball.jobs ADD COLUMN runtime_must_not_add text');
   await denied('cannot_change_migration_version', 'UPDATE longball.schema_migrations SET version=version');
   const versions = (await client.query('SELECT version FROM longball.schema_migrations ORDER BY version')).rows.map(row => row.version);
-  if (JSON.stringify(versions) !== '[2,3,4,5,6,7,8,9]') throw new Error('Expected runtime migration versions 2 through 9.');
-  checks.push('schema9_verified');
+  if (JSON.stringify(versions) !== '[2,3,4,5,6,7,8,9,10,11,12]') throw new Error('Expected runtime migration versions 2 through 12.');
+  checks.push('schema12_verified');
   const purpose=(await client.query('SELECT longball.runtime_purpose() AS value')).rows[0]?.value;
   if(purpose!==kind)throw new Error('Runtime login purpose does not match its command.');
   const protectedTables=(await client.query("SELECT count(*)::integer AS value FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='longball' AND c.relrowsecurity")).rows[0]?.value;
-  if(protectedTables<28)throw new Error('Expected core and feature row security.');
+  if(protectedTables<34)throw new Error('Expected core and feature row security.');
   for(const table of ['accounts','matches','documents','jobs'])if((await client.query(`SELECT * FROM longball.${table}`)).rowCount!==0)throw new Error('Context-free data access was not denied.');
   checks.push('login_purpose_and_context_free_rls');
   if (kind === 'api') {
@@ -47,6 +47,8 @@ try {
     checks.push('api_scoped_request_schema_and_key_access');
     checks.push('api_feature_verification_and_request_schema');
     await denied('api_cannot_claim_worker_job', "SELECT * FROM longball.claim_due_job('award.finalise',0,repeat('a',64))");
+    for(const table of ['brand_assets','brand_slots','spectator_invitations','lb_spectator_activation_accounts','lb_spectator_activation_attempts','native_app_devices'])if((await client.query(`SELECT * FROM longball.${table}`)).rowCount!==0)throw new Error('Context-free branding/identity data access was not denied.');
+    checks.push('api_context_free_branding_and_identity_denied');
   } else {
     await client.query('SELECT id FROM longball.jobs');
     await client.query('UPDATE longball.jobs SET attempts=attempts WHERE false');
@@ -60,6 +62,9 @@ try {
     await denied('worker_cannot_read_private_media_manifests', 'SELECT id FROM longball.media_uploads');
     await denied('worker_cannot_read_privacy_requests', 'SELECT id FROM longball.privacy_requests');
     await denied('worker_cannot_read_privacy_pending_keys', 'SELECT request_id FROM longball.privacy_pending_keys');
+    await denied('worker_cannot_read_brand_assets','SELECT id FROM longball.brand_assets');
+    await denied('worker_cannot_read_invitation_verifiers','SELECT token_hash FROM longball.spectator_invitations');
+    await denied('worker_cannot_read_native_devices','SELECT device_id FROM longball.native_app_devices');
     await denied('worker_cannot_delete_jobs', "DELETE FROM longball.jobs WHERE id='permission-proof'");
     checks.push('worker_job_and_document_operations');
   }

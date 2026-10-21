@@ -4,6 +4,8 @@ import {
   createWorkspaceOutbox,
   enqueueWorkspaceRequest,
   recordWorkspaceOutcome,
+  retireLegacyWorkspaceInvitation,
+  type WorkspaceOutboxAuthorization,
   validateWorkspaceOutbox,
   workspaceOutboxDocumentId,
   type WorkspaceOutboxState,
@@ -30,6 +32,10 @@ export interface WorkspaceOutboxPort {
     request: WorkspaceRequestInput,
   ) => Promise<WorkspaceOutboxState | null>;
   settle: (key: string, outcome: WorkspaceRequestOutcome) => Promise<boolean>;
+  retireLegacy: (
+    key: string,
+    auth: WorkspaceOutboxAuthorization,
+  ) => Promise<boolean>;
 }
 export const WorkspaceOutboxBridge = forwardRef<
   WorkspaceOutboxPort,
@@ -67,6 +73,17 @@ export const WorkspaceOutboxBridge = forwardRef<
         }, "workspace.request.retained");
         return saved ? retained : null;
       },
+      retireLegacy: (key, auth) =>
+        document.change((current) => {
+          const nowMs = Date.now();
+          return retireLegacyWorkspaceInvitation(
+            current,
+            { ...auth, nowMs },
+            key,
+            true,
+            nowMs,
+          );
+        }, "workspace.legacy_invitation.locally_retired"),
       settle: (key, outcome) =>
         document.change(
           (current) =>

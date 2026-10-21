@@ -23,6 +23,10 @@ export type LongBallDestination =
 export interface DeepLinkPolicy {
   /** Explicit owned HTTPS origins only. No hostname is inferred from an incoming link. */
   httpsOrigins?: readonly string[];
+  /** Exact owned app entry URLs, including a static-host base path. */
+  httpsEntryUrls?: readonly string[];
+  /** Exact localhost page only for an explicitly configured fictional browser trial. */
+  developmentHttpEntryUrls?: readonly string[];
 }
 const identifier = /^[A-Za-z0-9_-]{1,150}$/;
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -46,8 +50,16 @@ export function parseLongBallDestination(
   }
   if (url.username || url.password || url.search) return null;
   let route: string;
+  const entry = `${url.origin}${url.pathname}`;
+  const rootEntry =
+    (url.protocol === "https:" && policy.httpsEntryUrls?.includes(entry)) ||
+    (url.protocol === "http:" &&
+      url.hostname === "localhost" &&
+      policy.developmentHttpEntryUrls?.includes(entry));
   if (url.protocol === "longball:" && !url.port) {
     route = `${url.hostname}${url.pathname}`.replace(/\/$/, "");
+  } else if (rootEntry) {
+    route = "entry";
   } else if (
     url.protocol === "https:" &&
     policy.httpsOrigins?.includes(url.origin)
@@ -55,6 +67,21 @@ export function parseLongBallDestination(
     route = url.pathname.replace(/^\//, "").replace(/\/$/, "");
   } else return null;
   const params = new URLSearchParams(url.hash.slice(1));
+  if (
+    route === "entry" &&
+    params.get("longballInvite") === "1" &&
+    exact(params, ["longballInvite", "teamId", "seasonId", "code"])
+  ) {
+    const teamId = params.get("teamId")!,
+      seasonId = params.get("seasonId")!,
+      code = params.get("code")!;
+    if (
+      identifier.test(teamId) &&
+      identifier.test(seasonId) &&
+      /^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$/.test(code)
+    )
+      return { kind: "invitation", invitation: { teamId, seasonId, code } };
+  }
   if (route === "invite" && exact(params, ["teamId", "seasonId", "code"])) {
     const teamId = params.get("teamId")!,
       seasonId = params.get("seasonId")!,
@@ -68,7 +95,7 @@ export function parseLongBallDestination(
   }
   if (route === "activate" && !url.hash) return { kind: "activation" };
   if (
-    route === "activation/callback" &&
+    (route === "activation/callback" || route === "entry") &&
     exact(params, ["longballActivation", "completionProof"])
   ) {
     const activationId = params.get("longballActivation")!,

@@ -1,0 +1,108 @@
+{
+  "recordedAt": "2026-10-21T13:06:00.602288+00:00",
+  "sourceBase": "298985d665265ad2fd8209ebc6403a5feb842d81",
+  "sourceStatus": "Feature increment checked before the following source/publication commit; compiled artifacts identify the exact tested exports.",
+  "checks": {
+    "unit": {
+      "status": "passed",
+      "tests": 450,
+      "files": 50,
+      "startedAtUtc": "2026-10-21 12:47:34",
+      "durationSeconds": 11.7
+    },
+    "api": {
+      "status": "passed",
+      "tests": 219,
+      "files": 30,
+      "skipped": 0,
+      "startedAtUtc": "2026-10-21 13:00:04",
+      "durationSeconds": 93.84,
+      "actualPostgres": true,
+      "sourceBuiltHeicDecoder": true
+    },
+    "lint": "full repository passed; later changed API/test/infra files passed scoped lint",
+    "typecheck": "root and mobile passed after final API fixes",
+    "contracts": "canonical archive/checksums, fairness/visual artifacts, canonical and runtime1.3 OpenAPI and strict logo/identity cases passed",
+    "previewSourcePublicationRegression": "passed",
+    "fictionalFixtures": "13 Roma players; nine selected",
+    "productionEntry": {
+      "status": "passed",
+      "checks": 4
+    },
+    "nativeJavaScriptExports": [
+      "Android passed",
+      "iOS passed"
+    ],
+    "apiExport": "passed",
+    "browser": {
+      "normal235fRegressionChecks": 25,
+      "logo235fChecks": 6,
+      "receivedInvitation235fChecks": 10,
+      "realProviderApiCases": 4,
+      "realProvider320pxBrowserSteps": 6,
+      "note": "These exact earlier artifacts and scopes are recorded in their own evidence; final normal export is separately hashed below."
+    },
+    "runtime": {
+      "image": "sha256:c29d7caddb404740200ab2d1f701dac9478cf21bfe6ecc3d55cdca314a3e0abb",
+      "schemaUpgrade": "9 to12; media3/activation2",
+      "rlsTables": 34,
+      "apiPermissionChecks": 13,
+      "workerPermissionChecks": 18,
+      "sourceBuiltHeicHelperSha256": "5ec9807e2a45b04fc2aaa272ab97372266f5d35543414d9c73ceca0a546e29f0",
+      "actualClamAvAndPairedRestore": "passed, exact photo/logo bytes and published references preserved"
+    }
+  },
+  "artifacts": {
+    "normal": [
+      {
+        "path": "apps/mobile/dist-web/_expo/static/js/web/index-d13265370fafd4a4604f522aa1b39046.js",
+        "sha256": "e482b9deba96bac7c4206eaf1955954678ae45d27c5f05b6081712588e99fa99"
+      }
+    ],
+    "production": [
+      {
+        "path": "apps/mobile/dist-production-review/_expo/static/js/web/index-bd515e6de4faad93de017c7ac5e526b7.js",
+        "sha256": "58abd1f09ff931891985ec2b524aec5b8c9bbcf6d5449a8e57dbd3b515274fc9"
+      }
+    ],
+    "native": [
+      {
+        "path": "apps/mobile/dist/_expo/static/js/android/index-3be30c32a79e5cefe9cb59c8dfbc5bb7.hbc",
+        "sha256": "195ea4326e9bb4c829abbcf5d778f1afde74ce0fb279b333c49a8ee61f045e39"
+      },
+      {
+        "path": "apps/mobile/dist/_expo/static/js/ios/index-205008c9196b48a33408e6d4ac57e625.hbc",
+        "sha256": "fa0ccab548f88d46cb45f4e009f790e713fb1e4c131c234ad9eeab900ab93082"
+      }
+    ],
+    "backend": [
+      {
+        "path": "apps/api/dist/media-worker.mjs",
+        "sha256": "db982ffae7d4e9162d8bd5c76fa79f6109ca2380ed6ba9c002a49fac029b3d73"
+      },
+      {
+        "path": "apps/api/dist/heic-worker.mjs",
+        "sha256": "af403995a2780164fdddbce814fbf6f4c5789fcc00dcb49c9235dfb76a0e751d"
+      },
+      {
+        "path": "apps/api/dist/api.mjs",
+        "sha256": "53f89376dcd52bea93d9f54997e673001397760e2e89e530a04148ef7cc9ab5f"
+      },
+      {
+        "path": "apps/api/dist/worker.mjs",
+        "sha256": "b5664fe93df37e726b4a5737d9aab0dda38df3652a8087ffd88f5d4eb7b93204"
+      },
+      {
+        "path": "apps/api/dist/migrate.mjs",
+        "sha256": "ad601509c51a2dc3af81ef57846227fe2d0fd254fa69aa931c940f462e398523"
+      }
+    ]
+  },
+  "earlierFailedRun": "pre-final-api-diagnostic.json",
+  "remaining": [
+    "Actual native compilation for this increment and public deployment verification are recorded separately after publication",
+    "Physical iPhone/Android M0 acceptance: timing, SQLCipher/key loss/backup, OS authentication, system browser, picker/share, alerts/Focus/battery and accessibility",
+    "Production identity/private storage/push/monitoring/offsite recovery, distribution and operating ownership",
+    "Unapproved canonical decisions remain explicit; fictional policy configurations do not approve production policies"
+  ]
+}

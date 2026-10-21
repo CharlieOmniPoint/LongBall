@@ -204,6 +204,9 @@ if (mode === "--bootstrap-fixture") {
     },
     activationProvider: provider,
     activationPolicy: config.policy,
+    // Actual existing static entry; this config never forwards capabilities to an API selected by a link.
+    publicAppEntryUrl: "https://charlieomnipoint.github.io/LongBall/",
+    invitationPolicyVersion: config.policy.version,
     allowedOrigins: (process.env.LONGBALL_IDENTITY_TRIAL_BROWSER_ORIGINS ?? "")
       .split(",")
       .filter(Boolean),

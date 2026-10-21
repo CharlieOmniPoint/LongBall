@@ -1,4 +1,4 @@
-/** Restore a retained fictional media checkpoint into isolated non-bypass schema9 runtimes. */
+/** Restore a retained fictional media checkpoint into isolated non-bypass current runtimes. */
 import assert from 'node:assert/strict';
 import { createHash, randomUUID } from 'node:crypto';
 import { createRequire } from 'node:module';
@@ -34,8 +34,8 @@ try{
  const owner=await PostgresStore.open(url(sourceName,roles.owner));stores.push(owner);
  const sourceMedia=resolve(directory,'source-media');await cp(resolve('.local/runtime/proofs',checkpoint,'media'),sourceMedia,{recursive:true});
  await PgMediaService.open({directory:sourceMedia,database:owner.db});await new PostgresActivationService({store:owner}).initialize();await applyRuntimeGrants(owner.db,roles);
- const sourceVersions=(await owner.many('SELECT version FROM schema_migrations ORDER BY version')).map(row=>row.version);assert.deepEqual(sourceVersions,[2,3,4,5,6,7,8,9]);
- const archive=await docker(['exec',container,'pg_dump','-U','postgres','-d',sourceName,'--format=custom','--no-owner','--no-privileges']);await writeFile(resolve(directory,'schema9.dump'),archive,{mode:0o600});
+ const sourceVersions=(await owner.many('SELECT version FROM schema_migrations ORDER BY version')).map(row=>row.version);assert.deepEqual(sourceVersions,[2,3,4,5,6,7,8,9,10,11,12]);
+ const archive=await docker(['exec',container,'pg_dump','-U','postgres','-d',sourceName,'--format=custom','--no-owner','--no-privileges']);await writeFile(resolve(directory,'schema12.dump'),archive,{mode:0o600});
  const objectArchive=resolve(directory,'objects');await cp(sourceMedia,objectArchive,{recursive:true});
  await restore(restoredName,archive);
  const restoredOwner=await PostgresStore.open(url(restoredName,roles.owner));stores.push(restoredOwner);await applyRuntimeGrants(restoredOwner.db,roles);
@@ -51,8 +51,8 @@ try{
  await worker.db.withContext(context,async()=>{assert.equal((await worker.db.query('SELECT * FROM documents')).rowCount,0);assert.equal((await worker.db.query('SELECT * FROM accounts')).rowCount,0);});
  const security=await restoredOwner.one("SELECT count(*)::integer AS protected_tables FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='longball' AND c.relrowsecurity");
  const constraints=await restoredOwner.one("SELECT count(*)::integer AS composite_foreign_keys FROM pg_constraint c JOIN pg_namespace n ON n.oid=c.connamespace WHERE n.nspname='longball' AND c.contype='f' AND array_length(c.conkey,1)>1");
- assert(Number(security?.protected_tables)>=28);assert(Number(constraints?.composite_foreign_keys)>=18);
+ assert(Number(security?.protected_tables)>=34);assert(Number(constraints?.composite_foreign_keys)>=18);
  const preservedCounts=await restoredOwner.one('SELECT (SELECT count(*)::integer FROM media_uploads) AS manifests,(SELECT count(*)::integer FROM clubs) AS clubs,(SELECT count(*)::integer FROM team_seasons) AS seasons,(SELECT count(*)::integer FROM game_contexts) AS game_contexts');assert.equal(preservedCounts?.manifests,3);
- const result={status:'passed',observedAt:new Date().toISOString(),syntheticOnly:true,versions:sourceVersions,featureVersions:{media:2,activation:2},historicalMediaCheckpoint:historical?.observedAt,archiveSha256:hash(archive),exactRestoredDerivativeSha256:restoredHash,protectedTables:security?.protected_tables,compositeForeignKeys:constraints?.composite_foreign_keys,preservedCounts,temporaryDatabaseCreateRevoked:true,restoredSchemaOwnerNonBypass:true,restoredApiWorkerNonBypass:true,restoredCurrentPlayerGateway:true,contextFreeDataDenied:true,foreignTeamDenied:true,workerForgedActorDenied:true,limitations:['Reuses previously processed fictional image bytes; ClamAV engine was not rerun.','Paired private object copy and custom-format archive; no encrypted offsite backup, retention, RPO or RTO claim.','Disposable proof database roles use loopback-only trust authentication; production credentials remain separate mounted secrets.']};
+ const result={status:'passed',observedAt:new Date().toISOString(),syntheticOnly:true,versions:sourceVersions,featureVersions:{media:3,activation:2},historicalMediaCheckpoint:historical?.observedAt,archiveSha256:hash(archive),exactRestoredDerivativeSha256:restoredHash,protectedTables:security?.protected_tables,compositeForeignKeys:constraints?.composite_foreign_keys,preservedCounts,temporaryDatabaseCreateRevoked:true,restoredSchemaOwnerNonBypass:true,restoredApiWorkerNonBypass:true,restoredCurrentPlayerGateway:true,contextFreeDataDenied:true,foreignTeamDenied:true,workerForgedActorDenied:true,limitations:['Reuses previously processed fictional image bytes; ClamAV engine was not rerun.','Paired private object copy and custom-format archive; no encrypted offsite backup, retention, RPO or RTO claim.','Disposable proof database roles use loopback-only trust authentication; production credentials remain separate mounted secrets.']};
  await writeFile(resolve(directory,'report.json'),JSON.stringify(result,null,2)+'\n',{mode:0o600});await writeFile('.local/runtime/latest-rls-restore.json',JSON.stringify(result,null,2)+'\n',{mode:0o600});console.log(JSON.stringify(result));
 }finally{for(const store of stores.reverse())await store.close();for(const database of created.reverse())await admin.query(`DROP DATABASE "${database}" WITH (FORCE)`);if(rolesCreated)for(const role of Object.values(roles))await admin.query(`DROP ROLE "${role}"`);await admin.end();}

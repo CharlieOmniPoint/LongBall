@@ -18,6 +18,8 @@ import { deriveFinishedMatchContext, finishEligibilityChanged } from './finished
 import { createTeamNotificationJob, type TeamNotificationCategory } from '../../../packages/application/src/team-notifications';
 import { managerRoster as projectManagerRoster, type StaffAccountEvidence } from '../../../packages/application/src/staff';
 import { prepareAccountPrivacyRequest, projectAccountPrivacyRequests, type PrivacyRequestRecord } from '../../../packages/application/src/privacy-requests';
+import { brandSelectedRole,type BrandingAuthority } from './brand-repository';
+import { ownDevicesDto,parseNativeDeviceInput,type NativeDeviceRow } from './devices';
 
 export const EVENT_CONTRACT_VERSION = 'longball.events/1.1';
 export const SYNTHETIC_IDS = { teamId: 'synthetic-roma-u10', seasonId: 'synthetic-season-2026-27', matchId: 'synthetic-roma-maple-2026-10-24' } as const;
@@ -192,6 +194,24 @@ async memberships(): Promise<Membership[]> {
     return rows.map(row=>({accountId:row.account_id,teamId:row.team_id,seasonId:row.season_id,role:row.role,playerId:row.player_id??undefined,expiresAt:row.expires_at,revokedAt:row.role==='spectator'&&!row.grant_active?row.revoked_at??Math.max(1,this.now()):row.revoked_at}));
 }
 async myMemberships(principal: Principal): Promise<Membership[]> { return currentMemberships(principal, (await this.memberships()), this.now()); }
+async recognisedDevices(principal:Principal){
+    const legacy=await this.many('SELECT id,account_id FROM devices WHERE account_id=$1 ORDER BY id',[principal.accountId]) as unknown as {id:string;account_id:string}[];
+    const native=await this.many('SELECT * FROM native_app_devices WHERE account_id=$1 AND issuer=$2 ORDER BY registered_at,device_id',[principal.accountId,principal.issuer]) as unknown as NativeDeviceRow[];
+    return ownDevicesDto(principal,legacy,native,this.now());
+}
+async enrolDevice(principal:Principal,input:unknown){
+    const parsed=parseNativeDeviceInput(input);
+    if(await this.one('SELECT id FROM devices WHERE id=$1 AND account_id=$2',[parsed.deviceId,principal.accountId]))throw new AccessError('DEVICE_ID_CONFLICT',409,'Use a separate installation identity for sign-in recognition.');
+    const updated=await this.one('INSERT INTO native_app_devices(device_id,account_id,issuer,platform,registered_at,last_seen_at) VALUES($1,$2,$3,$4,$5,$5) ON CONFLICT(device_id) DO UPDATE SET platform=EXCLUDED.platform,last_seen_at=GREATEST(native_app_devices.last_seen_at,EXCLUDED.last_seen_at) WHERE native_app_devices.account_id=EXCLUDED.account_id AND native_app_devices.issuer=EXCLUDED.issuer RETURNING device_id',[parsed.deviceId,principal.accountId,principal.issuer,parsed.platform,this.now()]);
+    if(!updated)throw new AccessError('DEVICE_ID_CONFLICT',409,'This installation identity is unavailable.');
+    return this.recognisedDevices(principal);
+}
+async brandingContext(principal:Principal,teamId:string,seasonId:string,role?:string):Promise<BrandingAuthority>{
+    const memberships=await this.memberships(),nowMs=this.now(),selectedRole=brandSelectedRole(principal,memberships,teamId,seasonId,role,nowMs);
+    const names=await this.one('SELECT * FROM longball.branding_context($1,$2)',[teamId,seasonId]);
+    if(!names||typeof names.club_id!=='string'||names.team_id!==teamId)throw new AccessError('NOT_FOUND',404,'The requested branding is unavailable.');
+    return{context:{principal,memberships,selectedRole,clubId:names.club_id,teamId,authoritySeasonId:seasonId,nowMs,spectatorGrantActive:selectedRole==='spectator'},club:{id:names.club_id,name:String(names.club_name)},team:{id:teamId,name:String(names.team_name),ageGroup:names.age_group===null?'':String(names.age_group)}};
+}
 async match(matchId: string): Promise<MatchRow> {
     const row = (await this.one("SELECT * FROM matches WHERE id=$1", [matchId])) as MatchRow | undefined;
     if (!row)

@@ -5,6 +5,10 @@ import type { OidcClientConfig } from "@longball/application/security";
 import { validateOidcConfig } from "@longball/application/security";
 import { WIRE_CONTRACT_VERSION } from "@longball/application/sync";
 import {
+  activationRelayChannelName,
+  parseActivationRelayMessage,
+} from "@longball/application/activation-relay";
+import {
   parseLongBallDestination,
   sameActivationCompletion,
   type ActivationCompletionDestination,
@@ -39,6 +43,12 @@ export interface ActivationPanelProps {
   childDestination?: ChildActivationDestination | null;
   completion?: ActivationCompletionDestination | null;
   onCompletionConsumed?: (verified: boolean) => void;
+  invitationSetup?: {
+    activationId: string;
+    token: string;
+    providerSetupUrl: string;
+    expiresAt: number;
+  } | null;
 }
 /** Capabilities remain in component memory. Neither passwords nor activation secrets enter the journal. */
 export function ActivationPanel(props: ActivationPanelProps) {
@@ -52,6 +62,7 @@ export function ActivationPanel(props: ActivationPanelProps) {
     props.config.issuer,
     props.config.apiBaseUrl,
     props.childDestination,
+    props.invitationSetup?.activationId,
   ]);
   return <ActivationPanelContent key={key} {...props} />;
 }
@@ -61,12 +72,14 @@ function ActivationPanelContent({
   childDestination,
   completion,
   onCompletionConsumed,
+  invitationSetup,
 }: ActivationPanelProps) {
   const [token, setToken] = useState("");
+  const [providerReturn, setProviderReturn] = useState("");
   const [globalAccountId, setGlobalAccountId] = useState("");
   const [pending, setPending] = useState<Pending | null>(null);
   const [issue, setIssue] = useState<Issue | null>(null);
-  const [setup, setSetup] = useState<Setup | null>(null);
+  const [setup, setSetup] = useState<Setup | null>(invitationSetup ?? null);
   const [localProof, setProof] =
     useState<ActivationCompletionDestination | null>(null);
   const [consumedCompletion, setConsumedCompletion] = useState<string | null>(
@@ -79,11 +92,53 @@ function ActivationPanelContent({
   const [retainedCapability, setRetainedCapability] = useState<{
     activationId: string;
     token: string;
-  } | null>(null);
+  } | null>(
+    invitationSetup
+      ? {
+          activationId: invitationSetup.activationId,
+          token: invitationSetup.token,
+        }
+      : null,
+  );
   const completionToken =
     proof && retainedCapability?.activationId === proof.activationId
       ? retainedCapability.token
       : token;
+  useEffect(() => {
+    if (
+      Platform.OS !== "web" ||
+      !setup ||
+      retainedCapability?.activationId !== setup.activationId ||
+      typeof window === "undefined" ||
+      typeof BroadcastChannel === "undefined"
+    )
+      return;
+    const entry = new URL(config.redirectUri);
+    if (
+      entry.origin !== window.location.origin ||
+      entry.pathname !== window.location.pathname
+    )
+      return;
+    let channel: BroadcastChannel;
+    try {
+      channel = new BroadcastChannel(
+        activationRelayChannelName(config.redirectUri),
+      );
+    } catch {
+      return;
+    }
+    channel.onmessage = (event: MessageEvent<unknown>) => {
+      const returned = parseActivationRelayMessage(event.data);
+      if (
+        returned?.activationId === setup.activationId &&
+        setup.expiresAt > Date.now()
+      ) {
+        setProof(returned);
+        setConsumedCompletion(completionKey);
+      }
+    };
+    return () => channel.close();
+  }, [setup, retainedCapability, config.redirectUri, completionKey]);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -188,11 +243,21 @@ function ActivationPanelContent({
     );
   return (
     <Card>
-      <Text style={styles.title}>Activation and household sign-in</Text>
+      <Text style={styles.title}>
+        {invitationSetup
+          ? "Invitation account credential setup"
+          : "Activation and household sign-in"}
+      </Text>
       <Notice>
-        Activation uses an explicitly configured fictional provider trial. Q05
-        household delivery, linking and recovery authority remain unapproved. A
-        manager cannot see or set the household password.
+        {invitationSetup ? (
+          "The configured provider handles password and recovery setup. Completion activates only this account; sign in separately and explicitly accept the invitation. No team grant or adult authority is created here."
+        ) : (
+          <>
+            Activation uses an explicitly configured fictional provider trial.
+            Q05 household delivery, linking and recovery authority remain
+            unapproved. A manager cannot see or set the household password.
+          </>
+        )}
       </Notice>
       {error && <Notice tone="error">{error}</Notice>}
       {message && <Notice>{message}</Notice>}
@@ -370,61 +435,68 @@ function ActivationPanelContent({
           )}
         </>
       )}
-      <Text style={styles.body}>
-        Household: paste the capability issued through the verified process. The
-        provider browser handles your password and recovery material.
-      </Text>
-      <TextInput
-        accessibilityLabel="Single-use activation capability"
-        value={token}
-        onChangeText={setToken}
-        autoCapitalize="none"
-        autoCorrect={false}
-        secureTextEntry
-        maxLength={128}
-        style={styles.input}
-      />
-      <Button
-        label="Redeem activation with configured service"
-        disabled={busy || !token}
-        onPress={() =>
-          void run(async () => {
-            const result = await post(
-              "/activation/redeem",
-              { token },
-              false,
-              `redeem:${token}`,
-            );
-            if (
-              typeof result.activationId !== "string" ||
-              typeof result.providerSetupUrl !== "string" ||
-              typeof result.expiresAt !== "number"
-            )
-              throw new Error("Invalid setup receipt");
-            const url = new URL(result.providerSetupUrl),
-              issuer = new URL(config.issuer);
-            if (
-              url.origin !== issuer.origin ||
-              url.protocol !== "https:" ||
-              url.username ||
-              url.password ||
-              url.hash ||
-              !url.pathname.startsWith(
-                issuer.pathname.replace(/\/$/, "") + "/login-actions/",
-              )
-            )
-              throw new Error("Untrusted credential origin");
-            setSetup(result as unknown as Setup);
-            setRetainedCapability({ activationId: result.activationId, token });
-            setProof(null);
-            setConsumedCompletion(completionKey);
-            setToken("");
-            setMessage(
-              "Provider setup is ready. Continue explicitly in its browser.",
-            );
-          })
-        }
-      />
+      {!invitationSetup && (
+        <>
+          <Text style={styles.body}>
+            Household: paste the capability issued through the verified process.
+            The provider browser handles your password and recovery material.
+          </Text>
+          <TextInput
+            accessibilityLabel="Single-use activation capability"
+            value={token}
+            onChangeText={setToken}
+            autoCapitalize="none"
+            autoCorrect={false}
+            secureTextEntry
+            maxLength={128}
+            style={styles.input}
+          />
+          <Button
+            label="Redeem activation with configured service"
+            disabled={busy || !token}
+            onPress={() =>
+              void run(async () => {
+                const result = await post(
+                  "/activation/redeem",
+                  { token },
+                  false,
+                  `redeem:${token}`,
+                );
+                if (
+                  typeof result.activationId !== "string" ||
+                  typeof result.providerSetupUrl !== "string" ||
+                  typeof result.expiresAt !== "number"
+                )
+                  throw new Error("Invalid setup receipt");
+                const url = new URL(result.providerSetupUrl),
+                  issuer = new URL(config.issuer);
+                if (
+                  url.origin !== issuer.origin ||
+                  url.protocol !== "https:" ||
+                  url.username ||
+                  url.password ||
+                  url.hash ||
+                  !url.pathname.startsWith(
+                    issuer.pathname.replace(/\/$/, "") + "/login-actions/",
+                  )
+                )
+                  throw new Error("Untrusted credential origin");
+                setSetup(result as unknown as Setup);
+                setRetainedCapability({
+                  activationId: result.activationId,
+                  token,
+                });
+                setProof(null);
+                setConsumedCompletion(completionKey);
+                setToken("");
+                setMessage(
+                  "Provider setup is ready. Continue explicitly in its browser.",
+                );
+              })
+            }
+          />
+        </>
+      )}
       {setup && (
         <>
           <Button
@@ -459,6 +531,44 @@ function ActivationPanelContent({
                 }
               })
             }
+          />
+        </>
+      )}
+      {setup && Platform.OS === "web" && (
+        <>
+          <Text style={styles.body}>
+            After provider setup, copy its complete return link into this
+            original LongBall window. The original invitation or household
+            capability stays only in this window’s memory; the service
+            independently verifies completion.
+          </Text>
+          <TextInput
+            accessibilityLabel="Provider activation return link"
+            value={providerReturn}
+            onChangeText={setProviderReturn}
+            autoCapitalize="none"
+            autoCorrect={false}
+            secureTextEntry
+            maxLength={4096}
+            style={styles.input}
+          />
+          <Button
+            label="Review provider return link"
+            variant="secondary"
+            disabled={busy || !providerReturn}
+            onPress={() => {
+              void run(async () => {
+                const destination = parseLongBallDestination(providerReturn, {
+                  httpsOrigins: [new URL(config.issuer).origin],
+                  httpsEntryUrls: [config.redirectUri],
+                });
+                if (!sameActivationCompletion(destination, setup.activationId))
+                  throw new Error("Activation return mismatch");
+                setProof(destination.completion);
+                setConsumedCompletion(completionKey);
+                setProviderReturn("");
+              });
+            }}
           />
         </>
       )}
@@ -518,6 +628,7 @@ function ActivationPanelContent({
                 setConsumedCompletion(completionKey);
                 setSetup(null);
                 setRetainedCapability(null);
+                setProviderReturn("");
                 setToken("");
                 operations.current.clear();
                 onCompletionConsumed?.(true);

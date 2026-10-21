@@ -1,0 +1,38 @@
+{
+  "kind": "standard-contract-validation",
+  "observedAt": "2026-10-21T12:40:43.701Z",
+  "status": "passed",
+  "command": ".venv/bin/python scripts/validate-contracts.py",
+  "exitCode": 0,
+  "runtimeCompanionVersion": "1.3.0",
+  "suppliedArtifacts": {
+    "archiveMembersByteIdentical": 15,
+    "archivedSha256Checks": 14,
+    "paths": 87,
+    "operations": 103,
+    "schemas": 172,
+    "resolvedInternalRefs": 176,
+    "fairnessVectors": 6,
+    "visualPages": 8
+  },
+  "checks": [
+    "Full supplied OpenAPI 3.1 validation",
+    "Full runtime companion OpenAPI 3.1 validation with duplicate-key rejection",
+    "Strict logo ancestry, HEIC metadata, rights/revision, write-header and private DTO response boundaries",
+    "Strict invitation credential/replay/destination and own-device authority/DTO boundaries"
+  ],
+  "standardCommandIncludesNewBoundaryScripts": true,
+  "canonicalFilesChanged": false,
+  "sourceSha256": {
+    "apps/api/contracts/runtime.openapi.yaml": "158c67d1dd16faa372b878cfd961a0e4fee40470b79b7ec4f7f4e85001085b3b",
+    "scripts/validate-contracts.py": "568217dfb12f6afd769e92f037e3ddc70d980424526f85094ef3540b705a1f03",
+    "scripts/test-branding-contract.py": "9415a4bce10c04ee4b3cd238376f9d2372b70a53da841a174ae2943fc1a4a1f5",
+    "scripts/test-identity-contract.py": "54b777e89efa2ca16274eb403ee27d45a2244c358fad433ad63385f8d4fb000c",
+    "packages/application/src/branding.ts": "754e0d245be13b813b13938635f44c6a00431779f098c70f850ce7d7cb160d67",
+    "packages/application/src/branding.test.ts": "3121467093ed312fb7e45dc9b9593ffdf798636c0ce17df4cd64cf0bd0eab233"
+  },
+  "limits": [
+    "Contract and rule validation does not prove actual HEIC decoder/scanner behavior",
+    "No native device, provider, deployment or live-child operating approval follows from these checks"
+  ]
+}

@@ -3,6 +3,7 @@
  * Actors must come from an authenticated service in a connected pilot. This module
  * does not turn a role selector, a review code or local persistence into identity.
  */
+import { isInvitationTokenHash, pendingInvitation, publicInvitation, type CredentialInvitation, type InvitationCredential } from './invitation-credentials';
 export type CommunityRole = 'manager' | 'player' | 'spectator';
 export interface CommunityActor {
   role: CommunityRole;
@@ -33,19 +34,10 @@ export interface CommunitySeason {
   /** Explicit Europe/London season boundary, supplied as an absolute instant. */
   accessEndsAtMs: number;
 }
-export interface SpectatorInvite {
-  id: string;
-  teamId: string;
-  seasonId: string;
-  inviterAccountId: string;
-  /** Fictional review code only. Production activation uses a hashed single-use token. */
-  reviewCode: string;
-  createdAtMs: number;
-  expiresAtMs: number;
-  acceptedBy: string | null;
-  acceptedAtMs: number | null;
-  revokedAtMs: number | null;
-}
+export type SpectatorInvite = Omit<CredentialInvitation, 'credential'> & (
+  | { credential: Exclude<InvitationCredential, { kind: 'fictional_review' }>; reviewCode?: never }
+  | { credential: Extract<InvitationCredential, { kind: 'fictional_review' }>; reviewCode: string }
+);
 export interface SpectatorGrant {
   id: string;
   invitationId: string;
@@ -306,18 +298,20 @@ export function applyCommunityCommand(state: CommunityState, actor: CommunityAct
   if (!personal && command.type !== 'invite.accepted') assertAccess(next, actor, nowMs);
   switch (command.type) {
     case 'invite.created': {
+      requireRule(next.synthetic === true, 'forbidden', 'Review codes are available only in the fictional local journey.');
       requireRule(actor.role !== 'spectator', 'forbidden', 'Spectators cannot invite other spectators.');
       const season = next.seasons.find(item => item.id === actor.seasonId && item.teamId === actor.teamId);
       requireRule(season, 'invalid', 'The team season is missing.');
       requireRule(validTime(command.expiresAtMs) && nowMs < command.expiresAtMs && command.expiresAtMs <= season.accessEndsAtMs, 'invalid', 'Choose an invitation expiry after now and before the season ends.');
       requireRule(command.reviewCode.trim().length >= 6 && !next.invitations.some(item => item.reviewCode === command.reviewCode || item.id === command.invitationId), 'invalid', 'The fictional invitation identity/code must be unique.');
       next.invitations.push({ id: command.invitationId, teamId: actor.teamId, seasonId: actor.seasonId,
-        inviterAccountId: actor.accountId, reviewCode: command.reviewCode, createdAtMs: nowMs, expiresAtMs: command.expiresAtMs,
-        acceptedBy: null, acceptedAtMs: null, revokedAtMs: null });
+        inviterAccountId: actor.accountId, reviewCode: command.reviewCode, credential: { kind: 'fictional_review', version: 1, code: command.reviewCode }, createdAtMs: nowMs, expiresAtMs: command.expiresAtMs,
+        acceptedBy: null, acceptedAtMs: null, revokedAtMs: null, reissuedFromInvitationId: null });
       break;
     }
     case 'invite.accepted': {
-      const invite = next.invitations.find(item => item.reviewCode === command.reviewCode);
+      requireRule(next.synthetic === true, 'forbidden', 'Review codes are available only in the fictional local journey.');
+      const invite = next.invitations.find(item => item.credential?.kind === 'fictional_review' && item.credential.code === command.reviewCode && item.reviewCode === command.reviewCode);
       requireRule(invite && invite.teamId === actor.teamId && invite.seasonId === actor.seasonId, 'forbidden', 'That invitation is not valid for this team and season.');
       requireRule(invite.revokedAtMs === null && invite.acceptedBy === null, 'closed', 'That invitation has already been accepted or revoked.');
       requireRule(nowMs < invite.expiresAtMs, 'expired', 'This invitation has expired. Ask for a new individual invitation.');
@@ -535,6 +529,237 @@ export function applyCommunityCommand(state: CommunityState, actor: CommunityAct
   return next;
 }
 
+export type VerifiedInvitationCommand = CommandBase &
+  (
+    | {
+        type: "invite.issued";
+        invitationId: string;
+        tokenHash: string;
+        expiresAtMs: number;
+      }
+    | {
+        type: "invite.reissued";
+        sourceInvitationId: string;
+        invitationId: string;
+        tokenHash: string;
+        expiresAtMs: number;
+      }
+    | {
+        type: "invite.accepted_verified";
+        invitationId: string;
+        tokenHash: string;
+      }
+  );
+function validInvitationIdentity(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    value.length >= 1 &&
+    value.length <= 200 &&
+    !/[^A-Za-z0-9_.:-]/.test(value)
+  );
+}
+/** A verified service must generate raw entropy and hash it before invoking this function. */
+export function applyVerifiedInvitationCommand(
+  state: CommunityState,
+  actor: CommunityActor,
+  command: VerifiedInvitationCommand,
+  nowMs: number,
+): CommunityState {
+  requireRule(
+    validTime(nowMs),
+    "invalid",
+    "A valid invitation receipt time is required.",
+  );
+  account(state, actor);
+  const fields: Record<VerifiedInvitationCommand["type"], string[]> = {
+    "invite.issued": ["invitationId", "tokenHash", "expiresAtMs"],
+    "invite.reissued": [
+      "sourceInvitationId",
+      "invitationId",
+      "tokenHash",
+      "expiresAtMs",
+    ],
+    "invite.accepted_verified": ["invitationId", "tokenHash"],
+  };
+  requireRule(
+    command && Object.hasOwn(fields, command.type),
+    "invalid",
+    "The internal invitation operation is unavailable.",
+  );
+  requireRule(
+    Object.keys(command).every((key) =>
+      ["id", "type", "expectedRevision", ...fields[command.type]].includes(key),
+    ) &&
+      Object.keys(actor).every((key) =>
+        ["role", "accountId", "teamId", "seasonId", "playerId"].includes(key),
+      ),
+    "invalid",
+    "Unexpected invitation data is not retained.",
+  );
+  requireRule(
+    validInvitationIdentity(command.id) &&
+      validInvitationIdentity(command.invitationId) &&
+      isInvitationTokenHash(command.tokenHash) &&
+      (command.expectedRevision === undefined ||
+        validTime(command.expectedRevision)),
+    "invalid",
+    "The invitation identity and verifier must be canonical.",
+  );
+  const fingerprint = JSON.stringify([actor, command]);
+  const prior = state.appliedCommands[command.id];
+  if (prior !== undefined) {
+    requireRule(
+      prior === fingerprint,
+      "conflict",
+      "This command identity was already used for different content.",
+    );
+    return state;
+  }
+  requireRule(
+    command.expectedRevision === undefined ||
+      command.expectedRevision === state.revision,
+    "conflict",
+    "Community records changed. Reload before retrying.",
+  );
+  const next: CommunityState = JSON.parse(JSON.stringify(state));
+  if (command.type === "invite.accepted_verified") {
+    const invite = pendingInvitation(next, command.tokenHash, nowMs, actor);
+    requireRule(
+      invite && invite.id === command.invitationId,
+      "forbidden",
+      "The invitation is unavailable for this team and season.",
+    );
+    const saved = next.invitations.find((item) => item.id === invite.id)!;
+    const season = next.seasons.find(
+      (item) => item.id === invite.seasonId && item.teamId === invite.teamId,
+    )!;
+    saved.acceptedBy = actor.accountId;
+    saved.acceptedAtMs = nowMs;
+    requireRule(
+      !next.grants.some(
+        (grant) =>
+          grant.id === `grant:${invite.id}` || grant.invitationId === invite.id,
+      ),
+      "conflict",
+      "This invitation already has a retained grant.",
+    );
+    next.grants.push({
+      id: `grant:${invite.id}`,
+      invitationId: invite.id,
+      accountId: actor.accountId,
+      teamId: invite.teamId,
+      seasonId: invite.seasonId,
+      startsAtMs: nowMs,
+      expiresAtMs: season.accessEndsAtMs,
+      revokedAtMs: null,
+    });
+  } else {
+    assertAccess(next, actor, nowMs);
+    requireRule(
+      actor.role === "manager" || actor.role === "player",
+      "forbidden",
+      "Only a current player or manager can issue invitations.",
+    );
+    const season = next.seasons.find(
+      (item) => item.id === actor.seasonId && item.teamId === actor.teamId,
+    );
+    requireRule(
+      season && nowMs < season.accessEndsAtMs,
+      "expired",
+      "The invited season has ended. Renewal is explicit.",
+    );
+    requireRule(
+      validTime(command.expiresAtMs) &&
+        nowMs < command.expiresAtMs &&
+        command.expiresAtMs - nowMs <= 48 * 3_600_000 &&
+        command.expiresAtMs <= season.accessEndsAtMs,
+      "invalid",
+      "Choose an explicit invitation expiry within 48 hours and the current season.",
+    );
+    requireRule(
+      !next.invitations.some(
+        (item) =>
+          item.id === command.invitationId ||
+          (item.credential?.kind === "sha256" &&
+            item.credential.tokenHash === command.tokenHash),
+      ),
+      "conflict",
+      "Invitation identities and verifiers cannot be reused.",
+    );
+    let sourceId: string | null = null;
+    if (command.type === "invite.reissued") {
+      requireRule(
+        validInvitationIdentity(command.sourceInvitationId),
+        "invalid",
+        "The source invitation identity is unavailable.",
+      );
+      const source = next.invitations.find(
+        (item) =>
+          item.id === command.sourceInvitationId &&
+          item.teamId === actor.teamId &&
+          item.seasonId === actor.seasonId,
+      );
+      requireRule(
+        source && source.acceptedBy === null && source.acceptedAtMs === null,
+        "closed",
+        "An accepted invitation or grant cannot be replaced by reissue.",
+      );
+      requireRule(
+        source.credential?.kind === "sha256" ||
+          source.credential?.kind === "legacy_retired",
+        "closed",
+        "Retire legacy invitation credentials before issuing their replacement.",
+      );
+      requireRule(
+        actor.role === "manager" || source.inviterAccountId === actor.accountId,
+        "forbidden",
+        "Only the original current inviter or a current manager can reissue this pending invitation.",
+      );
+      requireRule(
+        source.revokedAtMs === null ||
+          (source.credential?.kind === "legacy_retired" &&
+            source.credential.requiresReissue),
+        "closed",
+        "A revoked invitation cannot be reissued.",
+      );
+      requireRule(
+        !next.invitations.some(
+          (item) => item.reissuedFromInvitationId === source.id,
+        ),
+        "closed",
+        "This invitation already has a replacement. Reissue the retained replacement explicitly.",
+      );
+      source.revokedAtMs ??= nowMs;
+      if (source.credential?.kind === "legacy_retired")
+        source.credential.requiresReissue = false;
+      sourceId = source.id;
+    }
+    next.invitations.push({
+      id: command.invitationId,
+      teamId: actor.teamId,
+      seasonId: actor.seasonId,
+      inviterAccountId: actor.accountId,
+      credential: { kind: "sha256", version: 1, tokenHash: command.tokenHash },
+      createdAtMs: nowMs,
+      expiresAtMs: command.expiresAtMs,
+      acceptedBy: null,
+      acceptedAtMs: null,
+      revokedAtMs: null,
+      reissuedFromInvitationId: sourceId,
+    });
+  }
+  next.revision += 1;
+  next.appliedCommands[command.id] = fingerprint;
+  next.audit.push({
+    id: command.id,
+    actorAccountId: actor.accountId,
+    action: command.type,
+    atMs: nowMs,
+    origin: "account",
+  });
+  return next;
+}
+
 /** Purpose-scoped worker operation: never impersonates a manager or chooses Q15. */
 export function finalizeDueCommunityAwards(state: CommunityState, nowMs: number): CommunityState {
   requireRule(validTime(nowMs), 'invalid', 'A valid worker receipt time is required.');
@@ -614,7 +839,7 @@ export function getCommunityView(state: CommunityState, actor: CommunityActor, n
     teamLabel: season?.teamLabel ?? 'Team', seasonLabel: season?.label ?? 'Season', accountLabel: person.label,
     memberships: state.memberships.filter(item => item.accountId === actor.accountId).map(item => ({ ...item })),
     preferences: { ...(state.preferences[actor.accountId] ?? defaultCommunityPreferences()) },
-    invitations: allowed && actor.role !== 'spectator' ? scoped(state.invitations).filter(item => actor.role === 'manager' || item.inviterAccountId === actor.accountId).map(item => ({ ...item })) : [],
+    invitations: allowed && actor.role !== 'spectator' ? scoped(state.invitations).filter(item => actor.role === 'manager' || item.inviterAccountId === actor.accountId).map(item => ({ ...publicInvitation(item, nowMs), reviewCode: item.credential?.kind === 'fictional_review' && state.synthetic === true ? item.credential.code : undefined })) : [],
     grants: allowed && actor.role === 'manager' ? scoped(state.grants).map(item => ({ ...item, accountLabel: labelForAccount(state, item.accountId) })) : [],
     matches: allowed ? scoped(state.matches).map(match => {
       const share = sharedAllowed(state, actor, match);

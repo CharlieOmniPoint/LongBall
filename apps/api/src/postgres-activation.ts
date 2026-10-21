@@ -23,7 +23,7 @@ export interface ActivationProvider {
     operationId: string;
     accountId: string;
     username: string;
-    classification: "child_shared";
+    classification: "child_shared" | "unclassified";
     emailRequired: false;
   }): Promise<{
     issuer: string;
@@ -194,6 +194,11 @@ function username(): string {
 }
 /** Async PostgreSQL activation repository; provider operations remain outside committed transactions. */
 export class PostgresActivationService {
+  async ownsActivationToken(token: string, activationId?: string): Promise<boolean> {
+    await this.ready;
+    if (!/^[A-Za-z0-9_-]{43}$/.test(token)) return false;
+    return this.store.db.withContext({kind:"activation_token",tokenHash:hash(token),...(activationId?{activationId}:{}),nowMs:this.store.now()},async()=>Boolean(await this.store.one("SELECT id FROM lb_activation_tokens WHERE token_hash=$1 AND ($2::text IS NULL OR id=$2)",[hash(token),activationId??null])));
+  }
   private readonly ready: Promise<void>;
   async initialize(): Promise<this> {
     await this.ready;

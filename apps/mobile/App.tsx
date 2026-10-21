@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Linking,
   Modal,
   Platform,
   Pressable,
@@ -59,6 +60,10 @@ import { PlannerPanel, usePlannerModel } from "./src/features/PlannerPanel";
 import { AccountSecurityScreen } from "./src/features/AccountSecurityScreen";
 import { ConnectedWorkspace } from "./src/features/ConnectedWorkspace";
 import { ConnectedApplication } from "./src/ConnectedApplication";
+import {
+  parseLongBallDestination,
+  type SpectatorInvitationDestination,
+} from "@longball/application/deep-links";
 import { Button, Card, colors, Icon, Notice, Pill, Pitch } from "./src/ui";
 import type { IconName } from "./src/ui/Icon";
 import {
@@ -121,6 +126,41 @@ function LongBall() {
   const planner = usePlannerModel(state, model.sample, clock);
   const setPlannerControl = planner.setHasControl;
   const [screen, setScreen] = useState<Screen>("home");
+  const [receivedInvitation, setReceivedInvitation] =
+    useState<SpectatorInvitationDestination | null>(null);
+  useEffect(() => {
+    let active = true;
+    const receive = (url: string) => {
+      if (!active) return;
+      const browserEntry = typeof window !== "undefined"
+        ? `${window.location.origin}${window.location.pathname}`
+        : null;
+      const destination = parseLongBallDestination(url, {
+        httpsEntryUrls: [
+          ...(process.env.EXPO_PUBLIC_LINK_ENTRY_URLS ?? "")
+            .split(",").map((value: string) => value.trim()).filter(Boolean),
+          ...(browserEntry && window.location.protocol === "https:" ? [browserEntry] : []),
+        ],
+        developmentHttpEntryUrls:
+          browserEntry && window.location.hostname === "localhost"
+            ? [browserEntry] : [],
+      });
+      if (destination?.kind !== "invitation") return;
+      setReceivedInvitation(destination.invitation);
+      // Receiving a review link selects no API, account, membership or role.
+      if (typeof window !== "undefined" && window.location.href === url && window.location.hash)
+        window.history.replaceState(null, "", window.location.pathname + window.location.search);
+    };
+    void Linking.getInitialURL().then(url => { if (url) receive(url); });
+    const subscription = Linking.addEventListener("url", event => receive(event.url));
+    const browserChange = () => receive(window.location.href);
+    if (typeof window !== "undefined") window.addEventListener("hashchange", browserChange);
+    return () => {
+      active = false;
+      subscription.remove();
+      if (typeof window !== "undefined") window.removeEventListener("hashchange", browserChange);
+    };
+  }, []);
   const [slot, setSlot] = useState<string | null>(null);
   const [draft, setDraft] = useState<{
     lineup: Allocation[];
@@ -701,6 +741,23 @@ function LongBall() {
               contentContainerStyle={s.content}
               keyboardShouldPersistTaps="handled"
             >
+              {receivedInvitation && (
+                <Card>
+                  <Text style={s.section}>Invitation received</Text>
+                  <Text style={s.small}>
+                    Open the service workspace to review this invitation before accepting.
+                  </Text>
+                  <Button
+                    label="Review received service invitation"
+                    testID="review-received-service-invitation"
+                    variant="secondary"
+                    onPress={() => {
+                      setRole("manager");
+                      navigate("service");
+                    }}
+                  />
+                </Card>
+              )}
               {model.conflict && (
                 <>
                   <Notice tone="error">{model.conflict}</Notice>
@@ -1408,6 +1465,7 @@ function LongBall() {
                   journal={model.journal}
                   deviceId={model.deviceId}
                   match={state}
+                  invitationDestination={receivedInvitation ?? undefined}
                 />
               )}
               {app &&

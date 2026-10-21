@@ -20,7 +20,7 @@ export interface ActivationProvider {
     operationId: string;
     accountId: string;
     username: string;
-    classification: "child_shared";
+    classification: "child_shared" | "unclassified";
     emailRequired: false;
   }): Promise<{
     issuer: string;
@@ -189,6 +189,10 @@ function username(): string {
 
 /** SQLite development implementation; external provider calls never run inside a SQL transaction. */
 export class DevelopmentActivationService {
+  ownsActivationToken(token: string, activationId?: string): boolean {
+    if (!/^[A-Za-z0-9_-]{43}$/.test(token)) return false;
+    return Boolean(this.store.database.prepare("SELECT id FROM lb_activation_tokens WHERE token_hash=? AND (? IS NULL OR id=?)").get(hash(token),activationId??null,activationId??null));
+  }
   readonly configured: boolean;
   private readonly store: DevelopmentStore;
   private readonly provider?: ActivationProvider;

@@ -1,0 +1,18 @@
+{
+  "passed": true,
+  "checks": [
+    "Anonymous production entry requires connected sign-in",
+    "Fictional accounts/seed absent",
+    "Recording journal not opened before sign-in",
+    "390px layout and no runtime errors"
+  ],
+  "layout": {
+    "width": 390,
+    "documentWidth": 390
+  },
+  "artifact": {
+    "path": "apps/mobile/dist-production-review/_expo/static/js/web/index-bd515e6de4faad93de017c7ac5e526b7.js",
+    "sha256": "58abd1f09ff931891985ec2b524aec5b8c9bbcf6d5449a8e57dbd3b515274fc9"
+  },
+  "fictionalIdentityTrialFlag": false
+}

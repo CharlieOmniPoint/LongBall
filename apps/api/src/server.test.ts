@@ -25,6 +25,7 @@ async function start(options: Partial<ApiOptions> = {}) {
     const headers: Record<string, string> = {};
     if (options.token !== null) headers.Authorization = `Bearer ${options.token ?? 'synthetic-manager-1'}`;
     if (options.body !== undefined) { headers['Content-Type'] = 'application/json'; headers['Idempotency-Key'] = options.key ?? randomUUID(); headers['X-Api-Contract-Version'] = EVENT_CONTRACT_VERSION; }
+    if (options.method === 'DELETE' && options.body === undefined) { headers['Idempotency-Key'] = options.key ?? randomUUID(); headers['X-Api-Contract-Version'] = EVENT_CONTRACT_VERSION; }
     if (options.controller) headers['X-Controller-Token'] = options.controller;
     if (options.role) headers['X-Longball-Role'] = options.role;
     const reply = await fetch(`${base}${path}`, { method: options.method ?? (options.body === undefined ? 'GET' : 'POST'), headers, body: options.body === undefined ? undefined : JSON.stringify(options.body) });
@@ -440,23 +441,27 @@ describe('durable preparation, records, community and own privacy requests', () 
     expect(JSON.stringify(manager.body)).not.toContain('voterPlayerId');
   });
   it('revoking an accepted invitation denies all match routes and preserves another independently active grant', async () => {
-    const client = await start();
-    const createInvite = (invitationId: string, reviewCode: string) => client.call(`${teamUrl}/community`, { body: { command: { id: randomUUID(), type: 'invite.created', invitationId, reviewCode, expiresAtMs: now + 86_400_000 } } });
-    const acceptInvite = (reviewCode: string) => client.call(`${teamUrl}/community`, { token: 'synthetic-account-invitee', body: { command: { id: randomUUID(), type: 'invite.accepted', reviewCode } } });
-    const revokeInvite = (invitationId: string) => client.call(`${teamUrl}/community`, { body: { command: { id: randomUUID(), type: 'invite.revoked', invitationId } } });
-    expect((await createInvite('invitation-one', 'FICTIONAL-ONE')).status).toBe(200);
-    expect((await acceptInvite('FICTIONAL-ONE')).status).toBe(200);
+    const client = await start({ publicAppEntryUrl: 'https://example.invalid/LongBall/', invitationPolicyVersion: 'explicit-fictional-http-test' });
+    const createInvite = async () => {
+      const response = await client.call(`${teamUrl}/spectator-invites`, { body: { seasonId: SYNTHETIC_IDS.seasonId, expiresInHours: 1 } });
+      expect(response.status).toBe(201);
+      return { id: response.body.id as string, token: new URLSearchParams(new URL(response.body.shareUrl as string).hash.slice(1)).get('code')! };
+    };
+    const acceptInvite = (token: string) => client.call('/v1/spectator-invites/accept', { token: 'synthetic-account-invitee', body: { token } });
+    const revokeInvite = (invitationId: string) => client.call(`${teamUrl}/spectator-invites/${invitationId}?seasonId=${SYNTHETIC_IDS.seasonId}`, { method: 'DELETE' });
+    const first = await createInvite();
+    expect((await acceptInvite(first.token)).status).toBe(200);
     expect((await client.call(matchUrl, { token: 'synthetic-account-invitee' })).status).toBe(200);
-    expect((await revokeInvite('invitation-one')).status).toBe(200);
+    expect((await revokeInvite(first.id)).status).toBe(200);
     for (const path of [matchUrl, `${teamUrl}/matches`, `${teamUrl}/records`, `${teamUrl}/community`]) expect((await client.call(path, { token: 'synthetic-account-invitee' })).status).toBe(404);
-    expect((await createInvite('invitation-two', 'FICTIONAL-TWO')).status).toBe(200);
-    expect((await acceptInvite('FICTIONAL-TWO')).status).toBe(200);
-    expect((await createInvite('invitation-three', 'FICTIONAL-THREE')).status).toBe(200);
-    expect((await acceptInvite('FICTIONAL-THREE')).status).toBe(200);
-    expect((await revokeInvite('invitation-three')).status).toBe(200);
+    const second = await createInvite();
+    expect((await acceptInvite(second.token)).status).toBe(200);
+    const third = await createInvite();
+    expect((await acceptInvite(third.token)).status).toBe(200);
+    expect((await revokeInvite(third.id)).status).toBe(200);
     expect((await client.call(matchUrl, { token: 'synthetic-account-invitee' })).status).toBe(200);
     expect((await client.call(`${teamUrl}/matches`, { token: 'synthetic-account-invitee' })).status).toBe(200);
-    expect((await revokeInvite('invitation-two')).status).toBe(200);
+    expect((await revokeInvite(second.id)).status).toBe(200);
     expect((await client.call(matchUrl, { token: 'synthetic-account-invitee' })).status).toBe(404);
   });
   it('rejects caller-manufactured trusted finish evidence and competition sharing policy', async () => {

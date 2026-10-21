@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import { AccessError, type Role } from '../../../packages/application/src/access';
 
 /** Server-selected route intent. A path/role is never proof of membership. */
@@ -22,6 +21,7 @@ export function requestDatabaseScope(input:{method:string;parts:string[];seasonI
   const command=object(body?.command)?body.command:null;
   if(parts[0]!=='v1')return scope;
   if(parts[1]==='me')scope.operation='account.read';
+  else if(parts[1]==='identity'&&parts[2]==='devices')scope.operation=method==='GET'?'identity.devices':'identity.enrol';
   else if(parts[1]==='contracts')scope.operation='contracts.read';
   else if(parts[1]==='privacy'&&parts[2]==='requests')scope.operation=method==='GET'?'privacy.read':'privacy.request';
   else if(parts[1]==='accounts'&&['link-requests','recovery-requests'].includes(parts[2])){
@@ -45,14 +45,11 @@ export function requestDatabaseScope(input:{method:string;parts:string[];seasonI
       case 'seasons':scope.operation=method==='GET'?'season.options':'season.create';if(method==='POST'&&opaque(command?.idForSeason))scope.newSeasonId=command.idForSeason;break;
       case 'preparation':scope.operation=`preparation.${parts[4]==='own'?'own.':''}${method==='GET'?'read':'write'}`;break;
       case 'records':scope.operation=method==='GET'?(parts[4]==='export'?'records.export':'records.read'):'records.write';break;
-      case 'community':
-        scope.operation=method==='GET'?'community.read':'community.write';
-        if(method==='POST'&&command?.type==='invite.accepted'&&typeof command.reviewCode==='string'){
-          scope.operation='invite.accept';scope.invitationTokenHash=createHash('sha256').update(command.reviewCode).digest('hex');
-        }
-        break;
+      case 'community':scope.operation=method==='GET'?'community.read':'community.write';break;
+      case 'spectator-invites':scope.operation=method==='GET'?'invite.list':method==='DELETE'?'invite.revoke':parts[5]==='reissue'?'invite.reissue':'invite.issue';break;
       case 'media':scope.operation=parts[4]==='photos'?'media.gateway':method==='GET'?'media.list':method==='PUT'?'media.upload':parts[5]==='prepare'?'media.prepare':'media.complete';break;
       case 'activation':scope.operation=parts[4]==='pending-child'?'activation.pending_child':'activation.issue';break;
+      case 'branding':scope.operation=method==='GET'?(parts[4]==='assets'?'branding.gateway':'branding.read'):method==='PUT'?'branding.upload':parts[4]==='uploads'?'branding.complete':parts[5]==='uploads'?'branding.prepare':parts[5]==='publish'?'branding.publish':'branding.remove';break;
     }
   }
   if(!input.role&&(scope.operation.startsWith('staff.')||scope.operation==='season.create'||scope.operation==='configuration.write'&&command?.type==='club.updated'))scope.requestedRole='administrator';

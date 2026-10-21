@@ -1,12 +1,11 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Text, TextInput, View } from "react-native";
 import type {
-  LogoChoice,
   PreparationCommand,
   PreparationState,
 } from "@longball/application/preparation";
 import { randomUUID } from "../platform/id";
-import { Button, Card, colors, Icon, Notice } from "../ui";
+import { Button, Card, colors, Notice } from "../ui";
 import { typography } from "../ui/tokens";
 import {
   ConnectedStaffPanel,
@@ -24,7 +23,9 @@ export function ConnectedClubConfiguration({
   onChange,
   staff,
   onStaffChange,
+  brandingPanel,
 }: {
+  brandingPanel?: ReactNode;
   value: ConnectedConfigurationDto;
   disabled: boolean;
   onChange: (command: PreparationCommand) => Promise<boolean>;
@@ -34,8 +35,6 @@ export function ConnectedClubConfiguration({
   const [clubName, setClubName] = useState(value.club.name),
     [teamName, setTeamName] = useState(value.team.name),
     [ageGroup, setAgeGroup] = useState(value.team.ageGroup);
-  const [clubLogo, setClubLogo] = useState<LogoChoice | null>(value.club.logo),
-    [teamLogo, setTeamLogo] = useState<LogoChoice | null>(value.team.logo);
   const [places, setPlaces] = useState(value.team.defaultPitchPlaces),
     [minutes, setMinutes] = useState(
       String(value.team.defaultHalfDurationMs / 60_000),
@@ -65,32 +64,9 @@ export function ConnectedClubConfiguration({
       />
     </View>
   );
-  const logos = (
-    kind: "club" | "team",
-    selected: LogoChoice | null,
-    change: (value: LogoChoice | null) => void,
-  ) => (
-    <View style={{ gap: 8 }}>
-      <Text style={typography.label}>
-        {kind === "team" ? "Team logo override" : "Club badge"}
-      </Text>
-      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-        {([null, "roundel", "shield", "ball"] as const).map((option) => (
-          <Button
-            key={option ?? "inherit"}
-            label={
-              option ?? (kind === "team" ? "Inherit club" : "Neutral badge")
-            }
-            variant={selected === option ? "primary" : "secondary"}
-            disabled={disabled}
-            onPress={() => change(option)}
-          />
-        ))}
-      </View>
-    </View>
-  );
   return (
     <View style={{ gap: 12 }} testID="administrator-configuration">
+      {brandingPanel}
       <Card>
         <Text style={typography.section}>Club configuration</Text>
         <Notice>
@@ -99,7 +75,6 @@ export function ConnectedClubConfiguration({
           separate manager assignment.
         </Notice>
         {input("Club name", clubName, setClubName)}
-        {logos("club", clubLogo, setClubLogo)}
         <Button
           label="Save administrator club configuration"
           disabled={disabled || !clubName.trim()}
@@ -109,20 +84,15 @@ export function ConnectedClubConfiguration({
               expectedRevision: value.revision,
               type: "club.updated",
               name: clubName.trim(),
-              logo: clubLogo,
+              logo: value.club.logo,
             });
           }}
         />
       </Card>
       <Card>
         <Text style={typography.section}>Team defaults and identity</Text>
-        <Icon
-          name={(teamLogo ?? clubLogo) === "ball" ? "ball" : "shield"}
-          size={36}
-        />
         {input("Team name", teamName, setTeamName)}
         {input("Age group", ageGroup, setAgeGroup)}
-        {logos("team", teamLogo, setTeamLogo)}
         <Text style={typography.label}>Default format</Text>
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
           {[5, 6, 7, 8, 9, 10, 11].map((number) => (
@@ -157,7 +127,7 @@ export function ConnectedClubConfiguration({
               type: "team.updated",
               name: teamName.trim(),
               ageGroup: ageGroup.trim(),
-              logo: teamLogo,
+              logo: value.team.logo,
               defaultPitchPlaces: places,
               defaultHalfDurationMs: Number(minutes) * 60_000,
             });

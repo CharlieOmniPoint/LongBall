@@ -1,0 +1,39 @@
+{
+  "syntheticOnly": true,
+  "description": "Generated flat colours only; no people or personal metadata. EXIF/GPS values are deliberate fictional strip controls.",
+  "encoder": {
+    "libheif": "1.23.6",
+    "HEIF": "x265 HEVC encoder (4.3+1-e9b8812)",
+    "AVIF": "",
+    "encoders": {
+      "x265": "x265 HEVC encoder (4.3+1-e9b8812)",
+      "mask": "mask"
+    },
+    "decoders": {
+      "libde265": "libde265 HEVC decoder, version 1.1.3"
+    }
+  },
+  "fixtures": [
+    {
+      "file": "fictional.heic",
+      "bytes": 718,
+      "sha256": "dad24840cd53fce49f3cda0461cea8356860587dd45745d1e8afab23b885214e"
+    },
+    {
+      "file": "hidden-oversize.heic",
+      "bytes": 759,
+      "sha256": "8178bd0c22de2f681fc5c3b744a26f993ba726766da10cba245f171d8ecbc037"
+    },
+    {
+      "file": "multiple.heic",
+      "bytes": 705,
+      "sha256": "e755948df372e6bcb9a463b8b51ca65a34d1a8eaf308a584dd895eaa909f42d7"
+    },
+    {
+      "file": "with-thumbnail.heic",
+      "bytes": 759,
+      "sha256": "daf3cbf990d49e0e80a3bae4f6224e95aff8c21219358750421abdb992d464f9"
+    }
+  ],
+  "hiddenThumbnailIspeOffset": 507
+}

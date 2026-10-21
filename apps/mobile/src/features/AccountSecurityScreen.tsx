@@ -1,12 +1,26 @@
 import { useEffect, useRef, useState } from "react";
-import { Platform, StyleSheet, Text, TextInput, View } from "react-native";
+import {
+  AppState,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import type { OidcClientConfig } from "@longball/application/security";
 import type {
   ActivationCompletionDestination,
   ChildActivationDestination,
+  SpectatorInvitationDestination,
 } from "@longball/application/deep-links";
 import { ActivationPanel } from "./ActivationPanel";
+import { SpectatorActivationPanel } from "./SpectatorActivationPanel";
 import { AccountRequestsScreen } from "./AccountRequestsScreen";
+import { RecognizedDevicesPanel } from "./RecognizedDevicesPanel";
+import {
+  getDeviceAuthenticationAvailability,
+  type DeviceAuthenticationAvailability,
+} from "../platform/auth/device-auth";
 import {
   defaultAuthRedirect,
   enrollLocalPin,
@@ -17,6 +31,7 @@ import {
   renewConnectedSession,
   signOutConnected,
   unlockConnectedSession,
+  unlockConnectedSessionWithDeviceAuthentication,
   type ConnectedSessionSummary,
   type PreparedSignIn,
 } from "../platform/auth/client";
@@ -29,6 +44,7 @@ export interface AccountSecurityScreenProps {
   childActivationDestination?: ChildActivationDestination | null;
   activationCompletion?: ActivationCompletionDestination | null;
   onActivationCompletionConsumed?: () => void;
+  invitationDestination?: SpectatorInvitationDestination | null;
 }
 export function AccountSecurityScreen({
   onSessionChange,
@@ -37,6 +53,7 @@ export function AccountSecurityScreen({
   childActivationDestination,
   activationCompletion,
   onActivationCompletionConsumed,
+  invitationDestination,
 }: AccountSecurityScreenProps) {
   const [config, setConfig] = useState<OidcClientConfig>(() => ({
     issuer: initialConfig?.issuer ?? process.env.EXPO_PUBLIC_OIDC_ISSUER ?? "",
@@ -55,6 +72,24 @@ export function AccountSecurityScreen({
   const [notice, setNotice] = useState<string | null>(null);
   const [showRecovery, setShowRecovery] = useState(false);
   const [showRequests, setShowRequests] = useState(false);
+  const [deviceAuth, setDeviceAuth] =
+    useState<DeviceAuthenticationAvailability | null>(null);
+  useEffect(() => {
+    let active = true;
+    const refresh = () => {
+      void getDeviceAuthenticationAvailability().then((value) => {
+        if (active) setDeviceAuth(value);
+      });
+    };
+    refresh();
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state === "active") refresh();
+    });
+    return () => {
+      active = false;
+      subscription.remove();
+    };
+  }, []);
   const sessionCallback = useRef(onSessionChange);
   useEffect(() => {
     sessionCallback.current = onSessionChange;
@@ -236,6 +271,45 @@ export function AccountSecurityScreen({
       </Card>
       {session && Platform.OS !== "web" && (
         <Card>
+          <Text style={s.section}>Device authentication</Text>
+          <Text style={s.small}>
+            Use the enrolled device biometric or passcode to unlock this
+            existing unexpired local session. It cannot refresh sign-in, change
+            the encryption key or bypass a retained PIN lockout.
+          </Text>
+          {deviceAuth?.available ? (
+            session.locked ? (
+              <Button
+                label="Unlock with device authentication"
+                icon="shield"
+                disabled={busy || session.expired}
+                onPress={() => {
+                  void run(async () =>
+                    updateSession(
+                      await unlockConnectedSessionWithDeviceAuthentication(),
+                    ),
+                  );
+                }}
+              />
+            ) : (
+              <Button
+                label="Lock connected session"
+                variant="secondary"
+                disabled={busy}
+                onPress={() => {
+                  void run(async () =>
+                    updateSession(await lockConnectedSession()),
+                  );
+                }}
+              />
+            )
+          ) : (
+            <Text style={s.small}>
+              Device authentication is unavailable or no suitable device
+              credential is enrolled. Local PIN and full sign-in remain
+              available.
+            </Text>
+          )}
           <Text style={s.section}>Optional local PIN</Text>
           <Text style={s.small}>
             A four-digit PIN unlocks this already enrolled session. It is
@@ -252,7 +326,12 @@ export function AccountSecurityScreen({
               {session.pinFailures} failed attempts retained on this device
             </Text>
           )}
-          {session.locked ? (
+          {session.locked && !session.pinConfigured ? (
+            <Text style={s.small}>
+              No local PIN is enrolled. Use device authentication above when
+              available, or complete full secure sign-in.
+            </Text>
+          ) : session.locked ? (
             <>
               <Field
                 label="Local unlock PIN"
@@ -330,6 +409,16 @@ export function AccountSecurityScreen({
             </>
           )}
         </Card>
+      )}
+      {session && connected && (
+        <RecognizedDevicesPanel
+          key={JSON.stringify([
+            session.issuer,
+            session.accountId,
+            session.sessionId,
+          ])}
+          session={session}
+        />
       )}
       <Card>
         <Text style={s.section}>Account data and membership requests</Text>
@@ -428,6 +517,19 @@ export function AccountSecurityScreen({
             testID="continue-oidc-signin"
           />
         </Card>
+      )}
+      {!connected && invitationDestination && (
+        <SpectatorActivationPanel
+          key={JSON.stringify([
+            invitationDestination,
+            config.issuer,
+            config.apiBaseUrl,
+          ])}
+          config={config}
+          invitation={invitationDestination}
+          completion={activationCompletion}
+          onCompletionConsumed={onActivationCompletionConsumed}
+        />
       )}
       <ActivationPanel
         config={config}

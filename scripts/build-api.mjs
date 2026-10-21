@@ -30,3 +30,4 @@ await copyFile(
   "apps/api/src/media-worker.mjs",
   resolve(outdir, "media-worker.mjs"),
 );
+await copyFile("apps/api/src/heic-worker.mjs",resolve(outdir,"heic-worker.mjs"));

@@ -1,0 +1,34 @@
+{
+  "checkedAt": "2026-10-21T12:27:34.624Z",
+  "status": "passed",
+  "baseUrl": "http://127.0.0.1:4173/",
+  "apiUrl": "http://127.0.0.1:4348",
+  "fictionalOnly": true,
+  "widths": [
+    320,
+    390
+  ],
+  "checks": [
+    "UI issue with explicit lifetime",
+    "one-time display locks outer connection/account/tab controls",
+    "no capability persisted to browser storage",
+    "UI explicit reissue invalidates old capability",
+    "received link opens review and is removed from address",
+    "untrusted link hints never select authoritative team or season",
+    "memberless signed-in recipient cannot issue",
+    "server inspection before explicit acceptance",
+    "authoritative membership appears after acceptance",
+    "no horizontal overflow or page errors"
+  ],
+  "credentialValuesRecorded": false,
+  "sourceStatus": "Uncommitted feature increment following 298985d; precise compiled artifacts below",
+  "artifacts": {
+    "webBundle": "235f9a3719cf34be53467fb946ee21c0",
+    "webBundleSha256": "096ba32215de264e0bec87288347bda2778f34a262aeebe6b5b67d234e0cd2f5",
+    "apiSha256": "517a3e6c6a52918aea1f732cac68fb214ab000d041dbc99882fc60a018d6e411"
+  },
+  "limits": [
+    "Fictional loopback SQLite identities; real first-time provider journey has separate evidence",
+    "Physical delivery, native sharing and configured production services not proved"
+  ]
+}

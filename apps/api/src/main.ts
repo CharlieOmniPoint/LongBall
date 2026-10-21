@@ -25,7 +25,9 @@ if(process.env.LONGBALL_FICTIONAL_CLOCK_POLICY){
 const options: ApiOptions = { databasePath: process.env.LONGBALL_API_DATABASE ?? '.local/api/longball.sqlite', syntheticAuth,
   oidc: issuer && audience && jwksUri ? { issuer, audience, jwksUri, mfaAcrValues: process.env.LONGBALL_OIDC_MFA_ACR?.split(',').filter(Boolean) } : undefined,
   allowedOrigins: process.env.LONGBALL_API_ORIGINS?.split(',').filter(Boolean), staticDirectory: process.env.LONGBALL_STATIC_DIRECTORY, browserConnectOrigins: process.env.LONGBALL_OIDC_CONNECT_ORIGINS?.split(',').filter(Boolean),
-  mediaDirectory: process.env.LONGBALL_MEDIA_DIRECTORY, mediaScanner, clockPolicy };
+  mediaDirectory: process.env.LONGBALL_MEDIA_DIRECTORY, mediaScanner, clockPolicy,
+  publicAppEntryUrl:process.env.LONGBALL_PUBLIC_APP_ENTRY_URL,invitationPolicyVersion:process.env.LONGBALL_INVITATION_POLICY_VERSION,
+  defaultInviteExpiryHours:process.env.LONGBALL_DEFAULT_INVITE_EXPIRY_HOURS?Number(process.env.LONGBALL_DEFAULT_INVITE_EXPIRY_HOURS):undefined };
 const migrationMode=process.env.LONGBALL_DATABASE_MIGRATION_MODE??(syntheticAuth?'apply':'verify');
 if(!['apply','verify'].includes(migrationMode)||process.env.NODE_ENV==='production'&&migrationMode!=='verify')throw new Error('The serving API uses verify-only schema mode in production; apply migrations with the dedicated operator command.');
 const api = connectionString ? await createPostgresApi({ ...options, connectionString, seedSynthetic:false, migrationMode:migrationMode as 'apply'|'verify' }) : createApi(options);

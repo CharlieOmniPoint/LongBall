@@ -15,8 +15,16 @@ const mocks = vi.hoisted(() => ({
   refresh: vi.fn(),
   revoke: vi.fn(),
   digest: vi.fn(),
+  os: "web",
+  authenticate: vi.fn(),
 }));
-vi.mock("react-native", () => ({ Platform: { OS: "web" } }));
+vi.mock("react-native", () => ({
+  Platform: {
+    get OS() {
+      return mocks.os;
+    },
+  },
+}));
 vi.mock("expo-web-browser", () => ({ maybeCompleteAuthSession: vi.fn() }));
 vi.mock("expo-auth-session", () => ({
   refreshAsync: mocks.refresh,
@@ -33,6 +41,9 @@ vi.mock("./vault", () => ({
   clearCredential: mocks.clearCredential,
   readPin: mocks.readPin,
   writePin: mocks.writePin,
+}));
+vi.mock("./device-auth", () => ({
+  authenticateEnrolledDevice: mocks.authenticate,
 }));
 
 function deferred<T>() {
@@ -86,6 +97,8 @@ function credential(): ConnectedSession {
 beforeEach(() => {
   vi.resetModules();
   vi.clearAllMocks();
+  mocks.os = "web";
+  mocks.authenticate.mockResolvedValue({ success: true });
   mocks.credential = credential();
   mocks.pin = null;
   mocks.readCredential.mockImplementation(async () => mocks.credential);
@@ -252,5 +265,114 @@ describe("connected client network and local authority boundary", () => {
     await rejected;
     expect((await client.getConnectedSessionSummary())?.locked).toBe(true);
     expect(mocks.pin?.failedAttempts).toBe(2);
+  });
+});
+
+describe("native device authentication boundary", () => {
+  it("does not adopt OS success after the enrolled session expires", async () => {
+    mocks.os = "ios";
+    const prompt = deferred<{ success: true }>();
+    mocks.authenticate.mockReturnValue(prompt.promise);
+    const client = await import("./client");
+    await client.lockConnectedSession();
+    const attempt = client.unlockConnectedSessionWithDeviceAuthentication();
+    await vi.waitFor(() => expect(mocks.authenticate).toHaveBeenCalled());
+    vi.spyOn(Date, "now").mockReturnValue(mocks.credential!.expiresAtMs + 1);
+    prompt.resolve({ success: true });
+    await expect(attempt).rejects.toThrow("changed or expired");
+    expect((await client.getConnectedSessionSummary())?.locked).toBe(true);
+  });
+  it("unlocks only the current native session and leaves PIN failures intact", async () => {
+    mocks.os = "ios";
+    const client = await import("./client");
+    await client.getConnectedSessionSummary();
+    await client.lockConnectedSession();
+    const summary =
+      await client.unlockConnectedSessionWithDeviceAuthentication();
+    expect(summary.locked).toBe(false);
+    expect(mocks.writePin).not.toHaveBeenCalled();
+    expect(mocks.writeCredential).not.toHaveBeenCalled();
+  });
+  it("does not adopt a late OS success after lock", async () => {
+    mocks.os = "android";
+    const prompt = deferred<{ success: true }>();
+    mocks.authenticate.mockReturnValue(prompt.promise);
+    const client = await import("./client");
+    await client.lockConnectedSession();
+    const attempt = client.unlockConnectedSessionWithDeviceAuthentication();
+    await vi.waitFor(() => expect(mocks.authenticate).toHaveBeenCalled());
+    await client.lockConnectedSession();
+    prompt.resolve({ success: true });
+    await expect(attempt).rejects.toThrow("changed or expired");
+    expect((await client.getConnectedSessionSummary())?.locked).toBe(true);
+  });
+  it("does not start an older OS unlock after lock interrupts its PIN read", async () => {
+    mocks.os = "ios";
+    const client = await import("./client");
+    await client.getConnectedSessionSummary();
+    await client.lockConnectedSession();
+    const pin = deferred<PinRecord | null>();
+    const reading = deferred<void>();
+    mocks.readPin.mockImplementationOnce(() => {
+      reading.resolve();
+      return pin.promise;
+    });
+    const attempt = client.unlockConnectedSessionWithDeviceAuthentication();
+    await reading.promise;
+    await client.lockConnectedSession();
+    const rejected = expect(attempt).rejects.toThrow("changed or expired");
+    pin.resolve(null);
+    await rejected;
+    expect(mocks.authenticate).not.toHaveBeenCalled();
+    expect((await client.getConnectedSessionSummary())?.locked).toBe(true);
+  });
+  it("does not adopt OS success after lock interrupts the final PIN read", async () => {
+    mocks.os = "ios";
+    const client = await import("./client");
+    await client.getConnectedSessionSummary();
+    await client.lockConnectedSession();
+    const pin = deferred<PinRecord | null>();
+    const reading = deferred<void>();
+    mocks.readPin
+      .mockImplementationOnce(async () => null)
+      .mockImplementationOnce(() => {
+        reading.resolve();
+        return pin.promise;
+      });
+    const attempt = client.unlockConnectedSessionWithDeviceAuthentication();
+    await reading.promise;
+    await client.lockConnectedSession();
+    const rejected = expect(attempt).rejects.toThrow("changed or expired");
+    pin.resolve(null);
+    await rejected;
+    expect(mocks.authenticate).toHaveBeenCalledOnce();
+    expect((await client.getConnectedSessionSummary())?.locked).toBe(true);
+  });
+  it("cannot bypass retained PIN lockout even if the OS could succeed", async () => {
+    mocks.os = "ios";
+    mocks.pin = {
+      version: 1,
+      accountId: mocks.credential!.principal.accountId,
+      sessionId: mocks.credential!.sessionId,
+      salt: "a".repeat(43),
+      verifier: "b".repeat(64),
+      failedAttempts: 5,
+      lastAttemptAtMs: Date.now(),
+      blockedUntilMs: 0,
+      requireStrongSignIn: true,
+    };
+    const client = await import("./client");
+    await client.lockConnectedSession();
+    await expect(
+      client.unlockConnectedSessionWithDeviceAuthentication(),
+    ).rejects.toThrow("fresh strong sign-in");
+    expect(mocks.authenticate).not.toHaveBeenCalled();
+  });
+  it("never lets web use native device authentication", async () => {
+    const client = await import("./client");
+    await expect(
+      client.unlockConnectedSessionWithDeviceAuthentication(),
+    ).rejects.toThrow("native sign-in");
+    expect(mocks.authenticate).not.toHaveBeenCalled();
   });
 });

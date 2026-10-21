@@ -9,6 +9,10 @@ infra/runtime/backend/**
 !infra/runtime/compiler/
 infra/runtime/compiler/**
 !infra/runtime/compiler/package*.json
+!infra/runtime/heic/
+!infra/runtime/heic/decode.c
+!infra/runtime/heic/build.sh
+!infra/runtime/heic/NOTICE.md
 !scripts/
 scripts/**
 !scripts/build-api.mjs

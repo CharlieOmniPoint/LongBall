@@ -27,6 +27,12 @@
       ["expo-secure-store", { "configureAndroidBackup": true }],
       "expo-notifications",
       [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Allow LongBall to use Face ID to unlock your saved session on this device."
+        }
+      ],
+      [
         "expo-image-picker",
         {
           "photosPermission": "Choose a team photo to submit for approval.",

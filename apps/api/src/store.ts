@@ -19,6 +19,8 @@ import { deriveFinishedMatchContext, finishEligibilityChanged } from './finished
 import { createTeamNotificationJob, type TeamNotificationCategory } from '../../../packages/application/src/team-notifications';
 import { managerRoster as projectManagerRoster, type StaffAccountEvidence } from '../../../packages/application/src/staff';
 import { prepareAccountPrivacyRequest, projectAccountPrivacyRequests, type PrivacyRequestRecord } from '../../../packages/application/src/privacy-requests';
+import { brandSelectedRole,type BrandingAuthority } from './brand-repository';
+import { ownDevicesDto,parseNativeDeviceInput,type NativeDeviceRow } from './devices';
 
 export const EVENT_CONTRACT_VERSION = 'longball.events/1.1';
 export const SYNTHETIC_IDS = { teamId: 'synthetic-roma-u10', seasonId: 'synthetic-season-2026-27', matchId: 'synthetic-roma-maple-2026-10-24' } as const;
@@ -109,7 +111,7 @@ export class DevelopmentStore {
     this.transaction(() => {
     // Read the version only after acquiring the migration lock; API and worker can start together.
     const version = Number((this.database.prepare('PRAGMA user_version').get() as { user_version: number }).user_version);
-    if (version > 7) throw new Error('This store version is newer than this application; preserve it and use a compatible build.');
+    if (version > 8) throw new Error('This store version is newer than this application; preserve it and use a compatible build.');
     if (version === 0) this.database.exec(`
       CREATE TABLE accounts(id TEXT PRIMARY KEY,issuer TEXT NOT NULL,subject TEXT NOT NULL,classification TEXT NOT NULL CHECK(classification IN ('child_shared','adult_individual','unclassified')),adult_verified INTEGER NOT NULL DEFAULT 0,status TEXT NOT NULL DEFAULT 'active',UNIQUE(issuer,subject));
       CREATE TABLE teams(id TEXT PRIMARY KEY,name TEXT NOT NULL);
@@ -155,6 +157,9 @@ export class DevelopmentStore {
         ) WHERE n=1;
       PRAGMA user_version=7;
     `);
+    if(version<8)this.database.exec(`CREATE TABLE native_app_devices(device_id TEXT PRIMARY KEY,account_id TEXT NOT NULL REFERENCES accounts(id),issuer TEXT NOT NULL,platform TEXT NOT NULL CHECK(platform IN('ios','android')),registered_at INTEGER NOT NULL,last_seen_at INTEGER NOT NULL CHECK(last_seen_at>=registered_at));
+      CREATE TRIGGER native_device_identity_immutable BEFORE UPDATE ON native_app_devices WHEN NEW.device_id<>OLD.device_id OR NEW.account_id<>OLD.account_id OR NEW.issuer<>OLD.issuer OR NEW.registered_at<>OLD.registered_at BEGIN SELECT RAISE(ABORT,'Immutable native device identity'); END;
+      PRAGMA user_version=8;`);
     });
   }
   async backup(destination: string): Promise<void> {
@@ -217,6 +222,25 @@ export class DevelopmentStore {
     });
   }
   myMemberships(principal: Principal): Membership[] { return currentMemberships(principal, this.memberships(), this.now()); }
+  recognisedDevices(principal:Principal){
+    const legacy=this.database.prepare('SELECT id,account_id FROM devices WHERE account_id=? ORDER BY id').all(principal.accountId) as unknown as {id:string;account_id:string}[];
+    const native=this.database.prepare('SELECT * FROM native_app_devices WHERE account_id=? AND issuer=? ORDER BY registered_at,device_id').all(principal.accountId,principal.issuer) as unknown as NativeDeviceRow[];
+    return ownDevicesDto(principal,legacy,native,this.now());
+  }
+  enrolDevice(principal:Principal,input:unknown){
+    const parsed=parseNativeDeviceInput(input);
+    if(this.database.prepare('SELECT id FROM devices WHERE id=? AND account_id=?').get(parsed.deviceId,principal.accountId))throw new AccessError('DEVICE_ID_CONFLICT',409,'Use a separate installation identity for sign-in recognition.');
+    const previous=this.database.prepare('SELECT account_id,issuer FROM native_app_devices WHERE device_id=?').get(parsed.deviceId);
+    if(previous&&(previous.account_id!==principal.accountId||previous.issuer!==principal.issuer))throw new AccessError('DEVICE_ID_CONFLICT',409,'This installation identity is unavailable.');
+    this.database.prepare('INSERT INTO native_app_devices(device_id,account_id,issuer,platform,registered_at,last_seen_at) VALUES(?,?,?,?,?,?) ON CONFLICT(device_id) DO UPDATE SET platform=excluded.platform,last_seen_at=MAX(native_app_devices.last_seen_at,excluded.last_seen_at)').run(parsed.deviceId,principal.accountId,principal.issuer,parsed.platform,this.now(),this.now());
+    return this.recognisedDevices(principal);
+  }
+  brandingContext(principal:Principal,teamId:string,seasonId:string,role?:string):BrandingAuthority{
+    const memberships=this.memberships(),nowMs=this.now(),selectedRole=brandSelectedRole(principal,memberships,teamId,seasonId,role,nowMs);
+    const preparation=this.document<PreparationState>(teamId,seasonId,'preparation');
+    if(preparation.team.id!==teamId)throw new AccessError('NOT_FOUND',404,'The requested branding is unavailable.');
+    return{context:{principal,memberships,selectedRole,clubId:preparation.club.id,teamId,authoritySeasonId:seasonId,nowMs,spectatorGrantActive:selectedRole==='spectator'},club:{id:preparation.club.id,name:preparation.club.name},team:{id:teamId,name:preparation.team.name,ageGroup:preparation.team.ageGroup}};
+  }
   match(matchId: string): MatchRow {
     const row = this.database.prepare('SELECT * FROM matches WHERE id=?').get(matchId) as MatchRow | undefined;
     if (!row) throw new AccessError('NOT_FOUND', 404, 'The requested object is unavailable.');

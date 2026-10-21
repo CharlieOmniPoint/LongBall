@@ -17,6 +17,12 @@ import type { TrustedTimePolicy } from './trusted-time';
 import { Q08_RECONCILIATION_POLICY, type ReconciliationProposalInput } from '../../../packages/application/src/reconciliation';
 import { prepareAccountPrivacyRequest } from '../../../packages/application/src/privacy-requests';
 import { requestDatabaseScope } from './request-context';
+import { BrandMediaService } from './brand-service';
+import { SqliteBrandRepository,type BrandRepository } from './brand-repository';
+import { assertBrandAuthority,parseBrandingCommand } from '../../../packages/application/src/branding';
+import type { SpectatorActivationService } from './spectator-activation';
+import { SpectatorInvitationService,invitationVerifier,parseInvitationAccept } from './invitation-service';
+import { SqliteInvitationRepository } from './invitation-repository';
 
 export interface ApiOptions {
   databasePath: string;
@@ -34,6 +40,9 @@ export interface ApiOptions {
   activationProvider?: ActivationProvider;
   activationPolicy?: ActivationPolicy;
   clockPolicy?: TrustedTimePolicy;
+  publicAppEntryUrl?:string;
+  invitationPolicyVersion?:string;
+  defaultInviteExpiryHours?:number;
 }
 const header = (request: IncomingMessage, name: string): string | undefined => {
   const value = request.headers[name]; return typeof value === 'string' ? value : undefined;
@@ -79,7 +88,14 @@ function staffCommand(body:Record<string,unknown>,kind:'manager.assigned'|'manag
 
 type AwaitablePort<T> = { [K in keyof T]: T[K] extends (...args: infer A) => infer R ? (...args:A)=>Awaited<R>|Promise<Awaited<R>> : T[K] };
 export type RuntimeMedia = AwaitablePort<Pick<DevelopmentMediaService,'prepare'|'upload'|'complete'|'link'|'gateway'|'listOwn'|'close'>>;
-export type RuntimeActivation = AwaitablePort<Pick<DevelopmentActivationService,'configured'|'createPendingChild'|'issueActivation'|'redeemActivation'|'completeActivation'|'requestExistingAccountLink'|'requestRecovery'>>;
+export type RuntimeActivation = AwaitablePort<Pick<DevelopmentActivationService,'configured'|'createPendingChild'|'issueActivation'|'redeemActivation'|'completeActivation'|'ownsActivationToken'|'requestExistingAccountLink'|'requestRecovery'>>;
+export type RuntimeSpectatorActivation=AwaitablePort<Pick<SpectatorActivationService,'configured'|'preflight'|'activate'|'ownsActivationToken'|'completeActivation'>>;
+export function createBrandMedia(options:ApiOptions,store:RuntimeStore,repository:BrandRepository){
+  return new BrandMediaService({repository,directory:options.mediaDirectory??join(dirname(options.databasePath),'media'),scanner:options.mediaScanner,now:options.now,load:async session=>{
+    const fresh=await store.principal({issuer:session.principal.issuer,subject:session.principal.subject,strongAuth:session.principal.strongAuth,authenticatedAt:session.principal.authenticatedAt});
+    return store.brandingContext(fresh,session.teamId,session.seasonId,session.role);
+  },audit:(principal,action,objectId,outcome)=>store.audit(principal,action,objectId,outcome)});
+}
 export function createApi(options:ApiOptions) {
  if((options.activationProvider||options.activationPolicy)&&!options.syntheticAuth) throw new Error('The fictional activation experiment requires isolated synthetic authentication.');
  const now=options.now??Date.now;const source=new DevelopmentStore(options.databasePath,now);
@@ -87,9 +103,13 @@ export function createApi(options:ApiOptions) {
  const runtime=sqliteRuntimeStore(source);
  const media=new DevelopmentMediaService({directory:options.mediaDirectory??join(dirname(options.databasePath),'media'),database:source.database,scanner:options.mediaScanner,now});
  const activation=new DevelopmentActivationService({store:source,provider:options.activationProvider,policy:options.activationPolicy});
- return createRuntimeApi(options,source,runtime.store,media,activation,runtime.serialize);
+ const branding=createBrandMedia(options,runtime.store,new SqliteBrandRepository(source.database,runtime.store.transaction));
+ const repository=new SqliteInvitationRepository(source,runtime.store);
+ const ready=runtime.serialize(()=>repository.initialize());void ready.catch(()=>undefined);
+ const invitations=new SpectatorInvitationService({...options,repository,now});
+ return createRuntimeApi(options,source,runtime.store,media,activation,work=>ready.then(()=>runtime.serialize(work)),{branding,invitations});
 }
-export function createRuntimeApi<T>(options:ApiOptions,source:T,store:RuntimeStore,media:RuntimeMedia,activation:RuntimeActivation,serialize:<R>(work:()=>Promise<R>)=>Promise<R> = work=>work()) {
+export function createRuntimeApi<T>(options:ApiOptions,source:T,store:RuntimeStore,media:RuntimeMedia,activation:RuntimeActivation,serialize:<R>(work:()=>Promise<R>)=>Promise<R> = work=>work(),services:{branding?:BrandMediaService;spectator?:RuntimeSpectatorActivation;invitations?:SpectatorInvitationService}={}) {
  const now=options.now??Date.now;
  const verifyIdentity=options.verifyIdentity??(options.oidc?createOidcVerifier({...options.oidc,now}):null);
 const windows = new Map<string, {
@@ -126,7 +146,7 @@ const windows = new Map<string, {
                 reply.setHeader('Access-Control-Allow-Origin', origin);
                 reply.setHeader('Vary', 'Origin');
                 reply.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type, Idempotency-Key, X-Controller-Token, X-Media-Upload-Token, X-Longball-Role, X-Api-Contract-Version, If-Match, X-Request-Id');
-                reply.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, OPTIONS');
+                reply.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
             }
             if (request.method === 'OPTIONS') {
                 reply.writeHead(204);
@@ -171,7 +191,7 @@ const windows = new Map<string, {
                 if (Object.keys(value).some(key => !names.includes(key)) || names.some(key => !(key in value)))
                     throw new AccessError('INVALID_REQUEST', 400, 'Use the documented activation request fields.');
             };
-            if (request.method === 'POST' && ['/v1/activation/redeem', '/v1/activation/complete'].includes(url.pathname)) {
+            if (request.method === 'POST' && ['/v1/activation/redeem', '/v1/activation/complete','/v1/spectator-invites/activation-info','/v1/spectator-invites/activate'].includes(url.pathname)) {
                 // These bearer-capability endpoints create no application session. Secrets never enter generic receipts.
                 const rateKey = `activation:${request.socket.remoteAddress ?? 'unknown'}`;
                 const prior = windows.get(rateKey);
@@ -185,13 +205,24 @@ const windows = new Map<string, {
                 const key = requireContract();
                 const input = await readJson(request);
                 let result: unknown;
-                if (url.pathname === '/v1/activation/redeem') {
+                if(url.pathname.startsWith('/v1/spectator-invites/')){
+                    if(!services.spectator)throw new AccessError('ACTIVATION_NOT_CONFIGURED',503,'Invitation activation requires a configured PostgreSQL provider boundary.');
+                    if(url.pathname.endsWith('/activation-info')){activationFields(input,['token']);result=await services.spectator.preflight({token:input.token as string});}
+                    else{activationFields(input,['token','deviceId','policyVersion']);result=await services.spectator.activate({token:input.token as string,deviceId:input.deviceId as string,policyVersion:input.policyVersion as string,requestId:key});}
+                }
+                else if (url.pathname === '/v1/activation/redeem') {
                     activationFields(input, ['token']);
                     result = await (await activation.redeemActivation({ token: input.token as string, requestId: key }));
                 }
                 else {
                     activationFields(input, ['activationId', 'token', 'completionProof']);
-                    result = await (await activation.completeActivation({ activationId: input.activationId as string, token: input.token as string, completionProof: input.completionProof as string }));
+                    if(typeof input.activationId!=='string'||typeof input.token!=='string'||typeof input.completionProof!=='string')throw new AccessError('INVALID_REQUEST',400,'Use the original activation capability, identity and provider proof.');
+                    if(!activation.configured&&!services.spectator?.configured)throw new AccessError('ACTIVATION_NOT_CONFIGURED',503,'Configure a provider and explicit activation policy before completion.');
+                    const child=await activation.ownsActivationToken(input.token,input.activationId);
+                    const spectator=services.spectator?await services.spectator.ownsActivationToken(input.token,input.activationId):false;
+                    if(child===spectator)throw new AccessError('ACTIVATION_UNAVAILABLE',410,'This activation is unavailable. No session or membership was created.');
+                    const completion={activationId:input.activationId,token:input.token,completionProof:input.completionProof};
+                    result=child?await activation.completeActivation(completion):await services.spectator!.completeActivation(completion);
                 }
                 response(reply, 200, result, requestId);
                 return;
@@ -216,12 +247,25 @@ const windows = new Map<string, {
             }
             const role = header(request, 'x-longball-role');
             const controllerToken = header(request, 'x-controller-token');
-            const seasonId = url.searchParams.get('seasonId') ?? (options.syntheticAuth ? SYNTHETIC_IDS.seasonId : '');
+            const body = request.method === 'POST' ? await readJson(request) : null;
+            if(request.method==='POST'&&parts[1]==='spectator-invites'&&['inspect','accept'].includes(parts[2])&&parts.length===3){
+                const invitations=services.invitations;if(!invitations)throw new AccessError('INVITATION_NOT_CONFIGURED',503,'Invitation processing is unavailable.');
+                if(header(request,'x-api-contract-version')!==EVENT_CONTRACT_VERSION)throw new AccessError('CONTRACT_VERSION_REQUIRED',409,`Use X-Api-Contract-Version: ${EVENT_CONTRACT_VERSION}.`);
+                const key=parts[2]==='accept'?requireContract():undefined;const {token}=parseInvitationAccept(body);const tokenHash=invitationVerifier(token);
+                const resolved=await store.withActorContext(principal,{operation:'invite.resolve',requestedRole:'default',invitationTokenHash:tokenHash},()=>invitations.resolve(principal,body));
+                if(parts[2]==='inspect'){const {invitationId,teamId,seasonId,expiresAt}=resolved;response(reply,200,{invitationId,teamId,seasonId,expiresAt},requestId);return;}
+                const accepted=await store.withActorContext(principal,{operation:'invite.accept',requestedRole:'default',teamId:resolved.teamId,seasonId:resolved.seasonId,invitationTokenHash:tokenHash},()=>invitations.accept({principal,teamId:resolved.teamId,seasonId:resolved.seasonId},key!,body));
+                response(reply,accepted.status,accepted.body,requestId);return;
+            }
+            const invitationWrite=request.method==='POST'&&parts[1]==='teams'&&parts[3]==='spectator-invites';
+            const bodySeason=invitationWrite?body?.seasonId:undefined;
+            if(invitationWrite&&(typeof bodySeason!=='string'||url.searchParams.has('seasonId')&&url.searchParams.get('seasonId')!==bodySeason))throw new AccessError('INVALID_REQUEST',400,'Use the invitation body season without a contradictory query scope.');
+            const seasonId = (typeof bodySeason==='string'?bodySeason:url.searchParams.get('seasonId')) ?? (options.syntheticAuth ? SYNTHETIC_IDS.seasonId : '');
             if (parts[1] === 'teams' && !seasonId) throw new AccessError('SEASON_REQUIRED',400,'Choose an explicit current team-season scope.');
             const scopedOperation = (operation: string) => parts[1] === 'teams' ? JSON.stringify([operation, parts[2], seasonId, role ?? 'default']) : operation;
-            const body = request.method === 'POST' ? await readJson(request) : null;
             await store.withActorContext(principal,requestDatabaseScope({method:request.method??'GET',parts,seasonId,role,body}),async()=>{
             if (body && parts[1] === 'teams' && parts[3] === 'community') {
+                if(body.command&&typeof body.command==='object'&&'type' in body.command&&typeof body.command.type==='string'&&body.command.type.startsWith('invite.'))throw new AccessError('CANONICAL_INVITATION_REQUIRED',409,'Use the server-issued invitation endpoints; client credentials and JSON-only revocation are unavailable.');
                 if (body.command && typeof body.command === 'object' && 'type' in body.command && body.command.type === 'match.registered')
                     throw new AccessError('POLICY_APPROVAL_REQUIRED', 503, 'Connected award/sharing context requires accepted match evidence, verified finish-time anchors and independently approved policy.');
                 body.command = parseCommunityCommand(body.command);
@@ -244,6 +288,10 @@ const windows = new Map<string, {
                         const club=(body!.command as PreparationCommand|undefined)?.type==='club.updated';
                         assertTeamRole(principal,await store.memberships(),parts[2],seasonId,club?['administrator']:['administrator','manager'],now());assertAdultAuthority(principal,club,now());
                     }
+                    else if(parts[3]==='branding'){
+                        const context=await store.brandingContext(principal,parts[2],seasonId,role);
+                        assertBrandAuthority(context.context,(body!.command as {kind:'club_logo'|'team_logo'}).kind);
+                    }
                     else if (parts[3] === 'managers' || parts[3] === 'seasons' || parts[3] === 'preparation' && (body!.command as PreparationCommand | undefined)?.type === 'club.updated') {
                         if(parts[3]==='managers'&&role&&role!=='administrator')throw new AccessError('NOT_FOUND',404,'Choose the current administrator context to manage staff.');
                         assertTeamRole(principal, (await store.memberships()), parts[2], seasonId, ['administrator'], now());
@@ -259,6 +307,8 @@ const windows = new Map<string, {
                 result = { accountId: principal.accountId, identityClassification: principal.identityClassification, principal, memberships: (await store.myMemberships(principal)), serverTime: new Date(now()).toISOString(), syntheticOnly: Boolean(options.syntheticAuth) };
             else if (request.method === 'GET' && url.pathname === '/v1/contracts/events')
                 result = eventContract;
+            else if(request.method==='GET'&&url.pathname==='/v1/identity/devices')result=await store.recognisedDevices(principal);
+            else if(request.method==='POST'&&url.pathname==='/v1/identity/devices')result=await mutate(url.pathname,()=>store.enrolDevice(principal,body));
             else if (request.method === 'GET' && url.pathname === '/v1/privacy/requests')
                 result = await store.privacyRequests(principal);
             else if (request.method === 'POST' && url.pathname === '/v1/privacy/requests')
@@ -307,7 +357,37 @@ const windows = new Map<string, {
             }
             else if (parts[0] === 'v1' && parts[1] === 'teams' && parts[2]) {
                 const teamId = parts[2];
-                if (request.method === 'POST' && parts[3] === 'activation' && parts.length === 5 && ['pending-child', 'issue'].includes(parts[4])) {
+                if(parts[3]==='spectator-invites'){
+                    const invitations=services.invitations;if(!invitations)throw new AccessError('INVITATION_NOT_CONFIGURED',503,'Invitation processing is unavailable.');
+                    const session={principal,teamId,seasonId,role};
+                    if(request.method==='GET'&&parts.length===4)result=await invitations.list(session);
+                    else if(request.method==='POST'&&parts.length===4){const receipt=await invitations.issue(session,requireContract(),body);response(reply,receipt.status,receipt.body,requestId);return;}
+                    else if(request.method==='POST'&&parts.length===6&&parts[5]==='reissue'){const receipt=await invitations.issue(session,requireContract(),body,parts[4]);response(reply,receipt.status,receipt.body,requestId);return;}
+                    else if(request.method==='DELETE'&&parts.length===5){const receipt=await invitations.revoke(session,requireContract(),parts[4]);response(reply,receipt.status,receipt.body,requestId);return;}
+                    else throw new AccessError('NOT_FOUND',404,'The requested invitation is unavailable.');
+                }
+                else if(parts[3]==='branding'){
+                    const branding=services.branding;if(!branding)throw new AccessError('BRANDING_NOT_CONFIGURED',503,'Supplied logo processing is unavailable.');
+                    const session={principal,teamId,seasonId,role};
+                    if(request.method==='GET'&&parts.length===4)result=await branding.get(session);
+                    else if(request.method==='GET'&&parts[4]==='assets'&&parts[5]&&parts[6]==='revisions'&&parts[7]&&parts[8]&&parts.length===9){
+                        const mode=url.searchParams.get('mode')??'published';if(!['own','published'].includes(mode)||!['display','thumbnail'].includes(parts[8]))throw new AccessError('NOT_FOUND',404,'The requested branding is unavailable.');
+                        const image=await branding.gateway(session,parts[5],Number(parts[7]),parts[8] as 'display'|'thumbnail',mode as 'own'|'published');reply.writeHead(200,{...image.headers,'X-Request-Id':requestId});reply.end(image.body);return;
+                    }
+                    else{
+                        if(!role||!['administrator','manager'].includes(role))throw new AccessError('NOT_FOUND',404,'Choose the current logo administrator or manager context.');
+                        if(request.method==='PUT'&&parts[4]==='uploads'&&parts[5]&&parts.length===6){requireContract();result=await branding.upload(session,parts[5],header(request,'x-media-upload-token')??'',request);}
+                        else if(request.method==='POST'&&parts[4]==='uploads'&&parts[5]&&parts[6]==='complete'&&parts.length===7){requireContract();if(Object.keys(body!).length)throw new AccessError('INVALID_REQUEST',400,'Logo completion accepts no reported processing evidence.');result=await branding.complete(session,parts[5],header(request,'x-media-upload-token')??'');}
+                        else if(request.method==='POST'&&['club_logo','team_logo'].includes(parts[4])&&parts[5]==='uploads'&&parts[6]==='prepare'&&parts.length===7){const key=requireContract();if(body!.kind!==parts[4])throw new AccessError('INVALID_BRANDING',422,'Use the matching logo kind.');result=await branding.prepare(session,key,body);}
+                        else if(request.method==='POST'&&['club_logo','team_logo'].includes(parts[4])&&['publish','remove'].includes(parts[5])&&parts.length===6){
+                            if(Object.keys(body!).length!==1||!Object.hasOwn(body!,'command'))throw new AccessError('INVALID_REQUEST',400,'Use only the captured logo command.');
+                            const command=parseBrandingCommand(body!.command,parts[4] as 'club_logo'|'team_logo');
+                            if(command.id!==requireContract()||command.type!==(parts[5]==='publish'?'logo.published':'logo.removed'))throw new AccessError('INVALID_REQUEST',400,'Use the exact logo command and matching request identity.');
+                            result=await mutate(url.pathname,()=>branding.command({...session,principal},command));
+                        }else throw new AccessError('NOT_FOUND',404,'The requested branding is unavailable.');
+                    }
+                }
+                else if (request.method === 'POST' && parts[3] === 'activation' && parts.length === 5 && ['pending-child', 'issue'].includes(parts[4])) {
                     const requestId = requireContract();
                     assertCanManageTeam(principal, (await store.memberships()), teamId, seasonId, now());
                     if (parts[4] === 'pending-child') {
@@ -418,6 +498,6 @@ const windows = new Map<string, {
     }); });
     server.requestTimeout = 65000;
     server.headersTimeout = 10000;
-    return { server, store: source, media, activation, close: async () => { await new Promise((resolve,reject)=>server.close(error=>error?reject(error):resolve(undefined))); await media.close(); await store.close(); } };
+    return { server, store: source, media, activation,branding:services.branding,spectator:services.spectator, close: async () => { await new Promise((resolve,reject)=>server.close(error=>error?reject(error):resolve(undefined))); await media.close(); await store.close(); } };
 }
 export type { Principal };

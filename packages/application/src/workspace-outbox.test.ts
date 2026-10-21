@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import { BRAND_POLICY_VERSION } from './branding';
 import type { Membership, Principal } from './access';
 import type { WorkspaceBinding, WorkspaceSessionAccess } from './workspace-boundary';
-import { authorizeWorkspaceReplay, createWorkspaceOutbox, enqueueWorkspaceRequest, recordWorkspaceOutcome, validateWorkspaceOutbox, workspaceOutboxDocumentId, workspaceOutboxStorageAllowed, type WorkspaceOutboxAuthorization, type WorkspaceOutboxState } from './workspace-outbox';
+import { authorizeWorkspaceReplay, createWorkspaceOutbox, enqueueWorkspaceRequest, recordWorkspaceOutcome, retireLegacyWorkspaceInvitation, validateWorkspaceOutbox, workspaceOutboxDocumentId, workspaceOutboxStorageAllowed, type WorkspaceOutboxAuthorization, type WorkspaceOutboxState } from './workspace-outbox';
 
 const now = 1_800_000_000_000;
 const binding: WorkspaceBinding = { generation: 1, apiBaseUrl: 'https://api.example', accountId: 'child-account', issuer: 'https://issuer.example', subject: 'subject-1', teamId: 'roma-u10', seasonId: '2026-27', role: 'player', playerId: 'player-01' };
@@ -14,6 +15,61 @@ const queued = () => enqueueWorkspaceRequest(createWorkspaceOutbox(binding), bin
 const reopened = (state: WorkspaceOutboxState): WorkspaceOutboxState => JSON.parse(JSON.stringify(state)) as WorkspaceOutboxState;
 
 describe('protected workspace acknowledgement outbox', () => {
+  it('restores legacy invitation evidence but refuses replay without changing its exact retained request', () => {
+    const legacy = { ...request, body: { command: { id: request.key, expectedRevision: 7, type: 'invite.created', invitationId: 'legacy-invite', reviewCode: 'fictional-old-code', expiresAtMs: now + 1000 } } };
+    expect(() => enqueueWorkspaceRequest(createWorkspaceOutbox(binding), binding, legacy, now)).toThrow();
+    const state = reopened(queued());
+    state.pending!.bodyJson = JSON.stringify(legacy.body);
+    const before = JSON.stringify(state);
+    expect(() => validateWorkspaceOutbox(state)).not.toThrow();
+    expect(() => authorizeWorkspaceReplay(state, auth)).toThrow(/retained legacy invitation cannot be sent/);
+    expect(JSON.stringify(state)).toBe(before);
+    expect(state.pending?.bodyJson).toBe(JSON.stringify(legacy.body));
+  });
+  it('retires only an explicitly confirmed scoped legacy invitation locally, retaining exact bytes without a false server acknowledgement', () => {
+    const legacy = { ...request, body: { command: { id: request.key, expectedRevision: 7, type: 'invite.created', invitationId: 'legacy-invite', reviewCode: 'fictional-old-code', expiresAtMs: now + 1000 } } };
+    const state = reopened(queued());
+    state.pending!.bodyJson = JSON.stringify(legacy.body);
+    const before = JSON.stringify(state), retired = retireLegacyWorkspaceInvitation(state, auth, request.key, true, now);
+    expect(JSON.stringify(state)).toBe(before); expect(retired.pending).toBeNull();
+    expect(retired.lastSettled?.request.bodyJson).toBe(state.pending?.bodyJson);
+    expect(retired.lastSettled?.outcome).toEqual({ kind: 'locally_retired', reason: 'legacy_invitation_protocol_retired', serverAcknowledged: false });
+    expect(() => validateWorkspaceOutbox(reopened(retired))).not.toThrow();
+    expect(enqueueWorkspaceRequest(retired, binding, { ...request, key: 'new-safe-request-0002', body: { command: { ...request.body.command, id: 'new-safe-request-0002' } } }, now).pending?.key).toBe('new-safe-request-0002');
+    for (const change of [{ binding: { ...binding, teamId: 'other-team' } }, { memberships: [] }, { session: { ...session, locked: true } }]) expect(() => retireLegacyWorkspaceInvitation(state, { ...auth, ...change }, request.key, true, now)).toThrow();
+    expect(() => retireLegacyWorkspaceInvitation(state, auth, 'different-request-key', true, now)).toThrow();
+    expect(() => retireLegacyWorkspaceInvitation(state, auth, request.key, false as true, now)).toThrow();
+    expect(() => retireLegacyWorkspaceInvitation(queued(), auth, request.key, true, now)).toThrow();
+    const legacyAccept = reopened(state); legacyAccept.pending!.bodyJson = JSON.stringify({ command: { id: request.key, expectedRevision: 7, type: 'invite.accepted', reviewCode: 'retained-original-code' } });
+    expect(() => validateWorkspaceOutbox(legacyAccept)).not.toThrow();
+    expect(() => authorizeWorkspaceReplay(legacyAccept, auth)).toThrow(/retained legacy/);
+    expect(retireLegacyWorkspaceInvitation(legacyAccept, auth, request.key, true, now).lastSettled?.request.bodyJson).toBe(legacyAccept.pending!.bodyJson);
+    expect(() => enqueueWorkspaceRequest(createWorkspaceOutbox(binding), binding, { ...request, body: JSON.parse(legacyAccept.pending!.bodyJson) }, now)).toThrow();
+  });
+  it('retains exact logo publication bytes and separates club administrator from assigned team manager replay', () => {
+    const adult: Principal = { ...principal, identityClassification: 'adult_individual', adultVerified: true, strongAuth: true };
+    for (const kind of ['club_logo', 'team_logo'] as const) {
+      const role = kind === 'club_logo' ? 'administrator' as const : 'manager' as const;
+      const owner = { ...binding, role, playerId: null };
+      const input = { key: 'logo-publish-0001', path: `/v1/teams/roma-u10/branding/${kind}/publish?seasonId=2026-27`, label: 'Publish reviewed logo', body: { command: { id: 'logo-publish-0001', type: 'logo.published', kind, expectedSlotVersion: 4, assetId: 'asset-1', reviewedRevision: 2, confirmRightsToUse: true, policyVersion: BRAND_POLICY_VERSION } } };
+      const queued = enqueueWorkspaceRequest(createWorkspaceOutbox(owner), owner, input, now);
+      const uncertain = reopened(recordWorkspaceOutcome(queued, input.key, { kind: 'unconfirmed', reason: 'network' }, now));
+      const authorization = { ...auth, binding: owner, principal: adult, memberships: [{ ...memberships[0], role, playerId: undefined }] };
+      expect(authorizeWorkspaceReplay(uncertain, authorization).bodyJson).toBe(JSON.stringify(input.body));
+      expect(() => authorizeWorkspaceReplay(uncertain, { ...authorization, memberships: [] })).toThrow();
+      expect(() => authorizeWorkspaceReplay(uncertain, { ...authorization, principal: { ...adult, strongAuth: false } })).toThrow();
+      const otherRole = { ...owner, role: role === 'manager' ? 'administrator' as const : 'manager' as const };
+      expect(() => enqueueWorkspaceRequest(createWorkspaceOutbox(otherRole), otherRole, input, now)).toThrow();
+      expect(() => enqueueWorkspaceRequest(createWorkspaceOutbox(owner), owner, { ...input, path: '/v1/teams/roma-u10/community?seasonId=2026-27' }, now)).toThrow();
+      expect(() => enqueueWorkspaceRequest(createWorkspaceOutbox(owner), owner, { ...input, body: { command: { ...input.body.command, reviewedRevision: 3, expectedSlotVersion: -1 } } }, now)).toThrow();
+    }
+  });
+  it('binds logo removal to the matching kind, action and current pointer version', () => {
+    const owner = { ...binding, role: 'manager' as const, playerId: null };
+    const input = { key: 'logo-remove-0001', path: '/v1/teams/roma-u10/branding/team_logo/remove?seasonId=2026-27', label: 'Restore club logo inheritance', body: { command: { id: 'logo-remove-0001', type: 'logo.removed', kind: 'team_logo', expectedSlotVersion: 2 } } };
+    expect(enqueueWorkspaceRequest(createWorkspaceOutbox(owner), owner, input, now).pending?.bodyJson).toBe(JSON.stringify(input.body));
+    for (const patch of [{ path: input.path.replace('/remove?', '/publish?') }, { body: { command: { ...input.body.command, kind: 'club_logo' } } }, { body: { command: { ...input.body.command, assetId: 'unexpected' } } }]) expect(() => enqueueWorkspaceRequest(createWorkspaceOutbox(owner), owner, { ...input, ...patch }, now)).toThrow();
+  });
   it('retains exact staff assignments and rechecks selected administrator plus recent strong authority before replay', () => {
     const adminBinding = { ...binding, role: 'administrator' as const, playerId: null };
     const adminPrincipal: Principal = { ...principal, identityClassification: 'adult_individual', adultVerified: true, strongAuth: true };

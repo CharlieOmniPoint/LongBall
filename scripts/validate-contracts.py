@@ -1,4 +1,4 @@
-"""Validate unchanged handover artifacts and the complete OpenAPI document."""
+"""Validate unchanged handover artifacts, OpenAPI and maintained runtime boundaries."""
 from pathlib import Path
 import hashlib
 import json
@@ -24,7 +24,7 @@ subprocess.run(
     check=True,
 )
 validate(yaml.safe_load((root / 'contracts/openapi.yaml').read_text()))
-print('Full OpenAPI 3.1 validation passed')
+print('Full OpenAPI 3.1 validation passed', flush=True)
 runtime_contract = root.parents[1] / 'apps/api/contracts/runtime.openapi.yaml'
 class UniqueRuntimeLoader(yaml.SafeLoader):
     """Reject accidentally overwritten keys in the maintained extension."""
@@ -42,4 +42,6 @@ def unique_mapping(loader, node, deep=False):
 
 UniqueRuntimeLoader.add_constructor(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, unique_mapping)
 validate(yaml.load(runtime_contract.read_text(), Loader=UniqueRuntimeLoader))
-print('Runtime extension OpenAPI 3.1 validation passed')
+print('Runtime extension OpenAPI 3.1 validation passed', flush=True)
+for script in ['test-branding-contract.py', 'test-identity-contract.py']:
+    subprocess.run([sys.executable, str(root.parents[1] / 'scripts' / script)], check=True)

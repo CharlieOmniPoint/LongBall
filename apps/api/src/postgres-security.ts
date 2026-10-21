@@ -17,3 +17,8 @@ export const installMediaSecurity = (database: PgDatabase) => install(database, 
 export const installActivationSecurity = (database: PgDatabase) => install(database, 'activation');
 export const verifyMediaSecurity = (database: PgDatabase) => verify(database, ['media_uploads']);
 export const verifyActivationSecurity = (database: PgDatabase) => verify(database, ['lb_activation_children', 'lb_activation_issues', 'lb_activation_tokens', 'lb_activation_verification_requests']);
+export async function installHeicMedia(database:PgDatabase):Promise<void>{
+  if(database.migrationMode!=='apply')throw new Error('Media migration requires the separate schema-owner migrator.');
+  const sql=await readFile(new URL('../migrations/postgresql/media_003_heic.sql',import.meta.url),'utf8');
+  await database.transaction(()=>database.query(sql));
+}

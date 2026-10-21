@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import { describe,expect,it } from 'vitest';
 import { requestDatabaseScope } from './request-context';
 
@@ -24,11 +23,13 @@ describe('trusted HTTP intent for PostgreSQL contexts',()=>{
     expect(requestDatabaseScope({...base,method:'POST',parts:['v1','teams','team-a','seasons'],body:{command:{idForSeason:'season-next'}}})).toMatchObject({operation:'season.create',newSeasonId:'season-next'});
     expect(requestDatabaseScope({...base,method:'POST',body:{command}})).not.toHaveProperty('staffTargetAccountId');
   });
-  it('computes the invitation capability from the exact code only on acceptance and never retains plaintext',()=>{
+  it('never turns legacy client credentials into database authority and maps only canonical scoped invitation intent',()=>{
     const body={command:{id:'accept-id',type:'invite.accepted',reviewCode:'exact fictional CODE'}};
     const context=requestDatabaseScope({...base,method:'POST',parts:['v1','teams','team-a','community'],body});
-    expect(context).toMatchObject({operation:'invite.accept',invitationTokenHash:createHash('sha256').update(body.command.reviewCode).digest('hex')});expect(JSON.stringify(context)).not.toContain(body.command.reviewCode);
+    expect(context).toMatchObject({operation:'community.write'});expect(context).not.toHaveProperty('invitationTokenHash');expect(JSON.stringify(context)).not.toContain(body.command.reviewCode);
     expect(requestDatabaseScope({...base,method:'POST',parts:['v1','teams','team-a','community'],body:{command:{...body.command,type:'preferences.changed'}}})).not.toHaveProperty('invitationTokenHash');
+    expect(requestDatabaseScope({...base,method:'POST',parts:['v1','teams','team-a','spectator-invites'],role:'player',body:{seasonId:'season-a',expiresInHours:1}})).toMatchObject({operation:'invite.issue',requestedRole:'player',teamId:'team-a',seasonId:'season-a'});
+    expect(requestDatabaseScope({...base,method:'DELETE',parts:['v1','teams','team-a','spectator-invites','invite-a']})).toMatchObject({operation:'invite.revoke'});
   });
   it('keeps global own-account intent separate from scoped authenticated link requests and anonymous activation',()=>{
     expect(requestDatabaseScope({...base,method:'POST',parts:['v1','privacy','requests'],body:{kind:'leave_team',teamId:'team-b',seasonId:'season-b'}})).toEqual({operation:'privacy.request',requestedRole:'default'});

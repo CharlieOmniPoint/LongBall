@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { Buffer } from "node:buffer";
 import { createHash, createHmac, randomBytes, randomUUID } from "node:crypto";
-import { readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { spawn } from "node:child_process";
 import { chromium } from "playwright";
 import { createKeycloakActivationProvider } from "../apps/api/src/keycloak-activation-provider.ts";
 import { createOidcVerifier } from "../apps/api/src/oidc.ts";
@@ -11,6 +12,7 @@ import {
 } from "../apps/mobile/src/platform/account-requests-core.ts";
 import {
   configureTrial,
+  bootstrapToken,
   trialDirectory,
   trialJson,
 } from "./identity-trial-support.mjs";
@@ -21,8 +23,18 @@ import { resolve } from "node:path";
 const { config, headers, adminBase } = await configureTrial();
 const apiProof = process.env.LONGBALL_IDENTITY_TRIAL_API_PROOF === "1";
 const schemaSmoke = process.env.LONGBALL_IDENTITY_TRIAL_SCHEMA_SMOKE === "1";
+const spectatorProof =
+  process.env.LONGBALL_IDENTITY_TRIAL_SPECTATOR_PROOF === "1";
+if (spectatorProof && !apiProof)
+  throw new Error("Spectator proof requires the real configured API journey");
 if (schemaSmoke && !apiProof)
   throw new Error("Schema smoke requires the actual configured API journey");
+const spectatorUiOnly =
+  process.env.LONGBALL_IDENTITY_TRIAL_SPECTATOR_UI_ONLY === "1";
+if (spectatorUiOnly && (!apiProof || !schemaSmoke || !spectatorProof))
+  throw new Error(
+    "UI-only proof requires the configured schema/API/spectator trial flags",
+  );
 const checks = [];
 const record = (description) => {
   checks.push(description);
@@ -132,7 +144,12 @@ class ProtocolSession {
 }
 const session = () => new ProtocolSession().initialize();
 const user = async (subject) =>
-  trialJson(`${adminBase}/users/${subject}`, { headers });
+  trialJson(`${adminBase}/users/${subject}`, {
+    headers: {
+      ...headers,
+      authorization: `Bearer ${await bootstrapToken(config)}`,
+    },
+  });
 async function pending() {
   const accountId = randomUUID();
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -603,7 +620,13 @@ try {
     );
     assert.equal(fixture.fictionalOnly, true);
     assert.equal(fixture.apiBaseUrl, "https://localhost:8444");
-    const api = async (path, bearer, body, expectedStatus = 200) => {
+    const api = async (
+      path,
+      bearer,
+      body,
+      expectedStatus = 200,
+      requestId = randomUUID(),
+    ) => {
       console.log(`API proof ${body ? "POST" : "GET"} ${path.split("?")[0]}`);
       const response = await fetch(`${fixture.apiBaseUrl}/v1${path}`, {
         method: body ? "POST" : "GET",
@@ -615,7 +638,7 @@ try {
             ? {
                 "content-type": "application/json",
                 "x-api-contract-version": "longball.events/1.1",
-                "idempotency-key": randomUUID(),
+                "idempotency-key": requestId,
               }
             : {}),
         },
@@ -637,279 +660,584 @@ try {
     );
     assert.equal(managerIdentity.syntheticOnly, false);
     const scoped = `/teams/${fixture.teamId}`;
-    const preparation = await api(
-      `${scoped}/preparation?seasonId=${fixture.seasonId}`,
-      adultTokens.access_token,
-    );
-    const playerId = randomUUID();
-    await api(
-      `${scoped}/preparation?seasonId=${fixture.seasonId}`,
-      adultTokens.access_token,
-      {
-        command: {
-          type: "profile.saved",
-          id: randomUUID(),
-          expectedRevision: preparation.revision,
-          profile: {
-            ...preparation.profiles[0],
+    async function runSpectatorUi() {
+      const uiInvite = await api(
+        `${scoped}/spectator-invites`,
+        adultTokens.access_token,
+        { seasonId: fixture.seasonId, expiresInHours: 1 },
+        201,
+      );
+      const uiToken = new URLSearchParams(
+        new URL(uiInvite.shareUrl).hash.slice(1),
+      ).get("code");
+      assert.ok(uiToken);
+      const root = resolve(import.meta.dirname, ".."),
+        output = resolve(root, ".local/identity/spectator-browser-review"),
+        nss = resolve(root, ".local/identity/spectator-browser-nss");
+      await mkdir(output, { recursive: true, mode: 0o700 });
+      await mkdir(nss, { recursive: true, mode: 0o700 });
+      const dockerEnvironment = { ...process.env };
+      for (const key of [
+        "DOCKER_HOST",
+        "DOCKER_CONTEXT",
+        "DOCKER_TLS",
+        "DOCKER_TLS_VERIFY",
+        "DOCKER_CERT_PATH",
+      ])
+        delete dockerEnvironment[key];
+      const args = [
+        "--host=unix:///var/run/docker.sock",
+        "run",
+        "--rm",
+        "--interactive",
+        "--network=host",
+        "--memory=2g",
+        "--cpus=2",
+        "--mount",
+        `type=bind,src=${root},dst=/work,readonly`,
+        "--tmpfs",
+        "/work/.local:rw,size=128m,mode=1777",
+        "--mount",
+        `type=bind,src=${root}/.local/identity/trial/ca.crt,dst=/work/.local/identity/trial/ca.crt,readonly`,
+        "--mount",
+        `type=bind,src=${output},dst=/work/.local/identity/spectator-browser-review`,
+        "--mount",
+        `type=bind,src=${nss},dst=/root/.local/share/pki/nssdb`,
+        "--env",
+        "NODE_EXTRA_CA_CERTS=/work/.local/identity/trial/ca.crt",
+        "--entrypoint",
+        "sh",
+        "longball-identity-browser:local",
+        "-euc",
+        'if [ ! -f /root/.local/share/pki/nssdb/cert9.db ]; then certutil -N -d sql:/root/.local/share/pki/nssdb --empty-password; fi; certutil -D -d sql:/root/.local/share/pki/nssdb -n LongBallLocalTrialCA 2>/dev/null || true; certutil -A -d sql:/root/.local/share/pki/nssdb -n LongBallLocalTrialCA -t "C,," -i /work/.local/identity/trial/ca.crt; exec node scripts/spectator-activation-ui-review.mjs',
+      ];
+      await new Promise((done, reject) => {
+        const child = spawn("docker", args, {
+          env: dockerEnvironment,
+          stdio: ["pipe", "inherit", "inherit"],
+          timeout: 180_000,
+        });
+        child.once("error", () =>
+          reject(
+            new Error(
+              "Trusted isolated spectator browser could not start; private details suppressed.",
+            ),
+          ),
+        );
+        child.once("exit", (code) =>
+          code === 0
+            ? done()
+            : reject(
+                new Error(
+                  "Actual spectator browser journey failed; see bounded stage evidence.",
+                ),
+              ),
+        );
+        child.stdin.end(
+          JSON.stringify({
+            fixture: {
+              issuer: config.issuer,
+              publicClientId: config.publicClientId,
+              apiBaseUrl: fixture.apiBaseUrl,
+            },
+            invitationToken: uiToken,
+            teamId: fixture.teamId,
+            seasonId: fixture.seasonId,
+          }),
+        );
+      });
+      record(
+        "Actual trusted 320px production UI completes new-invitee provider credential setup, explicit return verification, separate PKCE and reviewed spectator acceptance without vault injection",
+      );
+    }
+    if (spectatorUiOnly) {
+      await runSpectatorUi();
+    } else {
+      const preparation = await api(
+        `${scoped}/preparation?seasonId=${fixture.seasonId}`,
+        adultTokens.access_token,
+      );
+      const playerId = randomUUID();
+      await api(
+        `${scoped}/preparation?seasonId=${fixture.seasonId}`,
+        adultTokens.access_token,
+        {
+          command: {
+            type: "profile.saved",
             id: randomUUID(),
-            playerId,
-            displayName: "Fictional provider API test player",
-            shirtNumber: null,
+            expectedRevision: preparation.revision,
+            profile: {
+              ...preparation.profiles[0],
+              id: randomUUID(),
+              playerId,
+              displayName: "Fictional provider API test player",
+              shirtNumber: null,
+            },
           },
         },
-      },
-    );
-    const childReceipt = await api(
-      `${scoped}/activation/pending-child?seasonId=${fixture.seasonId}`,
-      adultTokens.access_token,
-      { playerId },
-    );
-    const capability = await api(
-      `${scoped}/activation/issue?seasonId=${fixture.seasonId}`,
-      adultTokens.access_token,
-      { accountId: childReceipt.accountId },
-    );
-    const setup = await api("/activation/redeem", null, {
-      token: capability.token,
-    });
-    const household = await session();
-    const householdPassword = randomBytes(32).toString("base64url");
-    await household.visit(setup.providerSetupUrl);
-    await household.submit("kc-passwd-update-form", {
-      "password-new": householdPassword,
-      "password-confirm": householdPassword,
-    });
-    assert.ok(
-      (await household.page.locator("#kc-recovery-codes-list li").count()) > 0,
-    );
-    await household.submit("kc-recovery-codes-settings-form");
-    await household.submit("longball-activation-finish");
-    if (!household.callback)
-      await household.visit(
-        await household.page
-          .locator('a[href*="completionProof="]')
-          .getAttribute("href"),
       );
-    const returned = new URLSearchParams(household.callback.hash.slice(1));
-    assert.equal(returned.get("longballActivation"), setup.activationId);
-    const completion = {
-      activationId: setup.activationId,
-      token: capability.token,
-      completionProof: returned.get("completionProof"),
-    };
-    const wrongCapability = await api(
-      "/activation/complete",
-      null,
-      { ...completion, token: randomBytes(32).toString("base64url") },
-      410,
-    );
-    assert.equal(wrongCapability.code, "ACTIVATION_UNAVAILABLE");
-    const wrongActivation = await api(
-      "/activation/complete",
-      null,
-      { ...completion, activationId: randomUUID() },
-      410,
-    );
-    assert.equal(wrongActivation.code, "ACTIVATION_UNAVAILABLE");
-    await api(
-      "/activation/complete",
-      null,
-      {
-        activationId: completion.activationId,
-        completionProof: completion.completionProof,
-      },
-      400,
-    );
-    record(
-      "Actual activation completion refuses missing or mismatched original capability before accepting the independent provider proof",
-    );
-    const completed = await api("/activation/complete", null, {
-      activationId: setup.activationId,
-      token: capability.token,
-      completionProof: returned.get("completionProof"),
-    });
-    assert.equal(completed.status, "complete");
-    assert.equal(completed.signInRequired, true);
-    await household.close();
-    const householdSignIn = await session();
-    const householdAuthorization = await authorize(householdSignIn, {
-      username: childReceipt.username,
-      password: householdPassword,
-    });
-    const householdResponse = await exchange(
-      householdAuthorization.code,
-      householdAuthorization.verifier,
-    );
-    assert.equal(householdResponse.status, 200);
-    const householdTokens = await householdResponse.json();
-    const householdIdentity = await api("/me", householdTokens.access_token);
-    assert.equal(householdIdentity.principal.accountId, childReceipt.accountId);
-    assert.equal(
-      householdIdentity.principal.identityClassification,
-      "child_shared",
-    );
-    assert.equal(householdIdentity.principal.adultVerified, false);
-    assert.equal(householdIdentity.principal.strongAuth, false);
-    assert.ok(
-      householdIdentity.memberships.some(
-        (membership) =>
-          membership.role === "player" && membership.playerId === playerId,
-      ),
-    );
-    if (process.env.LONGBALL_IDENTITY_TRIAL_ACCOUNT_REQUESTS_PROOF === "1") {
-      const checks = [];
-      let loseResponse = true;
-      let posts = 0;
-      const requestClient = createAccountRequestsClient({
-        accountId: childReceipt.accountId,
-        newId: randomUUID,
-        assertCurrent: async () => {
-          const current = await api("/me", householdTokens.access_token);
-          assert.equal(current.accountId, childReceipt.accountId);
-        },
-        request: async (init) => {
-          if (init?.method === "POST") posts += 1;
-          const response = await fetch(
-            `${fixture.apiBaseUrl}/v1/privacy/requests`,
-            {
-              ...init,
-              redirect: "error",
-              signal: AbortSignal.timeout(30_000),
-              headers: {
-                ...Object.fromEntries(new Headers(init?.headers).entries()),
-                authorization: `Bearer ${householdTokens.access_token}`,
-              },
-            },
-          );
-          if (init?.method === "POST" && loseResponse) {
-            loseResponse = false;
-            assert.equal(response.status, 200);
-            await response.text();
-            throw new Error(
-              "Intentional fixture response loss after real API commit",
-            );
-          }
-          return response;
-        },
+      const childReceipt = await api(
+        `${scoped}/activation/pending-child?seasonId=${fixture.seasonId}`,
+        adultTokens.access_token,
+        { playerId },
+      );
+      const capability = await api(
+        `${scoped}/activation/issue?seasonId=${fixture.seasonId}`,
+        adultTokens.access_token,
+        { accountId: childReceipt.accountId },
+      );
+      const setup = await api("/activation/redeem", null, {
+        token: capability.token,
       });
-      const exportInput = {
-        kind: "export",
-        scope: "all_memberships",
-        confirmAllMemberships: true,
-      };
-      const firstStatus = await requestClient.refresh();
-      assert.equal(firstStatus.snapshot.accountId, childReceipt.accountId);
-      await assert.rejects(
-        requestClient.submit(
-          exportInput,
-          accountRequestConfirmation(firstStatus.snapshot, exportInput),
-        ),
-        (error) => error.code === "UNCERTAIN_SUBMISSION",
-      );
-      const resolved = await requestClient.refresh();
-      assert.equal(resolved.pending, null);
-      assert.ok(resolved.resolvedRequest);
-      assert.equal(posts, 1);
-      assert.equal(resolved.resolvedRequest.fulfilled, false);
-      assert.equal(resolved.resolvedRequest.erased, false);
-      checks.push(
-        "Real child JWT account export request: lost committed response resolved by fresh status without a second client POST",
-      );
-      const duplicate = await api(
-        "/privacy/requests",
-        householdTokens.access_token,
-        exportInput,
-      );
-      assert.equal(duplicate.requestId, resolved.resolvedRequest.requestId);
-      checks.push(
-        "A new idempotency key for the same pending global business request returns the original service reference",
-      );
-      const leaveInput = {
-        kind: "leave_team",
-        teamId: fixture.teamId,
-        seasonId: fixture.seasonId,
-        confirmLeave: true,
-      };
-      const leave = await requestClient.submit(
-        leaveInput,
-        accountRequestConfirmation(resolved.snapshot, leaveInput),
-      );
-      assert.equal(leave.resolvedRequest.scope.type, "team_season");
-      assert.equal(leave.resolvedRequest.scope.teamId, fixture.teamId);
-      assert.equal(leave.resolvedRequest.scope.seasonId, fixture.seasonId);
+      const household = await session();
+      const householdPassword = randomBytes(32).toString("base64url");
+      await household.visit(setup.providerSetupUrl);
+      await household.submit("kc-passwd-update-form", {
+        "password-new": householdPassword,
+        "password-confirm": householdPassword,
+      });
       assert.ok(
-        leave.resolvedRequest.affectedMemberships.every(
+        (await household.page.locator("#kc-recovery-codes-list li").count()) >
+          0,
+      );
+      await household.submit("kc-recovery-codes-settings-form");
+      await household.submit("longball-activation-finish");
+      if (!household.callback)
+        await household.visit(
+          await household.page
+            .locator('a[href*="completionProof="]')
+            .getAttribute("href"),
+        );
+      const returned = new URLSearchParams(household.callback.hash.slice(1));
+      assert.equal(returned.get("longballActivation"), setup.activationId);
+      const completion = {
+        activationId: setup.activationId,
+        token: capability.token,
+        completionProof: returned.get("completionProof"),
+      };
+      const wrongCapability = await api(
+        "/activation/complete",
+        null,
+        { ...completion, token: randomBytes(32).toString("base64url") },
+        410,
+      );
+      assert.equal(wrongCapability.code, "ACTIVATION_UNAVAILABLE");
+      const wrongActivation = await api(
+        "/activation/complete",
+        null,
+        { ...completion, activationId: randomUUID() },
+        410,
+      );
+      assert.equal(wrongActivation.code, "ACTIVATION_UNAVAILABLE");
+      await api(
+        "/activation/complete",
+        null,
+        {
+          activationId: completion.activationId,
+          completionProof: completion.completionProof,
+        },
+        400,
+      );
+      record(
+        "Actual activation completion refuses missing or mismatched original capability before accepting the independent provider proof",
+      );
+      const completed = await api("/activation/complete", null, {
+        activationId: setup.activationId,
+        token: capability.token,
+        completionProof: returned.get("completionProof"),
+      });
+      assert.equal(completed.status, "complete");
+      assert.equal(completed.signInRequired, true);
+      await household.close();
+      const householdSignIn = await session();
+      const householdAuthorization = await authorize(householdSignIn, {
+        username: childReceipt.username,
+        password: householdPassword,
+      });
+      const householdResponse = await exchange(
+        householdAuthorization.code,
+        householdAuthorization.verifier,
+      );
+      assert.equal(householdResponse.status, 200);
+      const householdTokens = await householdResponse.json();
+      const householdIdentity = await api("/me", householdTokens.access_token);
+      assert.equal(
+        householdIdentity.principal.accountId,
+        childReceipt.accountId,
+      );
+      assert.equal(
+        householdIdentity.principal.identityClassification,
+        "child_shared",
+      );
+      assert.equal(householdIdentity.principal.adultVerified, false);
+      assert.equal(householdIdentity.principal.strongAuth, false);
+      assert.ok(
+        householdIdentity.memberships.some(
           (membership) =>
-            membership.teamId === fixture.teamId &&
-            membership.seasonId === fixture.seasonId,
+            membership.role === "player" && membership.playerId === playerId,
         ),
       );
-      const unchanged = await api("/me", householdTokens.access_token);
-      assert.deepEqual(unchanged.memberships, householdIdentity.memberships);
-      checks.push(
-        "Separate exact team-season leave request stays pending and leaves real API memberships unchanged",
-      );
-      const deletion = await api(
-        "/privacy/requests",
-        householdTokens.access_token,
-        {
-          kind: "delete_account",
+      if (process.env.LONGBALL_IDENTITY_TRIAL_ACCOUNT_REQUESTS_PROOF === "1") {
+        const checks = [];
+        let loseResponse = true;
+        let posts = 0;
+        const requestClient = createAccountRequestsClient({
+          accountId: childReceipt.accountId,
+          newId: randomUUID,
+          assertCurrent: async () => {
+            const current = await api("/me", householdTokens.access_token);
+            assert.equal(current.accountId, childReceipt.accountId);
+          },
+          request: async (init) => {
+            if (init?.method === "POST") posts += 1;
+            const response = await fetch(
+              `${fixture.apiBaseUrl}/v1/privacy/requests`,
+              {
+                ...init,
+                redirect: "error",
+                signal: AbortSignal.timeout(30_000),
+                headers: {
+                  ...Object.fromEntries(new Headers(init?.headers).entries()),
+                  authorization: `Bearer ${householdTokens.access_token}`,
+                },
+              },
+            );
+            if (init?.method === "POST" && loseResponse) {
+              loseResponse = false;
+              assert.equal(response.status, 200);
+              await response.text();
+              throw new Error(
+                "Intentional fixture response loss after real API commit",
+              );
+            }
+            return response;
+          },
+        });
+        const exportInput = {
+          kind: "export",
           scope: "all_memberships",
           confirmAllMemberships: true,
+        };
+        const firstStatus = await requestClient.refresh();
+        assert.equal(firstStatus.snapshot.accountId, childReceipt.accountId);
+        await assert.rejects(
+          requestClient.submit(
+            exportInput,
+            accountRequestConfirmation(firstStatus.snapshot, exportInput),
+          ),
+          (error) => error.code === "UNCERTAIN_SUBMISSION",
+        );
+        const resolved = await requestClient.refresh();
+        assert.equal(resolved.pending, null);
+        assert.ok(resolved.resolvedRequest);
+        assert.equal(posts, 1);
+        assert.equal(resolved.resolvedRequest.fulfilled, false);
+        assert.equal(resolved.resolvedRequest.erased, false);
+        checks.push(
+          "Real child JWT account export request: lost committed response resolved by fresh status without a second client POST",
+        );
+        const duplicate = await api(
+          "/privacy/requests",
+          householdTokens.access_token,
+          exportInput,
+        );
+        assert.equal(duplicate.requestId, resolved.resolvedRequest.requestId);
+        checks.push(
+          "A new idempotency key for the same pending global business request returns the original service reference",
+        );
+        const leaveInput = {
+          kind: "leave_team",
+          teamId: fixture.teamId,
+          seasonId: fixture.seasonId,
+          confirmLeave: true,
+        };
+        const leave = await requestClient.submit(
+          leaveInput,
+          accountRequestConfirmation(resolved.snapshot, leaveInput),
+        );
+        assert.equal(leave.resolvedRequest.scope.type, "team_season");
+        assert.equal(leave.resolvedRequest.scope.teamId, fixture.teamId);
+        assert.equal(leave.resolvedRequest.scope.seasonId, fixture.seasonId);
+        assert.ok(
+          leave.resolvedRequest.affectedMemberships.every(
+            (membership) =>
+              membership.teamId === fixture.teamId &&
+              membership.seasonId === fixture.seasonId,
+          ),
+        );
+        const unchanged = await api("/me", householdTokens.access_token);
+        assert.deepEqual(unchanged.memberships, householdIdentity.memberships);
+        checks.push(
+          "Separate exact team-season leave request stays pending and leaves real API memberships unchanged",
+        );
+        const deletion = await api(
+          "/privacy/requests",
+          householdTokens.access_token,
+          {
+            kind: "delete_account",
+            scope: "all_memberships",
+            confirmAllMemberships: true,
+          },
+        );
+        assert.equal(deletion.scope.type, "all_memberships");
+        assert.equal(deletion.erased, false);
+        assert.equal(deletion.fulfilled, false);
+        assert.equal(
+          (await api("/me", householdTokens.access_token)).principal.status,
+          "active",
+        );
+        checks.push(
+          "Global account deletion request records verification/policy pending without credential removal, erasure or account deactivation",
+        );
+        await writeFile(
+          resolve(trialDirectory, "account-requests-evidence.json"),
+          JSON.stringify(
+            {
+              verifiedAt: new Date().toISOString(),
+              provider: "Keycloak",
+              providerVersion: "26.8.1",
+              actualProviderJwt: true,
+              database: "PostgreSQL",
+              runtimeRole: "restricted API role",
+              checks,
+              policiesApproved: false,
+              fulfilled: false,
+              erased: false,
+              systemBrowserTested: false,
+              physicalDeviceTested: false,
+            },
+            null,
+            2,
+          ),
+          { mode: 0o600 },
+        );
+        for (const check of checks) console.log(`PASS ${check}`);
+      }
+      const deniedManagerView = await fetch(
+        `${fixture.apiBaseUrl}/v1${scoped}/preparation?seasonId=${fixture.seasonId}`,
+        {
+          headers: { authorization: `Bearer ${householdTokens.access_token}` },
         },
       );
-      assert.equal(deletion.scope.type, "all_memberships");
-      assert.equal(deletion.erased, false);
-      assert.equal(deletion.fulfilled, false);
-      assert.equal(
-        (await api("/me", householdTokens.access_token)).principal.status,
-        "active",
-      );
-      checks.push(
-        "Global account deletion request records verification/policy pending without credential removal, erasure or account deactivation",
-      );
-      await writeFile(
-        resolve(trialDirectory, "account-requests-evidence.json"),
-        JSON.stringify(
-          {
-            verifiedAt: new Date().toISOString(),
-            provider: "Keycloak",
-            providerVersion: "26.8.1",
-            actualProviderJwt: true,
-            database: "PostgreSQL",
-            runtimeRole: "restricted API role",
-            checks,
-            policiesApproved: false,
-            fulfilled: false,
-            erased: false,
-            systemBrowserTested: false,
-            physicalDeviceTested: false,
-          },
+      assert.ok([403, 404].includes(deniedManagerView.status));
+      const deniedAlias = await fetch(`${fixture.apiBaseUrl}/v1/me`, {
+        headers: { authorization: "Bearer synthetic-manager-1" },
+      });
+      assert.equal(deniedAlias.status, 401);
+      if (spectatorProof) {
+        const spectatorChecks = [];
+        const createKey = randomUUID();
+        const invite = await api(
+          `${scoped}/spectator-invites`,
+          adultTokens.access_token,
+          { seasonId: fixture.seasonId, expiresInHours: 1 },
+          201,
+          createKey,
+        );
+        assert.deepEqual(Object.keys(invite).sort(), [
+          "expiresAt",
+          "id",
+          "seasonId",
+          "shareUrl",
+          "teamId",
+        ]);
+        const link = new URL(invite.shareUrl),
+          params = new URLSearchParams(link.hash.slice(1)),
+          invitationToken = params.get("code");
+        assert.equal(link.origin, "https://charlieomnipoint.github.io");
+        assert.equal(link.pathname, "/LongBall/");
+        assert.equal(link.search, "");
+        assert.equal(params.get("longballInvite"), "1");
+        assert.equal(invitationToken?.length, 43);
+        const lostRetry = await api(
+          `${scoped}/spectator-invites`,
+          adultTokens.access_token,
+          { seasonId: fixture.seasonId, expiresInHours: 1 },
+          200,
+          createKey,
+        );
+        assert.equal(lostRetry.id, invite.id);
+        assert.equal(lostRetry.credentialAvailable, false);
+        assert.equal(lostRetry.requiresReissue, true);
+        assert.equal(Object.hasOwn(lostRetry, "shareUrl"), false);
+        spectatorChecks.push(
+          "Real strongly authenticated manager issues one 256-bit fragment capability; exact response-loss retry is redacted and requires explicit reissue",
+        );
+        const info = await api("/spectator-invites/activation-info", null, {
+          token: invitationToken,
+        });
+        assert.deepEqual(Object.keys(info).sort(), [
+          "expiresAt",
+          "invitationId",
+          "policyVersion",
+        ]);
+        assert.equal(info.invitationId, invite.id);
+        const activationBody = {
+          token: invitationToken,
+          deviceId: randomUUID(),
+          policyVersion: info.policyVersion,
+        };
+        const activation = await api(
+          "/spectator-invites/activate",
           null,
-          2,
-        ),
-        { mode: 0o600 },
+          activationBody,
+        );
+        const action = new URL(activation.identityActionUrl),
+          attemptParams = new URLSearchParams(action.hash.slice(1)),
+          activationId = attemptParams.get("longballActivation");
+        assert.equal(Array.from(attemptParams.keys()).length, 1);
+        assert.ok(activationId);
+        action.hash = "";
+        assert.equal(action.href.includes(invitationToken), false);
+        const beforeUser = await user(activation.accountId);
+        assert.equal(beforeUser.enabled, true);
+        assert.equal(
+          beforeUser.attributes["longball.classification"][0],
+          "unclassified",
+        );
+        assert.ok(!beforeUser.email);
+        const trialPassword = randomBytes(32).toString("base64url"),
+          invitee = await session();
+        await invitee.visit(action.href);
+        await invitee.submit("kc-passwd-update-form", {
+          "password-new": trialPassword,
+          "password-confirm": trialPassword,
+        });
+        assert.ok(
+          (await invitee.page.locator("#kc-recovery-codes-list li").count()) >
+            0,
+        );
+        await invitee.submit("kc-recovery-codes-settings-form");
+        await invitee.submit("longball-activation-finish");
+        if (!invitee.callback)
+          await invitee.visit(
+            await invitee.page
+              .locator('a[href*="completionProof="]')
+              .getAttribute("href"),
+          );
+        const completedParams = new URLSearchParams(
+          invitee.callback.hash.slice(1),
+        );
+        assert.equal(completedParams.get("longballActivation"), activationId);
+        const completion = {
+          activationId,
+          token: invitationToken,
+          completionProof: completedParams.get("completionProof"),
+        };
+        await api(
+          "/activation/complete",
+          null,
+          { ...completion, token: randomBytes(32).toString("base64url") },
+          410,
+        );
+        await api(
+          "/activation/complete",
+          null,
+          { ...completion, activationId: randomUUID() },
+          410,
+        );
+        const result = await api("/activation/complete", null, completion);
+        assert.equal(result.status, "complete");
+        assert.equal(result.signInRequired, true);
+        await invitee.close();
+        spectatorChecks.push(
+          "Actual pinned provider provisions a username-only unclassified identity and handles password plus recovery setup; original invitation and exact attempt are required for independently verified completion",
+        );
+        const inviteeSignIn = await session(),
+          auth = await authorize(inviteeSignIn, {
+            username: activation.username,
+            password: trialPassword,
+          }),
+          tokensResponse = await exchange(auth.code, auth.verifier);
+        assert.equal(tokensResponse.status, 200);
+        const tokens = await tokensResponse.json(),
+          me = await api("/me", tokens.access_token);
+        assert.equal(me.principal.accountId, activation.accountId);
+        assert.equal(me.principal.identityClassification, "unclassified");
+        assert.equal(me.principal.adultVerified, false);
+        assert.equal(me.principal.strongAuth, false);
+        assert.deepEqual(me.memberships, []);
+        spectatorChecks.push(
+          "Separate actual authorization-code PKCE sign-in verifies the new global account has no membership or adult authority before explicit invitation acceptance",
+        );
+        const registered = await api("/identity/devices", tokens.access_token, {
+          deviceId: randomUUID(),
+          platform: "ios",
+        });
+        assert.equal(registered.accountId, activation.accountId);
+        assert.equal(registered.remoteRevocationAvailable, false);
+        assert.equal(registered.devices.length, 1);
+        assert.equal(registered.devices[0].source, "native_app_enrolment");
+        assert.equal(registered.devices[0].platformVerified, false);
+        assert.ok(registered.devices[0].registeredAt);
+        assert.ok(registered.devices[0].lastSeenAt);
+        const accepted = await api(
+          "/spectator-invites/accept",
+          tokens.access_token,
+          { token: invitationToken },
+        );
+        assert.ok(accepted);
+        const after = await api("/me", tokens.access_token);
+        assert.ok(
+          after.memberships.some(
+            (m) =>
+              m.role === "spectator" &&
+              m.teamId === fixture.teamId &&
+              m.seasonId === fixture.seasonId,
+          ),
+        );
+        assert.equal(after.principal.adultVerified, false);
+        const denied = await fetch(
+          `${fixture.apiBaseUrl}/v1${scoped}/preparation?seasonId=${fixture.seasonId}`,
+          { headers: { authorization: `Bearer ${tokens.access_token}` } },
+        );
+        assert.ok([403, 404].includes(denied.status));
+        await inviteeSignIn.close();
+        spectatorChecks.push(
+          "Authenticated explicit acceptance creates only the exact team-season spectator grant; native-app metadata enrollment works for the new role and manager preparation remains denied",
+        );
+        await writeFile(
+          resolve(trialDirectory, "spectator-activation-evidence.json"),
+          JSON.stringify(
+            {
+              verifiedAt: new Date().toISOString(),
+              provider: "Keycloak",
+              providerVersion: "26.8.1",
+              database: "PostgreSQL",
+              verifiedRuntimeSchema: { core: 11, activation: 2 },
+              actualProviderJwt: true,
+              runtimeRole: "restricted API role",
+              httpsCertificateVerified: true,
+              checks: spectatorChecks,
+              chromiumUse: "offline DOM parser only",
+              systemBrowserTested: false,
+              physicalDeviceTested: false,
+              devicePlatformProof: false,
+              liveOnboardingApproved: false,
+              productionProviderSelected: false,
+              policiesApproved: false,
+            },
+            null,
+            2,
+          ),
+          { mode: 0o600 },
+        );
+        for (const check of spectatorChecks) record(check);
+        if (process.env.LONGBALL_IDENTITY_TRIAL_SPECTATOR_UI_PROOF === "1")
+          await runSpectatorUi();
+      }
+      await householdSignIn.close();
+      record(
+        "Actual strongly authenticated provider manager → restricted-role PostgreSQL API → username-only activation → independent child PKCE sign-in, child manager-denial and synthetic-alias refusal",
       );
-      for (const check of checks) console.log(`PASS ${check}`);
     }
-    const deniedManagerView = await fetch(
-      `${fixture.apiBaseUrl}/v1${scoped}/preparation?seasonId=${fixture.seasonId}`,
-      { headers: { authorization: `Bearer ${householdTokens.access_token}` } },
-    );
-    assert.ok([403, 404].includes(deniedManagerView.status));
-    const deniedAlias = await fetch(`${fixture.apiBaseUrl}/v1/me`, {
-      headers: { authorization: "Bearer synthetic-manager-1" },
-    });
-    assert.equal(deniedAlias.status, 401);
-    await householdSignIn.close();
-    record(
-      "Actual strongly authenticated provider manager → restricted-role PostgreSQL API → username-only activation → independent child PKCE sign-in, child manager-denial and synthetic-alias refusal",
-    );
   }
 
   await writeFile(
-    resolve(trialDirectory, "evidence.json"),
+    resolve(
+      trialDirectory,
+      spectatorUiOnly ? "spectator-ui-run-evidence.json" : "evidence.json",
+    ),
     JSON.stringify(
       {
         provider: "Keycloak",
@@ -920,7 +1248,8 @@ try {
         actualProviderRequests: true,
         actualProviderApiJourney: apiProof,
         activationCompletionRequiresOriginalCapability: apiProof,
-        verifiedRuntimeSchema: apiProof ? { core: 7, activation: 2 } : null,
+        spectatorUiOnly,
+        verifiedRuntimeSchema: apiProof ? { core: 11, activation: 2 } : null,
         schemaUpgradeSmokeOnly: schemaSmoke,
         chromiumUse: "offline DOM parser only",
         systemBrowserTested: false,

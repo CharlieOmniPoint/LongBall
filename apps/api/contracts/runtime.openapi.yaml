@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: LongBall implemented runtime extensions
-  version: 1.2.0
+  version: 1.3.0
   description: >-
     Runtime additions beside the unchanged supplied canonical contract. Server
     authorization, explicit policy decisions and native-device acceptance remain
@@ -13,12 +13,215 @@ servers:
 security:
   - bearerAuth: []
 paths:
+  /identity/devices:
+    get:
+      operationId: listOwnRecognisedDevices
+      summary: Read the authenticated account's recognised installation metadata
+      description: No device credentials, push tokens, advertising IDs, other account metadata or remote-revocation action is exposed. Unknown legacy metadata stays null. A device identifier is not authentication or match-controller authority.
+      responses:
+        '200':
+          description: Own recognised devices only; Cache-Control private, no-store
+          content: {application/json: {schema: {$ref: '#/components/schemas/RecognisedDevices'}}}
+        '404': {$ref: '#/components/responses/Unavailable'}
+    post:
+      operationId: enrolOwnNativeInstallation
+      summary: Record a reported native installation for the current account
+      parameters:
+        - {$ref: '#/components/parameters/ContractVersion'}
+        - {$ref: '#/components/parameters/IdempotencyKey'}
+      description: The account and issuer come from the verified session. Times come from the service. The reported platform remains unverified and confers no controller authority. An existing installation cannot be transferred to another account.
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/NativeDeviceInput'}}}
+      responses:
+        '200':
+          description: Current own recognised devices
+          content: {application/json: {schema: {$ref: '#/components/schemas/RecognisedDevices'}}}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /teams/{teamId}/spectator-invites:
+    parameters:
+      - {$ref: '#/components/parameters/TeamId'}
+      - {$ref: '#/components/parameters/SelectedRole'}
+    get:
+      operationId: listCurrentSpectatorInvitations
+      summary: List safe invitation summaries for a current manager or the original current player
+      parameters:
+        - {$ref: '#/components/parameters/SeasonId'}
+      responses:
+        '200':
+          description: No plaintext token, verifier, share URL or private account directory
+          content: {application/json: {schema: {$ref: '#/components/schemas/InvitationList'}}}
+        '404': {$ref: '#/components/responses/Unavailable'}
+    post:
+      operationId: issueServerGeneratedSpectatorInvitation
+      summary: Issue a single-use spectator credential without a player approval step
+      description: The season comes from the body; a contradictory query is refused. The service CSPRNG generates 32 bytes and stores only a domain-separated SHA-256 verifier. Explicit expiry is 1–48 hours and bounded by the selected season. No proposed default or player invitation cap is silently selected. The raw share URL is returned once and remains memory-only; it never enters generic outboxes, logs or durable receipts.
+      parameters:
+        - {$ref: '#/components/parameters/ContractVersion'}
+        - {$ref: '#/components/parameters/IdempotencyKey'}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/InvitationWrite'}}}
+      responses:
+        '201':
+          description: First response contains the one-time credential in the configured app entry URL fragment
+          content: {application/json: {schema: {$ref: '#/components/schemas/InvitationCreated'}}}
+        '200':
+          description: Exact retry returns retained metadata only; explicitly reissue if the first credential was lost
+          content: {application/json: {schema: {$ref: '#/components/schemas/RedactedInvitationReceipt'}}}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '503': {$ref: '#/components/responses/PolicyRequired'}
+  /teams/{teamId}/spectator-invites/{invitationId}/reissue:
+    parameters:
+      - {$ref: '#/components/parameters/TeamId'}
+      - {$ref: '#/components/parameters/InvitationId'}
+      - {$ref: '#/components/parameters/SelectedRole'}
+      - {$ref: '#/components/parameters/ContractVersion'}
+      - {$ref: '#/components/parameters/IdempotencyKey'}
+    post:
+      operationId: explicitlyReissuePendingSpectatorInvitation
+      summary: Atomically retire a pending link and issue its explicit replacement
+      description: Only its original current player or a current manager may reissue. An accepted invitation or grant cannot be rotated. Legacy plaintext credentials remain retired. Source identity and original retirement evidence remain retained; a second replacement from the same source is refused. The new raw credential is returned once, with a redacted durable retry receipt.
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/InvitationWrite'}}}
+      responses:
+        '201':
+          description: Explicit replacement with one-time share URL
+          content: {application/json: {schema: {$ref: '#/components/schemas/InvitationCreated'}}}
+        '200':
+          description: Exact retry contains no raw credential
+          content: {application/json: {schema: {$ref: '#/components/schemas/RedactedInvitationReceipt'}}}
+        '404': {$ref: '#/components/responses/Unavailable'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /teams/{teamId}/spectator-invites/{invitationId}:
+    parameters:
+      - {$ref: '#/components/parameters/TeamId'}
+      - {$ref: '#/components/parameters/InvitationId'}
+      - {$ref: '#/components/parameters/SeasonId'}
+      - {$ref: '#/components/parameters/SelectedRole'}
+      - {$ref: '#/components/parameters/ContractVersion'}
+      - {$ref: '#/components/parameters/IdempotencyKey'}
+    delete:
+      operationId: revokeInvitationAndItsGrant
+      summary: A current manager revokes the invitation and its associated future grant access
+      description: The verifier mirror, retained community evidence and spectator membership union update in one transaction. Other accepted grants, unrelated roles and historical records remain intact. No account is deleted.
+      responses:
+        '200':
+          description: Immutable revocation acknowledgement; current permissions are re-read separately
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [invitationId, revoked]
+                properties:
+                  invitationId: {$ref: '#/components/schemas/Identifier'}
+                  revoked: {const: true}
+        '404': {$ref: '#/components/responses/Unavailable'}
+  /spectator-invites/inspect:
+    post:
+      operationId: inspectPossessedInvitationDestination
+      summary: Confirm the actual invitation destination before authenticated acceptance
+      description: Read-only lookup for the exact server-hashed token and current authenticated account. Link-supplied team and season fields do not authorize a destination. No account, session, grant or receipt is created; no labels, verifier, token or private roster are returned.
+      parameters:
+        - {$ref: '#/components/parameters/ContractVersion'}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/InvitationTokenInput'}}}
+      responses:
+        '200':
+          description: Safe token-bound destination metadata
+          content: {application/json: {schema: {$ref: '#/components/schemas/InvitationDestination'}}}
+        '404': {$ref: '#/components/responses/Unavailable'}
+  /spectator-invites/accept:
+    post:
+      operationId: acceptServerVerifiedSpectatorInvitation
+      summary: Accept a possessed single-use invitation into the signed-in global account
+      description: No prior destination membership is required. The service resolves the exact raw token into a scoped verifier context before its transaction. The accepted grant ends at the recorded Europe/London season boundary; invitation expiry is separate. No name matching, automatic identity linking, duplicate account or adult authority is created. Raw token and exact retries remain memory-only; durable receipts contain safe acknowledgement fields only. Refresh current memberships after acceptance.
+      parameters:
+        - {$ref: '#/components/parameters/ContractVersion'}
+        - {$ref: '#/components/parameters/IdempotencyKey'}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/InvitationTokenInput'}}}
+      responses:
+        '200':
+          description: Accepted grant acknowledgement; includes no authentication or private team data
+          content: {application/json: {schema: {$ref: '#/components/schemas/InvitationDestination'}}}
+        '404': {$ref: '#/components/responses/Unavailable'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /spectator-invites/activation-info:
+    post:
+      operationId: getFirstSpectatorActivationPolicy
+      summary: Read the exact pending invitation's configured activation policy
+      security: []
+      parameters:
+        - {$ref: '#/components/parameters/ContractVersion'}
+        - {$ref: '#/components/parameters/IdempotencyKey'}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/InvitationTokenInput'}}}
+      responses:
+        '200':
+          description: Minimal capability-bound expiry and policy; creates no account or access
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [invitationId, expiresAt, policyVersion]
+                properties:
+                  invitationId: {$ref: '#/components/schemas/Identifier'}
+                  expiresAt: {type: string, format: date-time}
+                  policyVersion: {$ref: '#/components/schemas/Identifier'}
+        '410': {$ref: '#/components/responses/Unavailable'}
+        '429': {description: The bounded capability request window has been reached}
+        '503': {$ref: '#/components/responses/PolicyRequired'}
+  /spectator-invites/activate:
+    post:
+      operationId: beginFirstSpectatorUsernameActivation
+      summary: Provision a pending username identity for the possessed invitation
+      security: []
+      description: Requires explicit configured provider and activation policy. A reserved identity stays unclassified and disabled until exact provider completion. The provider URL never contains the invitation token. Its sole nonsecret longballActivation fragment identifies the attempt and is removed before opening the trusted provider. Completion alone creates no membership or app session; sign in with PKCE and explicitly accept the invitation afterwards. Existing-account users sign in directly.
+      parameters:
+        - {$ref: '#/components/parameters/ContractVersion'}
+        - {$ref: '#/components/parameters/IdempotencyKey'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [token, deviceId, policyVersion]
+              properties:
+                token: {$ref: '#/components/schemas/InvitationToken'}
+                deviceId: {$ref: '#/components/schemas/Identifier'}
+                policyVersion: {$ref: '#/components/schemas/Identifier'}
+      responses:
+        '200':
+          description: Trusted provider setup link without invitation secret or application credentials
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [accountId, username, identityActionUrl, expiresAt]
+                properties:
+                  accountId: {$ref: '#/components/schemas/Identifier'}
+                  username: {type: string, minLength: 1}
+                  identityActionUrl: {type: string, format: uri}
+                  expiresAt: {type: string, format: date-time}
+        '410': {$ref: '#/components/responses/Unavailable'}
+        '429': {description: The bounded capability request window has been reached}
+        '503': {$ref: '#/components/responses/PolicyRequired'}
   /activation/complete:
     post:
       operationId: completeOriginalTokenActivation
-      summary: Verify provider completion for the exact original household activation capability
+      summary: Verify provider completion for the exact original household or spectator activation capability
       security: []
-      description: The original opaque token and activation ID scope database access before provider verification. Actual provider proof is verified outside the transaction before an atomic capability-bound completion. The token remains memory-only; a cold return requires the original token again. This operation creates no app session and never returns credentials or recovery material.
+      description: The original opaque token and activation ID resolve exactly one household or spectator family before provider I/O. Actual provider proof is verified outside the transaction before an atomic capability-bound completion. The token remains memory-only; a cold return requires the original token again. This operation creates no membership or app session and never returns credentials or recovery material.
       parameters:
         - {$ref: '#/components/parameters/ContractVersion'}
         - {$ref: '#/components/parameters/IdempotencyKey'}
@@ -47,6 +250,7 @@ paths:
                   status: {const: complete}
                   signInRequired: {const: true}
         '404': {$ref: '#/components/responses/Unavailable'}
+        '410': {$ref: '#/components/responses/Unavailable'}
         '429': {description: The bounded activation attempt window has been reached}
         '503': {$ref: '#/components/responses/PolicyRequired'}
   /matches/{matchId}/clock/challenges:
@@ -340,10 +544,261 @@ paths:
         '404': {$ref: '#/components/responses/Unavailable'}
         '409': {$ref: '#/components/responses/Conflict'}
 
+  /teams/{teamId}/branding:
+    parameters:
+      - {$ref: '#/components/parameters/TeamId'}
+      - {$ref: '#/components/parameters/SeasonId'}
+      - {$ref: '#/components/parameters/SelectedRole'}
+    get:
+      operationId: getScopedLiveBranding
+      summary: Read separate live club and team logo references with current inheritance
+      description: Season is the current authority context only. Logo assets never carry a season or match. Only the current author's permitted pending manifests are returned; player/spectator views contain published references only. Saved match/player snapshots are untouched.
+      responses:
+        '200':
+          description: Current no-store branding projection
+          content: {application/json: {schema: {$ref: '#/components/schemas/BrandingDto'}}}
+        '404': {$ref: '#/components/responses/Unavailable'}
+  /teams/{teamId}/branding/{kind}/uploads/prepare:
+    parameters:
+      - {$ref: '#/components/parameters/TeamId'}
+      - {$ref: '#/components/parameters/SeasonId'}
+      - {$ref: '#/components/parameters/BrandWriteRole'}
+      - {$ref: '#/components/parameters/BrandKind'}
+      - {$ref: '#/components/parameters/ContractVersion'}
+      - {$ref: '#/components/parameters/IdempotencyKey'}
+    post:
+      operationId: prepareKindScopedLogoUpload
+      summary: Prepare a private club or team logo upload under current kind-specific authority
+      description: Club logos require a club-authorised administrator in administrator context; team logos require an assigned manager in manager context. The body discriminator must equal the path kind. Club logos have club ancestry only; team logos derive club ancestry from the authorised team. Match, season, owner, filename and requestId body fields are rejected. Idempotency-Key identifies the immutable upload request.
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/LogoPrepareInput'}}}
+      responses:
+        '200':
+          description: Private prepared manifest and bounded write capability; upload token is memory-only and is never a read URL
+          content: {application/json: {schema: {$ref: '#/components/schemas/PreparedLogoUpload'}}}
+        '404': {$ref: '#/components/responses/Unavailable'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '422': {description: 'Invalid type, ancestry, size, hash or content-policy acknowledgement'}
+  /teams/{teamId}/branding/uploads/{uploadId}:
+    parameters:
+      - {$ref: '#/components/parameters/TeamId'}
+      - {$ref: '#/components/parameters/SeasonId'}
+      - {$ref: '#/components/parameters/BrandWriteRole'}
+      - {$ref: '#/components/parameters/BrandUploadId'}
+      - {$ref: '#/components/parameters/BrandUploadToken'}
+      - {$ref: '#/components/parameters/ContractVersion'}
+      - {$ref: '#/components/parameters/IdempotencyKey'}
+    put:
+      operationId: uploadPrivateLogoBytes
+      summary: Upload bounded private JPEG, PNG or HEIC bytes to the exact prepared manifest
+      requestBody:
+        required: true
+        content:
+          image/jpeg: {schema: {type: string, format: binary}}
+          image/png: {schema: {type: string, format: binary}}
+          image/heic: {schema: {type: string, format: binary}}
+      responses:
+        '200':
+          description: Bytes received; no publication or reusable read capability is created
+          content: {application/json: {schema: {$ref: '#/components/schemas/UploadedLogoReceipt'}}}
+        '404': {$ref: '#/components/responses/Unavailable'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '413': {description: Upload exceeds its exact prepared size or the 15 MiB limit}
+  /teams/{teamId}/branding/uploads/{uploadId}/complete:
+    parameters:
+      - {$ref: '#/components/parameters/TeamId'}
+      - {$ref: '#/components/parameters/SeasonId'}
+      - {$ref: '#/components/parameters/BrandWriteRole'}
+      - {$ref: '#/components/parameters/BrandUploadId'}
+      - {$ref: '#/components/parameters/BrandUploadToken'}
+      - {$ref: '#/components/parameters/ContractVersion'}
+      - {$ref: '#/components/parameters/IdempotencyKey'}
+    post:
+      operationId: processPrivateLogoUpload
+      summary: Scan and decode a bounded metadata-free PNG derivative, preserving transparency
+      description: Processing success retains a private processed manifest. It never updates a published logo slot. Scanner absence/failure does not fabricate clean processing.
+      requestBody:
+        required: true
+        content: {application/json: {schema: {type: object, additionalProperties: false}}}
+      responses:
+        '200':
+          description: Exact processed revision ready for an explicit review/publication action
+          content: {application/json: {schema: {$ref: '#/components/schemas/ProcessedLogoUpload'}}}
+        '404': {$ref: '#/components/responses/Unavailable'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '422': {description: 'Decode, signature, dimension, animation or metadata-processing refusal'}
+        '503': {description: Required scanner or processor unavailable; asset remains private}
+  /teams/{teamId}/branding/{kind}/publish:
+    parameters:
+      - {$ref: '#/components/parameters/TeamId'}
+      - {$ref: '#/components/parameters/SeasonId'}
+      - {$ref: '#/components/parameters/BrandWriteRole'}
+      - {$ref: '#/components/parameters/BrandKind'}
+      - {$ref: '#/components/parameters/ContractVersion'}
+      - {$ref: '#/components/parameters/IdempotencyKey'}
+    post:
+      operationId: publishExactReviewedLogo
+      summary: Atomically publish an exact clean reviewed logo revision and update its owning pointer
+      description: Club administrator and assigned team-manager authority are separate. command.id must equal Idempotency-Key, and kind must equal the path kind. Current rights-policy acknowledgement, reviewed revision and expected pointer version are required. Pointer, asset status, audit and exact retry receipt commit together. This supplies no access to child reports or game-photo moderation.
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/BrandPublishRequest'}}}
+      responses:
+        '200':
+          description: Exact command acknowledgement and fresh permitted branding
+          content: {application/json: {schema: {$ref: '#/components/schemas/BrandingCommandReceipt'}}}
+        '404': {$ref: '#/components/responses/Unavailable'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '422': {description: Unprocessed/unreviewed revision or missing current rights-policy confirmation}
+  /teams/{teamId}/branding/{kind}/remove:
+    parameters:
+      - {$ref: '#/components/parameters/TeamId'}
+      - {$ref: '#/components/parameters/SeasonId'}
+      - {$ref: '#/components/parameters/BrandWriteRole'}
+      - {$ref: '#/components/parameters/BrandKind'}
+      - {$ref: '#/components/parameters/ContractVersion'}
+      - {$ref: '#/components/parameters/IdempotencyKey'}
+    post:
+      operationId: removeLogoOverride
+      summary: Clear the exact owning slot with an audited current-version confirmation
+      description: Removing a team override restores the current club logo, then the neutral fallback. Removing a club logo preserves team overrides. Former published derivatives are no longer retrievable in published mode through the removed pointer. Private retention is separate from instant erasure.
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/BrandRemoveRequest'}}}
+      responses:
+        '200':
+          description: Exact command acknowledgement and fresh permitted branding
+          content: {application/json: {schema: {$ref: '#/components/schemas/BrandingCommandReceipt'}}}
+        '404': {$ref: '#/components/responses/Unavailable'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /teams/{teamId}/branding/assets/{assetId}/revisions/{revision}/{variant}:
+    parameters:
+      - {$ref: '#/components/parameters/TeamId'}
+      - {$ref: '#/components/parameters/SeasonId'}
+      - {$ref: '#/components/parameters/SelectedRole'}
+      - {name: assetId, in: path, required: true, schema: {$ref: '#/components/schemas/Identifier'}}
+      - {name: revision, in: path, required: true, schema: {type: integer, minimum: 1}}
+      - {name: variant, in: path, required: true, schema: {enum: [display, thumbnail]}}
+      - {name: mode, in: query, schema: {enum: [own, published], default: published}}
+    get:
+      operationId: getAuthorisedLogoDerivative
+      summary: Recheck current membership and the exact private or published logo revision for every image
+      description: PNG bytes use private/no-store headers. Own mode requires current kind-write authority and ownership. Published mode requires a current authorised viewer and the matching current owning slot. Revocation, expiry, replacement and removal deny old published reads. Bearer authentication is required in the request header. Tokens in URLs and reusable signed read URLs are not accepted.
+      responses:
+        '200':
+          description: Exact permitted PNG derivative
+          headers: {Cache-Control: {schema: {const: 'private, no-store'}}}
+          content: {image/png: {schema: {type: string, format: binary}}}
+        '404': {$ref: '#/components/responses/Unavailable'}
+
 components:
   securitySchemes:
     bearerAuth: {type: http, scheme: bearer, bearerFormat: JWT}
   schemas:
+    InvitationToken:
+      type: string
+      minLength: 43
+      maxLength: 43
+      pattern: '^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$'
+      writeOnly: true
+    InvitationTokenInput:
+      type: object
+      additionalProperties: false
+      required: [token]
+      properties:
+        token: {$ref: '#/components/schemas/InvitationToken'}
+    InvitationWrite:
+      type: object
+      additionalProperties: false
+      required: [seasonId, expiresInHours]
+      properties:
+        seasonId: {$ref: '#/components/schemas/Identifier'}
+        expiresInHours: {type: integer, minimum: 1, maximum: 48}
+      description: Runtime requires explicit expiry unless an operator has explicitly configured a default. No caller credential or verifier is accepted.
+    InvitationCreated:
+      type: object
+      additionalProperties: false
+      required: [id, shareUrl, expiresAt, teamId, seasonId]
+      properties:
+        id: {$ref: '#/components/schemas/Identifier'}
+        shareUrl: {type: string, format: uri, description: One-time secret; never log, publish or persist it}
+        expiresAt: {type: string, format: date-time}
+        teamId: {$ref: '#/components/schemas/Identifier'}
+        seasonId: {$ref: '#/components/schemas/Identifier'}
+    RedactedInvitationReceipt:
+      type: object
+      additionalProperties: false
+      required: [id, expiresAt, teamId, seasonId, credentialAvailable, requiresReissue]
+      properties:
+        id: {$ref: '#/components/schemas/Identifier'}
+        expiresAt: {type: string, format: date-time}
+        teamId: {$ref: '#/components/schemas/Identifier'}
+        seasonId: {$ref: '#/components/schemas/Identifier'}
+        credentialAvailable: {const: false}
+        requiresReissue: {const: true}
+    InvitationDestination:
+      type: object
+      additionalProperties: false
+      required: [invitationId, teamId, seasonId, expiresAt]
+      properties:
+        invitationId: {$ref: '#/components/schemas/Identifier'}
+        teamId: {$ref: '#/components/schemas/Identifier'}
+        seasonId: {$ref: '#/components/schemas/Identifier'}
+        expiresAt: {type: string, format: date-time}
+    InvitationList:
+      type: object
+      additionalProperties: false
+      required: [kind, teamId, seasonId, revision, invitations]
+      properties:
+        kind: {const: spectator-invitations}
+        teamId: {$ref: '#/components/schemas/Identifier'}
+        seasonId: {$ref: '#/components/schemas/Identifier'}
+        revision: {type: integer, minimum: 0}
+        invitations:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [id, teamId, seasonId, expiresAt, status, canReissue, canRevoke]
+            properties:
+              id: {$ref: '#/components/schemas/Identifier'}
+              teamId: {$ref: '#/components/schemas/Identifier'}
+              seasonId: {$ref: '#/components/schemas/Identifier'}
+              expiresAt: {type: string, format: date-time}
+              status: {enum: [pending, accepted, revoked, expired, requires_reissue]}
+              canReissue: {type: boolean}
+              canRevoke: {type: boolean}
+    NativeDeviceInput:
+      type: object
+      additionalProperties: false
+      required: [deviceId, platform]
+      properties:
+        deviceId: {type: string, minLength: 1, maxLength: 120, pattern: '^[A-Za-z0-9_-]+$'}
+        platform: {enum: [ios, android]}
+    RecognisedDevices:
+      type: object
+      additionalProperties: false
+      required: [kind, accountId, asOf, devices, remoteRevocationAvailable]
+      properties:
+        kind: {const: recognised-devices}
+        accountId: {$ref: '#/components/schemas/Identifier'}
+        asOf: {type: string, format: date-time}
+        remoteRevocationAvailable: {const: false}
+        devices:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [deviceId, source, label, platform, platformVerified, registeredAt, lastSeenAt]
+            properties:
+              deviceId: {$ref: '#/components/schemas/Identifier'}
+              source: {enum: [native_app_enrolment, match_controller_enrolment]}
+              label: {type: 'null'}
+              platform: {enum: [ios, android, null]}
+              platformVerified: {const: false}
+              registeredAt: {type: [string, 'null'], format: date-time}
+              lastSeenAt: {type: [string, 'null'], format: date-time}
     Identifier: {type: string, pattern: '^[A-Za-z0-9_-]{1,150}$'}
     StaffCommand:
       type: object
@@ -370,6 +825,169 @@ components:
                 accountId: {$ref: '#/components/schemas/Identifier'}
                 reason: {type: string, minLength: 1}
                 confirmRevocation: {const: true}
+    PreparedLogoUpload:
+      type: object
+      additionalProperties: false
+      required: [kind, uploadId, asset, uploadToken, expiresAtMs, maxBytes]
+      properties:
+        kind: {const: prepared-logo-upload}
+        uploadId: {$ref: '#/components/schemas/Identifier'}
+        asset: {$ref: '#/components/schemas/BrandReference'}
+        uploadToken: {type: string, minLength: 43, maxLength: 43, pattern: '^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$', description: 'Private bounded upload capability; keep only in memory and never use for reading'}
+        expiresAtMs: {type: integer, minimum: 0}
+        maxBytes: {const: 15728640}
+    UploadedLogoReceipt:
+      type: object
+      additionalProperties: false
+      required: [uploadId, status, byteSize]
+      properties:
+        uploadId: {$ref: '#/components/schemas/Identifier'}
+        status: {const: uploaded}
+        byteSize: {type: integer, minimum: 1, maximum: 15728640}
+    ProcessedLogoUpload:
+      type: object
+      additionalProperties: false
+      required: [kind, uploadId, asset, status, width, height]
+      properties:
+        kind: {const: processed-logo-upload}
+        uploadId: {$ref: '#/components/schemas/Identifier'}
+        asset: {$ref: '#/components/schemas/BrandReference'}
+        status: {const: processed}
+        width: {type: integer, minimum: 1, maximum: 1024}
+        height: {type: integer, minimum: 1, maximum: 1024}
+    BrandingCommandReceipt:
+      type: object
+      additionalProperties: false
+      required: [kind, commandId, revision, acceptedAt, branding]
+      properties:
+        kind: {const: branding-command-receipt}
+        commandId: {$ref: '#/components/schemas/Identifier'}
+        revision: {type: integer, minimum: 1}
+        acceptedAt: {type: string, format: date-time}
+        branding: {$ref: '#/components/schemas/BrandingDto'}
+    BrandReference:
+      type: object
+      additionalProperties: false
+      required: [assetId, revision, kind, clubId, teamId]
+      properties:
+        assetId: {$ref: '#/components/schemas/Identifier'}
+        revision: {type: integer, minimum: 1}
+        kind: {enum: [club_logo, team_logo]}
+        clubId: {$ref: '#/components/schemas/Identifier'}
+        teamId: {oneOf: [{$ref: '#/components/schemas/Identifier'}, {type: 'null'}]}
+      oneOf:
+        - properties: {kind: {const: club_logo}, teamId: {type: 'null'}}
+        - properties: {kind: {const: team_logo}, teamId: {$ref: '#/components/schemas/Identifier'}}
+    LogoPrepareInput:
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required: [kind, clubId, byteSize, mimeType, sha256, policyAcknowledged]
+          properties:
+            kind: {const: club_logo}
+            clubId: {$ref: '#/components/schemas/Identifier'}
+            byteSize: {type: integer, minimum: 1, maximum: 15728640}
+            mimeType: {enum: [image/jpeg, image/png, image/heic]}
+            sha256: {type: string, pattern: '^[a-fA-F0-9]{64}$'}
+            policyAcknowledged: {const: true}
+        - type: object
+          additionalProperties: false
+          required: [kind, teamId, byteSize, mimeType, sha256, policyAcknowledged]
+          properties:
+            kind: {const: team_logo}
+            teamId: {$ref: '#/components/schemas/Identifier'}
+            byteSize: {type: integer, minimum: 1, maximum: 15728640}
+            mimeType: {enum: [image/jpeg, image/png, image/heic]}
+            sha256: {type: string, pattern: '^[a-fA-F0-9]{64}$'}
+            policyAcknowledged: {const: true}
+    BrandPublishRequest:
+      type: object
+      additionalProperties: false
+      required: [command]
+      properties:
+        command:
+          type: object
+          additionalProperties: false
+          required: [id, type, kind, expectedSlotVersion, assetId, reviewedRevision, confirmRightsToUse, policyVersion]
+          properties:
+            id: {$ref: '#/components/schemas/Identifier'}
+            type: {const: logo.published}
+            kind: {enum: [club_logo, team_logo]}
+            expectedSlotVersion: {type: integer, minimum: 0}
+            assetId: {$ref: '#/components/schemas/Identifier'}
+            reviewedRevision: {type: integer, minimum: 1}
+            confirmRightsToUse: {const: true}
+            policyVersion: {type: string, minLength: 1, maxLength: 150}
+    BrandRemoveRequest:
+      type: object
+      additionalProperties: false
+      required: [command]
+      properties:
+        command:
+          type: object
+          additionalProperties: false
+          required: [id, type, kind, expectedSlotVersion]
+          properties:
+            id: {$ref: '#/components/schemas/Identifier'}
+            type: {const: logo.removed}
+            kind: {enum: [club_logo, team_logo]}
+            expectedSlotVersion: {type: integer, minimum: 0}
+    BrandingDto:
+      type: object
+      additionalProperties: false
+      required: [kind, teamId, clubId, authoritySeasonId, policyVersion, club, team, effective, canWriteClub, canWriteTeam, assets]
+      properties:
+        kind: {const: team-branding}
+        teamId: {$ref: '#/components/schemas/Identifier'}
+        clubId: {$ref: '#/components/schemas/Identifier'}
+        authoritySeasonId: {$ref: '#/components/schemas/Identifier'}
+        policyVersion: {type: string}
+        club:
+          type: object
+          additionalProperties: false
+          required: [id, name, slotVersion, logo]
+          properties:
+            id: {$ref: '#/components/schemas/Identifier'}
+            name: {type: string}
+            slotVersion: {type: integer, minimum: 0}
+            logo: {oneOf: [{$ref: '#/components/schemas/BrandReference'}, {type: 'null'}]}
+        team:
+          type: object
+          additionalProperties: false
+          required: [id, name, ageGroup, slotVersion, logo]
+          properties:
+            id: {$ref: '#/components/schemas/Identifier'}
+            name: {type: string}
+            ageGroup: {type: string}
+            slotVersion: {type: integer, minimum: 0}
+            logo: {oneOf: [{$ref: '#/components/schemas/BrandReference'}, {type: 'null'}]}
+        effective:
+          type: object
+          additionalProperties: false
+          required: [source, logo]
+          properties:
+            source: {enum: [team, club, neutral]}
+            logo: {oneOf: [{$ref: '#/components/schemas/BrandReference'}, {type: 'null'}]}
+        canWriteClub: {type: boolean}
+        canWriteTeam: {type: boolean}
+        assets:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [assetId, revision, kind, clubId, teamId, status, byteSize, width, height, createdAt, processedAt]
+            properties:
+              assetId: {$ref: '#/components/schemas/Identifier'}
+              revision: {type: integer, minimum: 1}
+              kind: {enum: [club_logo, team_logo]}
+              clubId: {$ref: '#/components/schemas/Identifier'}
+              teamId: {oneOf: [{$ref: '#/components/schemas/Identifier'}, {type: 'null'}]}
+              status: {enum: [prepared, uploaded, processing, processed, published, rejected]}
+              byteSize: {type: integer, minimum: 1, maximum: 15728640}
+              width: {type: [integer, 'null'], minimum: 1}
+              height: {type: [integer, 'null'], minimum: 1}
+              createdAt: {type: integer, minimum: 0}
+              processedAt: {type: [integer, 'null'], minimum: 0}
     Error:
       type: object
       required: [code, message]
@@ -378,6 +996,11 @@ components:
         message: {type: string}
         retryable: {type: boolean}
   parameters:
+    BrandWriteRole: {name: X-Longball-Role, in: header, required: true, schema: {enum: [administrator, manager]}, description: 'Choose the explicit current kind authority: administrator for club_logo or assigned manager for team_logo'}
+    InvitationId: {name: invitationId, in: path, required: true, schema: {$ref: '#/components/schemas/Identifier'}}
+    BrandKind: {name: kind, in: path, required: true, schema: {enum: [club_logo, team_logo]}}
+    BrandUploadId: {name: uploadId, in: path, required: true, schema: {$ref: '#/components/schemas/Identifier'}}
+    BrandUploadToken: {name: X-Media-Upload-Token, in: header, required: true, schema: {type: string, writeOnly: true}}
     MatchId: {name: matchId, in: path, required: true, schema: {$ref: '#/components/schemas/Identifier'}}
     TeamId: {name: teamId, in: path, required: true, schema: {$ref: '#/components/schemas/Identifier'}}
     SeasonId: {name: seasonId, in: query, required: true, schema: {$ref: '#/components/schemas/Identifier'}}

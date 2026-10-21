@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import {
   Pressable,
   StyleSheet,
@@ -29,6 +29,7 @@ import { randomUUID } from "../platform/id";
 import { Button, Card, colors, Icon, Notice, Pill } from "../ui";
 
 export interface PreparationScreensProps {
+  brandingPanel?: ReactNode;
   state: PreparationState;
   onChange: (command: PreparationCommand) => Promise<boolean> | boolean;
   view: "schedule" | "team" | "settings";
@@ -110,6 +111,7 @@ function PreparationContent({
   storage = "journal",
   onPrepareRollover,
   onPrepareChildActivation,
+  brandingPanel,
 }: PreparationScreensProps) {
   const [editor, setEditor] = useState<Editor>(null);
   const [selectedEvent, setSelectedEvent] = useState<{
@@ -261,6 +263,7 @@ function PreparationContent({
             <TeamForm
               state={state}
               disabled={disabled}
+              allowPresetLogo={storage !== "service"}
               onSubmit={(payload) => commit(payload, true)}
               onClose={close}
             />
@@ -561,21 +564,26 @@ function PreparationContent({
         </>
       ) : (
         <>
+          {storage === "service" && brandingPanel}
           <Card>
             <View style={s.between}>
               <View style={s.flex}>
                 <Text style={s.section}>{state.club.name}</Text>
                 <Text style={s.small}>Club identity</Text>
               </View>
-              <Badge choice={state.club.logo ?? "roundel"} label="Club" />
+              {storage !== "service" && (
+                <Badge choice={state.club.logo ?? "roundel"} label="Club" />
+              )}
             </View>
-            <Button
-              label="Edit club and badge"
-              icon="settings"
-              variant="secondary"
-              disabled={disabled}
-              onPress={() => setEditor({ type: "club" })}
-            />
+            {storage !== "service" && (
+              <Button
+                label="Edit club and badge"
+                icon="settings"
+                variant="secondary"
+                disabled={disabled}
+                onPress={() => setEditor({ type: "club" })}
+              />
+            )}
           </Card>
           <Card>
             <View style={s.between}>
@@ -584,12 +592,16 @@ function PreparationContent({
                   {state.team.name} {state.team.ageGroup}
                 </Text>
                 <Text style={s.small}>
-                  {state.team.logo
-                    ? "Team badge override"
-                    : "Inherits the club badge"}
+                  {storage === "service"
+                    ? "Uploaded logos are managed above"
+                    : state.team.logo
+                      ? "Team badge override"
+                      : "Inherits the club badge"}
                 </Text>
               </View>
-              <Badge choice={effectiveLogo(state)} label="Team" />
+              {storage !== "service" && (
+                <Badge choice={effectiveLogo(state)} label="Team" />
+              )}
             </View>
             <Text style={s.muted}>
               {state.team.defaultPitchPlaces}-a-side · 2 ×{" "}
@@ -874,11 +886,13 @@ function ClubForm({
 function TeamForm({
   state,
   disabled,
+  allowPresetLogo = true,
   onSubmit,
   onClose,
 }: {
   state: PreparationState;
   disabled: boolean;
+  allowPresetLogo?: boolean;
   onSubmit: (
     payload: Extract<Payload, { type: "team.updated" }>,
   ) => Promise<boolean>;
@@ -895,7 +909,9 @@ function TeamForm({
     <>
       <Field label="Team name" value={name} onChange={setName} />
       <Field label="Age group" value={ageGroup} onChange={setAgeGroup} />
-      <LogoPicker value={logo} onChange={setLogo} inherit />
+      {allowPresetLogo && (
+        <LogoPicker value={logo} onChange={setLogo} inherit />
+      )}
       <Choice
         label="Default pitch places"
         value={format}

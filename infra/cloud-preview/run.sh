@@ -9,6 +9,8 @@ export PREVIEW_EXPIRES_AT=""
 server_pid=""
 tunnel_pid=""
 worker_pid=""
+scanner_container=""
+scanner_volume=""
 
 publish_status() {
   export PREVIEW_STATE="$1"
@@ -36,6 +38,8 @@ cleanup() {
   if [[ -n "$tunnel_pid" ]]; then kill "$tunnel_pid" 2>/dev/null || true; fi
   if [[ -n "$server_pid" ]]; then kill "$server_pid" 2>/dev/null || true; fi
   if [[ -n "$worker_pid" ]]; then kill "$worker_pid" 2>/dev/null || true; fi
+  if [[ -n "$scanner_container" ]]; then docker rm --force "$scanner_container" >/dev/null 2>&1 || true; fi
+  if [[ -n "$scanner_volume" ]]; then docker volume rm "$scanner_volume" >/dev/null 2>&1 || true; fi
   if [[ $result -eq 0 ]]; then
     publish_status stopped || true
   else
@@ -62,10 +66,41 @@ export LONGBALL_SYNTHETIC_AUTH=1
 export LONGBALL_API_HOST=127.0.0.1
 export LONGBALL_API_PORT=4173
 export LONGBALL_API_DATABASE="$PWD/.local/fictional-review.sqlite"
+export LONGBALL_MEDIA_DIRECTORY="$PWD/.local/private-review-media"
+export LONGBALL_HEIC_DECODER_FILE="$PWD/.local/heic-runtime/bin/longball-heic"
+export LONGBALL_CLAMD_HOST=127.0.0.1
+export LONGBALL_CLAMD_PORT=53310
+scanner_container="longball-review-scanner-${GITHUB_RUN_ID}"
+scanner_volume="longball-review-signatures-${GITHUB_RUN_ID}"
+scanner_image='clamav/clamav@sha256:e19130cdebaeacc71fa46eab3ed6f69941f2f22aa5e08d55e9197f8edf43ce5e'
+docker volume create "$scanner_volume" >/dev/null
+# A disposable signature update uses the upstream configured endpoints. Readiness
+# below still requires a working engine, recent signatures and actual verdicts.
+timeout 300 docker run --rm --memory=2g --cpus=2 --volume "$scanner_volume:/var/lib/clamav" \
+  --entrypoint /usr/bin/freshclam "$scanner_image" --stdout >/tmp/longball-freshclam.log 2>&1 || true
+docker run --detach --name "$scanner_container" --read-only --memory=2g --cpus=2 \
+  --tmpfs /tmp:rw,size=128m,mode=1777 --publish 127.0.0.1:53310:3310 \
+  --volume "$scanner_volume:/var/lib/clamav:ro" --volume "$PWD/preview/clamd.conf:/run/longball-clamd.conf:ro" \
+  --entrypoint /usr/sbin/clamd "$scanner_image" --config-file=/run/longball-clamd.conf --foreground >/tmp/longball-scanner-container.txt
+media_ready=false
+for attempt in {1..180}; do
+  if node preview/check-media.mjs >/tmp/longball-media-readiness.json 2>/tmp/longball-media-readiness-error.log; then media_ready=true; break; fi
+  sleep 1
+done
+if [[ "$media_ready" != true ]]; then
+  cat /tmp/longball-media-readiness-error.log
+  docker logs "$scanner_container"
+  exit 1
+fi
 export LONGBALL_STATIC_DIRECTORY="$PWD/site"
 # The lasting fictional Pages review can explicitly connect to this bounded API
 # session. Same-origin combined review remains supported by the server itself.
 export LONGBALL_API_ORIGINS="https://charlieomnipoint.github.io"
+# One-time fictional review invitations return to the existing static app entry.
+# Recipients still choose the explicit review service; links supply no API/role authority.
+export LONGBALL_PUBLIC_APP_ENTRY_URL="https://charlieomnipoint.github.io/LongBall/"
+export LONGBALL_INVITATION_POLICY_VERSION="fictional-review-invitation-v1"
+# No default expiry: the review issuer must select its duration explicitly.
 node backend/api.mjs >/tmp/longball-http.log 2>&1 &
 server_pid=$!
 server_ready=false
@@ -103,5 +138,6 @@ for minute in {1..60}; do
   kill -0 "$server_pid"
   kill -0 "$tunnel_pid"
   kill -0 "$worker_pid"
+  [[ "$(docker inspect --format '{{.State.Running}}' "$scanner_container")" == true ]]
   sleep 60
 done

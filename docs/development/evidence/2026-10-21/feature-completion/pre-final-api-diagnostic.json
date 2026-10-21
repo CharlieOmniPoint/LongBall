@@ -1,0 +1,22 @@
+{
+  "status": "failed",
+  "startedAtUtc": "2026-10-21 12:48:26",
+  "durationSeconds": 129.37,
+  "filesPassed": 25,
+  "filesFailed": 5,
+  "testsPassed": 198,
+  "testsFailed": 17,
+  "actualPostgres": true,
+  "actualHeicDecoder": {
+    "sha256": "5ec9807e2a45b04fc2aaa272ab97372266f5d35543414d9c73ceca0a546e29f0",
+    "libheif": "1.23.6",
+    "libde265": "1.1.3"
+  },
+  "diagnosticLog": ".local/feature12-api.log (ignored; sanitized causes below)",
+  "causesUnderInvestigation": [
+    "Shared account RLS invokes spectator_activation_account but worker runtime lacks EXECUTE; notification and isolation regressions",
+    "SQLite current-version assertion and emulated old-schema fixtures predate version8 native_app_devices",
+    "Prior PostgreSQL child-activation test attempts account update rejected by activation guard"
+  ],
+  "response": "Investigate and correct each boundary or fixture, retain diagnostic and rerun affected suites. No timeout or security check weakened."
+}

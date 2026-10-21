@@ -5,6 +5,59 @@ import {
 } from "./deep-links";
 
 describe("LongBall destinations are memory-only routing input, never authority", () => {
+  it("supports an exact static-host base path without accepting a service origin from the link", () => {
+    const entry = "https://owner.example/LongBall/",
+      link = `${entry}#longballInvite=1&teamId=t&seasonId=s&code=${"a".repeat(42)}A`;
+    expect(
+      parseLongBallDestination(link, { httpsEntryUrls: [entry] })?.kind,
+    ).toBe("invitation");
+    expect(
+      parseLongBallDestination(link, {
+        httpsOrigins: ["https://owner.example"],
+      }),
+    ).toBeNull();
+    expect(
+      parseLongBallDestination(link.replace("/LongBall/", "/other/"), {
+        httpsEntryUrls: [entry],
+      }),
+    ).toBeNull();
+    expect(
+      parseLongBallDestination(link + "&apiBaseUrl=https://evil.example", {
+        httpsEntryUrls: [entry],
+      }),
+    ).toBeNull();
+  });
+  it("routes exact completion metadata on a trusted static entry while refusing injected fields", () => {
+    const entry = "https://owner.example/LongBall/",
+      activationId = "81e52847-672d-4500-b009-21414a90677b",
+      link = `${entry}#longballActivation=${activationId}&completionProof=${"a".repeat(43)}`;
+    expect(
+      sameActivationCompletion(
+        parseLongBallDestination(link, { httpsEntryUrls: [entry] }),
+        activationId,
+      ),
+    ).toBe(true);
+    expect(parseLongBallDestination(link)).toBeNull();
+    expect(
+      parseLongBallDestination(link + "&token=secret", {
+        httpsEntryUrls: [entry],
+      }),
+    ).toBeNull();
+  });
+  it("allows HTTP only for the exact localhost page under an explicit fictional-trial policy", () => {
+    const entry = "http://localhost:4174/",
+      link = `${entry}#longballInvite=1&teamId=t&seasonId=s&code=${"a".repeat(42)}A`;
+    expect(parseLongBallDestination(link)).toBeNull();
+    expect(
+      parseLongBallDestination(link, { developmentHttpEntryUrls: [entry] })
+        ?.kind,
+    ).toBe("invitation");
+    expect(
+      parseLongBallDestination(link.replace("localhost", "192.0.2.1"), {
+        developmentHttpEntryUrls: ["http://192.0.2.1:4174/"],
+      }),
+    ).toBeNull();
+  });
   it("parses exact native invitation destination without an API origin", () => {
     expect(
       parseLongBallDestination(

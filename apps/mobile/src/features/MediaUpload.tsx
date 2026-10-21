@@ -250,7 +250,7 @@ function MediaUploadContent(props: MediaUploadProps) {
       {allowLibraryPicker && (
         <>
           <Button
-            label="Choose a local JPEG or PNG"
+            label="Choose a local JPEG, PNG or HEIC"
             variant="secondary"
             disabled={busy || retainedAction || !target}
             onPress={() =>

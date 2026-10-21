@@ -1,0 +1,26 @@
+{
+  "verifiedAt": "2026-10-21T12:29:28.390Z",
+  "provider": "Keycloak",
+  "providerVersion": "26.8.1",
+  "database": "PostgreSQL",
+  "verifiedRuntimeSchema": {
+    "core": 11,
+    "activation": 2
+  },
+  "actualProviderJwt": true,
+  "runtimeRole": "restricted API role",
+  "httpsCertificateVerified": true,
+  "checks": [
+    "Real strongly authenticated manager issues one 256-bit fragment capability; exact response-loss retry is redacted and requires explicit reissue",
+    "Actual pinned provider provisions a username-only unclassified identity and handles password plus recovery setup; original invitation and exact attempt are required for independently verified completion",
+    "Separate actual authorization-code PKCE sign-in verifies the new global account has no membership or adult authority before explicit invitation acceptance",
+    "Authenticated explicit acceptance creates only the exact team-season spectator grant; native-app metadata enrollment works for the new role and manager preparation remains denied"
+  ],
+  "chromiumUse": "offline DOM parser only",
+  "systemBrowserTested": false,
+  "physicalDeviceTested": false,
+  "devicePlatformProof": false,
+  "liveOnboardingApproved": false,
+  "productionProviderSelected": false,
+  "policiesApproved": false
+}

@@ -1,4 +1,5 @@
-import { randomUUID } from 'node:crypto';
+import { createHash,randomUUID } from 'node:crypto';
+import sharp from 'sharp';
 import { mkdtempSync,rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -16,6 +17,8 @@ import type { RecordsState } from '../../../packages/application/src/records';
 import type { CommunityState } from '../../../packages/application/src/community';
 import { romaFixture } from '../../../packages/testing/src/index';
 import { runDuePostgresJobs } from '../../worker/src/postgres-jobs';
+import type { MediaScanner } from './media';
+import { parseAccountDevicesDto } from '../../../packages/application/src/account-devices';
 
 const configuredUrl=process.env.LONGBALL_POSTGRES_TEST_URL;
 const teamUrl=`/v1/teams/${SYNTHETIC_IDS.teamId}`;
@@ -28,7 +31,7 @@ describe.skipIf(!configuredUrl)('SEC10 actual non-bypass PostgreSQL HTTP and rep
   beforeAll(()=>{admin=new Pool({connectionString:configuredUrl,max:2});});
   afterEach(async()=>{for(const fixture of fixtures.splice(0)){if(fixture.api){fixture.api.server.closeAllConnections();await fixture.api.close();}await fixture.worker?.close();await fixture.media?.close();await fixture.owner?.close();await admin.query(`DROP DATABASE "${fixture.database}" WITH (FORCE)`);for(const role of Object.values(fixture.roles))await admin.query(`DROP ROLE "${role}"`);rmSync(fixture.directory,{recursive:true,force:true});}});
   afterAll(async()=>{await admin.end();});
-  async function start(){
+  async function start(mediaScanner?:MediaScanner){
     const suffix=randomUUID().replaceAll('-',''),database=`lb_scope_${suffix}`,directory=mkdtempSync(join(tmpdir(),'longball-rls-http-'));
     const roles={apiRole:`lb_scope_api_${suffix}`,workerRole:`lb_scope_worker_${suffix}`};
     await admin.query(`CREATE DATABASE "${database}"`);const fixture:Fixture={database,directory,roles};fixtures.push(fixture);
@@ -45,7 +48,7 @@ describe.skipIf(!configuredUrl)('SEC10 actual non-bypass PostgreSQL HTTP and rep
     await owner.transaction(async()=>{await owner.saveDocument('synthetic-other-team',SYNTHETIC_IDS.seasonId,'preparation',otherPreparation);await owner.saveDocument('synthetic-other-team',SYNTHETIC_IDS.seasonId,'records',otherRecords);await owner.saveDocument('synthetic-other-team',SYNTHETIC_IDS.seasonId,'community',otherCommunity);await owner.insertMatch({matchId:'synthetic-other-match',players:romaFixture.players.map(player=>({...player,id:`other-${player.id}`})),selectedPlayerIds:romaFixture.players.filter(player=>player.available).map(player=>`other-${player.id}`),pitchPlaces:7,plannedHalfDurationMs:1_500_000,fixedKeeperId:null},'synthetic-other-team',SYNTHETIC_IDS.seasonId);});
     await applyRuntimeGrants(owner.db,roles);
     const apiUrl=new URL(ownerUrl);apiUrl.username=roles.apiRole;apiUrl.password='';
-    const api=await createPostgresApi({connectionString:apiUrl.href,databasePath:join(directory,'unused.sqlite'),mediaDirectory:join(directory,'media'),migrationMode:'verify',syntheticAuth:true,seedSynthetic:false});fixture.api=api;
+    const api=await createPostgresApi({connectionString:apiUrl.href,databasePath:join(directory,'unused.sqlite'),mediaDirectory:join(directory,'media'),migrationMode:'verify',syntheticAuth:true,seedSynthetic:false,mediaScanner});fixture.api=api;
     await new Promise<void>(resolve=>api.server.listen(0,'127.0.0.1',resolve));
     const base=`http://127.0.0.1:${(api.server.address() as AddressInfo).port}`;
     const call=async(path:string,input:{token?:string;role?:string;body?:unknown;key?:string;controller?:string}={})=>{
@@ -56,8 +59,43 @@ describe.skipIf(!configuredUrl)('SEC10 actual non-bypass PostgreSQL HTTP and rep
       const response=await fetch(`${base}${path}`,{method:input.body===undefined?'GET':'POST',headers,body:input.body===undefined?undefined:JSON.stringify(input.body)});
       return{status:response.status,body:await response.json() as Record<string,unknown>};
     };
-    return{owner,api,call,fixture,ownerUrl};
+    return{owner,api,call,fixture,ownerUrl,base};
   }
+  it('processes and publishes supplied logos through restricted HTTP roles and enforces live pointers, ancestry and private history',async()=>{
+    const {owner,api,base}=await start({scan:async()=>({verdict:'clean',engine:'explicit-http-test-double'})});
+    const png=await sharp({create:{width:12,height:10,channels:4,background:{r:14,g:150,b:84,alpha:0.5}}}).png().toBuffer();
+    const path=(suffix='')=>`${teamUrl}/branding${suffix}${season}`;
+    const request=async(route:string,{role='manager',token='synthetic-manager-1',body,raw,cap,key=randomUUID()}: {role?:string;token?:string;body?:unknown;raw?:Buffer;cap?:string;key?:string}={})=>{
+      const headers:Record<string,string>={Authorization:`Bearer ${token}`,'X-Longball-Role':role};if(body!==undefined||raw){headers['Content-Type']=raw?'image/png':'application/json';headers['Idempotency-Key']=key;headers['X-Api-Contract-Version']=EVENT_CONTRACT_VERSION;}if(cap)headers['X-Media-Upload-Token']=cap;
+      return fetch(base+route,{method:raw?'PUT':body===undefined?'GET':'POST',headers,body:raw?new Uint8Array(raw):body===undefined?undefined:JSON.stringify(body)});
+    };
+    const json=async(route:string,input:Parameters<typeof request>[1]={})=>{const response=await request(route,input);return{status:response.status,body:await response.json() as Record<string,unknown>};};
+    const metadata={byteSize:png.length,mimeType:'image/png',sha256:createHash('sha256').update(png).digest('hex'),policyAcknowledged:true};
+    expect((await json(path('/team_logo/uploads/prepare'),{role:'administrator',token:'synthetic-admin',body:{kind:'team_logo',teamId:SYNTHETIC_IDS.teamId,...metadata}})).status).toBe(404);
+    expect((await json(path('/club_logo/uploads/prepare'),{body:{kind:'club_logo',clubId:'synthetic-richmond-rovers',...metadata}})).status).toBe(404);
+    const prepareKey=randomUUID(),teamInput={kind:'team_logo',teamId:SYNTHETIC_IDS.teamId,...metadata};
+    const simultaneous=await Promise.all([json(path('/team_logo/uploads/prepare'),{key:prepareKey,body:teamInput}),json(path('/team_logo/uploads/prepare'),{key:prepareKey,body:teamInput})]);expect(simultaneous.map(result=>result.status)).toEqual([200,200]);expect(simultaneous[0].body.uploadId).toBe(simultaneous[1].body.uploadId);expect(await owner.one('SELECT COUNT(*)::integer AS count FROM brand_assets WHERE request_id=$1',[prepareKey])).toEqual({count:1});
+    const prepared=await json(path('/club_logo/uploads/prepare'),{role:'administrator',token:'synthetic-admin',body:{kind:'club_logo',clubId:'synthetic-richmond-rovers',...metadata}});expect(prepared.status,JSON.stringify(prepared.body)).toBe(200);
+    const upload=String(prepared.body.uploadId),cap=String(prepared.body.uploadToken),asset=prepared.body.asset as {assetId:string;revision:number};
+    expect((await json(path(`/uploads/${upload}`),{role:'administrator',token:'synthetic-admin',raw:png,cap})).status).toBe(200);
+    const completed=await json(path(`/uploads/${upload}/complete`),{role:'administrator',token:'synthetic-admin',body:{},cap});expect(completed.status,JSON.stringify(completed.body)).toBe(200);
+    const imagePath=path(`/assets/${asset.assetId}/revisions/1/display`);expect((await request(imagePath,{role:'player',token:'synthetic-account-player-01'})).status).toBe(404);
+    const command={id:randomUUID(),type:'logo.published',kind:'club_logo',assetId:asset.assetId,reviewedRevision:1,expectedSlotVersion:0,confirmRightsToUse:true,policyVersion:'logo-rights-v1'};
+    const publication=await json(path('/club_logo/publish'),{role:'administrator',token:'synthetic-admin',key:command.id,body:{command}});expect(publication.status,JSON.stringify(publication.body)).toBe(200);expect(publication.body.revision).toBe(1);
+    const child=await json(path(),{role:'player',token:'synthetic-account-player-01'});expect(child.status,JSON.stringify(child.body)).toBe(200);expect(child.body.assets).toEqual([]);expect(child.body.effective).toEqual({source:'club',logo:prepared.body.asset});
+    const image=await request(imagePath,{role:'player',token:'synthetic-account-player-01'});expect(image.status).toBe(200);expect(image.headers.get('content-type')).toBe('image/png');expect((await sharp(Buffer.from(await image.arrayBuffer())).metadata()).hasAlpha).toBe(true);
+    expect(await owner.one('SELECT kind,club_id,team_id,season_id,match_id,status FROM brand_assets WHERE id=$1',[upload])).toEqual({kind:'club_logo',club_id:'synthetic-richmond-rovers',team_id:null,season_id:null,match_id:null,status:'linked'});
+    expect(await api.store.many('SELECT * FROM brand_assets')).toEqual([]);
+    await owner.execute('UPDATE memberships SET revoked_at=$1 WHERE account_id=$2 AND team_id=$3',[Date.now(),'synthetic-account-player-01',SYNTHETIC_IDS.teamId]);expect((await request(imagePath,{role:'player',token:'synthetic-account-player-01'})).status).toBe(404);
+  });
+  it('enrols an own native installation without membership using database timestamps and grants no recorder authority',async()=>{
+    const {owner,api,call}=await start();await owner.execute('DELETE FROM memberships WHERE account_id=$1',['synthetic-account-invitee']);
+    const enrolled=await call('/v1/identity/devices',{token:'synthetic-account-invitee',body:{deviceId:'native-membership-free',platform:'android'}});expect(enrolled.status,JSON.stringify(enrolled.body)).toBe(200);
+    const dto=parseAccountDevicesDto(enrolled.body);expect(dto.devices).toHaveLength(1);expect(dto.devices[0]).toMatchObject({source:'native_app_enrolment',platform:'android',platformVerified:false});expect(dto.devices[0].registeredAt).not.toBeNull();expect(dto.devices[0].lastSeenAt).not.toBeNull();
+    expect((await call('/v1/identity/devices',{token:'synthetic-account-player-01'})).body.devices).toEqual([]);
+    expect((await call('/v1/identity/devices',{token:'synthetic-account-player-01',body:{deviceId:'native-membership-free',platform:'ios'}})).status).toBe(409);
+    expect(await api.store.many('SELECT * FROM native_app_devices')).toEqual([]);expect(await owner.many('SELECT * FROM memberships WHERE account_id=$1',['synthetic-account-invitee'])).toEqual([]);expect(await owner.many('SELECT * FROM controller_grants')).toEqual([]);
+  });
   it('filters real HTTP reads and exports across two clubs while preserving scoped manager, own-player and administrator journeys',async()=>{
     const {api,call}=await start();expect(await api.store.one('SELECT rolsuper,rolbypassrls FROM pg_roles WHERE rolname=current_user')).toEqual({rolsuper:false,rolbypassrls:false});
     expect((await call(`${teamUrl}/preparation${season}`,{role:'manager'})).status).toBe(200);

@@ -1,4 +1,12 @@
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 import { Pool } from "pg";
 import { randomBytes, randomUUID } from "node:crypto";
 import { PostgresStore, SYNTHETIC_IDS } from "./postgres-store";
@@ -11,7 +19,7 @@ describe.skipIf(!databaseUrl)("actual PostgreSQL activation repository", () => {
   let admin: Pool;
   let featureDatabaseUrl: string;
   const databaseName = `longball_activation_test_${randomBytes(6).toString("hex")}`;
-  let clock = Date.parse("2026-10-21T12:00:00Z");
+  let clock = Date.now();
   const users = new Map<
     string,
     {
@@ -125,6 +133,10 @@ describe.skipIf(!databaseUrl)("actual PostgreSQL activation repository", () => {
     featureDatabaseUrl = parsed.toString();
     store = await PostgresStore.open(featureDatabaseUrl, () => clock);
     await store.seedSynthetic();
+  });
+  beforeEach(() => {
+    // Positive capabilities must be live according to the independent database clock.
+    clock = Date.now();
   });
   afterAll(async () => {
     await store?.close();
@@ -299,6 +311,47 @@ describe.skipIf(!databaseUrl)("actual PostgreSQL activation repository", () => {
         [pending.accountId],
       ),
     ).toMatchObject({ classification: "child_shared", status: "active" });
+  });
+  it("does not activate an expired capability when the application clock is stale", async () => {
+    clock = Date.now() - policy.activationTtlMs - 60_000;
+    const activation = await service();
+    const principal = await manager();
+    const request = await input();
+    const pending = await activation.createPendingChild(principal, request);
+    const issued = await activation.issueActivation(principal, {
+      requestId: randomUUID(),
+      teamId: request.teamId,
+      seasonId: request.seasonId,
+      accountId: pending.accountId,
+    });
+    const setup = await activation.redeemActivation({
+      token: issued.token,
+      requestId: randomUUID(),
+    });
+    // Even the owner-backed harness cannot bypass the account trigger with a stale app observation.
+    await expect(
+      activation.completeActivation({
+        activationId: setup.activationId,
+        token: issued.token,
+        completionProof: "fixture-provider-proof",
+      }),
+    ).rejects.toMatchObject({ code: "42501" });
+    expect(
+      await store.one("SELECT status FROM accounts WHERE id=$1", [
+        pending.accountId,
+      ]),
+    ).toMatchObject({ status: "disabled" });
+    expect(
+      await store.one("SELECT state FROM lb_activation_tokens WHERE id=$1", [
+        issued.activationId,
+      ]),
+    ).toMatchObject({ state: "redeeming" });
+    expect(
+      await store.one(
+        "SELECT count(*)::integer AS n FROM audit WHERE object_id=$1 AND action='identity.activation_completed'",
+        [pending.accountId],
+      ),
+    ).toMatchObject({ n: 0 });
   });
   it("retains scoped exact-ID verification requests without looking up or taking over the target", async () => {
     const activation = await service();

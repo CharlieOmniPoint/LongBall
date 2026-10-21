@@ -1,9 +1,8 @@
 import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
 import { chmodSync, mkdirSync, readFileSync } from 'node:fs';
-import { open, readFile, rename, unlink } from 'node:fs/promises';
+import { open, rename, unlink } from 'node:fs/promises';
 import { isAbsolute, join, resolve, sep } from 'node:path';
 import { execFile, spawn } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { performance } from 'node:perf_hooks';
 import { Socket } from 'node:net';
@@ -11,11 +10,8 @@ import { DatabaseSync } from 'node:sqlite';
 import { AccessError } from '../../../packages/application/src/access';
 import { authorizeCommunityMedia, communityCanAccess, type CommunityActor, type CommunityCommand, type CommunityState } from '../../../packages/application/src/community';
 
-export const MEDIA_LIMITS = { maxBytes: 15 * 1024 * 1024, maxPixels: 40_000_000, displayEdge: 2048, thumbnailEdge: 480,
-  uploadWindowMs: 15 * 60_000, uploadTimeoutMs: 60_000, decodeTimeoutMs: 12_000, scannerTimeoutMs: 20_000 } as const;
-export interface MediaScanner {
-  scan(bytes: Buffer, context: { mimeType: string; sha256: string }): Promise<{ verdict: 'clean' | 'rejected' | 'unavailable'; engine: string }>;
-}
+import { MEDIA_LIMITS, bounded, actualMime, rejectAnimatedPng, processPrivateImage, type MediaScanner } from './image-bytes';
+export { MEDIA_LIMITS, type MediaScanner } from './image-bytes';
 export interface MediaPrepareInput {
   requestId: string;
   matchId: string;
@@ -46,30 +42,6 @@ function auth(state: CommunityState, actor: CommunityActor, now: number, upload 
 function sameToken(expectedHash: string, token: string) {
   return typeof token === 'string' && token.length <= 256 && timingSafeEqual(Buffer.from(expectedHash, 'hex'), Buffer.from(hash(token), 'hex'));
 }
-async function bounded<T>(promise: Promise<T>, milliseconds: number, code: string): Promise<T> {
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  try {
-    return await Promise.race([promise, new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new AccessError(code, 503, 'Media processing is unavailable. The private upload is retained for a safe retry.')), Math.max(1, milliseconds)); })]);
-  } finally { if (timer) clearTimeout(timer); }
-}
-function actualMime(bytes: Buffer): 'image/jpeg' | 'image/png' | null {
-  if (bytes.length >= 8 && bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))) return 'image/png';
-  if (bytes.length >= 3 && bytes[0] === 255 && bytes[1] === 216 && bytes[2] === 255) return 'image/jpeg';
-  return null;
-}
-function rejectAnimatedPng(bytes: Buffer) {
-  if (actualMime(bytes) !== 'image/png') return;
-  let offset = 8;
-  while (offset + 12 <= bytes.length) {
-    const length = bytes.readUInt32BE(offset);
-    if (length > bytes.length - offset - 12) fail('INVALID_IMAGE', 415, 'The image is incomplete or unsupported.');
-    const kind = bytes.toString('ascii', offset + 4, offset + 8);
-    if (kind === 'acTL') fail('ANIMATED_IMAGE_UNSUPPORTED', 415, 'Animated images are not supported.');
-    offset += length + 12;
-    if (kind === 'IEND') break;
-  }
-}
-
 /** Real optional scanner adapter. Missing/unavailable databases never become a clean verdict. */
 export function createClamAvScanner(executable: string, options: { timeoutMs?: number } = {}): MediaScanner {
   if (!isAbsolute(executable)) fail('SCANNER_CONFIGURATION_INVALID', 503, 'Configure an absolute path to the maintained ClamAV scanner.');
@@ -200,9 +172,9 @@ export class DevelopmentMediaService {
     const allowedKeys = ['requestId', 'matchId', 'byteSize', 'mimeType', 'sha256', 'caption', 'policyAcknowledged', 'photoId', 'sourceRevision'];
     if (!input || typeof input !== 'object' || Object.keys(input).some(key => !allowedKeys.includes(key)) || !id(input.requestId) || !id(input.matchId) ||
       !Number.isSafeInteger(input.byteSize) || input.byteSize < 1 || input.byteSize > MEDIA_LIMITS.maxBytes ||
-      !['image/jpeg', 'image/png'].includes(input.mimeType) || typeof input.sha256 !== 'string' || !/^[a-fA-F0-9]{64}$/.test(input.sha256) ||
+      !['image/jpeg', 'image/png', 'image/heic'].includes(input.mimeType) || typeof input.sha256 !== 'string' || !/^[a-fA-F0-9]{64}$/.test(input.sha256) ||
       typeof input.caption !== 'string' || input.caption.trim().length > 160 || input.policyAcknowledged !== true) {
-      fail('INVALID_MEDIA_PREPARATION', 422, 'Use a JPEG or PNG up to 15 MiB with a valid size, SHA-256 and policy acknowledgement. HEIC is not enabled until its decoder is validated.');
+      fail('INVALID_MEDIA_PREPARATION', 422, 'Use an original JPEG, PNG or supported still HEIC up to 15 MiB with a valid size, SHA-256 and policy acknowledgement.');
     }
     const match = state.matches.find(item => item.id === input.matchId && item.teamId === actor.teamId && item.seasonId === actor.seasonId);
     if (!match) fail('NOT_FOUND', 404, 'The requested match is unavailable.');
@@ -287,30 +259,15 @@ export class DevelopmentMediaService {
     const leased = this.database.prepare("UPDATE media_uploads SET status='processing',attempt=?,lease_until=?,failure_code=NULL WHERE id=? AND (status='uploaded' OR (status='processing' AND lease_until<?))").run(attempt, this.now() + 60_000, row.id, this.now());
     if (!leased.changes) fail('UPLOAD_BUSY', 409, 'This image is already processing.');
     try {
-      const original = await readFile(this.path(row.original_key));
-      if (original.length !== row.expected_bytes || hash(original) !== row.expected_sha) fail('UPLOAD_INTEGRITY_FAILED', 422, 'The private original does not match its recorded size and hash.');
-      const mimeType = actualMime(original);
-      if (!mimeType || mimeType !== row.declared_mime) fail('MEDIA_TYPE_MISMATCH', 415, 'Decoded image type must match its bytes. Only JPEG and PNG are enabled.');
-      rejectAnimatedPng(original);
-      if (!this.scanner) fail('SCANNER_REQUIRED', 503, 'Image safety scanning is not configured. The original remains private; no reviewable or published image was created.');
-      const scan = await bounded(this.scanner.scan(original, { mimeType, sha256: row.expected_sha }), MEDIA_LIMITS.scannerTimeoutMs, 'SCANNER_UNAVAILABLE');
-      if (scan.verdict === 'unavailable') fail('SCANNER_UNAVAILABLE', 503, 'Image scanning is unavailable. The original remains private for a safe retry.');
-      if (scan.verdict !== 'clean') fail('IMAGE_SCAN_REJECTED', 422, 'The image did not pass safety scanning and remains unpublished.');
       const displayKey = `derivatives/${row.photo_id}-v${row.display_revision}-${attempt}-display.jpg`;
       const thumbnailKey = `derivatives/${row.photo_id}-v${row.display_revision}-${attempt}-thumbnail.jpg`;
-      let decoded: { width: number; height: number };
-      try {
-        const result = await executeFile(process.execPath, ['--max-old-space-size=128', fileURLToPath(new URL('./media-worker.mjs', import.meta.url)),
-          this.path(row.original_key), this.path(displayKey), this.path(thumbnailKey), mimeType], { timeout: MEDIA_LIMITS.decodeTimeoutMs, killSignal: 'SIGKILL', maxBuffer: 64 * 1024, windowsHide: true });
-        decoded = JSON.parse(result.stdout) as { width: number; height: number };
-        if (!Number.isSafeInteger(decoded.width) || !Number.isSafeInteger(decoded.height) || decoded.width < 1 || decoded.height < 1 || decoded.width > MEDIA_LIMITS.displayEdge || decoded.height > MEDIA_LIMITS.displayEdge) throw new Error();
-      } catch { fail('IMAGE_DECODE_REJECTED', 415, 'The image could not be safely decoded within the supported format, pixel and processing limits.'); }
-      const saved = this.database.prepare("UPDATE media_uploads SET status='processed',display_key=?,thumbnail_key=?,width=?,height=?,scanner_engine=?,failure_code=NULL,lease_until=NULL WHERE id=? AND attempt=? AND status='processing'").run(displayKey, thumbnailKey, decoded.width, decoded.height, scan.engine.slice(0, 100), row.id, attempt);
+      const decoded = await processPrivateImage({ originalPath: this.path(row.original_key), displayPath: this.path(displayKey), thumbnailPath: this.path(thumbnailKey), expectedBytes: row.expected_bytes, expectedSha: row.expected_sha, declaredMime: row.declared_mime, scanner: this.scanner });
+      const saved = this.database.prepare("UPDATE media_uploads SET status='processed',display_key=?,thumbnail_key=?,width=?,height=?,scanner_engine=?,failure_code=NULL,lease_until=NULL WHERE id=? AND attempt=? AND status='processing'").run(displayKey, thumbnailKey, decoded.width, decoded.height, decoded.scannerEngine, row.id, attempt);
       if (!saved.changes) fail('PROCESSING_LEASE_CHANGED', 409, 'The processing lease changed. No publication was performed.');
       return this.completion(this.row(state, actor, uploadId));
     } catch (error) {
       const code = error instanceof AccessError ? error.code : 'MEDIA_PROCESSING_FAILED';
-      const retryable = ['SCANNER_REQUIRED', 'SCANNER_UNAVAILABLE', 'MEDIA_PROCESSING_FAILED'].includes(code);
+      const retryable = ['SCANNER_REQUIRED', 'SCANNER_UNAVAILABLE', 'MEDIA_PROCESSING_FAILED','HEIC_DECODER_REQUIRED'].includes(code);
       this.database.prepare('UPDATE media_uploads SET status=?,failure_code=?,lease_until=NULL WHERE id=? AND attempt=? AND status=\'processing\'').run(retryable ? 'uploaded' : 'rejected', code, row.id, attempt);
       throw error instanceof AccessError ? error : new AccessError('MEDIA_PROCESSING_FAILED', 503, 'Image processing is unavailable. No image was published.');
     }

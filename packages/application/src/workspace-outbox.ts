@@ -1,4 +1,5 @@
 import { assertAdultAuthority, assertTeamRole, type Membership, type Principal } from './access';
+import { parseBrandingCommand } from './branding';
 import { workspaceBindingIsCurrent, workspaceSessionAllows, type WorkspaceBinding, type WorkspaceSessionAccess } from './workspace-boundary';
 
 /** Local acknowledgement uncertainty only. A queued vote is never a counted vote. */
@@ -20,13 +21,15 @@ export type WorkspaceRequestOutcome =
   | { kind: 'unconfirmed'; reason: WorkspaceUnconfirmedReason; httpStatus?: number; code?: string }
   | { kind: 'accepted'; httpStatus: number; serverRequestId?: string | null; serverRevision?: number | null }
   | { kind: 'refused'; httpStatus: number; code: string; serverRequestId?: string | null };
+export type WorkspaceSettledOutcome = Exclude<WorkspaceRequestOutcome, { kind: 'unconfirmed' }> |
+  { kind: 'locally_retired'; reason: 'legacy_invitation_protocol_retired'; serverAcknowledged: false };
 export interface WorkspaceOutboxState {
   schemaVersion: 1;
   revision: number;
   scope: WorkspaceOutboxScope;
   pending: WorkspaceOutboxRequest | null;
   /** Keep the exact settled request for review; earlier versions remain in the journal. */
-  lastSettled: { request: WorkspaceOutboxRequest; outcome: Exclude<WorkspaceRequestOutcome, { kind: 'unconfirmed' }>; settledAtMs: number } | null;
+  lastSettled: { request: WorkspaceOutboxRequest; outcome: WorkspaceSettledOutcome; settledAtMs: number } | null;
 }
 export interface WorkspaceOutboxAuthorization {
   binding: WorkspaceBinding;
@@ -85,10 +88,14 @@ export function createWorkspaceOutbox(binding: WorkspaceBinding | WorkspaceOutbo
 function assertPath(path: unknown, value: WorkspaceOutboxScope): asserts path is string {
   assert(text(path, 2048));
   const prefix = `/v1/teams/${encodeURIComponent(value.teamId)}/`;
-  assert(['preparation', 'preparation/own', 'community', 'records', 'seasons', 'configuration', 'managers', 'managers/revoke'].some(section => path === `${prefix}${section}?seasonId=${encodeURIComponent(value.seasonId)}`));
+  const branding = ['club_logo', 'team_logo'].flatMap(kind => ['publish', 'remove'].map(action => `branding/${kind}/${action}`));
+  assert(['preparation', 'preparation/own', 'community', 'records', 'seasons', 'configuration', 'managers', 'managers/revoke', ...branding].some(section => path === `${prefix}${section}?seasonId=${encodeURIComponent(value.seasonId)}`));
   const staff = path.startsWith(`${prefix}managers?`) || path.startsWith(`${prefix}managers/revoke?`);
+  const clubLogo = path.startsWith(`${prefix}branding/club_logo/`), teamLogo = path.startsWith(`${prefix}branding/team_logo/`);
+  if (clubLogo) assert(value.role === 'administrator');
+  if (teamLogo) assert(value.role === 'manager');
   if (staff) assert(value.role === 'administrator');
-  if (value.role === 'administrator') assert(path.startsWith(`${prefix}configuration?`) || path.startsWith(`${prefix}seasons?`) || staff);
+  if (value.role === 'administrator') assert(path.startsWith(`${prefix}configuration?`) || path.startsWith(`${prefix}seasons?`) || staff || clubLogo);
   if (value.role === 'player') assert(path.startsWith(`${prefix}preparation/own?`) || path.startsWith(`${prefix}community?`));
   if (value.role === 'spectator') assert(path.startsWith(`${prefix}community?`));
 }
@@ -97,12 +104,12 @@ function utf8Size(value: string): number {
   for (const char of value) { const point = char.codePointAt(0)!; count += point <= 0x7f ? 1 : point <= 0x7ff ? 2 : point <= 0xffff ? 3 : 4; }
   return count;
 }
-function serializeBody(body: unknown, requestKey: string): string {
+function serializeBody(body: unknown, requestKey: string, retained = false): string {
   assert(record(body) && Object.keys(body).length === 1 && record(body.command));
   const command = body.command;
   assert((command.id ?? command.commandId) === requestKey && text(command.type, 100));
   // Invitation acceptance is a separate connected flow: no prior destination membership.
-  assert(command.type !== 'invite.accepted');
+  assert(command.type !== 'invite.accepted' || retained);
   let nodes = 0;
   const inspect = (value: unknown, depth: number): void => {
     assert(depth <= 30 && ++nodes <= 75_000);
@@ -112,7 +119,7 @@ function serializeBody(body: unknown, requestKey: string): string {
     if (Array.isArray(value)) { value.forEach(item => inspect(item, depth + 1)); return; }
     assert(record(value));
     for (const [field, item] of Object.entries(value)) {
-      // Invite creation's reviewCode is stored only behind the Journal evidence gate.
+      // Legacy invitation candidates remain readable for recovery; new ones are blocked at enqueue.
       assert(!/^(?:authorization|headers|cookie|password|pin|secret|access.?token|refresh.?token|id.?token|upload.?token|controller.?token)$/i.test(field) && !/token$/i.test(field));
       assert(field !== '__proto__' && field !== 'constructor' && field !== 'prototype');
       if (item !== undefined) inspect(item, depth + 1); // JSON's object-field omission is intentional.
@@ -133,12 +140,22 @@ function assertStaffCommand(path: string, bodyJson: string, owner: WorkspaceOutb
   assert(command.type === (assign ? 'manager.assigned' : 'manager.revoked'));
   if (revoke) assert(command.confirmRevocation === true && text(command.reason, 500) && command.reason.trim().length >= 5);
 }
+function assertBrandingRequest(path: string, bodyJson: string, owner: WorkspaceOutboxScope): void {
+  const prefix = `/v1/teams/${encodeURIComponent(owner.teamId)}/branding/`;
+  const command = (JSON.parse(bodyJson) as { command: Record<string, unknown> }).command;
+  if (!path.startsWith(prefix)) { assert(command.type !== 'logo.published' && command.type !== 'logo.removed'); return; }
+  const assetKind = path.slice(prefix.length).split('/')[0];
+  assert(assetKind === 'club_logo' || assetKind === 'team_logo');
+  const parsed = parseBrandingCommand(command, assetKind);
+  assert(parsed.type === (path.startsWith(`${prefix}${assetKind}/publish?`) ? 'logo.published' : 'logo.removed'));
+}
 function validateRequest(value: unknown, owner: WorkspaceOutboxScope): asserts value is WorkspaceOutboxRequest {
   assert(record(value)); exactFields(value, ['path', 'key', 'bodyJson', 'label', 'createdAtMs', 'status', 'lastAttemptAtMs', 'lastFailure']); assertPath(value.path, owner);
   assert(key(value.key) && text(value.label, 100) && time(value.createdAtMs));
   assert(typeof value.bodyJson === 'string' && utf8Size(value.bodyJson) <= 262_144);
-  assert(serializeBody(JSON.parse(value.bodyJson), value.key) === value.bodyJson);
+  assert(serializeBody(JSON.parse(value.bodyJson), value.key, true) === value.bodyJson);
   assertStaffCommand(value.path, value.bodyJson, owner);
+  assertBrandingRequest(value.path, value.bodyJson, owner);
   assert(['awaiting_receipt', 'uncertain', 'access_blocked'].includes(value.status as string));
   assert(value.lastAttemptAtMs === null || time(value.lastAttemptAtMs));
   if (value.lastFailure !== null) {
@@ -159,16 +176,26 @@ export function validateWorkspaceOutbox(value: WorkspaceOutboxState): void {
     assert(record(value.lastSettled) && time(value.lastSettled.settledAtMs));
     exactFields(value.lastSettled, ['request', 'outcome', 'settledAtMs']);
     validateRequest(value.lastSettled.request, owner);
-    validateOutcome(value.lastSettled.outcome);
-    assert(['accepted', 'refused'].includes(value.lastSettled.outcome.kind));
-    exactFields(value.lastSettled.outcome, value.lastSettled.outcome.kind === 'accepted' ? ['kind', 'httpStatus', 'serverRequestId', 'serverRevision'] : ['kind', 'httpStatus', 'code', 'serverRequestId']);
+    const outcome = value.lastSettled.outcome;
+    if (outcome.kind === 'locally_retired') {
+      exactFields(outcome, ['kind', 'reason', 'serverAcknowledged']);
+      assert(outcome.reason === 'legacy_invitation_protocol_retired' && outcome.serverAcknowledged === false);
+      assert(isLegacyInvitation(value.lastSettled.request));
+    } else {
+      validateOutcome(outcome);
+      assert(['accepted', 'refused'].includes(outcome.kind));
+      exactFields(outcome, outcome.kind === 'accepted' ? ['kind', 'httpStatus', 'serverRequestId', 'serverRevision'] : ['kind', 'httpStatus', 'code', 'serverRequestId']);
+    }
   }
 }
 export function enqueueWorkspaceRequest(state: WorkspaceOutboxState, binding: WorkspaceBinding, input: WorkspaceRequestInput, nowMs: number): WorkspaceOutboxState {
   validateWorkspaceOutbox(state); assert(sameScope(state.scope, scope(binding)) && time(nowMs));
   assertPath(input.path, state.scope); assert(key(input.key) && text(input.label, 100));
   const bodyJson = serializeBody(input.body, input.key);
+  const commandType = (JSON.parse(bodyJson) as { command: { type: string } }).command.type;
+  assert(commandType !== 'invite.created' && commandType !== 'invite.accepted');
   assertStaffCommand(input.path, bodyJson, state.scope);
+  assertBrandingRequest(input.path, bodyJson, state.scope);
   if (state.pending) {
     assert(state.pending.key === input.key && state.pending.path === input.path && state.pending.bodyJson === bodyJson && state.pending.label === input.label);
     return state;
@@ -179,6 +206,16 @@ export function enqueueWorkspaceRequest(state: WorkspaceOutboxState, binding: Wo
 }
 /** Call only after a successful current /me response. Never schedules background replay. */
 export function authorizeWorkspaceReplay(state: WorkspaceOutboxState, auth: WorkspaceOutboxAuthorization): WorkspaceOutboxRequest {
+  assertWorkspaceRequestAuthority(state, auth);
+  if (isLegacyInvitation(state.pending!)) {
+    throw new Error('This retained legacy invitation cannot be sent. Keep the original request for review and explicitly issue or reissue a server-generated invitation.');
+  }
+  return { ...state.pending!, lastFailure: state.pending!.lastFailure && { ...state.pending!.lastFailure } };
+}
+function isLegacyInvitation(request: WorkspaceOutboxRequest): boolean {
+  return ['invite.created', 'invite.accepted'].includes((JSON.parse(request.bodyJson) as { command: { type: string } }).command.type);
+}
+function assertWorkspaceRequestAuthority(state: WorkspaceOutboxState, auth: WorkspaceOutboxAuthorization): void {
   validateWorkspaceOutbox(state);
   assert(state.pending && sameScope(state.scope, scope(auth.binding)) && time(auth.nowMs) && time(auth.verifiedAtMs));
   assert(auth.verifiedAtMs <= auth.nowMs && auth.nowMs - auth.verifiedAtMs <= 30_000);
@@ -191,7 +228,14 @@ export function authorizeWorkspaceReplay(state: WorkspaceOutboxState, auth: Work
     assert(workspaceSessionAllows(auth.session, state.scope.apiBaseUrl, auth.nowMs));
     assert(auth.session?.accountId === state.scope.accountId && auth.session.issuer === state.scope.issuer && auth.session.subject === state.scope.subject);
   }
-  return { ...state.pending, lastFailure: state.pending.lastFailure && { ...state.pending.lastFailure } };
+}
+/** Explicit local protocol retirement. This is never a server receipt or a generic request-discard path. */
+export function retireLegacyWorkspaceInvitation(state: WorkspaceOutboxState, auth: WorkspaceOutboxAuthorization, requestKey: string, confirmNeverReplay: true, nowMs: number): WorkspaceOutboxState {
+  assertWorkspaceRequestAuthority(state, auth);
+  assert(state.pending?.key === requestKey && confirmNeverReplay === true && time(nowMs) && nowMs === auth.nowMs);
+  assert(isLegacyInvitation(state.pending));
+  assert(state.pending.path === `/v1/teams/${encodeURIComponent(state.scope.teamId)}/community?seasonId=${encodeURIComponent(state.scope.seasonId)}`);
+  return { ...state, revision: state.revision + 1, pending: null, lastSettled: { request: { ...state.pending, lastFailure: state.pending.lastFailure && { ...state.pending.lastFailure } }, outcome: { kind: 'locally_retired', reason: 'legacy_invitation_protocol_retired', serverAcknowledged: false }, settledAtMs: nowMs } };
 }
 function validateOutcome(value: WorkspaceRequestOutcome): void {
   assert(record(value));

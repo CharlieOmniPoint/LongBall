@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   AppState,
   Linking,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -15,6 +16,7 @@ import {
   type ConnectedSessionSummary,
 } from "./platform/auth/client";
 import { openJournal } from "./platform/journal";
+import { connectedAccountDevicesClient } from "./platform/account-devices";
 import type { Journal } from "./platform/types";
 import { AccountSecurityScreen } from "./features/AccountSecurityScreen";
 import { ConnectedWorkspace } from "./features/ConnectedWorkspace";
@@ -25,6 +27,7 @@ import {
   type ChildActivationDestination,
   type SpectatorInvitationDestination,
 } from "@longball/application/deep-links";
+import { activationRelayChannelName } from "@longball/application/activation-relay";
 
 /** Production builds enter verified connected journeys and never seed fictional accounts. */
 export function ConnectedApplication() {
@@ -52,6 +55,22 @@ export function ConnectedApplication() {
   useEffect(() => {
     const receive = (url: string) => {
       const destination = parseLongBallDestination(url, {
+        httpsEntryUrls: [
+          ...(process.env.EXPO_PUBLIC_LINK_ENTRY_URLS ?? "")
+            .split(",")
+            .map((value: string) => value.trim())
+            .filter(Boolean),
+          ...(typeof window !== "undefined" &&
+          window.location.protocol === "https:"
+            ? [`${window.location.origin}${window.location.pathname}`]
+            : []),
+        ],
+        developmentHttpEntryUrls:
+          typeof window !== "undefined" &&
+          window.location.hostname === "localhost" &&
+          process.env.EXPO_PUBLIC_FICTIONAL_IDENTITY_TRIAL === "1"
+            ? [`${window.location.origin}${window.location.pathname}`]
+            : [],
         httpsOrigins: (process.env.EXPO_PUBLIC_LINK_ORIGINS ?? "")
           .split(",")
           .map((value: string) => value.trim())
@@ -64,6 +83,25 @@ export function ConnectedApplication() {
       } else {
         if (destination.kind === "activation-completion")
           setActivationCompletion(destination.completion);
+        if (
+          destination.kind === "activation-completion" &&
+          Platform.OS === "web" &&
+          typeof window !== "undefined" &&
+          window.location.href === url &&
+          typeof BroadcastChannel !== "undefined"
+        ) {
+          try {
+            const channel = new BroadcastChannel(
+              activationRelayChannelName(
+                `${window.location.origin}${window.location.pathname}`,
+              ),
+            );
+            channel.postMessage(destination.completion);
+            setTimeout(() => channel.close(), 500);
+          } catch {
+            /* Manual capability+return-link recovery remains available; no cross-origin relay. */
+          }
+        }
         setAccount(true);
       }
       // Capture only in memory, then remove capabilities from the current browser address.
@@ -151,6 +189,14 @@ export function ConnectedApplication() {
       ? JSON.stringify([session.issuer, session.accountId, session.sessionId])
       : null;
   useEffect(() => {
+    if (!foreground || !identity || !session || Platform.OS === "web") return;
+    // connectedFetch rechecks the bound session generation before and after network I/O.
+    // An unconfirmed metadata registration must never block a valid sign-in.
+    void connectedAccountDevicesClient(session)
+      .registerCurrent()
+      .catch(() => undefined);
+  }, [identity, foreground, session]);
+  useEffect(() => {
     if (!identity) return;
     let active = true;
     let opened: Journal | null = null;
@@ -209,6 +255,7 @@ export function ConnectedApplication() {
       {!loading && (!identity || account) && (
         <View style={{ display: foreground ? "flex" : "none" }}>
           <AccountSecurityScreen
+            invitationDestination={invitation}
             childActivationDestination={childActivation}
             activationCompletion={activationCompletion}
             onActivationCompletionConsumed={() => setActivationCompletion(null)}

@@ -24,6 +24,7 @@ import {
   type PinRecord,
 } from "@longball/application/security";
 import * as vault from "./vault";
+import { authenticateEnrolledDevice } from "./device-auth";
 
 if (Platform.OS === "web") WebBrowser.maybeCompleteAuthSession();
 let activeSession: ConnectedSession | null = null;
@@ -620,6 +621,72 @@ export function lockConnectedSession(): Promise<ConnectedSessionSummary | null> 
   unlocked = false;
   announceSessionChange();
   return summarize();
+}
+/** The OS may unlock only this still-current local session, never credentials or authority of its own. */
+export async function unlockConnectedSessionWithDeviceAuthentication(): Promise<ConnectedSessionSummary> {
+  const unlockGeneration = authorityGeneration;
+  const context = await serialize(async () => {
+    await ensureLoaded();
+    const session = activeSession;
+    if (
+      Platform.OS === "web" ||
+      vault.credentialStorage !== "secure-native" ||
+      !sessionIsCurrent(session, Date.now())
+    )
+      throw new Error(
+        "Device authentication requires an existing unexpired native sign-in.",
+      );
+    const pin = await vault.readPin(session.principal.accountId);
+    assertDeviceUnlockCurrent(session, unlockGeneration);
+    assertDeviceUnlockPin(session, pin);
+    return { session, generation: unlockGeneration };
+  });
+  // A platform prompt must not hold the credential queue: sign-out and lock can interrupt it.
+  const result = await authenticateEnrolledDevice();
+  if (!result.success)
+    throw new Error(
+      result.reason === "cancelled"
+        ? "Device unlock was cancelled."
+        : "Device authentication was not accepted. Use your local PIN or full sign-in.",
+    );
+  return serialize(async () => {
+    assertDeviceUnlockCurrent(context.session, context.generation);
+    const pin = await vault.readPin(context.session.principal.accountId);
+    assertDeviceUnlockCurrent(context.session, context.generation);
+    assertDeviceUnlockPin(context.session, pin);
+    unlocked = true;
+    announceSessionChange();
+    return (await summarize())!;
+  });
+}
+function assertDeviceUnlockCurrent(
+  session: ConnectedSession,
+  generation: number,
+): void {
+  if (
+    activeSession !== session ||
+    authorityGeneration !== generation ||
+    !sessionIsCurrent(session, Date.now())
+  )
+    throw new Error(
+      "The session changed or expired during device authentication. It remains locked.",
+    );
+}
+function assertDeviceUnlockPin(
+  session: ConnectedSession,
+  pin: PinRecord | null,
+): void {
+  if (
+    pin &&
+    (pin.accountId !== session.principal.accountId ||
+      pin.sessionId !== session.sessionId ||
+      pin.requireStrongSignIn ||
+      pin.failedAttempts >= 5 ||
+      pin.blockedUntilMs > Date.now())
+  )
+    throw new Error(
+      "The retained local unlock record requires a fresh strong sign-in. Device authentication cannot bypass it.",
+    );
 }
 export function unlockConnectedSession(
   pin: string,

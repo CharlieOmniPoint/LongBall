@@ -34,6 +34,17 @@ import {
   type PreparationSeason,
   type PreparationState,
 } from "@longball/application/preparation";
+import type {
+  BrandingDto,
+  BrandingCommand,
+} from "@longball/application/branding";
+import {
+  BrandMediaClient,
+  assertBrandingResponse,
+} from "../platform/brand-media-client";
+import { ScopedWorkspaceInvitations } from "./ScopedWorkspaceInvitations";
+import { BrandLogos } from "./BrandLogos";
+import { AuthenticatedBrandBadge } from "./BrandBadge";
 import type { RecordsCommand } from "@longball/application/records";
 import {
   LongBallServiceClient,
@@ -66,6 +77,7 @@ import {
 import { assertStaticReviewApiAddress } from "@longball/application/static-review";
 import { base64Url } from "@longball/application/security";
 import { MediaUploadClient } from "../platform/media-client";
+import { selectedRoleHeaders } from "../platform/request-headers";
 import { randomUUID } from "../platform/id";
 import type { Journal, JournalDiagnostics } from "../platform/types";
 import {
@@ -121,6 +133,8 @@ export interface ConnectedWorkspaceProps {
   seasonId?: string;
   onControllerState?: ServicePanelProps["onControllerState"];
   invitationDestination?: { teamId: string; seasonId: string; code: string };
+  /** Internal retention signal; local locking and sign-out always remain available. */
+  onEphemeralRetainedChange?: (retained: boolean, owner: string) => void;
   onPrepareChildActivation?: (scope: {
     teamId: string;
     seasonId: string;
@@ -199,6 +213,7 @@ type Tab =
   | "seasons"
   | "reports"
   | "community"
+  | "invitations"
   | "controller";
 function chooseMembership(
   rows: Membership[],
@@ -256,6 +271,21 @@ export function ConnectedWorkspace(props: ConnectedWorkspaceProps) {
   const [account, setAccount] = useState("synthetic-manager-1");
   const [connection, setConnection] = useState<Connection | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [retained, setRetained] = useState<{
+    owner: string;
+    active: boolean;
+  } | null>(null);
+  const retainedRef = useRef<{ owner: string; active: boolean } | null>(null);
+  const onEphemeralRetainedChange = useCallback(
+    (active: boolean, owner: string) => {
+      if (!active && retainedRef.current?.owner !== owner) return;
+      const value = active ? { owner, active } : null;
+      retainedRef.current = value;
+      setRetained(value);
+    },
+    [],
+  );
+  const connectionHeld = retained?.active === true;
   return (
     <View style={s.stack} testID="connected-workspace">
       <Card>
@@ -276,7 +306,10 @@ export function ConnectedWorkspace(props: ConnectedWorkspaceProps) {
         <TextInput
           accessibilityLabel="Workspace API URL"
           value={baseUrl}
-          onChangeText={setBaseUrl}
+          editable={!connectionHeld}
+          onChangeText={(value) => {
+            if (!retainedRef.current?.active) setBaseUrl(value);
+          }}
           autoCapitalize="none"
           autoCorrect={false}
           style={s.input}
@@ -285,13 +318,19 @@ export function ConnectedWorkspace(props: ConnectedWorkspaceProps) {
           <Button
             label="Connected sign-in"
             variant={mode === "oidc" ? "primary" : "secondary"}
-            onPress={() => setMode("oidc")}
+            disabled={connectionHeld}
+            onPress={() => {
+              if (!retainedRef.current?.active) setMode("oidc");
+            }}
           />
           {allowSynthetic && (
             <Button
               label="Fictional API review"
               variant={mode === "synthetic" ? "primary" : "secondary"}
-              onPress={() => setMode("synthetic")}
+              disabled={connectionHeld}
+              onPress={() => {
+                if (!retainedRef.current?.active) setMode("synthetic");
+              }}
             />
           )}
         </View>
@@ -320,7 +359,10 @@ export function ConnectedWorkspace(props: ConnectedWorkspaceProps) {
                   key={value}
                   label={label}
                   variant={account === value ? "primary" : "secondary"}
-                  onPress={() => setAccount(value)}
+                  disabled={connectionHeld}
+                  onPress={() => {
+                    if (!retainedRef.current?.active) setAccount(value);
+                  }}
                 />
               ))}
             </View>
@@ -339,7 +381,9 @@ export function ConnectedWorkspace(props: ConnectedWorkspaceProps) {
         <Button
           label="Open service workspace"
           testID="workspace-connect"
+          disabled={connectionHeld}
           onPress={() => {
+            if (retainedRef.current?.active) return;
             try {
               if (mode === "synthetic" && !allowSynthetic)
                 throw new Error(
@@ -367,6 +411,7 @@ export function ConnectedWorkspace(props: ConnectedWorkspaceProps) {
           connection={connection}
           {...props}
           allowSynthetic={allowSynthetic}
+          onEphemeralRetainedChange={onEphemeralRetainedChange}
         />
       )}
     </View>
@@ -490,12 +535,24 @@ function WorkspaceSession({
   teamId: requestedTeamId,
   seasonId: requestedSeasonId,
   oidcSession,
+  onEphemeralRetainedChange,
   ...props
 }: ConnectedWorkspaceProps & {
   connection: Connection;
   oidcSession?: ConnectedSessionSummary;
 }) {
   const [identity, setIdentity] = useState<Identity | null>(null);
+  const [retainedOwner] = useState(randomUUID);
+  const brandRetainedRef = useRef(false),
+    brandScopeRef = useRef<string | null>(null);
+  const uploadRetainedRef = useRef(false);
+  const albumKeyRef = useRef<string | null>(null);
+  const invitationAuthority = useRef<string | null>(null);
+  const invitationHeldRef = useRef<{
+    scopeKey: string;
+    active: boolean;
+  } | null>(null);
+
   const [membershipTime, setMembershipTime] = useState(Date.now);
   const [scopeChoice, setScopeChoice] = useState<{
     teamId: string;
@@ -521,17 +578,49 @@ function WorkspaceSession({
     useState<BoundWorkspaceValue<ConnectedConfigurationDto> | null>(null);
   const [staffCache, setStaff] =
     useState<BoundWorkspaceValue<ConnectedStaffDto> | null>(null);
+  const [brandingCache, setBranding] =
+    useState<BoundWorkspaceValue<BrandingDto> | null>(null);
+  const [brandRetained, setBrandRetained] = useState(false);
+  const onBrandRetained = useCallback(
+    (active: boolean, scopeKey: string) => {
+      if (brandScopeRef.current !== scopeKey) return;
+      brandRetainedRef.current = active;
+      setBrandRetained(active);
+      onEphemeralRetainedChange?.(
+        active ||
+          uploadRetainedRef.current ||
+          Boolean(
+            invitationHeldRef.current?.active &&
+              invitationHeldRef.current.scopeKey ===
+                invitationAuthority.current,
+          ),
+        retainedOwner,
+      );
+    },
+    [onEphemeralRetainedChange, retainedOwner],
+  );
   const [albumSelection, setAlbumSelection] = useState<AlbumSelection | null>(
     null,
   );
   const [uploadRetained, setUploadRetained] = useState(false);
-  const uploadRetainedRef = useRef(false);
-  const albumKeyRef = useRef<string | null>(null);
-  const onUploadRetained = useCallback((active: boolean, scopeKey: string) => {
-    if (albumKeyRef.current !== scopeKey) return;
-    uploadRetainedRef.current = active;
-    setUploadRetained(active);
-  }, []);
+  const onUploadRetained = useCallback(
+    (active: boolean, scopeKey: string) => {
+      if (albumKeyRef.current !== scopeKey) return;
+      uploadRetainedRef.current = active;
+      setUploadRetained(active);
+      onEphemeralRetainedChange?.(
+        active ||
+          brandRetainedRef.current ||
+          Boolean(
+            invitationHeldRef.current?.active &&
+              invitationHeldRef.current.scopeKey ===
+                invitationAuthority.current,
+          ),
+        retainedOwner,
+      );
+    },
+    [onEphemeralRetainedChange, retainedOwner],
+  );
   const [binding, setBinding] = useState<WorkspaceBinding | null>(null);
   const generation = useRef(0);
   const liveBinding = useRef<WorkspaceBinding | null>(null);
@@ -545,6 +634,7 @@ function WorkspaceSession({
   const [errors, setErrors] = useState<string[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
   const [memoryPending, setPending] = useState<PendingRequest | null>(null);
+  const [legacyReviewKey, setLegacyReviewKey] = useState<string | null>(null);
   const [outboxStatus, setOutboxStatus] =
     useState<WorkspaceOutboxStatus | null>(null);
   const outboxPort = useRef<WorkspaceOutboxPort | null>(null);
@@ -552,9 +642,23 @@ function WorkspaceSession({
     journal: Journal;
     diagnostics: JournalDiagnostics;
   } | null>(null);
-  const [inviteCode, setInviteCode] = useState("");
-  const [inviteTeamId, setInviteTeamId] = useState("");
-  const [inviteSeasonId, setInviteSeasonId] = useState("");
+  const [invitationHeld, setInvitationHeld] = useState<{
+    scopeKey: string;
+    active: boolean;
+  } | null>(null);
+  const onInvitationRetained = useCallback(
+    (active: boolean, scopeKey: string) => {
+      if (invitationAuthority.current !== scopeKey) return;
+      const next = { scopeKey, active };
+      invitationHeldRef.current = next;
+      setInvitationHeld(next);
+      onEphemeralRetainedChange?.(
+        active || brandRetainedRef.current || uploadRetainedRef.current,
+        retainedOwner,
+      );
+    },
+    [onEphemeralRetainedChange, retainedOwner],
+  );
   const [serviceMatchId, setServiceMatchId] = useState(
     props.match?.config.matchId ?? "",
   );
@@ -592,10 +696,7 @@ function WorkspaceSession({
     () => async (url, options) => {
       const requestOptions = {
         ...options,
-        headers: {
-          ...Object.fromEntries(new Headers(options.headers).entries()),
-          ...(roleChoice ? { "X-Longball-Role": roleChoice } : {}),
-        },
+        headers: selectedRoleHeaders(options.headers, roleChoice),
       };
       if (connection.mode === "oidc") {
         const absolute =
@@ -765,6 +866,61 @@ function WorkspaceSession({
     identity?.memberships ?? [],
     membershipTime,
   );
+  const branding = readWorkspaceValue(
+    brandingCache,
+    expectedBinding,
+    identity?.principal ?? null,
+    identity?.memberships ?? [],
+    membershipTime,
+  );
+  const brandRole = membership?.role,
+    brandClubId = branding?.clubId;
+  const brandClient =
+    teamId && seasonId && brandRole
+      ? new BrandMediaClient(
+          connection.baseUrl || "/",
+          {
+            teamId,
+            authoritySeasonId: seasonId,
+            role: brandRole,
+            clubId: brandClubId,
+          },
+          authenticatedFetch,
+        )
+      : null;
+  const brandScopeKey = expectedBinding
+    ? JSON.stringify([
+        `${absoluteApi}`,
+        expectedBinding.accountId,
+        expectedBinding.issuer,
+        expectedBinding.subject,
+        expectedBinding.teamId,
+        expectedBinding.seasonId,
+        expectedBinding.role,
+        expectedBinding.playerId,
+      ])
+    : null;
+  useLayoutEffect(() => {
+    if (brandScopeKey) brandScopeRef.current = brandScopeKey;
+  }, [brandScopeKey]);
+  const assertBrandAccess = async () => {
+    if (!expectedBinding)
+      throw new Error("Open a current authorised logo scope first.");
+    await assertReportExportAccess({
+      source: expectedBinding,
+      currentBinding: () => liveBinding.current,
+      principal: identity?.principal ?? null,
+      memberships: identity?.memberships ?? [],
+      nowMs: Date.now,
+      session:
+        connection.mode === "oidc"
+          ? {
+              requiredSessionId: oidcSessionId ?? "",
+              read: getConnectedSessionSummary,
+            }
+          : null,
+    });
+  };
   const administrator =
     membership?.role === "administrator" &&
     workspaceBindingIsCurrent(
@@ -773,6 +929,95 @@ function WorkspaceSession({
       identity?.memberships ?? [],
       membershipTime,
     );
+  const invitationRole =
+    membership &&
+    workspaceBindingIsCurrent(
+      expectedBinding,
+      identity?.principal ?? null,
+      identity?.memberships ?? [],
+      membershipTime,
+    )
+      ? membership.role
+      : null;
+  const invitationScopeKey = identity
+    ? JSON.stringify([
+        `${absoluteApi}`,
+        identity.principal.accountId,
+        identity.principal.issuer,
+        identity.principal.subject,
+        oidcSessionId ?? "synthetic-review",
+        teamId ?? null,
+        seasonId ?? null,
+        invitationRole,
+      ])
+    : null;
+  const invitationRetained = Boolean(
+    invitationScopeKey &&
+      invitationHeld?.scopeKey === invitationScopeKey &&
+      invitationHeld.active,
+  );
+  useEffect(() => {
+    onEphemeralRetainedChange?.(
+      uploadRetained || brandRetained || invitationRetained,
+      retainedOwner,
+    );
+  }, [
+    uploadRetained,
+    brandRetained,
+    invitationRetained,
+    onEphemeralRetainedChange,
+    retainedOwner,
+  ]);
+  useEffect(
+    () => () => onEphemeralRetainedChange?.(false, retainedOwner),
+    [onEphemeralRetainedChange, retainedOwner],
+  );
+  useLayoutEffect(() => {
+    invitationAuthority.current = invitationScopeKey;
+    return () => {
+      invitationAuthority.current = null;
+    };
+  }, [invitationScopeKey]);
+  const invitationIsRetained = () =>
+    Boolean(
+      invitationAuthority.current &&
+        invitationHeldRef.current?.scopeKey === invitationAuthority.current &&
+        invitationHeldRef.current.active,
+    );
+  const assertInvitationCurrent = () => {
+    if (
+      !identity ||
+      identity.principal.status !== "active" ||
+      !invitationScopeKey ||
+      invitationAuthority.current !== invitationScopeKey ||
+      (connection.mode === "oidc" &&
+        (!oidcSession ||
+          !workspaceSessionAllows(
+            oidcSession,
+            absoluteApi,
+            serviceActionTime(),
+          ) ||
+          oidcSession.sessionId !== oidcSessionId ||
+          oidcSession.accountId !== identity.principal.accountId ||
+          oidcSession.issuer !== identity.principal.issuer ||
+          oidcSession.subject !== identity.principal.subject))
+    )
+      throw new Error(
+        "The verified invitation identity or scope changed. Reopen the current account; no credential was retained.",
+      );
+    if (
+      invitationRole &&
+      !workspaceBindingIsCurrent(
+        expectedBinding,
+        identity.principal,
+        identity.memberships,
+        serviceActionTime(),
+      )
+    )
+      throw new Error(
+        "Current team access changed. Refresh before managing invitations.",
+      );
+  };
   const communityActor: CommunityActor | null =
     identity &&
     membership &&
@@ -860,6 +1105,7 @@ function WorkspaceSession({
     setSeasons(null);
     setConfiguration(null);
     setStaff(null);
+    setBranding(null);
     const nextIdentity = await client.me<Identity>();
     if (generation.current !== requestGeneration) return;
     if (
@@ -996,6 +1242,7 @@ function WorkspaceSession({
         setSeasons(null);
         setConfiguration(null);
         setStaff(null);
+        setBranding(null);
         setErrors([
           ...faults,
           "Private workspace views were closed because the service refused this scope. Refresh service views to verify current access. Retained requests remain unchanged.",
@@ -1040,6 +1287,21 @@ function WorkspaceSession({
             })
             .catch((cause) => readFault("Reports", cause, true)),
         ];
+    if (chosen)
+      tasks.push(
+        client
+          .request<BrandingDto>(scopedPath("branding"))
+          .then(async (value) => {
+            assertBrandingResponse(value, {
+              teamId: resolvedTeamId,
+              authoritySeasonId: resolvedSeasonId,
+              role: ticket.role,
+            });
+            const attached = await attach(value);
+            if (attached) setBranding(attached);
+          })
+          .catch((cause) => readFault("Branding", cause, true)),
+      );
     if (!isAdministrator)
       tasks.push(
         client
@@ -1184,9 +1446,15 @@ function WorkspaceSession({
         );
     };
     try {
-      const invitation =
-        (request.body as { command?: { type?: string } }).command?.type ===
-        "invite.accepted";
+      const type = (request.body as { command?: { type?: string } }).command
+        ?.type;
+      if (
+        type &&
+        ["invite.created", "invite.accepted", "invite.revoked"].includes(type)
+      )
+        throw new Error(
+          "This legacy invitation request cannot be sent. Review and retire it locally before using server-issued invitations; its original content is retained.",
+        );
       const fresh = await client.me<Identity>();
       const verifiedAtMs = serviceActionTime();
       if (
@@ -1219,7 +1487,7 @@ function WorkspaceSession({
           false,
         );
       let bodyJson = request.bodyJson ?? JSON.stringify(request.body);
-      if (!invitation) {
+      {
         const live = liveBinding.current;
         if (
           !binding ||
@@ -1262,12 +1530,16 @@ function WorkspaceSession({
         `${client.baseUrl}${request.path}`,
         {
           method: "POST",
-          headers: {
-            Accept: "application/json",
-            "Content-Type": "application/json",
-            "Idempotency-Key": request.key,
-            "X-Api-Contract-Version": "longball.events/1.1",
-          },
+          headers: selectedRoleHeaders(
+            {
+              Accept: "application/json",
+              "Content-Type": "application/json",
+              "Idempotency-Key": request.key,
+              "X-Api-Contract-Version": "longball.events/1.1",
+            },
+            roleChoice,
+            binding?.role ?? null,
+          ),
           body: bodyJson,
         },
       );
@@ -1378,6 +1650,73 @@ function WorkspaceSession({
       throw cause;
     }
   };
+  const retireLegacyInvitation = async () => {
+    if (
+      lock.current ||
+      !pending?.protected ||
+      legacyReviewKey !== pending.key ||
+      !binding ||
+      !identity
+    )
+      return;
+    const sourceGeneration = generation.current,
+      sourceBinding = binding,
+      key = pending.key;
+    lock.current = true;
+    setBusy(true);
+    setErrors([]);
+    try {
+      const fresh = await client.me<Identity>();
+      const verifiedAtMs = serviceActionTime();
+      const session =
+        connection.mode === "oidc" ? await getConnectedSessionSummary() : null;
+      if (
+        generation.current !== sourceGeneration ||
+        !sameWorkspaceBinding(sourceBinding, liveBinding.current) ||
+        !workspaceBindingIsCurrent(
+          sourceBinding,
+          fresh.principal,
+          fresh.memberships,
+          serviceActionTime(),
+        ) ||
+        fresh.principal.accountId !== identity.principal.accountId ||
+        fresh.principal.issuer !== identity.principal.issuer ||
+        fresh.principal.subject !== identity.principal.subject ||
+        (connection.mode === "oidc" &&
+          (!workspaceSessionAllows(session, absoluteApi, serviceActionTime()) ||
+            session?.sessionId !== oidcSessionId ||
+            session?.accountId !== identity.principal.accountId ||
+            session?.issuer !== identity.principal.issuer ||
+            session?.subject !== identity.principal.subject))
+      )
+        throw new Error(
+          "Current access changed. The legacy request remains retained and has not been replayed or retired.",
+        );
+      const saved = await outboxPort.current?.retireLegacy(key, {
+        binding: sourceBinding,
+        principal: fresh.principal,
+        memberships: fresh.memberships,
+        verifiedAtMs,
+        nowMs: serviceActionTime(),
+        synthetic: connection.mode === "synthetic",
+        session,
+      });
+      if (!saved)
+        throw new Error(
+          "The local protocol retirement could not be saved. Keep the original request and retry its protected save.",
+        );
+      setPending(null);
+      setLegacyReviewKey(null);
+      setNotice(
+        "The old invitation request was retired locally and will never be replayed. Its exact content remains in protected history. This is not a server receipt; the previous server status remains unknown. Use current server-issued invitations after refreshing their status.",
+      );
+    } catch (cause) {
+      setErrors([failureText(cause)]);
+    } finally {
+      lock.current = false;
+      setBusy(false);
+    }
+  };
   const mutate = async (
     section: string,
     command:
@@ -1387,16 +1726,31 @@ function WorkspaceSession({
       | RecordsCommand
       | ConnectedRecordsCommand
       | SeasonRolloverCommand
-      | ConnectedStaffCommand,
+      | ConnectedStaffCommand
+      | BrandingCommand,
     label: string,
-    destination?: { teamId: string; seasonId: string },
   ): Promise<boolean> => {
-    if (lock.current || pending || uploadRetainedRef.current) return false;
+    if (
+      lock.current ||
+      pending ||
+      uploadRetainedRef.current ||
+      brandRetainedRef.current ||
+      invitationIsRetained()
+    )
+      return false;
     lock.current = true;
     setBusy(true);
     setErrors([]);
     setNotice(null);
     try {
+      if (
+        ["invite.created", "invite.accepted", "invite.revoked"].includes(
+          command.type,
+        )
+      )
+        throw new Error(
+          "Use the current server-issued invitation flow. This older request was not converted or sent.",
+        );
       if (
         !identity ||
         (oidcSessionId &&
@@ -1408,35 +1762,24 @@ function WorkspaceSession({
           "Verify the current service identity before sending this change.",
         );
       if (
-        command.type !== "invite.accepted" &&
-        (!sameWorkspaceBinding(binding, liveBinding.current) ||
-          !workspaceBindingIsCurrent(
-            binding,
-            identity?.principal ?? null,
-            identity?.memberships ?? [],
-            serviceActionTime(),
-          ))
+        !sameWorkspaceBinding(binding, liveBinding.current) ||
+        !workspaceBindingIsCurrent(
+          binding,
+          identity?.principal ?? null,
+          identity?.memberships ?? [],
+          serviceActionTime(),
+        )
       )
         throw new Error(
           "This workspace scope is no longer current. Refresh or sign in again before changing it.",
         );
-      if (
-        destination &&
-        (!/^[A-Za-z0-9_-]{1,150}$/.test(destination.teamId) ||
-          !/^[A-Za-z0-9_-]{1,150}$/.test(destination.seasonId))
-      )
-        throw new Error(
-          "Use the exact team and season identifiers from the invitation.",
-        );
       const key = "id" in command ? command.id : command.commandId;
       const request = {
-        path: destination
-          ? `/v1/teams/${encodeURIComponent(destination.teamId)}/${section}?seasonId=${encodeURIComponent(destination.seasonId)}`
-          : path(section),
+        path: path(section),
         key,
         body: { command },
         label,
-        protected: protectedOutbox && command.type !== "invite.accepted",
+        protected: protectedOutbox,
       };
       setPending(request);
       let retained: WorkspaceOutboxState | undefined;
@@ -1473,7 +1816,14 @@ function WorkspaceSession({
       "Community change",
     );
   const reload = async () => {
-    if (lock.current || pending || uploadRetainedRef.current) return;
+    if (
+      lock.current ||
+      pending ||
+      uploadRetainedRef.current ||
+      brandRetainedRef.current ||
+      invitationIsRetained()
+    )
+      return;
     lock.current = true;
     setBusy(true);
     try {
@@ -1490,8 +1840,19 @@ function WorkspaceSession({
     destination: { teamId: string; seasonId: string },
     role: WorkspaceBinding["role"] | null = null,
   ) => {
-    if (uploadRetainedRef.current) return;
+    if (
+      uploadRetainedRef.current ||
+      brandRetainedRef.current ||
+      invitationIsRetained()
+    )
+      return;
     setAlbumSelection(null);
+    invitationAuthority.current = null;
+    invitationHeldRef.current = null;
+    setInvitationHeld(null);
+    brandScopeRef.current = null;
+    brandRetainedRef.current = false;
+    setBrandRetained(false);
     albumKeyRef.current = null;
     uploadRetainedRef.current = false;
     setUploadRetained(false);
@@ -1505,6 +1866,7 @@ function WorkspaceSession({
     setSeasons(null);
     setConfiguration(null);
     setStaff(null);
+    setBranding(null);
     setServiceMatchId("");
     setRoleChoice(role);
     setScopeChoice(destination);
@@ -1565,8 +1927,15 @@ function WorkspaceSession({
       );
     return deliverReportExport(artifact, assertAccess);
   };
-  const disabled =
+  const legacyInvitationPending = Boolean(
+    pending?.protected &&
+      ["invite.created", "invite.accepted"].includes(
+        (pending.body as { command?: { type?: string } }).command?.type ?? "",
+      ),
+  );
+  const disabledWithoutInvitation =
     uploadRetained ||
+    brandRetained ||
     busy ||
     Boolean(pending) ||
     !storageChecked ||
@@ -1581,6 +1950,34 @@ function WorkspaceSession({
         currentOutbox.busy ||
         currentOutbox.retryPending ||
         currentOutbox.conflict));
+  const disabled = disabledWithoutInvitation || invitationRetained;
+  const brandingPanel =
+    branding && brandClient && brandScopeKey ? (
+      <BrandLogos
+        value={branding}
+        client={brandClient}
+        scopeKey={brandScopeKey}
+        assertAccess={assertBrandAccess}
+        disabled={disabled}
+        synthetic={connection.mode === "synthetic"}
+        onRetainedChange={onBrandRetained}
+        onChanged={reload}
+        onChange={(command) =>
+          mutate(
+            `branding/${command.kind}/${command.type === "logo.published" ? "publish" : "remove"}`,
+            command,
+            command.type === "logo.published"
+              ? "Logo publication"
+              : "Logo reference removal",
+          )
+        }
+      />
+    ) : (
+      <Notice>
+        Uploaded logos are unavailable until the service returns a current
+        authorised branding view.
+      </Notice>
+    );
   return (
     <View style={s.stack} testID="workspace-session">
       <Card>
@@ -1589,6 +1986,29 @@ function WorkspaceSession({
             ? "FICTIONAL API REVIEW"
             : "CONNECTED SERVICE"}
         </Pill>
+        {branding && brandClient && brandScopeKey && (
+          <View style={s.row}>
+            <AuthenticatedBrandBadge
+              client={brandClient}
+              reference={branding.effective.logo}
+              scopeKey={brandScopeKey}
+              assertAccess={assertBrandAccess}
+              label={`${branding.team.name} effective ${branding.effective.source} logo`}
+            />
+            <View style={{ flex: 1 }}>
+              <Text style={typography.section}>
+                {branding.team.name} {branding.team.ageGroup}
+              </Text>
+              <Text style={typography.muted}>
+                {branding.effective.source === "team"
+                  ? "Team logo"
+                  : branding.effective.source === "club"
+                    ? "Club logo inherited"
+                    : "Neutral original badge"}
+              </Text>
+            </View>
+          </View>
+        )}
         <Text style={typography.section}>
           {identity
             ? identity.principal.accountId
@@ -1675,24 +2095,12 @@ function WorkspaceSession({
           </View>
         )}
         {props.invitationDestination && (
-          <Card>
-            <Text style={typography.label}>Received season invitation</Text>
-            <Text style={typography.body}>
-              Review the invitation’s exact destination before accepting.
-              Opening this review does not grant access or send its code.
-            </Text>
-            <Button
-              label="Review received season invitation"
-              disabled={disabled}
-              onPress={() => {
-                const destination = props.invitationDestination!;
-                setInviteTeamId(destination.teamId);
-                setInviteSeasonId(destination.seasonId);
-                setInviteCode(destination.code);
-                setTab("community");
-              }}
-            />
-          </Card>
+          <Button
+            label="Review received season invitation"
+            variant="secondary"
+            disabled={disabled}
+            onPress={() => setTab("invitations")}
+          />
         )}
         {errors.map((error, index) => (
           <Notice key={`${index}:${error}`} tone="error">
@@ -1732,6 +2140,7 @@ function WorkspaceSession({
               testID="workspace-retry"
               disabled={
                 busy ||
+                legacyInvitationPending ||
                 (pending.protected === true &&
                   (!currentOutbox?.state ||
                     currentOutbox.busy ||
@@ -1750,12 +2159,65 @@ function WorkspaceSession({
                   });
               }}
             />
+            {legacyInvitationPending && (
+              <View style={s.stack}>
+                <Notice tone="warning">
+                  This older invitation protocol cannot be replayed. The
+                  original request remains in protected storage. You may
+                  explicitly retire only this unsupported request locally, then
+                  issue or reissue a current server-generated invitation. Its
+                  past server status remains unknown.
+                </Notice>
+                <View style={s.row}>
+                  <Switch
+                    accessibilityLabel="Retire unsupported invitation locally; keep exact history"
+                    value={legacyReviewKey === pending.key}
+                    disabled={busy}
+                    onValueChange={(value) =>
+                      setLegacyReviewKey(value ? pending.key : null)
+                    }
+                  />
+                  <Text style={typography.body}>
+                    Keep the original history and never replay this old request.
+                  </Text>
+                </View>
+                <Button
+                  label="Confirm local retirement of old invitation"
+                  testID="workspace-retire-legacy-invitation"
+                  variant="secondary"
+                  disabled={
+                    busy ||
+                    legacyReviewKey !== pending.key ||
+                    !currentOutbox?.state ||
+                    currentOutbox.busy ||
+                    currentOutbox.retryPending ||
+                    currentOutbox.conflict
+                  }
+                  onPress={() => {
+                    void retireLegacyInvitation();
+                  }}
+                />
+              </View>
+            )}
           </>
+        )}
+        {currentOutbox?.state?.lastSettled?.outcome.kind ===
+          "locally_retired" && (
+          <Notice>
+            Unsupported invitation retired locally. Exact history is retained;
+            no server acknowledgement or delivery is claimed.
+          </Notice>
         )}
         <Button
           label={busy ? "Contacting service…" : "Refresh service views"}
           variant="secondary"
-          disabled={busy || Boolean(pending) || uploadRetained}
+          disabled={
+            busy ||
+            Boolean(pending) ||
+            uploadRetained ||
+            brandRetained ||
+            invitationRetained
+          }
           onPress={() => {
             void reload();
           }}
@@ -1766,6 +2228,7 @@ function WorkspaceSession({
               ? [
                   ["settings", "Club and team"],
                   ["seasons", "Seasons"],
+                  ["invitations", "Invitations"],
                 ]
               : [
                   ["centre", "Match centre"],
@@ -1779,6 +2242,7 @@ function WorkspaceSession({
                     : []),
                   ["reports", "Reports"],
                   ["community", "Community"],
+                  ["invitations", "Invitations"],
                   ...(manager && props.journal && props.deviceId
                     ? [["controller", "Controller"]]
                     : []),
@@ -1791,7 +2255,12 @@ function WorkspaceSession({
               variant={tab === value ? "primary" : "secondary"}
               disabled={disabled}
               onPress={() => {
-                if (!uploadRetainedRef.current) setTab(value);
+                if (
+                  !uploadRetainedRef.current &&
+                  !brandRetainedRef.current &&
+                  !invitationIsRetained()
+                )
+                  setTab(value);
               }}
             />
           ))}
@@ -1824,6 +2293,7 @@ function WorkspaceSession({
             value={configuration}
             disabled={disabled}
             staff={staff}
+            brandingPanel={brandingPanel}
             onStaffChange={(command) =>
               mutate(
                 command.type === "manager.revoked"
@@ -1840,6 +2310,7 @@ function WorkspaceSession({
         ) : manager && preparation ? (
           <PreparationScreens
             storage="service"
+            brandingPanel={brandingPanel}
             state={preparation}
             view={tab}
             onChange={(command) =>
@@ -1993,81 +2464,31 @@ function WorkspaceSession({
                 onChanged={reload}
               />
             )}
-          <Card>
-            <Text style={typography.section}>Accept an invitation</Text>
-            <Text style={typography.body}>
-              An invitation adds only its team and season grant. The service
-              checks the code, expiry and current account.
-            </Text>
-            <Text style={typography.label}>Invitation destination</Text>
-            <TextInput
-              accessibilityLabel="Invitation team identifier"
-              value={inviteTeamId}
-              onChangeText={setInviteTeamId}
-              placeholder={
-                teamId ?? "Exact team identifier from the invitation"
-              }
-              autoCapitalize="none"
-              autoCorrect={false}
-              style={s.input}
-            />
-            <TextInput
-              accessibilityLabel="Invitation season identifier"
-              value={inviteSeasonId}
-              onChangeText={setInviteSeasonId}
-              placeholder={
-                seasonId ?? "Exact season identifier from the invitation"
-              }
-              autoCapitalize="none"
-              autoCorrect={false}
-              style={s.input}
-            />
-            <Text style={typography.muted}>
-              Enter the destination printed with the invitation. Leave a field
-              blank only to use the current team or season shown above. The code
-              grants no access until the service accepts it.
-            </Text>
-            <TextInput
-              accessibilityLabel="Service invitation code"
-              value={inviteCode}
-              onChangeText={setInviteCode}
-              autoCapitalize="none"
-              autoCorrect={false}
-              style={s.input}
-            />
-            <Button
-              label="Accept service invitation"
-              disabled={
-                disabled ||
-                !identity ||
-                !inviteCode.trim() ||
-                !(inviteTeamId.trim() || teamId) ||
-                !(inviteSeasonId.trim() || seasonId)
-              }
-              onPress={() => {
-                const destination = {
-                  teamId: inviteTeamId.trim() || teamId || "",
-                  seasonId: inviteSeasonId.trim() || seasonId || "",
-                };
-                void mutate(
-                  "community",
-                  {
-                    id: randomUUID(),
-                    type: "invite.accepted",
-                    reviewCode: inviteCode.trim(),
-                  },
-                  "Invitation acceptance",
-                  destination,
-                ).then((saved) => {
-                  if (!saved) return;
-                  setInviteCode("");
-                  switchScope(destination, "spectator");
-                });
-              }}
-            />
-          </Card>
         </>
       )}
+      {(tab === "community" || tab === "invitations") &&
+        identity &&
+        invitationScopeKey && (
+          <ScopedWorkspaceInvitations
+            baseUrl={connection.baseUrl || "/"}
+            authenticatedFetch={authenticatedFetch}
+            scopeKey={invitationScopeKey}
+            active={identity.principal.status === "active"}
+            assertCurrent={assertInvitationCurrent}
+            disabled={disabledWithoutInvitation}
+            teamId={teamId ?? null}
+            seasonId={seasonId ?? null}
+            canIssue={
+              invitationRole === "manager" || invitationRole === "player"
+            }
+            invitationDestination={props.invitationDestination}
+            onRetainedChange={onInvitationRetained}
+            onChanged={async (acceptedScope) => {
+              await reload();
+              if (acceptedScope) switchScope(acceptedScope, "spectator");
+            }}
+          />
+        )}
       {tab === "controller" && manager && props.journal && props.deviceId && (
         <View style={s.stack}>
           <Card>
@@ -2316,7 +2737,6 @@ function ConnectedCommunity({
   const [cutoff, setCutoff] = useState("");
   const [closingAward, setClosingAward] = useState<string | null>(null);
   const [reportReason, setReportReason] = useState("");
-  const [confirmInvite, setConfirmInvite] = useState(false);
   const [viewed, setViewed] = useState<string[]>([]);
   const [photoAcknowledged, setPhotoAcknowledged] = useState(false);
   const [quietStart, setQuietStart] = useState(
@@ -2542,61 +2962,11 @@ function ConnectedCommunity({
           )}
         </Card>
       ))}
-      {actor.role !== "spectator" && (
+      {actor.role !== "spectator" && value.grants.length > 0 && (
         <Card>
-          <Text style={typography.section}>Spectator invitations</Text>
-          <Text style={typography.body}>
-            Create a seven-day invitation code for this season. Access is
-            checked and can be revoked; account membership elsewhere is
-            retained.
+          <Text style={typography.section}>
+            Accepted spectator season grants
           </Text>
-          <Button
-            label={
-              confirmInvite
-                ? "Invitation sharing acknowledged"
-                : "Acknowledge sharing a limited season invitation"
-            }
-            variant={confirmInvite ? "primary" : "secondary"}
-            disabled={disabled}
-            onPress={() => setConfirmInvite((current) => !current)}
-          />
-          <Button
-            label="Create service invitation code"
-            disabled={disabled || !confirmInvite}
-            onPress={() => {
-              void onChange({
-                type: "invite.created",
-                invitationId: randomUUID(),
-                reviewCode: randomUUID().replaceAll("-", "").slice(0, 20),
-                expiresAtMs: Date.now() + 7 * 86_400_000,
-              });
-            }}
-          />
-          {value.invitations.map((invitation) => (
-            <View key={invitation.id} style={s.divider}>
-              <Text selectable style={typography.label}>
-                Code: {invitation.reviewCode}
-              </Text>
-              <Text style={typography.muted}>
-                {invitation.revokedAtMs
-                  ? "Revoked"
-                  : `Expires ${dateTime(invitation.expiresAtMs)}`}
-              </Text>
-              {!invitation.revokedAtMs && (
-                <Button
-                  label="Revoke this service invitation"
-                  variant="danger"
-                  disabled={disabled}
-                  onPress={() => {
-                    void onChange({
-                      type: "invite.revoked",
-                      invitationId: invitation.id,
-                    });
-                  }}
-                />
-              )}
-            </View>
-          ))}
           {value.grants.map((grant) => (
             <View key={grant.id} style={s.divider}>
               <Text style={typography.body}>

@@ -1,8 +1,7 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { chmodSync, mkdirSync, readFileSync } from "node:fs";
-import { open, readFile, rename, unlink } from "node:fs/promises";
+import { open, rename, unlink } from "node:fs/promises";
 import { join, resolve, sep } from "node:path";
-import { fileURLToPath } from "node:url";
 import { performance } from "node:perf_hooks";
 import { AccessError } from "../../../packages/application/src/access";
 import {
@@ -19,18 +18,16 @@ import {
   type MediaPrepareInput,
   type PreparedMediaUpload,
 } from "./media";
-import { installMediaSecurity, verifyMediaSecurity } from './postgres-security';
+import { installMediaSecurity, verifyMediaSecurity,installHeicMedia } from './postgres-security';
 import type { PgDatabase } from "./pg";
+import { processPrivateImage } from './image-bytes';
 
 const {
-  executeFile,
   hash,
   id,
   auth,
   sameToken,
   bounded,
-  actualMime,
-  rejectAnimatedPng,
 } = mediaInternals;
 function fail(code: string, status: number, message: string): never {
   return mediaInternals.fail(code, status, message);
@@ -71,8 +68,8 @@ export class PgMediaService {
       const versions = await this.database.query<{ version: number }>(
         'SELECT version FROM longball.media_schema_migrations ORDER BY version',
       );
-      if (versions.rows.some(row => row.version > 2)) throw new Error('Media schema is newer than this build.');
-      if (!versions.rows.some(row => row.version === 2)) throw new Error('Run the separate media migrator before starting the runtime.');
+      if (versions.rows.some(row => row.version > 3)) throw new Error('Media schema is newer than this build.');
+      if (![2,3].every(version=>versions.rows.some(row => row.version === version))) throw new Error('Run the separate media migrator before starting the runtime.');
       await verifyMediaSecurity(this.database);
       return;
     }
@@ -83,7 +80,7 @@ export class PgMediaService {
       const versions = await this.database.query<{ version: number }>(
         "SELECT version FROM longball.media_schema_migrations ORDER BY version",
       );
-      if (versions.rows.some((row) => row.version > 2))
+      if (versions.rows.some((row) => row.version > 3))
         throw new Error(
           "Media schema is newer than this build; preserve it and use a compatible version.",
         );
@@ -102,6 +99,10 @@ export class PgMediaService {
       if (!versions.rows.some(row => row.version === 2)) {
         await installMediaSecurity(this.database);
         await this.database.query('INSERT INTO longball.media_schema_migrations(version) VALUES(2)');
+      }
+      if(!versions.rows.some(row=>row.version===3)){
+        await installHeicMedia(this.database);
+        await this.database.query('INSERT INTO longball.media_schema_migrations(version) VALUES(3)');
       }
     });
   }
@@ -183,7 +184,7 @@ export class PgMediaService {
         !Number.isSafeInteger(input.byteSize) ||
         input.byteSize < 1 ||
         input.byteSize > MEDIA_LIMITS.maxBytes ||
-        !["image/jpeg", "image/png"].includes(input.mimeType) ||
+        !["image/jpeg", "image/png", "image/heic"].includes(input.mimeType) ||
         typeof input.sha256 !== "string" ||
         !/^[a-fA-F0-9]{64}$/.test(input.sha256) ||
         typeof input.caption !== "string" ||
@@ -193,7 +194,7 @@ export class PgMediaService {
         fail(
           "INVALID_MEDIA_PREPARATION",
           422,
-          "Use a JPEG or PNG up to 15 MiB with a valid size, SHA-256 and policy acknowledgement. HEIC is not enabled until its decoder is validated.",
+          "Use an original JPEG, PNG or supported still HEIC up to 15 MiB with a valid size, SHA-256 and policy acknowledgement.",
         );
       }
       const match = state.matches.find(
@@ -468,88 +469,9 @@ export class PgMediaService {
     if (!leased.changes)
       fail("UPLOAD_BUSY", 409, "This image is already processing.");
     try {
-      const original = await readFile(this.path(row.original_key));
-      if (
-        original.length !== row.expected_bytes ||
-        hash(original) !== row.expected_sha
-      )
-        fail(
-          "UPLOAD_INTEGRITY_FAILED",
-          422,
-          "The private original does not match its recorded size and hash.",
-        );
-      const mimeType = actualMime(original);
-      if (!mimeType || mimeType !== row.declared_mime)
-        fail(
-          "MEDIA_TYPE_MISMATCH",
-          415,
-          "Decoded image type must match its bytes. Only JPEG and PNG are enabled.",
-        );
-      rejectAnimatedPng(original);
-      if (!this.scanner)
-        fail(
-          "SCANNER_REQUIRED",
-          503,
-          "Image safety scanning is not configured. The original remains private; no reviewable or published image was created.",
-        );
-      const scan = await bounded(
-        this.scanner.scan(original, { mimeType, sha256: row.expected_sha }),
-        MEDIA_LIMITS.scannerTimeoutMs,
-        "SCANNER_UNAVAILABLE",
-      );
-      if (scan.verdict === "unavailable")
-        fail(
-          "SCANNER_UNAVAILABLE",
-          503,
-          "Image scanning is unavailable. The original remains private for a safe retry.",
-        );
-      if (scan.verdict !== "clean")
-        fail(
-          "IMAGE_SCAN_REJECTED",
-          422,
-          "The image did not pass safety scanning and remains unpublished.",
-        );
       const displayKey = `derivatives/${row.photo_id}-v${row.display_revision}-${attempt}-display.jpg`;
       const thumbnailKey = `derivatives/${row.photo_id}-v${row.display_revision}-${attempt}-thumbnail.jpg`;
-      let decoded: { width: number; height: number };
-      try {
-        const result = await executeFile(
-          process.execPath,
-          [
-            "--max-old-space-size=128",
-            fileURLToPath(new URL("./media-worker.mjs", import.meta.url)),
-            this.path(row.original_key),
-            this.path(displayKey),
-            this.path(thumbnailKey),
-            mimeType,
-          ],
-          {
-            timeout: MEDIA_LIMITS.decodeTimeoutMs,
-            killSignal: "SIGKILL",
-            maxBuffer: 64 * 1024,
-            windowsHide: true,
-          },
-        );
-        decoded = JSON.parse(result.stdout) as {
-          width: number;
-          height: number;
-        };
-        if (
-          !Number.isSafeInteger(decoded.width) ||
-          !Number.isSafeInteger(decoded.height) ||
-          decoded.width < 1 ||
-          decoded.height < 1 ||
-          decoded.width > MEDIA_LIMITS.displayEdge ||
-          decoded.height > MEDIA_LIMITS.displayEdge
-        )
-          throw new Error();
-      } catch {
-        fail(
-          "IMAGE_DECODE_REJECTED",
-          415,
-          "The image could not be safely decoded within the supported format, pixel and processing limits.",
-        );
-      }
+      const decoded = await processPrivateImage({ originalPath: this.path(row.original_key), displayPath: this.path(displayKey), thumbnailPath: this.path(thumbnailKey), expectedBytes: row.expected_bytes, expectedSha: row.expected_sha, declaredMime: row.declared_mime, scanner: this.scanner });
       const saved = await this.execute(
         "UPDATE longball.media_uploads SET status='processed',display_key=$1,thumbnail_key=$2,width=$3,height=$4,scanner_engine=$5,failure_code=NULL,lease_until=NULL WHERE id=$6 AND attempt=$7 AND status='processing'",
         [
@@ -557,7 +479,7 @@ export class PgMediaService {
           thumbnailKey,
           decoded.width,
           decoded.height,
-          scan.engine.slice(0, 100),
+          decoded.scannerEngine,
           row.id,
           attempt,
         ],
@@ -574,6 +496,7 @@ export class PgMediaService {
         error instanceof AccessError ? error.code : "MEDIA_PROCESSING_FAILED";
       const retryable = [
         "SCANNER_REQUIRED",
+        "HEIC_DECODER_REQUIRED",
         "SCANNER_UNAVAILABLE",
         "MEDIA_PROCESSING_FAILED",
       ].includes(code);
@@ -620,10 +543,11 @@ export class PgMediaService {
         409,
         "The matching community revision was not committed.",
       );
-    await this.execute(
+    const linked = await this.execute(
       "UPDATE longball.media_uploads SET status='linked' WHERE id=$1",
       [uploadId],
     );
+    if (linked.changes !== 1) fail('MEDIA_LINK_CONFLICT',409,'The private processing authority changed. No community revision was committed.');
   }
 
   async gateway(

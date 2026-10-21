@@ -72,6 +72,13 @@ for source, destination in [
     ("infra/cloud-preview/workflow.yml", ".github/workflows/cloud-preview.yml"),
     ("infra/cloud-preview/backend/package.json", "backend/package.json"),
     ("infra/cloud-preview/backend/package-lock.json", "backend/package-lock.json"),
+    ("infra/cloud-preview/check-media.mjs", "preview/check-media.mjs"),
+    ("infra/runtime/clamd.conf", "preview/clamd.conf"),
+    ("infra/runtime/Dockerfile", "infra/runtime/Dockerfile"),
+    ("infra/runtime/Dockerfile.dockerignore", "infra/runtime/Dockerfile.dockerignore"),
+    ("infra/runtime/heic/build.sh", "infra/runtime/heic/build.sh"),
+    ("infra/runtime/heic/decode.c", "infra/runtime/heic/decode.c"),
+    ("infra/runtime/heic/NOTICE.md", "infra/runtime/heic/NOTICE.md"),
     ("infra/ci/native-feasibility.yml", ".github/workflows/native-feasibility.yml"),
 ]:
     include(destination, (root / source).read_text())

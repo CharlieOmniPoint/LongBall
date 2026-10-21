@@ -117,7 +117,7 @@ public final class LongBallActivation implements RealmResourceProviderFactory {
     if (entity == null || !realm.getId().equals(entity.getRealmId())) throw denied(410);
     UserModel user = session.users().getUserById(realm, subject);
     if (user == null || user.getFirstAttribute(ACCOUNT) == null
-        || !"child_shared".equals(user.getFirstAttribute("longball.classification"))) throw denied(410);
+        || !Set.of("child_shared", "unclassified").contains(String.valueOf(user.getFirstAttribute("longball.classification")))) throw denied(410);
     return user;
   }
   static String flow(String operation) {
@@ -156,9 +156,9 @@ public final class LongBallActivation implements RealmResourceProviderFactory {
     @POST @Path("pending")
     public Map<String, Object> pending(Map<String, Object> input) {
       service(); fields(input, "operationId", "accountId", "username", "classification", "emailRequired");
-      String accountId = value(input, "accountId"), username = value(input, "username");
+      String accountId = value(input, "accountId"), username = value(input, "username"), classification = value(input, "classification");
       try { UUID.fromString(accountId); } catch (IllegalArgumentException error) { throw denied(400); }
-      if (!value(input, "operationId").equals("pending:" + accountId) || !"child_shared".equals(input.get("classification"))
+      if (!value(input, "operationId").equals("pending:" + accountId) || !Set.of("child_shared", "unclassified").contains(classification)
           || !Boolean.FALSE.equals(input.get("emailRequired")) || !username.matches("LB[A-HJ-NP-Z2-9]{12}")) throw denied(400);
       RealmModel realm = session.getContext().getRealm();
       UserModel user = session.users().getUserByUsername(realm, username);
@@ -166,10 +166,11 @@ public final class LongBallActivation implements RealmResourceProviderFactory {
         if (session.users().getUserById(realm, accountId) != null) throw denied(409);
         user = session.users().addUser(realm, accountId, username, false, false);
         user.setEnabled(false); user.setSingleAttribute(ACCOUNT, accountId);
-        user.setSingleAttribute("longball.classification", "child_shared");
+        user.setSingleAttribute("longball.classification", classification);
         user.setSingleAttribute(STATUS, "pending");
       }
       if (!accountId.equals(user.getId()) || !accountId.equals(user.getFirstAttribute(ACCOUNT))
+          || !classification.equals(user.getFirstAttribute("longball.classification"))
           || user.isEnabled() || user.credentialManager().isConfiguredFor(PasswordCredentialModel.TYPE)) throw denied(409);
       return Map.of("issuer", issuer(session), "subject", user.getId(), "username", user.getUsername(), "pending", true, "credentialConfigured", false);
     }
