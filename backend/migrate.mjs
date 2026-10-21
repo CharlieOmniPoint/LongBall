@@ -9,12 +9,13 @@ function validateContext(context) {
     identity: ["issuer", "subject"],
     actor: ["accountId", "issuer", "subject"],
     activation_token: ["tokenHash"],
+    invitation_activation: ["tokenHash"],
     worker_claim: ["jobKind"],
     worker_job: ["jobId", "leaseToken", "clubId", "teamId", "seasonId"]
   };
   if (!Object.hasOwn(required, context.kind) || required[context.kind].some((name) => typeof context[name] !== "string" || !context[name] || context[name].length > 2048)) throw new Error("Invalid PostgreSQL application context.");
   if (context.kind === "actor" && (typeof context.strongAuth !== "boolean" || !Number.isSafeInteger(context.authenticatedAtMs) || context.authenticatedAtMs < 0 || context.requestedRole !== void 0 && !["administrator", "manager", "player", "spectator", "default"].includes(context.requestedRole))) throw new Error("Invalid PostgreSQL actor context.");
-  if (context.kind === "activation_token" && (!/^[a-f0-9]{64}$/.test(context.tokenHash) || context.completionVerified !== void 0 && context.completionVerified !== true)) throw new Error("Invalid PostgreSQL activation context.");
+  if (["activation_token", "invitation_activation"].includes(context.kind) && "tokenHash" in context && (!/^[a-f0-9]{64}$/.test(context.tokenHash) || "completionVerified" in context && context.completionVerified !== void 0 && context.completionVerified !== true)) throw new Error("Invalid PostgreSQL activation context.");
   if (context.kind === "worker_claim" && !["award.finalise", "notification.dispatch"].includes(context.jobKind)) throw new Error("Invalid PostgreSQL job context.");
   if (context.kind === "worker_job" && !/^[a-f0-9]{64}$/.test(context.leaseToken)) throw new Error("Invalid PostgreSQL job capability.");
 }
@@ -135,9 +136,9 @@ var PgDatabase = class {
   async migrate() {
     if (this.migrationMode === "verify") {
       const versions = await this.query("SELECT version FROM longball.schema_migrations ORDER BY version");
-      if (versions.rows.some((row) => row.version > 9)) throw new Error("This PostgreSQL schema is newer than the application. Preserve it and use a compatible build.");
-      if (![2, 3, 4, 5, 6, 7, 8, 9].every((version) => versions.rows.some((row) => row.version === version))) throw new Error("PostgreSQL migrations are required. Run the separate migrator before starting the runtime.");
-      const protectedTables = ["clubs", "teams", "team_seasons", "game_contexts", "accounts", "memberships", "matches", "documents", "devices", "controller_grants", "controller_history", "events", "streams", "conflicting_submissions", "transfers", "clock_challenges", "clock_mappings", "reconciliation_proposals", "audit", "idempotency", "privacy_requests", "privacy_pending_keys", "jobs"];
+      if (versions.rows.some((row) => row.version > 12)) throw new Error("This PostgreSQL schema is newer than the application. Preserve it and use a compatible build.");
+      if (![2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].every((version) => versions.rows.some((row) => row.version === version))) throw new Error("PostgreSQL migrations are required. Run the separate migrator before starting the runtime.");
+      const protectedTables = ["clubs", "teams", "team_seasons", "game_contexts", "accounts", "memberships", "matches", "documents", "devices", "controller_grants", "controller_history", "events", "streams", "conflicting_submissions", "transfers", "clock_challenges", "clock_mappings", "reconciliation_proposals", "audit", "idempotency", "privacy_requests", "privacy_pending_keys", "jobs", "brand_assets", "brand_slots", "spectator_invitations", "lb_spectator_activation_accounts", "lb_spectator_activation_attempts", "native_app_devices"];
       const security = await this.query(`SELECT c.relname,c.relrowsecurity,(SELECT count(*)::integer FROM pg_catalog.pg_policy p WHERE p.polrelid=c.oid) AS policies FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='longball' AND c.relname=ANY($1::text[])`, [protectedTables]);
       if (security.rows.length !== protectedTables.length || security.rows.some((row) => !row.relrowsecurity || row.policies < 1)) throw new Error("PostgreSQL row security is missing. Run the separate migrator before starting runtime.");
       return;
@@ -150,12 +151,15 @@ var PgDatabase = class {
     const workerBoundariesMigration = await readFile(new URL("../migrations/postgresql/007_worker_boundaries.sql", import.meta.url), "utf8");
     const controllerRevocationMigration = await readFile(new URL("../migrations/postgresql/008_controller_revocation.sql", import.meta.url), "utf8");
     const dispatchClockMigration = await readFile(new URL("../migrations/postgresql/009_dispatch_database_clock.sql", import.meta.url), "utf8");
+    const brandAssetsMigration = await readFile(new URL("../migrations/postgresql/010_brand_assets.sql", import.meta.url), "utf8");
+    const spectatorCapabilitiesMigration = await readFile(new URL("../migrations/postgresql/011_spectator_capabilities.sql", import.meta.url), "utf8");
+    const heicMigration = await readFile(new URL("../migrations/postgresql/012_heic_support.sql", import.meta.url), "utf8");
     await this.transaction(async () => {
       const schema = await this.query("SELECT to_regnamespace('longball')::text AS namespace");
       if (!schema.rows[0]?.namespace) await this.query("CREATE SCHEMA longball");
       await this.query("CREATE TABLE IF NOT EXISTS longball.schema_migrations(version integer PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())");
       const versions = await this.query("SELECT version FROM longball.schema_migrations ORDER BY version");
-      if (versions.rows.some((row) => row.version > 9)) throw new Error("This PostgreSQL schema is newer than the application. Preserve it and use a compatible build.");
+      if (versions.rows.some((row) => row.version > 12)) throw new Error("This PostgreSQL schema is newer than the application. Preserve it and use a compatible build.");
       if (!versions.rows.some((row) => row.version === 2)) {
         await this.query(migration);
         await this.query("INSERT INTO longball.schema_migrations(version) VALUES(2)");
@@ -187,6 +191,18 @@ var PgDatabase = class {
       if (!versions.rows.some((row) => row.version === 9)) {
         await this.query(dispatchClockMigration);
         await this.query("INSERT INTO longball.schema_migrations(version) VALUES(9)");
+      }
+      if (!versions.rows.some((row) => row.version === 10)) {
+        await this.query(brandAssetsMigration);
+        await this.query("INSERT INTO longball.schema_migrations(version) VALUES(10)");
+      }
+      if (!versions.rows.some((row) => row.version === 11)) {
+        await this.query(spectatorCapabilitiesMigration);
+        await this.query("INSERT INTO longball.schema_migrations(version) VALUES(11)");
+      }
+      if (!versions.rows.some((row) => row.version === 12)) {
+        await this.query(heicMigration);
+        await this.query("INSERT INTO longball.schema_migrations(version) VALUES(12)");
       }
     });
   }
@@ -1991,6 +2007,29 @@ function createPreparationState() {
   };
 }
 
+// packages/application/src/invitation-credentials.ts
+var validTime2 = (value) => Number.isSafeInteger(value) && value >= 0;
+function publicInvitation(invite, nowMs) {
+  if (!validTime2(nowMs))
+    throw new Error("A valid invitation observation is required.");
+  const legacy = !invite.credential || invite.credential.kind === "legacy_retired";
+  const state = invite.revokedAtMs !== null ? "revoked" : invite.acceptedBy !== null ? "accepted" : legacy ? "requires_reissue" : invite.expiresAtMs <= nowMs ? "expired" : "pending";
+  return {
+    id: invite.id,
+    teamId: invite.teamId,
+    seasonId: invite.seasonId,
+    inviterAccountId: invite.inviterAccountId,
+    createdAtMs: invite.createdAtMs,
+    expiresAtMs: invite.expiresAtMs,
+    acceptedBy: invite.acceptedBy,
+    acceptedAtMs: invite.acceptedAtMs,
+    revokedAtMs: invite.revokedAtMs,
+    reissuedFromInvitationId: invite.reissuedFromInvitationId ?? null,
+    state,
+    requiresReissue: !invite.credential ? invite.acceptedBy === null && invite.revokedAtMs === null : invite.credential.kind === "legacy_retired" && invite.credential.requiresReissue
+  };
+}
+
 // packages/application/src/community.ts
 var CommunityError = class extends Error {
   constructor(code, message) {
@@ -2003,7 +2042,7 @@ var CommunityError = class extends Error {
 function requireRule(condition, code, message) {
   if (!condition) throw new CommunityError(code, message);
 }
-function validTime2(value) {
+function validTime3(value) {
   return Number.isSafeInteger(value) && value >= 0;
 }
 function unique2(values) {
@@ -2094,7 +2133,7 @@ function defaultCommunityPreferences() {
   return { schedule: true, match: true, awards: true, photos: true, quietStart: null, quietEnd: null };
 }
 function applyCommunityCommand(state, actor, command, nowMs) {
-  requireRule(validTime2(nowMs), "invalid", "A valid receipt time is required.");
+  requireRule(validTime3(nowMs), "invalid", "A valid receipt time is required.");
   account(state, actor);
   requireRule(command.id.trim(), "invalid", "A command identity is required.");
   const fingerprint2 = JSON.stringify([actor, command]);
@@ -2109,10 +2148,11 @@ function applyCommunityCommand(state, actor, command, nowMs) {
   if (!personal && command.type !== "invite.accepted") assertAccess(next, actor, nowMs);
   switch (command.type) {
     case "invite.created": {
+      requireRule(next.synthetic === true, "forbidden", "Review codes are available only in the fictional local journey.");
       requireRule(actor.role !== "spectator", "forbidden", "Spectators cannot invite other spectators.");
       const season = next.seasons.find((item) => item.id === actor.seasonId && item.teamId === actor.teamId);
       requireRule(season, "invalid", "The team season is missing.");
-      requireRule(validTime2(command.expiresAtMs) && nowMs < command.expiresAtMs && command.expiresAtMs <= season.accessEndsAtMs, "invalid", "Choose an invitation expiry after now and before the season ends.");
+      requireRule(validTime3(command.expiresAtMs) && nowMs < command.expiresAtMs && command.expiresAtMs <= season.accessEndsAtMs, "invalid", "Choose an invitation expiry after now and before the season ends.");
       requireRule(command.reviewCode.trim().length >= 6 && !next.invitations.some((item) => item.reviewCode === command.reviewCode || item.id === command.invitationId), "invalid", "The fictional invitation identity/code must be unique.");
       next.invitations.push({
         id: command.invitationId,
@@ -2120,16 +2160,19 @@ function applyCommunityCommand(state, actor, command, nowMs) {
         seasonId: actor.seasonId,
         inviterAccountId: actor.accountId,
         reviewCode: command.reviewCode,
+        credential: { kind: "fictional_review", version: 1, code: command.reviewCode },
         createdAtMs: nowMs,
         expiresAtMs: command.expiresAtMs,
         acceptedBy: null,
         acceptedAtMs: null,
-        revokedAtMs: null
+        revokedAtMs: null,
+        reissuedFromInvitationId: null
       });
       break;
     }
     case "invite.accepted": {
-      const invite = next.invitations.find((item) => item.reviewCode === command.reviewCode);
+      requireRule(next.synthetic === true, "forbidden", "Review codes are available only in the fictional local journey.");
+      const invite = next.invitations.find((item) => item.credential?.kind === "fictional_review" && item.credential.code === command.reviewCode && item.reviewCode === command.reviewCode);
       requireRule(invite && invite.teamId === actor.teamId && invite.seasonId === actor.seasonId, "forbidden", "That invitation is not valid for this team and season.");
       requireRule(invite.revokedAtMs === null && invite.acceptedBy === null, "closed", "That invitation has already been accepted or revoked.");
       requireRule(nowMs < invite.expiresAtMs, "expired", "This invitation has expired. Ask for a new individual invitation.");
@@ -2169,10 +2212,10 @@ function applyCommunityCommand(state, actor, command, nowMs) {
       const match = command.match;
       requireRule(match.teamId === actor.teamId && match.seasonId === actor.seasonId, "forbidden", "A match must belong to the active team and season.");
       requireRule(!next.matches.some((item) => item.id === match.id), "conflict", "This match is already registered. A corrected finish requires an audited exception process and never reopens an award.");
-      requireRule(validTime2(match.playedAtMs) && unique2(match.selectedPlayerIds) && unique2(match.presentPlayerIds) && unique2(match.playedPlayerIds), "invalid", "The match evidence is invalid.");
+      requireRule(validTime3(match.playedAtMs) && unique2(match.selectedPlayerIds) && unique2(match.presentPlayerIds) && unique2(match.playedPlayerIds), "invalid", "The match evidence is invalid.");
       requireRule(match.presentPlayerIds.every((id4) => match.selectedPlayerIds.includes(id4)) && match.playedPlayerIds.every((id4) => match.presentPlayerIds.includes(id4)), "invalid", "Played and present evidence must belong to the selected squad.");
       requireRule(match.selectedPlayerIds.every((id4) => next.memberships.some((member) => member.playerId === id4 && member.teamId === actor.teamId && member.seasonId === actor.seasonId)), "invalid", "Every selected player needs a membership in this team and season.");
-      requireRule(match.actualFullTimeAtMs === null || validTime2(match.actualFullTimeAtMs) && match.actualFullTimeAtMs <= nowMs, "invalid", "Actual full time cannot be in the future.");
+      requireRule(match.actualFullTimeAtMs === null || validTime3(match.actualFullTimeAtMs) && match.actualFullTimeAtMs <= nowMs, "invalid", "Actual full time cannot be in the future.");
       next.matches.push({
         ...match,
         voteCutoffAtMs: null,
@@ -2450,7 +2493,7 @@ function getCommunityView(state, actor, nowMs) {
     accountLabel: person.label,
     memberships: state.memberships.filter((item) => item.accountId === actor.accountId).map((item) => ({ ...item })),
     preferences: { ...state.preferences[actor.accountId] ?? defaultCommunityPreferences() },
-    invitations: allowed && actor.role !== "spectator" ? scoped(state.invitations).filter((item) => actor.role === "manager" || item.inviterAccountId === actor.accountId).map((item) => ({ ...item })) : [],
+    invitations: allowed && actor.role !== "spectator" ? scoped(state.invitations).filter((item) => actor.role === "manager" || item.inviterAccountId === actor.accountId).map((item) => ({ ...publicInvitation(item, nowMs), reviewCode: item.credential?.kind === "fictional_review" && state.synthetic === true ? item.credential.code : void 0 })) : [],
     grants: allowed && actor.role === "manager" ? scoped(state.grants).map((item) => ({ ...item, accountLabel: labelForAccount(state, item.accountId) })) : [],
     matches: allowed ? scoped(state.matches).map((match) => {
       const share = sharedAllowed(state, actor, match);
@@ -2610,10 +2653,10 @@ function createCommunityState(nowMs = Date.now()) {
   });
   return state;
 }
-function communityObjectShape(value, fields4) {
+function communityObjectShape(value, fields5) {
   if (value === null || typeof value !== "object" || Array.isArray(value)) return false;
-  const object3 = value;
-  return Object.keys(object3).every((key) => Object.hasOwn(fields4, key)) && Object.entries(fields4).every(([key, rule]) => Object.hasOwn(object3, key) ? rule.accepts(object3[key]) : Boolean(rule.optional));
+  const object4 = value;
+  return Object.keys(object4).every((key) => Object.hasOwn(fields5, key)) && Object.entries(fields5).every(([key, rule]) => Object.hasOwn(object4, key) ? rule.accepts(object4[key]) : Boolean(rule.optional));
 }
 var communityText = (maximum, nonempty = true) => ({ accepts: (value) => typeof value === "string" && value.length <= maximum && (!nonempty || value.trim().length > 0) });
 var communityInteger = (minimum = 0) => ({ accepts: (value) => typeof value === "number" && Number.isSafeInteger(value) && value >= minimum });
@@ -4107,7 +4150,7 @@ function fields2(value, names) {
 function active(principal) {
   if (principal.status !== "active") throw new AccessError("ACCOUNT_UNAVAILABLE", 403, "Use an active signed-in account to review or submit its own requests.");
 }
-function validTime3(value) {
+function validTime4(value) {
   return Number.isSafeInteger(value) && value >= 0;
 }
 function parsePrivacyRequestInput(value) {
@@ -4140,7 +4183,7 @@ function privacyRequestBusinessKey(accountId, kind, scope) {
 }
 function ownPrivacyMemberships(principal, memberships, nowMs) {
   active(principal);
-  requireThat4(validTime3(nowMs), "Use the current service time.");
+  requireThat4(validTime4(nowMs), "Use the current service time.");
   return memberships.filter((item) => item.accountId === principal.accountId).map((item) => ({
     teamId: item.teamId,
     seasonId: item.seasonId,
@@ -4175,7 +4218,7 @@ function parseMembership(value) {
 function parsePrivacyRequestDto(value) {
   requireThat4(object2(value), "Invalid account request response.");
   fields2(value, ["requestId", "kind", "status", "scope", "affectedMemberships", "createdAtMs", "verificationRequired", "erased", "fulfilled", "scopeStatus", "reviewStatus", "duplicateOfRequestId"]);
-  requireThat4(opaque2(value.requestId) && ["export", "delete_account", "leave_team"].includes(value.kind) && ["pending_verification_and_policy", "needs_scope"].includes(value.status) && validTime3(value.createdAtMs), "Invalid account request status or identity.");
+  requireThat4(opaque2(value.requestId) && ["export", "delete_account", "leave_team"].includes(value.kind) && ["pending_verification_and_policy", "needs_scope"].includes(value.status) && validTime4(value.createdAtMs), "Invalid account request status or identity.");
   requireThat4(value.verificationRequired === true && value.erased === false && value.fulfilled === false && (value.duplicateOfRequestId === null || opaque2(value.duplicateOfRequestId)), "A pending request never establishes fulfilment or deletion.");
   const scope = parseScope(value.scope), kind = value.kind;
   requireThat4(scope === null || (kind === "leave_team" ? scope.type === "team_season" : scope.type === "all_memberships"), "The account request kind and scope differ.");
@@ -4210,6 +4253,81 @@ function projectAccountPrivacyRequests(input) {
   return { accountId: input.principal.accountId, memberships, items };
 }
 
+// apps/api/src/brand-repository.ts
+function brandSelectedRole(principal, memberships, teamId, seasonId, role, nowMs) {
+  const own = currentMemberships(principal, memberships, nowMs).filter((member) => member.teamId === teamId && member.seasonId === seasonId);
+  const chosen = role ?? ["manager", "player", "spectator", "administrator"].find((candidate) => own.some((member) => member.role === candidate));
+  if (!chosen || !["manager", "player", "spectator", "administrator"].includes(chosen)) throw new AccessError("NOT_FOUND", 404, "The requested branding is unavailable.");
+  assertTeamRole(principal, memberships, teamId, seasonId, [chosen], nowMs);
+  return chosen;
+}
+
+// packages/application/src/account-devices.ts
+var object3 = (v) => Boolean(v && typeof v === "object" && !Array.isArray(v));
+var opaque3 = (v) => typeof v === "string" && /^[A-Za-z0-9_-]{1,150}$/.test(v);
+var iso = (v) => typeof v === "string" && Number.isFinite(Date.parse(v)) && new Date(v).toISOString() === v;
+function fields3(value, keys) {
+  if (Object.keys(value).length !== keys.length || Object.keys(value).some((key) => !keys.includes(key)))
+    throw new Error("Invalid own device inventory fields.");
+}
+function parseAccountDevicesDto(value) {
+  if (!object3(value)) throw new Error("Invalid own device inventory.");
+  fields3(value, [
+    "kind",
+    "accountId",
+    "asOf",
+    "devices",
+    "remoteRevocationAvailable"
+  ]);
+  if (value.kind !== "recognised-devices" || !opaque3(value.accountId) || !iso(value.asOf) || !Array.isArray(value.devices) || value.remoteRevocationAvailable !== false)
+    throw new Error("Invalid own device inventory.");
+  const seen = /* @__PURE__ */ new Set();
+  const devices = value.devices.map((item) => {
+    if (!object3(item)) throw new Error("Invalid device entry.");
+    fields3(item, [
+      "deviceId",
+      "source",
+      "label",
+      "platform",
+      "platformVerified",
+      "registeredAt",
+      "lastSeenAt"
+    ]);
+    if (!opaque3(item.deviceId) || seen.has(item.deviceId) || !["native_app_enrolment", "match_controller_enrolment"].includes(
+      item.source
+    ) || item.label !== null || ![null, "ios", "android"].includes(item.platform) || item.platformVerified !== false || item.registeredAt !== null && !iso(item.registeredAt) || item.lastSeenAt !== null && !iso(item.lastSeenAt))
+      throw new Error("Invalid device entry metadata.");
+    if (item.source === "native_app_enrolment" && (item.platform === null || item.registeredAt === null || item.lastSeenAt === null))
+      throw new Error("Native enrolment requires actual service timestamps.");
+    if (item.source === "match_controller_enrolment" && (item.platform !== null || item.registeredAt !== null || item.lastSeenAt !== null))
+      throw new Error("Legacy recorder metadata is unknown.");
+    if (item.registeredAt && item.lastSeenAt && Date.parse(item.lastSeenAt) < Date.parse(item.registeredAt))
+      throw new Error("Device timestamps are inconsistent.");
+    seen.add(item.deviceId);
+    return item;
+  });
+  return {
+    kind: "recognised-devices",
+    accountId: value.accountId,
+    asOf: value.asOf,
+    devices,
+    remoteRevocationAvailable: false
+  };
+}
+
+// apps/api/src/devices.ts
+function parseNativeDeviceInput(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new AccessError("INVALID_REQUEST", 400, "Use the reported native installation identity and platform.");
+  const item = value;
+  if (Object.keys(item).length !== 2 || Object.keys(item).some((key) => !["deviceId", "platform"].includes(key)) || typeof item.deviceId !== "string" || !/^[A-Za-z0-9_-]{1,120}$/.test(item.deviceId) || !["ios", "android"].includes(String(item.platform))) throw new AccessError("INVALID_REQUEST", 400, "Use a canonical installation identity and reported iOS or Android platform.");
+  return { deviceId: item.deviceId, platform: item.platform };
+}
+function ownDevicesDto(principal, legacy, native, nowMs) {
+  if (legacy.some((row) => row.account_id !== principal.accountId) || native.some((row) => row.account_id !== principal.accountId || row.issuer !== principal.issuer)) throw new Error("OWN_DEVICE_SCOPE_REQUIRED");
+  const nativeIds = new Set(native.map((row) => row.device_id));
+  return parseAccountDevicesDto({ kind: "recognised-devices", accountId: principal.accountId, asOf: new Date(nowMs).toISOString(), devices: [...native.map((row) => ({ deviceId: row.device_id, source: "native_app_enrolment", label: null, platform: row.platform, platformVerified: false, registeredAt: new Date(row.registered_at).toISOString(), lastSeenAt: new Date(row.last_seen_at).toISOString() })), ...legacy.filter((row) => !nativeIds.has(row.id)).map((row) => ({ deviceId: row.id, source: "match_controller_enrolment", label: null, platform: null, platformVerified: false, registeredAt: null, lastSeenAt: null }))], remoteRevocationAvailable: false });
+}
+
 // apps/api/src/postgres-store.ts
 var EVENT_CONTRACT_VERSION = "longball.events/1.1";
 var SYNTHETIC_IDS = { teamId: "synthetic-roma-u10", seasonId: "synthetic-season-2026-27", matchId: "synthetic-roma-maple-2026-10-24" };
@@ -4231,8 +4349,8 @@ function validateEnvelope(value, matchId) {
   if (!validId2(item.eventId) || !validDeviceId(item.deviceId) || item.matchId !== matchId || !nonnegative2(item.clientSequence) || item.clientSequence < 1 || !nonnegative2(item.controllerEpoch) || item.controllerEpoch < 1 || !nonnegative2(item.baseRevision)) bad("Invalid event identity, scope or sequence.");
   if (!(item.previousEventId === null || validId2(item.previousEventId))) bad("Invalid previous event identifier.");
   if (item.contractVersion !== EVENT_CONTRACT_VERSION || item.schemaVersion !== 1 || item.engineVersion !== ENGINE_VERSION) return item;
-  const fields4 = ["contractVersion", "schemaVersion", "engineVersion", "eventId", "matchId", "deviceId", "controllerEpoch", "clientSequence", "previousEventId", "baseRevision", "effectiveHalf", "halfElapsedMs", "matchElapsedMs", "effectiveAt", "recordedAt", "timeQuality", "clockEvidence", "command"];
-  if (Object.keys(item).some((key) => !fields4.includes(key))) bad("Unknown event envelope fields are not accepted.");
+  const fields5 = ["contractVersion", "schemaVersion", "engineVersion", "eventId", "matchId", "deviceId", "controllerEpoch", "clientSequence", "previousEventId", "baseRevision", "effectiveHalf", "halfElapsedMs", "matchElapsedMs", "effectiveAt", "recordedAt", "timeQuality", "clockEvidence", "command"];
+  if (Object.keys(item).some((key) => !fields5.includes(key))) bad("Unknown event envelope fields are not accepted.");
   if (!nonnegative2(item.halfElapsedMs) || !nonnegative2(item.matchElapsedMs) || ![0, 1, 2].includes(item.effectiveHalf)) bad("Invalid effective playing-time boundary.");
   if (!["anchored", "estimated", "reviewRequired"].includes(item.timeQuality) || !Number.isFinite(Date.parse(item.recordedAt)) || !(item.effectiveAt === null || Number.isFinite(Date.parse(item.effectiveAt)))) bad("Invalid event time evidence.");
   const command = item.command;
@@ -4366,6 +4484,24 @@ var PostgresStore = class _PostgresStore {
   }
   async myMemberships(principal) {
     return currentMemberships(principal, await this.memberships(), this.now());
+  }
+  async recognisedDevices(principal) {
+    const legacy = await this.many("SELECT id,account_id FROM devices WHERE account_id=$1 ORDER BY id", [principal.accountId]);
+    const native = await this.many("SELECT * FROM native_app_devices WHERE account_id=$1 AND issuer=$2 ORDER BY registered_at,device_id", [principal.accountId, principal.issuer]);
+    return ownDevicesDto(principal, legacy, native, this.now());
+  }
+  async enrolDevice(principal, input) {
+    const parsed = parseNativeDeviceInput(input);
+    if (await this.one("SELECT id FROM devices WHERE id=$1 AND account_id=$2", [parsed.deviceId, principal.accountId])) throw new AccessError("DEVICE_ID_CONFLICT", 409, "Use a separate installation identity for sign-in recognition.");
+    const updated = await this.one("INSERT INTO native_app_devices(device_id,account_id,issuer,platform,registered_at,last_seen_at) VALUES($1,$2,$3,$4,$5,$5) ON CONFLICT(device_id) DO UPDATE SET platform=EXCLUDED.platform,last_seen_at=GREATEST(native_app_devices.last_seen_at,EXCLUDED.last_seen_at) WHERE native_app_devices.account_id=EXCLUDED.account_id AND native_app_devices.issuer=EXCLUDED.issuer RETURNING device_id", [parsed.deviceId, principal.accountId, principal.issuer, parsed.platform, this.now()]);
+    if (!updated) throw new AccessError("DEVICE_ID_CONFLICT", 409, "This installation identity is unavailable.");
+    return this.recognisedDevices(principal);
+  }
+  async brandingContext(principal, teamId, seasonId, role) {
+    const memberships = await this.memberships(), nowMs = this.now(), selectedRole = brandSelectedRole(principal, memberships, teamId, seasonId, role, nowMs);
+    const names = await this.one("SELECT * FROM longball.branding_context($1,$2)", [teamId, seasonId]);
+    if (!names || typeof names.club_id !== "string" || names.team_id !== teamId) throw new AccessError("NOT_FOUND", 404, "The requested branding is unavailable.");
+    return { context: { principal, memberships, selectedRole, clubId: names.club_id, teamId, authoritySeasonId: seasonId, nowMs, spectatorGrantActive: selectedRole === "spectator" }, club: { id: names.club_id, name: String(names.club_name) }, team: { id: teamId, name: String(names.team_name), ageGroup: names.age_group === null ? "" : String(names.age_group) } };
   }
   async match(matchId) {
     const row = await this.one("SELECT * FROM matches WHERE id=$1", [matchId]);
@@ -5091,18 +5227,69 @@ var PostgresStore = class _PostgresStore {
 };
 
 // apps/api/src/postgres-media.ts
-import { createHash as createHash3, randomBytes as randomBytes3, randomUUID as randomUUID3 } from "node:crypto";
+import { createHash as createHash4, randomBytes as randomBytes3, randomUUID as randomUUID3 } from "node:crypto";
 import { chmodSync, mkdirSync, readFileSync } from "node:fs";
-import { open, readFile as readFile3, rename, unlink } from "node:fs/promises";
+import { open as open2, rename as rename2, unlink as unlink2 } from "node:fs/promises";
 import { join, resolve, sep } from "node:path";
-import { fileURLToPath } from "node:url";
 import { performance } from "node:perf_hooks";
 
 // apps/api/src/media.ts
-import { createHash as createHash2, randomBytes as randomBytes2, randomUUID as randomUUID2, timingSafeEqual } from "node:crypto";
-import { execFile, spawn } from "node:child_process";
-import { promisify } from "node:util";
+import { createHash as createHash3, randomBytes as randomBytes2, randomUUID as randomUUID2, timingSafeEqual } from "node:crypto";
+import { execFile as execFile2, spawn } from "node:child_process";
+import { promisify as promisify2 } from "node:util";
 import { DatabaseSync } from "node:sqlite";
+
+// apps/api/src/image-bytes.ts
+import { createHash as createHash2 } from "node:crypto";
+import { execFile } from "node:child_process";
+import { access, open, readFile as readFile2, rename, unlink } from "node:fs/promises";
+import { constants } from "node:fs";
+import { isAbsolute } from "node:path";
+import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
+
+// packages/application/src/image-formats.ts
+var MAX_ORIGINAL_IMAGE_BYTES = 15 * 1024 * 1024;
+var pngSignature = [137, 80, 78, 71, 13, 10, 26, 10];
+var read32 = (bytes, at) => bytes[at] * 16777216 + bytes[at + 1] * 65536 + bytes[at + 2] * 256 + bytes[at + 3];
+var four = (bytes, at) => String.fromCharCode(...bytes.subarray(at, at + 4));
+var unsupported = () => new Error(
+  "Choose a still JPEG, PNG or supported single-image HEIC. Animated images, HEIC sequences and other formats are not supported."
+);
+function originalImageMime(bytes) {
+  if (!(bytes instanceof Uint8Array) || bytes.byteLength === 0 || bytes.byteLength > MAX_ORIGINAL_IMAGE_BYTES)
+    throw new Error("Choose a JPEG, PNG or HEIC no larger than 15 MiB.");
+  if (pngSignature.every((byte, index) => bytes[index] === byte)) {
+    for (let offset = 8; offset + 12 <= bytes.length; ) {
+      const length = read32(bytes, offset), type = four(bytes, offset + 4);
+      if (type === "acTL") throw unsupported();
+      if (length > bytes.length - offset - 12) break;
+      offset += length + 12;
+      if (type === "IEND") break;
+    }
+    return "image/png";
+  }
+  if (bytes.length >= 3 && bytes[0] === 255 && bytes[1] === 216 && bytes[2] === 255)
+    return "image/jpeg";
+  if (bytes.length >= 16 && four(bytes, 4) === "ftyp") {
+    const size = read32(bytes, 0);
+    if (size < 16 || size > 4096 || size > bytes.length || size % 4 !== 0)
+      throw unsupported();
+    const major = four(bytes, 8);
+    if (!["heic", "heix", "mif1"].includes(major)) throw unsupported();
+    const brands = [major];
+    for (let offset = 16; offset < size; offset += 4)
+      brands.push(four(bytes, offset));
+    if (brands.some(
+      (brand) => ["hevc", "hevx", "msf1", "avif", "avis"].includes(brand)
+    ) || !brands.some((brand) => brand === "heic" || brand === "heix"))
+      throw unsupported();
+    return "image/heic";
+  }
+  throw unsupported();
+}
+
+// apps/api/src/image-bytes.ts
 var MEDIA_LIMITS = {
   maxBytes: 15 * 1024 * 1024,
   maxPixels: 4e7,
@@ -5114,16 +5301,8 @@ var MEDIA_LIMITS = {
   scannerTimeoutMs: 2e4
 };
 var executeFile = promisify(execFile);
-var hash = (value) => createHash2("sha256").update(value).digest("hex");
-var id = (value) => typeof value === "string" && /^[a-zA-Z0-9_-]{1,150}$/.test(value);
 function fail3(code, status, message) {
   throw new AccessError(code, status, message);
-}
-function auth(state, actor, now, upload = false) {
-  if (!communityCanAccess(state, actor, now) || upload && actor.role === "spectator") fail3("NOT_FOUND", 404, "The requested media operation is unavailable.");
-}
-function sameToken(expectedHash, token) {
-  return typeof token === "string" && token.length <= 256 && timingSafeEqual(Buffer.from(expectedHash, "hex"), Buffer.from(hash(token), "hex"));
 }
 async function bounded(promise, milliseconds, code) {
   let timer;
@@ -5138,7 +5317,11 @@ async function bounded(promise, milliseconds, code) {
 function actualMime(bytes) {
   if (bytes.length >= 8 && bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))) return "image/png";
   if (bytes.length >= 3 && bytes[0] === 255 && bytes[1] === 216 && bytes[2] === 255) return "image/jpeg";
-  return null;
+  try {
+    return originalImageMime(bytes) === "image/heic" ? "image/heic" : null;
+  } catch {
+    return null;
+  }
 }
 function rejectAnimatedPng(bytes) {
   if (actualMime(bytes) !== "image/png") return;
@@ -5152,13 +5335,59 @@ function rejectAnimatedPng(bytes) {
     if (kind === "IEND") break;
   }
 }
-var mediaInternals = { executeFile, hash, id, fail: fail3, auth, sameToken, bounded, actualMime, rejectAnimatedPng };
+async function processPrivateImage(input) {
+  const original = await readFile2(input.originalPath);
+  if (original.length !== input.expectedBytes || createHash2("sha256").update(original).digest("hex") !== input.expectedSha) fail3("UPLOAD_INTEGRITY_FAILED", 422, "The private original does not match its recorded size and hash.");
+  const mimeType = actualMime(original);
+  if (!mimeType || mimeType !== input.declaredMime) fail3("MEDIA_TYPE_MISMATCH", 415, "The image type must match its original JPEG, PNG or supported still HEIC bytes.");
+  rejectAnimatedPng(original);
+  if (!input.scanner) fail3("SCANNER_REQUIRED", 503, "Image safety scanning is not configured. The original remains private; no reviewable or published image was created.");
+  const scan = await bounded(input.scanner.scan(original, { mimeType, sha256: input.expectedSha }), MEDIA_LIMITS.scannerTimeoutMs, "SCANNER_UNAVAILABLE");
+  if (scan.verdict === "unavailable") fail3("SCANNER_UNAVAILABLE", 503, "Image scanning is unavailable. The original remains private for a safe retry.");
+  if (scan.verdict !== "clean") fail3("IMAGE_SCAN_REJECTED", 422, "The image did not pass safety scanning and remains unpublished.");
+  if (mimeType === "image/heic") {
+    const decoder = process.env.LONGBALL_HEIC_DECODER_FILE ?? "/opt/longball-heic/bin/longball-heic";
+    if (!isAbsolute(decoder) || decoder.length > 4096) fail3("HEIC_DECODER_REQUIRED", 503, "The private HEIC decoder is not configured. The original remains private for retry.");
+    try {
+      await access(decoder, constants.X_OK);
+    } catch {
+      fail3("HEIC_DECODER_REQUIRED", 503, "The private HEIC decoder is unavailable. The original remains private for retry.");
+    }
+  }
+  let decoded;
+  try {
+    const result = await executeFile(process.execPath, ["--max-old-space-size=128", fileURLToPath(new URL("./media-worker.mjs", import.meta.url)), input.originalPath, input.displayPath, input.thumbnailPath, mimeType, input.kind ?? "photo"], { timeout: MEDIA_LIMITS.decodeTimeoutMs, killSignal: "SIGKILL", maxBuffer: 64 * 1024, windowsHide: true });
+    decoded = JSON.parse(result.stdout);
+    const edge = input.kind === "logo" ? 1024 : MEDIA_LIMITS.displayEdge;
+    if (!Number.isSafeInteger(decoded.width) || !Number.isSafeInteger(decoded.height) || decoded.width < 1 || decoded.height < 1 || decoded.width > edge || decoded.height > edge) throw new Error();
+  } catch {
+    fail3("IMAGE_DECODE_REJECTED", 415, "The image could not be safely decoded within the supported format, pixel and processing limits.");
+  } finally {
+    if (mimeType === "image/heic") await unlink(input.displayPath + ".heic-rgba").catch(() => void 0);
+  }
+  return { ...decoded, scannerEngine: scan.engine.slice(0, 100), contentType: input.kind === "logo" ? "image/png" : "image/jpeg" };
+}
+
+// apps/api/src/media.ts
+var executeFile2 = promisify2(execFile2);
+var hash = (value) => createHash3("sha256").update(value).digest("hex");
+var id = (value) => typeof value === "string" && /^[a-zA-Z0-9_-]{1,150}$/.test(value);
+function fail4(code, status, message) {
+  throw new AccessError(code, status, message);
+}
+function auth(state, actor, now, upload = false) {
+  if (!communityCanAccess(state, actor, now) || upload && actor.role === "spectator") fail4("NOT_FOUND", 404, "The requested media operation is unavailable.");
+}
+function sameToken(expectedHash, token) {
+  return typeof token === "string" && token.length <= 256 && timingSafeEqual(Buffer.from(expectedHash, "hex"), Buffer.from(hash(token), "hex"));
+}
+var mediaInternals = { executeFile: executeFile2, hash, id, fail: fail4, auth, sameToken, bounded, actualMime, rejectAnimatedPng };
 
 // apps/api/src/postgres-security.ts
-import { readFile as readFile2 } from "node:fs/promises";
+import { readFile as readFile3 } from "node:fs/promises";
 async function install(database, name) {
   if (database.migrationMode !== "apply") throw new Error("Security migration requires the separate schema-owner migrator.");
-  const sql = await readFile2(new URL(`../migrations/postgresql/005_${name}_security.sql`, import.meta.url), "utf8");
+  const sql = await readFile3(new URL(`../migrations/postgresql/005_${name}_security.sql`, import.meta.url), "utf8");
   await database.transaction(() => database.query(sql));
 }
 async function verify(database, tables) {
@@ -5174,19 +5403,21 @@ var installMediaSecurity = (database) => install(database, "media");
 var installActivationSecurity = (database) => install(database, "activation");
 var verifyMediaSecurity = (database) => verify(database, ["media_uploads"]);
 var verifyActivationSecurity = (database) => verify(database, ["lb_activation_children", "lb_activation_issues", "lb_activation_tokens", "lb_activation_verification_requests"]);
+async function installHeicMedia(database) {
+  if (database.migrationMode !== "apply") throw new Error("Media migration requires the separate schema-owner migrator.");
+  const sql = await readFile3(new URL("../migrations/postgresql/media_003_heic.sql", import.meta.url), "utf8");
+  await database.transaction(() => database.query(sql));
+}
 
 // apps/api/src/postgres-media.ts
 var {
-  executeFile: executeFile2,
   hash: hash2,
   id: id2,
   auth: auth2,
   sameToken: sameToken2,
-  bounded: bounded2,
-  actualMime: actualMime2,
-  rejectAnimatedPng: rejectAnimatedPng2
+  bounded: bounded2
 } = mediaInternals;
-function fail4(code, status, message) {
+function fail5(code, status, message) {
   return mediaInternals.fail(code, status, message);
 }
 var PgMediaService = class _PgMediaService {
@@ -5216,8 +5447,8 @@ var PgMediaService = class _PgMediaService {
       const versions = await this.database.query(
         "SELECT version FROM longball.media_schema_migrations ORDER BY version"
       );
-      if (versions.rows.some((row) => row.version > 2)) throw new Error("Media schema is newer than this build.");
-      if (!versions.rows.some((row) => row.version === 2)) throw new Error("Run the separate media migrator before starting the runtime.");
+      if (versions.rows.some((row) => row.version > 3)) throw new Error("Media schema is newer than this build.");
+      if (![2, 3].every((version) => versions.rows.some((row) => row.version === version))) throw new Error("Run the separate media migrator before starting the runtime.");
       await verifyMediaSecurity(this.database);
       return;
     }
@@ -5228,7 +5459,7 @@ var PgMediaService = class _PgMediaService {
       const versions = await this.database.query(
         "SELECT version FROM longball.media_schema_migrations ORDER BY version"
       );
-      if (versions.rows.some((row) => row.version > 2))
+      if (versions.rows.some((row) => row.version > 3))
         throw new Error(
           "Media schema is newer than this build; preserve it and use a compatible version."
         );
@@ -5248,6 +5479,10 @@ var PgMediaService = class _PgMediaService {
         await installMediaSecurity(this.database);
         await this.database.query("INSERT INTO longball.media_schema_migrations(version) VALUES(2)");
       }
+      if (!versions.rows.some((row) => row.version === 3)) {
+        await installHeicMedia(this.database);
+        await this.database.query("INSERT INTO longball.media_schema_migrations(version) VALUES(3)");
+      }
     });
   }
   /** Injected connection lifecycle belongs to the API/store. */
@@ -5265,7 +5500,7 @@ var PgMediaService = class _PgMediaService {
   path(key) {
     const path = resolve(this.directory, key);
     if (!path.startsWith(this.directory + sep))
-      fail4(
+      fail5(
         "MEDIA_STORE_INVALID",
         503,
         "The private media object is unavailable."
@@ -5275,13 +5510,13 @@ var PgMediaService = class _PgMediaService {
   async row(state, actor, uploadId, token) {
     auth2(state, actor, this.now(), true);
     if (!id2(uploadId))
-      fail4("NOT_FOUND", 404, "The requested upload is unavailable.");
+      fail5("NOT_FOUND", 404, "The requested upload is unavailable.");
     const row = await this.one(
       "SELECT * FROM longball.media_uploads WHERE id=$1 AND owner_id=$2 AND team_id=$3 AND season_id=$4",
       [uploadId, actor.accountId, actor.teamId, actor.seasonId]
     );
     if (!row || token !== void 0 && !sameToken2(row.token_hash, token))
-      fail4("NOT_FOUND", 404, "The requested upload is unavailable.");
+      fail5("NOT_FOUND", 404, "The requested upload is unavailable.");
     return row;
   }
   async prepare(state, actor, input) {
@@ -5298,17 +5533,17 @@ var PgMediaService = class _PgMediaService {
         "photoId",
         "sourceRevision"
       ];
-      if (!input || typeof input !== "object" || Object.keys(input).some((key) => !allowedKeys.includes(key)) || !id2(input.requestId) || !id2(input.matchId) || !Number.isSafeInteger(input.byteSize) || input.byteSize < 1 || input.byteSize > MEDIA_LIMITS.maxBytes || !["image/jpeg", "image/png"].includes(input.mimeType) || typeof input.sha256 !== "string" || !/^[a-fA-F0-9]{64}$/.test(input.sha256) || typeof input.caption !== "string" || input.caption.trim().length > 160 || input.policyAcknowledged !== true) {
-        fail4(
+      if (!input || typeof input !== "object" || Object.keys(input).some((key) => !allowedKeys.includes(key)) || !id2(input.requestId) || !id2(input.matchId) || !Number.isSafeInteger(input.byteSize) || input.byteSize < 1 || input.byteSize > MEDIA_LIMITS.maxBytes || !["image/jpeg", "image/png", "image/heic"].includes(input.mimeType) || typeof input.sha256 !== "string" || !/^[a-fA-F0-9]{64}$/.test(input.sha256) || typeof input.caption !== "string" || input.caption.trim().length > 160 || input.policyAcknowledged !== true) {
+        fail5(
           "INVALID_MEDIA_PREPARATION",
           422,
-          "Use a JPEG or PNG up to 15 MiB with a valid size, SHA-256 and policy acknowledgement. HEIC is not enabled until its decoder is validated."
+          "Use an original JPEG, PNG or supported still HEIC up to 15 MiB with a valid size, SHA-256 and policy acknowledgement."
         );
       }
       const match = state.matches.find(
         (item) => item.id === input.matchId && item.teamId === actor.teamId && item.seasonId === actor.seasonId
       );
-      if (!match) fail4("NOT_FOUND", 404, "The requested match is unavailable.");
+      if (!match) fail5("NOT_FOUND", 404, "The requested match is unavailable.");
       const signature2 = hash2(
         JSON.stringify([
           input.matchId,
@@ -5328,13 +5563,13 @@ var PgMediaService = class _PgMediaService {
       const token = randomBytes3(32).toString("base64url");
       if (existing) {
         if (existing.request_signature !== signature2 || existing.team_id !== actor.teamId || existing.season_id !== actor.seasonId)
-          fail4(
+          fail5(
             "IDEMPOTENCY_CONFLICT",
             409,
             "This upload request identity was already used for different content."
           );
         if (existing.expires_at <= this.now() && ["prepared", "uploading"].includes(existing.status))
-          fail4(
+          fail5(
             "UPLOAD_EXPIRED",
             410,
             "The upload window expired. Prepare a new upload without discarding the previous private record."
@@ -5359,7 +5594,7 @@ var PgMediaService = class _PgMediaService {
           (item) => item.id === input.photoId && item.matchId === match.id && item.teamId === actor.teamId && item.seasonId === actor.seasonId && item.uploaderAccountId === actor.accountId && item.uploaderRole === actor.role && item.removedAtMs === null
         );
         if (!photo || !Number.isSafeInteger(input.sourceRevision) || photo.currentRevision !== input.sourceRevision)
-          fail4(
+          fail5(
             "MEDIA_REVISION_CONFLICT",
             409,
             "The photo changed. Review its current revision before replacing it."
@@ -5405,9 +5640,9 @@ var PgMediaService = class _PgMediaService {
     const row = await this.row(state, actor, uploadId, token);
     const duplicate = ["uploaded", "processed", "linked"].includes(row.status);
     if (!duplicate && row.expires_at <= this.now())
-      fail4("UPLOAD_EXPIRED", 410, "The write-only upload window expired.");
+      fail5("UPLOAD_EXPIRED", 410, "The write-only upload window expired.");
     if (!duplicate && row.status !== "prepared" && !(row.status === "uploading" && (row.lease_until ?? 0) < this.now()))
-      fail4(
+      fail5(
         "UPLOAD_BUSY",
         409,
         "This upload is already running or cannot be changed."
@@ -5421,10 +5656,10 @@ var PgMediaService = class _PgMediaService {
         [attempt, this.now() + 65e3, row.id, this.now()]
       );
       if (!updated.changes)
-        fail4("UPLOAD_BUSY", 409, "This upload is already running.");
+        fail5("UPLOAD_BUSY", 409, "This upload is already running.");
     }
-    const destination = duplicate ? null : await open(temporary, "wx", 384);
-    const digest2 = createHash3("sha256");
+    const destination = duplicate ? null : await open2(temporary, "wx", 384);
+    const digest2 = createHash4("sha256");
     let received = 0;
     const began = performance.now();
     const iterator = source2[Symbol.asyncIterator]();
@@ -5439,7 +5674,7 @@ var PgMediaService = class _PgMediaService {
         const chunk = Buffer.from(item.value);
         received += chunk.length;
         if (received > row.expected_bytes || received > MEDIA_LIMITS.maxBytes)
-          fail4(
+          fail5(
             "UPLOAD_TOO_LARGE",
             413,
             "The image exceeds its declared upload size."
@@ -5448,7 +5683,7 @@ var PgMediaService = class _PgMediaService {
         if (destination) await destination.writeFile(chunk);
       }
       if (received !== row.expected_bytes || digest2.digest("hex") !== row.expected_sha)
-        fail4(
+        fail5(
           "UPLOAD_INTEGRITY_FAILED",
           422,
           "The uploaded size or SHA-256 does not match. The private partial upload was not accepted."
@@ -5456,13 +5691,13 @@ var PgMediaService = class _PgMediaService {
       if (destination) {
         await destination.sync();
         await destination.close();
-        await rename(temporary, this.path(key));
+        await rename2(temporary, this.path(key));
         const changed = await this.execute(
           "UPDATE longball.media_uploads SET status='uploaded',original_key=$1,lease_until=NULL,failure_code=NULL WHERE id=$2 AND attempt=$3 AND status='uploading'",
           [key, row.id, attempt]
         );
         if (!changed.changes)
-          fail4(
+          fail5(
             "UPLOAD_LEASE_CHANGED",
             409,
             "The upload lease changed. The private branch is retained for review."
@@ -5472,7 +5707,7 @@ var PgMediaService = class _PgMediaService {
     } catch (error) {
       if (destination) {
         await destination.close().catch(() => void 0);
-        await unlink(temporary).catch(() => void 0);
+        await unlink2(temporary).catch(() => void 0);
       }
       if (!duplicate)
         await this.execute(
@@ -5514,90 +5749,24 @@ var PgMediaService = class _PgMediaService {
     if (row.status === "processed" || row.status === "linked")
       return this.completion(row);
     if (row.status !== "uploaded" && !(row.status === "processing" && (row.lease_until ?? 0) < this.now()))
-      fail4(
+      fail5(
         "UPLOAD_NOT_READY",
         409,
         "Finish the private upload before completion; an active processing lease cannot be duplicated."
       );
     if (!row.original_key)
-      fail4("UPLOAD_NOT_READY", 409, "The private original is unavailable.");
+      fail5("UPLOAD_NOT_READY", 409, "The private original is unavailable.");
     const attempt = randomUUID3();
     const leased = await this.execute(
       "UPDATE longball.media_uploads SET status='processing',attempt=$1,lease_until=$2,failure_code=NULL WHERE id=$3 AND (status='uploaded' OR (status='processing' AND lease_until<$4))",
       [attempt, this.now() + 6e4, row.id, this.now()]
     );
     if (!leased.changes)
-      fail4("UPLOAD_BUSY", 409, "This image is already processing.");
+      fail5("UPLOAD_BUSY", 409, "This image is already processing.");
     try {
-      const original = await readFile3(this.path(row.original_key));
-      if (original.length !== row.expected_bytes || hash2(original) !== row.expected_sha)
-        fail4(
-          "UPLOAD_INTEGRITY_FAILED",
-          422,
-          "The private original does not match its recorded size and hash."
-        );
-      const mimeType = actualMime2(original);
-      if (!mimeType || mimeType !== row.declared_mime)
-        fail4(
-          "MEDIA_TYPE_MISMATCH",
-          415,
-          "Decoded image type must match its bytes. Only JPEG and PNG are enabled."
-        );
-      rejectAnimatedPng2(original);
-      if (!this.scanner)
-        fail4(
-          "SCANNER_REQUIRED",
-          503,
-          "Image safety scanning is not configured. The original remains private; no reviewable or published image was created."
-        );
-      const scan = await bounded2(
-        this.scanner.scan(original, { mimeType, sha256: row.expected_sha }),
-        MEDIA_LIMITS.scannerTimeoutMs,
-        "SCANNER_UNAVAILABLE"
-      );
-      if (scan.verdict === "unavailable")
-        fail4(
-          "SCANNER_UNAVAILABLE",
-          503,
-          "Image scanning is unavailable. The original remains private for a safe retry."
-        );
-      if (scan.verdict !== "clean")
-        fail4(
-          "IMAGE_SCAN_REJECTED",
-          422,
-          "The image did not pass safety scanning and remains unpublished."
-        );
       const displayKey = `derivatives/${row.photo_id}-v${row.display_revision}-${attempt}-display.jpg`;
       const thumbnailKey = `derivatives/${row.photo_id}-v${row.display_revision}-${attempt}-thumbnail.jpg`;
-      let decoded;
-      try {
-        const result = await executeFile2(
-          process.execPath,
-          [
-            "--max-old-space-size=128",
-            fileURLToPath(new URL("./media-worker.mjs", import.meta.url)),
-            this.path(row.original_key),
-            this.path(displayKey),
-            this.path(thumbnailKey),
-            mimeType
-          ],
-          {
-            timeout: MEDIA_LIMITS.decodeTimeoutMs,
-            killSignal: "SIGKILL",
-            maxBuffer: 64 * 1024,
-            windowsHide: true
-          }
-        );
-        decoded = JSON.parse(result.stdout);
-        if (!Number.isSafeInteger(decoded.width) || !Number.isSafeInteger(decoded.height) || decoded.width < 1 || decoded.height < 1 || decoded.width > MEDIA_LIMITS.displayEdge || decoded.height > MEDIA_LIMITS.displayEdge)
-          throw new Error();
-      } catch {
-        fail4(
-          "IMAGE_DECODE_REJECTED",
-          415,
-          "The image could not be safely decoded within the supported format, pixel and processing limits."
-        );
-      }
+      const decoded = await processPrivateImage({ originalPath: this.path(row.original_key), displayPath: this.path(displayKey), thumbnailPath: this.path(thumbnailKey), expectedBytes: row.expected_bytes, expectedSha: row.expected_sha, declaredMime: row.declared_mime, scanner: this.scanner });
       const saved = await this.execute(
         "UPDATE longball.media_uploads SET status='processed',display_key=$1,thumbnail_key=$2,width=$3,height=$4,scanner_engine=$5,failure_code=NULL,lease_until=NULL WHERE id=$6 AND attempt=$7 AND status='processing'",
         [
@@ -5605,13 +5774,13 @@ var PgMediaService = class _PgMediaService {
           thumbnailKey,
           decoded.width,
           decoded.height,
-          scan.engine.slice(0, 100),
+          decoded.scannerEngine,
           row.id,
           attempt
         ]
       );
       if (!saved.changes)
-        fail4(
+        fail5(
           "PROCESSING_LEASE_CHANGED",
           409,
           "The processing lease changed. No publication was performed."
@@ -5621,6 +5790,7 @@ var PgMediaService = class _PgMediaService {
       const code = error instanceof AccessError ? error.code : "MEDIA_PROCESSING_FAILED";
       const retryable = [
         "SCANNER_REQUIRED",
+        "HEIC_DECODER_REQUIRED",
         "SCANNER_UNAVAILABLE",
         "MEDIA_PROCESSING_FAILED"
       ].includes(code);
@@ -5641,7 +5811,7 @@ var PgMediaService = class _PgMediaService {
       [uploadId]
     );
     if (!row || !["processed", "linked"].includes(row.status))
-      fail4(
+      fail5(
         "MEDIA_NOT_PROCESSED",
         409,
         "The image has not completed private processing."
@@ -5651,19 +5821,20 @@ var PgMediaService = class _PgMediaService {
         (revision) => revision.version === row.display_revision
       )
     ))
-      fail4(
+      fail5(
         "MEDIA_LINK_CONFLICT",
         409,
         "The matching community revision was not committed."
       );
-    await this.execute(
+    const linked = await this.execute(
       "UPDATE longball.media_uploads SET status='linked' WHERE id=$1",
       [uploadId]
     );
+    if (linked.changes !== 1) fail5("MEDIA_LINK_CONFLICT", 409, "The private processing authority changed. No community revision was committed.");
   }
   async gateway(state, actor, photoId, variant, mode = "gallery", revision) {
     if (!["display", "thumbnail"].includes(variant))
-      fail4("NOT_FOUND", 404, "The media variant is unavailable.");
+      fail5("NOT_FOUND", 404, "The media variant is unavailable.");
     const decision = authorizeCommunityMedia(
       state,
       actor,
@@ -5673,20 +5844,20 @@ var PgMediaService = class _PgMediaService {
       revision
     );
     if (!decision.allowed)
-      fail4("NOT_FOUND", 404, "The requested image is unavailable.");
+      fail5("NOT_FOUND", 404, "The requested image is unavailable.");
     const row = await this.one(
       "SELECT * FROM longball.media_uploads WHERE photo_id=$1 AND display_revision=$2 AND status='linked'",
       [photoId, decision.revision.version]
     );
     if (!row || row.team_id !== actor.teamId || row.season_id !== actor.seasonId)
-      fail4("NOT_FOUND", 404, "The requested image is unavailable.");
+      fail5("NOT_FOUND", 404, "The requested image is unavailable.");
     const key = variant === "display" ? row.display_key : row.thumbnail_key;
-    if (!key) fail4("NOT_FOUND", 404, "The requested image is unavailable.");
+    if (!key) fail5("NOT_FOUND", 404, "The requested image is unavailable.");
     let body;
     try {
       body = readFileSync(this.path(key));
     } catch {
-      fail4("NOT_FOUND", 404, "The requested image is unavailable.");
+      fail5("NOT_FOUND", 404, "The requested image is unavailable.");
     }
     return {
       body,
@@ -5719,8 +5890,8 @@ var PgMediaService = class _PgMediaService {
 };
 
 // apps/api/src/postgres-activation.ts
-import { createHash as createHash4, randomBytes as randomBytes4, randomUUID as randomUUID4 } from "node:crypto";
-var hash3 = (value) => createHash4("sha256").update(value).digest("hex");
+import { createHash as createHash5, randomBytes as randomBytes4, randomUUID as randomUUID4 } from "node:crypto";
+var hash3 = (value) => createHash5("sha256").update(value).digest("hex");
 var id3 = (value) => typeof value === "string" && /^[A-Za-z0-9_-]{1,150}$/.test(value);
 var uuid = (value) => typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 function unavailable() {
@@ -5744,7 +5915,7 @@ function conflict() {
     "The request identifier was already used for another operation."
   );
 }
-function fields3(value, names) {
+function fields4(value, names) {
   if (!value || typeof value !== "object" || Array.isArray(value) || Object.keys(value).some((key) => !names.includes(key)) || names.some((key) => !(key in value)))
     invalid();
 }
@@ -5763,6 +5934,11 @@ function username() {
   return `LB${Array.from(randomBytes4(12), (byte) => alphabet[byte & 31]).join("")}`;
 }
 var PostgresActivationService = class {
+  async ownsActivationToken(token, activationId) {
+    await this.ready;
+    if (!/^[A-Za-z0-9_-]{43}$/.test(token)) return false;
+    return this.store.db.withContext({ kind: "activation_token", tokenHash: hash3(token), ...activationId ? { activationId } : {}, nowMs: this.store.now() }, async () => Boolean(await this.store.one("SELECT id FROM lb_activation_tokens WHERE token_hash=$1 AND ($2::text IS NULL OR id=$2)", [hash3(token), activationId ?? null])));
+  }
   ready;
   async initialize() {
     await this.ready;
@@ -5932,7 +6108,7 @@ CREATE TRIGGER lb_activation_immutable_child BEFORE UPDATE OF classification ON 
   async createPendingChild(principal, input) {
     await this.ready;
     const { provider } = await this.enabled();
-    fields3(input, ["requestId", "teamId", "seasonId", "playerId"]);
+    fields4(input, ["requestId", "teamId", "seasonId", "playerId"]);
     if (![input.requestId, input.teamId, input.seasonId, input.playerId].every(id3))
       invalid();
     const signature2 = fingerprint(principal.accountId, input);
@@ -6103,7 +6279,7 @@ CREATE TRIGGER lb_activation_immutable_child BEFORE UPDATE OF classification ON 
   async issueActivation(principal, input) {
     await this.ready;
     const { provider, policy } = await this.enabled();
-    fields3(input, ["requestId", "teamId", "seasonId", "accountId"]);
+    fields4(input, ["requestId", "teamId", "seasonId", "accountId"]);
     if (![input.requestId, input.teamId, input.seasonId].every(id3) || !uuid(input.accountId))
       invalid();
     const signature2 = fingerprint(principal.accountId, input);
@@ -6245,7 +6421,7 @@ CREATE TRIGGER lb_activation_immutable_child BEFORE UPDATE OF classification ON 
   }
   async redeemActivation(input) {
     await this.ready;
-    fields3(input, ["token", "requestId"]);
+    fields4(input, ["token", "requestId"]);
     if (typeof input.token !== "string" || !/^[A-Za-z0-9_-]{43}$/.test(input.token) || !id3(input.requestId))
       unavailable();
     return this.store.db.withContext(
@@ -6260,7 +6436,7 @@ CREATE TRIGGER lb_activation_immutable_child BEFORE UPDATE OF classification ON 
   async redeemWithCapability(input) {
     await this.ready;
     const { provider } = await this.enabled();
-    fields3(input, ["token", "requestId"]);
+    fields4(input, ["token", "requestId"]);
     if (typeof input.token !== "string" || !/^[A-Za-z0-9_-]{43}$/.test(input.token) || !id3(input.requestId))
       unavailable();
     const reserved = await this.store.transaction(async () => {
@@ -6329,7 +6505,7 @@ CREATE TRIGGER lb_activation_immutable_child BEFORE UPDATE OF classification ON 
   }
   async completeActivation(input) {
     await this.ready;
-    fields3(input, ["activationId", "token", "completionProof"]);
+    fields4(input, ["activationId", "token", "completionProof"]);
     if (!uuid(input.activationId) || typeof input.token !== "string" || !/^[A-Za-z0-9_-]{43}$/.test(input.token) || typeof input.completionProof !== "string" || !input.completionProof || input.completionProof.length > 16384)
       unavailable();
     return this.store.db.withContext(
@@ -6345,7 +6521,7 @@ CREATE TRIGGER lb_activation_immutable_child BEFORE UPDATE OF classification ON 
   async completeWithCapability(input) {
     await this.ready;
     const { provider } = await this.enabled();
-    fields3(input, ["activationId", "token", "completionProof"]);
+    fields4(input, ["activationId", "token", "completionProof"]);
     if (!uuid(input.activationId) || typeof input.token !== "string" || !/^[A-Za-z0-9_-]{43}$/.test(input.token) || typeof input.completionProof !== "string" || !input.completionProof || input.completionProof.length > 16384)
       unavailable();
     const token = await this.store.one(
@@ -6429,7 +6605,7 @@ CREATE TRIGGER lb_activation_immutable_child BEFORE UPDATE OF classification ON 
   }
   async requestExistingAccountLink(principal, input) {
     await this.ready;
-    fields3(input, [
+    fields4(input, [
       "requestId",
       "teamId",
       "seasonId",
@@ -6447,7 +6623,7 @@ CREATE TRIGGER lb_activation_immutable_child BEFORE UPDATE OF classification ON 
   }
   async requestRecovery(principal, input) {
     await this.ready;
-    fields3(input, ["requestId", "teamId", "seasonId", "accountId"]);
+    fields4(input, ["requestId", "teamId", "seasonId", "accountId"]);
     if (!uuid(input.accountId)) invalid();
     return await this.verificationRequest(
       principal,
@@ -6540,15 +6716,17 @@ async function applyRuntimeGrants(database, roles = { apiRole: "longball_api", w
     await database.query(`GRANT USAGE ON SCHEMA longball TO ${api},${worker}`);
     await database.query(`REVOKE ALL ON ALL TABLES IN SCHEMA longball FROM ${api},${worker}`);
     await database.query(`REVOKE ALL ON ALL FUNCTIONS IN SCHEMA longball FROM PUBLIC,${api},${worker}`);
-    const apiTables = ["clubs", "teams", "team_seasons", "game_contexts", "accounts", "memberships", "matches", "documents", "devices", "controller_grants", "controller_history", "events", "streams", "conflicting_submissions", "transfers", "clock_challenges", "clock_mappings", "reconciliation_proposals", "audit", "idempotency", "privacy_requests", "privacy_pending_keys", "jobs", "media_uploads", "lb_activation_children", "lb_activation_issues", "lb_activation_tokens", "lb_activation_verification_requests"];
+    const apiTables = ["clubs", "teams", "team_seasons", "game_contexts", "accounts", "memberships", "matches", "documents", "devices", "controller_grants", "controller_history", "events", "streams", "conflicting_submissions", "transfers", "clock_challenges", "clock_mappings", "reconciliation_proposals", "audit", "idempotency", "privacy_requests", "privacy_pending_keys", "jobs", "media_uploads", "lb_activation_children", "lb_activation_issues", "lb_activation_tokens", "lb_activation_verification_requests", "brand_assets", "brand_slots", "spectator_invitations", "lb_spectator_activation_accounts", "lb_spectator_activation_attempts", "native_app_devices"];
     await database.query(`GRANT SELECT,INSERT,UPDATE ON ${apiTables.map((table) => `longball.${table}`).join(",")} TO ${api}`);
     await database.query(`GRANT SELECT ON longball.schema_migrations,longball.media_schema_migrations,longball.lb_activation_schema TO ${api},${worker}`);
     await database.query(`REVOKE UPDATE ON longball.events,longball.audit,longball.controller_history,longball.reconciliation_proposals,longball.clock_mappings FROM ${api}`);
     await database.query(`GRANT SELECT ON longball.clubs,longball.teams,longball.team_seasons,longball.game_contexts,longball.accounts,longball.memberships,longball.matches TO ${worker}`);
     await database.query(`GRANT SELECT,INSERT,UPDATE ON longball.jobs,longball.documents TO ${worker}`);
-    const helpers = ["runtime_purpose()", "context_json()", "context_now()", "actor_valid()", "context_matches(text,text,text)", "actor_role(text,text,text)", "actor_admin(text,text,text)", "actor_manager(text,text,text)", "invite_capability(text,text,text)", "worker_job_valid(text,text,text)", "worker_kind()", "worker_account(text,text,text,text)", "spectator_grant_active(text,text,text,text)", "activation_account(text,boolean)", "account_visible(text)", "document_write(text,text,text,text)", "worker_match(text,text,text,text)"];
+    const helpers = ["runtime_purpose()", "context_json()", "context_now()", "actor_valid()", "context_matches(text,text,text)", "actor_role(text,text,text)", "actor_admin(text,text,text)", "actor_manager(text,text,text)", "invite_capability(text,text,text)", "worker_job_valid(text,text,text)", "worker_kind()", "worker_account(text,text,text,text)", "spectator_grant_active(text,text,text,text)", "activation_account(text,boolean)", "spectator_activation_account(text,boolean)", "invitation_live(text,text)", "account_visible(text)", "document_write(text,text,text,text)", "worker_match(text,text,text,text)"];
     await database.query(`GRANT EXECUTE ON FUNCTION ${helpers.map((name) => `longball.${name}`).join(",")} TO ${api},${worker}`);
     await database.query(`GRANT EXECUTE ON FUNCTION longball.media_gallery_allowed(text,integer,text,text,text,text,text) TO ${api}`);
+    await database.query(`GRANT EXECUTE ON FUNCTION longball.branding_member(text,text),longball.branding_authority(text,text,text),longball.branding_context(text,text) TO ${api}`);
+    await database.query(`GRANT EXECUTE ON FUNCTION longball.invitation_live(text,text),longball.invitation_preflight(text),longball.invitation_accept_scope(text),longball.spectator_activation_account(text,boolean) TO ${api}`);
     await database.query(`GRANT EXECUTE ON FUNCTION longball.claim_due_job(text,bigint,text),longball.enqueue_award_notification(text,text,jsonb,bigint) TO ${worker}`);
   });
 }

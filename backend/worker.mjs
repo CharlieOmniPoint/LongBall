@@ -1797,6 +1797,29 @@ function createPreparationState() {
   };
 }
 
+// packages/application/src/invitation-credentials.ts
+var validTime2 = (value) => Number.isSafeInteger(value) && value >= 0;
+function publicInvitation(invite, nowMs) {
+  if (!validTime2(nowMs))
+    throw new Error("A valid invitation observation is required.");
+  const legacy = !invite.credential || invite.credential.kind === "legacy_retired";
+  const state = invite.revokedAtMs !== null ? "revoked" : invite.acceptedBy !== null ? "accepted" : legacy ? "requires_reissue" : invite.expiresAtMs <= nowMs ? "expired" : "pending";
+  return {
+    id: invite.id,
+    teamId: invite.teamId,
+    seasonId: invite.seasonId,
+    inviterAccountId: invite.inviterAccountId,
+    createdAtMs: invite.createdAtMs,
+    expiresAtMs: invite.expiresAtMs,
+    acceptedBy: invite.acceptedBy,
+    acceptedAtMs: invite.acceptedAtMs,
+    revokedAtMs: invite.revokedAtMs,
+    reissuedFromInvitationId: invite.reissuedFromInvitationId ?? null,
+    state,
+    requiresReissue: !invite.credential ? invite.acceptedBy === null && invite.revokedAtMs === null : invite.credential.kind === "legacy_retired" && invite.credential.requiresReissue
+  };
+}
+
 // packages/application/src/community.ts
 var CommunityError = class extends Error {
   constructor(code2, message) {
@@ -1809,7 +1832,7 @@ var CommunityError = class extends Error {
 function requireRule(condition, code2, message) {
   if (!condition) throw new CommunityError(code2, message);
 }
-function validTime2(value) {
+function validTime3(value) {
   return Number.isSafeInteger(value) && value >= 0;
 }
 function unique2(values) {
@@ -1900,7 +1923,7 @@ function defaultCommunityPreferences() {
   return { schedule: true, match: true, awards: true, photos: true, quietStart: null, quietEnd: null };
 }
 function applyCommunityCommand(state, actor, command, nowMs) {
-  requireRule(validTime2(nowMs), "invalid", "A valid receipt time is required.");
+  requireRule(validTime3(nowMs), "invalid", "A valid receipt time is required.");
   account(state, actor);
   requireRule(command.id.trim(), "invalid", "A command identity is required.");
   const fingerprint = JSON.stringify([actor, command]);
@@ -1915,10 +1938,11 @@ function applyCommunityCommand(state, actor, command, nowMs) {
   if (!personal && command.type !== "invite.accepted") assertAccess(next, actor, nowMs);
   switch (command.type) {
     case "invite.created": {
+      requireRule(next.synthetic === true, "forbidden", "Review codes are available only in the fictional local journey.");
       requireRule(actor.role !== "spectator", "forbidden", "Spectators cannot invite other spectators.");
       const season = next.seasons.find((item) => item.id === actor.seasonId && item.teamId === actor.teamId);
       requireRule(season, "invalid", "The team season is missing.");
-      requireRule(validTime2(command.expiresAtMs) && nowMs < command.expiresAtMs && command.expiresAtMs <= season.accessEndsAtMs, "invalid", "Choose an invitation expiry after now and before the season ends.");
+      requireRule(validTime3(command.expiresAtMs) && nowMs < command.expiresAtMs && command.expiresAtMs <= season.accessEndsAtMs, "invalid", "Choose an invitation expiry after now and before the season ends.");
       requireRule(command.reviewCode.trim().length >= 6 && !next.invitations.some((item) => item.reviewCode === command.reviewCode || item.id === command.invitationId), "invalid", "The fictional invitation identity/code must be unique.");
       next.invitations.push({
         id: command.invitationId,
@@ -1926,16 +1950,19 @@ function applyCommunityCommand(state, actor, command, nowMs) {
         seasonId: actor.seasonId,
         inviterAccountId: actor.accountId,
         reviewCode: command.reviewCode,
+        credential: { kind: "fictional_review", version: 1, code: command.reviewCode },
         createdAtMs: nowMs,
         expiresAtMs: command.expiresAtMs,
         acceptedBy: null,
         acceptedAtMs: null,
-        revokedAtMs: null
+        revokedAtMs: null,
+        reissuedFromInvitationId: null
       });
       break;
     }
     case "invite.accepted": {
-      const invite = next.invitations.find((item) => item.reviewCode === command.reviewCode);
+      requireRule(next.synthetic === true, "forbidden", "Review codes are available only in the fictional local journey.");
+      const invite = next.invitations.find((item) => item.credential?.kind === "fictional_review" && item.credential.code === command.reviewCode && item.reviewCode === command.reviewCode);
       requireRule(invite && invite.teamId === actor.teamId && invite.seasonId === actor.seasonId, "forbidden", "That invitation is not valid for this team and season.");
       requireRule(invite.revokedAtMs === null && invite.acceptedBy === null, "closed", "That invitation has already been accepted or revoked.");
       requireRule(nowMs < invite.expiresAtMs, "expired", "This invitation has expired. Ask for a new individual invitation.");
@@ -1975,10 +2002,10 @@ function applyCommunityCommand(state, actor, command, nowMs) {
       const match = command.match;
       requireRule(match.teamId === actor.teamId && match.seasonId === actor.seasonId, "forbidden", "A match must belong to the active team and season.");
       requireRule(!next.matches.some((item) => item.id === match.id), "conflict", "This match is already registered. A corrected finish requires an audited exception process and never reopens an award.");
-      requireRule(validTime2(match.playedAtMs) && unique2(match.selectedPlayerIds) && unique2(match.presentPlayerIds) && unique2(match.playedPlayerIds), "invalid", "The match evidence is invalid.");
+      requireRule(validTime3(match.playedAtMs) && unique2(match.selectedPlayerIds) && unique2(match.presentPlayerIds) && unique2(match.playedPlayerIds), "invalid", "The match evidence is invalid.");
       requireRule(match.presentPlayerIds.every((id) => match.selectedPlayerIds.includes(id)) && match.playedPlayerIds.every((id) => match.presentPlayerIds.includes(id)), "invalid", "Played and present evidence must belong to the selected squad.");
       requireRule(match.selectedPlayerIds.every((id) => next.memberships.some((member) => member.playerId === id && member.teamId === actor.teamId && member.seasonId === actor.seasonId)), "invalid", "Every selected player needs a membership in this team and season.");
-      requireRule(match.actualFullTimeAtMs === null || validTime2(match.actualFullTimeAtMs) && match.actualFullTimeAtMs <= nowMs, "invalid", "Actual full time cannot be in the future.");
+      requireRule(match.actualFullTimeAtMs === null || validTime3(match.actualFullTimeAtMs) && match.actualFullTimeAtMs <= nowMs, "invalid", "Actual full time cannot be in the future.");
       next.matches.push({
         ...match,
         voteCutoffAtMs: null,
@@ -2210,7 +2237,7 @@ function applyCommunityCommand(state, actor, command, nowMs) {
   return next;
 }
 function finalizeDueCommunityAwards(state, nowMs) {
-  requireRule(validTime2(nowMs), "invalid", "A valid worker receipt time is required.");
+  requireRule(validTime3(nowMs), "invalid", "A valid worker receipt time is required.");
   const due = state.matches.filter((match) => match.finishQuality === "trusted" && match.actualFullTimeAtMs !== null && match.voteCutoffAtMs !== null && match.cutoffSource !== "unresolved" && nowMs >= match.voteCutoffAtMs && !state.awards.some((award) => award.matchId === match.id));
   if (due.length === 0) return state;
   const next = JSON.parse(JSON.stringify(state));
@@ -2275,7 +2302,7 @@ function getCommunityView(state, actor, nowMs) {
     accountLabel: person.label,
     memberships: state.memberships.filter((item) => item.accountId === actor.accountId).map((item) => ({ ...item })),
     preferences: { ...state.preferences[actor.accountId] ?? defaultCommunityPreferences() },
-    invitations: allowed && actor.role !== "spectator" ? scoped(state.invitations).filter((item) => actor.role === "manager" || item.inviterAccountId === actor.accountId).map((item) => ({ ...item })) : [],
+    invitations: allowed && actor.role !== "spectator" ? scoped(state.invitations).filter((item) => actor.role === "manager" || item.inviterAccountId === actor.accountId).map((item) => ({ ...publicInvitation(item, nowMs), reviewCode: item.credential?.kind === "fictional_review" && state.synthetic === true ? item.credential.code : void 0 })) : [],
     grants: allowed && actor.role === "manager" ? scoped(state.grants).map((item) => ({ ...item, accountLabel: labelForAccount(state, item.accountId) })) : [],
     matches: allowed ? scoped(state.matches).map((match) => {
       const share = sharedAllowed(state, actor, match);
@@ -2435,10 +2462,10 @@ function createCommunityState(nowMs = Date.now()) {
   });
   return state;
 }
-function communityObjectShape(value, fields3) {
+function communityObjectShape(value, fields4) {
   if (value === null || typeof value !== "object" || Array.isArray(value)) return false;
-  const object3 = value;
-  return Object.keys(object3).every((key) => Object.hasOwn(fields3, key)) && Object.entries(fields3).every(([key, rule]) => Object.hasOwn(object3, key) ? rule.accepts(object3[key]) : Boolean(rule.optional));
+  const object4 = value;
+  return Object.keys(object4).every((key) => Object.hasOwn(fields4, key)) && Object.entries(fields4).every(([key, rule]) => Object.hasOwn(object4, key) ? rule.accepts(object4[key]) : Boolean(rule.optional));
 }
 var communityText = (maximum, nonempty = true) => ({ accepts: (value) => typeof value === "string" && value.length <= maximum && (!nonempty || value.trim().length > 0) });
 var communityInteger = (minimum = 0) => ({ accepts: (value) => typeof value === "number" && Number.isSafeInteger(value) && value >= minimum });
@@ -4050,7 +4077,7 @@ function fields2(value, names) {
 function active(principal) {
   if (principal.status !== "active") throw new AccessError("ACCOUNT_UNAVAILABLE", 403, "Use an active signed-in account to review or submit its own requests.");
 }
-function validTime3(value) {
+function validTime4(value) {
   return Number.isSafeInteger(value) && value >= 0;
 }
 function parsePrivacyRequestInput(value) {
@@ -4083,7 +4110,7 @@ function privacyRequestBusinessKey(accountId, kind, scope) {
 }
 function ownPrivacyMemberships(principal, memberships, nowMs) {
   active(principal);
-  requireThat4(validTime3(nowMs), "Use the current service time.");
+  requireThat4(validTime4(nowMs), "Use the current service time.");
   return memberships.filter((item) => item.accountId === principal.accountId).map((item) => ({
     teamId: item.teamId,
     seasonId: item.seasonId,
@@ -4118,7 +4145,7 @@ function parseMembership(value) {
 function parsePrivacyRequestDto(value) {
   requireThat4(object2(value), "Invalid account request response.");
   fields2(value, ["requestId", "kind", "status", "scope", "affectedMemberships", "createdAtMs", "verificationRequired", "erased", "fulfilled", "scopeStatus", "reviewStatus", "duplicateOfRequestId"]);
-  requireThat4(opaque2(value.requestId) && ["export", "delete_account", "leave_team"].includes(value.kind) && ["pending_verification_and_policy", "needs_scope"].includes(value.status) && validTime3(value.createdAtMs), "Invalid account request status or identity.");
+  requireThat4(opaque2(value.requestId) && ["export", "delete_account", "leave_team"].includes(value.kind) && ["pending_verification_and_policy", "needs_scope"].includes(value.status) && validTime4(value.createdAtMs), "Invalid account request status or identity.");
   requireThat4(value.verificationRequired === true && value.erased === false && value.fulfilled === false && (value.duplicateOfRequestId === null || opaque2(value.duplicateOfRequestId)), "A pending request never establishes fulfilment or deletion.");
   const scope = parseScope(value.scope), kind = value.kind;
   requireThat4(scope === null || (kind === "leave_team" ? scope.type === "team_season" : scope.type === "all_memberships"), "The account request kind and scope differ.");
@@ -4153,6 +4180,81 @@ function projectAccountPrivacyRequests(input) {
   return { accountId: input.principal.accountId, memberships, items };
 }
 
+// apps/api/src/brand-repository.ts
+function brandSelectedRole(principal, memberships, teamId, seasonId, role, nowMs) {
+  const own = currentMemberships(principal, memberships, nowMs).filter((member) => member.teamId === teamId && member.seasonId === seasonId);
+  const chosen = role ?? ["manager", "player", "spectator", "administrator"].find((candidate) => own.some((member) => member.role === candidate));
+  if (!chosen || !["manager", "player", "spectator", "administrator"].includes(chosen)) throw new AccessError("NOT_FOUND", 404, "The requested branding is unavailable.");
+  assertTeamRole(principal, memberships, teamId, seasonId, [chosen], nowMs);
+  return chosen;
+}
+
+// packages/application/src/account-devices.ts
+var object3 = (v) => Boolean(v && typeof v === "object" && !Array.isArray(v));
+var opaque3 = (v) => typeof v === "string" && /^[A-Za-z0-9_-]{1,150}$/.test(v);
+var iso = (v) => typeof v === "string" && Number.isFinite(Date.parse(v)) && new Date(v).toISOString() === v;
+function fields3(value, keys) {
+  if (Object.keys(value).length !== keys.length || Object.keys(value).some((key) => !keys.includes(key)))
+    throw new Error("Invalid own device inventory fields.");
+}
+function parseAccountDevicesDto(value) {
+  if (!object3(value)) throw new Error("Invalid own device inventory.");
+  fields3(value, [
+    "kind",
+    "accountId",
+    "asOf",
+    "devices",
+    "remoteRevocationAvailable"
+  ]);
+  if (value.kind !== "recognised-devices" || !opaque3(value.accountId) || !iso(value.asOf) || !Array.isArray(value.devices) || value.remoteRevocationAvailable !== false)
+    throw new Error("Invalid own device inventory.");
+  const seen = /* @__PURE__ */ new Set();
+  const devices = value.devices.map((item) => {
+    if (!object3(item)) throw new Error("Invalid device entry.");
+    fields3(item, [
+      "deviceId",
+      "source",
+      "label",
+      "platform",
+      "platformVerified",
+      "registeredAt",
+      "lastSeenAt"
+    ]);
+    if (!opaque3(item.deviceId) || seen.has(item.deviceId) || !["native_app_enrolment", "match_controller_enrolment"].includes(
+      item.source
+    ) || item.label !== null || ![null, "ios", "android"].includes(item.platform) || item.platformVerified !== false || item.registeredAt !== null && !iso(item.registeredAt) || item.lastSeenAt !== null && !iso(item.lastSeenAt))
+      throw new Error("Invalid device entry metadata.");
+    if (item.source === "native_app_enrolment" && (item.platform === null || item.registeredAt === null || item.lastSeenAt === null))
+      throw new Error("Native enrolment requires actual service timestamps.");
+    if (item.source === "match_controller_enrolment" && (item.platform !== null || item.registeredAt !== null || item.lastSeenAt !== null))
+      throw new Error("Legacy recorder metadata is unknown.");
+    if (item.registeredAt && item.lastSeenAt && Date.parse(item.lastSeenAt) < Date.parse(item.registeredAt))
+      throw new Error("Device timestamps are inconsistent.");
+    seen.add(item.deviceId);
+    return item;
+  });
+  return {
+    kind: "recognised-devices",
+    accountId: value.accountId,
+    asOf: value.asOf,
+    devices,
+    remoteRevocationAvailable: false
+  };
+}
+
+// apps/api/src/devices.ts
+function parseNativeDeviceInput(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new AccessError("INVALID_REQUEST", 400, "Use the reported native installation identity and platform.");
+  const item = value;
+  if (Object.keys(item).length !== 2 || Object.keys(item).some((key) => !["deviceId", "platform"].includes(key)) || typeof item.deviceId !== "string" || !/^[A-Za-z0-9_-]{1,120}$/.test(item.deviceId) || !["ios", "android"].includes(String(item.platform))) throw new AccessError("INVALID_REQUEST", 400, "Use a canonical installation identity and reported iOS or Android platform.");
+  return { deviceId: item.deviceId, platform: item.platform };
+}
+function ownDevicesDto(principal, legacy, native, nowMs) {
+  if (legacy.some((row) => row.account_id !== principal.accountId) || native.some((row) => row.account_id !== principal.accountId || row.issuer !== principal.issuer)) throw new Error("OWN_DEVICE_SCOPE_REQUIRED");
+  const nativeIds = new Set(native.map((row) => row.device_id));
+  return parseAccountDevicesDto({ kind: "recognised-devices", accountId: principal.accountId, asOf: new Date(nowMs).toISOString(), devices: [...native.map((row) => ({ deviceId: row.device_id, source: "native_app_enrolment", label: null, platform: row.platform, platformVerified: false, registeredAt: new Date(row.registered_at).toISOString(), lastSeenAt: new Date(row.last_seen_at).toISOString() })), ...legacy.filter((row) => !nativeIds.has(row.id)).map((row) => ({ deviceId: row.id, source: "match_controller_enrolment", label: null, platform: null, platformVerified: false, registeredAt: null, lastSeenAt: null }))], remoteRevocationAvailable: false });
+}
+
 // apps/api/src/store.ts
 var EVENT_CONTRACT_VERSION = "longball.events/1.1";
 var SYNTHETIC_IDS = { teamId: "synthetic-roma-u10", seasonId: "synthetic-season-2026-27", matchId: "synthetic-roma-maple-2026-10-24" };
@@ -4174,8 +4276,8 @@ function validateEnvelope(value, matchId) {
   if (!validId2(item.eventId) || !validDeviceId(item.deviceId) || item.matchId !== matchId || !nonnegative2(item.clientSequence) || item.clientSequence < 1 || !nonnegative2(item.controllerEpoch) || item.controllerEpoch < 1 || !nonnegative2(item.baseRevision)) bad("Invalid event identity, scope or sequence.");
   if (!(item.previousEventId === null || validId2(item.previousEventId))) bad("Invalid previous event identifier.");
   if (item.contractVersion !== EVENT_CONTRACT_VERSION || item.schemaVersion !== 1 || item.engineVersion !== ENGINE_VERSION) return item;
-  const fields3 = ["contractVersion", "schemaVersion", "engineVersion", "eventId", "matchId", "deviceId", "controllerEpoch", "clientSequence", "previousEventId", "baseRevision", "effectiveHalf", "halfElapsedMs", "matchElapsedMs", "effectiveAt", "recordedAt", "timeQuality", "clockEvidence", "command"];
-  if (Object.keys(item).some((key) => !fields3.includes(key))) bad("Unknown event envelope fields are not accepted.");
+  const fields4 = ["contractVersion", "schemaVersion", "engineVersion", "eventId", "matchId", "deviceId", "controllerEpoch", "clientSequence", "previousEventId", "baseRevision", "effectiveHalf", "halfElapsedMs", "matchElapsedMs", "effectiveAt", "recordedAt", "timeQuality", "clockEvidence", "command"];
+  if (Object.keys(item).some((key) => !fields4.includes(key))) bad("Unknown event envelope fields are not accepted.");
   if (!nonnegative2(item.halfElapsedMs) || !nonnegative2(item.matchElapsedMs) || ![0, 1, 2].includes(item.effectiveHalf)) bad("Invalid effective playing-time boundary.");
   if (!["anchored", "estimated", "reviewRequired"].includes(item.timeQuality) || !Number.isFinite(Date.parse(item.recordedAt)) || !(item.effectiveAt === null || Number.isFinite(Date.parse(item.effectiveAt)))) bad("Invalid event time evidence.");
   const command = item.command;
@@ -4224,7 +4326,7 @@ var DevelopmentStore = class {
   migrate() {
     this.transaction(() => {
       const version = Number(this.database.prepare("PRAGMA user_version").get().user_version);
-      if (version > 7) throw new Error("This store version is newer than this application; preserve it and use a compatible build.");
+      if (version > 8) throw new Error("This store version is newer than this application; preserve it and use a compatible build.");
       if (version === 0) this.database.exec(`
       CREATE TABLE accounts(id TEXT PRIMARY KEY,issuer TEXT NOT NULL,subject TEXT NOT NULL,classification TEXT NOT NULL CHECK(classification IN ('child_shared','adult_individual','unclassified')),adult_verified INTEGER NOT NULL DEFAULT 0,status TEXT NOT NULL DEFAULT 'active',UNIQUE(issuer,subject));
       CREATE TABLE teams(id TEXT PRIMARY KEY,name TEXT NOT NULL);
@@ -4270,6 +4372,9 @@ var DevelopmentStore = class {
         ) WHERE n=1;
       PRAGMA user_version=7;
     `);
+      if (version < 8) this.database.exec(`CREATE TABLE native_app_devices(device_id TEXT PRIMARY KEY,account_id TEXT NOT NULL REFERENCES accounts(id),issuer TEXT NOT NULL,platform TEXT NOT NULL CHECK(platform IN('ios','android')),registered_at INTEGER NOT NULL,last_seen_at INTEGER NOT NULL CHECK(last_seen_at>=registered_at));
+      CREATE TRIGGER native_device_identity_immutable BEFORE UPDATE ON native_app_devices WHEN NEW.device_id<>OLD.device_id OR NEW.account_id<>OLD.account_id OR NEW.issuer<>OLD.issuer OR NEW.registered_at<>OLD.registered_at BEGIN SELECT RAISE(ABORT,'Immutable native device identity'); END;
+      PRAGMA user_version=8;`);
     });
   }
   async backup(destination) {
@@ -4340,6 +4445,25 @@ var DevelopmentStore = class {
   }
   myMemberships(principal) {
     return currentMemberships(principal, this.memberships(), this.now());
+  }
+  recognisedDevices(principal) {
+    const legacy = this.database.prepare("SELECT id,account_id FROM devices WHERE account_id=? ORDER BY id").all(principal.accountId);
+    const native = this.database.prepare("SELECT * FROM native_app_devices WHERE account_id=? AND issuer=? ORDER BY registered_at,device_id").all(principal.accountId, principal.issuer);
+    return ownDevicesDto(principal, legacy, native, this.now());
+  }
+  enrolDevice(principal, input) {
+    const parsed = parseNativeDeviceInput(input);
+    if (this.database.prepare("SELECT id FROM devices WHERE id=? AND account_id=?").get(parsed.deviceId, principal.accountId)) throw new AccessError("DEVICE_ID_CONFLICT", 409, "Use a separate installation identity for sign-in recognition.");
+    const previous = this.database.prepare("SELECT account_id,issuer FROM native_app_devices WHERE device_id=?").get(parsed.deviceId);
+    if (previous && (previous.account_id !== principal.accountId || previous.issuer !== principal.issuer)) throw new AccessError("DEVICE_ID_CONFLICT", 409, "This installation identity is unavailable.");
+    this.database.prepare("INSERT INTO native_app_devices(device_id,account_id,issuer,platform,registered_at,last_seen_at) VALUES(?,?,?,?,?,?) ON CONFLICT(device_id) DO UPDATE SET platform=excluded.platform,last_seen_at=MAX(native_app_devices.last_seen_at,excluded.last_seen_at)").run(parsed.deviceId, principal.accountId, principal.issuer, parsed.platform, this.now(), this.now());
+    return this.recognisedDevices(principal);
+  }
+  brandingContext(principal, teamId, seasonId, role) {
+    const memberships = this.memberships(), nowMs = this.now(), selectedRole = brandSelectedRole(principal, memberships, teamId, seasonId, role, nowMs);
+    const preparation = this.document(teamId, seasonId, "preparation");
+    if (preparation.team.id !== teamId) throw new AccessError("NOT_FOUND", 404, "The requested branding is unavailable.");
+    return { context: { principal, memberships, selectedRole, clubId: preparation.club.id, teamId, authoritySeasonId: seasonId, nowMs, spectatorGrantActive: selectedRole === "spectator" }, club: { id: preparation.club.id, name: preparation.club.name }, team: { id: teamId, name: preparation.team.name, ageGroup: preparation.team.ageGroup } };
   }
   match(matchId) {
     const row = this.database.prepare("SELECT * FROM matches WHERE id=?").get(matchId);
@@ -5008,12 +5132,13 @@ function validateContext(context) {
     identity: ["issuer", "subject"],
     actor: ["accountId", "issuer", "subject"],
     activation_token: ["tokenHash"],
+    invitation_activation: ["tokenHash"],
     worker_claim: ["jobKind"],
     worker_job: ["jobId", "leaseToken", "clubId", "teamId", "seasonId"]
   };
   if (!Object.hasOwn(required, context.kind) || required[context.kind].some((name) => typeof context[name] !== "string" || !context[name] || context[name].length > 2048)) throw new Error("Invalid PostgreSQL application context.");
   if (context.kind === "actor" && (typeof context.strongAuth !== "boolean" || !Number.isSafeInteger(context.authenticatedAtMs) || context.authenticatedAtMs < 0 || context.requestedRole !== void 0 && !["administrator", "manager", "player", "spectator", "default"].includes(context.requestedRole))) throw new Error("Invalid PostgreSQL actor context.");
-  if (context.kind === "activation_token" && (!/^[a-f0-9]{64}$/.test(context.tokenHash) || context.completionVerified !== void 0 && context.completionVerified !== true)) throw new Error("Invalid PostgreSQL activation context.");
+  if (["activation_token", "invitation_activation"].includes(context.kind) && "tokenHash" in context && (!/^[a-f0-9]{64}$/.test(context.tokenHash) || "completionVerified" in context && context.completionVerified !== void 0 && context.completionVerified !== true)) throw new Error("Invalid PostgreSQL activation context.");
   if (context.kind === "worker_claim" && !["award.finalise", "notification.dispatch"].includes(context.jobKind)) throw new Error("Invalid PostgreSQL job context.");
   if (context.kind === "worker_job" && !/^[a-f0-9]{64}$/.test(context.leaseToken)) throw new Error("Invalid PostgreSQL job capability.");
 }
@@ -5134,9 +5259,9 @@ var PgDatabase = class {
   async migrate() {
     if (this.migrationMode === "verify") {
       const versions = await this.query("SELECT version FROM longball.schema_migrations ORDER BY version");
-      if (versions.rows.some((row) => row.version > 9)) throw new Error("This PostgreSQL schema is newer than the application. Preserve it and use a compatible build.");
-      if (![2, 3, 4, 5, 6, 7, 8, 9].every((version) => versions.rows.some((row) => row.version === version))) throw new Error("PostgreSQL migrations are required. Run the separate migrator before starting the runtime.");
-      const protectedTables = ["clubs", "teams", "team_seasons", "game_contexts", "accounts", "memberships", "matches", "documents", "devices", "controller_grants", "controller_history", "events", "streams", "conflicting_submissions", "transfers", "clock_challenges", "clock_mappings", "reconciliation_proposals", "audit", "idempotency", "privacy_requests", "privacy_pending_keys", "jobs"];
+      if (versions.rows.some((row) => row.version > 12)) throw new Error("This PostgreSQL schema is newer than the application. Preserve it and use a compatible build.");
+      if (![2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].every((version) => versions.rows.some((row) => row.version === version))) throw new Error("PostgreSQL migrations are required. Run the separate migrator before starting the runtime.");
+      const protectedTables = ["clubs", "teams", "team_seasons", "game_contexts", "accounts", "memberships", "matches", "documents", "devices", "controller_grants", "controller_history", "events", "streams", "conflicting_submissions", "transfers", "clock_challenges", "clock_mappings", "reconciliation_proposals", "audit", "idempotency", "privacy_requests", "privacy_pending_keys", "jobs", "brand_assets", "brand_slots", "spectator_invitations", "lb_spectator_activation_accounts", "lb_spectator_activation_attempts", "native_app_devices"];
       const security = await this.query(`SELECT c.relname,c.relrowsecurity,(SELECT count(*)::integer FROM pg_catalog.pg_policy p WHERE p.polrelid=c.oid) AS policies FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='longball' AND c.relname=ANY($1::text[])`, [protectedTables]);
       if (security.rows.length !== protectedTables.length || security.rows.some((row) => !row.relrowsecurity || row.policies < 1)) throw new Error("PostgreSQL row security is missing. Run the separate migrator before starting runtime.");
       return;
@@ -5149,12 +5274,15 @@ var PgDatabase = class {
     const workerBoundariesMigration = await readFile(new URL("../migrations/postgresql/007_worker_boundaries.sql", import.meta.url), "utf8");
     const controllerRevocationMigration = await readFile(new URL("../migrations/postgresql/008_controller_revocation.sql", import.meta.url), "utf8");
     const dispatchClockMigration = await readFile(new URL("../migrations/postgresql/009_dispatch_database_clock.sql", import.meta.url), "utf8");
+    const brandAssetsMigration = await readFile(new URL("../migrations/postgresql/010_brand_assets.sql", import.meta.url), "utf8");
+    const spectatorCapabilitiesMigration = await readFile(new URL("../migrations/postgresql/011_spectator_capabilities.sql", import.meta.url), "utf8");
+    const heicMigration = await readFile(new URL("../migrations/postgresql/012_heic_support.sql", import.meta.url), "utf8");
     await this.transaction(async () => {
       const schema = await this.query("SELECT to_regnamespace('longball')::text AS namespace");
       if (!schema.rows[0]?.namespace) await this.query("CREATE SCHEMA longball");
       await this.query("CREATE TABLE IF NOT EXISTS longball.schema_migrations(version integer PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())");
       const versions = await this.query("SELECT version FROM longball.schema_migrations ORDER BY version");
-      if (versions.rows.some((row) => row.version > 9)) throw new Error("This PostgreSQL schema is newer than the application. Preserve it and use a compatible build.");
+      if (versions.rows.some((row) => row.version > 12)) throw new Error("This PostgreSQL schema is newer than the application. Preserve it and use a compatible build.");
       if (!versions.rows.some((row) => row.version === 2)) {
         await this.query(migration);
         await this.query("INSERT INTO longball.schema_migrations(version) VALUES(2)");
@@ -5187,6 +5315,18 @@ var PgDatabase = class {
         await this.query(dispatchClockMigration);
         await this.query("INSERT INTO longball.schema_migrations(version) VALUES(9)");
       }
+      if (!versions.rows.some((row) => row.version === 10)) {
+        await this.query(brandAssetsMigration);
+        await this.query("INSERT INTO longball.schema_migrations(version) VALUES(10)");
+      }
+      if (!versions.rows.some((row) => row.version === 11)) {
+        await this.query(spectatorCapabilitiesMigration);
+        await this.query("INSERT INTO longball.schema_migrations(version) VALUES(11)");
+      }
+      if (!versions.rows.some((row) => row.version === 12)) {
+        await this.query(heicMigration);
+        await this.query("INSERT INTO longball.schema_migrations(version) VALUES(12)");
+      }
     });
   }
   async close() {
@@ -5216,8 +5356,8 @@ function validateEnvelope2(value, matchId) {
   if (!validId3(item.eventId) || !validDeviceId2(item.deviceId) || item.matchId !== matchId || !nonnegative3(item.clientSequence) || item.clientSequence < 1 || !nonnegative3(item.controllerEpoch) || item.controllerEpoch < 1 || !nonnegative3(item.baseRevision)) bad2("Invalid event identity, scope or sequence.");
   if (!(item.previousEventId === null || validId3(item.previousEventId))) bad2("Invalid previous event identifier.");
   if (item.contractVersion !== EVENT_CONTRACT_VERSION2 || item.schemaVersion !== 1 || item.engineVersion !== ENGINE_VERSION) return item;
-  const fields3 = ["contractVersion", "schemaVersion", "engineVersion", "eventId", "matchId", "deviceId", "controllerEpoch", "clientSequence", "previousEventId", "baseRevision", "effectiveHalf", "halfElapsedMs", "matchElapsedMs", "effectiveAt", "recordedAt", "timeQuality", "clockEvidence", "command"];
-  if (Object.keys(item).some((key) => !fields3.includes(key))) bad2("Unknown event envelope fields are not accepted.");
+  const fields4 = ["contractVersion", "schemaVersion", "engineVersion", "eventId", "matchId", "deviceId", "controllerEpoch", "clientSequence", "previousEventId", "baseRevision", "effectiveHalf", "halfElapsedMs", "matchElapsedMs", "effectiveAt", "recordedAt", "timeQuality", "clockEvidence", "command"];
+  if (Object.keys(item).some((key) => !fields4.includes(key))) bad2("Unknown event envelope fields are not accepted.");
   if (!nonnegative3(item.halfElapsedMs) || !nonnegative3(item.matchElapsedMs) || ![0, 1, 2].includes(item.effectiveHalf)) bad2("Invalid effective playing-time boundary.");
   if (!["anchored", "estimated", "reviewRequired"].includes(item.timeQuality) || !Number.isFinite(Date.parse(item.recordedAt)) || !(item.effectiveAt === null || Number.isFinite(Date.parse(item.effectiveAt)))) bad2("Invalid event time evidence.");
   const command = item.command;
@@ -5351,6 +5491,24 @@ var PostgresStore = class _PostgresStore {
   }
   async myMemberships(principal) {
     return currentMemberships(principal, await this.memberships(), this.now());
+  }
+  async recognisedDevices(principal) {
+    const legacy = await this.many("SELECT id,account_id FROM devices WHERE account_id=$1 ORDER BY id", [principal.accountId]);
+    const native = await this.many("SELECT * FROM native_app_devices WHERE account_id=$1 AND issuer=$2 ORDER BY registered_at,device_id", [principal.accountId, principal.issuer]);
+    return ownDevicesDto(principal, legacy, native, this.now());
+  }
+  async enrolDevice(principal, input) {
+    const parsed = parseNativeDeviceInput(input);
+    if (await this.one("SELECT id FROM devices WHERE id=$1 AND account_id=$2", [parsed.deviceId, principal.accountId])) throw new AccessError("DEVICE_ID_CONFLICT", 409, "Use a separate installation identity for sign-in recognition.");
+    const updated = await this.one("INSERT INTO native_app_devices(device_id,account_id,issuer,platform,registered_at,last_seen_at) VALUES($1,$2,$3,$4,$5,$5) ON CONFLICT(device_id) DO UPDATE SET platform=EXCLUDED.platform,last_seen_at=GREATEST(native_app_devices.last_seen_at,EXCLUDED.last_seen_at) WHERE native_app_devices.account_id=EXCLUDED.account_id AND native_app_devices.issuer=EXCLUDED.issuer RETURNING device_id", [parsed.deviceId, principal.accountId, principal.issuer, parsed.platform, this.now()]);
+    if (!updated) throw new AccessError("DEVICE_ID_CONFLICT", 409, "This installation identity is unavailable.");
+    return this.recognisedDevices(principal);
+  }
+  async brandingContext(principal, teamId, seasonId, role) {
+    const memberships = await this.memberships(), nowMs = this.now(), selectedRole = brandSelectedRole(principal, memberships, teamId, seasonId, role, nowMs);
+    const names = await this.one("SELECT * FROM longball.branding_context($1,$2)", [teamId, seasonId]);
+    if (!names || typeof names.club_id !== "string" || names.team_id !== teamId) throw new AccessError("NOT_FOUND", 404, "The requested branding is unavailable.");
+    return { context: { principal, memberships, selectedRole, clubId: names.club_id, teamId, authoritySeasonId: seasonId, nowMs, spectatorGrantActive: selectedRole === "spectator" }, club: { id: names.club_id, name: String(names.club_name) }, team: { id: teamId, name: String(names.team_name), ageGroup: names.age_group === null ? "" : String(names.age_group) } };
   }
   async match(matchId) {
     const row = await this.one("SELECT * FROM matches WHERE id=$1", [matchId]);
