@@ -3324,8 +3324,14 @@ function recordsServiceView(input) {
   const generatedAt = new Date(nowMs).toISOString();
   const stamp = (value) => ({ ...value, generatedAt });
   const ids = new Set(state.results.map((record) => record.id));
-  if (activeMatch && activeMatch.status !== "preparation") ids.add(activeMatch.config.matchId);
-  const common = { revision: state.revision, results: stamp(selectSeasonResults(state, viewer)), participation: stamp(selectParticipationReport(state, activeMatch, viewer)), matches: [...ids].map((id) => selectMatchReport(state, id, viewer, activeMatch)).filter((item) => item !== null).map((report) => stamp({ ...report, ...composeReportCommunity(report, input.principal.accountId, input.community), goals: report.goals.map((goal) => ({ ...goal, scorerLabel: goal.scorerPlayerId ? state.players.find((player) => player.id === goal.scorerPlayerId)?.label ?? null : null })) })) };
+  for (const row of input.acceptedMatches)
+    if (row.teamId === state.teamId && row.seasonId === state.seasonId && row.match.status !== "preparation") ids.add(row.match.config.matchId);
+  const reports = [...ids].map((id) => {
+    const match = accepted(input, id);
+    const details = match ? contextFor(state, match, id === state.liveMatch.matchId ? state.liveMatch.fixtureClass : void 0) : null;
+    return selectMatchReport(details ? { ...state, liveMatch: details } : state, id, viewer, match);
+  }).filter((item) => item !== null);
+  const common = { revision: state.revision, results: stamp(selectSeasonResults(state, viewer)), participation: stamp(selectParticipationReport(state, activeMatch, viewer)), matches: reports.map((report) => stamp({ ...report, ...composeReportCommunity(report, input.principal.accountId, input.community), goals: report.goals.map((goal) => ({ ...goal, scorerLabel: goal.scorerPlayerId ? state.players.find((player) => player.id === goal.scorerPlayerId)?.label ?? null : null })) })) };
   if (viewer.actor !== "manager") return common;
   return {
     ...common,

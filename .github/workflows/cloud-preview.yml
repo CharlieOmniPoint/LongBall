@@ -22,7 +22,7 @@ concurrency:
 jobs:
   review:
     runs-on: ubuntu-24.04
-    timeout-minutes: 90
+    timeout-minutes: 360
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
@@ -40,5 +40,5 @@ jobs:
           --secret id=proxy_ca,src=/etc/ssl/certs/ca-certificates.crt
           --output type=local,dest=.local/heic-runtime
           -f infra/runtime/Dockerfile .
-      - name: Serve the fictional export for one hour
+      - name: Serve the fictional export for a bounded five-hour review
         run: bash preview/run.sh
