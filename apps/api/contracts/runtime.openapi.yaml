@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: LongBall implemented runtime extensions
-  version: 1.4.0
+  version: 1.5.0
   description: >-
     Runtime additions beside the unchanged supplied canonical contract. Server
     authorization, explicit policy decisions and native-device acceptance remain
@@ -50,6 +50,152 @@ paths:
           content: {application/json: {schema: {$ref: '#/components/schemas/MatchUploadReceipt'}}}
         '404': {$ref: '#/components/responses/Unavailable'}
         '409': {$ref: '#/components/responses/Conflict'}
+  /me/push-registrations:
+    get:
+      operationId: getOwnPushRegistrationStatus
+      summary: Read own enrolled-device push metadata and configured platform policies
+      description: >-
+        Requires the active verified account; team membership and selected role are
+        not required. Returns no token, digest, ciphertext, key material or other
+        account's devices. Registration configuration and actual delivery provider
+        configuration are independent; neither flag establishes notification delivery.
+      responses:
+        '200':
+          description: Own-account metadata only; private, no-store
+          content: {application/json: {schema: {$ref: '#/components/schemas/AccountPushStatus'}}}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+    post:
+      operationId: registerOwnEnrolledPushDevice
+      summary: Register or rotate a configured delivery destination for an own enrolled native device
+      parameters:
+        - {$ref: '#/components/parameters/ContractVersion'}
+        - {$ref: '#/components/parameters/IdempotencyKey'}
+        - {$ref: '#/components/parameters/PushIfMatch'}
+      description: >-
+        The account and issuer come from the active verified session. The native
+        device and reported platform must match that account's current enrollment.
+        Only the configured transport is accepted. A token is delivery metadata,
+        never authentication. If-Match is the exact quoted current device revision,
+        including "0" when no registration exists. The body and revision are bound
+        to the stable idempotency key. Exact retries recheck current enrollment and
+        configuration, and return the original metadata receipt without reactivating
+        a withdrawn destination. Changed token, permission, build, processor binding
+        or encryption key advances the revision; an identical current-key registration
+        may return its existing revision. Denied permission requires withdrawal.
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/PushRegistrationInput'}}}
+      responses:
+        '200':
+          description: Canonical MutationResult fields; no token material
+          content: {application/json: {schema: {$ref: '#/components/schemas/PushRegistrationMutationResult'}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '404': {$ref: '#/components/responses/Unavailable'}
+        '409': {$ref: '#/components/responses/PushConflict'}
+        '428': {$ref: '#/components/responses/PushRevisionRequired'}
+        '503': {$ref: '#/components/responses/PushConfigurationRequired'}
+  /me/push-registrations/{deviceId}:
+    parameters:
+      - {$ref: '#/components/parameters/PushDeviceId'}
+    delete:
+      operationId: withdrawOwnEnrolledPushDevice
+      summary: Withdraw an own push registration while retaining its revision tombstone
+      parameters:
+        - {$ref: '#/components/parameters/ContractVersion'}
+        - {$ref: '#/components/parameters/IdempotencyKey'}
+        - {$ref: '#/components/parameters/PushIfMatch'}
+      description: >-
+        Requires the same active account, issuer and enrolled native device. Send
+        the quoted current revision, or "0" if absent. Clears encrypted token
+        material and records a new revision tombstone atomically. The path device
+        and revision bind the idempotency receipt. Exact retries return the original
+        acknowledgement; a stale registration cannot overtake withdrawal. Withdrawal
+        remains available when registration configuration is disabled. This endpoint
+        does not revoke account sessions, native enrollment or match-controller authority.
+      responses:
+        '202':
+          description: Canonical Accepted fields with status completed; private metadata acknowledgement
+          content: {application/json: {schema: {$ref: '#/components/schemas/PushRegistrationWithdrawalAccepted'}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '404': {$ref: '#/components/responses/Unavailable'}
+        '409': {$ref: '#/components/responses/PushConflict'}
+        '428': {$ref: '#/components/responses/PushRevisionRequired'}
+  /teams/{teamId}/privileges:
+    parameters:
+      - {$ref: '#/components/parameters/TeamId'}
+      - {$ref: '#/components/parameters/SeasonId'}
+      - {$ref: '#/components/parameters/SelectedRole'}
+    get:
+      operationId: getManagerTeamPrivilegeStatus
+      summary: Read current manager-visible contribution restrictions
+      description: >-
+        Requires current verified-adult strong-authentication authority and an assigned manager in the selected
+        team/season context. An omitted role uses the service's verified membership
+        selection; selecting a different role does not combine its authority with
+        manager membership. The revision is team-wide across seasons. This view
+        includes eligible target labels and flags, without reasons or private notes.
+      responses:
+        '200':
+          description: Current scoped manager status only
+          content: {application/json: {schema: {$ref: '#/components/schemas/TeamPrivilegesView'}}}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/AdultAuthorityRequired'}
+        '404': {$ref: '#/components/responses/Unavailable'}
+        '409': {$ref: '#/components/responses/TeamPrivilegeConflict'}
+        '503': {$ref: '#/components/responses/TeamPrivilegesUnavailable'}
+    post:
+      operationId: recordTeamPrivilegeDecision
+      summary: Explicitly suspend or reinstate one target's uploads or invitations in this team
+      parameters:
+        - {$ref: '#/components/parameters/ContractVersion'}
+        - {$ref: '#/components/parameters/IdempotencyKey'}
+      description: >-
+        Requires current verified-adult strong-authentication and assigned-manager authority in the current team/season
+        and an eligible target. command.id must equal Idempotency-Key. The body
+        expectedRevision is the current team-wide ledger revision; this endpoint
+        uses no If-Match header. Confirmed decision, reason, optional private note,
+        ledger revision, immutable audit and exact receipt commit together. Exact
+        retries retain their command bytes and identity. Suspension prevents later
+        contribution writes with TEAM_UPLOADS_SUSPENDED or TEAM_INVITATIONS_SUSPENDED
+        (403); it does not erase existing media, revoke invitations/grants or remove
+        published photos. Reinstatement restores only this contribution permission.
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/TeamPrivilegeRequest'}}}
+      responses:
+        '200':
+          description: Atomic revision and command acknowledgement without reasons or private notes
+          content: {application/json: {schema: {$ref: '#/components/schemas/TeamPrivilegeReceipt'}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/AdultAuthorityRequired'}
+        '404': {$ref: '#/components/responses/Unavailable'}
+        '409': {$ref: '#/components/responses/TeamPrivilegeConflict'}
+        '503': {$ref: '#/components/responses/TeamPrivilegesUnavailable'}
+  /teams/{teamId}/privileges/own:
+    parameters:
+      - {$ref: '#/components/parameters/TeamId'}
+      - {$ref: '#/components/parameters/SeasonId'}
+      - {$ref: '#/components/parameters/SelectedRole'}
+    get:
+      operationId: getOwnTeamContributionPrivileges
+      summary: Read only the current account's contribution flags for this team and season
+      description: >-
+        Rechecks the current selected membership. Only eligible managers/players
+        can have allowed contribution flags; a current spectator receives false
+        flags. No manager ledger revision, target directory, reason or private note
+        is exposed by this own-account response.
+      responses:
+        '200':
+          description: Own flags only
+          content: {application/json: {schema: {$ref: '#/components/schemas/OwnTeamPrivileges'}}}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/AdultAuthorityRequired'}
+        '404': {$ref: '#/components/responses/Unavailable'}
+        '409': {$ref: '#/components/responses/TeamPrivilegeConflict'}
+        '503': {$ref: '#/components/responses/TeamPrivilegesUnavailable'}
   /identity/devices:
     get:
       operationId: listOwnRecognisedDevices
@@ -733,6 +879,163 @@ components:
   securitySchemes:
     bearerAuth: {type: http, scheme: bearer, bearerFormat: JWT}
   schemas:
+    PushRegistrationInput:
+      type: object
+      additionalProperties: false
+      required: [deviceId, platform, transport, token, appBuild, permission]
+      properties:
+        deviceId: {type: string, pattern: '^[A-Za-z0-9_-]{1,120}$'}
+        platform: {enum: [ios, android]}
+        transport: {enum: [apns, fcm, expo]}
+        token: {type: string, minLength: 20, maxLength: 4096, not: {pattern: '[\s\x00-\x1f\x7f]'}, writeOnly: true}
+        appBuild: {type: string, maxLength: 60, not: {pattern: '[\x00-\x1f\x7f]'}}
+        permission: {enum: [granted, provisional, denied]}
+      description: Canonical push registration fields. Denied is parseable but registration returns409; use DELETE to withdraw. Platform/transport must match current enrollment and operator configuration.
+    PushApnsPolicy:
+      type: object
+      additionalProperties: false
+      required: [transport, providerConfigId]
+      properties:
+        transport: {const: apns}
+        providerConfigId: {$ref: '#/components/schemas/Identifier'}
+    PushFcmPolicy:
+      type: object
+      additionalProperties: false
+      required: [transport, providerConfigId]
+      properties:
+        transport: {const: fcm}
+        providerConfigId: {$ref: '#/components/schemas/Identifier'}
+    PushExpoPolicy:
+      type: object
+      additionalProperties: false
+      required: [transport, providerConfigId, projectId]
+      properties:
+        transport: {const: expo}
+        providerConfigId: {$ref: '#/components/schemas/Identifier'}
+        projectId: {type: string, pattern: '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'}
+    PushDeviceStatus:
+      type: object
+      additionalProperties: false
+      required: [deviceId, platform, transport, permission, state, revision, appBuild, registeredAt, updatedAt, revokedAt, lastOperationId]
+      properties:
+        deviceId: {$ref: '#/components/schemas/Identifier'}
+        platform: {enum: [ios, android]}
+        transport: {enum: [apns, fcm, expo, null]}
+        permission: {enum: [granted, provisional, denied]}
+        state: {enum: [registered, revoked]}
+        revision: {type: integer, minimum: 1, maximum: 9007199254740991}
+        appBuild: {type: string, maxLength: 60}
+        registeredAt: {type: [string, 'null'], format: date-time}
+        updatedAt: {type: string, format: date-time}
+        revokedAt: {type: [string, 'null'], format: date-time}
+        lastOperationId: {$ref: '#/components/schemas/Identifier'}
+      allOf:
+        - if: {properties: {state: {const: registered}}}
+          then:
+            properties:
+              transport: {enum: [apns, fcm, expo]}
+              permission: {enum: [granted, provisional]}
+              registeredAt: {type: string}
+              revokedAt: {type: 'null'}
+        - if: {properties: {state: {const: revoked}}}
+          then:
+            properties:
+              permission: {const: denied}
+              revokedAt: {type: string}
+    AccountPushStatus:
+      type: object
+      additionalProperties: false
+      required: [accountId, registrationConfigured, deliveryConfigured, platforms, devices]
+      properties:
+        accountId: {$ref: '#/components/schemas/Identifier'}
+        registrationConfigured: {type: boolean}
+        deliveryConfigured: {type: boolean}
+        platforms:
+          type: object
+          additionalProperties: false
+          properties:
+            ios: {oneOf: [{$ref: '#/components/schemas/PushApnsPolicy'}, {$ref: '#/components/schemas/PushExpoPolicy'}]}
+            android: {oneOf: [{$ref: '#/components/schemas/PushFcmPolicy'}, {$ref: '#/components/schemas/PushExpoPolicy'}]}
+        devices:
+          type: array
+          maxItems: 1000
+          uniqueItems: true
+          items: {$ref: '#/components/schemas/PushDeviceStatus'}
+      description: Device IDs are unique within the own-account response. Tokens, token hashes, ciphertext and private provider credentials are excluded.
+    PushRegistrationMutationResult:
+      type: object
+      additionalProperties: false
+      required: [id, revision, serverTime]
+      properties:
+        id: {$ref: '#/components/schemas/Identifier'}
+        revision: {type: integer, minimum: 1, maximum: 9007199254740991}
+        serverTime: {type: string, format: date-time}
+    PushRegistrationWithdrawalAccepted:
+      type: object
+      additionalProperties: false
+      required: [operationId, status, serverTime]
+      properties:
+        operationId: {$ref: '#/components/schemas/Identifier'}
+        status: {const: completed}
+        serverTime: {type: string, format: date-time}
+    OwnTeamPrivileges:
+      type: object
+      additionalProperties: false
+      required: [kind, teamId, seasonId, uploadsAllowed, invitationsAllowed]
+      properties:
+        kind: {const: own-team-privileges}
+        teamId: {$ref: '#/components/schemas/Identifier'}
+        seasonId: {$ref: '#/components/schemas/Identifier'}
+        uploadsAllowed: {type: boolean}
+        invitationsAllowed: {type: boolean}
+    TeamPrivilegesView:
+      type: object
+      additionalProperties: false
+      required: [kind, teamId, seasonId, revision, own, targets]
+      properties:
+        kind: {const: team-privileges}
+        teamId: {$ref: '#/components/schemas/Identifier'}
+        seasonId: {$ref: '#/components/schemas/Identifier'}
+        revision: {type: integer, minimum: 0, maximum: 9007199254740991}
+        own: {$ref: '#/components/schemas/OwnTeamPrivileges'}
+        targets:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [accountId, label, uploadsSuspended, invitationsSuspended]
+            properties:
+              accountId: {$ref: '#/components/schemas/Identifier'}
+              label: {type: string, maxLength: 300}
+              uploadsSuspended: {type: boolean}
+              invitationsSuspended: {type: boolean}
+    TeamPrivilegeRequest:
+      type: object
+      additionalProperties: false
+      required: [command]
+      properties:
+        command:
+          type: object
+          additionalProperties: false
+          required: [id, type, expectedRevision, targetAccountId, privilege, reasonCode, confirm]
+          properties:
+            id: {$ref: '#/components/schemas/Identifier'}
+            type: {enum: [privilege.suspended, privilege.reinstated]}
+            expectedRevision: {type: integer, minimum: 0, maximum: 9007199254740991}
+            targetAccountId: {$ref: '#/components/schemas/Identifier'}
+            privilege: {enum: [uploads, invitations]}
+            reasonCode: {type: string, pattern: '^[A-Za-z0-9][A-Za-z0-9_.-]{0,79}$'}
+            privateNote: {type: [string, 'null'], maxLength: 1000, pattern: '^[^\x00-\x08\x0b\x0c\x0e-\x1f\x7f]*$'}
+            confirm: {const: true}
+    TeamPrivilegeReceipt:
+      type: object
+      additionalProperties: false
+      required: [kind, commandId, teamId, revision]
+      properties:
+        kind: {const: team-privilege-receipt}
+        commandId: {$ref: '#/components/schemas/Identifier'}
+        teamId: {$ref: '#/components/schemas/Identifier'}
+        revision: {type: integer, minimum: 1, maximum: 9007199254740991}
     MatchClockSample:
       type: object
       additionalProperties: false
@@ -1313,6 +1616,14 @@ components:
         message: {type: string}
         retryable: {type: boolean}
   parameters:
+    PushDeviceId: {name: deviceId, in: path, required: true, schema: {type: string, pattern: '^[A-Za-z0-9_-]{1,120}$'}}
+    PushIfMatch:
+      name: If-Match
+      in: header
+      required: true
+      schema: {type: string, pattern: '^"(?:0|[1-9][0-9]{0,14})"(?![\s\S])'}
+      description: Exact quoted current push-device revision. Send '"0"' for an absent registration; no wildcard, weak ETag, list, unquoted number or leading zero is accepted.
+      example: '"0"'
     BrandWriteRole: {name: X-Longball-Role, in: header, required: true, schema: {enum: [administrator, manager]}, description: 'Choose the explicit current kind authority: administrator for club_logo or assigned manager for team_logo'}
     InvitationId: {name: invitationId, in: path, required: true, schema: {$ref: '#/components/schemas/Identifier'}}
     BrandKind: {name: kind, in: path, required: true, schema: {enum: [club_logo, team_logo]}}
@@ -1326,6 +1637,30 @@ components:
     IdempotencyKey: {name: Idempotency-Key, in: header, required: true, schema: {type: string, pattern: '^[A-Za-z0-9_-]{8,150}$'}}
     ControllerToken: {name: X-Controller-Token, in: header, required: true, schema: {type: string}}
   responses:
+    BadRequest:
+      description: Invalid exact body, quoted revision, command identity or stable idempotency key
+      content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}
+    Unauthenticated:
+      description: An active verified account/session is required
+      content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}
+    PushConflict:
+      description: PUSH_REGISTRATION_CHANGED, PUSH_PROCESSOR_UNAVAILABLE, PUSH_PERMISSION_DENIED, contract-version mismatch or idempotency key reused with different body/revision; refresh metadata and preserve uncertain requests
+      content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}
+    PushRevisionRequired:
+      description: PUSH_REVISION_REQUIRED; read own status and send the exact quoted If-Match revision, including zero when absent
+      content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}
+    PushConfigurationRequired:
+      description: PUSH_NOT_CONFIGURED; registration needs explicitly selected platform policy and deployment encryption keys
+      content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}
+    AdultAuthorityRequired:
+      description: ADULT_AUTHORITY_REQUIRED; the selected manager account must have current adult verification and stronger authentication
+      content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}
+    TeamPrivilegeConflict:
+      description: TEAM_PRIVILEGE_REVISION_CONFLICT, TEAM_PRIVILEGE_ALREADY_SET, reconciliation required, contract-version mismatch or idempotency conflict; refresh the current team-wide decision before a new command
+      content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}
+    TeamPrivilegesUnavailable:
+      description: TEAM_PRIVILEGES_UNAVAILABLE; the service cannot establish current contribution permission
+      content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}
     Conflict:
       description: Current revision, controller authority, challenge validity or exact request differs; retain uncertain local work
       content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}
