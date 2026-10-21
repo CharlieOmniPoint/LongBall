@@ -17,6 +17,16 @@
 | ADR-009 | Exercise the proposed Keycloak boundary in an isolated loopback HTTPS trial with a generated local CA and restricted PostgreSQL accounts. | Actual password/recovery setup, cancellation/replay, PKCE, refresh/revocation, adult TOTP and provider-to-API child activation passed. The trial does not approve Q05 recovery/expiry authority, production provider hosting or phone/system-browser acceptance. |
 | ADR-010 | Provide a fictional iPhoneOS ARM64 Release test variant with the single recorded `app.json` override `enableRemoteNotifications:false`, preserving local reminders for the proposed free personal-signing route. | [Actual device compile/package/download proof](evidence/2026-10-21/feature-completion/ios-device-kit.json) passed on standard free Intel macOS with Xcode26.3. The main production configuration and complete feature scope are unchanged. This candidate does not prove remote push, owner-local signing, seven-day renewal or physical execution. |
 
+## Current testing priority
+
+21 October owner instruction: defer Android/iPhone installation and physical
+testing for now; concentrate on connected demo functionality and feedback.
+This changes the current review priority, not the native targets, F01–F28 scope
+or release criteria. Native M0 remains unproved. Do not request further phone
+checks or regenerate expiring installers during this phase unless they become
+relevant to the owner's next request. Preserve live demo test data until the
+session expires rather than silently restarting it during feedback.
+
 ## Resolved companion contract discrepancy
 
 **C-001 — event engine version.** Canonical ME50 lists `engineVersion` in the required immutable event envelope. Supplied `contracts/openapi.yaml` has `additionalProperties: false` on its `Event*` object variants and omits that field. A payload satisfying the canonical envelope therefore does not satisfy those wire schemas unchanged. The implemented versioned companion below resolves this discrepancy while preserving the archive and engine provenance; it does not reopen the agreed football rules.

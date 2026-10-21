@@ -2,6 +2,29 @@
 
 21 October 2026. Development branch: `dev/longball-m0-journey`; draft [PR1](https://github.com/CharlieOmniPoint/LongBall/pull/1). The application preserves native iPhone/Android and the complete agreed F01–F28 scope. The [feature register](full-build-plan.md) records implemented journeys and remaining release gates. Physical M0 and production acceptance remain incomplete.
 
+## Current review focus
+
+On 21 October the owner deferred Android and iPhone installation/hardware
+testing to concentrate on connected browser functionality and feedback.
+Native targets and the full feature scope remain agreed; physical M0 gates
+remain open. Installer renewal and phone results are not prerequisites for this
+feedback phase.
+
+Open the connected demo, then **More → Service and controller → Fictional API
+review → Fictional manager → Open service workspace**. On Pages, enter the live
+address in **Workspace API URL** first. Review **Schedule**, **Squad / Team
+settings**, **Reports**, then **Community / Invitations**. For a shared-data
+check, change a reply as **Fictional Player 01 → My schedule**, then return as
+manager and select **Refresh service views**.
+
+Changes inside that workspace reach the disposable fictional API. The outer
+Home, attendance, lineup and clock journey remains separate local rehearsal.
+Browser controller buttons provide a limited fictional HTTP rehearsal;
+real-account native recording and device behaviour are separate acceptance.
+Feedback should identify the screen, action, expected result and observed result.
+Do not restart a live review session to refresh its link while the owner is
+testing: a renewal creates a new address and fresh fictional data.
+
 ## Browser review
 
 Open and share [the lasting fictional review](https://charlieomnipoint.github.io/LongBall/). GitHub Pages deployment succeeded after the owner enabled Actions publishing and allowed `preview/longball-m0`. An external 390×844 browser passed the actual attendance → lineup → start → pause journey and static API-address guards, without browser exceptions, failed responses or horizontal overflow. The current published source is `c71f19dcea05f76adb0f7b5a4e2afb621d49bd40`, verified at 13:14:27 UTC on 21 October. This static build uses each browser's own fictional records, without a shared backend. Clearing storage, eviction or private browsing can lose those records.
