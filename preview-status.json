@@ -1,9 +1,9 @@
 {
-  "state": "stopped",
-  "url": "https://circular-quizzes-trunk-pct.trycloudflare.com",
-  "sourceRevision": "9141b8a0a96c30ed53ab1cfebd284651e5fa2bc1",
-  "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/39615563105",
-  "startedAt": "2026-10-21T14:20:04Z",
-  "expiresAt": "2026-10-21T15:20:04Z",
+  "state": "starting",
+  "url": "",
+  "sourceRevision": "b73fbc9aefc2f0858c9c959dfe306012f3817193",
+  "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/39643618870",
+  "startedAt": "2026-10-21T17:27:55Z",
+  "expiresAt": "",
   "audience": "Adult review of fictional Roma U10 data only"
 }
