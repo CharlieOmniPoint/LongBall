@@ -651,7 +651,7 @@ export class DevelopmentStore {
   }
   preparationCommand(principal: Principal, teamId: string, seasonId: string, command: PreparationCommand): PreparationState {
     const previous = this.preparation(principal, teamId, seasonId);
-    const types = ['club.updated', 'team.updated', 'season.rolled_over', 'profile.saved', 'profile.archived', 'formation.saved', 'fixture.saved', 'fixture.status_changed', 'fixture.response_recorded', 'fixture.selection_saved', 'fixture.attendance_recorded', 'fixture.prepared', 'training.series_created', 'training.series_updated', 'training.series_cancelled', 'training.saved', 'training.status_changed', 'training.response_recorded', 'training.attendance_recorded'];
+    const types = ['club.updated', 'team.updated', 'season.rolled_over', 'profile.saved', 'roster.imported', 'profile.archived', 'formation.saved', 'fixture.saved', 'fixture.status_changed', 'fixture.response_recorded', 'fixture.selection_saved', 'fixture.attendance_recorded', 'fixture.prepared', 'training.series_created', 'training.series_updated', 'training.series_cancelled', 'training.saved', 'training.status_changed', 'training.response_recorded', 'training.attendance_recorded'];
     if (!command || !types.includes(command.type)) bad('Unsupported preparation command.');
     if (command.type === 'season.rolled_over') throw new AccessError('SEASON_ASSIGNMENT_REQUIRED', 503, 'A connected new season requires approved manager/player assignments and explicit spectator renewal. The local rehearsal supports rollover; this service will not save an inaccessible new season or silently copy authority.');
     if (command.type === 'club.updated') {
@@ -677,7 +677,7 @@ export class DevelopmentStore {
         }
       }
     }
-    if (command.type.startsWith('training.') || command.type.startsWith('profile.')) this.projectPreparationRecords(teamId, seasonId, state, command.id);
+    if (command.type.startsWith('training.') || command.type.startsWith('profile.') || command.type === 'roster.imported') this.projectPreparationRecords(teamId, seasonId, state, command.id);
     this.saveDocument(teamId, seasonId, 'preparation', state);
     this.audit(principal, command.type, teamId, 'accepted');
     if(command.type==='fixture.saved')this.enqueueNotifications(teamId,seasonId,'schedule',command.fixture.id,command.id);

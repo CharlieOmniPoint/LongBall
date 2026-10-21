@@ -157,6 +157,11 @@ export type PreparationCommand = PreparationCommandBase &
         confirmSpectatorRenewal: true;
       }
     | { type: "profile.saved"; profile: PlayerProfile }
+    | {
+        type: "roster.imported";
+        profiles: PlayerProfile[];
+        confirmNewPlayers: true;
+      }
     | { type: "profile.archived"; profileId: string }
     | {
         type: "formation.saved";
@@ -451,6 +456,147 @@ export function prepareFixtureSnapshot(
   });
 }
 
+/** Shared validation preserves profile identities and never rewrites match snapshots. */
+function saveProfile(
+  state: PreparationState,
+  source: PlayerProfile,
+): PlayerProfile {
+  const profile = clone(source);
+  activeSeason(state, profile.seasonId);
+  text(profile.id, "Profile identity", 150);
+  text(profile.playerId, "Player identity", 150);
+  const existing = state.profiles.find((item) => item.id === profile.id);
+  if (existing)
+    requireThat(
+      existing.playerId === profile.playerId &&
+        existing.seasonId === profile.seasonId,
+      "Profile identity and season cannot be reassigned.",
+    );
+  requireThat(
+    !state.profiles.some(
+      (item) =>
+        item.id !== profile.id &&
+        item.seasonId === profile.seasonId &&
+        item.playerId === profile.playerId,
+    ),
+    "That player already has a profile in this season.",
+  );
+  profile.displayName = text(profile.displayName, "Display name", 60);
+  requireThat(
+    typeof profile.initials === "string" &&
+      /^[A-Za-z0-9]{1,2}$/.test(profile.initials),
+    "Use one or two letters or digits for the pitch label.",
+  );
+  profile.initials = profile.initials.toUpperCase();
+  requireThat(
+    profile.shirtNumber === null ||
+      (Number.isInteger(profile.shirtNumber) &&
+        profile.shirtNumber >= 1 &&
+        profile.shirtNumber <= 99),
+    "Shirt number must be one to 99 or not recorded.",
+  );
+  requireThat(
+    !state.profiles.some(
+      (item) =>
+        item.id !== profile.id &&
+        item.seasonId === profile.seasonId &&
+        item.active &&
+        profile.active &&
+        profile.shirtNumber !== null &&
+        item.shirtNumber === profile.shirtNumber,
+    ),
+    "Another active player already has that shirt number.",
+  );
+  requireThat(
+    profile.preferences.length === 3 &&
+      new Set(profile.preferences).size === 3 &&
+      profile.preferences.every((position) => positionCodes.includes(position)),
+    "Choose three different ranked positions.",
+  );
+  requireThat(
+    profile.eligiblePositions.length > 0 &&
+      new Set(profile.eligiblePositions).size ===
+        profile.eligiblePositions.length &&
+      profile.eligiblePositions.every((position) =>
+        positionCodes.includes(position),
+      ),
+    "Choose distinct manager-approved eligible positions.",
+  );
+  requireThat(
+    ["left", "right", "both", "not_recorded"].includes(profile.foot),
+    "Choose a preferred foot or Not recorded.",
+  );
+  state.profiles = state.profiles.filter((item) => item.id !== profile.id);
+  state.profiles.push(profile);
+  return profile;
+}
+
+/** New identities only: a roster import never updates or merges an existing player. */
+export function validateRosterImport(
+  state: PreparationState,
+  profiles: PlayerProfile[],
+): PlayerProfile[] {
+  requireThat(
+    Array.isArray(profiles) && profiles.length > 0 && profiles.length <= 200,
+    "Import between one and 200 new player profiles.",
+  );
+  const candidate = clone(state);
+  return Array.from(profiles).map((profile) => {
+    requireThat(
+      profile &&
+        typeof profile === "object" &&
+        Object.keys(profile).length === 10 &&
+        Object.keys(profile).every((key) =>
+          [
+            "id",
+            "playerId",
+            "seasonId",
+            "displayName",
+            "initials",
+            "shirtNumber",
+            "foot",
+            "preferences",
+            "eligiblePositions",
+            "active",
+          ].includes(key),
+        ),
+      "Use only the documented player profile fields; accounts, contacts and dates of birth cannot be imported.",
+    );
+    requireThat(
+      Array.isArray(profile.preferences) &&
+        Array.isArray(profile.eligiblePositions),
+      "Provide ranked preferences and explicit eligible positions.",
+    );
+    requireThat(
+      typeof profile.initials === "string" &&
+        profile.initials.length >= 1 &&
+        profile.initials.length <= 2 &&
+        !/[^A-Za-z0-9]/.test(profile.initials),
+      "Use one or two letters or digits for the pitch label.",
+    );
+    requireThat(
+      profile.active === true && profile.seasonId === state.activeSeasonId,
+      "Import active players into the current season only.",
+    );
+    for (const id of [profile.id, profile.playerId])
+      requireThat(
+        typeof id === "string" &&
+          id.length >= 1 &&
+          id.length <= 150 &&
+          !/[^A-Za-z0-9_.:-]/.test(id),
+        "Use a valid opaque player/profile identity of at most 150 characters.",
+      );
+    requireThat(
+      !candidate.profiles.some(
+        (existing) =>
+          existing.id === profile.id || existing.playerId === profile.playerId,
+      ),
+      "A player or profile identity already exists. Import never merges identities; edit that player separately.",
+    );
+    return saveProfile(candidate, profile);
+  });
+}
+
 export function reducePreparation(
   previous: PreparationState,
   command: PreparationCommand,
@@ -533,76 +679,31 @@ export function reducePreparation(
       state.activeSeasonId = season.id;
       break;
     }
-    case "profile.saved": {
-      const profile = clone(command.profile);
-      activeSeason(state, profile.seasonId);
-      text(profile.id, "Profile identity");
-      text(profile.playerId, "Player identity");
-      const existing = state.profiles.find((item) => item.id === profile.id);
-      if (existing)
-        requireThat(
-          existing.playerId === profile.playerId &&
-            existing.seasonId === profile.seasonId,
-          "Profile identity and season cannot be reassigned.",
-        );
+    case "profile.saved":
+      saveProfile(state, command.profile);
+      break;
+    case "roster.imported": {
       requireThat(
-        !state.profiles.some(
-          (item) =>
-            item.id !== profile.id &&
-            item.seasonId === profile.seasonId &&
-            item.playerId === profile.playerId,
+        command.id.length <= 150 && !/[^A-Za-z0-9_.:-]/.test(command.id),
+        "Use a valid stable roster import identity.",
+      );
+      requireThat(
+        command.confirmNewPlayers === true,
+        "Confirm that every imported row creates a new player; no accounts or access are granted.",
+      );
+      requireThat(
+        Object.keys(command).every((key) =>
+          [
+            "id",
+            "type",
+            "expectedRevision",
+            "profiles",
+            "confirmNewPlayers",
+          ].includes(key),
         ),
-        "That player already has a profile in this season.",
+        "Use the documented roster import command.",
       );
-      profile.displayName = text(profile.displayName, "Display name", 60);
-      requireThat(
-        typeof profile.initials === "string" &&
-          /^[A-Za-z0-9]{1,2}$/.test(profile.initials),
-        "Use one or two letters or digits for the pitch label.",
-      );
-      profile.initials = profile.initials.toUpperCase();
-      requireThat(
-        profile.shirtNumber === null ||
-          (Number.isInteger(profile.shirtNumber) &&
-            profile.shirtNumber >= 1 &&
-            profile.shirtNumber <= 99),
-        "Shirt number must be one to 99 or not recorded.",
-      );
-      requireThat(
-        !state.profiles.some(
-          (item) =>
-            item.id !== profile.id &&
-            item.seasonId === profile.seasonId &&
-            item.active &&
-            profile.active &&
-            profile.shirtNumber !== null &&
-            item.shirtNumber === profile.shirtNumber,
-        ),
-        "Another active player already has that shirt number.",
-      );
-      requireThat(
-        profile.preferences.length === 3 &&
-          new Set(profile.preferences).size === 3 &&
-          profile.preferences.every((position) =>
-            positionCodes.includes(position),
-          ),
-        "Choose three different ranked positions.",
-      );
-      requireThat(
-        profile.eligiblePositions.length > 0 &&
-          new Set(profile.eligiblePositions).size ===
-            profile.eligiblePositions.length &&
-          profile.eligiblePositions.every((position) =>
-            positionCodes.includes(position),
-          ),
-        "Choose distinct manager-approved eligible positions.",
-      );
-      requireThat(
-        ["left", "right", "both", "not_recorded"].includes(profile.foot),
-        "Choose a preferred foot or Not recorded.",
-      );
-      state.profiles = state.profiles.filter((item) => item.id !== profile.id);
-      state.profiles.push(profile);
+      state.profiles.push(...validateRosterImport(state, command.profiles));
       break;
     }
     case "profile.archived": {

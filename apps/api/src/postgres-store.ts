@@ -820,7 +820,7 @@ private async projectPreparationRecords(teamId: string, seasonId: string, prepar
 }
 async preparationCommand(principal: Principal, teamId: string, seasonId: string, command: PreparationCommand): Promise<PreparationState> {
     const previous = (await this.preparation(principal, teamId, seasonId));
-    const types = ['club.updated', 'team.updated', 'season.rolled_over', 'profile.saved', 'profile.archived', 'formation.saved', 'fixture.saved', 'fixture.status_changed', 'fixture.response_recorded', 'fixture.selection_saved', 'fixture.attendance_recorded', 'fixture.prepared', 'training.series_created', 'training.series_updated', 'training.series_cancelled', 'training.saved', 'training.status_changed', 'training.response_recorded', 'training.attendance_recorded'];
+    const types = ['club.updated', 'team.updated', 'season.rolled_over', 'profile.saved', 'roster.imported', 'profile.archived', 'formation.saved', 'fixture.saved', 'fixture.status_changed', 'fixture.response_recorded', 'fixture.selection_saved', 'fixture.attendance_recorded', 'fixture.prepared', 'training.series_created', 'training.series_updated', 'training.series_cancelled', 'training.saved', 'training.status_changed', 'training.response_recorded', 'training.attendance_recorded'];
     if (!command || !types.includes(command.type))
         bad('Unsupported preparation command.');
     if (command.type === 'season.rolled_over')
@@ -852,7 +852,7 @@ async preparationCommand(principal: Principal, teamId: string, seasonId: string,
             }
         }
     }
-    if (command.type.startsWith('training.') || command.type.startsWith('profile.'))
+    if (command.type.startsWith('training.') || command.type.startsWith('profile.') || command.type === 'roster.imported')
         (await this.projectPreparationRecords(teamId, seasonId, state, command.id));
     (await this.saveDocument(teamId, seasonId, 'preparation', state));
     (await this.audit(principal, command.type, teamId, 'accepted'));

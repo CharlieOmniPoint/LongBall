@@ -104,6 +104,13 @@ import {
 } from "@longball/application/workspace-outbox";
 import { Button, Card, Notice, Pill } from "../ui";
 import { colors, typography } from "../ui/tokens";
+import { CalendarExportPanel } from "./CalendarExportPanel";
+import { calendarEventsFromSchedule } from "@longball/application/calendar-export";
+import {
+  CalendarAccessDeniedError,
+  exportScopedCalendar,
+} from "../platform/calendar-service";
+import { deliverCalendarExport } from "../platform/calendar-export";
 import { PreparationScreens } from "./PreparationScreens";
 import {
   ServicePanel,
@@ -2133,6 +2140,62 @@ function WorkspaceSession({
       );
     });
   };
+  const exportCalendar = async (selectedKeys: string[]): Promise<string> => {
+    const source = liveBinding.current;
+    if (!source) throw new Error("Open a current authorised schedule first.");
+    const scopedClient = new LongBallServiceClient(
+      connection.baseUrl,
+      (url, options) =>
+        authenticatedFetch(url, {
+          ...options,
+          headers: selectedRoleHeaders(options.headers, source.role),
+        }),
+    );
+    try {
+      return await exportScopedCalendar({
+        source,
+        currentBinding: () => liveBinding.current,
+        readIdentity: () => scopedClient.request<Identity>("/v1/me"),
+        readSchedule: () =>
+          scopedClient.request<PreparationState | OwnPreparationDto>(
+            `/v1/teams/${encodeURIComponent(source.teamId)}/preparation${source.role === "player" ? "/own" : ""}?seasonId=${encodeURIComponent(source.seasonId)}`,
+          ),
+        selectedKeys,
+        nowMs: Date.now,
+        session:
+          connection.mode === "oidc"
+            ? {
+                requiredSessionId: oidcSessionId ?? "",
+                read: getConnectedSessionSummary,
+              }
+            : null,
+        deliver: deliverCalendarExport,
+      });
+    } catch (cause) {
+      if (
+        sameWorkspaceBinding(source, liveBinding.current) &&
+        (cause instanceof CalendarAccessDeniedError ||
+          (cause instanceof ServiceError &&
+            [401, 403, 404].includes(cause.status)))
+      ) {
+        invalidateRequests();
+        setBinding(null);
+        setCommunity(null);
+        setPreparation(null);
+        setOwn(null);
+        setRecords(null);
+        setMatches(null);
+        setSeasons(null);
+        setConfiguration(null);
+        setStaff(null);
+        setBranding(null);
+        setErrors([
+          "Schedule access could not be verified. Private workspace views were closed; refresh service views to verify current access.",
+        ]);
+      }
+      throw cause;
+    }
+  };
   const exportReport = async (
     request: ConnectedExportRequest,
   ): Promise<string> => {
@@ -2877,6 +2940,7 @@ function WorkspaceSession({
         ) : manager && preparation ? (
           <PreparationScreens
             storage="service"
+            onExportCalendar={exportCalendar}
             brandingPanel={brandingPanel}
             state={preparation}
             view={tab}
@@ -2909,6 +2973,7 @@ function WorkspaceSession({
           <OwnPreparation
             key={`${own.profile.id}:${own.revision}`}
             value={own}
+            onExportCalendar={exportCalendar}
             view={tab === "team" ? "profile" : "schedule"}
             nowMs={membershipTime}
             disabled={disabled}
@@ -3133,12 +3198,14 @@ function OwnPreparation({
   nowMs,
   disabled,
   onChange,
+  onExportCalendar,
 }: {
   value: OwnPreparationDto;
   view?: "schedule" | "profile";
   nowMs: number;
   disabled: boolean;
   onChange: (command: OwnCommand) => Promise<boolean>;
+  onExportCalendar: (selectedKeys: string[]) => Promise<string>;
 }) {
   const [preferences, setPreferences] = useState<PlayerProfile["preferences"]>([
     ...value.profile.preferences,
@@ -3302,6 +3369,11 @@ function OwnPreparation({
           <Text accessibilityRole="header" style={typography.section}>
             My schedule
           </Text>
+          <CalendarExportPanel
+            events={calendarEventsFromSchedule(value, value.season.id, nowMs)}
+            busy={disabled}
+            onExport={onExportCalendar}
+          />
           <Notice>
             Your reply, the manager’s selection and actual attendance are
             separate records. Your account can change its own reply; attendance

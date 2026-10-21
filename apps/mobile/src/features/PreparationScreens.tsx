@@ -27,6 +27,13 @@ import {
 } from "@longball/application/preparation";
 import { groupPreparationEvents } from "@longball/application/preparation-presentation";
 import { TrainingSeriesEditor } from "./TrainingSeriesEditor";
+import { RosterImportPanel } from "./RosterImportPanel";
+import { CalendarExportPanel } from "./CalendarExportPanel";
+import {
+  buildCalendarExport,
+  calendarEventsFromSchedule,
+} from "@longball/application/calendar-export";
+import { deliverCalendarExport } from "../platform/calendar-export";
 import { FormationPositionEditor } from "./FormationPositionEditor";
 import { randomUUID } from "../platform/id";
 import { Button, Card, colors, Icon, Notice, Pill } from "../ui";
@@ -40,6 +47,7 @@ export interface PreparationScreensProps {
   busy?: boolean;
   error?: string | null;
   storage?: "journal" | "service";
+  onExportCalendar?: (selectedKeys: string[]) => Promise<string>;
   onPrepareRollover?: () => void;
   onPrepareChildActivation?: (playerId: string) => void;
 }
@@ -99,6 +107,27 @@ function nextDate(state: PreparationState) {
     : season.startDate;
 }
 
+async function exportLocalPreparationCalendar(
+  state: PreparationState,
+  seasonId: string,
+  storage: "journal" | "service",
+  selectedKeys: string[],
+): Promise<string> {
+  if (storage !== "journal")
+    throw new Error("Connect a current authorised calendar export first.");
+  const nowMs = Date.now();
+  return deliverCalendarExport(
+    buildCalendarExport({
+      teamId: state.team.id,
+      seasonId,
+      events: calendarEventsFromSchedule(state, seasonId, nowMs),
+      selectedKeys,
+      nowMs,
+    }),
+    async () => {},
+  );
+}
+
 /** Complete editable local preparation screens. Domain authority is checked by the owning application store. */
 export function PreparationScreens(props: PreparationScreensProps) {
   return (
@@ -119,7 +148,9 @@ function PreparationContent({
   onPrepareRollover,
   onPrepareChildActivation,
   brandingPanel,
+  onExportCalendar,
 }: PreparationScreensProps) {
+  const [observedAt] = useState(() => Date.now());
   const [editor, setEditor] = useState<Editor>(null);
   const [selectedEvent, setSelectedEvent] = useState<{
     kind: "match" | "training";
@@ -348,6 +379,20 @@ function PreparationContent({
           </Text>
           {tab === "training" && <Button label="Create weekly training series" testID="training-series-create" variant="secondary" disabled={disabled} onPress={() => setEditor({ type: "training_series", value: newTraining(), mode: "create" })} />}
 
+          <CalendarExportPanel
+            events={calendarEventsFromSchedule(state, season.id, observedAt)}
+            busy={disabled}
+            onExport={
+              onExportCalendar ??
+              ((selectedKeys) =>
+                exportLocalPreparationCalendar(
+                  state,
+                  season.id,
+                  storage,
+                  selectedKeys,
+                ))
+            }
+          />
           <Choice
             label="Schedule period"
             value={period}
@@ -494,6 +539,17 @@ function PreparationContent({
             Preferences inform future plans. Saved match snapshots keep the
             profiles used for that game.
           </Notice>
+          <RosterImportPanel
+            state={state}
+            busy={disabled}
+            onImport={(profiles) =>
+              commit({
+                type: "roster.imported",
+                profiles,
+                confirmNewPlayers: true,
+              })
+            }
+          />
           {players.map((profile) => (
             <Card key={profile.id}>
               <View style={s.row}>
