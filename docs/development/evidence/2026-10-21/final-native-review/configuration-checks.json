@@ -20,5 +20,10 @@
     "developmentSelector": "development",
     "LONGBALL_WEB_BASE_PATH": "/LongBall",
     "privatePublicEnvironmentRemoved": true
+  },
+  "freshRun": {
+    "source": "b25a74f03b6f27d07871f0bb86fd6a5f9e202e5f",
+    "command": "node scripts/test-production-native-config.mjs",
+    "exitCode": 0
   }
 }

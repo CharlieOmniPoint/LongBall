@@ -45,5 +45,6 @@
   "remoteNotificationsConfigured": true,
   "signedEntitlementValidated": false,
   "providerConfigured": false,
-  "hardwareTested": false
+  "hardwareTested": false,
+  "evaluatedSource": "b25a74f03b6f27d07871f0bb86fd6a5f9e202e5f"
 }
