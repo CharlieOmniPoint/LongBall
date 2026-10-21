@@ -26,6 +26,7 @@ import {
   type TrainingDraft,
 } from "@longball/application/preparation";
 import { groupPreparationEvents } from "@longball/application/preparation-presentation";
+import { TrainingSeriesEditor } from "./TrainingSeriesEditor";
 import { FormationPositionEditor } from "./FormationPositionEditor";
 import { randomUUID } from "../platform/id";
 import { Button, Card, colors, Icon, Notice, Pill } from "../ui";
@@ -51,6 +52,7 @@ type Editor =
   | { type: "profile"; value: PlayerProfile }
   | { type: "fixture"; value: FixtureDraft }
   | { type: "training"; value: TrainingDraft }
+  | { type: "training_series"; value: TrainingDraft; mode: "create" | "manage" }
   | { type: "formation"; value: PreparationFormation }
   | { type: "club" | "team" | "rollover" }
   | null;
@@ -148,6 +150,7 @@ function PreparationContent({
   const commit = async (
     payload: Payload,
     closeEditor = false,
+    reviewed?: { id: string; expectedRevision: number },
   ): Promise<boolean> => {
     if (disabled) return false;
     setSaving(true);
@@ -155,8 +158,8 @@ function PreparationContent({
     try {
       const saved = await onChange({
         ...payload,
-        id: randomUUID(),
-        expectedRevision: state.revision,
+        id: reviewed?.id ?? randomUUID(),
+        expectedRevision: reviewed?.expectedRevision ?? state.revision,
       } as PreparationCommand);
       if (saved && closeEditor) setEditor(null);
       return saved;
@@ -258,6 +261,10 @@ function PreparationContent({
               onClose={close}
             />
           )}
+          {editor.type === "training_series" && (
+            <TrainingSeriesEditor state={state} training={editor.value} mode={editor.mode} disabled={disabled}
+              onSubmit={command => commit(command, true, command)} onClose={close} />
+          )}
           {editor.type === "formation" && (
             <FormationForm
               formation={editor.value}
@@ -328,6 +335,7 @@ function PreparationContent({
             players={players}
             disabled={disabled}
             onCommand={commit}
+            onEditSeries={selectedTraining.recurrenceGroupId ? () => setEditor({ type: "training_series", value: selectedTraining, mode: "manage" }) : undefined}
             onEdit={() =>
               setEditor({ type: "training", value: selectedTraining })
             }
@@ -338,6 +346,8 @@ function PreparationContent({
           <Text style={s.muted}>
             Matches and training, with replies and attendance kept separate.
           </Text>
+          {tab === "training" && <Button label="Create weekly training series" testID="training-series-create" variant="secondary" disabled={disabled} onPress={() => setEditor({ type: "training_series", value: newTraining(), mode: "create" })} />}
+
           <Choice
             label="Schedule period"
             value={period}
@@ -1645,12 +1655,14 @@ function TrainingDetail({
   disabled,
   onCommand,
   onEdit,
+  onEditSeries,
 }: {
   training: PreparationTraining;
   players: PlayerProfile[];
   disabled: boolean;
   onCommand: (payload: Payload) => Promise<boolean>;
   onEdit: () => void;
+  onEditSeries?: () => void;
 }) {
   return (
     <>
@@ -1674,6 +1686,7 @@ function TrainingDetail({
             onPress={onEdit}
           />
         )}
+        {onEditSeries && <Button label="Edit or cancel scheduled series occurrences" testID="training-series-manage" variant="secondary" disabled={disabled} onPress={onEditSeries} />}
         <Choice
           label="Occurrence status"
           value={training.status}

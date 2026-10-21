@@ -1,3 +1,5 @@
+import { applyTrainingSeries, type TrainingSeriesPayload } from './training-series';
+
 /** Team preparation is a serializable local projection; authentication belongs to the application boundary. */
 export type LogoChoice = "roundel" | "shield" | "ball";
 export type PositionCode =
@@ -184,6 +186,7 @@ export type PreparationCommand = PreparationCommandBase &
         attendance: PreparationAttendance;
       }
     | { type: "fixture.prepared"; fixtureId: string; formationId: string }
+    | TrainingSeriesPayload
     | { type: "training.saved"; training: TrainingDraft }
     | {
         type: "training.status_changed";
@@ -300,6 +303,17 @@ function unique(ids: string[]) {
     new Set(ids).size === ids.length,
     "Each player or slot can appear only once.",
   );
+}
+
+function validateTraining(state: PreparationState, training: TrainingDraft): void {
+  text(training.id, "Training identity", 150);
+  dateInSeason(state, training.seasonId, training.date);
+  requireThat(validTime(training.time) && training.time !== null, "Use a 24-hour HH:MM training time.");
+  requireThat(typeof training.venue === "string" && training.venue.length <= 200, "Use a training venue of at most 200 characters.");
+  requireThat(training.recurrenceGroupId === null || typeof training.recurrenceGroupId === "string" && training.recurrenceGroupId.trim().length > 0 && training.recurrenceGroupId.length <= 150, "Use a valid training series identity.");
+  requireThat(Array.isArray(training.expectedProfileIds), "Choose the expected players explicitly.");
+  unique(training.expectedProfileIds);
+  training.expectedProfileIds.forEach(id => checkProfile(state, id, training.seasonId));
 }
 
 export function seasonBounds(startYear: number) {
@@ -741,21 +755,20 @@ export function reducePreparation(
       state.snapshots.push(snapshot);
       break;
     }
+    case "training.series_created":
+    case "training.series_updated":
+    case "training.series_cancelled": {
+      applyTrainingSeries(state, command, draft => validateTraining(state, draft));
+      break;
+    }
     case "training.saved": {
       const training = clone(command.training);
-      dateInSeason(state, training.seasonId, training.date);
-      requireThat(
-        validTime(training.time),
-        "Use a 24-hour HH:MM training time.",
-      );
-      unique(training.expectedProfileIds);
-      training.expectedProfileIds.forEach((id) =>
-        checkProfile(state, id, training.seasonId),
-      );
+      validateTraining(state, training);
       const existing = state.training.find((item) => item.id === training.id);
       if (existing)
         requireThat(
           existing.seasonId === training.seasonId &&
+            existing.recurrenceGroupId === training.recurrenceGroupId &&
             existing.status === "scheduled",
           "Held or cancelled training records are retained; create or restore a scheduled occurrence first.",
         );
