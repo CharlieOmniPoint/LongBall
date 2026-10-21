@@ -1,0 +1,12 @@
+{
+  "sourceCommit": "79cbc724d5cc63a8331b5f10eeabe6f5d2c3fc4e",
+  "sourceBranch": "dev/longball-m0-journey",
+  "synthetic": true,
+  "nativeTargets": [
+    "iPhone",
+    "Android"
+  ],
+  "production": false,
+  "basePath": "/LongBall",
+  "connectedBackendIncluded": false
+}

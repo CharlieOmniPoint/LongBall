@@ -6,9 +6,9 @@ import { backup, DatabaseSync } from "node:sqlite";
 
 // packages/application/src/access.ts
 var AccessError = class extends Error {
-  constructor(code, status, message) {
+  constructor(code2, status, message) {
     super(message);
-    this.code = code;
+    this.code = code2;
     this.status = status;
     this.name = "AccessError";
   }
@@ -54,10 +54,12 @@ var UNAPPROVED_SHARING_POLICY = {
 };
 function filterMatchForPrincipal(input) {
   const now = input.now ?? Date.now();
-  const role = assertTeamRole(input.principal, input.memberships, input.teamId, input.seasonId, ["manager", "player", "spectator"], now);
-  const current = currentMemberships(input.principal, input.memberships, now);
-  const manager = current.some((item) => item.teamId === input.teamId && item.seasonId === input.seasonId && item.role === "manager");
-  if (manager) {
+  const current3 = currentMemberships(input.principal, input.memberships, now);
+  const available2 = current3.filter((item) => item.teamId === input.teamId && item.seasonId === input.seasonId && ["manager", "player", "spectator"].includes(item.role));
+  const chosen = input.requestedRole ? available2.find((item) => item.role === input.requestedRole) : available2.find((item) => item.role === "manager") ?? available2.find((item) => item.role === "player") ?? available2[0];
+  if (!chosen) throw new AccessError("NOT_FOUND", 404, "The requested object is unavailable.");
+  const role = assertTeamRole(input.principal, input.memberships, input.teamId, input.seasonId, [chosen.role], now);
+  if (role.role === "manager") {
     assertAdultAuthority(input.principal, false, now);
     return { matchId: input.state.config.matchId, teamId: input.teamId, seasonId: input.seasonId, audience: "manager", revision: input.state.revision, state: input.state, lastRecorderSyncAt: input.lastSyncAt };
   }
@@ -74,6 +76,7 @@ function filterMatchForPrincipal(input) {
     sharingPolicyVersion: input.policy.version,
     sharingRestricted: !scoresAllowed,
     lastRecorderSyncAt: input.lastSyncAt,
+    ...input.state.config.fixture ? { opponent: input.state.config.fixture.opponent, playedDate: input.state.config.fixture.playedDate, homeAway: input.state.config.fixture.homeAway } : {},
     freshness: input.lastSyncAt !== null && now - input.lastSyncAt <= 15e3 ? "last_synced" : "updates_delayed"
   };
   if (role.role === "player" && role.playerId) {
@@ -98,22 +101,22 @@ function duration(value, label) {
 }
 function effectiveTime(state, requested) {
   if (state.half !== 1 && state.half !== 2) throw new Error("An effective match event requires a started half.");
-  const time = requested ?? { half: state.half, halfElapsedMs: state.halfActiveMs, matchElapsedMs: state.matchActiveMs };
-  if (time.half !== 1 && time.half !== 2) throw new Error("Effective half must be one or two.");
-  duration(time.halfElapsedMs, "Effective half time");
-  duration(time.matchElapsedMs, "Effective match time");
-  if (time.half > state.half) throw new Error("Effective time cannot refer to a half that has not started.");
+  const time2 = requested ?? { half: state.half, halfElapsedMs: state.halfActiveMs, matchElapsedMs: state.matchActiveMs };
+  if (time2.half !== 1 && time2.half !== 2) throw new Error("Effective half must be one or two.");
+  duration(time2.halfElapsedMs, "Effective half time");
+  duration(time2.matchElapsedMs, "Effective match time");
+  if (time2.half > state.half) throw new Error("Effective time cannot refer to a half that has not started.");
   const firstHalf = state.firstHalfDurationMs;
-  if (time.half === 2 && firstHalf === null) throw new Error("Second-half time requires the recorded actual first-half duration.");
-  const expected = (time.half === 2 ? firstHalf ?? 0 : 0) + time.halfElapsedMs;
-  if (expected !== time.matchElapsedMs) throw new Error("Effective cumulative time must use actual first-half duration and exclude half-time.");
-  const maximum = time.half === 1 && firstHalf !== null ? firstHalf : state.halfActiveMs;
-  if (time.halfElapsedMs > maximum || time.matchElapsedMs > state.matchActiveMs) throw new Error("Effective time cannot invent future active play.");
-  return { ...time };
+  if (time2.half === 2 && firstHalf === null) throw new Error("Second-half time requires the recorded actual first-half duration.");
+  const expected = (time2.half === 2 ? firstHalf ?? 0 : 0) + time2.halfElapsedMs;
+  if (expected !== time2.matchElapsedMs) throw new Error("Effective cumulative time must use actual first-half duration and exclude half-time.");
+  const maximum = time2.half === 1 && firstHalf !== null ? firstHalf : state.halfActiveMs;
+  if (time2.halfElapsedMs > maximum || time2.matchElapsedMs > state.matchActiveMs) throw new Error("Effective time cannot invent future active play.");
+  return { ...time2 };
 }
-function wasOnPitch(state, playerId, time) {
-  if (time.matchElapsedMs === state.matchActiveMs && time.half === state.half && state.lineup.some((item) => item.playerId === playerId)) return true;
-  return state.intervals.some((interval) => interval.playerId === playerId && interval.state === "playing" && interval.half === time.half && interval.startMs <= time.matchElapsedMs && interval.endMs >= time.matchElapsedMs);
+function wasOnPitch(state, playerId, time2) {
+  if (time2.matchElapsedMs === state.matchActiveMs && time2.half === state.half && state.lineup.some((item) => item.playerId === playerId)) return true;
+  return state.intervals.some((interval) => interval.playerId === playerId && interval.state === "playing" && interval.half === time2.half && interval.startMs <= time2.matchElapsedMs && interval.endMs >= time2.matchElapsedMs);
 }
 function goalRecord(state, details, eventId, recordedAtMs) {
   if (details.beneficiary !== "us" && details.beneficiary !== "opposition") throw new Error("Goal beneficiary is invalid.");
@@ -133,19 +136,375 @@ function goalRecord(state, details, eventId, recordedAtMs) {
   return { eventId, latestEventId: eventId, beneficiary: details.beneficiary, isOwnGoal, scorerPlayerId, goalType, effective, recordedAtMs, voided: false };
 }
 function scoresFromGoals(state, goals) {
-  const active = goals.filter((goal) => !goal.voided);
+  const active2 = goals.filter((goal) => !goal.voided);
   const sum = (values) => ({
     for: values.filter((goal) => goal.beneficiary === "us").length,
     against: values.filter((goal) => goal.beneficiary === "opposition").length
   });
   return {
-    score: sum(active),
-    halfTimeScore: state.firstHalfDurationMs === null ? state.halfTimeScore : sum(active.filter((goal) => goal.effective.half === 1))
+    score: sum(active2),
+    halfTimeScore: state.firstHalfDurationMs === null ? state.halfTimeScore : sum(active2.filter((goal) => goal.effective.half === 1))
+  };
+}
+
+// packages/domain/src/participation-corrections.ts
+var copyLineup = (lineup) => lineup.map((item) => ({ ...item }));
+var compare = (left, right) => (left.effective?.half ?? 0) - (right.effective?.half ?? 0) || (left.effective?.matchElapsedMs ?? 0) - (right.effective?.matchElapsedMs ?? 0) || left.order - right.order;
+function knownBoundary(state, eventId) {
+  const audit = state.audit?.find((item) => item.eventId === eventId);
+  if (!audit)
+    throw new Error(
+      "Original event boundary evidence is missing. Retain the history for explicit reconciliation."
+    );
+  return audit.effective ? effectiveTime(state, audit.effective) : null;
+}
+function initial(state) {
+  return {
+    attendance: Object.fromEntries(
+      state.config.selectedPlayerIds.map((id) => [
+        id,
+        state.config.initialAttendance?.[id] ?? "not_recorded"
+      ])
+    ),
+    availability: Object.fromEntries(
+      state.config.selectedPlayerIds.map((id) => [id, true])
+    ),
+    lineup: []
+  };
+}
+function applyFact(current3, fact) {
+  if (fact.voided) return;
+  if (fact.type === "attendance.recorded") {
+    current3.attendance[fact.playerId] = fact.status;
+    if (fact.status !== "present")
+      current3.lineup = current3.lineup.filter(
+        (item) => item.playerId !== fact.playerId
+      );
+  } else if (fact.type === "availability.changed") {
+    current3.availability[fact.playerId] = fact.available;
+    if (!fact.available)
+      current3.lineup = current3.lineup.filter(
+        (item) => item.playerId !== fact.playerId
+      );
+    if (fact.lineup) current3.lineup = copyLineup(fact.lineup);
+  } else current3.lineup = copyLineup(fact.lineup);
+}
+function factsAt(state, facts, half, activeMs) {
+  const current3 = initial(state);
+  for (const fact of [...facts].sort(compare)) {
+    if (fact.effective && (fact.effective.half > half || fact.effective.matchElapsedMs > activeMs))
+      continue;
+    applyFact(current3, fact);
+  }
+  return current3;
+}
+function replacementValue(state, fact, event) {
+  if (fact.type !== "lineup.committed" && fact.type !== "availability.changed")
+    throw new Error(
+      "This correction requires a separate review of clock, halves or attendance evidence."
+    );
+  const next = {
+    ...cloneValue(fact),
+    latestEventId: event.id,
+    aliases: [...fact.aliases, event.id]
+  };
+  if (event.type === "event.voided") {
+    if (fact.voided)
+      throw new Error("This participation event is already voided.");
+    return { ...next, voided: true };
+  }
+  if (event.replacement.type !== fact.type)
+    throw new Error("A correction cannot change the original event family.");
+  if (fact.voided && event.restoreVoided !== true)
+    throw new Error(
+      "Restoring a voided participation event needs explicit confirmation."
+    );
+  const requested = event.replacement.effective ?? fact.effective;
+  const boundary = requested ? effectiveTime(state, requested) : null;
+  if ((boundary?.half ?? 0) !== (fact.effective?.half ?? 0))
+    throw new Error(
+      "A participation correction cannot move evidence into another half. Review both halves separately."
+    );
+  if (event.replacement.type === "lineup.committed") {
+    if (!boundary)
+      throw new Error(
+        "A corrected lineup needs its actual active-time boundary."
+      );
+    return {
+      ...next,
+      effective: boundary,
+      lineup: copyLineup(event.replacement.lineup),
+      voided: false
+    };
+  }
+  const replacement = event.replacement;
+  if (replacement.playerId !== fact.playerId || !state.config.selectedPlayerIds.includes(replacement.playerId))
+    throw new Error(
+      "An availability correction must retain its selected player identity."
+    );
+  if (typeof replacement.available !== "boolean")
+    throw new Error("Availability must be confirmed explicitly.");
+  const reason = replacement.reason ?? fact.reason ?? "other";
+  if (!["arrival", "departure", "injury", "return", "other"].includes(reason) || ["arrival", "return"].includes(reason) && !replacement.available || ["injury", "departure"].includes(reason) && replacement.available)
+    throw new Error("Availability reason conflicts with the confirmed state.");
+  return {
+    ...next,
+    effective: boundary,
+    available: replacement.available,
+    reason,
+    lineup: replacement.replacementLineup ? copyLineup(replacement.replacementLineup) : fact.lineup ? copyLineup(fact.lineup) : void 0,
+    voided: false
+  };
+}
+function retainedParticipationFacts(state) {
+  const facts = [];
+  let staged = [];
+  for (const [order, event] of (state.eventHistory ?? []).entries()) {
+    const effective = knownBoundary(state, event.id);
+    if (event.type === "lineup.staged") {
+      staged = copyLineup(event.lineup);
+      continue;
+    }
+    if (event.type === "half.ended" && effective?.half === 1) {
+      staged = copyLineup(
+        factsAt(state, facts, 1, effective.matchElapsedMs).lineup
+      );
+      continue;
+    }
+    if (event.type === "event.corrected" || event.type === "event.voided") {
+      const index = facts.findIndex(
+        (fact) => fact.aliases.includes(event.targetEventId)
+      );
+      if (index >= 0 && ["lineup.committed", "availability.changed"].includes(facts[index].type))
+        facts[index] = replacementValue(state, facts[index], event);
+      continue;
+    }
+    const base = {
+      eventId: event.id,
+      latestEventId: event.id,
+      aliases: [event.id],
+      order,
+      effective,
+      recordedAtMs: event.sample.wallTimeMs,
+      voided: false
+    };
+    if (event.type === "half.started") {
+      if (!effective)
+        throw new Error("A half start is missing its actual active boundary.");
+      facts.push({ ...base, type: event.type, lineup: copyLineup(staged) });
+    } else if (event.type === "lineup.committed")
+      facts.push({
+        ...base,
+        type: event.type,
+        lineup: copyLineup(event.lineup)
+      });
+    else if (event.type === "attendance.recorded")
+      facts.push({
+        ...base,
+        type: event.type,
+        playerId: event.playerId,
+        status: event.status
+      });
+    else if (event.type === "availability.changed")
+      facts.push({
+        ...base,
+        type: event.type,
+        playerId: event.playerId,
+        available: event.available,
+        reason: event.reason ?? "other",
+        lineup: event.replacementLineup ? copyLineup(event.replacementLineup) : void 0
+      });
+  }
+  return facts;
+}
+function reprojectParticipation(state, correction, validateLineup2) {
+  if (correction.sourceRevision !== state.revision)
+    throw new Error(
+      "Participation correction draft is stale or lacks explicit interval reconciliation review. Review the current recorded history first."
+    );
+  const facts = retainedParticipationFacts(state);
+  let prior = null;
+  let changed;
+  if (correction.type === "event.corrected" || correction.type === "event.voided") {
+    const targetIndex = facts.findIndex(
+      (fact) => fact.aliases.includes(correction.targetEventId)
+    );
+    if (targetIndex < 0)
+      throw new Error(
+        "The participation correction target has no complete original evidence in this match."
+      );
+    prior = cloneValue(facts[targetIndex]);
+    changed = replacementValue(state, prior, correction);
+    facts[targetIndex] = changed;
+  } else {
+    if (!correction.effective || !correction.lateEntryReason?.trim() || correction.lateEntryReason.length > 500)
+      throw new Error(
+        "A historical participation entry needs an explicit effective time and audited late-entry reason of 1\u2013500 characters."
+      );
+    const effective = effectiveTime(state, correction.effective);
+    const base = {
+      eventId: correction.id,
+      latestEventId: correction.id,
+      aliases: [correction.id],
+      order: state.eventHistory?.length ?? 0,
+      effective,
+      recordedAtMs: correction.sample.wallTimeMs,
+      voided: false
+    };
+    if (correction.type === "lineup.committed")
+      changed = {
+        ...base,
+        type: correction.type,
+        lineup: copyLineup(correction.lineup)
+      };
+    else {
+      if (!state.config.selectedPlayerIds.includes(correction.playerId) || typeof correction.available !== "boolean")
+        throw new Error(
+          "Historical availability requires a selected player and explicit state."
+        );
+      const reason = correction.reason ?? "other";
+      if (!["arrival", "departure", "injury", "return", "other"].includes(
+        reason
+      ) || ["arrival", "return"].includes(reason) && !correction.available || ["injury", "departure"].includes(reason) && correction.available)
+        throw new Error(
+          "Availability reason conflicts with the confirmed state."
+        );
+      changed = {
+        ...base,
+        type: correction.type,
+        playerId: correction.playerId,
+        available: correction.available,
+        reason,
+        lineup: correction.replacementLineup ? copyLineup(correction.replacementLineup) : void 0
+      };
+    }
+    facts.push(changed);
+  }
+  const sorted = [...facts].sort(compare);
+  const intervals = [];
+  const targetIntervals = [];
+  const availabilityHistory = [];
+  const current3 = initial(state);
+  let activeHalf = 0;
+  for (const fact of sorted) {
+    if (fact.voided) continue;
+    if (fact.type === "availability.changed")
+      availabilityHistory.push({
+        eventId: fact.eventId,
+        latestEventId: fact.latestEventId,
+        playerId: fact.playerId,
+        available: fact.available,
+        previousAvailability: current3.availability[fact.playerId],
+        reason: fact.reason ?? "other",
+        effective: fact.effective,
+        recordedAtMs: fact.recordedAtMs
+      });
+    applyFact(current3, fact);
+    if (fact.effective) activeHalf = fact.effective.half;
+    if (fact.type === "half.started" || fact.type === "lineup.committed" || fact.type === "availability.changed" && fact.lineup) {
+      const errors = validateLineup2(
+        {
+          ...state,
+          attendance: current3.attendance,
+          availability: current3.availability
+        },
+        current3.lineup,
+        true
+      );
+      if (errors.length)
+        throw new Error(`Corrected allocation is invalid: ${errors.join(" ")}`);
+    }
+    if (activeHalf > state.half)
+      throw new Error("Corrected evidence refers to an unstarted half.");
+  }
+  const firstEnd = state.firstHalfDurationMs ?? (state.half === 1 ? state.matchActiveMs : 0);
+  for (const half of [1, 2]) {
+    if (half > state.half) continue;
+    const start = half === 1 ? 0 : firstEnd;
+    const end = half === 1 ? firstEnd : state.matchActiveMs;
+    const boundaries = [
+      .../* @__PURE__ */ new Set([
+        start,
+        end,
+        ...sorted.filter((fact) => !fact.voided && fact.effective?.half === half).map((fact) => fact.effective.matchElapsedMs)
+      ])
+    ].sort((a, b) => a - b);
+    for (let index = 0; index + 1 < boundaries.length; index++) {
+      const from = boundaries[index], to = boundaries[index + 1];
+      if (from < start || to > end || to <= from) continue;
+      const actual = factsAt(state, sorted, half, from);
+      const errors = validateLineup2(
+        {
+          ...state,
+          attendance: actual.attendance,
+          availability: actual.availability
+        },
+        actual.lineup,
+        false
+      );
+      if (errors.length)
+        throw new Error(
+          `Corrected participation is invalid: ${errors.join(" ")}`
+        );
+      for (const playerId of state.config.selectedPlayerIds) {
+        const allocation = actual.lineup.find(
+          (item) => item.playerId === playerId
+        );
+        const available2 = actual.attendance[playerId] === "present" && actual.availability[playerId];
+        intervals.push({
+          playerId,
+          state: allocation ? "playing" : available2 ? "available_bench" : "unavailable",
+          position: allocation?.position ?? null,
+          slotId: allocation?.slotId ?? null,
+          startMs: from,
+          endMs: to,
+          half
+        });
+      }
+      const availablePlayerIds = state.config.selectedPlayerIds.filter(
+        (id) => actual.attendance[id] === "present" && actual.availability[id]
+      );
+      targetIntervals.push({
+        durationMs: to - from,
+        availablePlayerIds,
+        pitchPlaces: state.config.pitchPlaces,
+        fixedKeeperId: state.config.fixedKeeperId && availablePlayerIds.includes(state.config.fixedKeeperId) ? state.config.fixedKeeperId : null
+      });
+    }
+  }
+  const final = factsAt(state, sorted, state.half, state.matchActiveMs);
+  const projected = {
+    ...state,
+    intervals,
+    targetIntervals,
+    lineup: final.lineup,
+    attendance: { ...state.attendance, ...final.attendance },
+    availability: { ...state.availability, ...final.availability },
+    availabilityHistory
+  };
+  for (const goal of state.goals ?? [])
+    if (!goal.voided) {
+      try {
+        goalRecord(projected, goal, goal.eventId, goal.recordedAtMs);
+      } catch {
+        throw new Error(
+          `Goal ${goal.eventId} no longer has consistent on-pitch evidence. Review that goal explicitly before applying this participation correction.`
+        );
+      }
+    }
+  const oldTime = prior?.effective, newTime = changed.effective;
+  const earliestAffected = oldTime && newTime ? oldTime.matchElapsedMs <= newTime.matchElapsedMs ? oldTime : newTime : oldTime ?? newTime;
+  return {
+    state: projected,
+    priorValue: prior,
+    value: changed,
+    effective: changed.effective,
+    earliestAffected
   };
 }
 
 // packages/domain/src/index.ts
-var ENGINE_VERSION = "synthetic-live-2";
+var ENGINE_VERSION = "synthetic-live-3";
 function integer(value, label) {
   if (!Number.isSafeInteger(value) || value < 0) throw new Error(`${label} must be a nonnegative safe integer.`);
 }
@@ -287,10 +646,10 @@ function accrue(state, sample) {
   if (state.half !== 1 && state.half !== 2) throw new Error("No active half.");
   const intervals = state.config.selectedPlayerIds.map((playerId) => {
     const allocation = state.lineup.find((item) => item.playerId === playerId);
-    const eligible = available(state, playerId);
+    const eligible2 = available(state, playerId);
     return {
       playerId,
-      state: allocation ? "playing" : eligible ? "available_bench" : "unavailable",
+      state: allocation ? "playing" : eligible2 ? "available_bench" : "unavailable",
       position: allocation?.position ?? null,
       slotId: allocation?.slotId ?? null,
       startMs: state.matchActiveMs,
@@ -333,12 +692,13 @@ function reduceMatch(previous, event) {
     return previous;
   }
   assertSample(event.sample);
-  if ((previous.status === "completed" || previous.status === "abandoned") && event.type !== "event.corrected" && event.type !== "event.voided" && event.type !== "goal.recorded") throw new Error("Completed or abandoned play is read-only. Use an audited correction without reopening the clock.");
+  if ((previous.status === "completed" || previous.status === "abandoned") && event.type !== "event.corrected" && event.type !== "event.voided" && event.type !== "goal.recorded" && !((event.type === "lineup.committed" || event.type === "availability.changed") && event.effective && event.sourceRevision !== void 0 && event.lateEntryReason?.trim())) throw new Error("Completed or abandoned play is read-only. Use an audited correction without reopening the clock.");
   let state = previous;
   let auditEffective;
   let auditPrior = null;
   let auditValue = event;
-  if (event.type === "availability.changed" && event.effective) {
+  const reviewedParticipationEntry = (event.type === "lineup.committed" || event.type === "availability.changed") && event.effective !== void 0 && event.sourceRevision !== void 0 && Boolean(event.lateEntryReason?.trim());
+  if (event.type === "availability.changed" && event.effective && !reviewedParticipationEntry) {
     if (previous.half === 0) throw new Error("Preparation availability has no active-time boundary.");
     const latest = accrue(previous, event.sample);
     const boundary = effectiveTime(latest, event.effective);
@@ -360,6 +720,14 @@ function reduceMatch(previous, event) {
       break;
     }
     case "availability.changed": {
+      if (reviewedParticipationEntry) {
+        const corrected = reprojectParticipation(state, event, validateLineup);
+        state = corrected.state;
+        auditEffective = corrected.effective;
+        auditPrior = corrected.priorValue;
+        auditValue = { inserted: corrected.value, earliestAffected: corrected.earliestAffected };
+        break;
+      }
       selectedPlayer(state, event.playerId);
       if (typeof event.available !== "boolean") throw new Error("Availability must be explicitly true or false.");
       const reason = event.reason ?? "other";
@@ -435,6 +803,14 @@ function reduceMatch(previous, event) {
       break;
     }
     case "lineup.committed": {
+      if (event.effective) {
+        const corrected = reprojectParticipation(state, event, validateLineup);
+        state = corrected.state;
+        auditEffective = corrected.effective;
+        auditPrior = corrected.priorValue;
+        auditValue = { inserted: corrected.value, earliestAffected: corrected.earliestAffected };
+        break;
+      }
       ensureLive(state);
       if (event.sourceRevision !== previous.revision) throw new Error("Lineup draft is stale. Review against the current match revision.");
       assertLineup(state, event.lineup);
@@ -472,7 +848,12 @@ function reduceMatch(previous, event) {
         if (event.replacement.type !== "availability.changed") throw new Error("A correction cannot change the original event family.");
         const replacement = event.replacement;
         if (replacement.playerId !== availability.playerId || replacement.available !== availability.available || replacement.replacementLineup || replacement.effective && canonical(replacement.effective) !== canonical(availability.effective)) {
-          throw new Error("Historical availability or lineup correction needs explicit interval reconciliation. Actual participation was retained unchanged.");
+          const corrected2 = reprojectParticipation(state, event, validateLineup);
+          state = corrected2.state;
+          auditEffective = corrected2.effective;
+          auditPrior = corrected2.priorValue;
+          auditValue = { correction: corrected2.value, earliestAffected: corrected2.earliestAffected };
+          break;
         }
         const reason = replacement.reason ?? availability.reason;
         if (!["arrival", "departure", "injury", "return", "other"].includes(reason) || (reason === "arrival" || reason === "return") && !availability.available || (reason === "injury" || reason === "departure") && availability.available) throw new Error("Corrected availability reason conflicts with its recorded state.");
@@ -483,6 +864,14 @@ function reduceMatch(previous, event) {
         auditValue = corrected;
         break;
       }
+      if (event.replacement.type === "lineup.committed" || event.replacement.type === "availability.changed" && event.sourceRevision !== void 0) {
+        const corrected = reprojectParticipation(state, event, validateLineup);
+        state = corrected.state;
+        auditEffective = corrected.effective;
+        auditPrior = corrected.priorValue;
+        auditValue = { correction: corrected.value, earliestAffected: corrected.earliestAffected };
+        break;
+      }
       if (state.eventHistory?.some((item) => item.id === event.targetEventId)) throw new Error("This historical interval or half transition needs explicit reconciliation of the affected play. No recorded minutes were changed.");
       throw new Error("Correction target was not found in this match history.");
     }
@@ -490,6 +879,14 @@ function reduceMatch(previous, event) {
       if (!event.reason.trim() || event.reason.length > 500) throw new Error("Voiding an event needs an audited reason of 1\u2013500 characters.");
       const goal = state.goals?.find((item) => item.eventId === event.targetEventId || item.latestEventId === event.targetEventId);
       if (!goal) {
+        if (state.eventHistory?.some((item) => item.id === event.targetEventId && (item.type === "lineup.committed" || item.type === "availability.changed" || item.type === "event.corrected"))) {
+          const corrected = reprojectParticipation(state, event, validateLineup);
+          state = corrected.state;
+          auditEffective = corrected.effective;
+          auditPrior = corrected.priorValue;
+          auditValue = { correction: corrected.value, earliestAffected: corrected.earliestAffected };
+          break;
+        }
         if (state.eventHistory?.some((item) => item.id === event.targetEventId)) throw new Error("Voiding a participation or half event requires explicit interval reconciliation. Original history was retained.");
         throw new Error("Void target was not found in this match history.");
       }
@@ -535,7 +932,7 @@ function reduceMatch(previous, event) {
     actorId: event.actorId ?? null,
     effective: auditEffective === void 0 ? state.half === 0 ? null : effectiveTime(state) : auditEffective,
     targetEventId: "targetEventId" in event ? event.targetEventId : null,
-    reason: "reason" in event ? event.reason ?? null : event.type === "goal.recorded" ? event.lateEntryReason ?? null : null,
+    reason: "lateEntryReason" in event && event.lateEntryReason?.trim() ? event.lateEntryReason : "reason" in event ? event.reason ?? null : null,
     priorValue: cloneValue(auditPrior),
     value: cloneValue(auditValue)
   };
@@ -1402,15 +1799,15 @@ function createPreparationState() {
 
 // packages/application/src/community.ts
 var CommunityError = class extends Error {
-  constructor(code, message) {
+  constructor(code2, message) {
     super(message);
-    this.code = code;
+    this.code = code2;
     this.name = "CommunityError";
   }
   code;
 };
-function requireRule(condition, code, message) {
-  if (!condition) throw new CommunityError(code, message);
+function requireRule(condition, code2, message) {
+  if (!condition) throw new CommunityError(code2, message);
 }
 function validTime2(value) {
   return Number.isSafeInteger(value) && value >= 0;
@@ -1777,8 +2174,9 @@ function applyCommunityCommand(state, actor, command, nowMs) {
     case "preferences.changed": {
       const preferences = command.preferences;
       requireRule(["schedule", "match", "awards", "photos"].every((key) => typeof preferences[key] === "boolean"), "invalid", "Notification choices must be on or off.");
-      const time = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
-      requireRule(preferences.quietStart === null && preferences.quietEnd === null || typeof preferences.quietStart === "string" && typeof preferences.quietEnd === "string" && time.test(preferences.quietStart) && time.test(preferences.quietEnd), "invalid", "Use HH:MM for both quiet-hour boundaries, or leave both empty.");
+      const time2 = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
+      requireRule(preferences.quietStart === null && preferences.quietEnd === null || typeof preferences.quietStart === "string" && typeof preferences.quietEnd === "string" && time2.test(preferences.quietStart) && time2.test(preferences.quietEnd), "invalid", "Use HH:MM for both quiet-hour boundaries, or leave both empty.");
+      requireRule(preferences.quietStart === null || preferences.quietStart !== preferences.quietEnd, "invalid", "Quiet hours need distinct boundaries; use channel switches to pause all day.");
       next.preferences[actor.accountId] = { ...preferences };
       break;
     }
@@ -1816,8 +2214,8 @@ function finalizeDueCommunityAwards(state, nowMs) {
   const due = state.matches.filter((match) => match.finishQuality === "trusted" && match.actualFullTimeAtMs !== null && match.voteCutoffAtMs !== null && match.cutoffSource !== "unresolved" && nowMs >= match.voteCutoffAtMs && !state.awards.some((award) => award.matchId === match.id));
   if (due.length === 0) return state;
   const next = JSON.parse(JSON.stringify(state));
-  for (const source of due) {
-    const match = next.matches.find((item) => item.id === source.id);
+  for (const source2 of due) {
+    const match = next.matches.find((item) => item.id === source2.id);
     sealAward(next, match, nowMs);
     next.audit.push({
       id: `worker:award-finalise:${match.id}:${match.voteCutoffAtMs}`,
@@ -2037,10 +2435,10 @@ function createCommunityState(nowMs = Date.now()) {
   });
   return state;
 }
-function communityObjectShape(value, fields) {
+function communityObjectShape(value, fields3) {
   if (value === null || typeof value !== "object" || Array.isArray(value)) return false;
-  const object = value;
-  return Object.keys(object).every((key) => Object.hasOwn(fields, key)) && Object.entries(fields).every(([key, rule]) => Object.hasOwn(object, key) ? rule.accepts(object[key]) : Boolean(rule.optional));
+  const object3 = value;
+  return Object.keys(object3).every((key) => Object.hasOwn(fields3, key)) && Object.entries(fields3).every(([key, rule]) => Object.hasOwn(object3, key) ? rule.accepts(object3[key]) : Boolean(rule.optional));
 }
 var communityText = (maximum, nonempty = true) => ({ accepts: (value) => typeof value === "string" && value.length <= maximum && (!nonempty || value.trim().length > 0) });
 var communityInteger = (minimum = 0) => ({ accepts: (value) => typeof value === "number" && Number.isSafeInteger(value) && value >= minimum });
@@ -2212,6 +2610,8 @@ function createRecordsSeed() {
 }
 function snapshotLiveMatch(state, match, at) {
   if (match.config.matchId !== state.liveMatch.matchId) throw new Error("Set this match\u2019s recorded fixture details before reporting it.");
+  const previousRecord = state.results.find((record) => record.id === match.config.matchId);
+  const sameClassification = previousRecord?.fixtureClass === state.liveMatch.fixtureClass;
   const sample = match.anchor?.sample ?? { monotonicMs: 0, sessionId: "records-checkpoint", wallTimeMs: 0 };
   const started = match.status !== "preparation";
   const targets = started ? currentTargets(match, sample) : [];
@@ -2241,8 +2641,8 @@ function snapshotLiveMatch(state, match, at) {
     seasonId: state.seasonId,
     recordMode: "detailed_live",
     detailCompleteness: match.recoveryRequired ? "review_required" : "complete",
-    publication: state.results.find((record) => record.id === match.config.matchId)?.publication ?? managerOnlyPublication(state.liveMatch.fixtureClass),
-    classificationVersion: state.results.find((record) => record.id === match.config.matchId)?.classificationVersion ?? 1,
+    publication: sameClassification ? clone2(previousRecord.publication) : managerOnlyPublication(state.liveMatch.fixtureClass),
+    classificationVersion: previousRecord ? previousRecord.classificationVersion + Number(!sameClassification) : 1,
     selectedPlayerIds: [...match.config.selectedPlayerIds],
     attendance: { ...match.attendance },
     participation: started ? playerMinutes(match, sample).map((player) => {
@@ -2321,7 +2721,7 @@ function reduceRecords(previous, command) {
       if (command.match.status !== "completed" || command.match.recoveryRequired) throw new Error("Finish the match and resolve clock uncertainty before archiving a final participation record.");
       before = state.results.find((record) => record.id === command.match.config.matchId) ?? null;
       if (before?.recordMode === "historical_summary") throw new Error("A historical summary already uses this match identifier; explicit reconciliation is required.");
-      if (before && (before.sourceMatchRevision ?? -1) >= command.match.revision) throw new Error("This match revision is already archived.");
+      if (before && ((before.sourceMatchRevision ?? -1) > command.match.revision || before.sourceMatchRevision === command.match.revision && before.fixtureClass === state.liveMatch.fixtureClass)) throw new Error("This match revision is already archived.");
       after = { ...snapshotLiveMatch(state, command.match, command.at), enteredAt: before?.enteredAt ?? command.at, revision: (before?.revision ?? 0) + 1 };
       state = { ...state, results: [...state.results.filter((record) => record.id !== after?.id), after] };
       reason = command.reason?.trim() || "Local completed match captured from recorded intervals.";
@@ -2381,8 +2781,8 @@ function ordinaryCompleted(record) {
 function chronological(left, right) {
   return left.playedDate.localeCompare(right.playedDate) || (left.recordedKickoff && right.recordedKickoff ? Date.parse(left.recordedKickoff) - Date.parse(right.recordedKickoff) : (left.sameDayOrder ?? 0) - (right.sameDayOrder ?? 0)) || left.id.localeCompare(right.id);
 }
-function resultOutcome(score) {
-  return score.for > score.against ? "W" : score.for < score.against ? "L" : "D";
+function resultOutcome(score2) {
+  return score2.for > score2.against ? "W" : score2.for < score2.against ? "L" : "D";
 }
 function publicResult(record) {
   const included = ordinaryCompleted(record);
@@ -2458,8 +2858,8 @@ function selectSeasonResults(state, viewer) {
 function reportRecords(state, match) {
   const scoped = state.results.filter((record) => record.teamId === state.teamId && record.seasonId === state.seasonId);
   if (!match || match.config.matchId !== state.liveMatch.matchId || match.status === "preparation") return scoped;
-  const current = snapshotLiveMatch(state, match, observedMatchTime(match) ?? latestRecordTime(state) ?? state.startsOn + "T00:00:00Z");
-  return [...scoped.filter((record) => record.id !== current.id), current];
+  const current3 = snapshotLiveMatch(state, match, observedMatchTime(match) ?? latestRecordTime(state) ?? state.startsOn + "T00:00:00Z");
+  return [...scoped.filter((record) => record.id !== current3.id), current3];
 }
 function observedMatchTime(match) {
   const value = match?.eventHistory?.at(-1)?.sample.wallTimeMs ?? match?.anchor?.sample.wallTimeMs ?? match?.completedAtMs;
@@ -2493,36 +2893,36 @@ function selectParticipationReport(state, match, viewer) {
   const players = viewer.actor === "player" ? state.players.filter((player) => player.id === viewer.playerId) : state.players;
   return { ...metadata, access: "permitted", reason: null, rows: players.map((player) => {
     const selected = records.filter((record) => record.selectedPlayerIds?.includes(player.id) && record.attendance?.[player.id] !== "not_selected");
-    const evidence = selected.flatMap((record) => record.participation?.filter((item) => item.playerId === player.id) ?? []);
+    const evidence2 = selected.flatMap((record) => record.participation?.filter((item) => item.playerId === player.id) ?? []);
     const positionMs = {};
-    for (const entry of evidence) for (const [position, duration2] of Object.entries(entry.positionMs)) positionMs[position] = (positionMs[position] ?? 0) + duration2;
+    for (const entry of evidence2) for (const [position, duration2] of Object.entries(entry.positionMs)) positionMs[position] = (positionMs[position] ?? 0) + duration2;
     const preferenceMs = { first: 0, second: 0, backup: 0, other: 0, unknown: 0 };
-    for (const entry of evidence) {
+    for (const entry of evidence2) {
       if (entry.preferenceMs) for (const category of Object.keys(preferenceMs)) preferenceMs[category] += entry.preferenceMs[category];
       else preferenceMs.unknown += entry.playedMs;
     }
-    const playingMs = evidence.reduce((sum, entry) => sum + entry.playedMs, 0);
+    const playingMs = evidence2.reduce((sum, entry) => sum + entry.playedMs, 0);
     const goalkeeperMs = positionMs.GK ?? 0;
     const games = attendanceSummary(selected.map((record) => record.attendance?.[player.id] ?? "not_recorded"));
     const trainingEvidence = state.trainingAttendance.filter((item) => item.eventStatus === "held" && item.expectedPlayerIds.includes(player.id));
     const training = attendanceSummary(trainingEvidence.map((item) => item.attendance[player.id] ?? "not_recorded"));
-    const matchesPlayed = evidence.filter((entry) => entry.playedMs > 0).length;
+    const matchesPlayed = evidence2.filter((entry) => entry.playedMs > 0).length;
     const unknown = records.filter((record) => record.selectedPlayerIds === null).length;
     return {
       playerId: player.id,
       label: player.label,
       matchesSelected: selected.length,
       unknownHistoricalSelectionCount: unknown,
-      matchesWithParticipationRecorded: evidence.length,
+      matchesWithParticipationRecorded: evidence2.length,
       matchesWithAttendanceRecorded: games.attendanceRecordedCount,
       matchesPlayed,
       matchesAttended: games.attendedCount,
       playingMs,
       goalkeeperMs,
       outfieldMs: playingMs - goalkeeperMs,
-      nonPrimaryGoalkeeperMs: evidence.filter((entry) => entry.primaryWasGoalkeeper === false).reduce((sum, entry) => sum + (entry.positionMs.GK ?? 0), 0),
-      goalkeeperMsWithUnknownPrimaryPreference: evidence.filter((entry) => entry.primaryWasGoalkeeper === null).reduce((sum, entry) => sum + (entry.positionMs.GK ?? 0), 0),
-      goalkeeperMsWithKnownPrimaryPreference: evidence.filter((entry) => entry.primaryWasGoalkeeper !== null).reduce((sum, entry) => sum + (entry.positionMs.GK ?? 0), 0),
+      nonPrimaryGoalkeeperMs: evidence2.filter((entry) => entry.primaryWasGoalkeeper === false).reduce((sum, entry) => sum + (entry.positionMs.GK ?? 0), 0),
+      goalkeeperMsWithUnknownPrimaryPreference: evidence2.filter((entry) => entry.primaryWasGoalkeeper === null).reduce((sum, entry) => sum + (entry.positionMs.GK ?? 0), 0),
+      goalkeeperMsWithKnownPrimaryPreference: evidence2.filter((entry) => entry.primaryWasGoalkeeper !== null).reduce((sum, entry) => sum + (entry.positionMs.GK ?? 0), 0),
       positionMs,
       preferenceMs,
       minutesPerPlayedAppearance: matchesPlayed ? playingMs / matchesPlayed / 6e4 : null,
@@ -2530,8 +2930,8 @@ function selectParticipationReport(state, match, viewer) {
       training,
       gameRecords: selected.map((record) => ({ eventId: record.id, heldDate: record.playedDate, eventStatus: record.status, selection: "selected", actualAttendance: record.attendance?.[player.id] ?? "not_recorded", availabilityResponse: null })),
       trainingRecords: trainingEvidence.map((item) => ({ eventId: item.sessionId, heldDate: item.playedDate, eventStatus: "held", expected: true, actualAttendance: item.attendance[player.id] ?? "not_recorded", availabilityResponse: item.responses?.[player.id] ?? null })),
-      coverageLabel: `Minutes recorded for ${evidence.length} of ${records.length} recorded games; ${unknown} historical squad${unknown === 1 ? "" : "s"} not recorded.`,
-      evidenceState: selected.some((record) => record.detailCompleteness === "review_required") ? "review_required" : unknown || selected.length !== evidence.length ? "partial" : "complete"
+      coverageLabel: `Minutes recorded for ${evidence2.length} of ${records.length} recorded games; ${unknown} historical squad${unknown === 1 ? "" : "s"} not recorded.`,
+      evidenceState: selected.some((record) => record.detailCompleteness === "review_required") ? "review_required" : unknown || selected.length !== evidence2.length ? "partial" : "complete"
     };
   }) };
 }
@@ -2571,25 +2971,29 @@ function selectMatchReport(state, matchId, viewer, currentMatch = null) {
     awardStatus: record.awardStatus
   };
   if (viewer.actor === "spectator") return base;
-  const eligible = viewer.actor === "manager" ? state.players.map((player) => player.id) : viewer.playerId ? [viewer.playerId] : [];
+  const eligible2 = viewer.actor === "manager" ? state.players.map((player) => player.id) : viewer.playerId ? [viewer.playerId] : [];
   return {
     ...base,
     actualActiveDurationMs: record.actualActiveDurationMs,
     keeperPolicy: record.keeperPolicy,
-    participation: record.participation?.filter((item) => eligible.includes(item.playerId)).map(clone2) ?? null,
-    attendance: record.attendance ? Object.fromEntries(Object.entries(record.attendance).filter(([id]) => eligible.includes(id))) : null
+    participation: record.participation?.filter((item) => eligible2.includes(item.playerId)).map(clone2) ?? null,
+    attendance: record.attendance ? Object.fromEntries(Object.entries(record.attendance).filter(([id]) => eligible2.includes(id))) : null
   };
 }
 
 // packages/application/src/sync.ts
 function effectiveEventTime(previous, next, event) {
   let effective;
-  if (event.type === "goal.recorded" || event.type === "availability.changed") effective = event.effective;
+  if (event.type === "goal.recorded" || event.type === "availability.changed" || event.type === "lineup.committed") effective = event.effective;
   if (event.type === "event.corrected") effective = event.replacement.effective;
   if ((event.type === "event.corrected" || event.type === "event.voided") && !effective) {
     const goal = previous.goals?.find((record) => record.eventId === event.targetEventId || record.latestEventId === event.targetEventId);
     const availability = previous.availabilityHistory?.find((record) => record.eventId === event.targetEventId || record.latestEventId === event.targetEventId);
     effective = goal?.effective ?? availability?.effective;
+    if (!effective) {
+      const target = previous.audit?.find((record) => record.eventId === event.targetEventId);
+      effective = target?.effective;
+    }
   }
   return effective ? { half: effective.half, halfElapsedMs: effective.halfElapsedMs, matchElapsedMs: effective.matchElapsedMs } : { half: next.half, halfElapsedMs: next.halfActiveMs, matchElapsedMs: next.matchActiveMs };
 }
@@ -2638,6 +3042,1117 @@ function fixtureMatchConfig(preparation, snapshot) {
 }
 var defaultPlayerId = romaFixture.players[0].id;
 
+// packages/application/src/season-service.ts
+var copy = (value) => JSON.parse(JSON.stringify(value));
+var fail = (message, code2 = "INVALID_REQUEST", status = 422) => {
+  throw new AccessError(code2, status, message);
+};
+function requireThat2(value, message) {
+  if (!value) fail(message);
+}
+function validId(value) {
+  return typeof value === "string" && /^[A-Za-z0-9_-]{1,80}$/.test(value);
+}
+function current(item, nowMs) {
+  return item.revokedAt == null && (item.expiresAt == null || item.expiresAt > nowMs);
+}
+function source(context) {
+  const { preparation, records } = context;
+  requireThat2(Number.isSafeInteger(context.nowMs) && context.nowMs >= 0, "A trusted server time is required.");
+  requireThat2(preparation.team.id === records.teamId && preparation.club.id === records.clubId, "Preparation and reports must belong to the same club and team.");
+  const season = preparation.seasons.find((item) => item.id === records.seasonId);
+  requireThat2(season, "The source season is unavailable.");
+  requireThat2(context.community.seasons.some((item) => item.teamId === records.teamId && item.id === season.id), "The source community scope is inconsistent.");
+  return season;
+}
+function visibleAccounts(context) {
+  const season = source(context);
+  const permitted = new Set(context.memberships.filter((item) => item.teamId === context.records.teamId && item.seasonId === season.id && current(item, context.nowMs)).map((item) => item.accountId));
+  return context.accounts.filter((account2) => permitted.has(account2.accountId) && account2.status === "active");
+}
+function verifiedAdult(account2) {
+  return account2.status === "active" && account2.identityClassification === "adult_individual" && account2.adultVerified && account2.strongAuthEnrolled;
+}
+function activeManagers(context) {
+  return [...new Set(context.memberships.filter((item) => item.teamId === context.records.teamId && item.role === "manager" && current(item, context.nowMs) && context.accounts.find((account2) => account2.accountId === item.accountId)?.status !== "disabled").map((item) => item.accountId))];
+}
+function seasonAccessEndsAtMs(startYear) {
+  const midnightUtc = Date.UTC(startYear + 1, 8, 1);
+  const offset = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/London", timeZoneName: "shortOffset" }).formatToParts(midnightUtc).find((part) => part.type === "timeZoneName")?.value;
+  const match = /^GMT(?:([+-])(\d{1,2})(?::(\d{2}))?)?$/.exec(offset ?? "");
+  requireThat2(match, "The season boundary timezone is unavailable.");
+  const minutes = match[1] ? (match[1] === "+" ? 1 : -1) * (Number(match[2]) * 60 + Number(match[3] ?? 0)) : 0;
+  return midnightUtc - minutes * 6e4;
+}
+function seasonRolloverOptions(context) {
+  const season = source(context), { principal, memberships, records, preparation, nowMs } = context;
+  assertTeamRole(principal, memberships, records.teamId, season.id, ["administrator", "manager"], nowMs);
+  assertAdultAuthority(principal, false, nowMs);
+  const accounts = visibleAccounts(context);
+  const currentRows = memberships.filter((item) => item.teamId === records.teamId && item.seasonId === season.id && current(item, nowMs));
+  const administrator = currentRows.some((item) => item.accountId === principal.accountId && item.role === "administrator");
+  const existingNextSeasonId = context.existingSeasons.find((item) => item.teamId === records.teamId && item.startYear === season.startYear + 1)?.id ?? null;
+  return {
+    revision: preparation.revision,
+    sourceSeasonId: season.id,
+    sourceSeason: copy(season),
+    canRollover: administrator && principal.strongAuth && !existingNextSeasonId && principal.authenticatedAt <= nowMs + 3e4 && nowMs - principal.authenticatedAt <= 3e5,
+    existingNextSeasonId,
+    requiredAuthority: "administrator_with_recent_stronger_sign_in",
+    nextSeason: { startYear: season.startYear + 1, ...seasonBounds(season.startYear + 1) },
+    activeManagerAccountIds: activeManagers(context),
+    managerCandidates: accounts.filter(verifiedAdult).map((account2) => ({ accountId: account2.accountId, label: account2.label, currentManager: currentRows.some((item) => item.accountId === account2.accountId && item.role === "manager"), administrator: currentRows.some((item) => item.accountId === account2.accountId && item.role === "administrator") })),
+    playerCandidates: currentRows.filter((item) => item.role === "player" && item.playerId && accounts.some((account2) => account2.accountId === item.accountId)).flatMap((item) => {
+      const profile = preparation.profiles.find((profile2) => profile2.seasonId === season.id && profile2.playerId === item.playerId && profile2.active);
+      return profile ? [{ accountId: item.accountId, playerId: profile.playerId, label: profile.displayName }] : [];
+    }),
+    spectatorRenewal: "individual_explicit_invitation_only"
+  };
+}
+function configurationServiceView(input) {
+  assertTeamRole(input.principal, input.memberships, input.preparation.team.id, input.seasonId, ["administrator", "manager"], input.nowMs);
+  assertAdultAuthority(input.principal, false, input.nowMs);
+  const { version, revision, club, team, activeSeasonId, seasons } = input.preparation;
+  return copy({ version, revision, club, team, activeSeasonId, seasons });
+}
+function applyConfigurationServiceCommand(input) {
+  const { principal, memberships, preparation, seasonId, nowMs, command } = input;
+  requireThat2(command?.type === "club.updated" || command?.type === "team.updated", "Configuration accepts only club or team settings.");
+  assertTeamRole(principal, memberships, preparation.team.id, seasonId, command.type === "club.updated" ? ["administrator"] : ["administrator", "manager"], nowMs);
+  assertAdultAuthority(principal, command.type === "club.updated", nowMs);
+  return reducePreparation(preparation, command);
+}
+function planSeasonRollover(context) {
+  const old = source(context), { principal, memberships, accounts, preparation, records, community, command, nowMs } = context;
+  assertTeamRole(principal, memberships, records.teamId, old.id, ["administrator"], nowMs);
+  requireThat2(Number.isSafeInteger(principal.authenticatedAt) && principal.authenticatedAt >= 0, "Verified authentication time is required.");
+  assertAdultAuthority(principal, true, nowMs);
+  requireThat2(command?.type === "season.rolled_over" && validId(command.id) && validId(command.idForSeason), "Use valid command and season identifiers.");
+  requireThat2(command.expectedPreparationRevision === preparation.revision, "The source preparation changed. Refresh before creating its next season.");
+  requireThat2(command.startYear === old.startYear + 1 && command.startYear <= 2100 && command.startYear >= 2020, "Create the immediately following September-to-August season.");
+  requireThat2(command.idForSeason !== old.id && !preparation.seasons.some((item) => item.id === command.idForSeason || item.startYear === command.startYear) && !memberships.some((item) => item.teamId === records.teamId && item.seasonId === command.idForSeason), "That destination season already exists.");
+  requireThat2(!context.existingSeasons.some((item) => item.teamId === records.teamId && (item.id === command.idForSeason || item.startYear === command.startYear)), "That destination season or season year already exists.");
+  requireThat2(command.confirmSpectatorRenewal === true && typeof command.copyPlayers === "boolean", "Acknowledge that spectators receive no automatic new-season access.");
+  requireThat2(Array.isArray(command.managerAccountIds) && Array.isArray(command.administratorAccountIds) && Array.isArray(command.playerAssignments), "Explicit manager, administrator and player assignments are required.");
+  requireThat2(command.playerAssignments.length <= 2e3 && command.playerAssignments.every((item) => item && typeof item === "object" && validId(item.accountId) && validId(item.playerId)), "Player assignments must be a bounded list of known identities.");
+  const unique3 = (items) => items.every(validId) && new Set(items).size === items.length;
+  requireThat2(command.managerAccountIds.length >= 1 && command.managerAccountIds.length <= 4 && unique3(command.managerAccountIds), "Select one to four distinct verified adult managers.");
+  requireThat2(command.administratorAccountIds.length >= 1 && unique3(command.administratorAccountIds), "Explicitly retain at least one current verified administrator.");
+  const options = seasonRolloverOptions(context);
+  for (const id of command.managerAccountIds) requireThat2(options.managerCandidates.some((account2) => account2.accountId === id), "Each manager must be an active verified adult with stronger authentication already enrolled in this team.");
+  for (const id of command.administratorAccountIds) requireThat2(options.managerCandidates.some((account2) => account2.accountId === id && account2.administrator), "Only a current verified administrator can retain administrator authority in the new season.");
+  if ((/* @__PURE__ */ new Set([...activeManagers(context), ...command.managerAccountIds])).size > 4) fail("A team can have at most four active manager accounts. Revoke departed manager authority explicitly before adding another account.", "MANAGER_LIMIT", 409);
+  requireThat2(new Set(command.playerAssignments.map((item) => item.accountId)).size === command.playerAssignments.length && new Set(command.playerAssignments.map((item) => item.playerId)).size === command.playerAssignments.length, "Player assignments must retain one distinct known account for each player.");
+  requireThat2(command.copyPlayers || command.playerAssignments.length === 0, "Copy the relevant player profiles before assigning their existing accounts.");
+  for (const assignment of command.playerAssignments) requireThat2(validId(assignment.accountId) && validId(assignment.playerId) && options.playerCandidates.some((item) => item.accountId === assignment.accountId && item.playerId === assignment.playerId), "New player membership must preserve the source account/player binding. Use activation for new identity links.");
+  const season = { id: command.idForSeason, startYear: command.startYear, ...seasonBounds(command.startYear), spectatorRenewalRequired: true };
+  const newMemberships = [
+    ...command.managerAccountIds.map((accountId) => ({ accountId, teamId: records.teamId, seasonId: season.id, role: "manager" })),
+    ...command.administratorAccountIds.map((accountId) => ({ accountId, teamId: records.teamId, seasonId: season.id, role: "administrator" })),
+    ...command.playerAssignments.map((item) => ({ ...item, teamId: records.teamId, seasonId: season.id, role: "player" }))
+  ];
+  const sourceProfiles = preparation.profiles.filter((profile) => profile.seasonId === old.id && profile.active);
+  requireThat2(sourceProfiles.length <= 2e3 && new Set(sourceProfiles.map((profile) => profile.playerId)).size === sourceProfiles.length, "The source roster must have one distinct active profile for each player.");
+  const profiles = command.copyPlayers ? sourceProfiles.map((profile, index) => ({ ...copy(profile), id: `profile-${season.id.slice(0, 60)}-${String(index + 1).padStart(4, "0")}`, seasonId: season.id })) : [];
+  const nextPreparation = { ...copy(preparation), revision: 0, activeSeasonId: season.id, seasons: [season], profiles, fixtures: [], training: [], snapshots: [], appliedCommands: {}, audit: [{ id: command.id, revision: 0, type: "season.created_from_explicit_assignments" }] };
+  const nextRecords = {
+    ...copy(records),
+    revision: 0,
+    seasonId: season.id,
+    seasonLabel: season.label,
+    startsOn: season.startDate,
+    endsOn: season.endDate,
+    players: profiles.map((profile) => ({ id: profile.playerId, label: profile.displayName })),
+    liveMatch: { matchId: "", playedDate: season.startDate, opponent: "", homeAway: "home", fixtureClass: "unclassified" },
+    results: [],
+    trainingAttendance: [],
+    audit: [],
+    appliedCommands: {}
+  };
+  const assignedIds = new Set(newMemberships.map((item) => item.accountId));
+  const nextCommunity = {
+    ...copy(community),
+    revision: 0,
+    accounts: accounts.filter((account2) => assignedIds.has(account2.accountId)).map((account2) => ({ id: account2.accountId, label: account2.label, classification: account2.identityClassification === "child_shared" ? "child_shared" : "adult_individual", adultVerified: account2.adultVerified })),
+    memberships: newMemberships.filter((item) => item.role === "manager" || item.role === "player").map((item) => ({ accountId: item.accountId, teamId: item.teamId, seasonId: item.seasonId, role: item.role, ...item.playerId ? { playerId: item.playerId } : {}, active: true })),
+    seasons: [{ id: season.id, teamId: records.teamId, label: season.label, teamLabel: preparation.team.name, accessEndsAtMs: seasonAccessEndsAtMs(command.startYear) }],
+    invitations: [],
+    grants: [],
+    matches: [],
+    ballots: [],
+    awards: [],
+    photos: [],
+    concerns: [],
+    privacyRequests: [],
+    appliedCommands: {},
+    hiddenUploaders: community.hiddenUploaders.filter((item) => assignedIds.has(item.accountId)).map(copy),
+    preferences: Object.fromEntries(Object.entries(community.preferences).filter(([accountId]) => assignedIds.has(accountId)).map(([id, value]) => [id, copy(value)])),
+    audit: [{ id: command.id, actorAccountId: principal.accountId, action: "season.created_from_explicit_assignments", atMs: nowMs }]
+  };
+  return {
+    preparation: nextPreparation,
+    records: nextRecords,
+    community: nextCommunity,
+    memberships: newMemberships,
+    receipt: { revision: 0, seasonId: season.id, season, sourceSeasonId: old.id, commandId: command.id, managerAccountIds: [...command.managerAccountIds], administratorAccountIds: [...command.administratorAccountIds], playerAssignmentCount: command.playerAssignments.length, spectatorGrantCount: 0, spectatorRenewal: "individual_explicit_invitation_only" }
+  };
+}
+
+// packages/application/src/report-community.ts
+var empty = (communityStatus, communityRevision = null) => ({ communityStatus, communityRevision, award: null, publishedAlbum: null });
+function composeReportCommunity(report, accountId, source2) {
+  if (report.suppressionReason) return empty("withheld");
+  if (!source2 || source2.accountId !== accountId || source2.teamId !== report.teamId || source2.seasonId !== report.seasonId || source2.audience !== report.visibilityScope || report.visibilityScope === "player" && source2.playerId !== report.appliedFilters.playerId || !Number.isSafeInteger(source2.revision) || source2.revision < 0 || !source2.view.allowed) return empty("unavailable");
+  const contexts = source2.view.matches.filter((item) => item.id === report.matchId);
+  if (contexts.length > 1) return empty("unavailable");
+  if (contexts.length === 0) return empty("not_recorded", source2.revision);
+  const match = contexts[0];
+  if (match.sharingAllowed !== true) return empty("withheld", source2.revision);
+  const award = match.award;
+  const times = award ? [award.voteCutoffAtMs, award.finalisationDeadlineAtMs, award.finalisedAtMs] : [];
+  if (award && (award.matchId !== report.matchId || !["winners", "no_valid_votes"].includes(award.result) || !times.every((time2) => Number.isSafeInteger(time2) && time2 >= 0) || award.finalisationDeadlineAtMs < award.voteCutoffAtMs || award.deadlineMissed !== award.finalisedAtMs > award.finalisationDeadlineAtMs || !Array.isArray(award.winnerLabels) || award.winnerLabels.some((label) => typeof label !== "string" || !label.trim() || label.length > 120) || (award.result === "no_valid_votes" ? award.winnerLabels.length !== 0 : award.winnerLabels.length === 0))) return empty("unavailable");
+  const photos = new Set(source2.view.gallery.filter((photo) => photo.matchId === report.matchId && typeof photo.id === "string" && photo.id.length > 0).map((photo) => photo.id));
+  return {
+    communityStatus: "available",
+    communityRevision: source2.revision,
+    award: award ? { matchId: report.matchId, result: award.result, winnerLabels: [...award.winnerLabels], voteCutoffAtMs: award.voteCutoffAtMs, finalisationDeadlineAtMs: award.finalisationDeadlineAtMs, finalisedAtMs: award.finalisedAtMs, deadlineMissed: award.deadlineMissed } : null,
+    publishedAlbum: { matchId: report.matchId, photoCount: photos.size }
+  };
+}
+
+// packages/application/src/records-service.ts
+var copy2 = (value) => JSON.parse(JSON.stringify(value));
+function fail2(message, code2 = "INVALID_REQUEST", status = 422) {
+  throw new AccessError(code2, status, message);
+}
+function requireThat3(value, message) {
+  if (!value) fail2(message);
+}
+function object(value) {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+function string(value, max = 150) {
+  return typeof value === "string" && value.trim().length > 0 && value.length <= max && !/[\u0000-\u001f\u007f]/.test(value);
+}
+function fields(value, permitted) {
+  requireThat3(Object.keys(value).every((key) => permitted.includes(key)), "The request includes unsupported fields.");
+}
+function integer2(value, maximum = Number.MAX_SAFE_INTEGER) {
+  return Number.isSafeInteger(value) && value >= 0 && value <= maximum;
+}
+var fixtureClasses = ["development", "friendly", "trophy", "unclassified"];
+function score(value) {
+  if (value === null) return null;
+  requireThat3(object(value), "Provide a known score or explicitly leave it not recorded.");
+  fields(value, ["for", "against"]);
+  requireThat3(integer2(value.for, 999) && integer2(value.against, 999), "Scores must be nonnegative whole goals.");
+  return { for: value.for, against: value.against };
+}
+function parseHistoricalResultInput(value) {
+  requireThat3(object(value), "Historical details are required.");
+  fields(value, ["playedDate", "recordedKickoff", "sameDayOrder", "opponent", "homeAway", "fixtureClass", "status", "specialOutcome", "finalScore", "halfTimeScore", "goals"]);
+  requireThat3(string(value.playedDate, 10) && string(value.opponent, 120), "A played date and opposition are required.");
+  requireThat3(value.recordedKickoff === null || string(value.recordedKickoff, 50), "Known kickoff needs a timestamp; use null for unknown.");
+  requireThat3(value.sameDayOrder === null || integer2(value.sameDayOrder, 100), "Same-day ordering must be a whole number or unknown.");
+  requireThat3(["home", "away", "neutral"].includes(value.homeAway) && fixtureClasses.includes(value.fixtureClass), "Choose a valid venue side and fixture class.");
+  requireThat3(["completed", "abandoned", "cancelled", "postponed", "incomplete"].includes(value.status) && ["ordinary", "awarded", "forfeit", "shootout"].includes(value.specialOutcome), "Choose a known match status and outcome category.");
+  requireThat3(Array.isArray(value.goals) && value.goals.length <= 1e3, "Known goal attribution must be a bounded list.");
+  const goals = value.goals.map((item) => {
+    requireThat3(object(item), "A known goal must be an object.");
+    fields(item, ["id", "beneficiary", "isOwnGoal", "scorerPlayerId", "goalType", "half", "halfElapsedMs"]);
+    requireThat3(string(item.id) && ["us", "opposition"].includes(item.beneficiary) && typeof item.isOwnGoal === "boolean", "Known goals require identity, beneficiary and explicit own-goal classification.");
+    requireThat3(item.scorerPlayerId === null || string(item.scorerPlayerId), "Use a saved player identity or unknown scorer.");
+    requireThat3(item.goalType === null || ["open_play", "free_kick", "penalty"].includes(item.goalType), "Use a known goal type or unknown.");
+    requireThat3(item.half === null || item.half === 1 || item.half === 2, "Use a known half or unknown.");
+    requireThat3(item.halfElapsedMs === null || integer2(item.halfElapsedMs, 864e5), "Known active goal time must be nonnegative whole milliseconds.");
+    return { id: item.id, beneficiary: item.beneficiary, isOwnGoal: item.isOwnGoal, scorerPlayerId: item.scorerPlayerId, goalType: item.goalType, half: item.half, halfElapsedMs: item.halfElapsedMs };
+  });
+  return { playedDate: value.playedDate, recordedKickoff: value.recordedKickoff, sameDayOrder: value.sameDayOrder, opponent: value.opponent.trim(), homeAway: value.homeAway, fixtureClass: value.fixtureClass, status: value.status, specialOutcome: value.specialOutcome, finalScore: score(value.finalScore), halfTimeScore: score(value.halfTimeScore), goals };
+}
+function recordsServiceViewer(input) {
+  const { principal, memberships, state, nowMs, requestedRole } = input;
+  requireThat3(Number.isSafeInteger(nowMs) && nowMs >= 0, "Trusted server time is required.");
+  if (requestedRole && !["manager", "player", "spectator"].includes(requestedRole)) fail2("Unknown report audience.");
+  const permitted = memberships.filter((item) => item.accountId === principal.accountId && item.teamId === state.teamId && item.seasonId === state.seasonId && item.revokedAt == null && (item.expiresAt == null || item.expiresAt > nowMs));
+  const preferred = requestedRole ?? (permitted.some((item) => item.role === "manager") ? "manager" : permitted.some((item) => item.role === "player") ? "player" : "spectator");
+  const membership = assertTeamRole(principal, memberships, state.teamId, state.seasonId, [preferred], nowMs);
+  if (preferred === "manager") assertAdultAuthority(principal, false, nowMs);
+  if (preferred === "player" && !membership.playerId) fail2("The current membership has no own-player binding.", "NOT_FOUND", 404);
+  return { actor: preferred, ...preferred === "player" ? { playerId: membership.playerId } : {}, teamId: state.teamId, seasonId: state.seasonId };
+}
+function accepted(input, matchId) {
+  const row = input.acceptedMatches.find((item) => item.teamId === input.state.teamId && item.seasonId === input.state.seasonId && item.match.config.matchId === matchId);
+  if (!row) return null;
+  if (row.match.config.fixture && (row.match.config.fixture.teamId !== row.teamId || row.match.config.fixture.seasonId !== row.seasonId)) fail2("Accepted fixture scope is inconsistent.", "NOT_FOUND", 404);
+  return row.match;
+}
+function contextFor(state, match, fixtureClass) {
+  const fixture = match.config.fixture;
+  if (!fixture) return state.liveMatch.matchId === match.config.matchId ? { ...state.liveMatch, fixtureClass: fixtureClass ?? state.liveMatch.fixtureClass } : null;
+  return { matchId: match.config.matchId, playedDate: fixture.playedDate, opponent: fixture.opponent, homeAway: fixture.homeAway, fixtureClass: fixtureClass ?? state.results.find((record) => record.id === match.config.matchId)?.fixtureClass ?? "unclassified" };
+}
+function recordsServiceView(input) {
+  const viewer = recordsServiceViewer(input), { state, nowMs } = input;
+  const activeMatch = accepted(input, state.liveMatch.matchId);
+  const generatedAt = new Date(nowMs).toISOString();
+  const stamp = (value) => ({ ...value, generatedAt });
+  const ids = new Set(state.results.map((record) => record.id));
+  if (activeMatch && activeMatch.status !== "preparation") ids.add(activeMatch.config.matchId);
+  const common = { revision: state.revision, results: stamp(selectSeasonResults(state, viewer)), participation: stamp(selectParticipationReport(state, activeMatch, viewer)), matches: [...ids].map((id) => selectMatchReport(state, id, viewer, activeMatch)).filter((item) => item !== null).map((report) => stamp({ ...report, ...composeReportCommunity(report, input.principal.accountId, input.community), goals: report.goals.map((goal) => ({ ...goal, scorerLabel: goal.scorerPlayerId ? state.players.find((player) => player.id === goal.scorerPlayerId)?.label ?? null : null })) })) };
+  if (viewer.actor !== "manager") return common;
+  return {
+    ...common,
+    editableState: copy2(state),
+    activeMatch: activeMatch ? copy2(activeMatch) : null,
+    contexts: input.acceptedMatches.filter((row) => row.teamId === state.teamId && row.seasonId === state.seasonId).flatMap((row) => {
+      const match = accepted(input, row.match.config.matchId);
+      const details = contextFor(state, match, state.liveMatch.matchId === match.config.matchId ? state.liveMatch.fixtureClass : void 0);
+      return details ? [{ ...details, status: match.status, sourceMatchRevision: match.revision, archivedSourceMatchRevision: state.results.find((record) => record.id === match.config.matchId)?.sourceMatchRevision ?? null }] : [];
+    })
+  };
+}
+function applyRecordsServiceCommand(input) {
+  const { state, command, principal, memberships, nowMs } = input;
+  assertCanManageTeam(principal, memberships, state.teamId, state.seasonId, nowMs);
+  if (input.requestedRole && input.requestedRole !== "manager") fail2("The selected audience cannot edit manager records.", "NOT_FOUND", 404);
+  requireThat3(command && typeof command === "object" && string(command.commandId) && /^[A-Za-z0-9_-]+$/.test(command.commandId), "A stable record command identity is required.");
+  let bound;
+  const base = { commandId: command.commandId, at: new Date(nowMs).toISOString(), actor: "manager" };
+  switch (command.type) {
+    case "historical.add":
+      requireThat3(string(command.recordId), "A historical match identity is required.");
+      bound = { ...base, type: command.type, recordId: command.recordId, input: parseHistoricalResultInput(command.input), acknowledgePossibleDuplicate: command.acknowledgePossibleDuplicate === true };
+      break;
+    case "historical.correct":
+      requireThat3(string(command.recordId) && integer2(command.expectedRevision) && string(command.reason, 500), "Review the current record revision and provide a correction reason.");
+      bound = { ...base, type: command.type, recordId: command.recordId, expectedRevision: command.expectedRevision, reason: command.reason.trim(), input: parseHistoricalResultInput(command.input) };
+      break;
+    case "live.context.set": {
+      requireThat3(command.details && typeof command.details === "object" && string(command.details.matchId) && fixtureClasses.includes(command.details.fixtureClass), "Choose a prepared match and an explicit fixture class.");
+      const match = accepted(input, command.details.matchId);
+      if (!match) fail2("The prepared match is outside this team and season.", "NOT_FOUND", 404);
+      const details = contextFor(state, match, command.details.fixtureClass);
+      requireThat3(details && details.playedDate === command.details.playedDate && details.opponent === command.details.opponent && details.homeAway === command.details.homeAway, "Match report context must retain the accepted fixture date, opponent and home/away side.");
+      bound = { ...base, type: command.type, details };
+      break;
+    }
+    case "live.archive": {
+      const matchId = "matchId" in command ? command.matchId : command.match?.config?.matchId;
+      const expectedRevision = "expectedSourceMatchRevision" in command ? command.expectedSourceMatchRevision : command.match?.revision;
+      requireThat3(string(matchId) && integer2(expectedRevision), "Archive the reviewed accepted match identity and source revision.");
+      const match = accepted(input, matchId);
+      if (!match) fail2("The accepted match is outside this team and season.", "NOT_FOUND", 404);
+      if (match.revision !== expectedRevision) fail2("The accepted match changed. Refresh its report before archiving.", "STALE_REVISION", 409);
+      const old = state.results.find((record) => record.id === matchId);
+      if (old && old.fixtureClass !== state.liveMatch.fixtureClass) requireThat3(string(command.reason, 500), "Explain the changed fixture classification before re-archiving.");
+      bound = { ...base, type: command.type, match, ...command.reason ? { reason: command.reason } : {} };
+      break;
+    }
+    case "participation.exception.noted":
+      requireThat3(string(command.recordId) && string(command.playerId) && integer2(command.expectedRevision) && string(command.reason, 500), "Review the saved participation and explain the exception.");
+      bound = { ...base, type: command.type, recordId: command.recordId, playerId: command.playerId, expectedRevision: command.expectedRevision, reason: command.reason.trim() };
+      break;
+    case "publication.set":
+      fail2("A manager request cannot approve the unresolved competition policy. Independent operator evidence is required.", "POLICY_APPROVAL_REQUIRED", 503);
+      break;
+    case "training.evidence.replace":
+      fail2("Training report evidence is projected from the authorised preparation service.", "SERVICE_OWNED_PROJECTION", 403);
+      break;
+    default:
+      fail2("Unsupported record command.");
+  }
+  return reduceRecords(state, bound);
+}
+function policyFingerprint(state) {
+  const source2 = JSON.stringify(state.results.map((record) => [record.id, record.classificationVersion, record.fixtureClass, record.publication]));
+  let hash = 2166136261;
+  for (const character of source2) hash = Math.imul(hash ^ character.charCodeAt(0), 16777619) >>> 0;
+  return `policy-v1-${hash.toString(16).padStart(8, "0")}`;
+}
+function recordsServiceExport(input) {
+  const viewer = recordsServiceViewer(input), view = recordsServiceView(input), { request, state, nowMs } = input;
+  requireThat3(request && ["season", "match"].includes(request.kind) && ["json", "csv"].includes(request.format), "Choose a report and supported export format.");
+  const fingerprint = policyFingerprint(state);
+  if (request.expectedProjectionVersion !== void 0 && request.expectedProjectionVersion !== state.revision || request.expectedPolicyFingerprint !== void 0 && request.expectedPolicyFingerprint !== fingerprint) fail2("This report or audience policy changed. Refresh before exporting.", "STALE_PROJECTION", 409);
+  const matches = request.kind === "match" ? view.matches.filter((report) => report.matchId === request.matchId) : view.matches;
+  if (request.kind === "match" && matches.length !== 1) fail2("That permitted match report is unavailable.", "NOT_FOUND", 404);
+  const generatedAt = new Date(nowMs).toISOString();
+  const document = {
+    schemaVersion: 1,
+    reportType: request.kind,
+    teamId: state.teamId,
+    seasonId: state.seasonId,
+    audience: viewer.actor,
+    appliedFilters: { matchId: request.kind === "match" ? request.matchId : null, playerId: viewer.actor === "player" ? viewer.playerId : null },
+    generatedAt,
+    asOf: request.kind === "match" ? matches[0].asOf : view.participation.asOf,
+    projectionVersion: state.revision,
+    policyFingerprint: fingerprint,
+    policyVersions: state.results.filter((record) => request.kind === "season" || matches.some((report) => report.matchId === record.id)).map((record) => ({ matchId: record.id, policyId: record.publication.id, policyVersion: record.publication.version, classificationVersion: record.classificationVersion })),
+    dataCoverage: { participationAccess: view.participation.access, attendancePolicy: view.participation.rows[0]?.games.policy ?? "proposed_known_records_excused_included", includesInventedHistoricalMinutes: false },
+    ...request.kind === "season" ? { results: view.results, ...viewer.actor !== "spectator" ? { participation: view.participation } : {} } : {},
+    matches
+  };
+  const csvCell = (value) => {
+    let text2 = value === null || value === void 0 ? "Not recorded" : typeof value === "object" ? JSON.stringify(value) : String(value);
+    if (/^[\t\r ]*[=+\-@]/.test(text2)) text2 = `'${text2}`;
+    return `"${text2.replaceAll('"', '""')}"`;
+  };
+  const rows = [["section", "identity", "field", "value"], ["metadata", "report", "teamId", state.teamId], ["metadata", "report", "seasonId", state.seasonId], ["metadata", "report", "audience", viewer.actor], ["metadata", "report", "projectionVersion", state.revision], ["metadata", "report", "policyFingerprint", fingerprint], ["metadata", "report", "generatedAt", generatedAt], ["metadata", "report", "asOf", document.asOf], ["metadata", "report", "attendancePolicy", document.dataCoverage.attendancePolicy]];
+  if (request.kind === "season") for (const [field, value] of Object.entries(view.results)) rows.push(["results", "season", field, value]);
+  if (request.kind === "season" && viewer.actor !== "spectator") for (const row of view.participation.rows) for (const [field, value] of Object.entries(row)) rows.push(["participation", row.playerId, field, value]);
+  for (const report of matches) for (const [field, value] of Object.entries(report)) rows.push(["match", report.matchId, field, value]);
+  const body = request.format === "json" ? JSON.stringify(document, null, 2) : "\uFEFF" + rows.map((row) => row.map(csvCell).join(",")).join("\r\n");
+  return { kind: "records-export", format: request.format, contentType: request.format === "json" ? "application/json" : "text/csv; charset=utf-8", fileName: `longball-${state.teamId.replace(/[^A-Za-z0-9_-]/g, "_")}-${state.seasonId.replace(/[^A-Za-z0-9_-]/g, "_")}-${request.kind}.${request.format}`, body, teamId: state.teamId, seasonId: state.seasonId, audience: viewer.actor, projectionVersion: state.revision, policyFingerprint: fingerprint, generatedAt };
+}
+
+// apps/api/src/trusted-time.ts
+var integer3 = (value) => Number.isSafeInteger(value) && value >= 0;
+var continuous = (value) => Number.isFinite(value) && value >= 0 && value <= Number.MAX_SAFE_INTEGER;
+function checkPolicy(policy) {
+  if (!policy.id || ![
+    policy.serverClockUncertaintyMs,
+    policy.maximumRoundTripMs,
+    policy.maximumMappingAgeMs,
+    policy.maximumUncertaintyMs,
+    policy.maximumDriftPpm
+  ].every(integer3) || !policy.maximumRoundTripMs || !policy.maximumMappingAgeMs) {
+    throw new Error("A versioned, explicit trusted-time policy is required.");
+  }
+}
+function issueClockChallenge(scope, id, issuedAtMs, policy) {
+  checkPolicy(policy);
+  if (!id || !scope.accountId || !scope.deviceId || !scope.matchId || !scope.continuityId || !integer3(issuedAtMs) || !integer3(scope.controllerEpoch) || scope.controllerEpoch === 0) {
+    throw new Error(
+      "The clock challenge requires a current controller and continuous-clock identity."
+    );
+  }
+  return {
+    ...scope,
+    id,
+    issuedAtMs,
+    expiresAtMs: issuedAtMs + policy.maximumRoundTripMs,
+    policyId: policy.id
+  };
+}
+function acknowledgeClockChallenge(challenge, sample, serverReceivedAtMs, policy) {
+  checkPolicy(policy);
+  const { receivedMonotonicMs, sentMonotonicMs } = sample;
+  if (challenge.policyId !== policy.id || !integer3(serverReceivedAtMs) || !continuous(receivedMonotonicMs) || !continuous(sentMonotonicMs) || sentMonotonicMs < receivedMonotonicMs || serverReceivedAtMs < challenge.issuedAtMs || serverReceivedAtMs > challenge.expiresAtMs || sentMonotonicMs - receivedMonotonicMs > serverReceivedAtMs - challenge.issuedAtMs) {
+    throw new Error(
+      "The clock exchange expired or its continuous-clock evidence is inconsistent."
+    );
+  }
+  const mapping = {
+    accountId: challenge.accountId,
+    deviceId: challenge.deviceId,
+    matchId: challenge.matchId,
+    controllerEpoch: challenge.controllerEpoch,
+    continuityId: challenge.continuityId,
+    challengeId: challenge.id,
+    policyId: policy.id,
+    establishedAtMs: serverReceivedAtMs,
+    sampleMonotonicMs: sentMonotonicMs,
+    offsetMinimumMs: challenge.issuedAtMs - receivedMonotonicMs - policy.serverClockUncertaintyMs,
+    offsetMaximumMs: serverReceivedAtMs - sentMonotonicMs + policy.serverClockUncertaintyMs,
+    validUntilMs: serverReceivedAtMs + policy.maximumMappingAgeMs
+  };
+  if ((mapping.offsetMaximumMs - mapping.offsetMinimumMs) / 2 > policy.maximumUncertaintyMs)
+    throw new Error(
+      "The clock exchange exceeds the approved uncertainty bound."
+    );
+  return mapping;
+}
+function mapContinuousInstant(mapping, scope, monotonicMs, serverNowMs, policy) {
+  checkPolicy(policy);
+  if (mapping.policyId !== policy.id || [
+    "accountId",
+    "deviceId",
+    "matchId",
+    "controllerEpoch",
+    "continuityId"
+  ].some((key) => scope[key] !== mapping[key])) {
+    return {
+      quality: "review_required",
+      reason: "The clock mapping belongs to another controller, device, match or continuity session."
+    };
+  }
+  if (!continuous(monotonicMs) || !integer3(serverNowMs) || serverNowMs < mapping.establishedAtMs)
+    return {
+      quality: "review_required",
+      reason: "The server or continuous-clock observation is invalid."
+    };
+  const distance = Math.abs(monotonicMs - mapping.sampleMonotonicMs);
+  if (distance > policy.maximumMappingAgeMs)
+    return {
+      quality: "review_required",
+      reason: "The event exceeds the approved extrapolation duration."
+    };
+  const minimum = monotonicMs + mapping.offsetMinimumMs;
+  const maximum = monotonicMs + mapping.offsetMaximumMs;
+  if (minimum < mapping.establishedAtMs - policy.maximumRoundTripMs || maximum > mapping.validUntilMs || minimum > serverNowMs) {
+    return {
+      quality: "review_required",
+      reason: "The event lies outside the original mapping lifetime or in the future."
+    };
+  }
+  const utcMs = Math.round((minimum + maximum) / 2);
+  const uncertaintyMs = Math.ceil(
+    Math.max(utcMs - minimum, maximum - utcMs) + distance * policy.maximumDriftPpm / 1e6
+  );
+  if (uncertaintyMs > policy.maximumUncertaintyMs)
+    return {
+      quality: "review_required",
+      reason: "Propagated clock uncertainty exceeds the approved bound."
+    };
+  return {
+    quality: "trusted",
+    utcMs,
+    uncertaintyMs,
+    mappingId: mapping.challengeId,
+    policyId: mapping.policyId
+  };
+}
+
+// packages/application/src/reconciliation.ts
+var Q08_RECONCILIATION_POLICY = {
+  status: "unapproved",
+  policyId: "q08-reconciliation-authority-unapproved",
+  decisionRequired: "Confirm who may approve unresolved history reconciliation: importing old-device evidence, marking submissions duplicate, or retaining a disputed history. Define the reviewer authority and required evidence; assigned-manager access alone does not approve this policy."
+};
+var identifier = /^[a-zA-Z0-9_-]{1,120}$/;
+function canonicalReviewJson(value) {
+  if (Array.isArray(value))
+    return `[${value.map(canonicalReviewJson).join(",")}]`;
+  if (value && typeof value === "object")
+    return `{${Object.entries(value).filter(([, item]) => item !== void 0).sort(([left], [right]) => left.localeCompare(right)).map(
+      ([key, item]) => `${JSON.stringify(key)}:${canonicalReviewJson(item)}`
+    ).join(",")}}`;
+  return JSON.stringify(value);
+}
+function checkpointSample(state, recordedAtMs) {
+  return state.anchor ? { ...state.anchor.sample } : {
+    monotonicMs: 0,
+    sessionId: "review-preview-only",
+    wallTimeMs: recordedAtMs
+  };
+}
+function reconciliationSummary(state) {
+  const minutes = playerMinutes(state, checkpointSample(state, 0));
+  const occupiedPlayerMs = minutes.reduce(
+    (sum, item) => sum + item.playingMs,
+    0
+  );
+  const capacityPlayerMs = state.config.pitchPlaces * state.matchActiveMs;
+  return {
+    revision: state.revision,
+    status: state.status,
+    half: state.half,
+    halfActiveMs: state.halfActiveMs,
+    matchActiveMs: state.matchActiveMs,
+    firstHalfDurationMs: state.firstHalfDurationMs,
+    score: { ...state.score },
+    halfTimeScore: state.halfTimeScore ? { ...state.halfTimeScore } : null,
+    playerMinutes: minutes,
+    occupiedPlayerMs,
+    capacityPlayerMs,
+    vacancyPlayerMs: capacityPlayerMs - occupiedPlayerMs
+  };
+}
+function assertParticipationConservation(state) {
+  const selected = new Set(state.config.selectedPlayerIds);
+  const firstEnd = state.firstHalfDurationMs ?? (state.half === 1 ? state.matchActiveMs : 0);
+  for (const interval of state.intervals) {
+    if (!selected.has(interval.playerId) || !Number.isSafeInteger(interval.startMs) || !Number.isSafeInteger(interval.endMs) || interval.startMs < 0 || interval.endMs <= interval.startMs || interval.endMs > state.matchActiveMs || interval.half === 1 && interval.endMs > firstEnd || interval.half === 2 && interval.startMs < firstEnd)
+      throw new Error(
+        "Participation contains invalid coordinates, identity or half boundaries."
+      );
+    if (interval.state === "playing" !== Boolean(interval.position && interval.slotId))
+      throw new Error(
+        "Playing intervals need one saved position and occupied slot; bench/unavailable intervals cannot occupy a place."
+      );
+  }
+  for (const playerId of selected) {
+    const intervals = state.intervals.filter((item) => item.playerId === playerId).sort((a, b) => a.startMs - b.startMs || a.half - b.half);
+    let end = 0;
+    for (const interval of intervals) {
+      if (interval.startMs !== end)
+        throw new Error(
+          `Participation for ${playerId} has an overlap or uncovered active time.`
+        );
+      end = interval.endMs;
+    }
+    if (end !== state.matchActiveMs)
+      throw new Error(
+        `Participation for ${playerId} does not partition the actual match time.`
+      );
+  }
+  const boundaries = [
+    .../* @__PURE__ */ new Set([
+      0,
+      state.matchActiveMs,
+      ...state.intervals.flatMap((item) => [item.startMs, item.endMs])
+    ])
+  ].sort((a, b) => a - b);
+  for (let index = 0; index + 1 < boundaries.length; index++) {
+    const active2 = state.intervals.filter(
+      (item) => item.state === "playing" && item.startMs <= boundaries[index] && item.endMs >= boundaries[index + 1]
+    );
+    if (active2.length > state.config.pitchPlaces || new Set(active2.map((item) => item.slotId)).size !== active2.length || new Set(active2.map((item) => item.playerId)).size !== active2.length)
+      throw new Error(
+        "Participation occupies a player/slot twice or exceeds pitch capacity."
+      );
+  }
+  const summary = reconciliationSummary(state);
+  if (summary.vacancyPlayerMs < 0 || summary.playerMinutes.some(
+    (item) => item.playingMs + item.benchMs + item.unavailableMs !== state.matchActiveMs || Object.values(item.positionMs).reduce(
+      (sum, value) => sum + value,
+      0
+    ) !== item.playingMs
+  ))
+    throw new Error(
+      "Player/position participation totals do not conserve active time."
+    );
+  if (state.targetIntervals.reduce((sum, item) => sum + item.durationMs, 0) !== state.matchActiveMs)
+    throw new Error(
+      "Availability target intervals do not partition the actual match time."
+    );
+}
+function validateCommandIntent(command) {
+  if (!command || typeof command !== "object" || [
+    "id",
+    "sample",
+    "actorId",
+    "controllerEpoch",
+    "clientSequence",
+    "controllerToken"
+  ].some((field) => field in command))
+    throw new Error(
+      "Reviewed command intents cannot supply identity, clock evidence or controller authority."
+    );
+  if (command.type === "goal.recorded" || command.type === "availability.changed" || command.type === "lineup.committed") {
+    if (!command.effective || !command.lateEntryReason?.trim())
+      throw new Error(
+        "Import each historical event with an explicit active-time boundary and late-entry evidence reason."
+      );
+    if (command.type !== "goal.recorded" && command.sourceRevision === void 0)
+      throw new Error(
+        "Historical participation imports need the exact reviewed source revision."
+      );
+  } else if (!["event.corrected", "event.voided"].includes(command.type))
+    throw new Error(
+      "Clock, half, attendance and controller transitions need a separate evidence review. No time or authority is inferred from a quarantined device."
+    );
+}
+function previewReviewedCommands(state, commands, context) {
+  const before = reconciliationSummary(state), issues = [];
+  let projected = state;
+  let earliestAffected = null;
+  if (!identifier.test(context.previewId) || !context.actorId || !Number.isSafeInteger(context.recordedAtMs) || context.recordedAtMs < 0)
+    issues.push(
+      "Preview context requires a bounded ID, verified actor and valid entry timestamp."
+    );
+  if (!Array.isArray(commands) || commands.length < 1 || commands.length > 100)
+    issues.push("Review between1 and100 explicit commands.");
+  if (issues.length)
+    return {
+      valid: false,
+      issues,
+      before,
+      after: null,
+      earliestAffected,
+      projectedState: null
+    };
+  try {
+    assertParticipationConservation(state);
+    for (const [index, command] of commands.entries()) {
+      validateCommandIntent(command);
+      const event = {
+        ...command,
+        id: `${context.previewId}-preview-${index}`,
+        sample: checkpointSample(projected, context.recordedAtMs),
+        actorId: context.actorId
+      };
+      projected = reduceMatch(projected, event);
+      const boundary = projected.audit?.at(-1)?.effective;
+      const auditValue = projected.audit?.at(-1)?.value;
+      const affected = auditValue?.earliestAffected ?? boundary;
+      if (affected && (!earliestAffected || affected.matchElapsedMs < earliestAffected.matchElapsedMs))
+        earliestAffected = affected;
+      assertParticipationConservation(projected);
+    }
+    if (projected.matchActiveMs !== state.matchActiveMs || projected.halfActiveMs !== state.halfActiveMs || projected.half !== state.half || projected.firstHalfDurationMs !== state.firstHalfDurationMs || projected.status !== state.status || projected.completedAtMs !== state.completedAtMs || canonicalReviewJson(projected.config) !== canonicalReviewJson(state.config))
+      throw new Error(
+        "A history proposal cannot change the current clock, actual half lengths, lifecycle, completion anchor or immutable match preparation."
+      );
+    return {
+      valid: true,
+      issues: [],
+      before,
+      after: reconciliationSummary(projected),
+      earliestAffected,
+      projectedState: projected
+    };
+  } catch (error) {
+    issues.push(
+      error instanceof Error ? error.message : "The proposed history could not be validated."
+    );
+  }
+  return {
+    valid: false,
+    issues,
+    before,
+    after: null,
+    earliestAffected,
+    projectedState: null
+  };
+}
+function previewReconciliation(state, input, submissions, context) {
+  const before = reconciliationSummary(state), issues = [];
+  if (!input || typeof input !== "object")
+    return {
+      valid: false,
+      issues: ["A typed immutable proposal is required."],
+      before,
+      after: null,
+      earliestAffected: null,
+      projectedState: null
+    };
+  if (!identifier.test(input.proposalId) || !Number.isSafeInteger(input.baseRevision) || input.baseRevision !== state.revision)
+    issues.push(
+      "The proposal ID or reviewed accepted revision is invalid/stale. Download and review again without rebasing the proposal silently."
+    );
+  if (typeof input.reason !== "string" || !input.reason.trim() || input.reason.length > 500)
+    issues.push("Record an evidence reason of1\u2013500 characters.");
+  if (!Array.isArray(input.sourceSubmissionIds) || input.sourceSubmissionIds.length < 1 || input.sourceSubmissionIds.length > 100 || new Set(input.sourceSubmissionIds).size !== input.sourceSubmissionIds.length || input.sourceSubmissionIds.some(
+    (id) => !submissions.some(
+      (item) => item.submissionId === id && item.matchId === state.config.matchId && Boolean(item.originalDigest)
+    )
+  ))
+    issues.push(
+      "Select unique retained submissions from this same match with immutable source digests."
+    );
+  if (!["duplicate", "retain_conflict", "import_confirmed_events"].includes(
+    input.resolution
+  ))
+    issues.push("Choose a supported explicit review disposition.");
+  if (!Array.isArray(input.commands) || input.resolution !== "import_confirmed_events" && input.commands.length !== 0)
+    issues.push(
+      "Duplicate/disputed dispositions cannot also alter accepted play."
+    );
+  if (issues.length)
+    return {
+      valid: false,
+      issues,
+      before,
+      after: null,
+      earliestAffected: null,
+      projectedState: null
+    };
+  if (input.resolution === "import_confirmed_events")
+    return previewReviewedCommands(state, input.commands, {
+      ...context,
+      previewId: input.proposalId
+    });
+  try {
+    assertParticipationConservation(state);
+  } catch (error) {
+    return {
+      valid: false,
+      issues: [
+        error instanceof Error ? error.message : "Invalid accepted participation."
+      ],
+      before,
+      after: null,
+      earliestAffected: null,
+      projectedState: null
+    };
+  }
+  return {
+    valid: true,
+    issues: [],
+    before,
+    after: before,
+    earliestAffected: null,
+    projectedState: state
+  };
+}
+
+// apps/api/src/finished-match-context.ts
+function eligibilityEvidence(state) {
+  const selected = [...state.config.selectedPlayerIds];
+  const present = selected.filter((id) => state.attendance[id] === "present");
+  const played = selected.filter(
+    (id) => state.intervals.some(
+      (interval) => interval.playerId === id && interval.state === "playing" && interval.endMs > interval.startMs
+    )
+  );
+  return {
+    selected,
+    present,
+    played,
+    contradictory: played.some((id) => !present.includes(id))
+  };
+}
+function finishEligibilityChanged(state, original) {
+  const evidence2 = eligibilityEvidence(state);
+  const equal = (left, right) => JSON.stringify([...left].sort()) === JSON.stringify([...right].sort());
+  return evidence2.contradictory || !equal(evidence2.selected, original.selectedPlayerIds) || !equal(evidence2.present, original.presentPlayerIds) || !equal(evidence2.played, original.playedPlayerIds);
+}
+function deriveFinishedMatchContext(input) {
+  const { state, acceptedFinish: finish } = input;
+  if (state.status !== "completed")
+    throw new Error(
+      "Only an explicitly completed match can establish full-time award context."
+    );
+  const retainedFinish = state.eventHistory?.filter((event) => event.type === "half.ended").at(-1);
+  const matchesAcceptedFinish = finish?.command.type === "half.ended" && finish.eventId === retainedFinish?.id && finish.matchId === state.config.matchId && finish.controllerEpoch === input.currentControllerEpoch && finish.command.sample.monotonicMs === retainedFinish.sample.monotonicMs && finish.command.sample.sessionId === retainedFinish.sample.sessionId && finish.clockEvidence.monotonicMs === finish.command.sample.monotonicMs && finish.command.sample.sessionId === finish.clockEvidence.continuityId && input.acceptedFinishActorId !== null;
+  const instant = matchesAcceptedFinish && input.mapping && input.policy && finish ? mapContinuousInstant(
+    input.mapping,
+    {
+      accountId: input.acceptedFinishActorId,
+      deviceId: finish.deviceId,
+      matchId: finish.matchId,
+      controllerEpoch: finish.controllerEpoch,
+      continuityId: finish.command.sample.sessionId
+    },
+    finish.command.sample.monotonicMs,
+    input.serverNowMs,
+    input.policy
+  ) : null;
+  const trusted = !input.unresolvedConflicts && !state.recoveryRequired && instant?.quality === "trusted" && instant.utcMs <= input.serverNowMs;
+  const eligibility = eligibilityEvidence(state);
+  const present = eligibility.present;
+  const history = state.eventHistory ?? [];
+  const finishIndex = history.findIndex(
+    (event) => event.id === retainedFinish?.id
+  );
+  let changedAfterFinish = false;
+  if (finishIndex >= 0 && finishIndex < history.length - 1) {
+    const atFinish = eligibilityEvidence(
+      replayMatch(state.config, history.slice(0, finishIndex + 1))
+    );
+    changedAfterFinish = finishEligibilityChanged(state, {
+      selectedPlayerIds: atFinish.selected,
+      presentPlayerIds: atFinish.present,
+      playedPlayerIds: atFinish.played
+    });
+  }
+  return {
+    id: state.config.matchId,
+    teamId: input.teamId,
+    seasonId: input.seasonId,
+    label: state.config.fixture ? `${state.config.fixture.teamName} v ${state.config.fixture.opponent}` : state.config.matchId,
+    // No device wall clock or upload receipt establishes the original finish.
+    playedAtMs: input.scheduledAtMs,
+    selectedPlayerIds: [...state.config.selectedPlayerIds],
+    presentPlayerIds: present,
+    playedPlayerIds: present.filter(
+      (id) => state.intervals.some(
+        (interval) => interval.playerId === id && interval.state === "playing" && interval.endMs > interval.startMs
+      )
+    ),
+    actualFullTimeAtMs: trusted ? instant.utcMs : null,
+    finishQuality: input.unresolvedConflicts ? "conflicted" : trusted && !eligibility.contradictory && !changedAfterFinish ? "trusted" : "review_required",
+    sharing: input.sharing,
+    policyVersion: input.sharingPolicyVersion
+  };
+}
+
+// packages/application/src/team-notifications.ts
+var TEAM_NOTIFICATION_TIME_ZONE = "Europe/London";
+var TEAM_NOTIFICATION_BODY = "Your team has an update";
+var clone3 = (value) => JSON.parse(JSON.stringify(value));
+function assert(value, message) {
+  if (!value) throw new Error(message);
+}
+var time = (value) => Number.isSafeInteger(value) && value >= 0;
+var opaque = (value) => typeof value === "string" && /^[A-Za-z0-9_.:-]{1,200}$/.test(value);
+var code = (value) => /^[A-Z][A-Z0-9_]{0,79}$/.test(value);
+function createTeamNotificationJob(input) {
+  assert(input && ["id", "businessKey", "accountId", "teamId", "seasonId", "entityId"].every((field) => opaque(input[field])), "Notifications require bounded opaque identities.");
+  assert(["manager", "player", "spectator"].includes(input.audience) && ["schedule", "match", "awards", "photos"].includes(input.category) && time(input.dueAtMs), "Invalid notification scope, category or due time.");
+  assert(input.audience === "player" ? input.playerId !== null && opaque(input.playerId) : input.playerId === null, "Player notifications require their original own-player binding.");
+  return {
+    id: input.id,
+    businessKey: input.businessKey,
+    accountId: input.accountId,
+    teamId: input.teamId,
+    seasonId: input.seasonId,
+    audience: input.audience,
+    playerId: input.playerId,
+    category: input.category,
+    entityId: input.entityId,
+    dueAtMs: input.dueAtMs,
+    schemaVersion: 1,
+    revision: 0,
+    state: "pending",
+    attempts: 0,
+    deliveryAttempts: 0,
+    lease: null,
+    lastCode: null,
+    providerReceiptId: null,
+    acceptedAtMs: null
+  };
+}
+function validateTeamNotificationJob(job) {
+  createTeamNotificationJob(job);
+  assert(Object.keys(job).every((field) => ["id", "businessKey", "accountId", "teamId", "seasonId", "audience", "playerId", "category", "entityId", "dueAtMs", "schemaVersion", "revision", "state", "attempts", "deliveryAttempts", "lease", "lastCode", "providerReceiptId", "acceptedAtMs"].includes(field)), "Unexpected retained notification data.");
+  assert(job.schemaVersion === 1 && time(job.revision) && time(job.attempts) && time(job.deliveryAttempts) && ["pending", "leased", "provider_accepted", "suppressed", "blocked_provider", "review_required", "failed"].includes(job.state), "Invalid retained notification state.");
+  assert(job.state === "leased" ? job.lease && opaque(job.lease.attemptId) && time(job.lease.untilMs) : job.lease === null, "Invalid notification lease.");
+  assert(job.lastCode === null || code(job.lastCode), "Invalid notification outcome code.");
+  assert(job.providerReceiptId === null || opaque(job.providerReceiptId), "Invalid provider receipt identity.");
+  assert(job.acceptedAtMs === null || time(job.acceptedAtMs), "Invalid provider acknowledgement time.");
+  assert(job.state !== "provider_accepted" || job.providerReceiptId && job.acceptedAtMs !== null, "A provider-accepted job needs a real receipt.");
+}
+function claimTeamNotificationJob(job, attemptId, nowMs, leaseMs = 3e4) {
+  validateTeamNotificationJob(job);
+  assert(time(nowMs) && opaque(attemptId) && Number.isSafeInteger(leaseMs) && leaseMs >= 1e3 && leaseMs <= 12e4, "Invalid notification lease request.");
+  if (!(job.state === "pending" && job.dueAtMs <= nowMs || job.state === "leased" && job.lease.untilMs <= nowMs)) return null;
+  return { ...clone3(job), revision: job.revision + 1, attempts: job.attempts + 1, state: "leased", lease: { attemptId, untilMs: nowMs + leaseMs } };
+}
+var londonClock = new Intl.DateTimeFormat("en-GB", { timeZone: TEAM_NOTIFICATION_TIME_ZONE, hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+function localMinute(nowMs) {
+  const parts = londonClock.formatToParts(nowMs);
+  return Number(parts.find((part) => part.type === "hour").value) * 60 + Number(parts.find((part) => part.type === "minute").value);
+}
+function nextTeamNotificationTime(preferences, nowMs) {
+  assert(time(nowMs), "Trusted dispatch time is required.");
+  assert(["schedule", "match", "awards", "photos"].every((field) => typeof preferences[field] === "boolean"), "Invalid notification channel preferences.");
+  if (preferences.quietStart === null && preferences.quietEnd === null) return nowMs;
+  const pattern = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
+  assert(typeof preferences.quietStart === "string" && typeof preferences.quietEnd === "string" && pattern.test(preferences.quietStart) && pattern.test(preferences.quietEnd) && preferences.quietStart !== preferences.quietEnd, "Quiet hours need distinct HH:MM boundaries; use channel switches to pause all day.");
+  const minute = (value) => Number(value.slice(0, 2)) * 60 + Number(value.slice(3));
+  const start = minute(preferences.quietStart), end = minute(preferences.quietEnd);
+  const quiet = (at) => {
+    const value = localMinute(at);
+    return start < end ? value >= start && value < end : value >= start || value < end;
+  };
+  if (!quiet(nowMs)) return nowMs;
+  for (let at = Math.ceil(nowMs / 6e4) * 6e4; at <= nowMs + 49 * 36e5; at += 6e4) if (!quiet(at)) return at;
+  throw new Error("The quiet-hour boundary could not be established.");
+}
+function evaluateTeamNotification(job, evidence2, nowMs) {
+  validateTeamNotificationJob(job);
+  if (evidence2.account.accountId !== job.accountId || evidence2.account.status !== "active") return { action: "suppress", code: "ACCOUNT_UNAVAILABLE" };
+  const membership = evidence2.memberships.find((item) => item.accountId === job.accountId && item.teamId === job.teamId && item.seasonId === job.seasonId && item.role === job.audience && item.revokedAt == null && (item.expiresAt == null || item.expiresAt > nowMs) && (job.audience !== "player" || item.playerId === job.playerId));
+  if (!membership) return { action: "suppress", code: "NO_CURRENT_MEMBERSHIP" };
+  if (job.audience === "manager" && !(evidence2.account.identityClassification === "adult_individual" && evidence2.account.adultVerified && evidence2.account.strongAuthEnrolled)) return { action: "suppress", code: "MANAGER_AUTHORITY_UNAVAILABLE" };
+  if (job.audience === "spectator" && !evidence2.grants.some((grant) => grant.accountId === job.accountId && grant.teamId === job.teamId && grant.seasonId === job.seasonId && grant.startsAtMs <= nowMs && grant.expiresAtMs > nowMs && grant.revokedAtMs === null)) return { action: "suppress", code: "SPECTATOR_GRANT_UNAVAILABLE" };
+  if (evidence2.entityAccess !== "allowed") return { action: "suppress", code: evidence2.entityAccess === "withheld" ? "ENTITY_POLICY_WITHHELD" : "ENTITY_UNAVAILABLE" };
+  if (!evidence2.preferences[job.category]) return { action: "suppress", code: "CHANNEL_DISABLED" };
+  const dueAtMs = nextTeamNotificationTime(evidence2.preferences, nowMs);
+  return dueAtMs > nowMs ? { action: "defer", dueAtMs, code: "QUIET_HOURS" } : { action: "send" };
+}
+function settle(job, outcome) {
+  assert(job.state === "leased" && job.lease, "The current durable notification lease is required.");
+  const next = {
+    ...clone3(job),
+    state: outcome.state,
+    revision: job.revision + 1,
+    lease: null,
+    lastCode: outcome.code,
+    deliveryAttempts: job.deliveryAttempts + Number(outcome.attempted === true),
+    dueAtMs: outcome.dueAtMs ?? job.dueAtMs,
+    providerReceiptId: outcome.receiptId ?? job.providerReceiptId,
+    acceptedAtMs: outcome.state === "provider_accepted" ? outcome.nowMs : job.acceptedAtMs
+  };
+  validateTeamNotificationJob(next);
+  return next;
+}
+async function dispatchClaimedTeamNotification(job, ports) {
+  validateTeamNotificationJob(job);
+  const current3 = () => job.state === "leased" && job.lease !== null && ports.now() < job.lease.untilMs;
+  if (!current3() || !await ports.stillOwnsLease(job, ports.now())) return { status: "superseded", committed: false, job: null };
+  const commit2 = async (next) => {
+    const saved = await ports.commit(job, next);
+    return { status: saved ? next.state : "superseded", committed: saved, job: saved ? next : null };
+  };
+  let evidence2;
+  try {
+    evidence2 = await ports.readCurrentEvidence(job, ports.now());
+  } catch {
+    return commit2(settle(job, { state: "pending", code: "AUTHORITY_LOOKUP_UNAVAILABLE", nowMs: ports.now(), dueAtMs: ports.now() + 6e4 }));
+  }
+  if (!current3() || !await ports.stillOwnsLease(job, ports.now())) return { status: "superseded", committed: false, job: null };
+  let decision;
+  try {
+    decision = evaluateTeamNotification(job, evidence2, ports.now());
+  } catch {
+    return commit2(settle(job, { state: "review_required", code: "INVALID_PREFERENCES_OR_JOB", nowMs: ports.now() }));
+  }
+  if (decision.action === "suppress") return commit2(settle(job, { state: "suppressed", code: decision.code, nowMs: ports.now() }));
+  if (decision.action === "defer") return commit2(settle(job, { state: "pending", code: decision.code, nowMs: ports.now(), dueAtMs: decision.dueAtMs }));
+  const provider = ports.provider;
+  if (!provider?.configured) return commit2(settle(job, { state: "blocked_provider", code: "PUSH_PROVIDER_UNCONFIGURED", nowMs: ports.now() }));
+  const payload = { body: TEAM_NOTIFICATION_BODY, data: { entityId: job.entityId } };
+  const abort = new AbortController();
+  const remainingMs = Math.min(1e4, job.lease.untilMs - ports.now());
+  if (remainingMs <= 0 || !await ports.stillOwnsLease(job, ports.now())) return { status: "superseded", committed: false, job: null };
+  let timer;
+  try {
+    const reply = await Promise.race([provider.send({ idempotencyKey: job.businessKey, accountId: job.accountId, payload, signal: abort.signal }), new Promise((_, reject) => {
+      timer = setTimeout(() => {
+        abort.abort();
+        reject(new Error("PROVIDER_OUTCOME_UNKNOWN"));
+      }, remainingMs);
+    })]);
+    if (reply.status === "accepted") {
+      assert(opaque(reply.receiptId), "Invalid provider receipt.");
+      return commit2(settle(job, { state: "provider_accepted", code: null, nowMs: ports.now(), receiptId: reply.receiptId, attempted: true }));
+    }
+    const safeCode = ["RATE_LIMIT", "TEMPORARY_UNAVAILABLE", "DEVICE_UNREGISTERED", "PERMISSION_DENIED", "INVALID_DESTINATION"].includes(reply.code) ? reply.code : "PROVIDER_REFUSED";
+    const terminal = reply.status === "rejected" || job.deliveryAttempts + 1 >= 6;
+    return commit2(settle(job, { state: terminal ? "failed" : "pending", code: safeCode, nowMs: ports.now(), dueAtMs: ports.now() + Math.min(36e5, 3e4 * 2 ** job.deliveryAttempts), attempted: true }));
+  } catch {
+    const mayRetry = provider.idempotency === "provider" && job.deliveryAttempts + 1 < 6;
+    return commit2(settle(job, { state: mayRetry ? "pending" : "review_required", code: "PROVIDER_OUTCOME_UNKNOWN", nowMs: ports.now(), dueAtMs: ports.now() + Math.min(36e5, 3e4 * 2 ** job.deliveryAttempts), attempted: true }));
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// packages/application/src/staff.ts
+var current2 = (item, nowMs) => item.revokedAt == null && (item.expiresAt == null || item.expiresAt > nowMs);
+var eligible = (account2) => account2.status === "active" && account2.identityClassification === "adult_individual" && account2.adultVerified && account2.strongAuthEnrolled;
+function managerRoster(input) {
+  const { principal, memberships, accounts, teamId, seasonId, nowMs } = input;
+  if (input.requestedRole && input.requestedRole !== "administrator") throw new AccessError("NOT_FOUND", 404, "Choose the current administrator context for staff management.");
+  assertTeamRole(principal, memberships, teamId, seasonId, ["administrator"], nowMs);
+  assertAdultAuthority(principal, false, nowMs);
+  if (!Number.isSafeInteger(input.revision) || input.revision < 0 || !Number.isSafeInteger(nowMs) || nowMs < 0) throw new Error("Use the authoritative staff revision and current service time.");
+  const associated = new Set(memberships.filter((item) => item.teamId === teamId && current2(item, nowMs)).map((item) => item.accountId));
+  const liveManagers = memberships.filter((item) => item.teamId === teamId && item.role === "manager" && current2(item, nowMs));
+  const managers = memberships.filter((item) => item.teamId === teamId && item.seasonId === seasonId && item.role === "manager").map((item) => {
+    const account2 = accounts.find((account3) => account3.accountId === item.accountId);
+    return {
+      accountId: item.accountId,
+      label: account2 && account2.identityClassification === "adult_individual" && account2.adultVerified ? account2.label : "Unavailable manager account",
+      status: !account2 || !eligible(account2) ? "disabled" : item.revokedAt != null ? "revoked" : item.expiresAt != null && item.expiresAt <= nowMs ? "expired" : "active",
+      expiresAt: item.expiresAt ?? null,
+      revokedAt: item.revokedAt ?? null,
+      otherActiveSeasonIds: [...new Set(liveManagers.filter((other) => other.accountId === item.accountId && other.seasonId !== seasonId).map((other) => other.seasonId))].sort()
+    };
+  }).sort((a, b) => a.label.localeCompare(b.label) || a.accountId.localeCompare(b.accountId));
+  const candidates = accounts.filter((account2) => associated.has(account2.accountId) && eligible(account2)).map((account2) => ({ accountId: account2.accountId, label: account2.label, currentManager: liveManagers.some((item) => item.accountId === account2.accountId && item.seasonId === seasonId) })).sort((a, b) => a.label.localeCompare(b.label) || a.accountId.localeCompare(b.accountId));
+  return { kind: "manager-roster", revision: input.revision, teamId, seasonId, asOf: new Date(nowMs).toISOString(), maximumManagers: 4, activeTeamManagerCount: new Set(liveManagers.map((item) => item.accountId)).size, canMutate: principal.authenticatedAt <= nowMs + 3e4 && nowMs - principal.authenticatedAt <= 3e5, managers, candidates };
+}
+
+// packages/application/src/privacy-requests.ts
+var object2 = (value) => Boolean(value && typeof value === "object" && !Array.isArray(value));
+var opaque2 = (value) => typeof value === "string" && /^[A-Za-z0-9_-]{1,150}$/.test(value);
+function requireThat4(condition, message) {
+  if (!condition) throw new AccessError("INVALID_REQUEST", 400, message);
+}
+function fields2(value, names) {
+  requireThat4(Object.keys(value).length === names.length && Object.keys(value).every((key) => names.includes(key)), "Use only the documented account request fields.");
+}
+function active(principal) {
+  if (principal.status !== "active") throw new AccessError("ACCOUNT_UNAVAILABLE", 403, "Use an active signed-in account to review or submit its own requests.");
+}
+function validTime3(value) {
+  return Number.isSafeInteger(value) && value >= 0;
+}
+function parsePrivacyRequestInput(value) {
+  requireThat4(object2(value), "Choose a scoped account request.");
+  if (value.kind === "leave_team") {
+    fields2(value, ["kind", "teamId", "seasonId", "confirmLeave"]);
+    requireThat4(opaque2(value.teamId) && opaque2(value.seasonId) && value.confirmLeave === true, "Explicitly confirm the selected team and season leave request.");
+    return { kind: "leave_team", teamId: value.teamId, seasonId: value.seasonId, confirmLeave: true };
+  }
+  fields2(value, ["kind", "scope", "confirmAllMemberships"]);
+  requireThat4((value.kind === "export" || value.kind === "delete_account") && value.scope === "all_memberships" && value.confirmAllMemberships === true, "Explicitly confirm that this global account request covers every membership.");
+  return { kind: value.kind, scope: "all_memberships", confirmAllMemberships: true };
+}
+function parseScope(value) {
+  if (value === null) return null;
+  requireThat4(object2(value), "Invalid retained account request scope.");
+  if (value.type === "all_memberships") {
+    fields2(value, ["type"]);
+    return { type: "all_memberships" };
+  }
+  fields2(value, ["type", "teamId", "seasonId"]);
+  requireThat4(value.type === "team_season" && opaque2(value.teamId) && opaque2(value.seasonId), "Invalid retained team and season scope.");
+  return { type: "team_season", teamId: value.teamId, seasonId: value.seasonId };
+}
+function privacyRequestBusinessKey(accountId, kind, scope) {
+  requireThat4(opaque2(accountId) && ["export", "delete_account", "leave_team"].includes(kind), "A stable own-account request scope is required.");
+  const checked = parseScope(scope);
+  requireThat4(kind === "leave_team" ? checked.type === "team_season" : checked.type === "all_memberships", "The request kind and scope differ.");
+  return JSON.stringify(checked.type === "team_season" ? [accountId, kind, checked.type, checked.teamId, checked.seasonId] : [accountId, kind, checked.type]);
+}
+function ownPrivacyMemberships(principal, memberships, nowMs) {
+  active(principal);
+  requireThat4(validTime3(nowMs), "Use the current service time.");
+  return memberships.filter((item) => item.accountId === principal.accountId).map((item) => ({
+    teamId: item.teamId,
+    seasonId: item.seasonId,
+    role: item.role,
+    playerId: item.playerId ?? null,
+    status: item.revokedAt != null ? "revoked" : item.expiresAt != null && item.expiresAt <= nowMs ? "expired" : "active"
+  })).sort((a, b) => a.teamId.localeCompare(b.teamId) || a.seasonId.localeCompare(b.seasonId) || a.role.localeCompare(b.role));
+}
+function prepareAccountPrivacyRequest(input) {
+  const command = parsePrivacyRequestInput(input.input), own = ownPrivacyMemberships(input.principal, input.memberships, input.nowMs);
+  const scope = command.kind === "leave_team" ? { type: "team_season", teamId: command.teamId, seasonId: command.seasonId } : { type: "all_memberships" };
+  const affectedMemberships = scope.type === "all_memberships" ? own : own.filter((item) => item.teamId === scope.teamId && item.seasonId === scope.seasonId && item.status === "active");
+  if (scope.type === "team_season" && !affectedMemberships.length) throw new AccessError("NOT_FOUND", 404, "The selected current own membership is unavailable.");
+  return {
+    accountId: input.principal.accountId,
+    kind: command.kind,
+    scope,
+    businessKey: privacyRequestBusinessKey(input.principal.accountId, command.kind, scope),
+    affectedMemberships,
+    status: "pending_verification_and_policy",
+    verificationRequired: true,
+    erased: false,
+    fulfilled: false
+  };
+}
+function parseMembership(value) {
+  requireThat4(object2(value), "Invalid affected membership.");
+  fields2(value, ["teamId", "seasonId", "role", "playerId", "status"]);
+  requireThat4(opaque2(value.teamId) && opaque2(value.seasonId) && ["administrator", "manager", "player", "spectator"].includes(value.role) && (value.playerId === null || opaque2(value.playerId)) && ["active", "expired", "revoked"].includes(value.status), "Invalid affected membership fields.");
+  return { teamId: value.teamId, seasonId: value.seasonId, role: value.role, playerId: value.playerId, status: value.status };
+}
+function parsePrivacyRequestDto(value) {
+  requireThat4(object2(value), "Invalid account request response.");
+  fields2(value, ["requestId", "kind", "status", "scope", "affectedMemberships", "createdAtMs", "verificationRequired", "erased", "fulfilled", "scopeStatus", "reviewStatus", "duplicateOfRequestId"]);
+  requireThat4(opaque2(value.requestId) && ["export", "delete_account", "leave_team"].includes(value.kind) && ["pending_verification_and_policy", "needs_scope"].includes(value.status) && validTime3(value.createdAtMs), "Invalid account request status or identity.");
+  requireThat4(value.verificationRequired === true && value.erased === false && value.fulfilled === false && (value.duplicateOfRequestId === null || opaque2(value.duplicateOfRequestId)), "A pending request never establishes fulfilment or deletion.");
+  const scope = parseScope(value.scope), kind = value.kind;
+  requireThat4(scope === null || (kind === "leave_team" ? scope.type === "team_season" : scope.type === "all_memberships"), "The account request kind and scope differ.");
+  requireThat4(value.scopeStatus === (scope === null ? "needs_scope" : "recorded") && value.reviewStatus === (scope === null || value.status === "needs_scope" ? "needs_scope" : value.duplicateOfRequestId === null ? "pending_verification_and_policy" : "duplicate_requires_review"), "The account request review status is inconsistent.");
+  requireThat4(value.affectedMemberships === null || Array.isArray(value.affectedMemberships), "The confirmed membership snapshot is missing or invalid.");
+  const affectedMemberships = value.affectedMemberships === null ? null : value.affectedMemberships.map(parseMembership);
+  requireThat4(scope?.type !== "team_season" || affectedMemberships === null || affectedMemberships.every((item) => item.teamId === scope.teamId && item.seasonId === scope.seasonId), "The affected membership snapshot crosses the selected leave scope.");
+  return { requestId: value.requestId, kind, status: value.status, scope, affectedMemberships, createdAtMs: value.createdAtMs, verificationRequired: true, erased: false, fulfilled: false, scopeStatus: value.scopeStatus, reviewStatus: value.reviewStatus, duplicateOfRequestId: value.duplicateOfRequestId };
+}
+function projectAccountPrivacyRequests(input) {
+  const memberships = ownPrivacyMemberships(input.principal, input.memberships, input.nowMs), canonical5 = /* @__PURE__ */ new Map();
+  const items = input.records.filter((item) => item.accountId === input.principal.accountId).sort((a, b) => a.createdAtMs - b.createdAtMs || a.requestId.localeCompare(b.requestId)).map((record) => {
+    const scope = parseScope(record.scope);
+    const key = scope && record.status === "pending_verification_and_policy" ? privacyRequestBusinessKey(record.accountId, record.kind, scope) : null;
+    const duplicateOfRequestId = key ? canonical5.get(key) ?? null : null;
+    if (key && !canonical5.has(key)) canonical5.set(key, record.requestId);
+    return parsePrivacyRequestDto({
+      requestId: record.requestId,
+      kind: record.kind,
+      status: record.status,
+      scope,
+      affectedMemberships: record.affectedMemberships,
+      createdAtMs: record.createdAtMs,
+      verificationRequired: true,
+      erased: false,
+      fulfilled: false,
+      scopeStatus: scope === null ? "needs_scope" : "recorded",
+      duplicateOfRequestId,
+      reviewStatus: scope === null || record.status === "needs_scope" ? "needs_scope" : duplicateOfRequestId ? "duplicate_requires_review" : "pending_verification_and_policy"
+    });
+  });
+  return { accountId: input.principal.accountId, memberships, items };
+}
+
 // apps/api/src/store.ts
 var EVENT_CONTRACT_VERSION = "longball.events/1.1";
 var SYNTHETIC_IDS = { teamId: "synthetic-roma-u10", seasonId: "synthetic-season-2026-27", matchId: "synthetic-roma-maple-2026-10-24" };
@@ -2647,8 +4162,8 @@ function canonical3(value) {
   return JSON.stringify(value);
 }
 var digest = (value) => createHash("sha256").update(value).digest("hex");
-var validId = (value) => typeof value === "string" && value.length > 0 && value.length <= 150 && /^[a-zA-Z0-9_-]+$/.test(value);
-var validDeviceId = (value) => validId(value) && value.length <= 120;
+var validId2 = (value) => typeof value === "string" && value.length > 0 && value.length <= 150 && /^[a-zA-Z0-9_-]+$/.test(value);
+var validDeviceId = (value) => validId2(value) && value.length <= 120;
 var nonnegative2 = (value) => typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
 function bad(message) {
   throw new AccessError("INVALID_REQUEST", 400, message);
@@ -2656,22 +4171,22 @@ function bad(message) {
 function validateEnvelope(value, matchId) {
   if (!value || typeof value !== "object" || Array.isArray(value)) bad("An event envelope is required.");
   const item = value;
-  if (!validId(item.eventId) || !validDeviceId(item.deviceId) || item.matchId !== matchId || !nonnegative2(item.clientSequence) || item.clientSequence < 1 || !nonnegative2(item.controllerEpoch) || item.controllerEpoch < 1 || !nonnegative2(item.baseRevision)) bad("Invalid event identity, scope or sequence.");
-  if (!(item.previousEventId === null || validId(item.previousEventId))) bad("Invalid previous event identifier.");
+  if (!validId2(item.eventId) || !validDeviceId(item.deviceId) || item.matchId !== matchId || !nonnegative2(item.clientSequence) || item.clientSequence < 1 || !nonnegative2(item.controllerEpoch) || item.controllerEpoch < 1 || !nonnegative2(item.baseRevision)) bad("Invalid event identity, scope or sequence.");
+  if (!(item.previousEventId === null || validId2(item.previousEventId))) bad("Invalid previous event identifier.");
   if (item.contractVersion !== EVENT_CONTRACT_VERSION || item.schemaVersion !== 1 || item.engineVersion !== ENGINE_VERSION) return item;
-  const fields = ["contractVersion", "schemaVersion", "engineVersion", "eventId", "matchId", "deviceId", "controllerEpoch", "clientSequence", "previousEventId", "baseRevision", "effectiveHalf", "halfElapsedMs", "matchElapsedMs", "effectiveAt", "recordedAt", "timeQuality", "clockEvidence", "command"];
-  if (Object.keys(item).some((key) => !fields.includes(key))) bad("Unknown event envelope fields are not accepted.");
+  const fields3 = ["contractVersion", "schemaVersion", "engineVersion", "eventId", "matchId", "deviceId", "controllerEpoch", "clientSequence", "previousEventId", "baseRevision", "effectiveHalf", "halfElapsedMs", "matchElapsedMs", "effectiveAt", "recordedAt", "timeQuality", "clockEvidence", "command"];
+  if (Object.keys(item).some((key) => !fields3.includes(key))) bad("Unknown event envelope fields are not accepted.");
   if (!nonnegative2(item.halfElapsedMs) || !nonnegative2(item.matchElapsedMs) || ![0, 1, 2].includes(item.effectiveHalf)) bad("Invalid effective playing-time boundary.");
   if (!["anchored", "estimated", "reviewRequired"].includes(item.timeQuality) || !Number.isFinite(Date.parse(item.recordedAt)) || !(item.effectiveAt === null || Number.isFinite(Date.parse(item.effectiveAt)))) bad("Invalid event time evidence.");
   const command = item.command;
-  if (!command || typeof command !== "object" || command.id !== item.eventId || !command.sample || !Number.isFinite(command.sample.monotonicMs) || command.sample.monotonicMs < 0 || !validId(command.sample.sessionId) || !nonnegative2(command.sample.wallTimeMs)) bad("Invalid versioned match command.");
-  if (!item.clockEvidence || item.clockEvidence.monotonicMs !== command.sample.monotonicMs || !validId(item.clockEvidence.anchorId) || !(item.clockEvidence.continuityId === null || validId(item.clockEvidence.continuityId))) bad("Explicit clock evidence is required.");
+  if (!command || typeof command !== "object" || command.id !== item.eventId || !command.sample || !Number.isFinite(command.sample.monotonicMs) || command.sample.monotonicMs < 0 || !validId2(command.sample.sessionId) || !nonnegative2(command.sample.wallTimeMs)) bad("Invalid versioned match command.");
+  if (!item.clockEvidence || item.clockEvidence.monotonicMs !== command.sample.monotonicMs || !validId2(item.clockEvidence.anchorId) || !(item.clockEvidence.continuityId === null || validId2(item.clockEvidence.continuityId))) bad("Explicit clock evidence is required.");
   const commandTypes = ["attendance.recorded", "availability.changed", "lineup.staged", "half.started", "half.paused", "half.resumed", "half.ended", "lineup.committed", "goal.recorded", "clock.recovery_required", "clock.corrected", "event.corrected", "event.voided", "policy.changed", "match.abandoned"];
   if (!commandTypes.includes(command.type)) bad("Unsupported match command.");
   if (command.type === "goal.recorded" && !["us", "opposition"].includes(command.beneficiary)) bad("Invalid goal side.");
-  if (command.type === "attendance.recorded" && (!validId(command.playerId) || !["present", "absent", "excused", "not_selected", "not_recorded"].includes(command.status))) bad("Invalid attendance.");
-  if (command.type === "availability.changed" && (!validId(command.playerId) || typeof command.available !== "boolean")) bad("Invalid availability.");
-  if ((command.type === "lineup.staged" || command.type === "lineup.committed") && (!Array.isArray(command.lineup) || command.lineup.length > 11 || command.lineup.some((item2) => !validId(item2.playerId) || !validId(item2.slotId) || typeof item2.position !== "string" || item2.position.length > 30))) bad("Invalid lineup allocations.");
+  if (command.type === "attendance.recorded" && (!validId2(command.playerId) || !["present", "absent", "excused", "not_selected", "not_recorded"].includes(command.status))) bad("Invalid attendance.");
+  if (command.type === "availability.changed" && (!validId2(command.playerId) || typeof command.available !== "boolean")) bad("Invalid availability.");
+  if ((command.type === "lineup.staged" || command.type === "lineup.committed") && (!Array.isArray(command.lineup) || command.lineup.length > 11 || command.lineup.some((item2) => !validId2(item2.playerId) || !validId2(item2.slotId) || typeof item2.position !== "string" || item2.position.length > 30))) bad("Invalid lineup allocations.");
   return item;
 }
 var DevelopmentStore = class {
@@ -2709,7 +4224,7 @@ var DevelopmentStore = class {
   migrate() {
     this.transaction(() => {
       const version = Number(this.database.prepare("PRAGMA user_version").get().user_version);
-      if (version > 5) throw new Error("This store version is newer than this application; preserve it and use a compatible build.");
+      if (version > 7) throw new Error("This store version is newer than this application; preserve it and use a compatible build.");
       if (version === 0) this.database.exec(`
       CREATE TABLE accounts(id TEXT PRIMARY KEY,issuer TEXT NOT NULL,subject TEXT NOT NULL,classification TEXT NOT NULL CHECK(classification IN ('child_shared','adult_individual','unclassified')),adult_verified INTEGER NOT NULL DEFAULT 0,status TEXT NOT NULL DEFAULT 'active',UNIQUE(issuer,subject));
       CREATE TABLE teams(id TEXT PRIMARY KEY,name TEXT NOT NULL);
@@ -2736,6 +4251,25 @@ var DevelopmentStore = class {
       if (version < 3) this.database.exec("ALTER TABLE accounts ADD COLUMN strong_auth_enrolled INTEGER NOT NULL DEFAULT 0; PRAGMA user_version=3;");
       if (version < 4) this.database.exec("CREATE TABLE devices(id TEXT PRIMARY KEY,account_id TEXT NOT NULL REFERENCES accounts(id)); PRAGMA user_version=4;");
       if (version < 5) this.database.exec("ALTER TABLE events ADD COLUMN actor_id TEXT REFERENCES accounts(id); PRAGMA user_version=5;");
+      if (version < 6) this.database.exec(`
+      CREATE TABLE clock_challenges(id TEXT PRIMARY KEY,match_id TEXT NOT NULL REFERENCES matches(id),account_id TEXT NOT NULL REFERENCES accounts(id),challenge_json TEXT NOT NULL,consumed_at INTEGER);
+      CREATE TABLE clock_mappings(challenge_id TEXT PRIMARY KEY REFERENCES clock_challenges(id),match_id TEXT NOT NULL REFERENCES matches(id),mapping_json TEXT NOT NULL,created_at INTEGER NOT NULL);
+      CREATE TABLE reconciliation_proposals(id TEXT PRIMARY KEY,match_id TEXT NOT NULL REFERENCES matches(id),actor_id TEXT NOT NULL REFERENCES accounts(id),signature TEXT NOT NULL,receipt_json TEXT NOT NULL,created_at INTEGER NOT NULL);
+      PRAGMA user_version=6;
+    `);
+      if (version < 7) this.database.exec(`
+      ALTER TABLE privacy_requests ADD COLUMN team_id TEXT REFERENCES teams(id);
+      ALTER TABLE privacy_requests ADD COLUMN season_id TEXT;
+      ALTER TABLE privacy_requests ADD COLUMN affected_memberships_json TEXT;
+      UPDATE privacy_requests SET status='needs_scope' WHERE kind='leave_team' AND status='pending_verification_and_policy' AND (team_id IS NULL OR season_id IS NULL);
+      CREATE TABLE privacy_pending_keys(business_key TEXT PRIMARY KEY,request_id TEXT NOT NULL UNIQUE REFERENCES privacy_requests(id));
+      INSERT INTO privacy_pending_keys(business_key,request_id)
+        SELECT json_array(account_id,kind,'all_memberships'),id FROM (
+          SELECT id,account_id,kind,ROW_NUMBER() OVER(PARTITION BY account_id,kind ORDER BY created_at,id) AS n
+          FROM privacy_requests WHERE status='pending_verification_and_policy' AND kind IN ('export','delete_account')
+        ) WHERE n=1;
+      PRAGMA user_version=7;
+    `);
     });
   }
   async backup(destination) {
@@ -2817,22 +4351,22 @@ var DevelopmentStore = class {
     assertCanManageTeam(principal, this.memberships(), row.team_id, row.season_id, this.now());
     return row;
   }
-  matchDto(principal, matchId) {
+  matchDto(principal, matchId, requestedRole) {
     const row = this.match(matchId);
-    return filterMatchForPrincipal({ principal, memberships: this.memberships(), teamId: row.team_id, seasonId: row.season_id, state: JSON.parse(row.state_json), policy: JSON.parse(row.sharing_policy_json), lastSyncAt: row.last_sync_at, now: this.now() });
+    return filterMatchForPrincipal({ principal, memberships: this.memberships(), teamId: row.team_id, seasonId: row.season_id, state: JSON.parse(row.state_json), policy: JSON.parse(row.sharing_policy_json), lastSyncAt: row.last_sync_at, now: this.now(), requestedRole });
   }
   download(principal, matchId, deviceId) {
     const row = this.managerMatch(principal, matchId);
     if (!validDeviceId(deviceId)) bad("A device identifier of at most 120 canonical characters is required.");
     const stream = this.database.prepare("SELECT sequence,previous_event_id FROM streams WHERE match_id=? AND device_id=?").get(matchId, deviceId);
     const grant = this.database.prepare("SELECT epoch,account_id,device_id,frozen FROM controller_grants WHERE match_id=?").get(matchId);
-    return { contractVersion: EVENT_CONTRACT_VERSION, schemaVersion: 1, engineVersion: ENGINE_VERSION, matchId, teamId: row.team_id, seasonId: row.season_id, state: JSON.parse(row.state_json), acceptedRevision: JSON.parse(row.state_json).revision, deviceCheckpoint: { clientSequence: stream?.sequence ?? 0, previousEventId: stream?.previous_event_id ?? null }, controller: grant ?? null, downloadedAt: new Date(this.now()).toISOString(), clockAnchor: { serverTime: new Date(this.now()).toISOString(), quality: "observation_only", continuousMappingEstablished: false }, syntheticOnly: true };
+    return { contractVersion: EVENT_CONTRACT_VERSION, schemaVersion: 1, engineVersion: ENGINE_VERSION, matchId, teamId: row.team_id, seasonId: row.season_id, state: JSON.parse(row.state_json), acceptedRevision: JSON.parse(row.state_json).revision, deviceCheckpoint: { clientSequence: stream?.sequence ?? 0, previousEventId: stream?.previous_event_id ?? null }, controller: grant ?? null, downloadedAt: new Date(this.now()).toISOString(), clockAnchor: { serverTime: new Date(this.now()).toISOString(), quality: "observation_only", continuousMappingEstablished: false } };
   }
   audit(principal, action, objectId, outcome) {
     this.database.prepare("INSERT INTO audit(id,actor_id,action,object_id,outcome,created_at) VALUES(?,?,?,?,?,?)").run(randomUUID(), principal.accountId, action, objectId, outcome, this.now());
   }
   idempotent(principal, operation, key, payload, work) {
-    if (!validId(key) || key.length < 8) bad("A stable Idempotency-Key is required for mutations.");
+    if (!validId2(key) || key.length < 8) bad("A stable Idempotency-Key is required for mutations.");
     const signature2 = digest(canonical3(payload));
     return this.transaction(() => {
       const prior = this.database.prepare("SELECT signature,response_json FROM idempotency WHERE account_id=? AND operation=? AND key=?").get(principal.accountId, operation, key);
@@ -2861,6 +4395,124 @@ var DevelopmentStore = class {
     const grant = this.database.prepare("SELECT * FROM controller_grants WHERE match_id=?").get(matchId);
     if (!grant || grant.account_id !== principal.accountId || !token || digest(token) !== grant.capability_hash) throw new AccessError("CONTROLLER_REQUIRED", 409, "Only the selected manager and enrolled device may write this match.");
     return grant;
+  }
+  issueClockChallenge(principal, matchId, token, input, policy) {
+    const grant = this.assertController(principal, matchId, token);
+    if (!policy) throw new AccessError("CLOCK_POLICY_REQUIRED", 503, "An explicitly configured trusted-time policy is required before establishing an anchor.");
+    if (!input || Object.keys(input).some((key) => !["deviceId", "controllerEpoch", "continuityId"].includes(key)) || !validDeviceId(input.deviceId) || !validId2(input.continuityId) || input.deviceId !== grant.device_id || input.controllerEpoch !== grant.epoch || grant.frozen) throw new AccessError("CLOCK_SCOPE_CONFLICT", 409, "Use the current unfrozen controller device, epoch and continuous-clock identity.");
+    const challenge = issueClockChallenge({ accountId: principal.accountId, deviceId: grant.device_id, matchId, controllerEpoch: grant.epoch, continuityId: input.continuityId }, randomUUID(), this.now(), policy);
+    this.database.prepare("INSERT INTO clock_challenges(id,match_id,account_id,challenge_json) VALUES(?,?,?,?)").run(challenge.id, matchId, principal.accountId, JSON.stringify(challenge));
+    return challenge;
+  }
+  acknowledgeClockChallenge(principal, matchId, token, challengeId, sample, policy) {
+    const grant = this.assertController(principal, matchId, token);
+    if (!policy) throw new AccessError("CLOCK_POLICY_REQUIRED", 503, "An explicitly configured trusted-time policy is required before establishing an anchor.");
+    if (!sample || Object.keys(sample).some((key) => !["receivedMonotonicMs", "sentMonotonicMs"].includes(key))) bad("Use the documented continuous-clock receipt and send observations.");
+    const row = this.database.prepare("SELECT challenge_json,consumed_at FROM clock_challenges WHERE id=? AND match_id=? AND account_id=?").get(challengeId, matchId, principal.accountId);
+    if (!row) throw new AccessError("NOT_FOUND", 404, "That challenge is unavailable.");
+    const challenge = JSON.parse(row.challenge_json);
+    if (row.consumed_at !== null) throw new AccessError("CLOCK_CHALLENGE_CONSUMED", 409, "That clock exchange was consumed. Retrying the same request key returns its receipt.");
+    if (challenge.controllerEpoch !== grant.epoch || challenge.deviceId !== grant.device_id || grant.frozen) throw new AccessError("CLOCK_SCOPE_CONFLICT", 409, "The controller changed before the clock exchange completed.");
+    let mapping;
+    try {
+      mapping = acknowledgeClockChallenge(challenge, sample, this.now(), policy);
+    } catch {
+      throw new AccessError("CLOCK_EXCHANGE_REJECTED", 422, "The clock exchange expired or its evidence exceeds the configured uncertainty bounds.");
+    }
+    this.database.prepare("UPDATE clock_challenges SET consumed_at=? WHERE id=? AND consumed_at IS NULL").run(this.now(), challengeId);
+    this.database.prepare("INSERT INTO clock_mappings(challenge_id,match_id,mapping_json,created_at) VALUES(?,?,?,?)").run(challengeId, matchId, JSON.stringify(mapping), this.now());
+    this.audit(principal, "clock.mapping_established", matchId, policy.id);
+    return mapping;
+  }
+  reconciliation(principal, matchId) {
+    const row = this.managerMatch(principal, matchId);
+    const state = JSON.parse(row.state_json);
+    const events = this.database.prepare("SELECT event_id,device_id,client_sequence,envelope_json,reason,received_at FROM events WHERE match_id=? AND disposition='quarantined' ORDER BY received_at,client_sequence").all(matchId);
+    const conflicts = this.database.prepare("SELECT id,original_json,reason,created_at FROM conflicting_submissions WHERE match_id=? ORDER BY created_at,id").all(matchId);
+    const submissions = [...events.map((event) => {
+      const original = JSON.parse(event.envelope_json);
+      return { submissionId: event.event_id, matchId, eventId: event.event_id, deviceId: event.device_id, clientSequence: event.client_sequence, controllerEpoch: original.controllerEpoch ?? null, reason: event.reason, original, originalDigest: digest(canonical3(original)), receivedAt: new Date(event.received_at).toISOString() };
+    }), ...conflicts.map((conflict) => {
+      const original = JSON.parse(conflict.original_json);
+      return { submissionId: conflict.id, matchId, eventId: typeof original.eventId === "string" ? original.eventId : null, deviceId: typeof original.deviceId === "string" ? original.deviceId : null, clientSequence: typeof original.clientSequence === "number" ? original.clientSequence : null, controllerEpoch: typeof original.controllerEpoch === "number" ? original.controllerEpoch : null, reason: conflict.reason, original, originalDigest: digest(canonical3(original)), receivedAt: new Date(conflict.created_at).toISOString() };
+    })];
+    const proposals = this.database.prepare("SELECT receipt_json FROM reconciliation_proposals WHERE match_id=? ORDER BY created_at,id").all(matchId).map((item) => JSON.parse(item.receipt_json));
+    return { matchId, acceptedRevision: state.revision, submissions, proposals, policy: Q08_RECONCILIATION_POLICY };
+  }
+  proposeReconciliation(principal, matchId, input) {
+    const row = this.managerMatch(principal, matchId);
+    const state = JSON.parse(row.state_json);
+    if (!input || Object.keys(input).some((key) => !["proposalId", "baseRevision", "sourceSubmissionIds", "reason", "resolution", "commands"].includes(key))) bad("Use only the documented immutable reconciliation proposal fields.");
+    const signature2 = digest(canonical3(input));
+    const existing = this.database.prepare("SELECT signature,receipt_json FROM reconciliation_proposals WHERE id=? AND match_id=? AND actor_id=?").get(input.proposalId, matchId, principal.accountId);
+    if (existing) {
+      if (existing.signature !== signature2) throw new AccessError("RECONCILIATION_PROPOSAL_CONFLICT", 409, "That proposal identity already preserves different review evidence.");
+      return JSON.parse(existing.receipt_json);
+    }
+    const snapshot = this.reconciliation(principal, matchId);
+    const preview = previewReconciliation(state, input, snapshot.submissions, { actorId: principal.accountId, recordedAtMs: this.now() });
+    if (!preview.valid) throw new AccessError("RECONCILIATION_PREVIEW_REJECTED", 422, preview.issues.join(" ").slice(0, 1500));
+    const { projectedState: discarded, ...savedPreview } = preview;
+    void discarded;
+    const receipt = { input, matchId, actorId: principal.accountId, createdAt: new Date(this.now()).toISOString(), sourceDigests: input.sourceSubmissionIds.map((id) => ({ submissionId: id, originalDigest: snapshot.submissions.find((item) => item.submissionId === id).originalDigest })), acceptedStateDigest: digest(canonical3(state)), preview: savedPreview, status: "prepared", appliedRevision: null };
+    this.database.prepare("INSERT INTO reconciliation_proposals(id,match_id,actor_id,signature,receipt_json,created_at) VALUES(?,?,?,?,?,?)").run(input.proposalId, matchId, principal.accountId, signature2, JSON.stringify(receipt), this.now());
+    this.audit(principal, "reconciliation.proposal_prepared", matchId, "q08_authority_unapproved");
+    return receipt;
+  }
+  recordFinishedContext(principal, matchId, policy) {
+    const row = this.managerMatch(principal, matchId);
+    const state = JSON.parse(row.state_json);
+    if (state.status !== "completed") return { status: "not_finished" };
+    this.refreshDetailedArchive(row, state);
+    const community = this.communityState(row.team_id, row.season_id);
+    const existing = community.matches.find((item) => item.id === matchId);
+    const quarantine = this.database.prepare("SELECT event_id FROM events WHERE match_id=? AND disposition='quarantined' LIMIT 1").get(matchId);
+    const conflict = this.database.prepare("SELECT id FROM conflicting_submissions WHERE match_id=? LIMIT 1").get(matchId);
+    const unresolved = Boolean(quarantine || conflict);
+    if (existing) {
+      const retainedFinishId = state.eventHistory?.filter((event) => event.type === "half.ended").at(-1)?.id;
+      const retainedFinish = retainedFinishId ? this.database.prepare("SELECT envelope_json FROM events WHERE event_id=? AND match_id=? AND disposition='accepted'").get(retainedFinishId, matchId) : void 0;
+      const currentGrant = this.database.prepare("SELECT epoch FROM controller_grants WHERE match_id=?").get(matchId);
+      const sourceEpoch = retainedFinish ? JSON.parse(retainedFinish.envelope_json).controllerEpoch : null;
+      const quality = unresolved ? "conflicted" : state.recoveryRequired || sourceEpoch !== currentGrant?.epoch || finishEligibilityChanged(state, existing) ? "review_required" : existing.finishQuality;
+      if (quality !== existing.finishQuality) {
+        const next2 = { ...community, revision: community.revision + 1, matches: community.matches.map((match) => match.id === matchId ? { ...match, finishQuality: quality } : match), audit: [...community.audit, { id: randomUUID(), actorAccountId: null, action: "service.finish_evidence_flagged_without_reopening", atMs: this.now() }] };
+        this.saveDocument(row.team_id, row.season_id, "community", next2);
+      }
+      return { status: "original_context_preserved", finishQuality: quality };
+    }
+    const finishId = state.eventHistory?.filter((event) => event.type === "half.ended").at(-1)?.id;
+    const finishRow = finishId ? this.database.prepare("SELECT envelope_json,actor_id FROM events WHERE event_id=? AND match_id=? AND disposition='accepted'").get(finishId, matchId) : void 0;
+    const finish = finishRow ? JSON.parse(finishRow.envelope_json) : null;
+    const mappingRow = finish ? this.database.prepare("SELECT mapping_json FROM clock_mappings WHERE challenge_id=? AND match_id=?").get(finish.clockEvidence.anchorId, matchId) : void 0;
+    const grant = this.database.prepare("SELECT epoch FROM controller_grants WHERE match_id=?").get(matchId);
+    const preparation = this.document(row.team_id, row.season_id, "preparation");
+    const fixture = preparation.fixtures.find((item) => item.id === matchId && item.seasonId === row.season_id);
+    const playedDate = state.config.fixture?.playedDate ?? fixture?.playedDate;
+    if (!playedDate) return { status: "accepted_fixture_date_required" };
+    const scheduledAtMs = Date.parse(`${playedDate}T00:00:00Z`);
+    const context = deriveFinishedMatchContext({ state, acceptedFinish: finish, acceptedFinishActorId: finishRow?.actor_id ?? null, teamId: row.team_id, seasonId: row.season_id, currentControllerEpoch: grant?.epoch ?? 0, unresolvedConflicts: unresolved, mapping: mappingRow ? JSON.parse(mappingRow.mapping_json) : null, policy: policy ?? null, serverNowMs: this.now(), scheduledAtMs, sharing: "manager_only", sharingPolicyVersion: 0 });
+    const next = { ...community, revision: community.revision + 1, matches: [...community.matches, { ...context, voteCutoffAtMs: null, cutoffSource: "unresolved", finalisationDeadlineAtMs: context.actualFullTimeAtMs === null ? null : context.actualFullTimeAtMs + 36e5 }], audit: [...community.audit, { id: randomUUID(), actorAccountId: null, action: "service.accepted_finish_registered_manager_only", atMs: this.now() }] };
+    this.saveDocument(row.team_id, row.season_id, "community", next);
+    return { status: "registered_from_accepted_history", finishQuality: context.finishQuality };
+  }
+  refreshDetailedArchive(row, match) {
+    const saved = this.database.prepare("SELECT value_json FROM documents WHERE team_id=? AND season_id=? AND kind='records'").get(row.team_id, row.season_id);
+    if (!saved) return;
+    const records = JSON.parse(saved.value_json);
+    const archived = records.results.find((item) => item.id === match.config.matchId && item.recordMode === "detailed_live");
+    if (!archived || (archived.sourceMatchRevision ?? -1) >= match.revision) return;
+    if (match.recoveryRequired) {
+      if (archived.detailCompleteness !== "review_required") {
+        const reviewed = { ...records, revision: records.revision + 1, results: records.results.map((item) => item.id === archived.id ? { ...item, detailCompleteness: "review_required", revision: item.revision + 1 } : item) };
+        this.saveDocument(row.team_id, row.season_id, "records", reviewed);
+      }
+      return;
+    }
+    const context = { matchId: archived.id, playedDate: archived.playedDate, opponent: archived.opponent, homeAway: archived.homeAway, fixtureClass: archived.fixtureClass };
+    const updated = reduceRecords({ ...records, liveMatch: context }, { type: "live.archive", commandId: `accepted-archive-${digest(canonical3([archived.id, match.revision]))}`, at: new Date(this.now()).toISOString(), actor: "manager", match, reason: "Existing detailed archive refreshed from the newer accepted canonical match revision; original source events and prior archive audit remain retained." });
+    const projected = { ...updated, liveMatch: records.liveMatch };
+    this.saveDocument(row.team_id, row.season_id, "records", projected);
   }
   upload(principal, matchId, token, values) {
     const row = this.managerMatch(principal, matchId);
@@ -2911,6 +4563,7 @@ var DevelopmentStore = class {
     }
     if (results.some((item) => item.disposition === "accepted" && !item.duplicate)) this.database.prepare("UPDATE matches SET state_json=?,last_sync_at=? WHERE id=?").run(JSON.stringify(state), this.now(), matchId);
     this.audit(principal, "events.uploaded", matchId, results.some((item) => item.disposition === "quarantined") ? "review_required" : "accepted");
+    if (results.some((item) => item.disposition === "accepted" && !item.duplicate)) this.enqueueNotifications(row.team_id, row.season_id, "match", matchId, `accepted-revision-${state.revision}`);
     return { results, revision: state.revision, pendingReview: results.some((item) => item.disposition === "quarantined") };
   }
   quarantine(principal, matchId) {
@@ -2924,7 +4577,7 @@ var DevelopmentStore = class {
     const state = JSON.parse(row.state_json);
     if (state.revision !== baseRevision) throw new AccessError("STALE_REVISION", 409, "Synchronise the accepted checkpoint before handover.");
     if (state.status.endsWith("_running")) throw new AccessError("CLOCK_ANCHOR_REQUIRED", 409, "Running handover requires a verified UTC/device clock exchange. This development service supports handover while the match clock is already paused, at half-time or before kick-off; it never silently pauses play.");
-    if (!validId(toAccountId) || !validDeviceId(toDeviceId)) bad("A target account and canonical device identifier of at most 120 characters are required.");
+    if (!validId2(toAccountId) || !validDeviceId(toDeviceId)) bad("A target account and canonical device identifier of at most 120 characters are required.");
     const target = this.database.prepare("SELECT * FROM accounts WHERE id=?").get(toAccountId);
     if (!target) throw new AccessError("NOT_FOUND", 404, "The requested object is unavailable.");
     const targetPrincipal = { accountId: target.id, issuer: target.issuer, subject: target.subject, identityClassification: target.classification, adultVerified: !!target.adult_verified, strongAuth: !!target.strong_auth_enrolled, authenticatedAt: this.now(), status: target.status };
@@ -2971,24 +4624,77 @@ var DevelopmentStore = class {
     this.audit(principal, "controller.recovered", matchId, "reconciliation_required");
     return { epoch, deviceId, controllerToken: capability, reconciliationRequired: true, checkpoint: this.download(principal, matchId, deviceId).deviceCheckpoint };
   }
-  assignManager(actor, teamId, seasonId, accountId) {
+  staffRevision(teamId, seasonId) {
+    const row = this.database.prepare("SELECT revision FROM documents WHERE team_id=? AND season_id=? AND kind='staff'").get(teamId, seasonId);
+    return row?.revision ?? 0;
+  }
+  bumpStaffRevision(teamId, seasonId) {
+    const revision = this.staffRevision(teamId, seasonId) + 1;
+    this.saveDocument(teamId, seasonId, "staff", { revision });
+    return revision;
+  }
+  managers(principal, teamId, seasonId, requestedRole) {
+    assertTeamRole(principal, this.memberships(), teamId, seasonId, ["administrator"], this.now());
+    assertAdultAuthority(principal, false, this.now());
+    const accounts = this.database.prepare("SELECT * FROM accounts WHERE id IN (SELECT account_id FROM memberships WHERE team_id=?)").all(teamId);
+    const community = this.document(teamId, seasonId, "community");
+    const evidence2 = accounts.map((account2) => ({ accountId: account2.id, label: community.accounts.find((item) => item.id === account2.id)?.label ?? "Verified adult account", status: account2.status, identityClassification: account2.classification, adultVerified: Boolean(account2.adult_verified), strongAuthEnrolled: Boolean(account2.strong_auth_enrolled) }));
+    return managerRoster({ principal, memberships: this.memberships(), accounts: evidence2, teamId, seasonId, nowMs: this.now(), revision: this.staffRevision(teamId, seasonId), requestedRole });
+  }
+  assignManager(actor, teamId, seasonId, accountId, expectedRevision) {
+    assertTeamRole(actor, this.memberships(), teamId, seasonId, ["administrator"], this.now());
+    assertAdultAuthority(actor, true, this.now());
+    if (!validId2(accountId)) bad("A canonical account identifier is required.");
+    if (expectedRevision !== void 0 && (!nonnegative2(expectedRevision) || expectedRevision !== this.staffRevision(teamId, seasonId))) throw new AccessError("STALE_REVISION", 409, "Refresh the current staff assignments before changing them.");
     const account2 = this.database.prepare("SELECT * FROM accounts WHERE id=?").get(accountId);
     if (!account2) throw new AccessError("NOT_FOUND", 404, "The requested object is unavailable.");
     const target = { accountId: account2.id, issuer: account2.issuer, subject: account2.subject, identityClassification: account2.classification, adultVerified: !!account2.adult_verified, strongAuth: !!account2.strong_auth_enrolled, authenticatedAt: this.now(), status: account2.status };
     assertCanAssignManager(actor, target, this.memberships(), teamId, seasonId, this.now());
-    this.database.prepare("INSERT INTO memberships(account_id,team_id,season_id,role) VALUES(?,?,?,'manager') ON CONFLICT(account_id,team_id,season_id,role) DO UPDATE SET revoked_at=NULL,expires_at=NULL").run(accountId, teamId, seasonId);
-    this.audit(actor, "manager.assigned", teamId, "accepted");
-    return { accountId, teamId, seasonId, role: "manager" };
+    const alreadyActive = this.memberships().some((item) => item.accountId === accountId && item.teamId === teamId && item.seasonId === seasonId && item.role === "manager" && item.revokedAt == null && (item.expiresAt == null || item.expiresAt > this.now()));
+    if (!alreadyActive) {
+      this.database.prepare("INSERT INTO memberships(account_id,team_id,season_id,role) VALUES(?,?,?,'manager') ON CONFLICT(account_id,team_id,season_id,role) DO UPDATE SET revoked_at=NULL,expires_at=NULL").run(accountId, teamId, seasonId);
+      this.bumpStaffRevision(teamId, seasonId);
+      this.audit(actor, "manager.assigned", teamId, "accepted");
+    }
+    return { accountId, teamId, seasonId, role: "manager", revision: this.staffRevision(teamId, seasonId), acceptedAt: new Date(this.now()).toISOString() };
   }
-  privacyRequest(principal, kind, policyVersion) {
-    if (!["export", "delete_account", "leave_team"].includes(kind)) bad("Unsupported privacy request.");
-    const id = randomUUID();
-    this.database.prepare("INSERT INTO privacy_requests VALUES(?,?,?,?,?,?,?)").run(id, principal.accountId, kind, "pending_verification_and_policy", policyVersion, null, this.now());
-    this.audit(principal, "privacy.requested", id, "pending_verification_and_policy");
-    return { requestId: id, kind, status: "pending_verification_and_policy", verificationRequired: true, erased: false };
+  revokeManager(actor, teamId, seasonId, input, expectedRevision) {
+    assertTeamRole(actor, this.memberships(), teamId, seasonId, ["administrator"], this.now());
+    assertAdultAuthority(actor, true, this.now());
+    if (!input || Object.keys(input).some((key) => !["accountId", "reason", "confirmRevocation"].includes(key)) || !validId2(input.accountId) || input.confirmRevocation !== true || typeof input.reason !== "string" || input.reason.trim().length < 5 || input.reason.length > 500) bad("Confirm a scoped manager revocation and record its evidence reason.");
+    if (expectedRevision !== void 0 && (!nonnegative2(expectedRevision) || expectedRevision !== this.staffRevision(teamId, seasonId))) throw new AccessError("STALE_REVISION", 409, "Refresh the current staff assignments before changing them.");
+    const member = this.database.prepare("SELECT account_id,revoked_at FROM memberships WHERE account_id=? AND team_id=? AND season_id=? AND role='manager'").get(input.accountId, teamId, seasonId);
+    if (!member) throw new AccessError("NOT_FOUND", 404, "That manager assignment is outside this scope.");
+    if (member.revoked_at === null) {
+      this.database.prepare("UPDATE memberships SET revoked_at=? WHERE account_id=? AND team_id=? AND season_id=? AND role='manager'").run(this.now(), input.accountId, teamId, seasonId);
+      this.database.prepare("UPDATE controller_grants SET frozen=1 WHERE account_id=? AND match_id IN (SELECT id FROM matches WHERE team_id=? AND season_id=?)").run(input.accountId, teamId, seasonId);
+      this.bumpStaffRevision(teamId, seasonId);
+      this.audit(actor, "manager.assignment_revoked", input.accountId, input.reason.trim());
+    }
+    return { accountId: input.accountId, teamId, seasonId, role: "manager", revision: this.staffRevision(teamId, seasonId), acceptedAt: new Date(this.now()).toISOString(), revoked: true, controllerFrozen: true, otherSeasonAssignmentsRetained: true, remainingActiveTeamSeasons: this.memberships().filter((item) => item.accountId === input.accountId && item.teamId === teamId && item.role === "manager" && item.revokedAt == null && (item.expiresAt == null || item.expiresAt > this.now())).map((item) => item.seasonId) };
+  }
+  privacyRecords(principal) {
+    const rows = this.database.prepare("SELECT id,account_id,kind,status,team_id,season_id,affected_memberships_json,created_at FROM privacy_requests WHERE account_id=? ORDER BY created_at,id").all(principal.accountId);
+    return rows.map((row) => ({ requestId: row.id, accountId: row.account_id, kind: row.kind, status: row.status, scope: row.kind === "leave_team" ? row.team_id && row.season_id ? { type: "team_season", teamId: row.team_id, seasonId: row.season_id } : null : { type: "all_memberships" }, affectedMemberships: row.affected_memberships_json === null ? null : JSON.parse(row.affected_memberships_json), createdAtMs: row.created_at }));
+  }
+  privacyRequest(principal, input) {
+    const plan = prepareAccountPrivacyRequest({ principal, memberships: this.memberships(), input, nowMs: this.now() });
+    const pending = this.database.prepare("SELECT p.id FROM privacy_pending_keys k JOIN privacy_requests p ON p.id=k.request_id WHERE k.business_key=? AND p.account_id=? AND p.status='pending_verification_and_policy'").get(plan.businessKey, principal.accountId);
+    let requestId = pending?.id;
+    if (!requestId) {
+      const retained = plan.scope.type === "team_season" ? this.database.prepare("SELECT id FROM privacy_requests WHERE account_id=? AND kind=? AND team_id=? AND season_id=? AND status='pending_verification_and_policy' ORDER BY created_at,id LIMIT 1").get(principal.accountId, plan.kind, plan.scope.teamId, plan.scope.seasonId) : this.database.prepare("SELECT id FROM privacy_requests WHERE account_id=? AND kind=? AND team_id IS NULL AND season_id IS NULL AND status='pending_verification_and_policy' ORDER BY created_at,id LIMIT 1").get(principal.accountId, plan.kind);
+      requestId = retained?.id;
+    }
+    if (!requestId) {
+      requestId = randomUUID();
+      this.database.prepare("INSERT INTO privacy_requests(id,account_id,kind,status,policy_version,verified_at,created_at,team_id,season_id,affected_memberships_json) VALUES(?,?,?,?,NULL,NULL,?,?,?,?)").run(requestId, principal.accountId, plan.kind, plan.status, this.now(), plan.scope.type === "team_season" ? plan.scope.teamId : null, plan.scope.type === "team_season" ? plan.scope.seasonId : null, JSON.stringify(plan.affectedMemberships));
+      this.audit(principal, "privacy.requested", requestId, "pending_verification_and_policy");
+    }
+    this.database.prepare("INSERT INTO privacy_pending_keys(business_key,request_id) VALUES(?,?) ON CONFLICT(business_key) DO UPDATE SET request_id=excluded.request_id").run(plan.businessKey, requestId);
+    return this.privacyRequests(principal).items.find((item) => item.requestId === requestId);
   }
   privacyRequests(principal) {
-    return this.database.prepare("SELECT id,kind,status,policy_version,verified_at,created_at FROM privacy_requests WHERE account_id=? ORDER BY created_at").all(principal.accountId);
+    return projectAccountPrivacyRequests({ principal, memberships: this.memberships(), records: this.privacyRecords(principal), nowMs: this.now() });
   }
   /** Explicit setup seam: an authorised operator imports verified provider-to-account mappings; no token creates authority. */
   bindIdentity(accountId, issuer, subject) {
@@ -2999,9 +4705,9 @@ var DevelopmentStore = class {
     if (device && device.account_id !== principal.accountId) throw new AccessError("DEVICE_ACCOUNT_CONFLICT", 409, "Enrol a separate device identity for this account.");
     this.database.prepare("INSERT INTO devices(id,account_id) VALUES(?,?) ON CONFLICT(id) DO NOTHING").run(deviceId, principal.accountId);
   }
-  teamMatches(principal, teamId, seasonId) {
+  teamMatches(principal, teamId, seasonId, requestedRole) {
     assertTeamRole(principal, this.memberships(), teamId, seasonId, ["manager", "player", "spectator"], this.now());
-    return this.database.prepare("SELECT id FROM matches WHERE team_id=? AND season_id=? ORDER BY id LIMIT 100").all(teamId, seasonId).map((row) => this.matchDto(principal, row.id));
+    return this.database.prepare("SELECT id FROM matches WHERE team_id=? AND season_id=? ORDER BY id LIMIT 100").all(teamId, seasonId).map((row) => this.matchDto(principal, row.id, requestedRole));
   }
   document(teamId, seasonId, kind) {
     const row = this.database.prepare("SELECT value_json FROM documents WHERE team_id=? AND season_id=? AND kind=?").get(teamId, seasonId, kind);
@@ -3011,9 +4717,70 @@ var DevelopmentStore = class {
   saveDocument(teamId, seasonId, kind, state) {
     this.database.prepare("INSERT INTO documents(team_id,season_id,kind,revision,value_json) VALUES(?,?,?,?,?) ON CONFLICT(team_id,season_id,kind) DO UPDATE SET revision=excluded.revision,value_json=excluded.value_json").run(teamId, seasonId, kind, state.revision, JSON.stringify(state));
   }
+  enqueueNotifications(teamId, seasonId, category, entityId, sourceId) {
+    const recipients = /* @__PURE__ */ new Map();
+    const priority = { manager: 3, player: 2, spectator: 1, administrator: 0 };
+    for (const member of this.memberships().filter((item) => item.teamId === teamId && item.seasonId === seasonId && ["manager", "player", "spectator"].includes(item.role) && item.revokedAt == null && (item.expiresAt == null || item.expiresAt > this.now()))) {
+      const current3 = recipients.get(member.accountId);
+      if (!current3 || priority[member.role] > priority[current3.role]) recipients.set(member.accountId, member);
+    }
+    let inserted = 0;
+    for (const member of recipients.values()) {
+      if (member.role === "administrator" || member.role === "player" && !member.playerId) continue;
+      const businessKey = `notify:${digest(canonical3([teamId, seasonId, category, entityId, sourceId, member.accountId, member.role]))}`;
+      const job = createTeamNotificationJob({ id: randomUUID(), businessKey, accountId: member.accountId, teamId, seasonId, audience: member.role, playerId: member.role === "player" ? member.playerId : null, category, entityId, dueAtMs: this.now() });
+      const result = this.database.prepare("INSERT INTO jobs(id,business_key,kind,payload_json,due_at) VALUES(?,?,'notification.dispatch',?,?) ON CONFLICT(business_key) DO NOTHING").run(job.id, businessKey, JSON.stringify(job), job.dueAtMs);
+      inserted += Number(result.changes);
+    }
+    return inserted;
+  }
   preparation(principal, teamId, seasonId) {
     assertCanManageTeam(principal, this.memberships(), teamId, seasonId, this.now());
     return this.document(teamId, seasonId, "preparation");
+  }
+  configuration(principal, teamId, seasonId, role) {
+    if (role) assertTeamRole(principal, this.memberships(), teamId, seasonId, role === "manager" || role === "administrator" ? [role] : [], this.now());
+    const state = this.document(teamId, seasonId, "preparation");
+    return configurationServiceView({ principal, memberships: this.memberships(), preparation: state, seasonId, nowMs: this.now() });
+  }
+  configurationCommand(principal, teamId, seasonId, command, role) {
+    this.configuration(principal, teamId, seasonId, role);
+    if (!command || !["club.updated", "team.updated"].includes(command.type)) bad("Only club or team configuration can be changed in this context.");
+    if (role && command.type === "club.updated" && role !== "administrator") throw new AccessError("NOT_FOUND", 404, "Choose the current administrator context to administer the club.");
+    const state = applyConfigurationServiceCommand({ principal, memberships: this.memberships(), preparation: this.document(teamId, seasonId, "preparation"), seasonId, nowMs: this.now(), command });
+    this.saveDocument(teamId, seasonId, "preparation", state);
+    this.audit(principal, command.type, teamId, "administrator_configuration_accepted");
+    return this.configuration(principal, teamId, seasonId, role);
+  }
+  seasonContext(principal, teamId, seasonId) {
+    const community = this.communityState(teamId, seasonId);
+    const accounts = this.database.prepare("SELECT * FROM accounts").all();
+    const preparationDocuments = this.database.prepare("SELECT value_json FROM documents WHERE team_id=? AND kind='preparation'").all(teamId);
+    const existingSeasons = preparationDocuments.flatMap((row) => JSON.parse(row.value_json).seasons.map((season) => ({ teamId, id: season.id, startYear: season.startYear })));
+    return {
+      principal,
+      memberships: this.memberships(),
+      existingSeasons,
+      nowMs: this.now(),
+      preparation: this.document(teamId, seasonId, "preparation"),
+      records: this.document(teamId, seasonId, "records"),
+      community,
+      accounts: accounts.map((account2) => ({ accountId: account2.id, label: community.accounts.find((item) => item.id === account2.id)?.label ?? "Verified account", status: account2.status, identityClassification: account2.classification, adultVerified: Boolean(account2.adult_verified), strongAuthEnrolled: Boolean(account2.strong_auth_enrolled) }))
+    };
+  }
+  seasonOptions(principal, teamId, seasonId) {
+    return seasonRolloverOptions(this.seasonContext(principal, teamId, seasonId));
+  }
+  createSeason(principal, teamId, seasonId, command) {
+    const context = this.seasonContext(principal, teamId, seasonId);
+    const plan = planSeasonRollover({ ...context, command });
+    if (this.database.prepare("SELECT kind FROM documents WHERE team_id=? AND season_id=? LIMIT 1").get(teamId, plan.receipt.seasonId)) throw new AccessError("SEASON_EXISTS", 409, "That destination season already has saved documents.");
+    for (const member of plan.memberships) this.database.prepare("INSERT INTO memberships(account_id,team_id,season_id,role,player_id,expires_at,revoked_at) VALUES(?,?,?,?,?,?,?)").run(member.accountId, member.teamId, member.seasonId, member.role, member.playerId ?? null, member.expiresAt ?? null, member.revokedAt ?? null);
+    this.saveDocument(teamId, plan.receipt.seasonId, "preparation", plan.preparation);
+    this.saveDocument(teamId, plan.receipt.seasonId, "records", plan.records);
+    this.saveDocument(teamId, plan.receipt.seasonId, "community", plan.community);
+    this.audit(principal, "season.created_from_explicit_assignments", plan.receipt.seasonId, "accepted_no_spectator_renewal");
+    return plan.receipt;
   }
   /** Called inside the preparation mutation transaction; current labels never rewrite saved match evidence. */
   projectPreparationRecords(teamId, seasonId, preparation, sourceCommandId) {
@@ -3021,7 +4788,7 @@ var DevelopmentStore = class {
     const labels = new Map(previous.players.map((player) => [player.id, player]));
     for (const profile of preparation.profiles.filter((profile2) => profile2.seasonId === seasonId)) labels.set(profile.playerId, { id: profile.playerId, label: profile.displayName });
     const players = [...labels.values()];
-    const evidence = trainingAttendanceEvidence({ ...preparation, training: preparation.training.filter((session) => session.seasonId === seasonId) });
+    const evidence2 = trainingAttendanceEvidence({ ...preparation, training: preparation.training.filter((session) => session.seasonId === seasonId) });
     let records = previous;
     const at = new Date(this.now()).toISOString();
     if (canonical3(players) !== canonical3(previous.players)) records = {
@@ -3030,13 +4797,13 @@ var DevelopmentStore = class {
       revision: records.revision + 1,
       audit: [...records.audit, { commandId: `preparation-roster-${sourceCommandId}`, action: "preparation.roster.projected", matchId: null, at, reason: "Current season roster labels updated from preparation; saved match snapshots preserved.", before: null, after: null }]
     };
-    if (canonical3(evidence) !== canonical3(previous.trainingAttendance)) records = reduceRecords(records, { type: "training.evidence.replace", commandId: `preparation-training-${sourceCommandId}`, at, actor: "manager", evidence });
+    if (canonical3(evidence2) !== canonical3(previous.trainingAttendance)) records = reduceRecords(records, { type: "training.evidence.replace", commandId: `preparation-training-${sourceCommandId}`, at, actor: "manager", evidence: evidence2 });
     if (records !== previous) this.saveDocument(teamId, seasonId, "records", records);
   }
   preparationCommand(principal, teamId, seasonId, command) {
     const previous = this.preparation(principal, teamId, seasonId);
-    const types = ["club.updated", "team.updated", "season.rolled_over", "profile.saved", "profile.archived", "formation.saved", "fixture.saved", "fixture.status_changed", "fixture.response_recorded", "fixture.selection_saved", "fixture.attendance_recorded", "fixture.prepared", "training.saved", "training.status_changed", "training.response_recorded", "training.attendance_recorded"];
-    if (!command || !types.includes(command.type)) bad("Unsupported preparation command.");
+    const types2 = ["club.updated", "team.updated", "season.rolled_over", "profile.saved", "profile.archived", "formation.saved", "fixture.saved", "fixture.status_changed", "fixture.response_recorded", "fixture.selection_saved", "fixture.attendance_recorded", "fixture.prepared", "training.saved", "training.status_changed", "training.response_recorded", "training.attendance_recorded"];
+    if (!command || !types2.includes(command.type)) bad("Unsupported preparation command.");
     if (command.type === "season.rolled_over") throw new AccessError("SEASON_ASSIGNMENT_REQUIRED", 503, "A connected new season requires approved manager/player assignments and explicit spectator renewal. The local rehearsal supports rollover; this service will not save an inaccessible new season or silently copy authority.");
     if (command.type === "club.updated") {
       assertTeamRole(principal, this.memberships(), teamId, seasonId, ["administrator"], this.now());
@@ -3064,6 +4831,10 @@ var DevelopmentStore = class {
     if (command.type.startsWith("training.") || command.type.startsWith("profile.")) this.projectPreparationRecords(teamId, seasonId, state, command.id);
     this.saveDocument(teamId, seasonId, "preparation", state);
     this.audit(principal, command.type, teamId, "accepted");
+    if (command.type === "fixture.saved") this.enqueueNotifications(teamId, seasonId, "schedule", command.fixture.id, command.id);
+    else if (command.type === "fixture.status_changed" || command.type === "fixture.selection_saved") this.enqueueNotifications(teamId, seasonId, "schedule", command.fixtureId, command.id);
+    else if (command.type === "training.saved") this.enqueueNotifications(teamId, seasonId, "schedule", command.training.id, command.id);
+    else if (command.type === "training.status_changed") this.enqueueNotifications(teamId, seasonId, "schedule", command.trainingId, command.id);
     return state;
   }
   ownPreparation(principal, teamId, seasonId) {
@@ -3084,7 +4855,7 @@ var DevelopmentStore = class {
   }
   ownPreparationCommand(principal, teamId, seasonId, command) {
     const membership = assertTeamRole(principal, this.memberships(), teamId, seasonId, ["player"], this.now());
-    if (!command || !validId(command.id) || !nonnegative2(command.expectedRevision) || !["own.preferences_saved", "own.fixture_response_recorded", "own.training_response_recorded"].includes(command.type)) bad("A valid own-player command and source revision are required.");
+    if (!command || !validId2(command.id) || !nonnegative2(command.expectedRevision) || !["own.preferences_saved", "own.fixture_response_recorded", "own.training_response_recorded"].includes(command.type)) bad("A valid own-player command and source revision are required.");
     const allowed = command.type === "own.preferences_saved" ? ["id", "expectedRevision", "type", "preferences"] : command.type === "own.fixture_response_recorded" ? ["id", "expectedRevision", "type", "fixtureId", "response"] : ["id", "expectedRevision", "type", "trainingId", "response"];
     if (Object.keys(command).some((key) => !allowed.includes(key))) bad("Own-player commands cannot change another profile or manager-controlled fields.");
     const state = this.document(teamId, seasonId, "preparation");
@@ -3128,7 +4899,7 @@ var DevelopmentStore = class {
     return { ...getCommunityView(state, actor, this.now()), revision: state.revision };
   }
   communityCommand(principal, teamId, seasonId, command, role) {
-    if (!command || !validId(command.id) || typeof command.type !== "string") bad("A typed community command with a stable identity is required.");
+    if (!command || !validId2(command.id) || typeof command.type !== "string") bad("A typed community command with a stable identity is required.");
     if (command.type === "concern.updated" && !["under_review", "resolved"].includes(command.status)) bad("Invalid concern status.");
     if (command.type === "concern.submitted" && (!["photo", "uploader"].includes(command.targetType) || !["privacy", "inappropriate", "other"].includes(command.category))) bad("Invalid concern category.");
     if (command.type === "uploader.hidden" && typeof command.hidden !== "boolean") bad("Choose whether to hide the uploader.");
@@ -3144,6 +4915,8 @@ var DevelopmentStore = class {
       this.database.prepare("INSERT INTO jobs(id,business_key,kind,payload_json,due_at) VALUES(?,?,?,?,?) ON CONFLICT(business_key) DO NOTHING").run(randomUUID(), key, "award.finalise", JSON.stringify({ teamId, seasonId, matchId: match.id }), match.voteCutoffAtMs);
     }
     this.audit(principal, command.type, teamId, "accepted");
+    if (command.type === "photo.submitted" || command.type === "photo.revised" || command.type === "photo.published" || command.type === "photo.reviewed" && command.decision === "approve") this.enqueueNotifications(teamId, seasonId, "photos", command.photoId, command.id);
+    if (command.type === "award.finalised") this.enqueueNotifications(teamId, seasonId, "awards", command.matchId, command.id);
     return { ...getCommunityView(state, actor, this.now()), revision: state.revision };
   }
   synchronizeSpectatorMemberships(state) {
@@ -3151,9 +4924,9 @@ var DevelopmentStore = class {
     for (const grant of state.grants) scopes.set(JSON.stringify([grant.accountId, grant.teamId, grant.seasonId]), { accountId: grant.accountId, teamId: grant.teamId, seasonId: grant.seasonId });
     for (const scope of scopes.values()) {
       const grants = state.grants.filter((grant) => grant.accountId === scope.accountId && grant.teamId === scope.teamId && grant.seasonId === scope.seasonId);
-      const active = grants.filter((grant) => grant.revokedAtMs === null && grant.startsAtMs <= this.now() && grant.expiresAtMs > this.now());
-      const expiresAt = Math.max(...(active.length ? active : grants).map((grant) => grant.expiresAtMs));
-      const revokedAt = active.length ? null : Math.max(1, this.now());
+      const active2 = grants.filter((grant) => grant.revokedAtMs === null && grant.startsAtMs <= this.now() && grant.expiresAtMs > this.now());
+      const expiresAt = Math.max(...(active2.length ? active2 : grants).map((grant) => grant.expiresAtMs));
+      const revokedAt = active2.length ? null : Math.max(1, this.now());
       this.database.prepare("INSERT INTO memberships(account_id,team_id,season_id,role,expires_at,revoked_at) VALUES(?,?,?,'spectator',?,?) ON CONFLICT(account_id,team_id,season_id,role) DO UPDATE SET expires_at=excluded.expires_at,revoked_at=excluded.revoked_at").run(scope.accountId, scope.teamId, scope.seasonId, expiresAt, revokedAt);
     }
   }
@@ -3167,25 +4940,22 @@ var DevelopmentStore = class {
     const actor = this.communityActor(principal, teamId, seasonId, role);
     return { actor: actor.role, playerId: actor.playerId, teamId, seasonId };
   }
-  records(principal, teamId, seasonId, role) {
+  recordsContext(principal, teamId, seasonId, role) {
     const viewer = this.recordsViewer(principal, teamId, seasonId, role);
-    const state = this.document(teamId, seasonId, "records");
-    const matchRow = this.database.prepare("SELECT state_json FROM matches WHERE id=? AND team_id=? AND season_id=?").get(state.liveMatch.matchId, teamId, seasonId);
-    const match = matchRow ? JSON.parse(matchRow.state_json) : null;
-    return { revision: state.revision, results: selectSeasonResults(state, viewer), participation: selectParticipationReport(state, match, viewer), matches: state.results.map((record) => selectMatchReport(state, record.id, viewer, match)), ...viewer.actor === "manager" ? { editableState: state } : {} };
+    const rows = this.database.prepare("SELECT state_json FROM matches WHERE team_id=? AND season_id=? ORDER BY id").all(teamId, seasonId);
+    const community = this.communityState(teamId, seasonId);
+    const actor = this.communityActor(principal, teamId, seasonId, viewer.actor);
+    const filtered = getCommunityView(community, actor, this.now());
+    return { principal, memberships: this.memberships(), nowMs: this.now(), requestedRole: viewer.actor, state: this.document(teamId, seasonId, "records"), acceptedMatches: rows.map((row) => ({ teamId, seasonId, match: JSON.parse(row.state_json) })), community: { accountId: principal.accountId, teamId, seasonId, audience: viewer.actor, playerId: viewer.playerId ?? null, revision: community.revision, view: { allowed: filtered.allowed, matches: filtered.matches, gallery: filtered.gallery } } };
   }
-  recordsCommand(principal, teamId, seasonId, command) {
-    assertCanManageTeam(principal, this.memberships(), teamId, seasonId, this.now());
-    const previous = this.document(teamId, seasonId, "records");
-    if (!command || !["historical.add", "historical.correct", "live.archive", "live.context.set", "publication.set", "training.evidence.replace"].includes(command.type)) bad("Unsupported records command.");
-    let bound = { ...command, actor: "manager", at: new Date(this.now()).toISOString() };
-    if (command.type === "live.archive") {
-      const match = this.managerMatch(principal, command.match.config.matchId);
-      if (match.team_id !== teamId || match.season_id !== seasonId) throw new AccessError("NOT_FOUND", 404, "The requested object is unavailable.");
-      bound = { ...bound, match: JSON.parse(match.state_json) };
-    }
-    if (command.type === "publication.set" && command.policy.confirmed) throw new AccessError("POLICY_APPROVAL_REQUIRED", 503, "The competition sharing policy requires an independently approved operator record; a manager command cannot approve open Q21.");
-    const state = reduceRecords(previous, bound);
+  records(principal, teamId, seasonId, role) {
+    return recordsServiceView(this.recordsContext(principal, teamId, seasonId, role));
+  }
+  recordsExport(principal, teamId, seasonId, request, role) {
+    return recordsServiceExport({ ...this.recordsContext(principal, teamId, seasonId, role), request });
+  }
+  recordsCommand(principal, teamId, seasonId, command, role) {
+    const state = applyRecordsServiceCommand({ ...this.recordsContext(principal, teamId, seasonId, role), command });
     this.saveDocument(teamId, seasonId, "records", state);
     this.audit(principal, command.type, teamId, "accepted");
     return this.records(principal, teamId, seasonId, "manager");
@@ -3197,7 +4967,7 @@ function runDueJobs(store2, nowMs = Date.now(), maximum = 20) {
   const result = { completed: 0, retried: 0, failed: 0 };
   for (let number = 0; number < maximum; number++) {
     const job = store2.transaction(() => {
-      const found = store2.database.prepare("SELECT id,kind,payload_json,attempts FROM jobs WHERE (state='pending' AND due_at<=?) OR (state='leased' AND lease_until<=?) ORDER BY due_at,id LIMIT 1").get(nowMs, nowMs);
+      const found = store2.database.prepare("SELECT id,kind,payload_json,attempts FROM jobs WHERE kind='award.finalise' AND ((state='pending' AND due_at<=?) OR (state='leased' AND lease_until<=?)) ORDER BY due_at,id LIMIT 1").get(nowMs, nowMs);
       if (!found) return null;
       store2.database.prepare("UPDATE jobs SET state='leased',attempts=attempts+1,lease_until=? WHERE id=?").run(nowMs + 3e4, found.id);
       return { ...found, attempts: found.attempts + 1 };
@@ -3212,6 +4982,7 @@ function runDueJobs(store2, nowMs = Date.now(), maximum = 20) {
         if (!match || match.voteCutoffAtMs === null || match.finishQuality !== "trusted") throw new Error("AWARD_REVIEW_REQUIRED");
         const next = finalizeDueCommunityAwards(state, nowMs);
         store2.saveDocument(payload.teamId, payload.seasonId, "community", next);
+        for (const award of next.awards.filter((award2) => !state.awards.some((previous) => previous.matchId === award2.matchId))) store2.enqueueNotifications(payload.teamId, payload.seasonId, "awards", award.matchId, `award-finalised-${award.matchId}-${award.voteCutoffAtMs}`);
         if (!next.awards.some((award) => award.matchId === payload.matchId)) throw new Error("AWARD_NOT_DUE_OR_UNRESOLVED");
         store2.database.prepare("UPDATE jobs SET state='completed',lease_until=NULL,last_error_code=NULL WHERE id=?").run(job.id);
       });
@@ -3226,19 +4997,1158 @@ function runDueJobs(store2, nowMs = Date.now(), maximum = 20) {
   return result;
 }
 
-// apps/worker/src/main.ts
-var store = new DevelopmentStore(process.env.LONGBALL_API_DATABASE ?? ".local/api/longball.sqlite");
-var run = () => {
-  const result = runDueJobs(store);
-  if (result.completed || result.retried || result.failed) console.log(JSON.stringify({ worker: "longball-development", ...result }));
+// apps/api/src/pg.ts
+import { AsyncLocalStorage } from "node:async_hooks";
+import { Pool, types } from "pg";
+import { readFile } from "node:fs/promises";
+var PgDatabase = class {
+  pool;
+  migrationMode;
+  context = new AsyncLocalStorage();
+  constructor(connectionString2, options = {}) {
+    let url;
+    try {
+      url = new URL(connectionString2);
+    } catch {
+      throw new Error("A valid PostgreSQL connection URL is required.");
+    }
+    if (!["postgres:", "postgresql:"].includes(url.protocol)) throw new Error("A PostgreSQL connection URL is required.");
+    this.migrationMode = options.migrationMode ?? "apply";
+    this.pool = new Pool({
+      connectionString: connectionString2,
+      max: options.maximumConnections ?? 10,
+      application_name: options.applicationName ?? "longball-api",
+      connectionTimeoutMillis: 1e4,
+      idleTimeoutMillis: 3e4,
+      options: "-c search_path=longball,pg_catalog -c statement_timeout=15000 -c lock_timeout=10000",
+      types: { getTypeParser: (oid, format) => {
+        if (oid === 114 || oid === 3802) return (value) => value;
+        if (oid === 20) return (value) => {
+          const parsed = Number(value);
+          if (!Number.isSafeInteger(parsed)) throw new Error("PostgreSQL integer exceeds the application range.");
+          return parsed;
+        };
+        return types.getTypeParser(oid, format);
+      } }
+    });
+    this.pool.on("error", () => {
+      console.error("LONGBALL_POSTGRES_IDLE_CONNECTION_ERROR");
+    });
+  }
+  query(sql, values = []) {
+    return (this.context.getStore() ?? this.pool).query(sql, [...values]);
+  }
+  async transaction(work) {
+    if (this.context.getStore()) return work();
+    const client = await this.pool.connect();
+    try {
+      await client.query("BEGIN");
+      await client.query("SELECT pg_advisory_xact_lock(hashtextextended('longball:domain-write:v1', 0))");
+      const result = await this.context.run(client, work);
+      await client.query("COMMIT");
+      return result;
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+  async migrate() {
+    if (this.migrationMode === "verify") {
+      const versions = await this.query("SELECT version FROM longball.schema_migrations ORDER BY version");
+      if (versions.rows.some((row) => row.version > 4)) throw new Error("This PostgreSQL schema is newer than the application. Preserve it and use a compatible build.");
+      if (![2, 3, 4].every((version) => versions.rows.some((row) => row.version === version))) throw new Error("PostgreSQL migrations are required. Run the separate migrator before starting the runtime.");
+      return;
+    }
+    const migration = await readFile(new URL("../migrations/postgresql/002_runtime.sql", import.meta.url), "utf8");
+    const clockReviewMigration = await readFile(new URL("../migrations/postgresql/003_clock_review.sql", import.meta.url), "utf8");
+    const accountRequestsMigration = await readFile(new URL("../migrations/postgresql/004_account_requests.sql", import.meta.url), "utf8");
+    await this.transaction(async () => {
+      const schema = await this.query("SELECT to_regnamespace('longball')::text AS namespace");
+      if (!schema.rows[0]?.namespace) await this.query("CREATE SCHEMA longball");
+      await this.query("CREATE TABLE IF NOT EXISTS longball.schema_migrations(version integer PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())");
+      const versions = await this.query("SELECT version FROM longball.schema_migrations ORDER BY version");
+      if (versions.rows.some((row) => row.version > 4)) throw new Error("This PostgreSQL schema is newer than the application. Preserve it and use a compatible build.");
+      if (!versions.rows.some((row) => row.version === 2)) {
+        await this.query(migration);
+        await this.query("INSERT INTO longball.schema_migrations(version) VALUES(2)");
+      }
+      if (!versions.rows.some((row) => row.version === 3)) {
+        await this.query(clockReviewMigration);
+        await this.query("INSERT INTO longball.schema_migrations(version) VALUES(3)");
+      }
+      if (!versions.rows.some((row) => row.version === 4)) {
+        await this.query(accountRequestsMigration);
+        await this.query("INSERT INTO longball.schema_migrations(version) VALUES(4)");
+      }
+    });
+  }
+  async close() {
+    await this.pool.end();
+  }
 };
-run();
-if (process.argv.includes("--once")) store.close();
+
+// apps/api/src/postgres-store.ts
+import { createHash as createHash2, randomBytes as randomBytes2, randomUUID as randomUUID2 } from "node:crypto";
+var EVENT_CONTRACT_VERSION2 = "longball.events/1.1";
+var SYNTHETIC_IDS2 = { teamId: "synthetic-roma-u10", seasonId: "synthetic-season-2026-27", matchId: "synthetic-roma-maple-2026-10-24" };
+function canonical4(value) {
+  if (Array.isArray(value)) return `[${value.map(canonical4).join(",")}]`;
+  if (value !== null && typeof value === "object") return `{${Object.entries(value).sort(([a], [b]) => a.localeCompare(b)).map(([key, item]) => `${JSON.stringify(key)}:${canonical4(item)}`).join(",")}}`;
+  return JSON.stringify(value);
+}
+var digest2 = (value) => createHash2("sha256").update(value).digest("hex");
+var validId3 = (value) => typeof value === "string" && value.length > 0 && value.length <= 150 && /^[a-zA-Z0-9_-]+$/.test(value);
+var validDeviceId2 = (value) => validId3(value) && value.length <= 120;
+var nonnegative3 = (value) => typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
+function bad2(message) {
+  throw new AccessError("INVALID_REQUEST", 400, message);
+}
+function validateEnvelope2(value, matchId) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) bad2("An event envelope is required.");
+  const item = value;
+  if (!validId3(item.eventId) || !validDeviceId2(item.deviceId) || item.matchId !== matchId || !nonnegative3(item.clientSequence) || item.clientSequence < 1 || !nonnegative3(item.controllerEpoch) || item.controllerEpoch < 1 || !nonnegative3(item.baseRevision)) bad2("Invalid event identity, scope or sequence.");
+  if (!(item.previousEventId === null || validId3(item.previousEventId))) bad2("Invalid previous event identifier.");
+  if (item.contractVersion !== EVENT_CONTRACT_VERSION2 || item.schemaVersion !== 1 || item.engineVersion !== ENGINE_VERSION) return item;
+  const fields3 = ["contractVersion", "schemaVersion", "engineVersion", "eventId", "matchId", "deviceId", "controllerEpoch", "clientSequence", "previousEventId", "baseRevision", "effectiveHalf", "halfElapsedMs", "matchElapsedMs", "effectiveAt", "recordedAt", "timeQuality", "clockEvidence", "command"];
+  if (Object.keys(item).some((key) => !fields3.includes(key))) bad2("Unknown event envelope fields are not accepted.");
+  if (!nonnegative3(item.halfElapsedMs) || !nonnegative3(item.matchElapsedMs) || ![0, 1, 2].includes(item.effectiveHalf)) bad2("Invalid effective playing-time boundary.");
+  if (!["anchored", "estimated", "reviewRequired"].includes(item.timeQuality) || !Number.isFinite(Date.parse(item.recordedAt)) || !(item.effectiveAt === null || Number.isFinite(Date.parse(item.effectiveAt)))) bad2("Invalid event time evidence.");
+  const command = item.command;
+  if (!command || typeof command !== "object" || command.id !== item.eventId || !command.sample || !Number.isFinite(command.sample.monotonicMs) || command.sample.monotonicMs < 0 || !validId3(command.sample.sessionId) || !nonnegative3(command.sample.wallTimeMs)) bad2("Invalid versioned match command.");
+  if (!item.clockEvidence || item.clockEvidence.monotonicMs !== command.sample.monotonicMs || !validId3(item.clockEvidence.anchorId) || !(item.clockEvidence.continuityId === null || validId3(item.clockEvidence.continuityId))) bad2("Explicit clock evidence is required.");
+  const commandTypes = ["attendance.recorded", "availability.changed", "lineup.staged", "half.started", "half.paused", "half.resumed", "half.ended", "lineup.committed", "goal.recorded", "clock.recovery_required", "clock.corrected", "event.corrected", "event.voided", "policy.changed", "match.abandoned"];
+  if (!commandTypes.includes(command.type)) bad2("Unsupported match command.");
+  if (command.type === "goal.recorded" && !["us", "opposition"].includes(command.beneficiary)) bad2("Invalid goal side.");
+  if (command.type === "attendance.recorded" && (!validId3(command.playerId) || !["present", "absent", "excused", "not_selected", "not_recorded"].includes(command.status))) bad2("Invalid attendance.");
+  if (command.type === "availability.changed" && (!validId3(command.playerId) || typeof command.available !== "boolean")) bad2("Invalid availability.");
+  if ((command.type === "lineup.staged" || command.type === "lineup.committed") && (!Array.isArray(command.lineup) || command.lineup.length > 11 || command.lineup.some((item2) => !validId3(item2.playerId) || !validId3(item2.slotId) || typeof item2.position !== "string" || item2.position.length > 30))) bad2("Invalid lineup allocations.");
+  return item;
+}
+var PostgresStore = class _PostgresStore {
+  constructor(db, now = Date.now) {
+    this.db = db;
+    this.now = now;
+  }
+  db;
+  now;
+  static async open(connectionString2, now = Date.now, options = {}) {
+    const db = new PgDatabase(connectionString2, options);
+    try {
+      await db.migrate();
+      return new _PostgresStore(db, now);
+    } catch (error) {
+      await db.close();
+      throw error;
+    }
+  }
+  async close() {
+    await this.db.close();
+  }
+  transaction(work) {
+    return this.db.transaction(work);
+  }
+  async one(sql, values = []) {
+    return (await this.db.query(sql, values)).rows[0];
+  }
+  async many(sql, values = []) {
+    return (await this.db.query(sql, values)).rows;
+  }
+  async execute(sql, values = []) {
+    return { changes: (await this.db.query(sql, values)).rowCount ?? 0 };
+  }
+  async seedSynthetic() {
+    await this.transaction(async () => {
+      if (await this.one("SELECT id FROM teams LIMIT 1", []))
+        return;
+      await this.execute("INSERT INTO teams(id,name) VALUES($1,$2)", [SYNTHETIC_IDS2.teamId, "Roma U10 \xB7 fictional"]);
+      await this.execute("INSERT INTO teams(id,name) VALUES($1,$2)", ["synthetic-other-team", "Other fictional team"]);
+      const add2 = async (id, classification, adult) => await this.execute("INSERT INTO accounts(id,issuer,subject,classification,adult_verified,strong_auth_enrolled) VALUES($1,$2,$3,$4,$5,$6)", [id, "urn:longball:synthetic", id, classification, Number(adult), Number(adult)]);
+      const membership = async (id, role, playerId = null, teamId = SYNTHETIC_IDS2.teamId) => await this.execute("INSERT INTO memberships(account_id,team_id,season_id,role,player_id) VALUES($1,$2,$3,$4,$5)", [id, teamId, SYNTHETIC_IDS2.seasonId, role, playerId]);
+      await add2("synthetic-account-admin", "adult_individual", true);
+      await membership("synthetic-account-admin", "administrator");
+      for (let number = 1; number <= 5; number++) {
+        const id = number === 1 ? "synthetic-account-manager" : `synthetic-account-manager-${number}`;
+        await add2(id, "adult_individual", true);
+        if (number <= 4)
+          await membership(id, "manager");
+        if (number === 1)
+          await membership(id, "administrator");
+      }
+      for (let number = 1; number <= 13; number++) {
+        const suffix = String(number).padStart(2, "0");
+        const id = `synthetic-account-player-${suffix}`;
+        await add2(id, "child_shared", false);
+        await membership(id, "player", `synthetic-player-${suffix}`);
+      }
+      await add2("synthetic-account-spectator", "adult_individual", false);
+      await membership("synthetic-account-spectator", "spectator");
+      await add2("synthetic-account-invitee", "adult_individual", false);
+      await add2("synthetic-account-other-manager", "adult_individual", true);
+      await membership("synthetic-account-other-manager", "manager", null, "synthetic-other-team");
+      const config = { matchId: SYNTHETIC_IDS2.matchId, players: romaFixture.players, selectedPlayerIds: romaFixture.players.filter((player) => player.available).map((player) => player.id), pitchPlaces: 7, plannedHalfDurationMs: 15e5, fixedKeeperId: romaFixture.players[0].id };
+      await this.insertMatch(config, SYNTHETIC_IDS2.teamId, SYNTHETIC_IDS2.seasonId);
+      const community = createCommunityState(this.now());
+      community.matches = community.matches.map((match) => ({ ...match, sharing: "manager_only" }));
+      for (let number = 2; number <= 4; number++) {
+        const id = `synthetic-account-manager-${number}`;
+        community.accounts.push({ id, label: `Fictional manager ${number}`, classification: "adult_individual", adultVerified: true });
+        community.memberships.push({ accountId: id, teamId: SYNTHETIC_IDS2.teamId, seasonId: SYNTHETIC_IDS2.seasonId, role: "manager", active: true });
+      }
+      await this.saveDocument(SYNTHETIC_IDS2.teamId, SYNTHETIC_IDS2.seasonId, "preparation", createPreparationState());
+      await this.saveDocument(SYNTHETIC_IDS2.teamId, SYNTHETIC_IDS2.seasonId, "community", community);
+      await this.saveDocument(SYNTHETIC_IDS2.teamId, SYNTHETIC_IDS2.seasonId, "records", createRecordsSeed());
+    });
+  }
+  async insertMatch(config, teamId, seasonId) {
+    await this.execute("INSERT INTO matches(id,team_id,season_id,config_json,state_json,sharing_policy_json) VALUES($1,$2,$3,$4,$5,$6)", [config.matchId, teamId, seasonId, JSON.stringify(config), JSON.stringify(createMatch(config)), JSON.stringify(UNAPPROVED_SHARING_POLICY)]);
+  }
+  async principal(identity) {
+    const account2 = await this.one("SELECT * FROM accounts WHERE issuer=$1 AND subject=$2", [identity.issuer, identity.subject]);
+    if (!account2 || account2.status !== "active")
+      throw new AccessError("ACCOUNT_UNAVAILABLE", 403, "The account is not active for this service.");
+    return { accountId: account2.id, issuer: account2.issuer, subject: account2.subject, identityClassification: account2.classification, adultVerified: Boolean(account2.adult_verified), strongAuth: identity.strongAuth, authenticatedAt: identity.authenticatedAt, status: account2.status };
+  }
+  async memberships() {
+    const rows = (await this.many("SELECT * FROM memberships", [])).map((row) => ({ accountId: row.account_id, teamId: row.team_id, seasonId: row.season_id, role: row.role, playerId: row.player_id ?? void 0, expiresAt: row.expires_at, revokedAt: row.revoked_at }));
+    const communities = (await this.many("SELECT team_id,season_id,value_json FROM documents WHERE kind='community'", [])).map((row) => ({ ...row, state: JSON.parse(row.value_json) }));
+    return rows.map((row) => {
+      if (row.role !== "spectator")
+        return row;
+      const scope = communities.find((document) => document.team_id === row.teamId && document.season_id === row.seasonId);
+      const granted = scope?.state.grants.some((grant) => grant.accountId === row.accountId && grant.teamId === row.teamId && grant.seasonId === row.seasonId && grant.revokedAtMs === null && grant.startsAtMs <= this.now() && grant.expiresAtMs > this.now());
+      return scope && !granted ? { ...row, revokedAt: row.revokedAt ?? Math.max(1, this.now()) } : row;
+    });
+  }
+  async myMemberships(principal) {
+    return currentMemberships(principal, await this.memberships(), this.now());
+  }
+  async match(matchId) {
+    const row = await this.one("SELECT * FROM matches WHERE id=$1", [matchId]);
+    if (!row)
+      throw new AccessError("NOT_FOUND", 404, "The requested object is unavailable.");
+    return row;
+  }
+  async managerMatch(principal, matchId) {
+    const row = await this.match(matchId);
+    assertCanManageTeam(principal, await this.memberships(), row.team_id, row.season_id, this.now());
+    return row;
+  }
+  async matchDto(principal, matchId, requestedRole) {
+    const row = await this.match(matchId);
+    return filterMatchForPrincipal({ principal, memberships: await this.memberships(), teamId: row.team_id, seasonId: row.season_id, state: JSON.parse(row.state_json), policy: JSON.parse(row.sharing_policy_json), lastSyncAt: row.last_sync_at, now: this.now(), requestedRole });
+  }
+  async download(principal, matchId, deviceId) {
+    const row = await this.managerMatch(principal, matchId);
+    if (!validDeviceId2(deviceId))
+      bad2("A device identifier of at most 120 canonical characters is required.");
+    const stream = await this.one("SELECT sequence,previous_event_id FROM streams WHERE match_id=$1 AND device_id=$2", [matchId, deviceId]);
+    const grant = await this.one("SELECT epoch,account_id,device_id,frozen FROM controller_grants WHERE match_id=$1", [matchId]);
+    return { contractVersion: EVENT_CONTRACT_VERSION2, schemaVersion: 1, engineVersion: ENGINE_VERSION, matchId, teamId: row.team_id, seasonId: row.season_id, state: JSON.parse(row.state_json), acceptedRevision: JSON.parse(row.state_json).revision, deviceCheckpoint: { clientSequence: stream?.sequence ?? 0, previousEventId: stream?.previous_event_id ?? null }, controller: grant ?? null, downloadedAt: new Date(this.now()).toISOString(), clockAnchor: { serverTime: new Date(this.now()).toISOString(), quality: "observation_only", continuousMappingEstablished: false } };
+  }
+  async audit(principal, action, objectId, outcome) {
+    await this.execute("INSERT INTO audit(id,actor_id,action,object_id,outcome,created_at) VALUES($1,$2,$3,$4,$5,$6)", [randomUUID2(), principal.accountId, action, objectId, outcome, this.now()]);
+  }
+  async idempotent(principal, operation, key, payload, work) {
+    if (!validId3(key) || key.length < 8)
+      bad2("A stable Idempotency-Key is required for mutations.");
+    const signature2 = digest2(canonical4(payload));
+    return await this.transaction(async () => {
+      const prior = await this.one("SELECT signature,response_json FROM idempotency WHERE account_id=$1 AND operation=$2 AND key=$3", [principal.accountId, operation, key]);
+      if (prior) {
+        if (prior.signature !== signature2)
+          throw new AccessError("IDEMPOTENCY_CONFLICT", 409, "The idempotency key was already used with different content.");
+        return JSON.parse(prior.response_json);
+      }
+      const response = await work();
+      await this.execute("INSERT INTO idempotency(account_id,operation,key,signature,response_json) VALUES($1,$2,$3,$4,$5)", [principal.accountId, operation, key, signature2, JSON.stringify(response)]);
+      return response;
+    });
+  }
+  async acquire(principal, matchId, deviceId) {
+    await this.managerMatch(principal, matchId);
+    if (!validDeviceId2(deviceId))
+      bad2("A device identifier of at most 120 canonical characters is required.");
+    const prior = await this.one("SELECT * FROM controller_grants WHERE match_id=$1", [matchId]);
+    if (prior)
+      throw new AccessError("CONTROLLER_EXISTS", 409, "This match already has a controller. Use handover or audited recovery.");
+    await this.bindDevice(principal, deviceId);
+    const token = randomBytes2(32).toString("base64url");
+    await this.execute("INSERT INTO controller_grants(match_id,epoch,account_id,device_id,capability_hash) VALUES($1,$2,$3,$4,$5)", [matchId, 1, principal.accountId, deviceId, digest2(token)]);
+    await this.audit(principal, "controller.acquired", matchId, "accepted");
+    return { epoch: 1, deviceId, controllerToken: token, checkpoint: (await this.download(principal, matchId, deviceId)).deviceCheckpoint };
+  }
+  async assertController(principal, matchId, token) {
+    await this.managerMatch(principal, matchId);
+    const grant = await this.one("SELECT * FROM controller_grants WHERE match_id=$1", [matchId]);
+    if (!grant || grant.account_id !== principal.accountId || !token || digest2(token) !== grant.capability_hash)
+      throw new AccessError("CONTROLLER_REQUIRED", 409, "Only the selected manager and enrolled device may write this match.");
+    return grant;
+  }
+  async issueClockChallenge(principal, matchId, token, input, policy) {
+    const grant = await this.assertController(principal, matchId, token);
+    if (!policy)
+      throw new AccessError("CLOCK_POLICY_REQUIRED", 503, "An explicitly configured trusted-time policy is required before establishing an anchor.");
+    if (!input || Object.keys(input).some((key) => !["deviceId", "controllerEpoch", "continuityId"].includes(key)) || !validDeviceId2(input.deviceId) || !validId3(input.continuityId) || input.deviceId !== grant.device_id || input.controllerEpoch !== grant.epoch || grant.frozen)
+      throw new AccessError("CLOCK_SCOPE_CONFLICT", 409, "Use the current unfrozen controller device, epoch and continuous-clock identity.");
+    const challenge = issueClockChallenge({ accountId: principal.accountId, deviceId: grant.device_id, matchId, controllerEpoch: grant.epoch, continuityId: input.continuityId }, randomUUID2(), this.now(), policy);
+    await this.execute("INSERT INTO clock_challenges(id,match_id,account_id,challenge_json) VALUES($1,$2,$3,$4)", [challenge.id, matchId, principal.accountId, JSON.stringify(challenge)]);
+    return challenge;
+  }
+  async acknowledgeClockChallenge(principal, matchId, token, challengeId, sample, policy) {
+    const grant = await this.assertController(principal, matchId, token);
+    if (!policy)
+      throw new AccessError("CLOCK_POLICY_REQUIRED", 503, "An explicitly configured trusted-time policy is required before establishing an anchor.");
+    if (!sample || Object.keys(sample).some((key) => !["receivedMonotonicMs", "sentMonotonicMs"].includes(key)))
+      bad2("Use the documented continuous-clock receipt and send observations.");
+    const row = await this.one("SELECT challenge_json,consumed_at FROM clock_challenges WHERE id=$1 AND match_id=$2 AND account_id=$3", [challengeId, matchId, principal.accountId]);
+    if (!row)
+      throw new AccessError("NOT_FOUND", 404, "That challenge is unavailable.");
+    const challenge = JSON.parse(row.challenge_json);
+    if (row.consumed_at !== null)
+      throw new AccessError("CLOCK_CHALLENGE_CONSUMED", 409, "That clock exchange was consumed. Retrying the same request key returns its receipt.");
+    if (challenge.controllerEpoch !== grant.epoch || challenge.deviceId !== grant.device_id || grant.frozen)
+      throw new AccessError("CLOCK_SCOPE_CONFLICT", 409, "The controller changed before the clock exchange completed.");
+    let mapping;
+    try {
+      mapping = acknowledgeClockChallenge(challenge, sample, this.now(), policy);
+    } catch {
+      throw new AccessError("CLOCK_EXCHANGE_REJECTED", 422, "The clock exchange expired or its evidence exceeds the configured uncertainty bounds.");
+    }
+    await this.execute("UPDATE clock_challenges SET consumed_at=$1 WHERE id=$2 AND consumed_at IS NULL", [this.now(), challengeId]);
+    await this.execute("INSERT INTO clock_mappings(challenge_id,match_id,mapping_json,created_at) VALUES($1,$2,$3,$4)", [challengeId, matchId, JSON.stringify(mapping), this.now()]);
+    await this.audit(principal, "clock.mapping_established", matchId, policy.id);
+    return mapping;
+  }
+  async reconciliation(principal, matchId) {
+    const row = await this.managerMatch(principal, matchId);
+    const state = JSON.parse(row.state_json);
+    const events = await this.many("SELECT event_id,device_id,client_sequence,envelope_json,reason,received_at FROM events WHERE match_id=$1 AND disposition='quarantined' ORDER BY received_at,client_sequence", [matchId]);
+    const conflicts = await this.many("SELECT id,original_json,reason,created_at FROM conflicting_submissions WHERE match_id=$1 ORDER BY created_at,id", [matchId]);
+    const submissions = [...events.map((event) => {
+      const original = JSON.parse(event.envelope_json);
+      return { submissionId: event.event_id, matchId, eventId: event.event_id, deviceId: event.device_id, clientSequence: event.client_sequence, controllerEpoch: original.controllerEpoch ?? null, reason: event.reason, original, originalDigest: digest2(canonical4(original)), receivedAt: new Date(event.received_at).toISOString() };
+    }), ...conflicts.map((conflict) => {
+      const original = JSON.parse(conflict.original_json);
+      return { submissionId: conflict.id, matchId, eventId: typeof original.eventId === "string" ? original.eventId : null, deviceId: typeof original.deviceId === "string" ? original.deviceId : null, clientSequence: typeof original.clientSequence === "number" ? original.clientSequence : null, controllerEpoch: typeof original.controllerEpoch === "number" ? original.controllerEpoch : null, reason: conflict.reason, original, originalDigest: digest2(canonical4(original)), receivedAt: new Date(conflict.created_at).toISOString() };
+    })];
+    const proposals = (await this.many("SELECT receipt_json FROM reconciliation_proposals WHERE match_id=$1 ORDER BY created_at,id", [matchId])).map((item) => JSON.parse(item.receipt_json));
+    return { matchId, acceptedRevision: state.revision, submissions, proposals, policy: Q08_RECONCILIATION_POLICY };
+  }
+  async proposeReconciliation(principal, matchId, input) {
+    const row = await this.managerMatch(principal, matchId);
+    const state = JSON.parse(row.state_json);
+    if (!input || Object.keys(input).some((key) => !["proposalId", "baseRevision", "sourceSubmissionIds", "reason", "resolution", "commands"].includes(key)))
+      bad2("Use only the documented immutable reconciliation proposal fields.");
+    const signature2 = digest2(canonical4(input));
+    const existing = await this.one("SELECT signature,receipt_json FROM reconciliation_proposals WHERE id=$1 AND match_id=$2 AND actor_id=$3", [input.proposalId, matchId, principal.accountId]);
+    if (existing) {
+      if (existing.signature !== signature2)
+        throw new AccessError("RECONCILIATION_PROPOSAL_CONFLICT", 409, "That proposal identity already preserves different review evidence.");
+      return JSON.parse(existing.receipt_json);
+    }
+    const snapshot = await this.reconciliation(principal, matchId);
+    const preview = previewReconciliation(state, input, snapshot.submissions, { actorId: principal.accountId, recordedAtMs: this.now() });
+    if (!preview.valid)
+      throw new AccessError("RECONCILIATION_PREVIEW_REJECTED", 422, preview.issues.join(" ").slice(0, 1500));
+    const { projectedState: discarded, ...savedPreview } = preview;
+    void discarded;
+    const receipt = { input, matchId, actorId: principal.accountId, createdAt: new Date(this.now()).toISOString(), sourceDigests: input.sourceSubmissionIds.map((id) => ({ submissionId: id, originalDigest: snapshot.submissions.find((item) => item.submissionId === id).originalDigest })), acceptedStateDigest: digest2(canonical4(state)), preview: savedPreview, status: "prepared", appliedRevision: null };
+    await this.execute("INSERT INTO reconciliation_proposals(id,match_id,actor_id,signature,receipt_json,created_at) VALUES($1,$2,$3,$4,$5,$6)", [input.proposalId, matchId, principal.accountId, signature2, JSON.stringify(receipt), this.now()]);
+    await this.audit(principal, "reconciliation.proposal_prepared", matchId, "q08_authority_unapproved");
+    return receipt;
+  }
+  async recordFinishedContext(principal, matchId, policy) {
+    const row = await this.managerMatch(principal, matchId);
+    const state = JSON.parse(row.state_json);
+    if (state.status !== "completed")
+      return { status: "not_finished" };
+    await this.refreshDetailedArchive(row, state);
+    const community = await this.communityState(row.team_id, row.season_id);
+    const existing = community.matches.find((item) => item.id === matchId);
+    const quarantine = await this.one("SELECT event_id FROM events WHERE match_id=$1 AND disposition='quarantined' LIMIT 1", [matchId]);
+    const conflict = await this.one("SELECT id FROM conflicting_submissions WHERE match_id=$1 LIMIT 1", [matchId]);
+    const unresolved = Boolean(quarantine || conflict);
+    if (existing) {
+      const retainedFinishId = state.eventHistory?.filter((event) => event.type === "half.ended").at(-1)?.id;
+      const retainedFinish = retainedFinishId ? await this.one("SELECT envelope_json FROM events WHERE event_id=$1 AND match_id=$2 AND disposition='accepted'", [retainedFinishId, matchId]) : void 0;
+      const currentGrant = await this.one("SELECT epoch FROM controller_grants WHERE match_id=$1", [matchId]);
+      const sourceEpoch = retainedFinish ? JSON.parse(retainedFinish.envelope_json).controllerEpoch : null;
+      const quality = unresolved ? "conflicted" : state.recoveryRequired || sourceEpoch !== currentGrant?.epoch || finishEligibilityChanged(state, existing) ? "review_required" : existing.finishQuality;
+      if (quality !== existing.finishQuality) {
+        const next2 = { ...community, revision: community.revision + 1, matches: community.matches.map((match) => match.id === matchId ? { ...match, finishQuality: quality } : match), audit: [...community.audit, { id: randomUUID2(), actorAccountId: null, action: "service.finish_evidence_flagged_without_reopening", atMs: this.now() }] };
+        await this.saveDocument(row.team_id, row.season_id, "community", next2);
+      }
+      return { status: "original_context_preserved", finishQuality: quality };
+    }
+    const finishId = state.eventHistory?.filter((event) => event.type === "half.ended").at(-1)?.id;
+    const finishRow = finishId ? await this.one("SELECT envelope_json,actor_id FROM events WHERE event_id=$1 AND match_id=$2 AND disposition='accepted'", [finishId, matchId]) : void 0;
+    const finish = finishRow ? JSON.parse(finishRow.envelope_json) : null;
+    const mappingRow = finish ? await this.one("SELECT mapping_json FROM clock_mappings WHERE challenge_id=$1 AND match_id=$2", [finish.clockEvidence.anchorId, matchId]) : void 0;
+    const grant = await this.one("SELECT epoch FROM controller_grants WHERE match_id=$1", [matchId]);
+    const preparation = await this.document(row.team_id, row.season_id, "preparation");
+    const fixture = preparation.fixtures.find((item) => item.id === matchId && item.seasonId === row.season_id);
+    const playedDate = state.config.fixture?.playedDate ?? fixture?.playedDate;
+    if (!playedDate)
+      return { status: "accepted_fixture_date_required" };
+    const scheduledAtMs = Date.parse(`${playedDate}T00:00:00Z`);
+    const context = deriveFinishedMatchContext({ state, acceptedFinish: finish, acceptedFinishActorId: finishRow?.actor_id ?? null, teamId: row.team_id, seasonId: row.season_id, currentControllerEpoch: grant?.epoch ?? 0, unresolvedConflicts: unresolved, mapping: mappingRow ? JSON.parse(mappingRow.mapping_json) : null, policy: policy ?? null, serverNowMs: this.now(), scheduledAtMs, sharing: "manager_only", sharingPolicyVersion: 0 });
+    const next = { ...community, revision: community.revision + 1, matches: [...community.matches, { ...context, voteCutoffAtMs: null, cutoffSource: "unresolved", finalisationDeadlineAtMs: context.actualFullTimeAtMs === null ? null : context.actualFullTimeAtMs + 36e5 }], audit: [...community.audit, { id: randomUUID2(), actorAccountId: null, action: "service.accepted_finish_registered_manager_only", atMs: this.now() }] };
+    await this.saveDocument(row.team_id, row.season_id, "community", next);
+    return { status: "registered_from_accepted_history", finishQuality: context.finishQuality };
+  }
+  async refreshDetailedArchive(row, match) {
+    const saved = await this.one("SELECT value_json FROM documents WHERE team_id=$1 AND season_id=$2 AND kind='records'", [row.team_id, row.season_id]);
+    if (!saved)
+      return;
+    const records = JSON.parse(saved.value_json);
+    const archived = records.results.find((item) => item.id === match.config.matchId && item.recordMode === "detailed_live");
+    if (!archived || (archived.sourceMatchRevision ?? -1) >= match.revision)
+      return;
+    if (match.recoveryRequired) {
+      if (archived.detailCompleteness !== "review_required") {
+        const reviewed = { ...records, revision: records.revision + 1, results: records.results.map((item) => item.id === archived.id ? { ...item, detailCompleteness: "review_required", revision: item.revision + 1 } : item) };
+        await this.saveDocument(row.team_id, row.season_id, "records", reviewed);
+      }
+      return;
+    }
+    const context = { matchId: archived.id, playedDate: archived.playedDate, opponent: archived.opponent, homeAway: archived.homeAway, fixtureClass: archived.fixtureClass };
+    const updated = reduceRecords({ ...records, liveMatch: context }, { type: "live.archive", commandId: `accepted-archive-${digest2(canonical4([archived.id, match.revision]))}`, at: new Date(this.now()).toISOString(), actor: "manager", match, reason: "Existing detailed archive refreshed from the newer accepted canonical match revision; original source events and prior archive audit remain retained." });
+    const projected = { ...updated, liveMatch: records.liveMatch };
+    await this.saveDocument(row.team_id, row.season_id, "records", projected);
+  }
+  async upload(principal, matchId, token, values) {
+    const row = await this.managerMatch(principal, matchId);
+    if (!Array.isArray(values) || values.length === 0 || values.length > 100)
+      bad2("Upload between one and 100 ordered events.");
+    const grant = await this.one("SELECT * FROM controller_grants WHERE match_id=$1", [matchId]);
+    const currentCapability = !!grant && grant.account_id === principal.accountId && !!token && digest2(token) === grant.capability_hash;
+    let state = JSON.parse(row.state_json);
+    const results = [];
+    for (const value of values) {
+      const event = validateEnvelope2(value, matchId);
+      const device = await this.one("SELECT account_id FROM devices WHERE id=$1", [event.deviceId]);
+      if (!device || device.account_id !== principal.accountId)
+        throw new AccessError("DEVICE_BINDING_REQUIRED", 403, "This event device is not enrolled to the authenticated account.");
+      const signature2 = digest2(canonical4(event));
+      const previous = await this.one("SELECT * FROM events WHERE event_id=$1", [event.eventId]);
+      if (previous) {
+        if (previous.match_id !== matchId || previous.signature !== signature2) {
+          await this.execute("INSERT INTO conflicting_submissions VALUES($1,$2,$3,$4,$5,$6)", [randomUUID2(), matchId, principal.accountId, JSON.stringify(value), "EVENT_ID_CONFLICT", this.now()]);
+          results.push({ eventId: event.eventId, clientSequence: event.clientSequence, disposition: "quarantined", reason: "EVENT_ID_CONFLICT", revision: null, duplicate: false });
+        } else
+          results.push({ eventId: previous.event_id, clientSequence: previous.client_sequence, disposition: previous.disposition, reason: previous.reason, revision: previous.revision, duplicate: true });
+        continue;
+      }
+      const stream = await this.one("SELECT sequence,previous_event_id FROM streams WHERE match_id=$1 AND device_id=$2", [matchId, event.deviceId]);
+      if (event.clientSequence !== (stream?.sequence ?? 0) + 1 || event.previousEventId !== (stream?.previous_event_id ?? null)) {
+        await this.execute("INSERT INTO conflicting_submissions VALUES($1,$2,$3,$4,$5,$6)", [randomUUID2(), matchId, principal.accountId, JSON.stringify(value), "SEQUENCE_GAP_OR_REUSE", this.now()]);
+        results.push({ eventId: event.eventId, clientSequence: event.clientSequence, disposition: "quarantined", reason: "SEQUENCE_GAP_OR_REUSE", revision: null, duplicate: false });
+        continue;
+      }
+      let reason = null;
+      if (event.contractVersion !== EVENT_CONTRACT_VERSION2 || event.schemaVersion !== 1 || event.engineVersion !== ENGINE_VERSION)
+        reason = "UNSUPPORTED_EVENT_VERSION";
+      else if (!grant || !currentCapability || event.controllerEpoch !== grant.epoch || event.deviceId !== grant.device_id)
+        reason = "STALE_CONTROLLER";
+      else if (grant.frozen)
+        reason = "HANDOVER_WRITES_FROZEN";
+      else if (event.baseRevision !== state.revision)
+        reason = "STALE_REVISION";
+      if (!reason) {
+        try {
+          const next = reduceMatch(state, { ...event.command, actorId: principal.accountId });
+          const effective = effectiveEventTime(state, next, event.command);
+          if (effective.half !== event.effectiveHalf || effective.halfElapsedMs !== event.halfElapsedMs || effective.matchElapsedMs !== event.matchElapsedMs)
+            throw new Error("Effective playing-time evidence differs from the command.");
+          state = next;
+        } catch {
+          reason = "INVALID_MATCH_TRANSITION";
+        }
+      }
+      const disposition = reason ? "quarantined" : "accepted";
+      const revision = reason ? null : state.revision;
+      await this.execute("INSERT INTO events(event_id,match_id,device_id,client_sequence,envelope_json,signature,disposition,reason,revision,received_at,actor_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)", [event.eventId, matchId, event.deviceId, event.clientSequence, JSON.stringify(event), signature2, disposition, reason, revision, this.now(), principal.accountId]);
+      await this.execute("INSERT INTO streams(match_id,device_id,sequence,previous_event_id) VALUES($1,$2,$3,$4) ON CONFLICT(match_id,device_id) DO UPDATE SET sequence=excluded.sequence,previous_event_id=excluded.previous_event_id", [matchId, event.deviceId, event.clientSequence, event.eventId]);
+      results.push({ eventId: event.eventId, clientSequence: event.clientSequence, disposition, reason, revision, duplicate: false });
+    }
+    if (results.some((item) => item.disposition === "accepted" && !item.duplicate))
+      await this.execute("UPDATE matches SET state_json=$1,last_sync_at=$2 WHERE id=$3", [JSON.stringify(state), this.now(), matchId]);
+    await this.audit(principal, "events.uploaded", matchId, results.some((item) => item.disposition === "quarantined") ? "review_required" : "accepted");
+    if (results.some((item) => item.disposition === "accepted" && !item.duplicate))
+      await this.enqueueNotifications(row.team_id, row.season_id, "match", matchId, `accepted-revision-${state.revision}`);
+    return { results, revision: state.revision, pendingReview: results.some((item) => item.disposition === "quarantined") };
+  }
+  async quarantine(principal, matchId) {
+    await this.managerMatch(principal, matchId);
+    return [...await this.many("SELECT event_id,device_id,client_sequence,envelope_json,reason,received_at FROM events WHERE match_id=$1 AND disposition='quarantined' ORDER BY received_at,client_sequence", [matchId]), ...await this.many("SELECT id,original_json,reason,created_at FROM conflicting_submissions WHERE match_id=$1 ORDER BY created_at", [matchId])];
+  }
+  async offerHandover(principal, matchId, token, toAccountId, toDeviceId, baseRevision) {
+    const row = await this.managerMatch(principal, matchId);
+    const grant = await this.assertController(principal, matchId, token);
+    if (grant.frozen)
+      throw new AccessError("TRANSFER_PENDING", 409, "A controller transfer is already pending.");
+    const state = JSON.parse(row.state_json);
+    if (state.revision !== baseRevision)
+      throw new AccessError("STALE_REVISION", 409, "Synchronise the accepted checkpoint before handover.");
+    if (state.status.endsWith("_running"))
+      throw new AccessError("CLOCK_ANCHOR_REQUIRED", 409, "Running handover requires a verified UTC/device clock exchange. This development service supports handover while the match clock is already paused, at half-time or before kick-off; it never silently pauses play.");
+    if (!validId3(toAccountId) || !validDeviceId2(toDeviceId))
+      bad2("A target account and canonical device identifier of at most 120 characters are required.");
+    const target = await this.one("SELECT * FROM accounts WHERE id=$1", [toAccountId]);
+    if (!target)
+      throw new AccessError("NOT_FOUND", 404, "The requested object is unavailable.");
+    const targetPrincipal = { accountId: target.id, issuer: target.issuer, subject: target.subject, identityClassification: target.classification, adultVerified: !!target.adult_verified, strongAuth: !!target.strong_auth_enrolled, authenticatedAt: this.now(), status: target.status };
+    assertCanManageTeam(targetPrincipal, await this.memberships(), row.team_id, row.season_id, this.now());
+    const id = randomUUID2();
+    await this.execute("INSERT INTO transfers VALUES($1,$2,$3,$4,$5,$6,$7)", [id, matchId, grant.epoch, toAccountId, toDeviceId, "pending", this.now()]);
+    await this.execute("UPDATE controller_grants SET frozen=1 WHERE match_id=$1", [matchId]);
+    await this.audit(principal, "controller.transfer_offered", matchId, "pending");
+    return { transferId: id, state: "pending", acceptedRevision: state.revision };
+  }
+  async acceptHandover(principal, matchId, transferId, deviceId) {
+    await this.managerMatch(principal, matchId);
+    assertAdultAuthority(principal, false, this.now());
+    const transfer = await this.one("SELECT * FROM transfers WHERE id=$1 AND match_id=$2", [transferId, matchId]);
+    const grant = await this.one("SELECT * FROM controller_grants WHERE match_id=$1", [matchId]);
+    if (!transfer || transfer.to_account_id !== principal.accountId || transfer.to_device_id !== deviceId)
+      throw new AccessError("NOT_FOUND", 404, "The requested object is unavailable.");
+    if (transfer.state !== "pending" || !grant || grant.epoch !== transfer.from_epoch || !grant.frozen)
+      throw new AccessError("TRANSFER_CONFLICT", 409, "Check the authoritative transfer status before retrying.");
+    await this.bindDevice(principal, deviceId);
+    const capability = randomBytes2(32).toString("base64url");
+    const epoch = grant.epoch + 1;
+    await this.execute("UPDATE controller_grants SET epoch=$1,account_id=$2,device_id=$3,capability_hash=$4,frozen=0 WHERE match_id=$5", [epoch, principal.accountId, deviceId, digest2(capability), matchId]);
+    await this.execute("UPDATE transfers SET state='accepted' WHERE id=$1", [transferId]);
+    await this.execute("INSERT INTO controller_history VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)", [randomUUID2(), matchId, epoch, principal.accountId, grant.device_id, deviceId, "transferred", null, this.now()]);
+    await this.audit(principal, "controller.transferred", matchId, "accepted");
+    return { epoch, deviceId, controllerToken: capability, checkpoint: (await this.download(principal, matchId, deviceId)).deviceCheckpoint, acceptedRevision: JSON.parse((await this.match(matchId)).state_json).revision };
+  }
+  async recover(principal, matchId, deviceId, reason) {
+    const row = await this.managerMatch(principal, matchId);
+    assertAdultAuthority(principal, true, this.now());
+    if (!validDeviceId2(deviceId) || typeof reason !== "string" || reason.trim().length < 5 || reason.length > 500)
+      bad2("Recovery needs a target canonical device identifier of at most 120 characters and a concise audit reason.");
+    await this.bindDevice(principal, deviceId);
+    const old = await this.one("SELECT * FROM controller_grants WHERE match_id=$1", [matchId]);
+    const capability = randomBytes2(32).toString("base64url");
+    const epoch = (old?.epoch ?? 0) + 1;
+    const state = JSON.parse(row.state_json);
+    if (state.status.endsWith("_running")) {
+      state.recoveryRequired = true;
+      state.recoveryReason = "Controller recovery: reconcile the referee clock and any unsynchronised old-device events.";
+      await this.execute("UPDATE matches SET state_json=$1 WHERE id=$2", [JSON.stringify(state), matchId]);
+    }
+    await this.execute("INSERT INTO controller_grants(match_id,epoch,account_id,device_id,capability_hash,frozen) VALUES($1,$2,$3,$4,$5,0) ON CONFLICT(match_id) DO UPDATE SET epoch=excluded.epoch,account_id=excluded.account_id,device_id=excluded.device_id,capability_hash=excluded.capability_hash,frozen=0", [matchId, epoch, principal.accountId, deviceId, digest2(capability)]);
+    await this.execute("UPDATE transfers SET state='superseded' WHERE match_id=$1 AND state='pending'", [matchId]);
+    await this.execute("INSERT INTO controller_history VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)", [randomUUID2(), matchId, epoch, principal.accountId, old?.device_id ?? null, deviceId, "recovered", reason.trim(), this.now()]);
+    await this.audit(principal, "controller.recovered", matchId, "reconciliation_required");
+    return { epoch, deviceId, controllerToken: capability, reconciliationRequired: true, checkpoint: (await this.download(principal, matchId, deviceId)).deviceCheckpoint };
+  }
+  async staffRevision(teamId, seasonId) {
+    const row = await this.one("SELECT revision FROM documents WHERE team_id=$1 AND season_id=$2 AND kind='staff'", [teamId, seasonId]);
+    return row?.revision ?? 0;
+  }
+  async bumpStaffRevision(teamId, seasonId) {
+    const revision = await this.staffRevision(teamId, seasonId) + 1;
+    await this.saveDocument(teamId, seasonId, "staff", { revision });
+    return revision;
+  }
+  async managers(principal, teamId, seasonId, requestedRole) {
+    assertTeamRole(principal, await this.memberships(), teamId, seasonId, ["administrator"], this.now());
+    assertAdultAuthority(principal, false, this.now());
+    const accounts = await this.many("SELECT * FROM accounts WHERE id IN (SELECT account_id FROM memberships WHERE team_id=$1)", [teamId]);
+    const community = await this.document(teamId, seasonId, "community");
+    const evidence2 = accounts.map((account2) => ({ accountId: account2.id, label: community.accounts.find((item) => item.id === account2.id)?.label ?? "Verified adult account", status: account2.status, identityClassification: account2.classification, adultVerified: Boolean(account2.adult_verified), strongAuthEnrolled: Boolean(account2.strong_auth_enrolled) }));
+    return managerRoster({ principal, memberships: await this.memberships(), accounts: evidence2, teamId, seasonId, nowMs: this.now(), revision: await this.staffRevision(teamId, seasonId), requestedRole });
+  }
+  async assignManager(actor, teamId, seasonId, accountId, expectedRevision) {
+    assertTeamRole(actor, await this.memberships(), teamId, seasonId, ["administrator"], this.now());
+    assertAdultAuthority(actor, true, this.now());
+    if (!validId3(accountId))
+      bad2("A canonical account identifier is required.");
+    if (expectedRevision !== void 0 && (!nonnegative3(expectedRevision) || expectedRevision !== await this.staffRevision(teamId, seasonId)))
+      throw new AccessError("STALE_REVISION", 409, "Refresh the current staff assignments before changing them.");
+    const account2 = await this.one("SELECT * FROM accounts WHERE id=$1", [accountId]);
+    if (!account2)
+      throw new AccessError("NOT_FOUND", 404, "The requested object is unavailable.");
+    const target = { accountId: account2.id, issuer: account2.issuer, subject: account2.subject, identityClassification: account2.classification, adultVerified: !!account2.adult_verified, strongAuth: !!account2.strong_auth_enrolled, authenticatedAt: this.now(), status: account2.status };
+    assertCanAssignManager(actor, target, await this.memberships(), teamId, seasonId, this.now());
+    const alreadyActive = (await this.memberships()).some((item) => item.accountId === accountId && item.teamId === teamId && item.seasonId === seasonId && item.role === "manager" && item.revokedAt == null && (item.expiresAt == null || item.expiresAt > this.now()));
+    if (!alreadyActive) {
+      await this.execute("INSERT INTO memberships(account_id,team_id,season_id,role) VALUES($1,$2,$3,'manager') ON CONFLICT(account_id,team_id,season_id,role) DO UPDATE SET revoked_at=NULL,expires_at=NULL", [accountId, teamId, seasonId]);
+      await this.bumpStaffRevision(teamId, seasonId);
+      await this.audit(actor, "manager.assigned", teamId, "accepted");
+    }
+    return { accountId, teamId, seasonId, role: "manager", revision: await this.staffRevision(teamId, seasonId), acceptedAt: new Date(this.now()).toISOString() };
+  }
+  async revokeManager(actor, teamId, seasonId, input, expectedRevision) {
+    assertTeamRole(actor, await this.memberships(), teamId, seasonId, ["administrator"], this.now());
+    assertAdultAuthority(actor, true, this.now());
+    if (!input || Object.keys(input).some((key) => !["accountId", "reason", "confirmRevocation"].includes(key)) || !validId3(input.accountId) || input.confirmRevocation !== true || typeof input.reason !== "string" || input.reason.trim().length < 5 || input.reason.length > 500)
+      bad2("Confirm a scoped manager revocation and record its evidence reason.");
+    if (expectedRevision !== void 0 && (!nonnegative3(expectedRevision) || expectedRevision !== await this.staffRevision(teamId, seasonId)))
+      throw new AccessError("STALE_REVISION", 409, "Refresh the current staff assignments before changing them.");
+    const member = await this.one("SELECT account_id,revoked_at FROM memberships WHERE account_id=$1 AND team_id=$2 AND season_id=$3 AND role='manager'", [input.accountId, teamId, seasonId]);
+    if (!member)
+      throw new AccessError("NOT_FOUND", 404, "That manager assignment is outside this scope.");
+    if (member.revoked_at === null) {
+      await this.execute("UPDATE memberships SET revoked_at=$1 WHERE account_id=$2 AND team_id=$3 AND season_id=$4 AND role='manager'", [this.now(), input.accountId, teamId, seasonId]);
+      await this.execute("UPDATE controller_grants SET frozen=1 WHERE account_id=$1 AND match_id IN (SELECT id FROM matches WHERE team_id=$2 AND season_id=$3)", [input.accountId, teamId, seasonId]);
+      await this.bumpStaffRevision(teamId, seasonId);
+      await this.audit(actor, "manager.assignment_revoked", input.accountId, input.reason.trim());
+    }
+    return { accountId: input.accountId, teamId, seasonId, role: "manager", revision: await this.staffRevision(teamId, seasonId), acceptedAt: new Date(this.now()).toISOString(), revoked: true, controllerFrozen: true, otherSeasonAssignmentsRetained: true, remainingActiveTeamSeasons: (await this.memberships()).filter((item) => item.accountId === input.accountId && item.teamId === teamId && item.role === "manager" && item.revokedAt == null && (item.expiresAt == null || item.expiresAt > this.now())).map((item) => item.seasonId) };
+  }
+  async privacyRecords(principal) {
+    const rows = await this.many("SELECT id,account_id,kind,status,team_id,season_id,affected_memberships_json,created_at FROM privacy_requests WHERE account_id=$1 ORDER BY created_at,id", [principal.accountId]);
+    return rows.map((row) => ({ requestId: row.id, accountId: row.account_id, kind: row.kind, status: row.status, scope: row.kind === "leave_team" ? row.team_id && row.season_id ? { type: "team_season", teamId: row.team_id, seasonId: row.season_id } : null : { type: "all_memberships" }, affectedMemberships: row.affected_memberships_json === null ? null : JSON.parse(row.affected_memberships_json), createdAtMs: row.created_at }));
+  }
+  async privacyRequest(principal, input) {
+    const plan = prepareAccountPrivacyRequest({ principal, memberships: await this.memberships(), input, nowMs: this.now() });
+    const pending = await this.one("SELECT p.id FROM privacy_pending_keys k JOIN privacy_requests p ON p.id=k.request_id WHERE k.business_key=$1 AND p.account_id=$2 AND p.status='pending_verification_and_policy'", [plan.businessKey, principal.accountId]);
+    let requestId = pending?.id;
+    if (!requestId) {
+      const retained = plan.scope.type === "team_season" ? await this.one("SELECT id FROM privacy_requests WHERE account_id=$1 AND kind=$2 AND team_id=$3 AND season_id=$4 AND status='pending_verification_and_policy' ORDER BY created_at,id LIMIT 1", [principal.accountId, plan.kind, plan.scope.teamId, plan.scope.seasonId]) : await this.one("SELECT id FROM privacy_requests WHERE account_id=$1 AND kind=$2 AND team_id IS NULL AND season_id IS NULL AND status='pending_verification_and_policy' ORDER BY created_at,id LIMIT 1", [principal.accountId, plan.kind]);
+      requestId = retained?.id;
+    }
+    if (!requestId) {
+      requestId = randomUUID2();
+      await this.execute("INSERT INTO privacy_requests(id,account_id,kind,status,policy_version,verified_at,created_at,team_id,season_id,affected_memberships_json) VALUES($1,$2,$3,$4,NULL,NULL,$5,$6,$7,$8)", [requestId, principal.accountId, plan.kind, plan.status, this.now(), plan.scope.type === "team_season" ? plan.scope.teamId : null, plan.scope.type === "team_season" ? plan.scope.seasonId : null, JSON.stringify(plan.affectedMemberships)]);
+      await this.audit(principal, "privacy.requested", requestId, "pending_verification_and_policy");
+    }
+    await this.execute("INSERT INTO privacy_pending_keys(business_key,request_id) VALUES($1,$2) ON CONFLICT(business_key) DO UPDATE SET request_id=excluded.request_id", [plan.businessKey, requestId]);
+    return (await this.privacyRequests(principal)).items.find((item) => item.requestId === requestId);
+  }
+  async privacyRequests(principal) {
+    return projectAccountPrivacyRequests({ principal, memberships: await this.memberships(), records: await this.privacyRecords(principal), nowMs: this.now() });
+  }
+  /** Explicit setup seam: an authorised operator imports verified provider-to-account mappings; no token creates authority. */
+  async bindIdentity(accountId, issuer, subject) {
+    await this.execute("UPDATE accounts SET issuer=$1,subject=$2 WHERE id=$3", [issuer, subject, accountId]);
+  }
+  async bindDevice(principal, deviceId) {
+    const device = await this.one("SELECT account_id FROM devices WHERE id=$1", [deviceId]);
+    if (device && device.account_id !== principal.accountId)
+      throw new AccessError("DEVICE_ACCOUNT_CONFLICT", 409, "Enrol a separate device identity for this account.");
+    await this.execute("INSERT INTO devices(id,account_id) VALUES($1,$2) ON CONFLICT(id) DO NOTHING", [deviceId, principal.accountId]);
+  }
+  async teamMatches(principal, teamId, seasonId, requestedRole) {
+    assertTeamRole(principal, await this.memberships(), teamId, seasonId, ["manager", "player", "spectator"], this.now());
+    return await Promise.all((await this.many("SELECT id FROM matches WHERE team_id=$1 AND season_id=$2 ORDER BY id LIMIT 100", [teamId, seasonId])).map(async (row) => await this.matchDto(principal, row.id, requestedRole)));
+  }
+  async document(teamId, seasonId, kind) {
+    const row = await this.one("SELECT value_json FROM documents WHERE team_id=$1 AND season_id=$2 AND kind=$3", [teamId, seasonId, kind]);
+    if (!row)
+      throw new AccessError("NOT_FOUND", 404, "The requested object is unavailable.");
+    return JSON.parse(row.value_json);
+  }
+  async saveDocument(teamId, seasonId, kind, state) {
+    await this.execute("INSERT INTO documents(team_id,season_id,kind,revision,value_json) VALUES($1,$2,$3,$4,$5) ON CONFLICT(team_id,season_id,kind) DO UPDATE SET revision=excluded.revision,value_json=excluded.value_json", [teamId, seasonId, kind, state.revision, JSON.stringify(state)]);
+  }
+  async enqueueNotifications(teamId, seasonId, category, entityId, sourceId) {
+    const recipients = /* @__PURE__ */ new Map();
+    const priority = { manager: 3, player: 2, spectator: 1, administrator: 0 };
+    for (const member of (await this.memberships()).filter((item) => item.teamId === teamId && item.seasonId === seasonId && ["manager", "player", "spectator"].includes(item.role) && item.revokedAt == null && (item.expiresAt == null || item.expiresAt > this.now()))) {
+      const current3 = recipients.get(member.accountId);
+      if (!current3 || priority[member.role] > priority[current3.role])
+        recipients.set(member.accountId, member);
+    }
+    let inserted = 0;
+    for (const member of recipients.values()) {
+      if (member.role === "administrator" || member.role === "player" && !member.playerId)
+        continue;
+      const businessKey = `notify:${digest2(canonical4([teamId, seasonId, category, entityId, sourceId, member.accountId, member.role]))}`;
+      const job = createTeamNotificationJob({ id: randomUUID2(), businessKey, accountId: member.accountId, teamId, seasonId, audience: member.role, playerId: member.role === "player" ? member.playerId : null, category, entityId, dueAtMs: this.now() });
+      const result = await this.execute("INSERT INTO jobs(id,business_key,kind,payload_json,due_at) VALUES($1,$2,'notification.dispatch',$3,$4) ON CONFLICT(business_key) DO NOTHING", [job.id, businessKey, JSON.stringify(job), job.dueAtMs]);
+      inserted += Number(result.changes);
+    }
+    return inserted;
+  }
+  async preparation(principal, teamId, seasonId) {
+    assertCanManageTeam(principal, await this.memberships(), teamId, seasonId, this.now());
+    return await this.document(teamId, seasonId, "preparation");
+  }
+  async configuration(principal, teamId, seasonId, role) {
+    if (role)
+      assertTeamRole(principal, await this.memberships(), teamId, seasonId, role === "manager" || role === "administrator" ? [role] : [], this.now());
+    const state = await this.document(teamId, seasonId, "preparation");
+    return configurationServiceView({ principal, memberships: await this.memberships(), preparation: state, seasonId, nowMs: this.now() });
+  }
+  async configurationCommand(principal, teamId, seasonId, command, role) {
+    await this.configuration(principal, teamId, seasonId, role);
+    if (!command || !["club.updated", "team.updated"].includes(command.type))
+      bad2("Only club or team configuration can be changed in this context.");
+    if (role && command.type === "club.updated" && role !== "administrator")
+      throw new AccessError("NOT_FOUND", 404, "Choose the current administrator context to administer the club.");
+    const state = applyConfigurationServiceCommand({ principal, memberships: await this.memberships(), preparation: await this.document(teamId, seasonId, "preparation"), seasonId, nowMs: this.now(), command });
+    await this.saveDocument(teamId, seasonId, "preparation", state);
+    await this.audit(principal, command.type, teamId, "administrator_configuration_accepted");
+    return await this.configuration(principal, teamId, seasonId, role);
+  }
+  async seasonContext(principal, teamId, seasonId) {
+    const community = await this.communityState(teamId, seasonId);
+    const accounts = await this.many("SELECT * FROM accounts", []);
+    const preparationDocuments = await this.many("SELECT value_json FROM documents WHERE team_id=$1 AND kind='preparation'", [teamId]);
+    const existingSeasons = preparationDocuments.flatMap((row) => JSON.parse(row.value_json).seasons.map((season) => ({ teamId, id: season.id, startYear: season.startYear })));
+    return {
+      principal,
+      memberships: await this.memberships(),
+      existingSeasons,
+      nowMs: this.now(),
+      preparation: await this.document(teamId, seasonId, "preparation"),
+      records: await this.document(teamId, seasonId, "records"),
+      community,
+      accounts: accounts.map((account2) => ({ accountId: account2.id, label: community.accounts.find((item) => item.id === account2.id)?.label ?? "Verified account", status: account2.status, identityClassification: account2.classification, adultVerified: Boolean(account2.adult_verified), strongAuthEnrolled: Boolean(account2.strong_auth_enrolled) }))
+    };
+  }
+  async seasonOptions(principal, teamId, seasonId) {
+    return seasonRolloverOptions(await this.seasonContext(principal, teamId, seasonId));
+  }
+  async createSeason(principal, teamId, seasonId, command) {
+    const context = await this.seasonContext(principal, teamId, seasonId);
+    const plan = planSeasonRollover({ ...context, command });
+    if (await this.one("SELECT kind FROM documents WHERE team_id=$1 AND season_id=$2 LIMIT 1", [teamId, plan.receipt.seasonId]))
+      throw new AccessError("SEASON_EXISTS", 409, "That destination season already has saved documents.");
+    for (const member of plan.memberships)
+      await this.execute("INSERT INTO memberships(account_id,team_id,season_id,role,player_id,expires_at,revoked_at) VALUES($1,$2,$3,$4,$5,$6,$7)", [member.accountId, member.teamId, member.seasonId, member.role, member.playerId ?? null, member.expiresAt ?? null, member.revokedAt ?? null]);
+    await this.saveDocument(teamId, plan.receipt.seasonId, "preparation", plan.preparation);
+    await this.saveDocument(teamId, plan.receipt.seasonId, "records", plan.records);
+    await this.saveDocument(teamId, plan.receipt.seasonId, "community", plan.community);
+    await this.audit(principal, "season.created_from_explicit_assignments", plan.receipt.seasonId, "accepted_no_spectator_renewal");
+    return plan.receipt;
+  }
+  /** Called inside the preparation mutation transaction; current labels never rewrite saved match evidence. */
+  async projectPreparationRecords(teamId, seasonId, preparation, sourceCommandId) {
+    const previous = await this.document(teamId, seasonId, "records");
+    const labels = new Map(previous.players.map((player) => [player.id, player]));
+    for (const profile of preparation.profiles.filter((profile2) => profile2.seasonId === seasonId))
+      labels.set(profile.playerId, { id: profile.playerId, label: profile.displayName });
+    const players = [...labels.values()];
+    const evidence2 = trainingAttendanceEvidence({ ...preparation, training: preparation.training.filter((session) => session.seasonId === seasonId) });
+    let records = previous;
+    const at = new Date(this.now()).toISOString();
+    if (canonical4(players) !== canonical4(previous.players))
+      records = {
+        ...records,
+        players,
+        revision: records.revision + 1,
+        audit: [...records.audit, { commandId: `preparation-roster-${sourceCommandId}`, action: "preparation.roster.projected", matchId: null, at, reason: "Current season roster labels updated from preparation; saved match snapshots preserved.", before: null, after: null }]
+      };
+    if (canonical4(evidence2) !== canonical4(previous.trainingAttendance))
+      records = reduceRecords(records, { type: "training.evidence.replace", commandId: `preparation-training-${sourceCommandId}`, at, actor: "manager", evidence: evidence2 });
+    if (records !== previous)
+      await this.saveDocument(teamId, seasonId, "records", records);
+  }
+  async preparationCommand(principal, teamId, seasonId, command) {
+    const previous = await this.preparation(principal, teamId, seasonId);
+    const types2 = ["club.updated", "team.updated", "season.rolled_over", "profile.saved", "profile.archived", "formation.saved", "fixture.saved", "fixture.status_changed", "fixture.response_recorded", "fixture.selection_saved", "fixture.attendance_recorded", "fixture.prepared", "training.saved", "training.status_changed", "training.response_recorded", "training.attendance_recorded"];
+    if (!command || !types2.includes(command.type))
+      bad2("Unsupported preparation command.");
+    if (command.type === "season.rolled_over")
+      throw new AccessError("SEASON_ASSIGNMENT_REQUIRED", 503, "A connected new season requires approved manager/player assignments and explicit spectator renewal. The local rehearsal supports rollover; this service will not save an inaccessible new season or silently copy authority.");
+    if (command.type === "club.updated") {
+      assertTeamRole(principal, await this.memberships(), teamId, seasonId, ["administrator"], this.now());
+      assertAdultAuthority(principal, true, this.now());
+    }
+    const state = reducePreparation(previous, command);
+    if (command.type === "fixture.prepared") {
+      const snapshot = state.snapshots.find((snapshot2) => snapshot2.fixtureId === command.fixtureId && snapshot2.preparedRevision === command.expectedRevision + 1);
+      if (!snapshot)
+        throw new AccessError("PREPARATION_SNAPSHOT_REQUIRED", 409, "The immutable prepared fixture snapshot is unavailable.");
+      assertCanManageTeam(principal, await this.memberships(), teamId, snapshot.seasonId, this.now());
+      const config = fixtureMatchConfig(state, snapshot);
+      const existing = await this.one("SELECT * FROM matches WHERE id=$1", [config.matchId]);
+      if (!existing)
+        await this.insertMatch(config, teamId, snapshot.seasonId);
+      else {
+        if (existing.team_id !== teamId || existing.season_id !== snapshot.seasonId)
+          throw new AccessError("MATCH_SCOPE_CONFLICT", 409, "That fixture identity already belongs to another match scope.");
+        if (canonical4(JSON.parse(existing.config_json)) !== canonical4(config)) {
+          const matchState = JSON.parse(existing.state_json);
+          const claimed = await this.one("SELECT match_id FROM controller_grants WHERE match_id=$1", [config.matchId]);
+          const history = await this.one("SELECT event_id FROM events WHERE match_id=$1 LIMIT 1", [config.matchId]);
+          if (claimed || history || matchState.revision !== 0 || matchState.status !== "preparation")
+            throw new AccessError("MATCH_HISTORY_EXISTS", 409, "This match already has a controller or recorded history. Preserve its saved snapshot and reconcile changes explicitly.");
+          await this.execute("UPDATE matches SET config_json=$1,state_json=$2 WHERE id=$3", [JSON.stringify(config), JSON.stringify(createMatch(config)), config.matchId]);
+        }
+      }
+    }
+    if (command.type.startsWith("training.") || command.type.startsWith("profile."))
+      await this.projectPreparationRecords(teamId, seasonId, state, command.id);
+    await this.saveDocument(teamId, seasonId, "preparation", state);
+    await this.audit(principal, command.type, teamId, "accepted");
+    if (command.type === "fixture.saved")
+      await this.enqueueNotifications(teamId, seasonId, "schedule", command.fixture.id, command.id);
+    else if (command.type === "fixture.status_changed" || command.type === "fixture.selection_saved")
+      await this.enqueueNotifications(teamId, seasonId, "schedule", command.fixtureId, command.id);
+    else if (command.type === "training.saved")
+      await this.enqueueNotifications(teamId, seasonId, "schedule", command.training.id, command.id);
+    else if (command.type === "training.status_changed")
+      await this.enqueueNotifications(teamId, seasonId, "schedule", command.trainingId, command.id);
+    return state;
+  }
+  async ownPreparation(principal, teamId, seasonId) {
+    const membership = assertTeamRole(principal, await this.memberships(), teamId, seasonId, ["player"], this.now());
+    const state = await this.document(teamId, seasonId, "preparation");
+    const profiles = state.profiles.filter((profile2) => profile2.playerId === membership.playerId && profile2.seasonId === seasonId && profile2.active);
+    if (profiles.length !== 1)
+      throw new AccessError("NOT_FOUND", 404, "The requested own-player profile is unavailable.");
+    const profile = profiles[0];
+    return {
+      kind: "player-preparation",
+      revision: state.revision,
+      team: { id: state.team.id, name: state.team.name, ageGroup: state.team.ageGroup },
+      season: state.seasons.find((season) => season.id === seasonId),
+      profile,
+      fixtures: state.fixtures.filter((fixture) => fixture.seasonId === seasonId).map((fixture) => ({ id: fixture.id, opponent: fixture.opponent, playedDate: fixture.playedDate, kickoff: fixture.kickoff, venue: fixture.venue, homeAway: fixture.homeAway, status: fixture.status, response: fixture.responses[profile.id] ?? "no_reply", selected: fixture.selectedProfileIds.includes(profile.id), attendance: fixture.attendance[profile.id] ?? "not_recorded" })),
+      training: state.training.filter((session) => session.seasonId === seasonId).map((session) => ({ id: session.id, date: session.date, time: session.time, venue: session.venue, status: session.status, expected: session.expectedProfileIds.includes(profile.id), response: session.responses[profile.id] ?? "no_reply", attendance: session.attendance[profile.id] ?? "not_recorded" }))
+    };
+  }
+  async ownPreparationCommand(principal, teamId, seasonId, command) {
+    const membership = assertTeamRole(principal, await this.memberships(), teamId, seasonId, ["player"], this.now());
+    if (!command || !validId3(command.id) || !nonnegative3(command.expectedRevision) || !["own.preferences_saved", "own.fixture_response_recorded", "own.training_response_recorded"].includes(command.type))
+      bad2("A valid own-player command and source revision are required.");
+    const allowed = command.type === "own.preferences_saved" ? ["id", "expectedRevision", "type", "preferences"] : command.type === "own.fixture_response_recorded" ? ["id", "expectedRevision", "type", "fixtureId", "response"] : ["id", "expectedRevision", "type", "trainingId", "response"];
+    if (Object.keys(command).some((key) => !allowed.includes(key)))
+      bad2("Own-player commands cannot change another profile or manager-controlled fields.");
+    const state = await this.document(teamId, seasonId, "preparation");
+    const profiles = state.profiles.filter((profile2) => profile2.playerId === membership.playerId && profile2.seasonId === seasonId && profile2.active);
+    if (profiles.length !== 1)
+      throw new AccessError("NOT_FOUND", 404, "The requested own-player profile is unavailable.");
+    const profile = profiles[0];
+    const base = { id: command.id, expectedRevision: command.expectedRevision };
+    const bound = command.type === "own.preferences_saved" ? { ...base, type: "profile.saved", profile: { ...profile, preferences: command.preferences } } : command.type === "own.fixture_response_recorded" ? { ...base, type: "fixture.response_recorded", fixtureId: command.fixtureId, profileId: profile.id, response: command.response } : { ...base, type: "training.response_recorded", trainingId: command.trainingId, profileId: profile.id, response: command.response };
+    const updated = reducePreparation(state, bound);
+    if (bound.type.startsWith("training.") || bound.type.startsWith("profile."))
+      await this.projectPreparationRecords(teamId, seasonId, updated, command.id);
+    await this.saveDocument(teamId, seasonId, "preparation", updated);
+    await this.audit(principal, command.type, teamId, "accepted");
+    return await this.ownPreparation(principal, teamId, seasonId);
+  }
+  /** SQL account/membership records remain the authority; the serializable model is a projection. */
+  async communityState(teamId, seasonId) {
+    const state = await this.document(teamId, seasonId, "community");
+    const accounts = await this.many("SELECT * FROM accounts WHERE status='active'", []);
+    const memberships = await this.memberships();
+    return {
+      ...state,
+      accounts: accounts.map((account2) => ({ id: account2.id, label: state.accounts.find((person) => person.id === account2.id)?.label ?? "Verified account", classification: account2.classification === "unclassified" ? "spectator" : account2.classification, adultVerified: !!account2.adult_verified })),
+      memberships: memberships.filter((item) => item.role === "manager" || item.role === "player").map((item) => ({ accountId: item.accountId, teamId: item.teamId, seasonId: item.seasonId, role: item.role, playerId: item.playerId, active: item.revokedAt == null && (item.expiresAt == null || item.expiresAt > this.now()) }))
+    };
+  }
+  async communityActor(principal, teamId, seasonId, requestedRole, invitationAcceptance = false) {
+    const memberships = await this.memberships();
+    if (invitationAcceptance)
+      return { accountId: principal.accountId, teamId, seasonId, role: "spectator" };
+    const allowed = currentMemberships(principal, memberships, this.now()).filter((item) => item.teamId === teamId && item.seasonId === seasonId && ["manager", "player", "spectator"].includes(item.role));
+    const chosen = requestedRole ? allowed.find((item) => item.role === requestedRole) : allowed.find((item) => item.role === "manager") ?? allowed[0];
+    if (!chosen)
+      throw new AccessError("NOT_FOUND", 404, "The requested object is unavailable.");
+    if (chosen.role === "manager")
+      assertAdultAuthority(principal, false, this.now());
+    const actor = { accountId: principal.accountId, teamId, seasonId, role: chosen.role, playerId: chosen.playerId };
+    const document = await this.one("SELECT team_id FROM documents WHERE team_id=$1 AND season_id=$2 AND kind='community'", [teamId, seasonId]);
+    if (document && !communityCanAccess(await this.communityState(teamId, seasonId), actor, this.now()))
+      throw new AccessError("NOT_FOUND", 404, "The requested object is unavailable.");
+    return actor;
+  }
+  async community(principal, teamId, seasonId, role) {
+    const actor = await this.communityActor(principal, teamId, seasonId, role);
+    const state = await this.communityState(teamId, seasonId);
+    return { ...getCommunityView(state, actor, this.now()), revision: state.revision };
+  }
+  async communityCommand(principal, teamId, seasonId, command, role) {
+    if (!command || !validId3(command.id) || typeof command.type !== "string")
+      bad2("A typed community command with a stable identity is required.");
+    if (command.type === "concern.updated" && !["under_review", "resolved"].includes(command.status))
+      bad2("Invalid concern status.");
+    if (command.type === "concern.submitted" && (!["photo", "uploader"].includes(command.targetType) || !["privacy", "inappropriate", "other"].includes(command.category)))
+      bad2("Invalid concern category.");
+    if (command.type === "uploader.hidden" && typeof command.hidden !== "boolean")
+      bad2("Choose whether to hide the uploader.");
+    if (command.type === "privacy.drafted" && !["export", "delete_global_account"].includes(command.requestType))
+      bad2("Invalid privacy request type.");
+    if (command.type === "match.registered")
+      throw new AccessError("POLICY_APPROVAL_REQUIRED", 503, "Connected award and sharing context must be derived from accepted match evidence, a verified finish-time anchor and independently approved competition policy. Caller-supplied trusted finish or sharing policy is not accepted.");
+    const actor = await this.communityActor(principal, teamId, seasonId, role, command.type === "invite.accepted");
+    const previous = await this.communityState(teamId, seasonId);
+    const state = applyCommunityCommand(previous, actor, command, this.now());
+    await this.saveDocument(teamId, seasonId, "community", state);
+    if (["invite.accepted", "invite.revoked", "grant.revoked"].includes(command.type))
+      await this.synchronizeSpectatorMemberships(state);
+    for (const match of state.matches.filter((match2) => match2.voteCutoffAtMs !== null && match2.finishQuality === "trusted" && !state.awards.some((award) => award.matchId === match2.id))) {
+      const key = `award:${teamId}:${seasonId}:${match.id}:${match.voteCutoffAtMs}`;
+      await this.execute("INSERT INTO jobs(id,business_key,kind,payload_json,due_at) VALUES($1,$2,$3,$4,$5) ON CONFLICT(business_key) DO NOTHING", [randomUUID2(), key, "award.finalise", JSON.stringify({ teamId, seasonId, matchId: match.id }), match.voteCutoffAtMs]);
+    }
+    await this.audit(principal, command.type, teamId, "accepted");
+    if (command.type === "photo.submitted" || command.type === "photo.revised" || command.type === "photo.published" || command.type === "photo.reviewed" && command.decision === "approve")
+      await this.enqueueNotifications(teamId, seasonId, "photos", command.photoId, command.id);
+    if (command.type === "award.finalised")
+      await this.enqueueNotifications(teamId, seasonId, "awards", command.matchId, command.id);
+    return { ...getCommunityView(state, actor, this.now()), revision: state.revision };
+  }
+  async synchronizeSpectatorMemberships(state) {
+    const scopes = /* @__PURE__ */ new Map();
+    for (const grant of state.grants)
+      scopes.set(JSON.stringify([grant.accountId, grant.teamId, grant.seasonId]), { accountId: grant.accountId, teamId: grant.teamId, seasonId: grant.seasonId });
+    for (const scope of scopes.values()) {
+      const grants = state.grants.filter((grant) => grant.accountId === scope.accountId && grant.teamId === scope.teamId && grant.seasonId === scope.seasonId);
+      const active2 = grants.filter((grant) => grant.revokedAtMs === null && grant.startsAtMs <= this.now() && grant.expiresAtMs > this.now());
+      const expiresAt = Math.max(...(active2.length ? active2 : grants).map((grant) => grant.expiresAtMs));
+      const revokedAt = active2.length ? null : Math.max(1, this.now());
+      await this.execute("INSERT INTO memberships(account_id,team_id,season_id,role,expires_at,revoked_at) VALUES($1,$2,$3,'spectator',$4,$5) ON CONFLICT(account_id,team_id,season_id,role) DO UPDATE SET expires_at=excluded.expires_at,revoked_at=excluded.revoked_at", [scope.accountId, scope.teamId, scope.seasonId, expiresAt, revokedAt]);
+    }
+  }
+  async media(principal, teamId, seasonId, photoId, mode, role) {
+    const actor = await this.communityActor(principal, teamId, seasonId, role);
+    const result = authorizeCommunityMedia(await this.communityState(teamId, seasonId), actor, photoId, this.now(), mode);
+    if (!result.allowed)
+      throw new AccessError("NOT_FOUND", 404, "The requested object is unavailable.");
+    return result;
+  }
+  async recordsViewer(principal, teamId, seasonId, role) {
+    const actor = await this.communityActor(principal, teamId, seasonId, role);
+    return { actor: actor.role, playerId: actor.playerId, teamId, seasonId };
+  }
+  async recordsContext(principal, teamId, seasonId, role) {
+    const viewer = await this.recordsViewer(principal, teamId, seasonId, role);
+    const rows = await this.many("SELECT state_json FROM matches WHERE team_id=$1 AND season_id=$2 ORDER BY id", [teamId, seasonId]);
+    const community = await this.communityState(teamId, seasonId);
+    const actor = await this.communityActor(principal, teamId, seasonId, viewer.actor);
+    const filtered = getCommunityView(community, actor, this.now());
+    return { principal, memberships: await this.memberships(), nowMs: this.now(), requestedRole: viewer.actor, state: await this.document(teamId, seasonId, "records"), acceptedMatches: rows.map((row) => ({ teamId, seasonId, match: JSON.parse(row.state_json) })), community: { accountId: principal.accountId, teamId, seasonId, audience: viewer.actor, playerId: viewer.playerId ?? null, revision: community.revision, view: { allowed: filtered.allowed, matches: filtered.matches, gallery: filtered.gallery } } };
+  }
+  async records(principal, teamId, seasonId, role) {
+    return recordsServiceView(await this.recordsContext(principal, teamId, seasonId, role));
+  }
+  async recordsExport(principal, teamId, seasonId, request, role) {
+    return recordsServiceExport({ ...await this.recordsContext(principal, teamId, seasonId, role), request });
+  }
+  async recordsCommand(principal, teamId, seasonId, command, role) {
+    const state = applyRecordsServiceCommand({ ...await this.recordsContext(principal, teamId, seasonId, role), command });
+    await this.saveDocument(teamId, seasonId, "records", state);
+    await this.audit(principal, command.type, teamId, "accepted");
+    return await this.records(principal, teamId, seasonId, "manager");
+  }
+};
+
+// apps/worker/src/postgres-jobs.ts
+async function runDuePostgresJobs(store2, nowMs = Date.now(), maximum = 20) {
+  const result = { completed: 0, retried: 0, failed: 0 };
+  for (let count = 0; count < maximum; count++) {
+    const job = await store2.transaction(async () => {
+      const found = await store2.one("SELECT id,kind,payload_json,attempts FROM jobs WHERE kind='award.finalise' AND ((state='pending' AND due_at<=$1) OR (state='leased' AND lease_until<=$1)) ORDER BY due_at,id FOR UPDATE SKIP LOCKED LIMIT 1", [nowMs]);
+      if (!found) return null;
+      await store2.execute("UPDATE jobs SET state='leased',attempts=attempts+1,lease_until=$1 WHERE id=$2", [nowMs + 3e4, found.id]);
+      return { ...found, attempts: found.attempts + 1 };
+    });
+    if (!job) break;
+    try {
+      await store2.transaction(async () => {
+        const lease = await store2.one("SELECT state,attempts FROM jobs WHERE id=$1 FOR UPDATE", [job.id]);
+        if (!lease || lease.state !== "leased" || lease.attempts !== job.attempts) throw new Error("LEASE_SUPERSEDED");
+        if (job.kind !== "award.finalise") throw new Error("UNSUPPORTED_JOB");
+        const payload = JSON.parse(job.payload_json);
+        const state = await store2.document(payload.teamId, payload.seasonId, "community");
+        const match = state.matches.find((item) => item.id === payload.matchId);
+        if (!match || match.voteCutoffAtMs === null || match.finishQuality !== "trusted") throw new Error("AWARD_REVIEW_REQUIRED");
+        const next = finalizeDueCommunityAwards(state, nowMs);
+        if (!next.awards.some((award) => award.matchId === payload.matchId)) throw new Error("AWARD_NOT_DUE_OR_UNRESOLVED");
+        await store2.saveDocument(payload.teamId, payload.seasonId, "community", next);
+        for (const award of next.awards.filter((award2) => !state.awards.some((previous) => previous.matchId === award2.matchId))) await store2.enqueueNotifications(payload.teamId, payload.seasonId, "awards", award.matchId, `award-finalised-${award.matchId}-${award.voteCutoffAtMs}`);
+        await store2.execute("UPDATE jobs SET state='completed',lease_until=NULL,last_error_code=NULL WHERE id=$1 AND attempts=$2", [job.id, job.attempts]);
+      });
+      result.completed++;
+    } catch {
+      const terminal = job.attempts >= 3;
+      await store2.transaction(() => store2.execute("UPDATE jobs SET state=$1,due_at=$2,lease_until=NULL,last_error_code='JOB_REQUIRES_REVIEW' WHERE id=$3 AND state='leased' AND attempts=$4", [terminal ? "failed" : "pending", nowMs + Math.min(6e4, 1e3 * 2 ** job.attempts), job.id, job.attempts]));
+      if (terminal) result.failed++;
+      else result.retried++;
+    }
+  }
+  return result;
+}
+
+// apps/api/src/database-config.ts
+import { readFileSync } from "node:fs";
+function readDatabaseUrl(env, key = "LONGBALL_DATABASE_URL") {
+  const inline = env[key];
+  const file = env[`${key}_FILE`];
+  if (inline && file) throw new Error(`Configure exactly one of ${key} and ${key}_FILE.`);
+  const value = file ? readFileSync(file, "utf8").trim() : inline;
+  if (!value) return void 0;
+  let parsed;
+  try {
+    parsed = new URL(value);
+  } catch {
+    throw new Error("A valid PostgreSQL connection URL is required.");
+  }
+  if (!["postgres:", "postgresql:"].includes(parsed.protocol)) throw new Error("A PostgreSQL connection URL is required.");
+  return value;
+}
+
+// apps/worker/src/notification-jobs.ts
+import { randomUUID as randomUUID3 } from "node:crypto";
+var KIND = "notification.dispatch";
+var decode = (row) => {
+  const job = JSON.parse(row.payload_json);
+  validateTeamNotificationJob(job);
+  if (row.id !== job.id || row.business_key !== job.businessKey || row.kind !== KIND) throw new Error("NOTIFICATION_SCOPE_CONFLICT");
+  return job;
+};
+var outerState = (job) => job.state === "provider_accepted" ? "completed" : job.state;
+async function readRow(store2, id) {
+  return store2 instanceof PostgresStore ? await store2.one("SELECT id,kind,business_key,payload_json,state,attempts,lease_until FROM jobs WHERE id=$1", [id]) : store2.database.prepare("SELECT id,kind,business_key,payload_json,state,attempts,lease_until FROM jobs WHERE id=?").get(id);
+}
+function owns(row, job, nowMs) {
+  if (!row || row.state !== "leased" || row.attempts !== job.attempts || row.lease_until === null || row.lease_until <= nowMs) return false;
+  const saved = decode(row);
+  return saved.revision === job.revision && saved.lease?.attemptId === job.lease?.attemptId;
+}
+function expiredNeedsReview(row, provider) {
+  return row.state === "leased" && (!provider?.configured || provider.idempotency !== "provider" || row.attempts >= 6);
+}
+function reviewExpired(job) {
+  return { ...job, revision: job.revision + 1, state: "review_required", lease: null, lastCode: "LEASE_EXPIRED_OUTCOME_UNKNOWN" };
+}
+async function claimNext(store2, nowMs, provider) {
+  if (store2 instanceof PostgresStore) return store2.transaction(async () => {
+    const row = await store2.one("SELECT id,kind,business_key,payload_json,state,attempts,lease_until FROM jobs WHERE kind=$1 AND ((state='pending' AND due_at<=$2) OR (state='leased' AND lease_until<=$2)) ORDER BY due_at,id FOR UPDATE SKIP LOCKED LIMIT 1", [KIND, nowMs]);
+    if (!row) return { job: null, reviewed: false };
+    const prior = decode(row), reviewed = expiredNeedsReview(row, provider);
+    const next = reviewed ? reviewExpired(prior) : claimTeamNotificationJob(prior, randomUUID3(), nowMs);
+    if (!next) throw new Error("NOTIFICATION_QUEUE_STATE_CONFLICT");
+    await store2.execute("UPDATE jobs SET payload_json=$1,state=$2,attempts=$3,lease_until=$4,last_error_code=$5 WHERE id=$6", [JSON.stringify(next), outerState(next), next.attempts, next.lease?.untilMs ?? null, next.lastCode, next.id]);
+    return { job: reviewed ? null : next, reviewed };
+  });
+  return store2.transaction(() => {
+    const row = store2.database.prepare("SELECT id,kind,business_key,payload_json,state,attempts,lease_until FROM jobs WHERE kind=? AND ((state='pending' AND due_at<=?) OR (state='leased' AND lease_until<=?)) ORDER BY due_at,id LIMIT 1").get(KIND, nowMs, nowMs);
+    if (!row) return { job: null, reviewed: false };
+    const prior = decode(row), reviewed = expiredNeedsReview(row, provider);
+    const next = reviewed ? reviewExpired(prior) : claimTeamNotificationJob(prior, randomUUID3(), nowMs);
+    if (!next) throw new Error("NOTIFICATION_QUEUE_STATE_CONFLICT");
+    store2.database.prepare("UPDATE jobs SET payload_json=?,state=?,attempts=?,lease_until=?,last_error_code=? WHERE id=?").run(JSON.stringify(next), outerState(next), next.attempts, next.lease?.untilMs ?? null, next.lastCode, next.id);
+    return { job: reviewed ? null : next, reviewed };
+  });
+}
+async function commit(store2, leased, next, nowMs) {
+  validateTeamNotificationJob(next);
+  if (store2 instanceof PostgresStore) return store2.transaction(async () => {
+    const row = await store2.one("SELECT id,kind,business_key,payload_json,state,attempts,lease_until FROM jobs WHERE id=$1 FOR UPDATE", [leased.id]);
+    if (!owns(row, leased, nowMs)) return false;
+    await store2.execute("UPDATE jobs SET payload_json=$1,state=$2,due_at=$3,attempts=$4,lease_until=NULL,last_error_code=$5 WHERE id=$6", [JSON.stringify(next), outerState(next), next.dueAtMs, next.attempts, next.lastCode, next.id]);
+    return true;
+  });
+  return store2.transaction(() => {
+    const row = store2.database.prepare("SELECT id,kind,business_key,payload_json,state,attempts,lease_until FROM jobs WHERE id=?").get(leased.id);
+    if (!owns(row, leased, nowMs)) return false;
+    store2.database.prepare("UPDATE jobs SET payload_json=?,state=?,due_at=?,attempts=?,lease_until=NULL,last_error_code=? WHERE id=?").run(JSON.stringify(next), outerState(next), next.dueAtMs, next.attempts, next.lastCode, next.id);
+    return true;
+  });
+}
+async function entityAccess(store2, job, principal, community, nowMs) {
+  const actor = { accountId: job.accountId, teamId: job.teamId, seasonId: job.seasonId, role: job.audience, ...job.playerId ? { playerId: job.playerId } : {} };
+  if (job.category === "schedule") {
+    if (job.audience === "spectator") return "denied";
+    const preparation = await store2.document(job.teamId, job.seasonId, "preparation");
+    return preparation.team.id === job.teamId && (preparation.fixtures.some((item) => item.seasonId === job.seasonId && item.id === job.entityId) || preparation.training.some((item) => item.seasonId === job.seasonId && item.id === job.entityId)) ? "allowed" : "missing";
+  }
+  if (job.category === "match") {
+    try {
+      const row = await store2.match(job.entityId);
+      if (row.team_id !== job.teamId || row.season_id !== job.seasonId) return "denied";
+      const projected2 = await store2.matchDto(principal, job.entityId, job.audience);
+      return projected2.sharingRestricted === true ? "withheld" : "allowed";
+    } catch (error) {
+      if (error && typeof error === "object" && "status" in error && [403, 404].includes(Number(error.status))) return "denied";
+      throw error;
+    }
+  }
+  if (job.category === "photos") {
+    const photo = community.photos.find((item) => item.id === job.entityId && item.teamId === job.teamId && item.seasonId === job.seasonId);
+    if (!photo) return "missing";
+    const mode = photo.uploaderAccountId === job.accountId ? "own" : job.audience === "manager" ? "review" : "gallery";
+    return authorizeCommunityMedia(community, actor, photo.id, nowMs, mode).allowed ? "allowed" : "denied";
+  }
+  const projected = getCommunityView(community, actor, nowMs);
+  const match = projected.matches.find((item) => item.id === job.entityId);
+  return !match ? "missing" : !match.sharingAllowed ? "withheld" : match.award ? "allowed" : "missing";
+}
+async function evidence(store2, job, nowMs) {
+  const row = store2 instanceof PostgresStore ? await store2.one("SELECT * FROM accounts WHERE id=$1", [job.accountId]) : store2.database.prepare("SELECT * FROM accounts WHERE id=?").get(job.accountId);
+  const account2 = { accountId: job.accountId, status: row?.status === "active" ? "active" : "disabled", identityClassification: row?.classification ?? "unclassified", adultVerified: Boolean(row?.adult_verified), strongAuthEnrolled: Boolean(row?.strong_auth_enrolled) };
+  const memberships = await store2.memberships();
+  const empty2 = { account: account2, memberships, grants: [], preferences: defaultCommunityPreferences(), entityAccess: "missing" };
+  if (!row || account2.status !== "active") return empty2;
+  let community;
+  try {
+    community = await store2.communityState(job.teamId, job.seasonId);
+  } catch (error) {
+    if (error && typeof error === "object" && "status" in error && Number(error.status) === 404) return empty2;
+    throw error;
+  }
+  const principal = { accountId: job.accountId, issuer: String(row.issuer), subject: String(row.subject), status: account2.status, identityClassification: account2.identityClassification, adultVerified: account2.adultVerified, strongAuth: account2.strongAuthEnrolled, authenticatedAt: nowMs };
+  let access = "denied";
+  if (memberships.some((item) => item.accountId === job.accountId && item.teamId === job.teamId && item.seasonId === job.seasonId && item.role === job.audience && item.revokedAt == null && (item.expiresAt == null || item.expiresAt > nowMs))) access = await entityAccess(store2, job, principal, community, nowMs);
+  return { account: account2, memberships, grants: community.grants, preferences: community.preferences[job.accountId] ?? defaultCommunityPreferences(), entityAccess: access };
+}
+async function runDueTeamNotifications(store2, options = {}) {
+  const now = options.now ?? Date.now, provider = options.provider ?? null;
+  const maximum = options.maximum ?? 20;
+  if (!Number.isInteger(maximum) || maximum < 1 || maximum > 1e3) throw new Error("INVALID_NOTIFICATION_BATCH_LIMIT");
+  const result = { accepted: 0, blocked: 0, retried: 0, suppressed: 0, reviewRequired: 0, failed: 0 };
+  for (let index = 0; index < maximum; index++) {
+    const claimed = await claimNext(store2, now(), provider);
+    if (claimed.reviewed) {
+      result.reviewRequired++;
+      continue;
+    }
+    if (!claimed.job) break;
+    const settled = await dispatchClaimedTeamNotification(claimed.job, {
+      now,
+      provider,
+      readCurrentEvidence: (job, at) => evidence(store2, job, at),
+      stillOwnsLease: async (job, at) => owns(await readRow(store2, job.id), job, at),
+      commit: (leased, next) => commit(store2, leased, next, now())
+    });
+    if (settled.status === "provider_accepted") result.accepted++;
+    else if (settled.status === "blocked_provider") result.blocked++;
+    else if (settled.status === "pending") result.retried++;
+    else if (settled.status === "suppressed") result.suppressed++;
+    else if (settled.status === "review_required") result.reviewRequired++;
+    else if (settled.status === "failed") result.failed++;
+  }
+  return result;
+}
+
+// apps/worker/src/main.ts
+var connectionString = readDatabaseUrl(process.env);
+if (!connectionString && process.env.LONGBALL_SYNTHETIC_AUTH !== "1") throw new Error("Configure PostgreSQL or explicit fictional SQLite mode for the worker.");
+var migrationMode = process.env.LONGBALL_DATABASE_MIGRATION_MODE ?? (process.env.LONGBALL_SYNTHETIC_AUTH === "1" ? "apply" : "verify");
+if (!["apply", "verify"].includes(migrationMode) || process.env.NODE_ENV === "production" && migrationMode !== "verify") throw new Error("The production worker verifies schemas; use the dedicated operator migration command.");
+var store = connectionString ? await PostgresStore.open(connectionString, Date.now, { migrationMode }) : new DevelopmentStore(process.env.LONGBALL_API_DATABASE ?? ".local/api/longball.sqlite");
+var running = false;
+var run = async () => {
+  if (running) return;
+  running = true;
+  try {
+    const result = store instanceof PostgresStore ? await runDuePostgresJobs(store) : runDueJobs(store);
+    const notifications = await runDueTeamNotifications(store);
+    if (result.completed || result.retried || result.failed || Object.values(notifications).some(Boolean)) console.log(JSON.stringify({ worker: connectionString ? "longball-postgresql" : "longball-fictional", ...result, notifications }));
+  } finally {
+    running = false;
+  }
+};
+await run();
+if (process.argv.includes("--once")) await store.close();
 else {
-  const timer = setInterval(run, 5e3);
+  const timer = setInterval(() => {
+    void run().catch(() => console.error("LONGBALL_WORKER_CYCLE_FAILED"));
+  }, 5e3);
   for (const signal of ["SIGINT", "SIGTERM"]) process.on(signal, () => {
     clearInterval(timer);
-    store.close();
-    process.exit(0);
+    void Promise.resolve(store.close()).then(() => process.exit(0));
   });
 }

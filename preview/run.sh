@@ -63,6 +63,9 @@ export LONGBALL_API_HOST=127.0.0.1
 export LONGBALL_API_PORT=4173
 export LONGBALL_API_DATABASE="$PWD/.local/fictional-review.sqlite"
 export LONGBALL_STATIC_DIRECTORY="$PWD/site"
+# The lasting fictional Pages review can explicitly connect to this bounded API
+# session. Same-origin combined review remains supported by the server itself.
+export LONGBALL_API_ORIGINS="https://charlieomnipoint.github.io"
 node backend/api.mjs >/tmp/longball-http.log 2>&1 &
 server_pid=$!
 server_ready=false
