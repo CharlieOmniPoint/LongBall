@@ -184,7 +184,7 @@ and lockout, session replacement and truthful own-device enrollment. Do not
 disable TLS verification, inject a vault or use real children to obtain proof.
 Keep this pass separate from local clock/storage evidence.
 
-## iPhone: a conditional free Windows route
+## iPhone: verified unsigned kit and Windows signing
 
 An iPhone is available and no Mac is available. A Mac is **not the only possible
 installation route**: the official [AltStore Classic Windows guide](https://faq.altstore.io/altstore-classic/how-to-install-altstore-windows)
@@ -192,15 +192,15 @@ and [Sideloadly instructions/FAQ](https://sideloadly.io/faq) document Windows
 tools that use the owner's free Apple Account to sign and install an IPA. These
 are third-party personal-signing workflows, not Apple's Xcode installer and not
 an observed LongBall installation. The owner has confirmed that a Windows PC is
-available; local tool setup, signing and installation remain untested. Nothing has been downloaded, signed or installed
-through this route, and no Apple credentials have been requested.
+available. Owner-local tool setup, signing and phone installation remain
+untested, and no Apple credentials have been requested.
 
-Use the [Windows installation guide](iphone-windows-install.md) after the IPA
-has passed its build and download verification. It covers the owner-local
+Use the [Windows installation guide](iphone-windows-install.md) with the
+verified unsigned IPA below. It covers the owner-local
 signing steps and stable-identity renewal.
 
 The current unsigned **Simulator** `.app` still cannot run on iPhone hardware.
-The needed input is a separately cloud-compiled **iPhoneOS arm64 Release** app,
+The verified device kit contains a cloud-compiled **iPhoneOS arm64 Release** app,
 with embedded JavaScript, packaged as `Payload/LongBallSyntheticLab.app` in an
 unencrypted IPA from this source. Owner-controlled signing must then occur on
 their Windows computer; neither a raw unsigned IPA nor an APK can be installed
@@ -214,17 +214,31 @@ containing sourceHead `c71f19dcea05f76adb0f7b5a4e2afb621d49bd40`, fictionalOnly
 `true` and requestId `ios-physical-c71-v4`. It uses the standard free `macos-15-intel` host with Xcode 26.3
 and CocoaPods 1.17.0, checks the exact source and bundle hashes, and records the
 allowlisted notification configuration's before/after hashes and one-file diff.
-It produces an **unsigned candidate**, bounded to 250 MiB with one-day retention,
-without an Apple account, signing certificate or provisioning profile. No
-unsigned-device build result is implied merely by this template being present.
+The successful run produced an **unsigned candidate**, bounded to 250 MiB
+with one-day retention, without an Apple account, signing certificate or
+provisioning profile.
 
-The current candidate attempt is
-[run39616024656](https://github.com/CharlieOmniPoint/LongBall/actions/runs/39616024656)
-from isolated transport commit `100635dd137b959b48c79ecd04b121835de1e298`.
-Its declared local-notification-only configuration is part of the provenance;
-this is not the unmodified production entitlement configuration. Until the run
-passes and its artifact is verified, no iPhoneOS IPA is available from this kit.
-Even after a successful build, owner-local signing and installation are required.
+[Run39616024656](https://github.com/CharlieOmniPoint/LongBall/actions/runs/39616024656)
+completed successfully, including iPhoneOS compilation, package checks and
+artifact upload. Download the [verified iPhone kit](https://github.com/CharlieOmniPoint/LongBall/actions/runs/39616024656/artifacts/12352708819) before
+**14:39:52 UTC on 22 October 2026**. Its actual downloaded ZIP, all 11 checksums
+and 12 files were independently verified;
+[exact evidence](evidence/2026-10-21/feature-completion/ios-device-kit.json).
+
+The signing input is `LongBall-fictional-c71-local-only-unsigned.ipa`
+(10,280,863 bytes), SHA256 `3812c755233b58241669b634f4cf685794b6bb2176ac38a849fa971f6aa175fa`.
+It requires **iOS16.4+** and contains device ARM64 Mach-O code and 3,329,065 bytes
+of embedded JavaScript. The main app has no signature or provisioning profile;
+it cannot be installed until the owner signs it locally.
+
+The isolated transport commit is `100635dd137b959b48c79ecd04b121835de1e298`.
+Its independently recreated single `app.json` change is the declared
+local-notification-only configuration; this is not the unmodified production
+entitlement configuration. The earlier
+[preflight failure](evidence/2026-10-21/feature-completion/ios-device-preflight-diagnostic.json)
+and [ARM64-host capacity incident](evidence/2026-10-21/feature-completion/ios-device-queue-diagnostic.json)
+remain historical diagnostics. Local signing, installation and seven-day renewal
+still require owner-observed results.
 
 ### Owner-controlled Windows prerequisites and limits
 
@@ -270,26 +284,26 @@ free Apple Developer account. It lists data protection and keychain sharing as
 available for free accounts. These distinctions were checked against the
 table's actual checkmark columns; an empty scraped Markdown table is not proof.
 
-A declared **local-notification-only test variant** can use the officially
+The verified **local-notification-only test variant** uses the officially
 documented Expo SDK 58 option
 [`enableRemoteNotifications:false`](https://docs.expo.dev/versions/v58.0.0/sdk/notifications/#configuration)
-to omit the APNs entitlement. That generated test configuration must be recorded
-in the IPA's provenance and verified, rather than silently asking the signing
-tool to strip arbitrary entitlements. It preserves local reminder scheduling;
+to omit the APNs entitlement. The generated test configuration is recorded
+in the IPA's provenance and independently verified; the signing instructions do
+not ask the tool to strip arbitrary entitlements. It preserves local reminder scheduling;
 it cannot prove APNs delivery, remote push or associated-domain universal links.
 The production source and its complete feature scope stay unchanged.
 
 | LongBall behaviour            | What this proposed free test can establish                                                                                                                                       |
 | ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| SQLCipher/custom native clock | These are compiled native code, not a paid Apple service. The iPhoneOS build must include them; encryption, boot continuity and physical timing still need actual runtime tests. |
+| SQLCipher/custom native clock | These are compiled native code, not a paid Apple service. The actual iPhoneOS build/configuration checks passed; encryption, boot continuity and physical timing still need runtime tests. |
 | SecureStore/own keychain      | The signed app must have valid app/keychain identity. Verify key retention through refresh/relaunch and fail-closed key loss; do not infer this from signing success.            |
 | Face ID/device authentication | Requires supported/enrolled hardware, the declared Face ID usage description and a real retained session. No successful prompt or app-session integration is yet proved.         |
 | Local notifications           | Can be tested in the explicitly local-only variant, subject to permission, Focus/lock and OS delivery limits.                                                                    |
 | APNs/universal links          | Outside this free local-only variant; no remote-push or associated-domain proof is claimed. The configured custom-scheme PKCE return is a separate physical integration test.    |
 
-With the confirmed Windows PC, the next reviewable result is an unsigned
-iPhoneOS IPA with source/configuration/binary checksums, followed by the owner's
-observed local signing/install result. The browser UI stays available during
+The unsigned iPhoneOS IPA and source/configuration/binary checksums are now
+verified. With the confirmed Windows PC, the next result is the owner’s observed
+local signing/install and stable-identity renewal. The browser UI stays available during
 these steps. No paid Apple/EAS service, account provisioning or
 production provider choice has been made.
 

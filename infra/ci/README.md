@@ -94,7 +94,12 @@ is inferred from these build and package checks.
 [native-ios-device.yml](native-ios-device.yml) runs separately on
 `preview/native-ios-device`. It builds `iphoneos` ARM64 Release rather than a
 Simulator application. [Run39616024656](https://github.com/CharlieOmniPoint/LongBall/actions/runs/39616024656)
-is pending; no successful package or installation is claimed yet.
+passed its actual device compile, package checks and artifact upload. The
+[downloaded iPhone kit](https://github.com/CharlieOmniPoint/LongBall/actions/runs/39616024656/artifacts/12352708819)
+was independently verified: ZIP digest, all 11 checksums/12 files, device ARM64
+metadata and the declared single configuration change.
+[Exact proof](../../docs/development/evidence/2026-10-21/feature-completion/ios-device-kit.json).
+It expires at **14:39:52 UTC on 22 October 2026**.
 
 The first device attempt stopped after pod installation because its verifier
 expected a compiler flag in console output. The retry checks the actual generated
@@ -102,8 +107,8 @@ ExpoSQLite Release configuration, retains that configuration, and still checks
 the vendored SQLCipher bytes and linked binary. See the preserved
 [preflight diagnostic](../../docs/development/evidence/2026-10-21/feature-completion/ios-device-preflight-diagnostic.json).
 
-The next attempt uses the standard free `macos-15-intel` host with the same
-Xcode 26.3/build17C529. Public GitHub annotations reported ARM64 hosted capacity
+The successful fourth attempt used standard free `macos-15-intel`,
+macOS15.7.9/x86_64 with Xcode26.3/build17C529. Public GitHub annotations reported ARM64 hosted capacity
 constraints before a compiler could run; the [scheduler diagnostic](../../docs/development/evidence/2026-10-21/feature-completion/ios-device-queue-diagnostic.json)
 records the exact result. The iPhoneOS target remains ARM64. Only this iPhone
 workflow supersedes its older attempts; the cloud and other native jobs use
@@ -117,6 +122,12 @@ configuration hashes. The main application's configuration and remote-push
 scope remain unchanged. The workflow refuses signing credentials/profiles,
 checks actual device-platform binary metadata and embedded JavaScript, and caps
 the unsigned kit at 250MiB with one-day retention.
+
+The verified signing input is
+`LongBall-fictional-c71-local-only-unsigned.ipa`, 10,280,863 bytes,
+SHA256 `3812c755233b58241669b634f4cf685794b6bb2176ac38a849fa971f6aa175fa`. It requires
+iOS16.4+, contains actual iPhoneOS ARM64 Release code and embedded JavaScript,
+and has no main-app signature or provisioning profile. No Metro is needed.
 
 The unsigned IPA cannot install directly on an iPhone. The owner has confirmed
 Windows access. Personal signing is a third-party route; local tool setup,

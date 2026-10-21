@@ -1,0 +1,184 @@
+{
+  "schemaVersion": 1,
+  "status": "passed",
+  "ready": true,
+  "observedAt": "2026-10-21T14:42:27.499001+00:00",
+  "evidenceType": "retained unsigned fictional iPhoneOS Release kit; no installation proof",
+  "runId": 39616024656,
+  "jobId": 119277178805,
+  "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/39616024656",
+  "jobConclusion": "success",
+  "jobStartedAt": "2026-10-21T14:20:36Z",
+  "jobCompletedAt": "2026-10-21T14:39:59Z",
+  "buildStartedAt": "2026-10-21T14:26:17Z",
+  "buildCompletedAt": "2026-10-21T14:39:45Z",
+  "actualBuildSuccessMarker": "** BUILD SUCCEEDED **",
+  "baseSourceCommit": "c71f19dcea05f76adb0f7b5a4e2afb621d49bd40",
+  "sourceBundleSha256": "438742d45601956f0dc9ab4230ed33c494533ada74c5115ed76c0cde56909660",
+  "transportCommit": "100635dd137b959b48c79ecd04b121835de1e298",
+  "transportBranch": "preview/native-ios-device",
+  "sourceImportProofVerified": true,
+  "compiledConfigurationIsUnmodifiedSource": false,
+  "declaredConfigurationOverride": {
+    "sourceHead": "c71f19dcea05f76adb0f7b5a4e2afb621d49bd40",
+    "compiledConfigurationIsUnmodifiedSource": false,
+    "allowedChangedTrackedFiles": [
+      "apps/mobile/app.json"
+    ],
+    "beforeConfigSha256": "7e047df9aa62d64dbf7089790213a6900772d4a9a9f751fc22c45669754f7465",
+    "afterConfigSha256": "dd4e90d06f2afe112c3a39c1b61bdd9b6279e44ec0f0a7077c0aa7333f40029c",
+    "semanticChanges": [
+      {
+        "path": "expo.plugins[3]",
+        "before": "expo-notifications",
+        "after": [
+          "expo-notifications",
+          {
+            "enableRemoteNotifications": false
+          }
+        ]
+      }
+    ],
+    "reason": "Free personal-signing candidate: preserve local reminders without requesting unsupported APNs entitlement.",
+    "remotePushProof": false
+  },
+  "runner": {
+    "label": "macos-15-intel",
+    "standardPublicRunner": true,
+    "hostArchitecture": "x86_64",
+    "os": "macOS 15.7.9",
+    "osBuild": "24G830",
+    "imageOS": "macos15",
+    "imageVersion": "20260824.0482.1",
+    "xcode": "26.3",
+    "xcodeBuild": "17C529",
+    "cocoaPods": "1.17.0",
+    "targetSdk": "iphoneos26.2",
+    "targetArchitecture": "arm64"
+  },
+  "retainedArtifact": {
+    "id": 12352708819,
+    "name": "longball-fictional-iphoneos-c71-local-only-unsigned",
+    "url": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/39616024656/artifacts/12352708819",
+    "archiveBytes": 12420183,
+    "archiveSha256": "6e91dff752aae378a3c5a7d7dd5877144ebb7e234285958124cbca83691b84fe",
+    "createdAt": "2026-10-21T14:39:53Z",
+    "expiresAt": "2026-10-22T14:39:52Z",
+    "expiredAtVerification": false
+  },
+  "downloadVerification": {
+    "status": "passed",
+    "method": "GitHub connector artifact download followed by Sediment download into workspace",
+    "localArchive": "/workspace/attachments/a1a6b8d8-f16b-4ee1-b9f2-f5aee910dd90/longball-fictional-iphoneos-c71-local-only-unsigned.zip",
+    "archiveDigestMatchedGitHub": true,
+    "archiveEntries": 12,
+    "checksumEntriesVerified": 11,
+    "allKitFilesCoveredByChecksums": true,
+    "declaredConfigurationIndependentlyRecreated": true,
+    "generatedSqlcipherReleaseFlagsVerified": true,
+    "ipaIndependentlyInspected": true,
+    "localIpa": "/workspace/LongBall/.local/ios-device-kit/LongBall-fictional-c71-local-only-unsigned.ipa",
+    "verifierPath": "/workspace/LongBall/.local/verify-unsigned-ios-kit.py"
+  },
+  "ipa": {
+    "filename": "LongBall-fictional-c71-local-only-unsigned.ipa",
+    "sha256": "3812c755233b58241669b634f4cf685794b6bb2176ac38a849fa971f6aa175fa",
+    "bytes": 10280863,
+    "applicationId": "dev.longball.synthetic",
+    "minimumIOS": "16.4",
+    "buildVariant": "Release",
+    "sdkPlatform": "iphoneos",
+    "machOPlatform": "IOS",
+    "architecture": "arm64",
+    "requiresMetro": false
+  },
+  "independentIpaInspection": {
+    "machOCpu": "ARM64",
+    "machOPlatform": "IOS",
+    "appCodeSignaturePresent": false,
+    "embeddedProfilePresent": false,
+    "nativeModuleLinkedMarker": true,
+    "sqlCipherLinkedMarker": true,
+    "embeddedBundleBytes": 3329065,
+    "applicationExecutableSha256": "c3604413bfc676dfd277eaebd0a1b6b1dcb4023e59f8b6cd0ff26820b4ebfb35",
+    "embeddedBundleSha256": "a232b1c8f76f1c2296e3ea6872d5d379d6577133659b066597528df1b5aec337",
+    "minimumIOS": "16.4",
+    "DTXcodeBuild": "17C529",
+    "DTSDKName": "iphoneos26.2"
+  },
+  "actualBuildProof": {
+    "sourceHead": "c71f19dcea05f76adb0f7b5a4e2afb621d49bd40",
+    "bundleSha256": "438742d45601956f0dc9ab4230ed33c494533ada74c5115ed76c0cde56909660",
+    "transportHead": "100635dd137b959b48c79ecd04b121835de1e298",
+    "sourceRef": "refs/heads/dev/longball-m0-journey",
+    "platform": "ios",
+    "runnerImageOS": "macos15",
+    "runnerImageVersion": "20260824.0482.1",
+    "artifactUploadRequested": true,
+    "requestId": "ios-physical-c71-v4",
+    "mode": "fictional unsigned iPhoneOS Release variant with declared local-notification-only configuration",
+    "physicalDeviceProof": false,
+    "artifactName": "LongBall-fictional-c71-local-only-unsigned.ipa",
+    "ipaSha256": "3812c755233b58241669b634f4cf685794b6bb2176ac38a849fa971f6aa175fa",
+    "ipaBytes": 10280863,
+    "applicationId": "dev.longball.synthetic",
+    "minimumIOS": "16.4",
+    "sdkPlatform": "iphoneos",
+    "machOPlatform": "IOS",
+    "architectures": "arm64",
+    "buildVariant": "Release",
+    "embeddedJavaScriptVerified": true,
+    "requiresMetro": false,
+    "applicationUnsigned": true,
+    "provisioningProfileIncluded": false,
+    "testConfigurationOverride": {
+      "sourceHead": "c71f19dcea05f76adb0f7b5a4e2afb621d49bd40",
+      "compiledConfigurationIsUnmodifiedSource": false,
+      "allowedChangedTrackedFiles": [
+        "apps/mobile/app.json"
+      ],
+      "beforeConfigSha256": "7e047df9aa62d64dbf7089790213a6900772d4a9a9f751fc22c45669754f7465",
+      "afterConfigSha256": "dd4e90d06f2afe112c3a39c1b61bdd9b6279e44ec0f0a7077c0aa7333f40029c",
+      "semanticChanges": [
+        {
+          "path": "expo.plugins[3]",
+          "before": "expo-notifications",
+          "after": [
+            "expo-notifications",
+            {
+              "enableRemoteNotifications": false
+            }
+          ]
+        }
+      ],
+      "reason": "Free personal-signing candidate: preserve local reminders without requesting unsupported APNs entitlement.",
+      "remotePushProof": false
+    },
+    "requestedEntitlements": [],
+    "remoteBackgroundMode": false,
+    "remotePushProof": false,
+    "localNotificationsConfigured": true,
+    "nativeModuleLinkedMarker": true,
+    "sqlCipherLinkedMarker": true,
+    "freePersonalSigningProved": false,
+    "ownerAppleCredentialsUsed": false
+  },
+  "physicalDeviceProof": false,
+  "freePersonalSigningProved": false,
+  "ownerAppleCredentialsUsed": false,
+  "applicationUnsigned": true,
+  "provisioningProfileIncluded": false,
+  "remotePushProof": false,
+  "remainingLimits": [
+    "Unsigned IPA requires owner-local signing and a suitable provisioning profile before installation.",
+    "Windows signing and physical iPhone installation/launch have not been performed.",
+    "The single declared app.json override disables remote notifications for this local-notification-only candidate; remote push is unproved.",
+    "Physical clock/reboot/offline, SQLCipher/keychain, biometrics, picker/HEIC, local notifications and background behavior remain device tests."
+  ],
+  "priorAttempts": {
+    "preflightDiagnostic": ".local/ios-device-preflight-diagnostic.json",
+    "publicHostedRunnerCapacityDiagnostic": ".local/ios-device-queue-diagnostic.json",
+    "v3Run": 39614921232,
+    "v3Outcome": "Superseded by the v4 run through its own workflow concurrency group; not a compilation failure."
+  }
+}
