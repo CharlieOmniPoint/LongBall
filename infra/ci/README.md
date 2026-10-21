@@ -69,6 +69,46 @@ with `pnpm dev`; an Android USB session can use `adb reverse tcp:8081 tcp:8081`.
 The phone or Simulator must be able to reach that Metro server. These builds
 are not independently distributed production apps.
 
+## Standalone physical Android review
+
+The separate [native-device.yml](native-device.yml) template runs only on
+`preview/native-device`, with its own concurrency group. It builds a fictional
+release variant with embedded JavaScript and the generated public debug key;
+it does not need Metro or a real account. The original compilation workflow
+above keeps its existing behaviour.
+
+Exact source `c71f19d` passed the standalone build in
+[run39608816471](https://github.com/CharlieOmniPoint/LongBall/actions/runs/39608816471).
+The retained [Android phone kit](https://github.com/CharlieOmniPoint/LongBall/actions/runs/39608816471/artifacts/12350396424)
+expires at **13:39:45 UTC on 22 October 2026**. Its downloaded ZIP, all eight
+file checksums, embedded bundle, arm64 libraries and APK metadata were checked.
+The APK requires Android API24 or later and `arm64-v8a`; its SHA256 is
+`80fd8c78cdb389c332b0c7a899fc837b9c8fa687a28d90ab9cc3a2b34576bfc6`.
+See the [phone installation and observation guide](../../docs/development/device-review.md)
+and [exact artifact proof](../../docs/development/evidence/2026-10-21/feature-completion/android-device-kit.json).
+No physical execution, native runtime encryption or clock/notification result
+is inferred from these build and package checks.
+
+## Unsigned iPhone device candidate
+
+[native-ios-device.yml](native-ios-device.yml) runs separately on
+`preview/native-ios-device`. It builds `iphoneos` ARM64 Release rather than a
+Simulator application. [Run39611341666](https://github.com/CharlieOmniPoint/LongBall/actions/runs/39611341666)
+is in progress; no successful package or installation is claimed yet.
+
+The candidate uses source `c71f19d` plus one recorded test configuration change:
+`expo-notifications` has `enableRemoteNotifications:false`. This preserves local
+reminders while omitting the APNs entitlement for a possible free personal
+signing route. The proof records the exact one-file diff and before/after
+configuration hashes. The main application's configuration and remote-push
+scope remain unchanged. The workflow refuses signing credentials/profiles,
+checks actual device-platform binary metadata and embedded JavaScript, and caps
+the unsigned kit at 250MiB with one-day retention.
+
+The unsigned IPA cannot install directly on an iPhone. Windows personal signing
+is a conditional third-party route; computer availability, signing, renewal and
+physical execution remain unproved. See the [device guide](../../docs/development/device-review.md).
+
 ## Logs, artifacts and review
 
 The Actions run streams dependency, prebuild and compiler logs and records the

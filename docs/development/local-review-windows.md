@@ -32,7 +32,7 @@ The ignored prebuilt export is included in the snapshot folder, not in the Git h
 
 ## Later sharing and children's access
 
-Local review does not provide an internet link. Later, deploy a synthetic browser review to an independently chosen static HTTPS host, while continuing development in Codex. Native testing/distribution remains a separate iPhone/Android path. A shared static review gives each browser its own fictional rehearsal; it does not create shared team accounts, accepted match sync or production access controls.
+Local review does not provide an internet link. A lasting fictional browser review is already available at [GitHub Pages](https://charlieomnipoint.github.io/LongBall/), while development continues in Codex; current publication evidence is in [review.md](review.md). Native testing/distribution remains a separate iPhone/Android path. The static review alone gives each browser its own fictional rehearsal; it does not create shared team accounts, accepted match sync or production access controls.
 
 Sites is unsuitable for the planned child-facing LongBall service under [ChatGPT Sites Terms section 2.5(d)](https://openai.com/policies/chatgpt-sites-terms/) (updated 23 July 2026; checked 21 October): a Site and its content must not “target or be designed for children under 13 or the applicable age of digital consent.” Public anonymous access or household account sharing does not remove that restriction. This is separate from OpenAI account age requirements.
 

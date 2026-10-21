@@ -100,9 +100,16 @@
   },
   "earlierFailedRun": "pre-final-api-diagnostic.json",
   "remaining": [
-    "Actual native compilation for this increment and public deployment verification are recorded separately after publication",
+    "Install and run the separately verified Android review APK on compatible hardware; build/download evidence is in android-device-kit.json, and no phone result is recorded.",
     "Physical iPhone/Android M0 acceptance: timing, SQLCipher/key loss/backup, OS authentication, system browser, picker/share, alerts/Focus/battery and accessibility",
     "Production identity/private storage/push/monitoring/offsite recovery, distribution and operating ownership",
     "Unapproved canonical decisions remain explicit; fictional policy configurations do not approve production policies"
-  ]
+  ],
+  "postPublicationEvidence": {
+    "sourceCommit": "c71f19dcea05f76adb0f7b5a4e2afb621d49bd40",
+    "publication": "publication.json",
+    "nativeCompilation": "native-ci.json",
+    "androidDeviceKit": "android-device-kit.json",
+    "scope": "Exact-source public review and actual native compilations passed; the standalone Android artifact was downloaded and verified. Physical installation/execution remains unproved."
+  }
 }

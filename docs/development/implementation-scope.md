@@ -1,8 +1,8 @@
 # M0 implementation scope and native evidence
 
-> Historical M0 baseline. The 21 October expanded implementation, connected boundaries and remaining gates are tracked in [full-build-plan.md](full-build-plan.md) and [review.md](review.md). The physical-device proof register below remains open.
+> Initial M0 journey and current physical proof register. Source `c71f19dcea05f76adb0f7b5a4e2afb621d49bd40` is published at the [fictional Pages review](https://charlieomnipoint.github.io/LongBall/). Its Android and unsigned iOS Simulator builds passed [native CI](https://github.com/CharlieOmniPoint/LongBall/actions/runs/39605988033). The expanded implementation and exact evidence are tracked in [full-build-plan.md](full-build-plan.md) and [review.md](review.md). Every physical-device row below remains open.
 
-20 October 2026. This is an intermediate synthetic implementation of [LongBall](../longball/README.md), retaining native iPhone and Android targets and the complete F01–F28 integrated pilot. It is not an M0 completion or release approval. See [decisions](decisions.md) and [capability traceability](traceability.md).
+Updated 21 October 2026. The initial journey below remains part of [LongBall](../longball/README.md), retaining native iPhone and Android targets and the complete F01–F28 integrated pilot. The current checkpoint passed 450 shared/platform tests and 219 API/access/worker tests with no skipped tests; these results do not complete physical M0 or approve release. See [decisions](decisions.md) and the historical [capability traceability](traceability.md).
 
 ## Initial journey and behavioural acceptance
 
@@ -15,15 +15,15 @@
 | Clock | Use anchored active time, deliberate pause/resume and manual first-half end and second-half start. Zero shows added elapsed time and never ends play. Second planned half remains 25:00 after an early/late first half. | F11, D14/D23, ME10–ME12, MT03–MT05 |
 | Half-time | Freeze participation/bench accrual. Stage changes and apply them together only on second-half start. Leaving the match screen is not a pause. | UI18/WF04, MT02, UX-A07 |
 | Persistence | A save claim follows a committed local write. Preserve pending records; server sync cannot be claimed without server acknowledgement. On uncertain clock continuity, require review rather than guessed elapsed time. | ME12, ME50–ME51, QL01/QL02 |
-| Fairness | Preserve actual history and individual 90–110% bands. Mathematical targets and tested examples are not a full slot-level planner or a guarantee of future fairness. | D04/D05/D24, ME20–ME44, MT06–MT13 |
+| Fairness | Preserve actual history and individual 90–110% bands. The implemented budgeted slot-level planner validates suggestions and reports feasible/infeasible/indeterminate outcomes; it cannot guarantee future fairness. | D04/D05/D24, ME20–ME44, MT06–MT13 |
 
 All data is fictional. The original boards use fictional sample names; implementation may use Player 01–13 to keep synthetic provenance explicit. White surfaces, green actions, restrained yellow warnings, platform system fonts, readable score/time and labelled actions preserve the approved visual direction. Screen-reader, outdoor and large-text physical testing remain required.
 
 ## Browser review alongside native
 
-The browser review build is an additional surface requested for phone review and later link sharing. Reuse business rules and UI where practical. Keep browser persistence and any simulated clock/alert behaviour labelled accurately. Browser storage can be cleared/evicted; a browser tab/reload does not prove native continuous-clock recovery, SQLCipher, SecureStore, backup exclusion or OS notification behaviour. No deployment or external sharing is required to prepare the local review output.
+The phone-friendly browser review shares business rules and UI with the native application. The current source is published at the lasting Pages address; the separate temporary fictional API expires according to its recorded session. See [review access and exact publication evidence](review.md). Browser storage can be cleared/evicted; a browser tab/reload does not prove native continuous-clock recovery, SQLCipher, SecureStore, backup exclusion or OS notification behaviour.
 
-The browser must not present a remotely synchronised score or account security that has not been implemented. The first increment has no production identity, server controller grant, accepted shared event stream, spectator permissions, ballots or photo publishing service. Those remain in scope for later milestones.
+The original local slice has since been extended with OIDC/PKCE, scoped memberships/controller grants, accepted event replay, spectator activation/grants, private ballots, reports and scanned photo/logo publication. These services have isolated API/provider/browser evidence. Pages remains a fictional review surface, and production hosting, operating approval and physical-device proof remain separate.
 
 ## Native M0 proof register
 
@@ -37,11 +37,11 @@ Every physical-device row is **not run** until the named phone, OS, build, conne
 | PL10 | Inspect and exercise backup/device-transfer exclusions. | Database, journal/WAL/SHM and secure key exclusions on each OS, including iOS filesystem resource values and Android rules. |
 | ME50–ME51 / DS11 / QL01 | Interrupt event, sequence, materialised-view and outbox writes before/after transaction and acknowledgement; retry. | No claimed saved event lost, no duplicate effect, per-match/device sequence retained across epochs, rejected branch preserved. |
 | ME60 / PL04–PL05 / MT21–MT22 | Current-plan 90/60/30/0 visual/audio/local-notification alerts; pause/replan cancellation; deny permission; lock/Focus/silent/force-stop/battery restrictions. | Actual platform outcomes and limits; no automatic substitution or guaranteed stopped-app beep claim. |
-| D25 / MT17 | Complete synthetic two-half match in airplane mode, kill/reopen, reconnect and reconcile. | Durable local history, accepted server replay once, truthful sync status, unresolved conflicts preserved. Server portions await implementation. |
+| D25 / MT17 | Complete synthetic two-half match in airplane mode, kill/reopen, reconnect and reconcile. | Server replay, idempotency, epoch fencing and retained offline suffixes are implemented and HTTP-tested. The actual phone journey must still demonstrate durable history, once-only replay, truthful sync status and preserved conflicts. |
 | QL07 / QL11 | Compact phones, 200% text, VoiceOver/TalkBack, reduced motion, outdoor glare/wet-hand/one-handed use and battery rehearsal. | Physical usability findings and battery/brightness/network conditions. |
 
-Linux cannot compile/test iOS. No connected physical phones or signing identity are assumed. The prepared Android tooling must still produce a successful native binary, and that binary must be installed on actual target phones. Emulators supplement evidence; they do not establish notification, battery, biometrics or backup/device-transfer behaviour.
+The Linux workspace does not execute iOS. Separate macOS/Xcode CI compiled the unsigned iOS Simulator app, and Android debug compilation passed for the same `c71f19d` source. The [standalone Android phone-kit run39608816471](https://github.com/CharlieOmniPoint/LongBall/actions/runs/39608816471) completed successfully and its [arm64 APK artifact](https://github.com/CharlieOmniPoint/LongBall/actions/runs/39608816471/artifacts/12350396424) was downloaded and verified. It expires at 13:39:45 UTC on 22 October 2026; checksum/install instructions are in the device guide. No installation or phone behaviour is implied. No physical phone execution is recorded, and signed iPhone installation remains unresolved. See the [device review guide](device-review.md). Compilation and emulators do not establish notification, battery, biometric or backup/device-transfer behaviour.
 
-## Later milestones retained
+## Milestone mapping and remaining acceptance
 
-M1 adds verified identity, memberships, team/season/profile/formations/fixtures and atomic offline download. M2 completes goals, substitutions, availability, planner, controller authority, accepted sync, corrections/recovery and manager report. M3 adds own records, training, season reports and historical corrections. M4 adds spectator grants, private ballots, deadlines and moderated photos. M5 and M6 add controlled beta and club release after policy, operating, restore, account and device gates. No milestone completion is inferred from a screen being visible.
+The connected implementation now includes the M1–M4 feature groups: identity/memberships and preparation; match events, planner, controller/replay and audited correction; own/training/season/history reports; spectator grants, private ballots/deadlines and moderated media. Their exact tested limits are recorded in the current feature register. M5/M6 controlled beta and club release still require policy, operating, restore, account and physical-device acceptance. No milestone completion is inferred from a visible screen or successful compilation.
