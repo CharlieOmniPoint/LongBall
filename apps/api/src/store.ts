@@ -2,6 +2,7 @@ import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { chmodSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { backup, DatabaseSync } from 'node:sqlite';
+import { SQLITE_TEAM_PRIVILEGES_DDL } from './team-privilege-schema';
 import { AccessError, assertAdultAuthority, assertCanAssignManager, assertCanManageTeam, assertTeamRole, currentMemberships, filterMatchForPrincipal, UNAPPROVED_SHARING_POLICY, type Membership, type Principal, type SharingPolicy } from '../../../packages/application/src/access';
 import { createMatch, ENGINE_VERSION, reduceMatch, type MatchConfig, type MatchEvent, type MatchState } from '../../../packages/domain/src/index';
 import { romaFixture } from '../../../packages/testing/src/index';
@@ -111,7 +112,7 @@ export class DevelopmentStore {
     this.transaction(() => {
     // Read the version only after acquiring the migration lock; API and worker can start together.
     const version = Number((this.database.prepare('PRAGMA user_version').get() as { user_version: number }).user_version);
-    if (version > 8) throw new Error('This store version is newer than this application; preserve it and use a compatible build.');
+    if (version > 9) throw new Error('This store version is newer than this application; preserve it and use a compatible build.');
     if (version === 0) this.database.exec(`
       CREATE TABLE accounts(id TEXT PRIMARY KEY,issuer TEXT NOT NULL,subject TEXT NOT NULL,classification TEXT NOT NULL CHECK(classification IN ('child_shared','adult_individual','unclassified')),adult_verified INTEGER NOT NULL DEFAULT 0,status TEXT NOT NULL DEFAULT 'active',UNIQUE(issuer,subject));
       CREATE TABLE teams(id TEXT PRIMARY KEY,name TEXT NOT NULL);
@@ -160,6 +161,7 @@ export class DevelopmentStore {
     if(version<8)this.database.exec(`CREATE TABLE native_app_devices(device_id TEXT PRIMARY KEY,account_id TEXT NOT NULL REFERENCES accounts(id),issuer TEXT NOT NULL,platform TEXT NOT NULL CHECK(platform IN('ios','android')),registered_at INTEGER NOT NULL,last_seen_at INTEGER NOT NULL CHECK(last_seen_at>=registered_at));
       CREATE TRIGGER native_device_identity_immutable BEFORE UPDATE ON native_app_devices WHEN NEW.device_id<>OLD.device_id OR NEW.account_id<>OLD.account_id OR NEW.issuer<>OLD.issuer OR NEW.registered_at<>OLD.registered_at BEGIN SELECT RAISE(ABORT,'Immutable native device identity'); END;
       PRAGMA user_version=8;`);
+    if(version<9)this.database.exec(SQLITE_TEAM_PRIVILEGES_DDL + 'PRAGMA user_version=9;');
     });
   }
   async backup(destination: string): Promise<void> {

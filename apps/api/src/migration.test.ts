@@ -8,7 +8,8 @@ import { describe, expect, it } from 'vitest';
 import { DevelopmentStore, SYNTHETIC_IDS } from './store';
 import { SqliteBrandRepository } from './brand-repository';
 
-const currentVersion = 8;
+const currentVersion = 9;
+const dropPrivilegeSchema = 'DROP TRIGGER team_privileges_new_team; DROP TABLE team_privilege_decisions; DROP TABLE team_privilege_states; ';
 const observedAt = 1_800_000_000_000;
 const historicalTables = ['accounts', 'audit', 'conflicting_submissions', 'controller_grants', 'controller_history', 'events', 'idempotency', 'jobs', 'matches', 'memberships', 'privacy_requests', 'streams', 'teams', 'transfers'];
 const versionSixTables = [...historicalTables, 'clock_challenges', 'clock_mappings', 'devices', 'documents', 'reconciliation_proposals'];
@@ -63,7 +64,7 @@ describe('development SQLite expand migrations', () => {
       seedRetainedEvidence(original);
       const projection = original.match(SYNTHETIC_IDS.matchId).state_json;
       // Recreate the earlier v1 layout by removing only columns/tables introduced by expand migrations.
-      original.database.exec('DROP TABLE native_app_devices; ALTER TABLE events DROP COLUMN actor_id; ALTER TABLE accounts DROP COLUMN strong_auth_enrolled; DROP TABLE clock_mappings; DROP TABLE clock_challenges; DROP TABLE reconciliation_proposals; DROP TABLE devices; DROP TABLE documents; DROP TABLE privacy_pending_keys; ALTER TABLE privacy_requests DROP COLUMN team_id; ALTER TABLE privacy_requests DROP COLUMN season_id; ALTER TABLE privacy_requests DROP COLUMN affected_memberships_json; PRAGMA user_version=1;');
+      original.database.exec(dropPrivilegeSchema + 'DROP TABLE native_app_devices; ALTER TABLE events DROP COLUMN actor_id; ALTER TABLE accounts DROP COLUMN strong_auth_enrolled; DROP TABLE clock_mappings; DROP TABLE clock_challenges; DROP TABLE reconciliation_proposals; DROP TABLE devices; DROP TABLE documents; DROP TABLE privacy_pending_keys; ALTER TABLE privacy_requests DROP COLUMN team_id; ALTER TABLE privacy_requests DROP COLUMN season_id; ALTER TABLE privacy_requests DROP COLUMN affected_memberships_json; PRAGMA user_version=1;');
       expect(tableNames(original.database)).toEqual([...historicalTables].sort());
       expect(original.database.prepare('PRAGMA table_info(accounts)').all().map(row => row.name)).toEqual(['id', 'issuer', 'subject', 'classification', 'adult_verified', 'status']);
       const preserved = snapshotRows(original.database, ['matches', 'streams', 'controller_grants', 'controller_history', 'conflicting_submissions', 'transfers', 'idempotency', 'audit', 'jobs']);
@@ -107,7 +108,7 @@ describe('development SQLite expand migrations', () => {
       });
       store.database.prepare('INSERT INTO brand_slots(kind,club_id,team_id,version,asset_id,asset_revision,reviewed_revision,policy_version,confirmed_by,confirmed_at) VALUES(?,?,?,?,?,?,?,?,?,?)').run('team_logo', 'retained-club', SYNTHETIC_IDS.teamId, 4, 'retained-logo', 1, 1, 'logo-rights-v1', 'synthetic-account-manager', observedAt);
       // Version eight introduces only this table and its trigger. Existing feature tables are independent.
-      store.database.exec('DROP TABLE native_app_devices; PRAGMA user_version=7;');
+      store.database.exec(dropPrivilegeSchema + 'DROP TABLE native_app_devices; PRAGMA user_version=7;');
       expect(store.database.prepare("SELECT name FROM sqlite_schema WHERE name IN('native_app_devices','native_device_identity_immutable')").all()).toEqual([]);
       const previousTables = tableNames(store.database);
       const preserved = snapshotRows(store.database, previousTables);
@@ -115,7 +116,7 @@ describe('development SQLite expand migrations', () => {
       store.close(); store = new DevelopmentStore(path, () => observedAt);
       expect(store.database.prepare('PRAGMA user_version').get()).toEqual({ user_version: currentVersion });
       expect(snapshotRows(store.database, previousTables)).toEqual(preserved);
-      expect(store.database.prepare("SELECT type,name,tbl_name,sql FROM sqlite_schema WHERE name NOT LIKE 'sqlite_%' AND name NOT IN('native_app_devices','native_device_identity_immutable') ORDER BY type,name").all()).toEqual(schema);
+      expect(store.database.prepare("SELECT type,name,tbl_name,sql FROM sqlite_schema WHERE name NOT LIKE 'sqlite_%' AND name NOT IN('native_app_devices','native_device_identity_immutable','team_privilege_states','team_privilege_decisions','team_privileges_new_team','team_privilege_state_identity','team_privilege_decision_immutable_update','team_privilege_decision_immutable_delete') ORDER BY type,name").all()).toEqual(schema);
       // A legacy controller device is not silently enrolled as a native installation.
       expect(store.database.prepare('SELECT * FROM native_app_devices').all()).toEqual([]);
       const principal = store.principal({ issuer: 'urn:longball:synthetic', subject: 'synthetic-account-manager', strongAuth: true, authenticatedAt: observedAt });
@@ -135,7 +136,7 @@ describe('development SQLite expand migrations', () => {
     const path = join(directory, 'collision.sqlite');
     try {
       const original = new DevelopmentStore(path); original.seedSynthetic(); seedRetainedEvidence(original);
-      original.database.exec("DROP TABLE native_app_devices; CREATE TABLE native_app_devices(device_id TEXT PRIMARY KEY,retained TEXT NOT NULL); INSERT INTO native_app_devices VALUES('legacy-evidence','keep exact bytes'); PRAGMA user_version=7;");
+      original.database.exec(dropPrivilegeSchema + "DROP TABLE native_app_devices; CREATE TABLE native_app_devices(device_id TEXT PRIMARY KEY,retained TEXT NOT NULL); INSERT INTO native_app_devices VALUES('legacy-evidence','keep exact bytes'); PRAGMA user_version=7;");
       const preserved = snapshotRows(original.database, tableNames(original.database));
       const schema = original.database.prepare("SELECT type,name,tbl_name,sql FROM sqlite_schema ORDER BY type,name").all();
       original.close();
@@ -152,7 +153,7 @@ describe('development SQLite expand migrations', () => {
     const directory=mkdtempSync(join(tmpdir(),'longball-privacy-migration-')),path=join(directory,'old.sqlite');
     try{
       const original=new DevelopmentStore(path);original.seedSynthetic();
-      original.database.exec('DROP TABLE native_app_devices; DROP TABLE privacy_pending_keys; ALTER TABLE privacy_requests DROP COLUMN team_id; ALTER TABLE privacy_requests DROP COLUMN season_id; ALTER TABLE privacy_requests DROP COLUMN affected_memberships_json; PRAGMA user_version=6;');
+      original.database.exec(dropPrivilegeSchema + 'DROP TABLE native_app_devices; DROP TABLE privacy_pending_keys; ALTER TABLE privacy_requests DROP COLUMN team_id; ALTER TABLE privacy_requests DROP COLUMN season_id; ALTER TABLE privacy_requests DROP COLUMN affected_memberships_json; PRAGMA user_version=6;');
       expect(tableNames(original.database)).toEqual([...versionSixTables].sort());
       expect(original.database.prepare('PRAGMA table_info(privacy_requests)').all().map(row => row.name)).toEqual(['id', 'account_id', 'kind', 'status', 'policy_version', 'verified_at', 'created_at']);
       const insert=original.database.prepare('INSERT INTO privacy_requests VALUES(?,?,?,?,NULL,NULL,?)');
