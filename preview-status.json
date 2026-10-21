@@ -1,9 +1,9 @@
 {
-  "state": "starting",
-  "url": "",
+  "state": "ready",
+  "url": "https://adapter-premiere-releases-worldcat.trycloudflare.com",
   "sourceRevision": "b8b27972c328d6a518a1806a5fa59449f34fa0d0",
   "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/39561530654",
-  "startedAt": "2026-10-21T07:22:47Z",
-  "expiresAt": "",
+  "startedAt": "2026-10-21T07:23:26Z",
+  "expiresAt": "2026-10-21T08:23:26Z",
   "audience": "Adult review of fictional Roma U10 data only"
 }
