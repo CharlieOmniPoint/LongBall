@@ -713,8 +713,8 @@ function createCommunityState(nowMs = Date.now()) {
 }
 function communityObjectShape(value, fields5) {
   if (value === null || typeof value !== "object" || Array.isArray(value)) return false;
-  const object3 = value;
-  return Object.keys(object3).every((key) => Object.hasOwn(fields5, key)) && Object.entries(fields5).every(([key, rule]) => Object.hasOwn(object3, key) ? rule.accepts(object3[key]) : Boolean(rule.optional));
+  const object4 = value;
+  return Object.keys(object4).every((key) => Object.hasOwn(fields5, key)) && Object.entries(fields5).every(([key, rule]) => Object.hasOwn(object4, key) ? rule.accepts(object4[key]) : Boolean(rule.optional));
 }
 var communityText = (maximum, nonempty = true) => ({ accepts: (value) => typeof value === "string" && value.length <= maximum && (!nonempty || value.trim().length > 0) });
 var communityInteger = (minimum = 0) => ({ accepts: (value) => typeof value === "number" && Number.isSafeInteger(value) && value >= minimum });
@@ -777,12 +777,12 @@ var communityCommandFields = {
 };
 function parseCommunityCommand(input, options2 = {}) {
   requireRule(input !== null && typeof input === "object" && !Array.isArray(input), "invalid", "Invalid community command.");
-  const object3 = input;
-  requireRule(typeof object3.type === "string" && Object.hasOwn(communityCommandFields, object3.type), "invalid", "Invalid community command.");
-  requireRule(object3.type !== "match.registered" || options2.allowServiceOwnedCommands === true, "forbidden", "Match publication and finish evidence must be assigned by the service, not a public community command.");
-  const fields5 = communityCommandFields[object3.type];
+  const object4 = input;
+  requireRule(typeof object4.type === "string" && Object.hasOwn(communityCommandFields, object4.type), "invalid", "Invalid community command.");
+  requireRule(object4.type !== "match.registered" || options2.allowServiceOwnedCommands === true, "forbidden", "Match publication and finish evidence must be assigned by the service, not a public community command.");
+  const fields5 = communityCommandFields[object4.type];
   requireRule(
-    communityObjectShape(input, { id: communityId, type: communityEnum(object3.type), expectedRevision: communityOptional(communityInteger()), ...fields5 }),
+    communityObjectShape(input, { id: communityId, type: communityEnum(object4.type), expectedRevision: communityOptional(communityInteger()), ...fields5 }),
     "invalid",
     "Invalid community command fields."
   );
@@ -5376,6 +5376,8 @@ function sqliteRuntimeStore(source2) {
     }
   };
   facade.transaction = transaction;
+  facade.withIdentityContext = async (_identity, work) => work();
+  facade.withActorContext = async (_principal, _scope, work) => work();
   facade.idempotent = async (principal, operation, key, payload, work) => {
     if (!/^[A-Za-z0-9_-]{8,150}$/.test(key)) throw new AccessError("INVALID_REQUEST", 400, "A stable Idempotency-Key is required for mutations.");
     const signature2 = createHash3("sha256").update(canonical3(payload)).digest("hex");
@@ -5900,10 +5902,10 @@ var DevelopmentActivationService = class {
   }
   async completeActivation(input) {
     const { provider } = this.enabled();
-    fields3(input, ["activationId", "completionProof"]);
-    if (!uuid(input.activationId) || typeof input.completionProof !== "string" || !input.completionProof || input.completionProof.length > 16384)
+    fields3(input, ["activationId", "token", "completionProof"]);
+    if (!uuid(input.activationId) || typeof input.token !== "string" || !/^[A-Za-z0-9_-]{43}$/.test(input.token) || typeof input.completionProof !== "string" || !input.completionProof || input.completionProof.length > 16384)
       unavailable();
-    const token = this.store.database.prepare("SELECT * FROM lb_activation_tokens WHERE id=?").get(input.activationId);
+    const token = this.store.database.prepare("SELECT * FROM lb_activation_tokens WHERE id=? AND token_hash=?").get(input.activationId, hash2(input.token));
     if (!token || !["redeeming", "completed"].includes(token.state) || !token.flow_id || !token.flow_expires_at || token.flow_expires_at <= this.store.now())
       unavailable();
     const child = this.store.database.prepare("SELECT * FROM lb_activation_children WHERE account_id=?").get(token.account_id);
@@ -6026,6 +6028,74 @@ var DevelopmentActivationService = class {
     });
   }
 };
+
+// apps/api/src/request-context.ts
+import { createHash as createHash5 } from "node:crypto";
+var object3 = (value) => Boolean(value && typeof value === "object" && !Array.isArray(value));
+var opaque3 = (value) => typeof value === "string" && /^[A-Za-z0-9_-]{1,150}$/.test(value);
+function requestDatabaseScope(input) {
+  const { method, parts, body } = input;
+  if (input.role && !["administrator", "manager", "player", "spectator"].includes(input.role)) throw new AccessError("NOT_FOUND", 404, "The requested role context is unavailable.");
+  const scope = { operation: "unavailable", requestedRole: input.role ?? "default" };
+  const command = object3(body?.command) ? body.command : null;
+  if (parts[0] !== "v1") return scope;
+  if (parts[1] === "me") scope.operation = "account.read";
+  else if (parts[1] === "contracts") scope.operation = "contracts.read";
+  else if (parts[1] === "privacy" && parts[2] === "requests") scope.operation = method === "GET" ? "privacy.read" : "privacy.request";
+  else if (parts[1] === "accounts" && ["link-requests", "recovery-requests"].includes(parts[2])) {
+    scope.operation = parts[2] === "link-requests" ? "account.link_request" : "account.recovery_request";
+    if (opaque3(body?.teamId) && opaque3(body?.seasonId)) {
+      scope.teamId = body.teamId;
+      scope.seasonId = body.seasonId;
+    }
+  } else if (parts[1] === "matches" && opaque3(parts[2])) {
+    scope.matchId = parts[2];
+    scope.operation = method === "GET" && parts.length === 3 ? "match.read" : "match.manage";
+    if (scope.operation === "match.manage" && input.role && input.role !== "manager") throw new AccessError("NOT_FOUND", 404, "Choose the current manager context for match recording.");
+  } else if (parts[1] === "teams" && opaque3(parts[2])) {
+    scope.teamId = parts[2];
+    scope.seasonId = input.seasonId;
+    switch (parts[3]) {
+      case "matches":
+        scope.operation = "match.read";
+        break;
+      case "managers": {
+        scope.operation = method === "GET" ? "staff.read" : parts[4] === "revoke" ? "staff.revoke" : "staff.assign";
+        const target = command?.accountId ?? body?.accountId;
+        if (opaque3(target)) scope.staffTargetAccountId = target;
+        break;
+      }
+      case "configuration":
+        scope.operation = method === "GET" ? "configuration.read" : "configuration.write";
+        break;
+      case "seasons":
+        scope.operation = method === "GET" ? "season.options" : "season.create";
+        if (method === "POST" && opaque3(command?.idForSeason)) scope.newSeasonId = command.idForSeason;
+        break;
+      case "preparation":
+        scope.operation = `preparation.${parts[4] === "own" ? "own." : ""}${method === "GET" ? "read" : "write"}`;
+        break;
+      case "records":
+        scope.operation = method === "GET" ? parts[4] === "export" ? "records.export" : "records.read" : "records.write";
+        break;
+      case "community":
+        scope.operation = method === "GET" ? "community.read" : "community.write";
+        if (method === "POST" && command?.type === "invite.accepted" && typeof command.reviewCode === "string") {
+          scope.operation = "invite.accept";
+          scope.invitationTokenHash = createHash5("sha256").update(command.reviewCode).digest("hex");
+        }
+        break;
+      case "media":
+        scope.operation = parts[4] === "photos" ? "media.gateway" : method === "GET" ? "media.list" : method === "PUT" ? "media.upload" : parts[5] === "prepare" ? "media.prepare" : "media.complete";
+        break;
+      case "activation":
+        scope.operation = parts[4] === "pending-child" ? "activation.pending_child" : "activation.issue";
+        break;
+    }
+  }
+  if (!input.role && (scope.operation.startsWith("staff.") || scope.operation === "season.create" || scope.operation === "configuration.write" && command?.type === "club.updated")) scope.requestedRole = "administrator";
+  return scope;
+}
 
 // apps/api/src/server.ts
 var header = (request, name) => {
@@ -6177,15 +6247,15 @@ function createRuntimeApi(options2, source2, store, media, activation, serialize
           }
           const key = requireContract();
           const input = await readJson(request);
-          let result2;
+          let result;
           if (url.pathname === "/v1/activation/redeem") {
             activationFields(input, ["token"]);
-            result2 = await await activation.redeemActivation({ token: input.token, requestId: key });
+            result = await await activation.redeemActivation({ token: input.token, requestId: key });
           } else {
-            activationFields(input, ["activationId", "completionProof"]);
-            result2 = await await activation.completeActivation({ activationId: input.activationId, completionProof: input.completionProof });
+            activationFields(input, ["activationId", "token", "completionProof"]);
+            result = await await activation.completeActivation({ activationId: input.activationId, token: input.token, completionProof: input.completionProof });
           }
-          response(reply, 200, result2, requestId);
+          response(reply, 200, result, requestId);
           return;
         }
         if (!options2.syntheticAuth && !verifyIdentity)
@@ -6195,7 +6265,7 @@ function createRuntimeApi(options2, source2, store, media, activation, serialize
           throw new AccessError("INVALID_SESSION", 401, "A valid authenticated session is required.");
         const token = authorization.slice(7);
         const identity = options2.syntheticAuth ? syntheticIdentity(token, now()) : await verifyIdentity(token);
-        let principal = await store.principal(identity);
+        let principal = await store.withIdentityContext(identity, () => store.principal(identity));
         const rate = windows.get(principal.accountId);
         const count = rate && now() - rate.begins < 6e4 ? rate : { begins: now(), ordinary: 0, mutation: 0 };
         count.ordinary += 1;
@@ -6212,189 +6282,191 @@ function createRuntimeApi(options2, source2, store, media, activation, serialize
         if (parts[1] === "teams" && !seasonId) throw new AccessError("SEASON_REQUIRED", 400, "Choose an explicit current team-season scope.");
         const scopedOperation = (operation) => parts[1] === "teams" ? JSON.stringify([operation, parts[2], seasonId, role ?? "default"]) : operation;
         const body = request.method === "POST" ? await readJson(request) : null;
-        if (body && parts[1] === "teams" && parts[3] === "community") {
-          if (body.command && typeof body.command === "object" && "type" in body.command && body.command.type === "match.registered")
-            throw new AccessError("POLICY_APPROVAL_REQUIRED", 503, "Connected award/sharing context requires accepted match evidence, verified finish-time anchors and independently approved policy.");
-          body.command = parseCommunityCommand(body.command);
-        }
-        const mutate = async (operation, work) => store.transaction(async () => {
-          requireContract();
-          const fresh = await store.principal(identity);
-          if (fresh.accountId !== principal.accountId) throw new AccessError("INVALID_SESSION", 401, "The account binding changed. Sign in again.");
-          principal = fresh;
-          if (url.pathname === "/v1/privacy/requests") prepareAccountPrivacyRequest({ principal, memberships: await store.memberships(), input: body, nowMs: now() });
-          if (parts[1] === "matches" && parts[2])
-            await store.managerMatch(principal, parts[2]);
-          if (parts[1] === "teams" && parts[2]) {
-            if (parts[3] === "community")
-              await store.communityActor(principal, parts[2], seasonId, role, body.command?.type === "invite.accepted");
-            else if (parts[3] === "preparation" && parts[4] === "own")
-              assertTeamRole(principal, await store.memberships(), parts[2], seasonId, ["player"], now());
-            else if (parts[3] === "configuration") {
-              const club = body.command?.type === "club.updated";
-              assertTeamRole(principal, await store.memberships(), parts[2], seasonId, club ? ["administrator"] : ["administrator", "manager"], now());
-              assertAdultAuthority(principal, club, now());
-            } else if (parts[3] === "managers" || parts[3] === "seasons" || parts[3] === "preparation" && body.command?.type === "club.updated") {
-              if (parts[3] === "managers" && role && role !== "administrator") throw new AccessError("NOT_FOUND", 404, "Choose the current administrator context to manage staff.");
-              assertTeamRole(principal, await store.memberships(), parts[2], seasonId, ["administrator"], now());
-              assertAdultAuthority(principal, true, now());
-            } else
-              assertCanManageTeam(principal, await store.memberships(), parts[2], seasonId, now());
+        await store.withActorContext(principal, requestDatabaseScope({ method: request.method ?? "GET", parts, seasonId, role, body }), async () => {
+          if (body && parts[1] === "teams" && parts[3] === "community") {
+            if (body.command && typeof body.command === "object" && "type" in body.command && body.command.type === "match.registered")
+              throw new AccessError("POLICY_APPROVAL_REQUIRED", 503, "Connected award/sharing context requires accepted match evidence, verified finish-time anchors and independently approved policy.");
+            body.command = parseCommunityCommand(body.command);
           }
-          return await store.idempotent(principal, scopedOperation(operation), header(request, "idempotency-key") ?? "", body, work);
-        });
-        let result;
-        if (request.method === "GET" && url.pathname === "/v1/me")
-          result = { accountId: principal.accountId, identityClassification: principal.identityClassification, principal, memberships: await store.myMemberships(principal), serverTime: new Date(now()).toISOString(), syntheticOnly: Boolean(options2.syntheticAuth) };
-        else if (request.method === "GET" && url.pathname === "/v1/contracts/events")
-          result = events_v1_1_schema_default;
-        else if (request.method === "GET" && url.pathname === "/v1/privacy/requests")
-          result = await store.privacyRequests(principal);
-        else if (request.method === "POST" && url.pathname === "/v1/privacy/requests")
-          result = await mutate(url.pathname, () => store.privacyRequest(principal, body));
-        else if (request.method === "POST" && ["/v1/accounts/link-requests", "/v1/accounts/recovery-requests"].includes(url.pathname)) {
-          const key = requireContract();
-          if (url.pathname === "/v1/accounts/link-requests") {
-            activationFields(body, ["teamId", "seasonId", "playerId", "existingAccountId"]);
-            result = await activation.requestExistingAccountLink(principal, { ...body, requestId: key });
-          } else {
-            activationFields(body, ["teamId", "seasonId", "accountId"]);
-            result = await activation.requestRecovery(principal, { ...body, requestId: key });
-          }
-        } else if (parts[0] === "v1" && parts[1] === "matches" && parts[2]) {
-          const matchId = parts[2];
-          if (request.method === "GET" && parts.length === 3)
-            result = await store.matchDto(principal, matchId, role);
-          else if (request.method === "GET" && parts[3] === "download")
-            result = { ...await store.download(principal, matchId, url.searchParams.get("deviceId") ?? ""), syntheticOnly: Boolean(options2.syntheticAuth) };
-          else if (request.method === "GET" && parts[3] === "quarantine")
-            result = { items: await store.quarantine(principal, matchId) };
-          else if (request.method === "GET" && parts[3] === "reconciliation") result = await store.reconciliation(principal, matchId);
-          else if (request.method === "POST" && parts[3] === "reconciliation" && parts[4] === "proposals") result = await mutate(url.pathname, () => store.proposeReconciliation(principal, matchId, body));
-          else if (request.method === "POST" && parts[3] === "reconciliation" && parts[4] === "apply") result = await mutate(url.pathname, () => {
-            throw new AccessError("Q08_AUTHORITY_UNAPPROVED", 503, Q08_RECONCILIATION_POLICY.decisionRequired);
-          });
-          else if (request.method === "GET" && parts[3] === "clock" && parts[4] === "policy") {
-            await store.managerMatch(principal, matchId);
-            result = { status: options2.clockPolicy ? "configured_trial" : "policy_required", policy: options2.clockPolicy ?? null };
-          } else if (request.method === "POST" && parts[3] === "clock" && parts[4] === "challenges" && !parts[5]) result = await mutate(url.pathname, () => store.issueClockChallenge(principal, matchId, controllerToken, body, options2.clockPolicy));
-          else if (request.method === "POST" && parts[3] === "clock" && parts[4] === "challenges" && parts[5] && parts[6] === "acknowledge") result = await mutate(url.pathname, () => store.acknowledgeClockChallenge(principal, matchId, controllerToken, parts[5], body, options2.clockPolicy));
-          else if (request.method === "POST" && parts[3] === "controller")
-            result = await mutate(url.pathname, async () => await store.acquire(principal, matchId, String(body.deviceId ?? "")));
-          else if (request.method === "POST" && parts[3] === "events")
-            result = await mutate(url.pathname, async () => {
-              const uploaded = await store.upload(principal, matchId, controllerToken, body.events);
-              const communityContext = await store.recordFinishedContext(principal, matchId, options2.clockPolicy);
-              return { ...uploaded, communityContext };
-            });
-          else if (request.method === "POST" && parts[3] === "handover" && !parts[4])
-            result = await mutate(url.pathname, async () => await store.offerHandover(principal, matchId, controllerToken, String(body.toAccountId ?? ""), String(body.toDeviceId ?? ""), Number(body.baseRevision)));
-          else if (request.method === "POST" && parts[3] === "handover" && parts[4] && parts[5] === "accept")
-            result = await mutate(url.pathname, async () => await store.acceptHandover(principal, matchId, parts[4], String(body.deviceId ?? "")));
-          else if (request.method === "POST" && parts[3] === "recover")
-            result = await mutate(url.pathname, async () => {
-              if (body.confirmUnsynchronisedRisk !== true)
-                throw new AccessError("RECOVERY_CONFIRMATION_REQUIRED", 422, "Confirm the possibility of unsynchronised old-device records before recovery.");
-              const recovered = await store.recover(principal, matchId, String(body.deviceId ?? ""), String(body.reason ?? ""));
-              await store.recordFinishedContext(principal, matchId, options2.clockPolicy);
-              return recovered;
-            });
-          else
-            throw new AccessError("NOT_FOUND", 404, "The requested object is unavailable.");
-        } else if (parts[0] === "v1" && parts[1] === "teams" && parts[2]) {
-          const teamId = parts[2];
-          if (request.method === "POST" && parts[3] === "activation" && parts.length === 5 && ["pending-child", "issue"].includes(parts[4])) {
-            const requestId2 = requireContract();
-            assertCanManageTeam(principal, await store.memberships(), teamId, seasonId, now());
-            if (parts[4] === "pending-child") {
-              activationFields(body, ["playerId"]);
-              result = await await activation.createPendingChild(principal, { requestId: requestId2, teamId, seasonId, playerId: body.playerId });
-            } else {
-              activationFields(body, ["accountId"]);
-              result = await await activation.issueActivation(principal, { requestId: requestId2, teamId, seasonId, accountId: body.accountId });
+          const mutate = async (operation, work) => store.transaction(async () => {
+            requireContract();
+            const fresh = await store.principal(identity);
+            if (fresh.accountId !== principal.accountId) throw new AccessError("INVALID_SESSION", 401, "The account binding changed. Sign in again.");
+            principal = fresh;
+            if (url.pathname === "/v1/privacy/requests") prepareAccountPrivacyRequest({ principal, memberships: await store.memberships(), input: body, nowMs: now() });
+            if (parts[1] === "matches" && parts[2])
+              await store.managerMatch(principal, parts[2]);
+            if (parts[1] === "teams" && parts[2]) {
+              if (parts[3] === "community")
+                await store.communityActor(principal, parts[2], seasonId, role, body.command?.type === "invite.accepted");
+              else if (parts[3] === "preparation" && parts[4] === "own")
+                assertTeamRole(principal, await store.memberships(), parts[2], seasonId, ["player"], now());
+              else if (parts[3] === "configuration") {
+                const club = body.command?.type === "club.updated";
+                assertTeamRole(principal, await store.memberships(), parts[2], seasonId, club ? ["administrator"] : ["administrator", "manager"], now());
+                assertAdultAuthority(principal, club, now());
+              } else if (parts[3] === "managers" || parts[3] === "seasons" || parts[3] === "preparation" && body.command?.type === "club.updated") {
+                if (parts[3] === "managers" && role && role !== "administrator") throw new AccessError("NOT_FOUND", 404, "Choose the current administrator context to manage staff.");
+                assertTeamRole(principal, await store.memberships(), parts[2], seasonId, ["administrator"], now());
+                assertAdultAuthority(principal, true, now());
+              } else
+                assertCanManageTeam(principal, await store.memberships(), parts[2], seasonId, now());
             }
-          } else if (parts[3] === "media") {
-            const actor = await store.communityActor(principal, teamId, seasonId, role);
-            const community = async () => await store.communityState(teamId, seasonId);
-            if (request.method === "GET" && parts[4] === "uploads" && !parts[5])
-              result = { items: await media.listOwn(await community(), actor) };
-            else if (request.method === "POST" && parts[4] === "uploads" && parts[5] === "prepare") {
-              const key = requireContract();
-              result = await store.transaction(async () => await media.prepare(await community(), actor, { ...body, requestId: key }));
-            } else if (request.method === "PUT" && parts[4] === "uploads" && parts[5]) {
-              requireContract();
-              result = await await media.upload(await community(), actor, parts[5], header(request, "x-media-upload-token") ?? "", request);
-            } else if (request.method === "POST" && parts[4] === "uploads" && parts[5] && parts[6] === "complete") {
-              const key = requireContract();
-              const processed = await await media.complete(await community(), actor, parts[5], header(request, "x-media-upload-token") ?? "");
-              result = await store.idempotent(principal, scopedOperation(url.pathname), key, body, async () => {
-                const freshActor = await store.communityActor(principal, teamId, seasonId, role);
-                const next = applyCommunityCommand(await community(), freshActor, processed.command, now());
-                await store.saveDocument(teamId, seasonId, "community", next);
-                await media.link(parts[5], next);
-                await store.audit(principal, "media.processed", processed.receipt.photoId, "private_review_required");
-                return processed.receipt;
-              });
-            } else if (request.method === "GET" && parts[4] === "photos" && parts[5] && parts[6]) {
-              const mode = url.searchParams.get("mode") ?? "gallery";
-              if (!["gallery", "own", "review"].includes(mode) || !["display", "thumbnail"].includes(parts[6]))
-                throw new AccessError("NOT_FOUND", 404, "The requested image is unavailable.");
-              const rawRevision = url.searchParams.get("revision");
-              const revision = rawRevision === null ? void 0 : Number(rawRevision);
-              if (revision !== void 0 && (!Number.isSafeInteger(revision) || revision < 1))
-                throw new AccessError("NOT_FOUND", 404, "The requested image is unavailable.");
-              const image = await media.gateway(await community(), actor, parts[5], parts[6], mode, revision);
-              reply.writeHead(200, { ...image.headers, "X-Request-Id": requestId });
-              reply.end(image.body);
-              return;
-            } else
-              throw new AccessError("NOT_FOUND", 404, "The requested object is unavailable.");
-          } else if (request.method === "GET" && parts[3] === "matches")
-            result = { items: await store.teamMatches(principal, teamId, seasonId, role), nextCursor: null, serverTime: new Date(now()).toISOString() };
-          else if (request.method === "GET" && parts[3] === "managers" && !parts[4]) result = await store.managers(principal, teamId, seasonId, role);
-          else if (request.method === "POST" && parts[3] === "managers" && parts[4] === "revoke") result = await mutate(url.pathname, async () => {
-            const input = staffCommand(body, "manager.revoked", header(request, "idempotency-key") ?? "");
-            return { kind: "staff-command-receipt", commandId: input.commandId, ...await store.revokeManager(principal, teamId, seasonId, { accountId: input.accountId, reason: input.reason, confirmRevocation: input.confirmRevocation }, input.expectedRevision) };
+            return await store.idempotent(principal, scopedOperation(operation), header(request, "idempotency-key") ?? "", body, work);
           });
-          else if (request.method === "POST" && parts[3] === "managers" && !parts[4])
-            result = await mutate(url.pathname, async () => {
-              const input = staffCommand(body, "manager.assigned", header(request, "idempotency-key") ?? "");
-              return { kind: "staff-command-receipt", commandId: input.commandId, ...await store.assignManager(principal, teamId, seasonId, input.accountId, input.expectedRevision) };
+          let result;
+          if (request.method === "GET" && url.pathname === "/v1/me")
+            result = { accountId: principal.accountId, identityClassification: principal.identityClassification, principal, memberships: await store.myMemberships(principal), serverTime: new Date(now()).toISOString(), syntheticOnly: Boolean(options2.syntheticAuth) };
+          else if (request.method === "GET" && url.pathname === "/v1/contracts/events")
+            result = events_v1_1_schema_default;
+          else if (request.method === "GET" && url.pathname === "/v1/privacy/requests")
+            result = await store.privacyRequests(principal);
+          else if (request.method === "POST" && url.pathname === "/v1/privacy/requests")
+            result = await mutate(url.pathname, () => store.privacyRequest(principal, body));
+          else if (request.method === "POST" && ["/v1/accounts/link-requests", "/v1/accounts/recovery-requests"].includes(url.pathname)) {
+            const key = requireContract();
+            if (url.pathname === "/v1/accounts/link-requests") {
+              activationFields(body, ["teamId", "seasonId", "playerId", "existingAccountId"]);
+              result = await activation.requestExistingAccountLink(principal, { ...body, requestId: key });
+            } else {
+              activationFields(body, ["teamId", "seasonId", "accountId"]);
+              result = await activation.requestRecovery(principal, { ...body, requestId: key });
+            }
+          } else if (parts[0] === "v1" && parts[1] === "matches" && parts[2]) {
+            const matchId = parts[2];
+            if (request.method === "GET" && parts.length === 3)
+              result = await store.matchDto(principal, matchId, role);
+            else if (request.method === "GET" && parts[3] === "download")
+              result = { ...await store.download(principal, matchId, url.searchParams.get("deviceId") ?? ""), syntheticOnly: Boolean(options2.syntheticAuth) };
+            else if (request.method === "GET" && parts[3] === "quarantine")
+              result = { items: await store.quarantine(principal, matchId) };
+            else if (request.method === "GET" && parts[3] === "reconciliation") result = await store.reconciliation(principal, matchId);
+            else if (request.method === "POST" && parts[3] === "reconciliation" && parts[4] === "proposals") result = await mutate(url.pathname, () => store.proposeReconciliation(principal, matchId, body));
+            else if (request.method === "POST" && parts[3] === "reconciliation" && parts[4] === "apply") result = await mutate(url.pathname, () => {
+              throw new AccessError("Q08_AUTHORITY_UNAPPROVED", 503, Q08_RECONCILIATION_POLICY.decisionRequired);
             });
-          else if (request.method === "GET" && parts[3] === "configuration") result = await store.configuration(principal, teamId, seasonId, role);
-          else if (request.method === "POST" && parts[3] === "configuration") result = await mutate(url.pathname, () => store.configurationCommand(principal, teamId, seasonId, body.command, role));
-          else if (request.method === "GET" && parts[3] === "seasons" && parts[4] === "rollover-options") result = await store.seasonOptions(principal, teamId, seasonId);
-          else if (request.method === "POST" && parts[3] === "seasons") result = await mutate(url.pathname, () => store.createSeason(principal, teamId, seasonId, body.command));
-          else if (request.method === "GET" && parts[3] === "preparation" && parts[4] === "own")
-            result = await store.ownPreparation(principal, teamId, seasonId);
-          else if (request.method === "POST" && parts[3] === "preparation" && parts[4] === "own")
-            result = await mutate(url.pathname, async () => await store.ownPreparationCommand(principal, teamId, seasonId, body.command));
-          else if (request.method === "GET" && parts[3] === "preparation")
-            result = await store.preparation(principal, teamId, seasonId);
-          else if (request.method === "POST" && parts[3] === "preparation")
-            result = await mutate(url.pathname, async () => await store.preparationCommand(principal, teamId, seasonId, body.command));
-          else if (request.method === "GET" && parts[3] === "community" && parts[4] === "media" && parts[5])
-            result = await store.media(principal, teamId, seasonId, parts[5], url.searchParams.get("mode") ?? "gallery", role);
-          else if (request.method === "GET" && parts[3] === "community")
-            result = await store.community(principal, teamId, seasonId, role);
-          else if (request.method === "POST" && parts[3] === "community") {
-            await mutate(url.pathname, async () => await store.communityCommand(principal, teamId, seasonId, body.command, role));
-            result = await store.community(principal, teamId, seasonId, role);
-          } else if (request.method === "GET" && parts[3] === "records" && parts[4] === "export") {
-            const expected = url.searchParams.get("expectedProjectionVersion");
-            if (expected !== null && (!/^[0-9]+$/.test(expected) || !Number.isSafeInteger(Number(expected)))) throw new AccessError("INVALID_REQUEST", 400, "Use a valid projection version.");
-            const exportRequest = { kind: url.searchParams.get("kind"), format: url.searchParams.get("format"), ...url.searchParams.has("matchId") ? { matchId: url.searchParams.get("matchId") } : {}, ...expected === null ? {} : { expectedProjectionVersion: Number(expected) }, ...url.searchParams.has("expectedPolicyFingerprint") ? { expectedPolicyFingerprint: url.searchParams.get("expectedPolicyFingerprint") } : {} };
-            result = await store.recordsExport(principal, teamId, seasonId, exportRequest, role);
-          } else if (request.method === "GET" && parts[3] === "records")
-            result = await store.records(principal, teamId, seasonId, role);
-          else if (request.method === "POST" && parts[3] === "records")
-            result = await mutate(url.pathname, async () => await store.recordsCommand(principal, teamId, seasonId, body.command, role));
-          else
+            else if (request.method === "GET" && parts[3] === "clock" && parts[4] === "policy") {
+              await store.managerMatch(principal, matchId);
+              result = { status: options2.clockPolicy ? "configured_trial" : "policy_required", policy: options2.clockPolicy ?? null };
+            } else if (request.method === "POST" && parts[3] === "clock" && parts[4] === "challenges" && !parts[5]) result = await mutate(url.pathname, () => store.issueClockChallenge(principal, matchId, controllerToken, body, options2.clockPolicy));
+            else if (request.method === "POST" && parts[3] === "clock" && parts[4] === "challenges" && parts[5] && parts[6] === "acknowledge") result = await mutate(url.pathname, () => store.acknowledgeClockChallenge(principal, matchId, controllerToken, parts[5], body, options2.clockPolicy));
+            else if (request.method === "POST" && parts[3] === "controller")
+              result = await mutate(url.pathname, async () => await store.acquire(principal, matchId, String(body.deviceId ?? "")));
+            else if (request.method === "POST" && parts[3] === "events")
+              result = await mutate(url.pathname, async () => {
+                const uploaded = await store.upload(principal, matchId, controllerToken, body.events);
+                const communityContext = await store.recordFinishedContext(principal, matchId, options2.clockPolicy);
+                return { ...uploaded, communityContext };
+              });
+            else if (request.method === "POST" && parts[3] === "handover" && !parts[4])
+              result = await mutate(url.pathname, async () => await store.offerHandover(principal, matchId, controllerToken, String(body.toAccountId ?? ""), String(body.toDeviceId ?? ""), Number(body.baseRevision)));
+            else if (request.method === "POST" && parts[3] === "handover" && parts[4] && parts[5] === "accept")
+              result = await mutate(url.pathname, async () => await store.acceptHandover(principal, matchId, parts[4], String(body.deviceId ?? "")));
+            else if (request.method === "POST" && parts[3] === "recover")
+              result = await mutate(url.pathname, async () => {
+                if (body.confirmUnsynchronisedRisk !== true)
+                  throw new AccessError("RECOVERY_CONFIRMATION_REQUIRED", 422, "Confirm the possibility of unsynchronised old-device records before recovery.");
+                const recovered = await store.recover(principal, matchId, String(body.deviceId ?? ""), String(body.reason ?? ""));
+                await store.recordFinishedContext(principal, matchId, options2.clockPolicy);
+                return recovered;
+              });
+            else
+              throw new AccessError("NOT_FOUND", 404, "The requested object is unavailable.");
+          } else if (parts[0] === "v1" && parts[1] === "teams" && parts[2]) {
+            const teamId = parts[2];
+            if (request.method === "POST" && parts[3] === "activation" && parts.length === 5 && ["pending-child", "issue"].includes(parts[4])) {
+              const requestId2 = requireContract();
+              assertCanManageTeam(principal, await store.memberships(), teamId, seasonId, now());
+              if (parts[4] === "pending-child") {
+                activationFields(body, ["playerId"]);
+                result = await await activation.createPendingChild(principal, { requestId: requestId2, teamId, seasonId, playerId: body.playerId });
+              } else {
+                activationFields(body, ["accountId"]);
+                result = await await activation.issueActivation(principal, { requestId: requestId2, teamId, seasonId, accountId: body.accountId });
+              }
+            } else if (parts[3] === "media") {
+              const actor = await store.communityActor(principal, teamId, seasonId, role);
+              const community = async () => await store.communityState(teamId, seasonId);
+              if (request.method === "GET" && parts[4] === "uploads" && !parts[5])
+                result = { items: await media.listOwn(await community(), actor) };
+              else if (request.method === "POST" && parts[4] === "uploads" && parts[5] === "prepare") {
+                const key = requireContract();
+                result = await store.transaction(async () => await media.prepare(await community(), actor, { ...body, requestId: key }));
+              } else if (request.method === "PUT" && parts[4] === "uploads" && parts[5]) {
+                requireContract();
+                result = await await media.upload(await community(), actor, parts[5], header(request, "x-media-upload-token") ?? "", request);
+              } else if (request.method === "POST" && parts[4] === "uploads" && parts[5] && parts[6] === "complete") {
+                const key = requireContract();
+                const processed = await await media.complete(await community(), actor, parts[5], header(request, "x-media-upload-token") ?? "");
+                result = await store.idempotent(principal, scopedOperation(url.pathname), key, body, async () => {
+                  const freshActor = await store.communityActor(principal, teamId, seasonId, role);
+                  const next = applyCommunityCommand(await community(), freshActor, processed.command, now());
+                  await store.saveDocument(teamId, seasonId, "community", next);
+                  await media.link(parts[5], next);
+                  await store.audit(principal, "media.processed", processed.receipt.photoId, "private_review_required");
+                  return processed.receipt;
+                });
+              } else if (request.method === "GET" && parts[4] === "photos" && parts[5] && parts[6]) {
+                const mode = url.searchParams.get("mode") ?? "gallery";
+                if (!["gallery", "own", "review"].includes(mode) || !["display", "thumbnail"].includes(parts[6]))
+                  throw new AccessError("NOT_FOUND", 404, "The requested image is unavailable.");
+                const rawRevision = url.searchParams.get("revision");
+                const revision = rawRevision === null ? void 0 : Number(rawRevision);
+                if (revision !== void 0 && (!Number.isSafeInteger(revision) || revision < 1))
+                  throw new AccessError("NOT_FOUND", 404, "The requested image is unavailable.");
+                const image = await media.gateway(await community(), actor, parts[5], parts[6], mode, revision);
+                reply.writeHead(200, { ...image.headers, "X-Request-Id": requestId });
+                reply.end(image.body);
+                return;
+              } else
+                throw new AccessError("NOT_FOUND", 404, "The requested object is unavailable.");
+            } else if (request.method === "GET" && parts[3] === "matches")
+              result = { items: await store.teamMatches(principal, teamId, seasonId, role), nextCursor: null, serverTime: new Date(now()).toISOString() };
+            else if (request.method === "GET" && parts[3] === "managers" && !parts[4]) result = await store.managers(principal, teamId, seasonId, role);
+            else if (request.method === "POST" && parts[3] === "managers" && parts[4] === "revoke") result = await mutate(url.pathname, async () => {
+              const input = staffCommand(body, "manager.revoked", header(request, "idempotency-key") ?? "");
+              return { kind: "staff-command-receipt", commandId: input.commandId, ...await store.revokeManager(principal, teamId, seasonId, { accountId: input.accountId, reason: input.reason, confirmRevocation: input.confirmRevocation }, input.expectedRevision) };
+            });
+            else if (request.method === "POST" && parts[3] === "managers" && !parts[4])
+              result = await mutate(url.pathname, async () => {
+                const input = staffCommand(body, "manager.assigned", header(request, "idempotency-key") ?? "");
+                return { kind: "staff-command-receipt", commandId: input.commandId, ...await store.assignManager(principal, teamId, seasonId, input.accountId, input.expectedRevision) };
+              });
+            else if (request.method === "GET" && parts[3] === "configuration") result = await store.configuration(principal, teamId, seasonId, role);
+            else if (request.method === "POST" && parts[3] === "configuration") result = await mutate(url.pathname, () => store.configurationCommand(principal, teamId, seasonId, body.command, role));
+            else if (request.method === "GET" && parts[3] === "seasons" && parts[4] === "rollover-options") result = await store.seasonOptions(principal, teamId, seasonId);
+            else if (request.method === "POST" && parts[3] === "seasons") result = await mutate(url.pathname, () => store.createSeason(principal, teamId, seasonId, body.command));
+            else if (request.method === "GET" && parts[3] === "preparation" && parts[4] === "own")
+              result = await store.ownPreparation(principal, teamId, seasonId);
+            else if (request.method === "POST" && parts[3] === "preparation" && parts[4] === "own")
+              result = await mutate(url.pathname, async () => await store.ownPreparationCommand(principal, teamId, seasonId, body.command));
+            else if (request.method === "GET" && parts[3] === "preparation")
+              result = await store.preparation(principal, teamId, seasonId);
+            else if (request.method === "POST" && parts[3] === "preparation")
+              result = await mutate(url.pathname, async () => await store.preparationCommand(principal, teamId, seasonId, body.command));
+            else if (request.method === "GET" && parts[3] === "community" && parts[4] === "media" && parts[5])
+              result = await store.media(principal, teamId, seasonId, parts[5], url.searchParams.get("mode") ?? "gallery", role);
+            else if (request.method === "GET" && parts[3] === "community")
+              result = await store.community(principal, teamId, seasonId, role);
+            else if (request.method === "POST" && parts[3] === "community") {
+              await mutate(url.pathname, async () => await store.communityCommand(principal, teamId, seasonId, body.command, role));
+              result = await store.community(principal, teamId, seasonId, role);
+            } else if (request.method === "GET" && parts[3] === "records" && parts[4] === "export") {
+              const expected = url.searchParams.get("expectedProjectionVersion");
+              if (expected !== null && (!/^[0-9]+$/.test(expected) || !Number.isSafeInteger(Number(expected)))) throw new AccessError("INVALID_REQUEST", 400, "Use a valid projection version.");
+              const exportRequest = { kind: url.searchParams.get("kind"), format: url.searchParams.get("format"), ...url.searchParams.has("matchId") ? { matchId: url.searchParams.get("matchId") } : {}, ...expected === null ? {} : { expectedProjectionVersion: Number(expected) }, ...url.searchParams.has("expectedPolicyFingerprint") ? { expectedPolicyFingerprint: url.searchParams.get("expectedPolicyFingerprint") } : {} };
+              result = await store.recordsExport(principal, teamId, seasonId, exportRequest, role);
+            } else if (request.method === "GET" && parts[3] === "records")
+              result = await store.records(principal, teamId, seasonId, role);
+            else if (request.method === "POST" && parts[3] === "records")
+              result = await mutate(url.pathname, async () => await store.recordsCommand(principal, teamId, seasonId, body.command, role));
+            else
+              throw new AccessError("NOT_FOUND", 404, "The requested object is unavailable.");
+          } else
             throw new AccessError("NOT_FOUND", 404, "The requested object is unavailable.");
-        } else
-          throw new AccessError("NOT_FOUND", 404, "The requested object is unavailable.");
-        const pendingReview = typeof result === "object" && result !== null && "pendingReview" in result && result.pendingReview === true;
-        response(reply, pendingReview ? 409 : 200, result, requestId);
+          const pendingReview = typeof result === "object" && result !== null && "pendingReview" in result && result.pendingReview === true;
+          response(reply, pendingReview ? 409 : 200, result, requestId);
+        });
       } catch (error) {
         const domainCode = error && typeof error === "object" && "code" in error ? String(error.code) : null;
         const unavailable3 = domainCode !== null && (/^(08|53|57|58)/.test(domainCode) || ["ECONNREFUSED", "ECONNRESET", "ETIMEDOUT", "ENOTFOUND"].includes(domainCode));
@@ -6421,10 +6493,57 @@ import { dirname as dirname3, join as join4 } from "node:path";
 import { AsyncLocalStorage as AsyncLocalStorage2 } from "node:async_hooks";
 import { Pool, types } from "pg";
 import { readFile as readFile2 } from "node:fs/promises";
+var contextKey = (context) => JSON.stringify(Object.entries(context).sort(([a], [b]) => a.localeCompare(b)));
+function validateContext(context) {
+  if (!context || typeof context !== "object" || !Number.isSafeInteger(context.nowMs) || context.nowMs < 0) throw new Error("Invalid PostgreSQL application context.");
+  const required = {
+    identity: ["issuer", "subject"],
+    actor: ["accountId", "issuer", "subject"],
+    activation_token: ["tokenHash"],
+    worker_claim: ["jobKind"],
+    worker_job: ["jobId", "leaseToken", "clubId", "teamId", "seasonId"]
+  };
+  if (!Object.hasOwn(required, context.kind) || required[context.kind].some((name) => typeof context[name] !== "string" || !context[name] || context[name].length > 2048)) throw new Error("Invalid PostgreSQL application context.");
+  if (context.kind === "actor" && (typeof context.strongAuth !== "boolean" || !Number.isSafeInteger(context.authenticatedAtMs) || context.authenticatedAtMs < 0 || context.requestedRole !== void 0 && !["administrator", "manager", "player", "spectator", "default"].includes(context.requestedRole))) throw new Error("Invalid PostgreSQL actor context.");
+  if (context.kind === "activation_token" && (!/^[a-f0-9]{64}$/.test(context.tokenHash) || context.completionVerified !== void 0 && context.completionVerified !== true)) throw new Error("Invalid PostgreSQL activation context.");
+  if (context.kind === "worker_claim" && !["award.finalise", "notification.dispatch"].includes(context.jobKind)) throw new Error("Invalid PostgreSQL job context.");
+  if (context.kind === "worker_job" && !/^[a-f0-9]{64}$/.test(context.leaseToken)) throw new Error("Invalid PostgreSQL job capability.");
+}
+function isNarrowing(parent, child) {
+  if (parent.kind === "identity" && child.kind === "actor") return parent.issuer === child.issuer && parent.subject === child.subject;
+  if (parent.kind !== child.kind) return false;
+  for (const [name, value] of Object.entries(parent)) {
+    if (name === "nowMs") continue;
+    if (child[name] !== value) return false;
+  }
+  return child.nowMs >= parent.nowMs;
+}
 var PgDatabase = class {
   pool;
   migrationMode;
-  context = new AsyncLocalStorage2();
+  transactions = new AsyncLocalStorage2();
+  applications = new AsyncLocalStorage2();
+  get applicationContext() {
+    const frame = this.applications.getStore();
+    for (let ancestor = frame; ancestor; ancestor = ancestor.parent) if (!ancestor.active) throw new Error("PostgreSQL application context has ended.");
+    return frame?.value;
+  }
+  async withContext(value, work) {
+    validateContext(value);
+    const immutable = Object.freeze({ ...value });
+    const parent = this.applicationContext;
+    if (parent && !isNarrowing(parent, immutable)) throw new Error("PostgreSQL application context cannot widen an existing scope.");
+    const key = contextKey(immutable);
+    const transaction = this.transactions.getStore();
+    if (transaction && !transaction.active) throw new Error("PostgreSQL transaction has ended.");
+    if (transaction && transaction.applicationKey !== key) throw new Error("Narrow PostgreSQL application context before opening its SQL transaction.");
+    const frame = { value: immutable, active: true, key, parent: this.applications.getStore() };
+    try {
+      return await this.applications.run(frame, work);
+    } finally {
+      frame.active = false;
+    }
+  }
   constructor(connectionString2, options2 = {}) {
     let url;
     try {
@@ -6455,41 +6574,79 @@ var PgDatabase = class {
       console.error("LONGBALL_POSTGRES_IDLE_CONNECTION_ERROR");
     });
   }
-  query(sql, values = []) {
-    return (this.context.getStore() ?? this.pool).query(sql, [...values]);
+  async query(sql, values = []) {
+    const application = this.applicationContext;
+    const transaction = this.transactions.getStore();
+    if (transaction) {
+      if (!transaction.active) throw new Error("PostgreSQL transaction has ended.");
+      if (transaction.applicationKey !== (application ? contextKey(application) : null)) throw new Error("PostgreSQL transaction context changed.");
+      return transaction.client.query(sql, [...values]);
+    }
+    if (!application) return this.pool.query(sql, [...values]);
+    return this.inTransaction(() => this.query(sql, values), false);
   }
   async transaction(work) {
-    if (this.context.getStore()) return work();
+    return this.inTransaction(work, true);
+  }
+  async inTransaction(work, lockWrites) {
+    const application = this.applicationContext;
+    const applicationKey = application ? contextKey(application) : null;
+    const existing = this.transactions.getStore();
+    if (existing) {
+      if (!existing.active) throw new Error("PostgreSQL transaction has ended.");
+      if (existing.applicationKey !== applicationKey) throw new Error("PostgreSQL transaction context changed.");
+      return work();
+    }
     const client = await this.pool.connect();
+    let discard = false;
     try {
       await client.query("BEGIN");
-      await client.query("SELECT pg_advisory_xact_lock(hashtextextended('longball:domain-write:v1', 0))");
-      const result = await this.context.run(client, work);
+      if (application) await client.query("SELECT set_config('longball.context',$1,true)", [JSON.stringify(application)]);
+      if (lockWrites) await client.query("SELECT pg_advisory_xact_lock(hashtextextended('longball:domain-write:v1', 0))");
+      const transaction = { client, applicationKey, active: true };
+      let result;
+      try {
+        result = await this.transactions.run(transaction, work);
+      } finally {
+        transaction.active = false;
+      }
       await client.query("COMMIT");
       return result;
     } catch (error) {
-      await client.query("ROLLBACK");
+      try {
+        await client.query("ROLLBACK");
+      } catch {
+        discard = true;
+      }
       throw error;
     } finally {
-      client.release();
+      client.release(discard);
     }
   }
   async migrate() {
     if (this.migrationMode === "verify") {
       const versions = await this.query("SELECT version FROM longball.schema_migrations ORDER BY version");
-      if (versions.rows.some((row) => row.version > 4)) throw new Error("This PostgreSQL schema is newer than the application. Preserve it and use a compatible build.");
-      if (![2, 3, 4].every((version) => versions.rows.some((row) => row.version === version))) throw new Error("PostgreSQL migrations are required. Run the separate migrator before starting the runtime.");
+      if (versions.rows.some((row) => row.version > 9)) throw new Error("This PostgreSQL schema is newer than the application. Preserve it and use a compatible build.");
+      if (![2, 3, 4, 5, 6, 7, 8, 9].every((version) => versions.rows.some((row) => row.version === version))) throw new Error("PostgreSQL migrations are required. Run the separate migrator before starting the runtime.");
+      const protectedTables = ["clubs", "teams", "team_seasons", "game_contexts", "accounts", "memberships", "matches", "documents", "devices", "controller_grants", "controller_history", "events", "streams", "conflicting_submissions", "transfers", "clock_challenges", "clock_mappings", "reconciliation_proposals", "audit", "idempotency", "privacy_requests", "privacy_pending_keys", "jobs"];
+      const security = await this.query(`SELECT c.relname,c.relrowsecurity,(SELECT count(*)::integer FROM pg_catalog.pg_policy p WHERE p.polrelid=c.oid) AS policies FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='longball' AND c.relname=ANY($1::text[])`, [protectedTables]);
+      if (security.rows.length !== protectedTables.length || security.rows.some((row) => !row.relrowsecurity || row.policies < 1)) throw new Error("PostgreSQL row security is missing. Run the separate migrator before starting runtime.");
       return;
     }
     const migration = await readFile2(new URL("../migrations/postgresql/002_runtime.sql", import.meta.url), "utf8");
     const clockReviewMigration = await readFile2(new URL("../migrations/postgresql/003_clock_review.sql", import.meta.url), "utf8");
     const accountRequestsMigration = await readFile2(new URL("../migrations/postgresql/004_account_requests.sql", import.meta.url), "utf8");
+    const scopeSecurityMigration = await readFile2(new URL("../migrations/postgresql/005_scope_security.sql", import.meta.url), "utf8");
+    const awardNotificationsMigration = await readFile2(new URL("../migrations/postgresql/006_award_notifications.sql", import.meta.url), "utf8");
+    const workerBoundariesMigration = await readFile2(new URL("../migrations/postgresql/007_worker_boundaries.sql", import.meta.url), "utf8");
+    const controllerRevocationMigration = await readFile2(new URL("../migrations/postgresql/008_controller_revocation.sql", import.meta.url), "utf8");
+    const dispatchClockMigration = await readFile2(new URL("../migrations/postgresql/009_dispatch_database_clock.sql", import.meta.url), "utf8");
     await this.transaction(async () => {
       const schema = await this.query("SELECT to_regnamespace('longball')::text AS namespace");
       if (!schema.rows[0]?.namespace) await this.query("CREATE SCHEMA longball");
       await this.query("CREATE TABLE IF NOT EXISTS longball.schema_migrations(version integer PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())");
       const versions = await this.query("SELECT version FROM longball.schema_migrations ORDER BY version");
-      if (versions.rows.some((row) => row.version > 4)) throw new Error("This PostgreSQL schema is newer than the application. Preserve it and use a compatible build.");
+      if (versions.rows.some((row) => row.version > 9)) throw new Error("This PostgreSQL schema is newer than the application. Preserve it and use a compatible build.");
       if (!versions.rows.some((row) => row.version === 2)) {
         await this.query(migration);
         await this.query("INSERT INTO longball.schema_migrations(version) VALUES(2)");
@@ -6502,6 +6659,26 @@ var PgDatabase = class {
         await this.query(accountRequestsMigration);
         await this.query("INSERT INTO longball.schema_migrations(version) VALUES(4)");
       }
+      if (!versions.rows.some((row) => row.version === 5)) {
+        await this.query(scopeSecurityMigration);
+        await this.query("INSERT INTO longball.schema_migrations(version) VALUES(5)");
+      }
+      if (!versions.rows.some((row) => row.version === 6)) {
+        await this.query(awardNotificationsMigration);
+        await this.query("INSERT INTO longball.schema_migrations(version) VALUES(6)");
+      }
+      if (!versions.rows.some((row) => row.version === 7)) {
+        await this.query(workerBoundariesMigration);
+        await this.query("INSERT INTO longball.schema_migrations(version) VALUES(7)");
+      }
+      if (!versions.rows.some((row) => row.version === 8)) {
+        await this.query(controllerRevocationMigration);
+        await this.query("INSERT INTO longball.schema_migrations(version) VALUES(8)");
+      }
+      if (!versions.rows.some((row) => row.version === 9)) {
+        await this.query(dispatchClockMigration);
+        await this.query("INSERT INTO longball.schema_migrations(version) VALUES(9)");
+      }
     });
   }
   async close() {
@@ -6510,7 +6687,7 @@ var PgDatabase = class {
 };
 
 // apps/api/src/postgres-store.ts
-import { createHash as createHash5, randomBytes as randomBytes4, randomUUID as randomUUID5 } from "node:crypto";
+import { createHash as createHash6, randomBytes as randomBytes4, randomUUID as randomUUID5 } from "node:crypto";
 var EVENT_CONTRACT_VERSION2 = "longball.events/1.1";
 var SYNTHETIC_IDS2 = { teamId: "synthetic-roma-u10", seasonId: "synthetic-season-2026-27", matchId: "synthetic-roma-maple-2026-10-24" };
 function canonical4(value) {
@@ -6518,7 +6695,7 @@ function canonical4(value) {
   if (value !== null && typeof value === "object") return `{${Object.entries(value).sort(([a], [b]) => a.localeCompare(b)).map(([key, item]) => `${JSON.stringify(key)}:${canonical4(item)}`).join(",")}}`;
   return JSON.stringify(value);
 }
-var digest2 = (value) => createHash5("sha256").update(value).digest("hex");
+var digest2 = (value) => createHash6("sha256").update(value).digest("hex");
 var validId3 = (value) => typeof value === "string" && value.length > 0 && value.length <= 150 && /^[a-zA-Z0-9_-]+$/.test(value);
 var validDeviceId2 = (value) => validId3(value) && value.length <= 120;
 var nonnegative3 = (value) => typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
@@ -6566,8 +6743,36 @@ var PostgresStore = class _PostgresStore {
   async close() {
     await this.db.close();
   }
+  async assertRuntimeRole(kind) {
+    const role = await this.one(`SELECT r.rolsuper,r.rolbypassrls,longball.runtime_purpose() AS runtime_purpose,
+     EXISTS(SELECT 1 FROM pg_catalog.pg_roles privileged WHERE (privileged.rolsuper OR privileged.rolbypassrls) AND pg_has_role(current_user,privileged.oid,'MEMBER')) AS privileged_membership,
+     (EXISTS(SELECT 1 FROM pg_catalog.pg_namespace n WHERE n.nspname='longball' AND pg_has_role(current_user,n.nspowner,'MEMBER')) OR
+      EXISTS(SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='longball' AND c.relkind IN('r','p') AND pg_has_role(current_user,c.relowner,'MEMBER'))) AS owns_data
+     FROM pg_catalog.pg_roles r WHERE r.rolname=current_user`);
+    if (!role || role.rolsuper || role.rolbypassrls || role.privileged_membership || role.owns_data) throw new Error(`The PostgreSQL ${kind} requires a separate non-owner role without superuser, bypass-RLS or privileged-role membership.`);
+    if (role.runtime_purpose !== kind) throw new Error(`The PostgreSQL role is not assigned the ${kind} runtime purpose.`);
+  }
   transaction(work) {
     return this.db.transaction(work);
+  }
+  async withIdentityContext(identity, work) {
+    return this.db.withContext({ kind: "identity", issuer: identity.issuer, subject: identity.subject, nowMs: this.now() }, work);
+  }
+  async withActorContext(principal, scope, work) {
+    const context = { kind: "actor", accountId: principal.accountId, issuer: principal.issuer, subject: principal.subject, strongAuth: principal.strongAuth, authenticatedAtMs: principal.authenticatedAt, nowMs: this.now(), ...scope };
+    return this.db.withContext(context, async () => {
+      if (scope.matchId) {
+        const match = await this.one("SELECT club_id,team_id,season_id FROM matches WHERE id=$1", [scope.matchId]);
+        if (!match || typeof match.club_id !== "string" || typeof match.team_id !== "string" || typeof match.season_id !== "string") throw new AccessError("NOT_FOUND", 404, "The requested object is unavailable.");
+        return this.db.withContext({ ...context, clubId: String(match.club_id), teamId: String(match.team_id), seasonId: String(match.season_id) }, work);
+      }
+      if (scope.teamId) {
+        const team = await this.one("SELECT club_id FROM teams WHERE id=$1 AND scope_status='resolved'", [scope.teamId]);
+        if (!team || typeof team.club_id !== "string") throw new AccessError("NOT_FOUND", 404, "The requested object is unavailable.");
+        return this.db.withContext({ ...context, clubId: String(team.club_id) }, work);
+      }
+      return work();
+    });
   }
   async one(sql, values = []) {
     return (await this.db.query(sql, values)).rows[0];
@@ -6582,8 +6787,10 @@ var PostgresStore = class _PostgresStore {
     await this.transaction(async () => {
       if (await this.one("SELECT id FROM teams LIMIT 1", []))
         return;
-      await this.execute("INSERT INTO teams(id,name) VALUES($1,$2)", [SYNTHETIC_IDS2.teamId, "Roma U10 \xB7 fictional"]);
-      await this.execute("INSERT INTO teams(id,name) VALUES($1,$2)", ["synthetic-other-team", "Other fictional team"]);
+      await this.execute("INSERT INTO clubs(id,name) VALUES($1,$2),($3,$4)", ["synthetic-richmond-rovers", "Richmond Rovers \xB7 fictional", "synthetic-other-club", "Other fictional club"]);
+      await this.execute("INSERT INTO teams(id,name,club_id,scope_status) VALUES($1,$2,$3,'resolved')", [SYNTHETIC_IDS2.teamId, "Roma U10 \xB7 fictional", "synthetic-richmond-rovers"]);
+      await this.execute("INSERT INTO teams(id,name,club_id,scope_status) VALUES($1,$2,$3,'resolved')", ["synthetic-other-team", "Other fictional team", "synthetic-other-club"]);
+      await this.execute("INSERT INTO team_seasons(club_id,team_id,season_id,label,start_year,start_date,end_date) VALUES($1,$2,$3,$4,$5,$6,$7),($8,$9,$3,$4,$5,$6,$7)", ["synthetic-richmond-rovers", SYNTHETIC_IDS2.teamId, SYNTHETIC_IDS2.seasonId, "2026/27", 2026, "2026-09-01", "2027-08-31", "synthetic-other-club", "synthetic-other-team"]);
       const add2 = async (id5, classification, adult) => await this.execute("INSERT INTO accounts(id,issuer,subject,classification,adult_verified,strong_auth_enrolled) VALUES($1,$2,$3,$4,$5,$6)", [id5, "urn:longball:synthetic", id5, classification, Number(adult), Number(adult)]);
       const membership = async (id5, role, playerId = null, teamId = SYNTHETIC_IDS2.teamId) => await this.execute("INSERT INTO memberships(account_id,team_id,season_id,role,player_id) VALUES($1,$2,$3,$4,$5)", [id5, teamId, SYNTHETIC_IDS2.seasonId, role, playerId]);
       await add2("synthetic-account-admin", "adult_individual", true);
@@ -6631,15 +6838,8 @@ var PostgresStore = class _PostgresStore {
     return { accountId: account2.id, issuer: account2.issuer, subject: account2.subject, identityClassification: account2.classification, adultVerified: Boolean(account2.adult_verified), strongAuth: identity.strongAuth, authenticatedAt: identity.authenticatedAt, status: account2.status };
   }
   async memberships() {
-    const rows = (await this.many("SELECT * FROM memberships", [])).map((row) => ({ accountId: row.account_id, teamId: row.team_id, seasonId: row.season_id, role: row.role, playerId: row.player_id ?? void 0, expiresAt: row.expires_at, revokedAt: row.revoked_at }));
-    const communities = (await this.many("SELECT team_id,season_id,value_json FROM documents WHERE kind='community'", [])).map((row) => ({ ...row, state: JSON.parse(row.value_json) }));
-    return rows.map((row) => {
-      if (row.role !== "spectator")
-        return row;
-      const scope = communities.find((document) => document.team_id === row.teamId && document.season_id === row.seasonId);
-      const granted = scope?.state.grants.some((grant) => grant.accountId === row.accountId && grant.teamId === row.teamId && grant.seasonId === row.seasonId && grant.revokedAtMs === null && grant.startsAtMs <= this.now() && grant.expiresAtMs > this.now());
-      return scope && !granted ? { ...row, revokedAt: row.revokedAt ?? Math.max(1, this.now()) } : row;
-    });
+    const rows = await this.many("SELECT m.*,CASE WHEN m.role='spectator' THEN longball.spectator_grant_active(m.account_id,m.club_id,m.team_id,m.season_id) ELSE true END AS grant_active FROM memberships m");
+    return rows.map((row) => ({ accountId: row.account_id, teamId: row.team_id, seasonId: row.season_id, role: row.role, playerId: row.player_id ?? void 0, expiresAt: row.expires_at, revokedAt: row.role === "spectator" && !row.grant_active ? row.revoked_at ?? Math.max(1, this.now()) : row.revoked_at }));
   }
   async myMemberships(principal) {
     return currentMemberships(principal, await this.memberships(), this.now());
@@ -7015,7 +7215,7 @@ var PostgresStore = class _PostgresStore {
       throw new AccessError("NOT_FOUND", 404, "That manager assignment is outside this scope.");
     if (member.revoked_at === null) {
       await this.execute("UPDATE memberships SET revoked_at=$1 WHERE account_id=$2 AND team_id=$3 AND season_id=$4 AND role='manager'", [this.now(), input.accountId, teamId, seasonId]);
-      await this.execute("UPDATE controller_grants SET frozen=1 WHERE account_id=$1 AND match_id IN (SELECT id FROM matches WHERE team_id=$2 AND season_id=$3)", [input.accountId, teamId, seasonId]);
+      await this.execute("UPDATE controller_grants SET frozen=1 WHERE account_id=$1 AND team_id=$2 AND season_id=$3", [input.accountId, teamId, seasonId]);
       await this.bumpStaffRevision(teamId, seasonId);
       await this.audit(actor, "manager.assignment_revoked", input.accountId, input.reason.trim());
     }
@@ -7068,9 +7268,12 @@ var PostgresStore = class _PostgresStore {
     await this.execute("INSERT INTO documents(team_id,season_id,kind,revision,value_json) VALUES($1,$2,$3,$4,$5) ON CONFLICT(team_id,season_id,kind) DO UPDATE SET revision=excluded.revision,value_json=excluded.value_json", [teamId, seasonId, kind, state.revision, JSON.stringify(state)]);
   }
   async enqueueNotifications(teamId, seasonId, category, entityId, sourceId) {
+    const workerJob = this.db.applicationContext?.kind === "worker_job";
+    const observed = workerJob ? (await this.one("SELECT floor(extract(epoch FROM clock_timestamp())*1000)::bigint AS now_ms"))?.now_ms : this.now();
+    if (typeof observed !== "number" || !Number.isSafeInteger(observed) || observed < 0) throw new Error("DATABASE_CLOCK_UNAVAILABLE");
     const recipients = /* @__PURE__ */ new Map();
     const priority = { manager: 3, player: 2, spectator: 1, administrator: 0 };
-    for (const member of (await this.memberships()).filter((item) => item.teamId === teamId && item.seasonId === seasonId && ["manager", "player", "spectator"].includes(item.role) && item.revokedAt == null && (item.expiresAt == null || item.expiresAt > this.now()))) {
+    for (const member of (await this.memberships()).filter((item) => item.teamId === teamId && item.seasonId === seasonId && ["manager", "player", "spectator"].includes(item.role) && item.revokedAt == null && (item.expiresAt == null || item.expiresAt > observed))) {
       const current3 = recipients.get(member.accountId);
       if (!current3 || priority[member.role] > priority[current3.role])
         recipients.set(member.accountId, member);
@@ -7080,9 +7283,14 @@ var PostgresStore = class _PostgresStore {
       if (member.role === "administrator" || member.role === "player" && !member.playerId)
         continue;
       const businessKey = `notify:${digest2(canonical4([teamId, seasonId, category, entityId, sourceId, member.accountId, member.role]))}`;
-      const job = createTeamNotificationJob({ id: randomUUID5(), businessKey, accountId: member.accountId, teamId, seasonId, audience: member.role, playerId: member.role === "player" ? member.playerId : null, category, entityId, dueAtMs: this.now() });
-      const result = await this.execute("INSERT INTO jobs(id,business_key,kind,payload_json,due_at) VALUES($1,$2,'notification.dispatch',$3,$4) ON CONFLICT(business_key) DO NOTHING", [job.id, businessKey, JSON.stringify(job), job.dueAtMs]);
-      inserted += Number(result.changes);
+      const job = createTeamNotificationJob({ id: randomUUID5(), businessKey, accountId: member.accountId, teamId, seasonId, audience: member.role, playerId: member.role === "player" ? member.playerId : null, category, entityId, dueAtMs: observed });
+      if (workerJob) {
+        const result = await this.one("SELECT longball.enqueue_award_notification($1,$2,$3::jsonb,$4) AS changes", [job.id, businessKey, JSON.stringify(job), job.dueAtMs]);
+        inserted += Number(result?.changes ?? 0);
+      } else {
+        const result = await this.execute("INSERT INTO jobs(id,business_key,kind,payload_json,due_at) VALUES($1,$2,'notification.dispatch',$3,$4) ON CONFLICT(business_key) DO NOTHING", [job.id, businessKey, JSON.stringify(job), job.dueAtMs]);
+        inserted += Number(result.changes);
+      }
     }
     return inserted;
   }
@@ -7110,8 +7318,9 @@ var PostgresStore = class _PostgresStore {
   async seasonContext(principal, teamId, seasonId) {
     const community = await this.communityState(teamId, seasonId);
     const accounts = await this.many("SELECT * FROM accounts", []);
-    const preparationDocuments = await this.many("SELECT value_json FROM documents WHERE team_id=$1 AND kind='preparation'", [teamId]);
-    const existingSeasons = preparationDocuments.flatMap((row) => JSON.parse(row.value_json).seasons.map((season) => ({ teamId, id: season.id, startYear: season.startYear })));
+    const catalogue = await this.many("SELECT season_id,start_year FROM team_seasons WHERE team_id=$1", [teamId]);
+    if (catalogue.some((season) => season.start_year === null)) throw new AccessError("SEASON_SCOPE_REVIEW_REQUIRED", 409, "Record the existing season catalogue before creating another season.");
+    const existingSeasons = catalogue.map((season) => ({ teamId, id: season.season_id, startYear: season.start_year }));
     return {
       principal,
       memberships: await this.memberships(),
@@ -7131,6 +7340,10 @@ var PostgresStore = class _PostgresStore {
     const plan = planSeasonRollover({ ...context, command });
     if (await this.one("SELECT kind FROM documents WHERE team_id=$1 AND season_id=$2 LIMIT 1", [teamId, plan.receipt.seasonId]))
       throw new AccessError("SEASON_EXISTS", 409, "That destination season already has saved documents.");
+    const team = await this.one("SELECT club_id FROM teams WHERE id=$1 AND scope_status='resolved'", [teamId]);
+    const destination = plan.preparation.seasons.find((item) => item.id === plan.receipt.seasonId);
+    if (!team || !destination) throw new AccessError("NOT_FOUND", 404, "The authorised team season is unavailable.");
+    await this.execute("INSERT INTO team_seasons(club_id,team_id,season_id,label,start_year,start_date,end_date) VALUES($1,$2,$3,$4,$5,$6,$7)", [team.club_id, teamId, destination.id, destination.label, destination.startYear, destination.startDate, destination.endDate]);
     for (const member of plan.memberships)
       await this.execute("INSERT INTO memberships(account_id,team_id,season_id,role,player_id,expires_at,revoked_at) VALUES($1,$2,$3,$4,$5,$6,$7)", [member.accountId, member.teamId, member.seasonId, member.role, member.playerId ?? null, member.expiresAt ?? null, member.revokedAt ?? null]);
     await this.saveDocument(teamId, plan.receipt.seasonId, "preparation", plan.preparation);
@@ -7355,12 +7568,35 @@ var PostgresStore = class _PostgresStore {
 };
 
 // apps/api/src/postgres-media.ts
-import { createHash as createHash6, randomBytes as randomBytes5, randomUUID as randomUUID6 } from "node:crypto";
+import { createHash as createHash7, randomBytes as randomBytes5, randomUUID as randomUUID6 } from "node:crypto";
 import { chmodSync as chmodSync3, mkdirSync as mkdirSync3, readFileSync as readFileSync3 } from "node:fs";
-import { open as open2, readFile as readFile3, rename as rename2, unlink as unlink2 } from "node:fs/promises";
+import { open as open2, readFile as readFile4, rename as rename2, unlink as unlink2 } from "node:fs/promises";
 import { join as join3, resolve as resolve2, sep as sep3 } from "node:path";
 import { fileURLToPath as fileURLToPath2 } from "node:url";
 import { performance as performance2 } from "node:perf_hooks";
+
+// apps/api/src/postgres-security.ts
+import { readFile as readFile3 } from "node:fs/promises";
+async function install(database, name) {
+  if (database.migrationMode !== "apply") throw new Error("Security migration requires the separate schema-owner migrator.");
+  const sql = await readFile3(new URL(`../migrations/postgresql/005_${name}_security.sql`, import.meta.url), "utf8");
+  await database.transaction(() => database.query(sql));
+}
+async function verify2(database, tables) {
+  const result = await database.query(
+    `SELECT c.relname,c.relrowsecurity,(SELECT count(*)::integer FROM pg_catalog.pg_policy p WHERE p.polrelid=c.oid) AS policies
+       FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
+       WHERE n.nspname='longball' AND c.relname=ANY($1::text[])`,
+    [tables]
+  );
+  if (result.rows.length !== tables.length || result.rows.some((row) => !row.relrowsecurity || row.policies < 2)) throw new Error("PostgreSQL feature row security is missing. Run the separate migrator before starting runtime.");
+}
+var installMediaSecurity = (database) => install(database, "media");
+var installActivationSecurity = (database) => install(database, "activation");
+var verifyMediaSecurity = (database) => verify2(database, ["media_uploads"]);
+var verifyActivationSecurity = (database) => verify2(database, ["lb_activation_children", "lb_activation_issues", "lb_activation_tokens", "lb_activation_verification_requests"]);
+
+// apps/api/src/postgres-media.ts
 var {
   executeFile: executeFile2,
   hash: hash3,
@@ -7401,8 +7637,9 @@ var PgMediaService = class _PgMediaService {
       const versions = await this.database.query(
         "SELECT version FROM longball.media_schema_migrations ORDER BY version"
       );
-      if (versions.rows.some((row) => row.version > 1)) throw new Error("Media schema is newer than this build.");
-      if (!versions.rows.some((row) => row.version === 1)) throw new Error("Run the separate media migrator before starting the runtime.");
+      if (versions.rows.some((row) => row.version > 2)) throw new Error("Media schema is newer than this build.");
+      if (!versions.rows.some((row) => row.version === 2)) throw new Error("Run the separate media migrator before starting the runtime.");
+      await verifyMediaSecurity(this.database);
       return;
     }
     await this.database.transaction(async () => {
@@ -7412,7 +7649,7 @@ var PgMediaService = class _PgMediaService {
       const versions = await this.database.query(
         "SELECT version FROM longball.media_schema_migrations ORDER BY version"
       );
-      if (versions.rows.some((row) => row.version > 1))
+      if (versions.rows.some((row) => row.version > 2))
         throw new Error(
           "Media schema is newer than this build; preserve it and use a compatible version."
         );
@@ -7427,6 +7664,10 @@ var PgMediaService = class _PgMediaService {
           CREATE UNIQUE INDEX media_linked_revision ON longball.media_uploads(photo_id,display_revision) WHERE status='linked';
           CREATE INDEX media_owner_scope ON longball.media_uploads(owner_id,team_id,season_id,created_at);
           INSERT INTO longball.media_schema_migrations(version) VALUES(1);`);
+      }
+      if (!versions.rows.some((row) => row.version === 2)) {
+        await installMediaSecurity(this.database);
+        await this.database.query("INSERT INTO longball.media_schema_migrations(version) VALUES(2)");
       }
     });
   }
@@ -7604,7 +7845,7 @@ var PgMediaService = class _PgMediaService {
         fail4("UPLOAD_BUSY", 409, "This upload is already running.");
     }
     const destination = duplicate ? null : await open2(temporary, "wx", 384);
-    const digest3 = createHash6("sha256");
+    const digest3 = createHash7("sha256");
     let received = 0;
     const began = performance2.now();
     const iterator = source2[Symbol.asyncIterator]();
@@ -7709,7 +7950,7 @@ var PgMediaService = class _PgMediaService {
     if (!leased.changes)
       fail4("UPLOAD_BUSY", 409, "This image is already processing.");
     try {
-      const original = await readFile3(this.path(row.original_key));
+      const original = await readFile4(this.path(row.original_key));
       if (original.length !== row.expected_bytes || hash3(original) !== row.expected_sha)
         fail4(
           "UPLOAD_INTEGRITY_FAILED",
@@ -7899,8 +8140,8 @@ var PgMediaService = class _PgMediaService {
 };
 
 // apps/api/src/postgres-activation.ts
-import { createHash as createHash7, randomBytes as randomBytes6, randomUUID as randomUUID7 } from "node:crypto";
-var hash4 = (value) => createHash7("sha256").update(value).digest("hex");
+import { createHash as createHash8, randomBytes as randomBytes6, randomUUID as randomUUID7 } from "node:crypto";
+var hash4 = (value) => createHash8("sha256").update(value).digest("hex");
 var id4 = (value) => typeof value === "string" && /^[A-Za-z0-9_-]{1,150}$/.test(value);
 var uuid2 = (value) => typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 function unavailable2() {
@@ -7991,10 +8232,11 @@ var PostgresActivationService = class {
       const version = await this.store.one(
         "SELECT version FROM lb_activation_schema WHERE singleton=1"
       );
-      if (!version || version.version !== 1)
+      if (!version || version.version !== 2)
         throw new Error(
           "Activation schema is missing or unsupported. Run the privileged migration command; preserve the database."
         );
+      await verifyActivationSecurity(this.store.db);
       return;
     }
     await this.store.transaction(async () => {
@@ -8005,12 +8247,16 @@ var PostgresActivationService = class {
         "SELECT version FROM lb_activation_schema WHERE singleton=1",
         []
       );
-      if (version && version.version !== 1)
+      if (version && ![1, 2].includes(version.version))
         throw new Error(
           "Unsupported activation feature schema; preserve the database."
         );
-      if (version) return;
-      await this.store.db.query(`
+      if (version?.version === 2) {
+        await verifyActivationSecurity(this.store.db);
+        return;
+      }
+      if (!version)
+        await this.store.db.query(`
         CREATE TABLE lb_activation_children(
           account_id TEXT PRIMARY KEY REFERENCES accounts(id),username TEXT NOT NULL,
           team_id TEXT NOT NULL REFERENCES teams(id),season_id TEXT NOT NULL,player_id TEXT NOT NULL,
@@ -8036,6 +8282,10 @@ CREATE FUNCTION lb_activation_immutable_child_guard() RETURNS trigger LANGUAGE p
 CREATE TRIGGER lb_activation_immutable_child BEFORE UPDATE OF classification ON accounts FOR EACH ROW EXECUTE FUNCTION lb_activation_immutable_child_guard();
         INSERT INTO lb_activation_schema VALUES(1,1);
       `);
+      await installActivationSecurity(this.store.db);
+      await this.store.execute(
+        "UPDATE lb_activation_schema SET version=2 WHERE singleton=1"
+      );
     });
   }
   async manager(principal, teamId, seasonId) {
@@ -8093,6 +8343,13 @@ CREATE TRIGGER lb_activation_immutable_child BEFORE UPDATE OF classification ON 
       );
     }
   }
+  async withProvisionedAccount(accountId, work) {
+    const current3 = this.store.db.applicationContext;
+    return current3?.kind === "actor" ? this.store.db.withContext(
+      { ...current3, provisionAccountId: accountId },
+      work
+    ) : work();
+  }
   async createPendingChild(principal, input) {
     await this.ready;
     const { provider } = await this.enabled();
@@ -8100,88 +8357,92 @@ CREATE TRIGGER lb_activation_immutable_child BEFORE UPDATE OF classification ON 
     if (![input.requestId, input.teamId, input.seasonId, input.playerId].every(id4))
       invalid2();
     const signature2 = fingerprint2(principal.accountId, input);
-    const row = await this.store.transaction(async () => {
-      await this.manager(principal, input.teamId, input.seasonId);
-      const existing = await this.store.one(
-        "SELECT * FROM lb_activation_children WHERE request_id=$1",
-        [input.requestId]
-      );
-      if (existing) {
-        if (existing.request_signature !== signature2) conflict2();
-        return existing;
-      }
-      const profile = (await this.store.preparation(principal, input.teamId, input.seasonId)).profiles.find(
-        (item) => item.playerId === input.playerId && item.seasonId === input.seasonId && item.active
-      );
-      if (!profile)
-        throw new AccessError(
-          "NOT_FOUND",
-          404,
-          "The requested object is unavailable."
+    const candidateAccountId = randomUUID7();
+    const row = await this.withProvisionedAccount(
+      candidateAccountId,
+      () => this.store.transaction(async () => {
+        await this.manager(principal, input.teamId, input.seasonId);
+        const existing = await this.store.one(
+          "SELECT * FROM lb_activation_children WHERE request_id=$1",
+          [input.requestId]
         );
-      if ((await this.store.memberships()).some(
-        (item) => item.teamId === input.teamId && item.seasonId === input.seasonId && item.playerId === input.playerId && item.role === "player" && item.revokedAt == null
-      ))
-        throw new AccessError(
-          "PLAYER_ACCOUNT_EXISTS",
-          409,
-          "This player already has an account assignment. Use the verified exact-account linking process."
+        if (existing) {
+          if (existing.request_signature !== signature2) conflict2();
+          return existing;
+        }
+        const profile = (await this.store.preparation(principal, input.teamId, input.seasonId)).profiles.find(
+          (item) => item.playerId === input.playerId && item.seasonId === input.seasonId && item.active
         );
-      const accountId = randomUUID7();
-      let chosen = username2();
-      for (let tries = 0; await this.store.one(
-        "SELECT 1 FROM lb_activation_children WHERE lower(username)=lower($1)",
-        [chosen]
-      ); tries++) {
-        if (tries >= 10)
+        if (!profile)
           throw new AccessError(
-            "IDENTITY_ALLOCATION_UNAVAILABLE",
-            503,
-            "A unique username could not be allocated."
+            "NOT_FOUND",
+            404,
+            "The requested object is unavailable."
           );
-        chosen = username2();
-      }
-      await this.store.execute(
-        "INSERT INTO accounts(id,issuer,subject,classification,adult_verified,strong_auth_enrolled,status) VALUES($1,$2,$3,$4,0,0,$5)",
-        [
+        if ((await this.store.memberships()).some(
+          (item) => item.teamId === input.teamId && item.seasonId === input.seasonId && item.playerId === input.playerId && item.role === "player" && item.revokedAt == null
+        ))
+          throw new AccessError(
+            "PLAYER_ACCOUNT_EXISTS",
+            409,
+            "This player already has an account assignment. Use the verified exact-account linking process."
+          );
+        const accountId = candidateAccountId;
+        let chosen = username2();
+        for (let tries = 0; await this.store.one(
+          "SELECT 1 FROM lb_activation_children WHERE lower(username)=lower($1)",
+          [chosen]
+        ); tries++) {
+          if (tries >= 10)
+            throw new AccessError(
+              "IDENTITY_ALLOCATION_UNAVAILABLE",
+              503,
+              "A unique username could not be allocated."
+            );
+          chosen = username2();
+        }
+        await this.store.execute(
+          "INSERT INTO accounts(id,issuer,subject,classification,adult_verified,strong_auth_enrolled,status) VALUES($1,$2,$3,$4,0,0,$5)",
+          [
+            accountId,
+            "urn:longball:pending-activation",
+            accountId,
+            "child_shared",
+            "disabled"
+          ]
+        );
+        await this.store.execute(
+          "INSERT INTO lb_activation_children(account_id,username,team_id,season_id,player_id,request_id,request_signature,state,created_by,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,'provisioning',$8,$9)",
+          [
+            accountId,
+            chosen,
+            input.teamId,
+            input.seasonId,
+            input.playerId,
+            input.requestId,
+            signature2,
+            principal.accountId,
+            this.store.now()
+          ]
+        );
+        await this.store.execute(
+          "INSERT INTO memberships(account_id,team_id,season_id,role,player_id) VALUES($1,$2,$3,'player',$4)",
+          [accountId, input.teamId, input.seasonId, input.playerId]
+        );
+        await this.store.audit(
+          principal,
+          "identity.child_reserved",
           accountId,
-          "urn:longball:pending-activation",
+          "pending_provider"
+        );
+        return await this.child(
+          principal,
           accountId,
-          "child_shared",
-          "disabled"
-        ]
-      );
-      await this.store.execute(
-        "INSERT INTO lb_activation_children(account_id,username,team_id,season_id,player_id,request_id,request_signature,state,created_by,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,'provisioning',$8,$9)",
-        [
-          accountId,
-          chosen,
           input.teamId,
-          input.seasonId,
-          input.playerId,
-          input.requestId,
-          signature2,
-          principal.accountId,
-          this.store.now()
-        ]
-      );
-      await this.store.execute(
-        "INSERT INTO memberships(account_id,team_id,season_id,role,player_id) VALUES($1,$2,$3,'player',$4)",
-        [accountId, input.teamId, input.seasonId, input.playerId]
-      );
-      await this.store.audit(
-        principal,
-        "identity.child_reserved",
-        accountId,
-        "pending_provider"
-      );
-      return await this.child(
-        principal,
-        accountId,
-        input.teamId,
-        input.seasonId
-      );
-    });
+          input.seasonId
+        );
+      })
+    );
     if (row.state !== "provisioning") return await this.receipt(row);
     const result = await this.providerCall(
       () => provider.provisionPending({
@@ -8198,54 +8459,66 @@ CREATE TRIGGER lb_activation_immutable_child BEFORE UPDATE OF classification ON 
         502,
         "The pending provider identity could not be safely bound."
       );
-    return await this.store.transaction(async () => {
-      const fresh = await this.child(
-        principal,
-        row.account_id,
-        input.teamId,
-        input.seasonId
-      );
-      if (fresh.state !== "provisioning") {
-        if (fresh.provider_issuer !== result.issuer || fresh.provider_subject !== result.subject)
+    return await this.withProvisionedAccount(
+      row.account_id,
+      () => this.store.transaction(async () => {
+        const fresh = await this.child(
+          principal,
+          row.account_id,
+          input.teamId,
+          input.seasonId
+        );
+        if (fresh.state !== "provisioning") {
+          if (fresh.provider_issuer !== result.issuer || fresh.provider_subject !== result.subject)
+            throw new AccessError(
+              "PROVIDER_BINDING_REJECTED",
+              409,
+              "The provider identity requires reconciliation."
+            );
+          return await this.receipt(fresh);
+        }
+        const binding = await this.store.one(
+          "SELECT id FROM accounts WHERE issuer=$1 AND subject=$2 AND id!=$3",
+          [result.issuer, result.subject, row.account_id]
+        );
+        if (binding)
           throw new AccessError(
             "PROVIDER_BINDING_REJECTED",
             409,
             "The provider identity requires reconciliation."
           );
-        return await this.receipt(fresh);
-      }
-      const binding = await this.store.one(
-        "SELECT id FROM accounts WHERE issuer=$1 AND subject=$2 AND id!=$3",
-        [result.issuer, result.subject, row.account_id]
-      );
-      if (binding)
+        await this.store.execute(
+          "UPDATE accounts SET issuer=$1,subject=$2 WHERE id=$3 AND status='disabled'",
+          [result.issuer, result.subject, row.account_id]
+        );
+        await this.store.execute(
+          "UPDATE lb_activation_children SET provider_issuer=$1,provider_subject=$2,state='pending_activation' WHERE account_id=$3",
+          [result.issuer, result.subject, row.account_id]
+        );
+        await this.store.audit(
+          principal,
+          "identity.child_provisioned",
+          row.account_id,
+          "pending_activation"
+        );
+        return await this.receipt(
+          await this.child(
+            principal,
+            row.account_id,
+            input.teamId,
+            input.seasonId
+          )
+        );
+      })
+    ).catch((error) => {
+      if (error && typeof error === "object" && "code" in error && error.code === "23505") {
         throw new AccessError(
           "PROVIDER_BINDING_REJECTED",
           409,
           "The provider identity requires reconciliation."
         );
-      await this.store.execute(
-        "UPDATE accounts SET issuer=$1,subject=$2 WHERE id=$3 AND status='disabled'",
-        [result.issuer, result.subject, row.account_id]
-      );
-      await this.store.execute(
-        "UPDATE lb_activation_children SET provider_issuer=$1,provider_subject=$2,state='pending_activation' WHERE account_id=$3",
-        [result.issuer, result.subject, row.account_id]
-      );
-      await this.store.audit(
-        principal,
-        "identity.child_provisioned",
-        row.account_id,
-        "pending_activation"
-      );
-      return await this.receipt(
-        await this.child(
-          principal,
-          row.account_id,
-          input.teamId,
-          input.seasonId
-        )
-      );
+      }
+      throw error;
     });
   }
   async issueActivation(principal, input) {
@@ -8286,7 +8559,7 @@ CREATE TRIGGER lb_activation_immutable_child BEFORE UPDATE OF classification ON 
           [generation, child.account_id]
         );
         await this.store.execute(
-          "INSERT INTO lb_activation_issues VALUES($1,$2,$3,$4,'preparing',$5)",
+          "INSERT INTO lb_activation_issues(request_id,account_id,signature,generation,state,created_at) VALUES($1,$2,$3,$4,'preparing',$5)",
           [
             input.requestId,
             child.account_id,
@@ -8393,6 +8666,20 @@ CREATE TRIGGER lb_activation_immutable_child BEFORE UPDATE OF classification ON 
   }
   async redeemActivation(input) {
     await this.ready;
+    fields4(input, ["token", "requestId"]);
+    if (typeof input.token !== "string" || !/^[A-Za-z0-9_-]{43}$/.test(input.token) || !id4(input.requestId))
+      unavailable2();
+    return this.store.db.withContext(
+      {
+        kind: "activation_token",
+        tokenHash: hash4(input.token),
+        nowMs: this.store.now()
+      },
+      () => this.redeemWithCapability(input)
+    );
+  }
+  async redeemWithCapability(input) {
+    await this.ready;
     const { provider } = await this.enabled();
     fields4(input, ["token", "requestId"]);
     if (typeof input.token !== "string" || !/^[A-Za-z0-9_-]{43}$/.test(input.token) || !id4(input.requestId))
@@ -8463,13 +8750,28 @@ CREATE TRIGGER lb_activation_immutable_child BEFORE UPDATE OF classification ON 
   }
   async completeActivation(input) {
     await this.ready;
+    fields4(input, ["activationId", "token", "completionProof"]);
+    if (!uuid2(input.activationId) || typeof input.token !== "string" || !/^[A-Za-z0-9_-]{43}$/.test(input.token) || typeof input.completionProof !== "string" || !input.completionProof || input.completionProof.length > 16384)
+      unavailable2();
+    return this.store.db.withContext(
+      {
+        kind: "activation_token",
+        tokenHash: hash4(input.token),
+        activationId: input.activationId,
+        nowMs: this.store.now()
+      },
+      () => this.completeWithCapability(input)
+    );
+  }
+  async completeWithCapability(input) {
+    await this.ready;
     const { provider } = await this.enabled();
-    fields4(input, ["activationId", "completionProof"]);
-    if (!uuid2(input.activationId) || typeof input.completionProof !== "string" || !input.completionProof || input.completionProof.length > 16384)
+    fields4(input, ["activationId", "token", "completionProof"]);
+    if (!uuid2(input.activationId) || typeof input.token !== "string" || !/^[A-Za-z0-9_-]{43}$/.test(input.token) || typeof input.completionProof !== "string" || !input.completionProof || input.completionProof.length > 16384)
       unavailable2();
     const token = await this.store.one(
-      "SELECT * FROM lb_activation_tokens WHERE id=$1",
-      [input.activationId]
+      "SELECT * FROM lb_activation_tokens WHERE id=$1 AND token_hash=$2",
+      [input.activationId, hash4(input.token)]
     );
     if (!token || !["redeeming", "completed"].includes(token.state) || !token.flow_id || !token.flow_expires_at || token.flow_expires_at <= this.store.now())
       unavailable2();
@@ -8488,45 +8790,63 @@ CREATE TRIGGER lb_activation_immutable_child BEFORE UPDATE OF classification ON 
     );
     if (proof.issuer !== child.provider_issuer || proof.subject !== child.provider_subject || proof.flowId !== token.flow_id || proof.credentialConfigured !== true || proof.recoveryMaterialIssued !== true || !Number.isSafeInteger(proof.completedAt) || proof.completedAt < token.created_at || proof.completedAt > this.store.now() + 3e4 || proof.completedAt >= token.flow_expires_at)
       unavailable2();
-    return await this.store.transaction(async () => {
-      const fresh = await this.store.one(
-        "SELECT * FROM lb_activation_tokens WHERE id=$1",
-        [token.id]
-      );
-      if (!["redeeming", "completed"].includes(fresh.state) || fresh.flow_expires_at <= this.store.now())
-        unavailable2();
-      const account2 = await this.store.one(
-        "SELECT classification,status FROM accounts WHERE id=$1",
-        [child.account_id]
-      );
-      if (account2.classification !== "child_shared") unavailable2();
-      if (fresh.state === "completed") {
-        if (account2.status !== "active") unavailable2();
-        return { status: "complete", signInRequired: true };
+    return await this.store.db.withContext(
+      {
+        kind: "activation_token",
+        tokenHash: hash4(input.token),
+        activationId: input.activationId,
+        nowMs: this.store.now(),
+        completionVerified: true
+      },
+      async () => {
+        return await this.store.transaction(async () => {
+          const fresh = await this.store.one(
+            "SELECT * FROM lb_activation_tokens WHERE id=$1",
+            [token.id]
+          );
+          if (!["redeeming", "completed"].includes(fresh.state) || fresh.flow_expires_at <= this.store.now())
+            unavailable2();
+          const account2 = await this.store.one(
+            "SELECT classification,status FROM accounts WHERE id=$1",
+            [child.account_id]
+          );
+          if (account2.classification !== "child_shared") unavailable2();
+          if (fresh.state === "completed") {
+            if (account2.status !== "active") unavailable2();
+            return { status: "complete", signInRequired: true };
+          }
+          if (account2.status !== "disabled") unavailable2();
+          await this.store.execute(
+            "UPDATE accounts SET status='active' WHERE id=$1 AND classification='child_shared'",
+            [child.account_id]
+          );
+          await this.store.execute(
+            "UPDATE lb_activation_children SET state='active' WHERE account_id=$1",
+            [child.account_id]
+          );
+          await this.store.execute(
+            "UPDATE lb_activation_tokens SET state='completed',completed_at=$1 WHERE id=$2",
+            [this.store.now(), token.id]
+          );
+          await this.store.execute(
+            "INSERT INTO audit(id,actor_id,action,object_id,outcome,created_at,club_id,team_id,season_id,context_operation) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)",
+            [
+              randomUUID7(),
+              child.account_id,
+              "identity.activation_completed",
+              child.account_id,
+              "provider_verified_sign_in_required",
+              this.store.now(),
+              child.club_id,
+              child.team_id,
+              child.season_id,
+              "activation.complete"
+            ]
+          );
+          return { status: "complete", signInRequired: true };
+        });
       }
-      if (account2.status !== "disabled") unavailable2();
-      await this.store.execute(
-        "UPDATE accounts SET status='active' WHERE id=$1 AND classification='child_shared'",
-        [child.account_id]
-      );
-      await this.store.execute(
-        "UPDATE lb_activation_children SET state='active' WHERE account_id=$1",
-        [child.account_id]
-      );
-      await this.store.execute(
-        "UPDATE lb_activation_tokens SET state='completed',completed_at=$1 WHERE id=$2",
-        [this.store.now(), token.id]
-      );
-      await this.store.execute("INSERT INTO audit VALUES($1,$2,$3,$4,$5,$6)", [
-        randomUUID7(),
-        child.account_id,
-        "identity.activation_completed",
-        child.account_id,
-        "provider_verified_sign_in_required",
-        this.store.now()
-      ]);
-      return { status: "complete", signInRequired: true };
-    });
+    );
   }
   async requestExistingAccountLink(principal, input) {
     await this.ready;
@@ -8579,7 +8899,7 @@ CREATE TRIGGER lb_activation_immutable_child BEFORE UPDATE OF classification ON 
       if (previous && previous.signature !== signature2) conflict2();
       if (!previous) {
         await this.store.execute(
-          "INSERT INTO lb_activation_verification_requests VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)",
+          "INSERT INTO lb_activation_verification_requests(request_id,kind,actor_id,team_id,season_id,player_id,target_account_id,signature,status,policy_version,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)",
           [
             input.requestId,
             kind,
@@ -8614,7 +8934,10 @@ CREATE TRIGGER lb_activation_immutable_child BEFORE UPDATE OF classification ON 
 async function createPostgresApi(options2) {
   const store = await PostgresStore.open(options2.connectionString, options2.now, { migrationMode: options2.migrationMode });
   try {
-    if (options2.syntheticAuth) await store.seedSynthetic();
+    if (options2.allowOwnerTestFixture && process.env.NODE_ENV !== "test") throw new Error("Owner-credential fixtures are available only in the isolated test process.");
+    const explicitOwnerFixture = options2.allowOwnerTestFixture === true && options2.syntheticAuth === true && options2.seedSynthetic !== false && (options2.migrationMode ?? "apply") === "apply";
+    if (!explicitOwnerFixture) await store.assertRuntimeRole("api");
+    if (options2.syntheticAuth && options2.seedSynthetic !== false) await store.seedSynthetic();
     const media = await PgMediaService.open({ directory: options2.mediaDirectory ?? join4(dirname3(options2.databasePath), "media"), database: store.db, scanner: options2.mediaScanner, now: options2.now });
     const activation = await new PostgresActivationService({ store, provider: options2.activationProvider, policy: options2.activationPolicy }).initialize();
     const port2 = store;
@@ -8675,7 +8998,7 @@ var options = {
 };
 var migrationMode = process.env.LONGBALL_DATABASE_MIGRATION_MODE ?? (syntheticAuth ? "apply" : "verify");
 if (!["apply", "verify"].includes(migrationMode) || process.env.NODE_ENV === "production" && migrationMode !== "verify") throw new Error("The serving API uses verify-only schema mode in production; apply migrations with the dedicated operator command.");
-var api = connectionString ? await createPostgresApi({ ...options, connectionString, migrationMode }) : createApi(options);
+var api = connectionString ? await createPostgresApi({ ...options, connectionString, seedSynthetic: false, migrationMode }) : createApi(options);
 var port = Number(process.env.LONGBALL_API_PORT ?? 4310);
 if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error("Configure a valid API port.");
 api.server.listen(port, host, () => {
