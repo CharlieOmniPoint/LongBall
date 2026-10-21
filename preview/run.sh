@@ -44,6 +44,8 @@ cleanup() {
 trap cleanup EXIT
 trap 'exit 130' INT TERM
 
+publish_status starting
+
 curl --fail --location --retry 3 --max-time 120 \
   https://github.com/cloudflare/cloudflared/releases/download/2026.10.2/cloudflared-linux-amd64 \
   --output /tmp/longball-cloudflared
@@ -58,12 +60,12 @@ tunnel_pid=$!
 for attempt in {1..90}; do
   PREVIEW_URL="$(sed -nE 's/.*(https:\/\/[a-z0-9-]+\.trycloudflare\.com).*/\1/p' /tmp/longball-tunnel.log | sed '/^https:\/\/api\.trycloudflare\.com$/d' | head -1)"
   if [[ -n "$PREVIEW_URL" ]] && curl --silent --fail --connect-timeout 3 --max-time 5 "$PREVIEW_URL" >/tmp/longball-public.html; then
-    if rg -q 'LongBall' /tmp/longball-public.html; then break; fi
+    if python3 -c "from pathlib import Path; import sys; sys.exit('LongBall' not in Path('/tmp/longball-public.html').read_text())"; then break; fi
   fi
   if ! kill -0 "$tunnel_pid" 2>/dev/null; then cat /tmp/longball-tunnel.log; exit 1; fi
   sleep 2
 done
-if [[ -z "$PREVIEW_URL" ]] || ! rg -q 'LongBall' /tmp/longball-public.html; then
+if [[ -z "$PREVIEW_URL" ]] || ! python3 -c "from pathlib import Path; import sys; sys.exit('LongBall' not in Path('/tmp/longball-public.html').read_text())"; then
   cat /tmp/longball-tunnel.log /tmp/longball-http.log
   exit 1
 fi
