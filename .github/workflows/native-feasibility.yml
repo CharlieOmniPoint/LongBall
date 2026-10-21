@@ -44,7 +44,9 @@ jobs:
     timeout-minutes: 60
     strategy:
       fail-fast: false
-      matrix: ${{ fromJSON((github.event_name == 'push' || inputs.build_ios) && '{"include":[{"platform":"android","runner":"ubuntu-24.04"},{"platform":"ios","runner":"macos-15"}]}' || '{"include":[{"platform":"android","runner":"ubuntu-24.04"}]}') }}
+      # Use the standard Intel Mac runner already proved by the unsigned device kit.
+      # The preceding ARM job was cancelled before start because hosted capacity was unavailable.
+      matrix: ${{ fromJSON((github.event_name == 'push' || inputs.build_ios) && '{"include":[{"platform":"android","runner":"ubuntu-24.04"},{"platform":"ios","runner":"macos-15-intel"}]}' || '{"include":[{"platform":"android","runner":"ubuntu-24.04"}]}') }}
     env:
       NATIVE_PLATFORM: ${{ matrix.platform }}
       DISPATCH_UPLOAD: ${{ github.event_name == 'workflow_dispatch' && inputs.upload_artifacts && 'true' || 'false' }}

@@ -1,305 +1,44 @@
-// apps/api/src/pg.ts
-import { AsyncLocalStorage } from "node:async_hooks";
-import { Pool, types } from "pg";
-import { readFile } from "node:fs/promises";
-var contextKey = (context) => JSON.stringify(Object.entries(context).sort(([a], [b]) => a.localeCompare(b)));
-function validateContext(context) {
-  if (!context || typeof context !== "object" || !Number.isSafeInteger(context.nowMs) || context.nowMs < 0) throw new Error("Invalid PostgreSQL application context.");
-  const required = {
-    identity: ["issuer", "subject"],
-    actor: ["accountId", "issuer", "subject"],
-    activation_token: ["tokenHash"],
-    invitation_activation: ["tokenHash"],
-    worker_claim: ["jobKind"],
-    worker_job: ["jobId", "leaseToken", "clubId", "teamId", "seasonId"]
-  };
-  if (!Object.hasOwn(required, context.kind) || required[context.kind].some((name) => typeof context[name] !== "string" || !context[name] || context[name].length > 2048)) throw new Error("Invalid PostgreSQL application context.");
-  if (context.kind === "actor" && (typeof context.strongAuth !== "boolean" || !Number.isSafeInteger(context.authenticatedAtMs) || context.authenticatedAtMs < 0 || context.requestedRole !== void 0 && !["administrator", "manager", "player", "spectator", "default"].includes(context.requestedRole))) throw new Error("Invalid PostgreSQL actor context.");
-  if (["activation_token", "invitation_activation"].includes(context.kind) && "tokenHash" in context && (!/^[a-f0-9]{64}$/.test(context.tokenHash) || "completionVerified" in context && context.completionVerified !== void 0 && context.completionVerified !== true)) throw new Error("Invalid PostgreSQL activation context.");
-  if (context.kind === "worker_claim" && !["award.finalise", "notification.dispatch"].includes(context.jobKind)) throw new Error("Invalid PostgreSQL job context.");
-  if (context.kind === "worker_job" && !/^[a-f0-9]{64}$/.test(context.leaseToken)) throw new Error("Invalid PostgreSQL job capability.");
+// packages/application/src/training-series.ts
+var maximumTrainingOccurrences = 52;
+function requireThat(condition, message) {
+  if (!condition) throw new Error(message);
 }
-function isNarrowing(parent, child) {
-  if (parent.kind === "identity" && child.kind === "actor") return parent.issuer === child.issuer && parent.subject === child.subject;
-  if (parent.kind !== child.kind) return false;
-  for (const [name, value] of Object.entries(parent)) {
-    if (name === "nowMs") continue;
-    if (child[name] !== value) return false;
-  }
-  return child.nowMs >= parent.nowMs;
+function trainingSeriesOccurrences(state, seasonId, recurrenceGroupId) {
+  requireThat(typeof recurrenceGroupId === "string" && recurrenceGroupId.trim().length > 0 && recurrenceGroupId.length <= 150, "A stable training series identity is required.");
+  requireThat(seasonId === state.activeSeasonId, "Choose the current season before editing a training series.");
+  const occurrences = state.training.filter((item) => item.recurrenceGroupId === recurrenceGroupId);
+  requireThat(occurrences.every((item) => item.seasonId === seasonId), "The training series belongs to a different season.");
+  return [...occurrences].sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time) || a.id.localeCompare(b.id));
 }
-var PgDatabase = class {
-  pool;
-  migrationMode;
-  transactions = new AsyncLocalStorage();
-  applications = new AsyncLocalStorage();
-  get applicationContext() {
-    const frame = this.applications.getStore();
-    for (let ancestor = frame; ancestor; ancestor = ancestor.parent) if (!ancestor.active) throw new Error("PostgreSQL application context has ended.");
-    return frame?.value;
-  }
-  async withContext(value, work) {
-    validateContext(value);
-    const immutable = Object.freeze({ ...value });
-    const parent = this.applicationContext;
-    if (parent && !isNarrowing(parent, immutable)) throw new Error("PostgreSQL application context cannot widen an existing scope.");
-    const key = contextKey(immutable);
-    const transaction = this.transactions.getStore();
-    if (transaction && !transaction.active) throw new Error("PostgreSQL transaction has ended.");
-    if (transaction && transaction.applicationKey !== key) throw new Error("Narrow PostgreSQL application context before opening its SQL transaction.");
-    const frame = { value: immutable, active: true, key, parent: this.applications.getStore() };
-    try {
-      return await this.applications.run(frame, work);
-    } finally {
-      frame.active = false;
+function applyTrainingSeries(state, command, validate) {
+  requireThat(command.confirmOccurrences === true, "Review and explicitly confirm the listed training occurrences.");
+  const series = trainingSeriesOccurrences(state, command.seasonId, command.recurrenceGroupId);
+  if (command.type === "training.series_created") {
+    requireThat(series.length === 0, "That training series already exists; use its scheduled-occurrence editor.");
+    requireThat(Array.isArray(command.occurrences) && command.occurrences.length >= 2 && command.occurrences.length <= maximumTrainingOccurrences, "A series needs between 2 and 52 explicit occurrences.");
+    const ids = /* @__PURE__ */ new Set(), dates = /* @__PURE__ */ new Set();
+    for (const draft of command.occurrences) {
+      requireThat(draft.seasonId === command.seasonId && draft.recurrenceGroupId === command.recurrenceGroupId, "Every occurrence must belong to the confirmed series and season.");
+      requireThat(!ids.has(draft.id) && !state.training.some((item) => item.id === draft.id), "Each occurrence must have a new stable identity.");
+      requireThat(!dates.has(draft.date), "Each series occurrence must have a distinct calendar date.");
+      validate(draft);
+      ids.add(draft.id);
+      dates.add(draft.date);
     }
+    state.training.push(...command.occurrences.map((draft) => ({ ...draft, expectedProfileIds: [...draft.expectedProfileIds], status: "scheduled", responses: {}, attendance: {} })));
+    return;
   }
-  constructor(connectionString2, options = {}) {
-    let url;
-    try {
-      url = new URL(connectionString2);
-    } catch {
-      throw new Error("A valid PostgreSQL connection URL is required.");
-    }
-    if (!["postgres:", "postgresql:"].includes(url.protocol)) throw new Error("A PostgreSQL connection URL is required.");
-    this.migrationMode = options.migrationMode ?? "apply";
-    this.pool = new Pool({
-      connectionString: connectionString2,
-      max: options.maximumConnections ?? 10,
-      application_name: options.applicationName ?? "longball-api",
-      connectionTimeoutMillis: 1e4,
-      idleTimeoutMillis: 3e4,
-      options: "-c search_path=longball,pg_catalog -c statement_timeout=15000 -c lock_timeout=10000",
-      types: { getTypeParser: (oid, format) => {
-        if (oid === 114 || oid === 3802) return (value) => value;
-        if (oid === 20) return (value) => {
-          const parsed = Number(value);
-          if (!Number.isSafeInteger(parsed)) throw new Error("PostgreSQL integer exceeds the application range.");
-          return parsed;
-        };
-        return types.getTypeParser(oid, format);
-      } }
-    });
-    this.pool.on("error", () => {
-      console.error("LONGBALL_POSTGRES_IDLE_CONNECTION_ERROR");
-    });
+  const scheduled = series.filter((item) => item.status === "scheduled");
+  requireThat(Array.isArray(command.occurrenceIds) && command.occurrenceIds.length > 0 && command.occurrenceIds.length <= maximumTrainingOccurrences && new Set(command.occurrenceIds).size === command.occurrenceIds.length, "Review a nonempty list of distinct scheduled occurrences.");
+  requireThat(command.occurrenceIds.length === scheduled.length && scheduled.every((item) => command.occurrenceIds.includes(item.id)), "The scheduled series changed; review its exact occurrence list again. Held and cancelled occurrences cannot be edited as scheduled sessions.");
+  if (command.type === "training.series_updated") {
+    for (const occurrence of scheduled) validate({ ...occurrence, ...command.changes });
+    const ids = new Set(command.occurrenceIds);
+    state.training = state.training.map((item) => ids.has(item.id) ? { ...item, time: command.changes.time, venue: command.changes.venue, expectedProfileIds: [...command.changes.expectedProfileIds] } : item);
+  } else {
+    const ids = new Set(command.occurrenceIds);
+    state.training = state.training.map((item) => ids.has(item.id) ? { ...item, status: "cancelled" } : item);
   }
-  async query(sql, values = []) {
-    const application = this.applicationContext;
-    const transaction = this.transactions.getStore();
-    if (transaction) {
-      if (!transaction.active) throw new Error("PostgreSQL transaction has ended.");
-      if (transaction.applicationKey !== (application ? contextKey(application) : null)) throw new Error("PostgreSQL transaction context changed.");
-      return transaction.client.query(sql, [...values]);
-    }
-    if (!application) return this.pool.query(sql, [...values]);
-    return this.inTransaction(() => this.query(sql, values), false);
-  }
-  async transaction(work) {
-    return this.inTransaction(work, true);
-  }
-  async inTransaction(work, lockWrites) {
-    const application = this.applicationContext;
-    const applicationKey = application ? contextKey(application) : null;
-    const existing = this.transactions.getStore();
-    if (existing) {
-      if (!existing.active) throw new Error("PostgreSQL transaction has ended.");
-      if (existing.applicationKey !== applicationKey) throw new Error("PostgreSQL transaction context changed.");
-      return work();
-    }
-    const client = await this.pool.connect();
-    let discard = false;
-    try {
-      await client.query("BEGIN");
-      if (application) await client.query("SELECT set_config('longball.context',$1,true)", [JSON.stringify(application)]);
-      if (lockWrites) await client.query("SELECT pg_advisory_xact_lock(hashtextextended('longball:domain-write:v1', 0))");
-      const transaction = { client, applicationKey, active: true };
-      let result;
-      try {
-        result = await this.transactions.run(transaction, work);
-      } finally {
-        transaction.active = false;
-      }
-      await client.query("COMMIT");
-      return result;
-    } catch (error) {
-      try {
-        await client.query("ROLLBACK");
-      } catch {
-        discard = true;
-      }
-      throw error;
-    } finally {
-      client.release(discard);
-    }
-  }
-  async migrate() {
-    if (this.migrationMode === "verify") {
-      const versions = await this.query("SELECT version FROM longball.schema_migrations ORDER BY version");
-      if (versions.rows.some((row) => row.version > 12)) throw new Error("This PostgreSQL schema is newer than the application. Preserve it and use a compatible build.");
-      if (![2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].every((version) => versions.rows.some((row) => row.version === version))) throw new Error("PostgreSQL migrations are required. Run the separate migrator before starting the runtime.");
-      const protectedTables = ["clubs", "teams", "team_seasons", "game_contexts", "accounts", "memberships", "matches", "documents", "devices", "controller_grants", "controller_history", "events", "streams", "conflicting_submissions", "transfers", "clock_challenges", "clock_mappings", "reconciliation_proposals", "audit", "idempotency", "privacy_requests", "privacy_pending_keys", "jobs", "brand_assets", "brand_slots", "spectator_invitations", "lb_spectator_activation_accounts", "lb_spectator_activation_attempts", "native_app_devices"];
-      const security = await this.query(`SELECT c.relname,c.relrowsecurity,(SELECT count(*)::integer FROM pg_catalog.pg_policy p WHERE p.polrelid=c.oid) AS policies FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='longball' AND c.relname=ANY($1::text[])`, [protectedTables]);
-      if (security.rows.length !== protectedTables.length || security.rows.some((row) => !row.relrowsecurity || row.policies < 1)) throw new Error("PostgreSQL row security is missing. Run the separate migrator before starting runtime.");
-      return;
-    }
-    const migration = await readFile(new URL("../migrations/postgresql/002_runtime.sql", import.meta.url), "utf8");
-    const clockReviewMigration = await readFile(new URL("../migrations/postgresql/003_clock_review.sql", import.meta.url), "utf8");
-    const accountRequestsMigration = await readFile(new URL("../migrations/postgresql/004_account_requests.sql", import.meta.url), "utf8");
-    const scopeSecurityMigration = await readFile(new URL("../migrations/postgresql/005_scope_security.sql", import.meta.url), "utf8");
-    const awardNotificationsMigration = await readFile(new URL("../migrations/postgresql/006_award_notifications.sql", import.meta.url), "utf8");
-    const workerBoundariesMigration = await readFile(new URL("../migrations/postgresql/007_worker_boundaries.sql", import.meta.url), "utf8");
-    const controllerRevocationMigration = await readFile(new URL("../migrations/postgresql/008_controller_revocation.sql", import.meta.url), "utf8");
-    const dispatchClockMigration = await readFile(new URL("../migrations/postgresql/009_dispatch_database_clock.sql", import.meta.url), "utf8");
-    const brandAssetsMigration = await readFile(new URL("../migrations/postgresql/010_brand_assets.sql", import.meta.url), "utf8");
-    const spectatorCapabilitiesMigration = await readFile(new URL("../migrations/postgresql/011_spectator_capabilities.sql", import.meta.url), "utf8");
-    const heicMigration = await readFile(new URL("../migrations/postgresql/012_heic_support.sql", import.meta.url), "utf8");
-    await this.transaction(async () => {
-      const schema = await this.query("SELECT to_regnamespace('longball')::text AS namespace");
-      if (!schema.rows[0]?.namespace) await this.query("CREATE SCHEMA longball");
-      await this.query("CREATE TABLE IF NOT EXISTS longball.schema_migrations(version integer PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())");
-      const versions = await this.query("SELECT version FROM longball.schema_migrations ORDER BY version");
-      if (versions.rows.some((row) => row.version > 12)) throw new Error("This PostgreSQL schema is newer than the application. Preserve it and use a compatible build.");
-      if (!versions.rows.some((row) => row.version === 2)) {
-        await this.query(migration);
-        await this.query("INSERT INTO longball.schema_migrations(version) VALUES(2)");
-      }
-      if (!versions.rows.some((row) => row.version === 3)) {
-        await this.query(clockReviewMigration);
-        await this.query("INSERT INTO longball.schema_migrations(version) VALUES(3)");
-      }
-      if (!versions.rows.some((row) => row.version === 4)) {
-        await this.query(accountRequestsMigration);
-        await this.query("INSERT INTO longball.schema_migrations(version) VALUES(4)");
-      }
-      if (!versions.rows.some((row) => row.version === 5)) {
-        await this.query(scopeSecurityMigration);
-        await this.query("INSERT INTO longball.schema_migrations(version) VALUES(5)");
-      }
-      if (!versions.rows.some((row) => row.version === 6)) {
-        await this.query(awardNotificationsMigration);
-        await this.query("INSERT INTO longball.schema_migrations(version) VALUES(6)");
-      }
-      if (!versions.rows.some((row) => row.version === 7)) {
-        await this.query(workerBoundariesMigration);
-        await this.query("INSERT INTO longball.schema_migrations(version) VALUES(7)");
-      }
-      if (!versions.rows.some((row) => row.version === 8)) {
-        await this.query(controllerRevocationMigration);
-        await this.query("INSERT INTO longball.schema_migrations(version) VALUES(8)");
-      }
-      if (!versions.rows.some((row) => row.version === 9)) {
-        await this.query(dispatchClockMigration);
-        await this.query("INSERT INTO longball.schema_migrations(version) VALUES(9)");
-      }
-      if (!versions.rows.some((row) => row.version === 10)) {
-        await this.query(brandAssetsMigration);
-        await this.query("INSERT INTO longball.schema_migrations(version) VALUES(10)");
-      }
-      if (!versions.rows.some((row) => row.version === 11)) {
-        await this.query(spectatorCapabilitiesMigration);
-        await this.query("INSERT INTO longball.schema_migrations(version) VALUES(11)");
-      }
-      if (!versions.rows.some((row) => row.version === 12)) {
-        await this.query(heicMigration);
-        await this.query("INSERT INTO longball.schema_migrations(version) VALUES(12)");
-      }
-    });
-  }
-  async close() {
-    await this.pool.end();
-  }
-};
-
-// apps/api/src/postgres-store.ts
-import { createHash, randomBytes, randomUUID } from "node:crypto";
-
-// packages/application/src/access.ts
-var AccessError = class extends Error {
-  constructor(code, status, message) {
-    super(message);
-    this.code = code;
-    this.status = status;
-    this.name = "AccessError";
-  }
-  code;
-  status;
-};
-function currentMemberships(principal, memberships, now) {
-  if (principal.status !== "active") return [];
-  return memberships.filter((item) => item.accountId === principal.accountId && item.revokedAt == null && (item.expiresAt == null || item.expiresAt > now));
-}
-function assertTeamRole(principal, memberships, teamId, seasonId, roles, now = Date.now()) {
-  const match = currentMemberships(principal, memberships, now).find((item) => item.teamId === teamId && item.seasonId === seasonId && roles.includes(item.role));
-  if (!match) throw new AccessError("NOT_FOUND", 404, "The requested object is unavailable.");
-  return match;
-}
-function assertAdultAuthority(principal, recent = false, now = Date.now()) {
-  if (principal.status !== "active" || principal.identityClassification !== "adult_individual" || !principal.adultVerified || !principal.strongAuth) {
-    throw new AccessError("ADULT_AUTHORITY_REQUIRED", 403, "A verified adult account with stronger authentication is required.");
-  }
-  if (recent && (principal.authenticatedAt > now + 3e4 || now - principal.authenticatedAt > 3e5)) {
-    throw new AccessError("RECENT_AUTHENTICATION_REQUIRED", 403, "Recent stronger authentication is required.");
-  }
-}
-function assertCanManageTeam(principal, memberships, teamId, seasonId, now = Date.now()) {
-  assertTeamRole(principal, memberships, teamId, seasonId, ["manager"], now);
-  assertAdultAuthority(principal, false, now);
-}
-function assertCanAssignManager(actor, target, memberships, teamId, seasonId, now = Date.now()) {
-  assertTeamRole(actor, memberships, teamId, seasonId, ["administrator"], now);
-  assertAdultAuthority(actor, true, now);
-  assertAdultAuthority(target, false, now);
-  const managers = memberships.filter((item) => item.teamId === teamId && item.role === "manager" && item.revokedAt == null && (item.expiresAt == null || item.expiresAt > now));
-  if (!managers.some((item) => item.accountId === target.accountId) && new Set(managers.map((item) => item.accountId)).size >= 4) {
-    throw new AccessError("MANAGER_LIMIT", 409, "A team can have at most four active managers, including administrators who also manage.");
-  }
-}
-var UNAPPROVED_SHARING_POLICY = {
-  version: "q21-unapproved",
-  approvedBy: null,
-  approvedAt: null,
-  shareScores: false,
-  shareDerivedResults: false
-};
-function filterMatchForPrincipal(input) {
-  const now = input.now ?? Date.now();
-  const current3 = currentMemberships(input.principal, input.memberships, now);
-  const available2 = current3.filter((item) => item.teamId === input.teamId && item.seasonId === input.seasonId && ["manager", "player", "spectator"].includes(item.role));
-  const chosen = input.requestedRole ? available2.find((item) => item.role === input.requestedRole) : available2.find((item) => item.role === "manager") ?? available2.find((item) => item.role === "player") ?? available2[0];
-  if (!chosen) throw new AccessError("NOT_FOUND", 404, "The requested object is unavailable.");
-  const role = assertTeamRole(input.principal, input.memberships, input.teamId, input.seasonId, [chosen.role], now);
-  if (role.role === "manager") {
-    assertAdultAuthority(input.principal, false, now);
-    return { matchId: input.state.config.matchId, teamId: input.teamId, seasonId: input.seasonId, audience: "manager", revision: input.state.revision, state: input.state, lastRecorderSyncAt: input.lastSyncAt };
-  }
-  const scoresAllowed = input.policy.approvedBy !== null && input.policy.approvedAt !== null && input.policy.shareScores;
-  const dto = {
-    matchId: input.state.config.matchId,
-    teamId: input.teamId,
-    seasonId: input.seasonId,
-    audience: role.role,
-    revision: input.state.revision,
-    status: input.state.status,
-    score: scoresAllowed ? input.state.score : null,
-    halfTimeScore: scoresAllowed ? input.state.halfTimeScore : null,
-    sharingPolicyVersion: input.policy.version,
-    sharingRestricted: !scoresAllowed,
-    lastRecorderSyncAt: input.lastSyncAt,
-    ...input.state.config.fixture ? { opponent: input.state.config.fixture.opponent, playedDate: input.state.config.fixture.playedDate, homeAway: input.state.config.fixture.homeAway } : {},
-    freshness: input.lastSyncAt !== null && now - input.lastSyncAt <= 15e3 ? "last_synced" : "updates_delayed"
-  };
-  if (role.role === "player" && role.playerId) {
-    const ownIntervals = input.state.intervals.filter((item) => item.playerId === role.playerId);
-    dto.ownRecord = {
-      playerId: role.playerId,
-      attendance: input.state.attendance[role.playerId] ?? "not_recorded",
-      playingMs: ownIntervals.filter((item) => item.state === "playing").reduce((sum, item) => sum + item.endMs - item.startMs, 0),
-      intervals: ownIntervals,
-      completeness: input.state.recoveryRequired ? "review_required" : "recorded_to_last_sync"
-    };
-  }
-  return dto;
 }
 
 // packages/domain/src/live-events.ts
@@ -311,22 +50,22 @@ function duration(value, label) {
 }
 function effectiveTime(state, requested) {
   if (state.half !== 1 && state.half !== 2) throw new Error("An effective match event requires a started half.");
-  const time2 = requested ?? { half: state.half, halfElapsedMs: state.halfActiveMs, matchElapsedMs: state.matchActiveMs };
-  if (time2.half !== 1 && time2.half !== 2) throw new Error("Effective half must be one or two.");
-  duration(time2.halfElapsedMs, "Effective half time");
-  duration(time2.matchElapsedMs, "Effective match time");
-  if (time2.half > state.half) throw new Error("Effective time cannot refer to a half that has not started.");
+  const time3 = requested ?? { half: state.half, halfElapsedMs: state.halfActiveMs, matchElapsedMs: state.matchActiveMs };
+  if (time3.half !== 1 && time3.half !== 2) throw new Error("Effective half must be one or two.");
+  duration(time3.halfElapsedMs, "Effective half time");
+  duration(time3.matchElapsedMs, "Effective match time");
+  if (time3.half > state.half) throw new Error("Effective time cannot refer to a half that has not started.");
   const firstHalf = state.firstHalfDurationMs;
-  if (time2.half === 2 && firstHalf === null) throw new Error("Second-half time requires the recorded actual first-half duration.");
-  const expected = (time2.half === 2 ? firstHalf ?? 0 : 0) + time2.halfElapsedMs;
-  if (expected !== time2.matchElapsedMs) throw new Error("Effective cumulative time must use actual first-half duration and exclude half-time.");
-  const maximum = time2.half === 1 && firstHalf !== null ? firstHalf : state.halfActiveMs;
-  if (time2.halfElapsedMs > maximum || time2.matchElapsedMs > state.matchActiveMs) throw new Error("Effective time cannot invent future active play.");
-  return { ...time2 };
+  if (time3.half === 2 && firstHalf === null) throw new Error("Second-half time requires the recorded actual first-half duration.");
+  const expected = (time3.half === 2 ? firstHalf ?? 0 : 0) + time3.halfElapsedMs;
+  if (expected !== time3.matchElapsedMs) throw new Error("Effective cumulative time must use actual first-half duration and exclude half-time.");
+  const maximum = time3.half === 1 && firstHalf !== null ? firstHalf : state.halfActiveMs;
+  if (time3.halfElapsedMs > maximum || time3.matchElapsedMs > state.matchActiveMs) throw new Error("Effective time cannot invent future active play.");
+  return { ...time3 };
 }
-function wasOnPitch(state, playerId, time2) {
-  if (time2.matchElapsedMs === state.matchActiveMs && time2.half === state.half && state.lineup.some((item) => item.playerId === playerId)) return true;
-  return state.intervals.some((interval) => interval.playerId === playerId && interval.state === "playing" && interval.half === time2.half && interval.startMs <= time2.matchElapsedMs && interval.endMs >= time2.matchElapsedMs);
+function wasOnPitch(state, playerId, time3) {
+  if (time3.matchElapsedMs === state.matchActiveMs && time3.half === state.half && state.lineup.some((item) => item.playerId === playerId)) return true;
+  return state.intervals.some((interval) => interval.playerId === playerId && interval.state === "playing" && interval.half === time3.half && interval.startMs <= time3.matchElapsedMs && interval.endMs >= time3.matchElapsedMs);
 }
 function goalRecord(state, details, eventId, recordedAtMs) {
   if (details.beneficiary !== "us" && details.beneficiary !== "opposition") throw new Error("Goal beneficiary is invalid.");
@@ -357,8 +96,102 @@ function scoresFromGoals(state, goals) {
   };
 }
 
+// packages/domain/src/policy.ts
+function fail(message) {
+  throw new Error(message);
+}
+function keys(value, fields5, label) {
+  if (!value || typeof value !== "object" || Array.isArray(value) || Object.keys(value).some((key) => !fields5.includes(key)) || fields5.some((key) => !Object.hasOwn(value, key))) fail(`Use the exact versioned ${label} fields.`);
+}
+function nonnegative(value, label) {
+  if (!Number.isSafeInteger(value) || Number(value) < 0) fail(`${label} must be a nonnegative safe integer.`);
+}
+function keeperRank(config, playerId) {
+  const saved = config.profileSnapshot?.find((profile) => profile.playerId === playerId);
+  return saved ? saved.preferences.indexOf("GK") + 1 : config.players.find((player) => player.id === playerId)?.goalkeeperChoice ?? 0;
+}
+function initialKeeperPolicy(config) {
+  return { keeperMode: config.fixedKeeperId ? "sole_fixed" : "common_pool", fixedKeeperPlayerSeasonId: config.fixedKeeperId };
+}
+function assertMatchPolicyProposal(value, config) {
+  keys(value, ["payload", "applicability", "softPreferences"], "match policy proposal");
+  const payload = value.payload;
+  keys(payload, ["keeperMode", "fixedKeeperPlayerSeasonId", "minimumStintMs", "batchLimit", "scoreLeadThreshold", "returnToNormalEnabled"], "canonical policy payload");
+  if (!["sole_fixed", "common_pool"].includes(String(payload.keeperMode))) fail("Choose an explicit supported goalkeeper policy.");
+  if (payload.keeperMode === "common_pool" && payload.fixedKeeperPlayerSeasonId !== null) fail("Common-pool policy cannot create a fixed-keeper exemption.");
+  if (payload.keeperMode === "sole_fixed" && (typeof payload.fixedKeeperPlayerSeasonId !== "string" || !config.selectedPlayerIds.includes(payload.fixedKeeperPlayerSeasonId) || ![1, 2].includes(keeperRank(config, payload.fixedKeeperPlayerSeasonId)))) fail("The fixed keeper must be a selected first- or second-choice goalkeeper.");
+  nonnegative(payload.minimumStintMs, "Preferred minimum stint");
+  if (!Number.isSafeInteger(payload.batchLimit) || Number(payload.batchLimit) < 1 || Number(payload.batchLimit) > 11) fail("Choose a batch preference from one to eleven.");
+  if (!Number.isSafeInteger(payload.scoreLeadThreshold) || Number(payload.scoreLeadThreshold) < 1 || typeof payload.returnToNormalEnabled !== "boolean") fail("Choose a positive score threshold and an explicit return-to-normal option.");
+  keys(value.applicability, ["minimumStint", "batchLimit", "q07"], "policy applicability");
+  if (value.applicability.minimumStint !== "soft_preference" || value.applicability.batchLimit !== "soft_preference" || value.applicability.q07 !== "unapproved") fail("Ordinary stint and batch settings remain soft. This command cannot approve Q07 or introduce a mandatory constraint.");
+  keys(value.softPreferences, ["halfBufferFraction"], "soft preferences");
+  const fraction = value.softPreferences.halfBufferFraction;
+  if (typeof fraction !== "number" || !Number.isFinite(fraction) || fraction < 0 || fraction > 0.49) fail("The soft half buffer must be between zero and 0.49.");
+}
+function assertInitialLineupProposal(config, value) {
+  if (!Array.isArray(value) || value.length !== config.pitchPlaces || new Set(value.map((item) => item?.playerId)).size !== value.length || new Set(value.map((item) => item?.slotId)).size !== value.length) fail("A starting-lineup proposal needs distinct selected players and slots for the saved format.");
+  for (const allocation of value) {
+    keys(allocation, ["slotId", "position", "playerId"], "lineup proposal");
+    if (typeof allocation.playerId !== "string" || !config.selectedPlayerIds.includes(allocation.playerId) || typeof allocation.slotId !== "string" || !allocation.slotId || typeof allocation.position !== "string" || !allocation.position) fail("Starting-lineup proposals must use the selected saved match squad.");
+    if (config.slots && !config.slots.some((slot) => slot.slotId === allocation.slotId && slot.position === allocation.position)) fail("Starting-lineup proposals must use the saved formation slots and roles.");
+    const saved = config.profileSnapshot?.find((profile) => profile.playerId === allocation.playerId);
+    if (saved && !saved.eligiblePositions.includes(allocation.position)) fail("A proposed role is outside the saved player eligibility.");
+  }
+  const keepers = value.filter((allocation) => allocation.position === "GK");
+  if (keepers.length !== 1 || ![1, 2].includes(keeperRank(config, keepers[0].playerId)) || config.fixedKeeperId && keepers[0].playerId !== config.fixedKeeperId) fail("A lineup proposal needs one qualifying keeper consistent with its explicit policy.");
+}
+function policyAtBoundary(state, half2, activeMs, maximumRevision = Infinity) {
+  const matching = (state.policyHistory ?? []).filter((policy) => policy.revision <= maximumRevision && policy.effective.half <= half2 && policy.effective.matchElapsedMs <= activeMs);
+  return matching.length ? matching[matching.length - 1] : null;
+}
+function fixedKeeperAtBoundary(state, half2, activeMs, maximumRevision = Infinity) {
+  const policy = policyAtBoundary(state, half2, activeMs, maximumRevision);
+  return policy ? policy.payload.keeperMode === "sole_fixed" ? policy.payload.fixedKeeperPlayerSeasonId : null : state.config.fixedKeeperId;
+}
+function currentFixedKeeper(state) {
+  return state.activePolicy ? state.activePolicy.payload.keeperMode === "sole_fixed" ? state.activePolicy.payload.fixedKeeperPlayerSeasonId : null : state.config.fixedKeeperId;
+}
+function assertPolicyBoundary(state, time3) {
+  keys(time3, ["half", "halfElapsedMs", "matchElapsedMs"], "policy boundary");
+  nonnegative(time3.halfElapsedMs, "Policy half time");
+  nonnegative(time3.matchElapsedMs, "Policy match time");
+  if (time3.half !== state.half || ![0, 1, 2].includes(time3.half)) fail("Policy changes must use the current preparation or half boundary.");
+  const expected = (time3.half === 2 ? state.firstHalfDurationMs ?? fail("The actual first-half duration is required.") : 0) + time3.halfElapsedMs;
+  if (expected !== time3.matchElapsedMs || time3.matchElapsedMs !== state.matchActiveMs || time3.halfElapsedMs !== state.halfActiveMs) fail("Policy changes are prospective only; the captured boundary must match the current continuous checkpoint.");
+}
+function applyPolicyChange(state, event, previousRevision) {
+  const allowed = ["id", "sample", "actorId", "type", "policySchemaVersion", "policyVersion", "previousPolicyVersion", "sourceRevision", "effective", "reason", "payload", "applicability", "softPreferences", "resetPositionMode"];
+  if (Object.keys(event).some((key) => !allowed.includes(key))) fail("Use only the documented versioned policy command fields.");
+  nonnegative(event.policyVersion, "Policy version");
+  nonnegative(event.previousPolicyVersion, "Previous policy version");
+  nonnegative(event.sourceRevision, "Policy source revision");
+  assertMatchPolicyProposal({ payload: event.payload, applicability: event.applicability, softPreferences: event.softPreferences }, state.config);
+  if (event.policySchemaVersion !== 1 || event.sourceRevision !== previousRevision || event.previousPolicyVersion !== (state.activePolicy?.policyVersion ?? 0) || event.policyVersion !== event.previousPolicyVersion + 1) fail("The policy source or version changed. Review the current match before confirming again.");
+  if (typeof event.reason !== "string" || event.reason.trim().length < 5 || event.reason.length > 500) fail("Record a concise reason for this prospective settings change.");
+  if (event.resetPositionMode !== void 0 && typeof event.resetPositionMode !== "boolean") fail("A position-mode reset must be explicit.");
+  assertPolicyBoundary(state, event.effective);
+  const previous = state.activePolicy?.payload ?? initialKeeperPolicy(state.config);
+  if (event.payload.keeperMode !== previous.keeperMode || event.payload.fixedKeeperPlayerSeasonId !== previous.fixedKeeperPlayerSeasonId) fail("Q07 goalkeeper-policy transitions are unapproved. This service has no explicit experimental transition gate; retain the proposal for policy review.");
+  const details = { policySchemaVersion: 1, policyVersion: event.policyVersion, previousPolicyVersion: event.previousPolicyVersion, sourceRevision: event.sourceRevision, effective: cloneValue(event.effective), reason: event.reason, payload: cloneValue(event.payload), applicability: cloneValue(event.applicability), softPreferences: cloneValue(event.softPreferences), ...event.resetPositionMode === void 0 ? {} : { resetPositionMode: event.resetPositionMode } };
+  const record = { ...details, eventId: event.id, revision: previousRevision + 1, recordedAtMs: event.sample.wallTimeMs, actorId: event.actorId ?? null };
+  const activePolicy = { ...cloneValue(record), positionMode: event.resetPositionMode ? "normal" : state.activePolicy?.positionMode ?? "normal", manualResetAtSourceRevision: event.resetPositionMode ? previousRevision + 1 : null };
+  return { ...state, activePolicy, policyHistory: [...state.policyHistory ?? [], record] };
+}
+function updatePolicyPositionMode(state, nextRevision) {
+  const policy = state.activePolicy;
+  if (!policy || policy.manualResetAtSourceRevision === nextRevision) return state;
+  const leading = state.score.for - state.score.against >= policy.payload.scoreLeadThreshold;
+  const mode = leading ? "adventurous" : policy.payload.returnToNormalEnabled ? "normal" : policy.positionMode;
+  return mode === policy.positionMode ? state : { ...state, activePolicy: { ...policy, positionMode: mode } };
+}
+
 // packages/domain/src/participation-corrections.ts
 var copyLineup = (lineup) => lineup.map((item) => ({ ...item }));
+function policyStateAt(state, half2, activeMs, maximumRevision = Infinity) {
+  const policy = policyAtBoundary(state, half2, activeMs, maximumRevision);
+  return { ...state, activePolicy: policy ? { ...policy, positionMode: "normal", manualResetAtSourceRevision: null } : void 0 };
+}
 var compare = (left, right) => (left.effective?.half ?? 0) - (right.effective?.half ?? 0) || (left.effective?.matchElapsedMs ?? 0) - (right.effective?.matchElapsedMs ?? 0) || left.order - right.order;
 function knownBoundary(state, eventId) {
   const audit = state.audit?.find((item) => item.eventId === eventId);
@@ -399,10 +232,10 @@ function applyFact(current3, fact) {
     if (fact.lineup) current3.lineup = copyLineup(fact.lineup);
   } else current3.lineup = copyLineup(fact.lineup);
 }
-function factsAt(state, facts, half, activeMs) {
+function factsAt(state, facts, half2, activeMs) {
   const current3 = initial(state);
   for (const fact of [...facts].sort(compare)) {
-    if (fact.effective && (fact.effective.half > half || fact.effective.matchElapsedMs > activeMs))
+    if (fact.effective && (fact.effective.half > half2 || fact.effective.matchElapsedMs > activeMs))
       continue;
     applyFact(current3, fact);
   }
@@ -614,7 +447,7 @@ function reprojectParticipation(state, correction, validateLineup2) {
     if (fact.type === "half.started" || fact.type === "lineup.committed" || fact.type === "availability.changed" && fact.lineup) {
       const errors = validateLineup2(
         {
-          ...state,
+          ...policyStateAt(state, fact.effective?.half ?? 0, fact.effective?.matchElapsedMs ?? 0, fact.order + 1),
           attendance: current3.attendance,
           availability: current3.availability
         },
@@ -628,24 +461,25 @@ function reprojectParticipation(state, correction, validateLineup2) {
       throw new Error("Corrected evidence refers to an unstarted half.");
   }
   const firstEnd = state.firstHalfDurationMs ?? (state.half === 1 ? state.matchActiveMs : 0);
-  for (const half of [1, 2]) {
-    if (half > state.half) continue;
-    const start = half === 1 ? 0 : firstEnd;
-    const end = half === 1 ? firstEnd : state.matchActiveMs;
+  for (const half2 of [1, 2]) {
+    if (half2 > state.half) continue;
+    const start = half2 === 1 ? 0 : firstEnd;
+    const end = half2 === 1 ? firstEnd : state.matchActiveMs;
     const boundaries = [
       .../* @__PURE__ */ new Set([
         start,
         end,
-        ...sorted.filter((fact) => !fact.voided && fact.effective?.half === half).map((fact) => fact.effective.matchElapsedMs)
+        ...sorted.filter((fact) => !fact.voided && fact.effective?.half === half2).map((fact) => fact.effective.matchElapsedMs),
+        ...(state.policyHistory ?? []).filter((policy) => policy.effective.half === half2).map((policy) => policy.effective.matchElapsedMs)
       ])
     ].sort((a, b) => a - b);
     for (let index = 0; index + 1 < boundaries.length; index++) {
       const from = boundaries[index], to = boundaries[index + 1];
       if (from < start || to > end || to <= from) continue;
-      const actual = factsAt(state, sorted, half, from);
+      const actual = factsAt(state, sorted, half2, from);
       const errors = validateLineup2(
         {
-          ...state,
+          ...policyStateAt(state, half2, from),
           attendance: actual.attendance,
           availability: actual.availability
         },
@@ -668,17 +502,20 @@ function reprojectParticipation(state, correction, validateLineup2) {
           slotId: allocation?.slotId ?? null,
           startMs: from,
           endMs: to,
-          half
+          half: half2
         });
       }
       const availablePlayerIds = state.config.selectedPlayerIds.filter(
         (id4) => actual.attendance[id4] === "present" && actual.availability[id4]
       );
+      const policy = policyAtBoundary(state, half2, from);
+      const fixedKeeperId = fixedKeeperAtBoundary(state, half2, from);
       targetIntervals.push({
         durationMs: to - from,
         availablePlayerIds,
         pitchPlaces: state.config.pitchPlaces,
-        fixedKeeperId: state.config.fixedKeeperId && availablePlayerIds.includes(state.config.fixedKeeperId) ? state.config.fixedKeeperId : null
+        fixedKeeperId: fixedKeeperId && availablePlayerIds.includes(fixedKeeperId) ? fixedKeeperId : null,
+        ...policy ? { policyVersion: policy.policyVersion } : {}
       });
     }
   }
@@ -714,7 +551,7 @@ function reprojectParticipation(state, correction, validateLineup2) {
 }
 
 // packages/domain/src/index.ts
-var ENGINE_VERSION = "synthetic-live-3";
+var ENGINE_VERSION = "synthetic-live-4";
 function integer(value, label) {
   if (!Number.isSafeInteger(value) || value < 0) throw new Error(`${label} must be a nonnegative safe integer.`);
 }
@@ -753,6 +590,8 @@ function createMatch(config) {
   if (config.slots && (config.slots.length !== config.pitchPlaces || new Set(config.slots.map((slot) => slot.slotId)).size !== config.slots.length || config.slots.filter((slot) => slot.position === "GK").length !== 1 || config.slots.some((slot) => !slot.slotId || !slot.position))) throw new Error("Saved formation needs one distinct slot per pitch place and exactly one goalkeeper.");
   if (config.profileSnapshot && (new Set(config.profileSnapshot.map((profile) => profile.playerId)).size !== config.profileSnapshot.length || config.profileSnapshot.some((profile) => !ids.includes(profile.playerId) || profile.preferences.length > 3 || new Set(profile.preferences).size !== profile.preferences.length || new Set(profile.eligiblePositions).size !== profile.eligiblePositions.length))) throw new Error("Match profile snapshots must belong to distinct roster players with distinct preferences and eligibility.");
   if (config.fixedKeeperId !== null && (!config.selectedPlayerIds.includes(config.fixedKeeperId) || ![1, 2].includes(keeperChoice(config, config.fixedKeeperId)))) throw new Error("Fixed keeper must be a selected first- or second-choice goalkeeper.");
+  if (config.initialPolicyProposal !== void 0) assertMatchPolicyProposal(config.initialPolicyProposal, config);
+  if (config.initialLineupProposal !== void 0) assertInitialLineupProposal(config, config.initialLineupProposal);
   return {
     config: cloneValue(config),
     status: "preparation",
@@ -800,6 +639,7 @@ function upgradeMatchState(previous) {
 }
 function validateLineup(state, lineup, requireComplete = true) {
   const errors = [];
+  const fixedKeeperId = currentFixedKeeper(state);
   if (lineup.length > state.config.pitchPlaces || requireComplete && lineup.length !== state.config.pitchPlaces) errors.push(`Choose exactly ${state.config.pitchPlaces} pitch players.`);
   if (new Set(lineup.map((item) => item.playerId)).size !== lineup.length) errors.push("A player can occupy only one pitch place.");
   if (new Set(lineup.map((item) => item.slotId)).size !== lineup.length) errors.push("Each pitch slot must be unique.");
@@ -817,13 +657,13 @@ function validateLineup(state, lineup, requireComplete = true) {
   const keepers = lineup.filter((item) => item.position === "GK");
   if (requireComplete && keepers.length !== 1) errors.push("Choose exactly one goalkeeper.");
   if (keepers.length > 1) errors.push("Only one goalkeeper place is allowed.");
-  for (const keeper of keepers) {
-    const player = state.config.players.find((item) => item.id === keeper.playerId);
-    if (!player || ![1, 2].includes(keeperChoice(state.config, keeper.playerId))) errors.push("Goalkeeper cover requires a first- or second-choice eligible keeper.");
-    if (state.config.fixedKeeperId && keeper.playerId !== state.config.fixedKeeperId) errors.push("The fixed keeper policy cannot be changed by moving a pitch piece.");
+  for (const keeper2 of keepers) {
+    const player = state.config.players.find((item) => item.id === keeper2.playerId);
+    if (!player || ![1, 2].includes(keeperChoice(state.config, keeper2.playerId))) errors.push("Goalkeeper cover requires a first- or second-choice eligible keeper.");
+    if (fixedKeeperId && keeper2.playerId !== fixedKeeperId) errors.push("The fixed keeper policy cannot be changed by moving a pitch piece.");
   }
   const qualifying = state.config.players.filter((player) => available(state, player.id) && [1, 2].includes(keeperChoice(state.config, player.id)));
-  if (state.config.fixedKeeperId && qualifying.length > 1) errors.push("Multiple qualifying available keepers require a reviewed shared-keeper policy.");
+  if (fixedKeeperId && qualifying.length > 1) errors.push("Multiple qualifying available keepers require a reviewed shared-keeper policy.");
   return [...new Set(errors)];
 }
 function readClock(state, sample) {
@@ -852,6 +692,7 @@ function accrue(state, sample) {
   const clock = readClock(state, sample);
   if (clock.recoveryRequired) throw new Error("Time needs checking. Confirm the clock against a referee or trusted source.");
   const durationMs = clock.matchActiveMs - state.matchActiveMs;
+  const fixedKeeperId = currentFixedKeeper(state);
   if (!isRunning(state) || durationMs === 0) return state;
   if (state.half !== 1 && state.half !== 2) throw new Error("No active half.");
   const intervals = state.config.selectedPlayerIds.map((playerId) => {
@@ -877,7 +718,8 @@ function accrue(state, sample) {
       durationMs,
       availablePlayerIds: state.config.selectedPlayerIds.filter((id4) => available(state, id4)),
       pitchPlaces: state.config.pitchPlaces,
-      fixedKeeperId: state.config.fixedKeeperId && available(state, state.config.fixedKeeperId) ? state.config.fixedKeeperId : null
+      fixedKeeperId: fixedKeeperId && available(state, fixedKeeperId) ? fixedKeeperId : null,
+      ...state.activePolicy ? { policyVersion: state.activePolicy.policyVersion } : {}
     }]
   };
 }
@@ -908,7 +750,16 @@ function reduceMatch(previous, event) {
   let auditPrior = null;
   let auditValue = event;
   const reviewedParticipationEntry = (event.type === "lineup.committed" || event.type === "availability.changed") && event.effective !== void 0 && event.sourceRevision !== void 0 && Boolean(event.lateEntryReason?.trim());
-  if (event.type === "availability.changed" && event.effective && !reviewedParticipationEntry) {
+  if (event.type === "policy.changed") {
+    const latest = accrue(previous, event.sample);
+    const boundary = event.effective;
+    if (!boundary || boundary.half !== previous.half || !Number.isSafeInteger(boundary.matchElapsedMs) || boundary.matchElapsedMs < previous.matchActiveMs || boundary.matchElapsedMs > latest.matchActiveMs) throw new Error("A policy change must use its captured current continuous boundary, never earlier history or future play.");
+    if (isRunning(previous)) {
+      if (!previous.anchor) throw new Error("A continuous anchor is required for prospective policy changes.");
+      const boundarySample = { ...event.sample, monotonicMs: Math.floor(previous.anchor.sample.monotonicMs) + boundary.matchElapsedMs - previous.anchor.matchActiveMs };
+      state = accrue(previous, boundarySample);
+    } else state = latest;
+  } else if (event.type === "availability.changed" && event.effective && !reviewedParticipationEntry) {
     if (previous.half === 0) throw new Error("Preparation availability has no active-time boundary.");
     const latest = accrue(previous, event.sample);
     const boundary = effectiveTime(latest, event.effective);
@@ -922,6 +773,14 @@ function reduceMatch(previous, event) {
     auditEffective = boundary;
   } else if (event.type !== "clock.recovery_required" && event.type !== "clock.corrected") state = accrue(previous, event.sample);
   switch (event.type) {
+    case "policy.changed": {
+      auditPrior = state.activePolicy ?? null;
+      state = applyPolicyChange(state, event, previous.revision);
+      auditEffective = event.effective.half === 0 ? null : { ...event.effective, half: event.effective.half };
+      auditValue = state.policyHistory?.at(-1);
+      state = accrue(state, event.sample);
+      break;
+    }
     case "attendance.recorded": {
       selectedPlayer(state, event.playerId);
       if (!["present", "absent", "excused", "not_selected", "not_recorded"].includes(event.status)) throw new Error("Attendance status is invalid.");
@@ -978,11 +837,11 @@ function reduceMatch(previous, event) {
     case "half.started": {
       if (state.status !== "preparation" && state.status !== "half_time") throw new Error("A half can start only from preparation or half-time.");
       assertLineup(state, state.stagedLineup);
-      const half = state.status === "preparation" ? 1 : 2;
+      const half2 = state.status === "preparation" ? 1 : 2;
       state = {
         ...state,
-        half,
-        status: half === 1 ? "first_half_running" : "second_half_running",
+        half: half2,
+        status: half2 === 1 ? "first_half_running" : "second_half_running",
         lineup: cloneLineup(state.stagedLineup),
         halfActiveMs: 0,
         anchor: { sample: { ...event.sample }, halfActiveMs: 0, matchActiveMs: state.matchActiveMs }
@@ -1134,6 +993,7 @@ function reduceMatch(previous, event) {
     default:
       throw new Error("Unsupported match command type.");
   }
+  state = updatePolicyPositionMode(state, previous.revision + 1);
   const audit = {
     eventId: event.id,
     type: event.type,
@@ -1225,98 +1085,287 @@ function currentTargets(state, sample) {
   return calculateTargets(projected.targetIntervals, state.config.selectedPlayerIds);
 }
 
-// fixtures/roma.synthetic.json
-var roma_synthetic_default = {
-  synthetic: true,
-  teamId: "synthetic-roma-u10",
-  season: "2026/27",
-  timeZone: "Europe/London",
-  pitchPlaces: 7,
-  plannedHalfDurationMs: 15e5,
-  players: [
-    {
-      id: "synthetic-player-01",
-      displayName: "Player 01",
-      available: true,
-      goalkeeperChoice: 1
+// packages/application/src/match-plans.ts
+var copy = (value) => JSON.parse(JSON.stringify(value));
+function assert(value, message) {
+  if (!value) throw new Error(message);
+}
+function shape(value, keys2) {
+  assert(
+    value && typeof value === "object" && !Array.isArray(value) && Object.keys(value).every((key) => keys2.includes(key)),
+    "Match-plan data contains unsupported fields."
+  );
+}
+function required(value, maximum, label) {
+  assert(
+    typeof value === "string" && value.trim() && value.trim().length <= maximum && !/[\u0000-\u001f\u007f]/.test(value),
+    `${label} is required and must be at most ${maximum} characters.`
+  );
+  return value.trim();
+}
+var canonical2 = (value) => Array.isArray(value) ? `[${value.map(canonical2).join(",")}]` : value && typeof value === "object" ? `{${Object.entries(value).sort(([a], [b]) => a.localeCompare(b)).map(([key, item]) => `${JSON.stringify(key)}:${canonical2(item)}`).join(",")}}` : JSON.stringify(value);
+function keeper(profile) {
+  return profile.eligiblePositions.includes("GK") && ["GK"].includes(profile.preferences[0]) || profile.eligiblePositions.includes("GK") && profile.preferences[1] === "GK";
+}
+function latestMatchPlans(state) {
+  const map = /* @__PURE__ */ new Map();
+  for (const plan of state.matchPlans ?? [])
+    if (!map.has(plan.id) || map.get(plan.id).version < plan.version)
+      map.set(plan.id, plan);
+  return [...map.values()].filter(
+    (plan) => plan.teamId === state.team.id && plan.seasonId === state.activeSeasonId
+  ).map(copy);
+}
+function validateMatchPlanSettings(settings) {
+  shape(settings, ["payload", "applicability", "softPreferences"]);
+  shape(settings.payload, [
+    "keeperMode",
+    "fixedKeeperPlayerSeasonId",
+    "minimumStintMs",
+    "batchLimit",
+    "scoreLeadThreshold",
+    "returnToNormalEnabled"
+  ]);
+  shape(settings.applicability, ["minimumStint", "batchLimit", "q07"]);
+  shape(settings.softPreferences, ["halfBufferFraction"]);
+  const p = settings.payload;
+  assert(
+    ["sole_fixed", "common_pool"].includes(p.keeperMode) && (p.fixedKeeperPlayerSeasonId === null || typeof p.fixedKeeperPlayerSeasonId === "string" && p.fixedKeeperPlayerSeasonId.length > 0),
+    "Choose a known keeper proposal."
+  );
+  assert(
+    p.keeperMode === "sole_fixed" === (p.fixedKeeperPlayerSeasonId !== null),
+    "Fixed keeper identity must agree with the keeper proposal."
+  );
+  assert(
+    Number.isSafeInteger(p.minimumStintMs) && p.minimumStintMs >= 0 && Number.isSafeInteger(p.batchLimit) && p.batchLimit >= 1 && p.batchLimit <= 11 && Number.isSafeInteger(p.scoreLeadThreshold) && p.scoreLeadThreshold >= 1 && typeof p.returnToNormalEnabled === "boolean",
+    "Review minimum spell, batch preference, threshold and explicit return choice."
+  );
+  assert(
+    settings.applicability.minimumStint === "soft_preference" && settings.applicability.batchLimit === "soft_preference" && settings.applicability.q07 === "unapproved",
+    "A saved plan cannot approve Q07 or convert preferences into hard rules."
+  );
+  assert(
+    Number.isFinite(settings.softPreferences.halfBufferFraction) && settings.softPreferences.halfBufferFraction >= 0 && settings.softPreferences.halfBufferFraction <= 0.49,
+    "Half buffer must be a fraction between zero and 0.49."
+  );
+}
+function validateProposal(state, fixture, formation, allocations, settings) {
+  assert(
+    formation.format === fixture.format && formation.slots.length === fixture.format && formation.slots.filter((slot) => slot.position === "GK").length === 1,
+    "The saved formation must match this fixture format and include one goalkeeper."
+  );
+  assert(
+    Array.isArray(allocations) && allocations.length === fixture.format && new Set(allocations.map((row) => row.slotId)).size === fixture.format && new Set(allocations.map((row) => row.playerId)).size === fixture.format,
+    "Review one distinct player for every saved place."
+  );
+  const selected = fixture.selectedProfileIds.map(
+    (id4) => state.profiles.find(
+      (profile) => profile.id === id4 && profile.seasonId === fixture.seasonId && profile.active
+    )
+  ).filter(
+    (profile) => Boolean(profile)
+  );
+  for (const allocation of allocations) {
+    shape(allocation, ["slotId", "position", "playerId"]);
+    const slot = formation.slots.find(
+      (value) => value.id === allocation.slotId
+    );
+    const profile = selected.find(
+      (value) => value.playerId === allocation.playerId
+    );
+    assert(
+      slot && slot.position === allocation.position && profile && profile.eligiblePositions.includes(slot.position),
+      "A proposed player is missing, unselected, archived or no longer eligible. Review the squad and places first."
+    );
+    if (slot.position === "GK")
+      assert(
+        keeper(profile),
+        "The proposed goalkeeper must remain a first- or second-choice eligible keeper."
+      );
+  }
+  validateMatchPlanSettings(settings);
+  const qualifying = selected.filter(keeper);
+  assert(
+    settings.payload.minimumStintMs <= fixture.plannedHalfDurationMs,
+    "The preferred spell exceeds this fixture\u2019s planned half."
+  );
+  assert(
+    settings.payload.keeperMode === "sole_fixed" ? qualifying.length === 1 && qualifying[0].playerId === settings.payload.fixedKeeperPlayerSeasonId && allocations.some(
+      (row) => row.position === "GK" && row.playerId === qualifying[0].playerId
+    ) : qualifying.length >= 2,
+    "The saved keeper proposal does not match this selected squad. Review current keeper coverage; no exemption is inferred."
+  );
+}
+function saveMatchPlan(state, input) {
+  shape(input, [
+    "planId",
+    "expectedPlanVersion",
+    "name",
+    "description",
+    "sourceFixtureId",
+    "sourceSnapshotId",
+    "allocations",
+    "settings"
+  ]);
+  const fixture = state.fixtures.find(
+    (row) => row.id === input.sourceFixtureId && row.seasonId === state.activeSeasonId
+  );
+  const snapshot = state.snapshots.find(
+    (row) => row.id === input.sourceSnapshotId && row.fixtureId === input.sourceFixtureId
+  );
+  assert(
+    fixture && snapshot && snapshot.seasonId === state.activeSeasonId,
+    "Review an explicit saved preparation for this team and season."
+  );
+  const latestSnapshot = state.snapshots.filter((row) => row.fixtureId === fixture.id).at(-1);
+  const {
+    status: _status,
+    selectedProfileIds: _selection,
+    responses: _responses,
+    attendance: _attendance,
+    history: _history,
+    matchPlanDraft: _draft,
+    ...fixtureDetails
+  } = fixture;
+  assert(
+    latestSnapshot?.id === snapshot.id && canonical2(snapshot.fixture) === canonical2(fixtureDetails) && canonical2(snapshot.selectedPlayerIds.slice().sort()) === canonical2(
+      fixture.selectedProfileIds.map(
+        (id4) => state.profiles.find((profile) => profile.id === id4)?.playerId
+      ).sort()
+    ),
+    "Source preparation changed. Prepare and review its latest snapshot before saving a plan."
+  );
+  const previous = latestMatchPlans(state).find(
+    (row) => row.id === input.planId
+  );
+  assert(
+    input.expectedPlanVersion === (previous?.version ?? 0),
+    "The reusable plan changed. Refresh and review its current version."
+  );
+  validateProposal(
+    state,
+    fixture,
+    snapshot.formation,
+    input.allocations,
+    input.settings
+  );
+  assert(
+    typeof input.description === "string" && input.description.length <= 300 && !/[\u0000-\u001f\u007f]/.test(input.description),
+    "Use a short non-sensitive description, at most300 characters."
+  );
+  return {
+    id: required(input.planId, 150, "Plan identity"),
+    version: (previous?.version ?? 0) + 1,
+    teamId: state.team.id,
+    seasonId: fixture.seasonId,
+    name: required(input.name, 40, "Plan name"),
+    description: input.description.trim(),
+    sourceFixtureId: fixture.id,
+    sourceSnapshotId: snapshot.id,
+    sourcePreparedRevision: snapshot.preparedRevision,
+    formation: copy(snapshot.formation),
+    allocations: copy(input.allocations),
+    settings: copy(input.settings)
+  };
+}
+function today(now) {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/London",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).format(new Date(now));
+}
+function previewMatchPlan(state, planId, fixtureId, context = {}) {
+  const plan = latestMatchPlans(state).find((row) => row.id === planId);
+  const fixture = state.fixtures.find(
+    (row) => row.id === fixtureId && row.seasonId === state.activeSeasonId
+  );
+  const issues = [];
+  try {
+    assert(
+      plan && fixture,
+      "Choose an existing plan and target fixture in this team and season."
+    );
+    assert(
+      fixture.id !== plan.sourceFixtureId,
+      "Choose another fixture; saving a template never overwrites its source."
+    );
+    assert(
+      fixture.status === "scheduled" && fixture.playedDate >= today(context.nowMs ?? Date.now()) && !context.protectedFixtureIds?.includes(fixture.id),
+      "Only a prospective, unrecorded and unclaimed fixture can receive a match plan."
+    );
+    validateProposal(
+      state,
+      fixture,
+      plan.formation,
+      plan.allocations,
+      plan.settings
+    );
+  } catch (error) {
+    issues.push(
+      error instanceof Error ? error.message : "This plan is not applicable."
+    );
+  }
+  const previewKey = plan && fixture ? canonical2([
+    state.revision,
+    plan,
+    fixture,
+    state.profiles.filter(
+      (profile) => fixture.selectedProfileIds.includes(profile.id)
+    ).map((profile) => [
+      profile.id,
+      profile.playerId,
+      profile.active,
+      profile.eligiblePositions,
+      profile.preferences
+    ])
+  ]) : "";
+  return {
+    ready: issues.length === 0,
+    issues,
+    previewKey,
+    plan: plan ? copy(plan) : null,
+    fixture: fixture ? copy(fixture) : null
+  };
+}
+function applyMatchPlan(state, input, context = {}) {
+  shape(input, ["planId", "planVersion", "fixtureId", "previewKey", "confirm"]);
+  const preview = previewMatchPlan(
+    state,
+    input.planId,
+    input.fixtureId,
+    context
+  );
+  assert(
+    input.confirm === true && preview.ready && preview.plan && input.planVersion === preview.plan.version && input.previewKey === preview.previewKey,
+    preview.issues[0] ?? "The preview or plan changed. Review this fixture again before explicitly confirming."
+  );
+  const plan = preview.plan;
+  return {
+    templateId: plan.id,
+    templateVersion: plan.version,
+    appliedRevision: state.revision + 1,
+    formation: {
+      ...copy(plan.formation),
+      id: `match-plan:${plan.id}:${plan.version}`,
+      name: plan.name
     },
-    {
-      id: "synthetic-player-02",
-      displayName: "Player 02",
-      available: true,
-      goalkeeperChoice: 0
-    },
-    {
-      id: "synthetic-player-03",
-      displayName: "Player 03",
-      available: true,
-      goalkeeperChoice: 0
-    },
-    {
-      id: "synthetic-player-04",
-      displayName: "Player 04",
-      available: true,
-      goalkeeperChoice: 0
-    },
-    {
-      id: "synthetic-player-05",
-      displayName: "Player 05",
-      available: true,
-      goalkeeperChoice: 0
-    },
-    {
-      id: "synthetic-player-06",
-      displayName: "Player 06",
-      available: true,
-      goalkeeperChoice: 0
-    },
-    {
-      id: "synthetic-player-07",
-      displayName: "Player 07",
-      available: true,
-      goalkeeperChoice: 0
-    },
-    {
-      id: "synthetic-player-08",
-      displayName: "Player 08",
-      available: true,
-      goalkeeperChoice: 0
-    },
-    {
-      id: "synthetic-player-09",
-      displayName: "Player 09",
-      available: true,
-      goalkeeperChoice: 0
-    },
-    {
-      id: "synthetic-player-10",
-      displayName: "Player 10",
-      available: false,
-      goalkeeperChoice: 0
-    },
-    {
-      id: "synthetic-player-11",
-      displayName: "Player 11",
-      available: false,
-      goalkeeperChoice: 0
-    },
-    {
-      id: "synthetic-player-12",
-      displayName: "Player 12",
-      available: false,
-      goalkeeperChoice: 0
-    },
-    {
-      id: "synthetic-player-13",
-      displayName: "Player 13",
-      available: false,
-      goalkeeperChoice: 0
-    }
-  ]
-};
-
-// packages/testing/src/index.ts
-var romaFixture = roma_synthetic_default;
+    allocations: copy(plan.allocations),
+    settings: copy(plan.settings)
+  };
+}
+function validateFixtureMatchPlan(state, fixture) {
+  if (fixture.matchPlanDraft)
+    validateProposal(
+      state,
+      fixture,
+      fixture.matchPlanDraft.formation,
+      fixture.matchPlanDraft.allocations,
+      fixture.matchPlanDraft.settings
+    );
+}
 
 // packages/application/src/preparation.ts
 var positionCodes = [
@@ -1329,21 +1378,21 @@ var positionCodes = [
   "RW",
   "ST"
 ];
-function requireThat(condition, message) {
+function requireThat2(condition, message) {
   if (!condition) throw new Error(message);
 }
 var clone = (value) => JSON.parse(JSON.stringify(value));
 function text(value, label, maximum = 80) {
-  requireThat(
+  requireThat2(
     typeof value === "string" && value.trim().length > 0 && value.trim().length <= maximum,
     `${label} is required and must be at most ${maximum} characters.`
   );
   return value.trim();
 }
-function canonical2(value) {
-  if (Array.isArray(value)) return `[${value.map(canonical2).join(",")}]`;
+function canonical3(value) {
+  if (Array.isArray(value)) return `[${value.map(canonical3).join(",")}]`;
   if (value && typeof value === "object")
-    return `{${Object.entries(value).sort(([a], [b]) => a.localeCompare(b)).map(([key, item]) => `${JSON.stringify(key)}:${canonical2(item)}`).join(",")}}`;
+    return `{${Object.entries(value).sort(([a], [b]) => a.localeCompare(b)).map(([key, item]) => `${JSON.stringify(key)}:${canonical3(item)}`).join(",")}}`;
   return JSON.stringify(value);
 }
 function validDate(value) {
@@ -1353,28 +1402,28 @@ function validDate(value) {
 function validTime(value) {
   return value === null || /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
 }
-function validateFormat(format) {
-  requireThat(
-    Number.isInteger(format) && format >= 5 && format <= 11,
+function validateFormat(format2) {
+  requireThat2(
+    Number.isInteger(format2) && format2 >= 5 && format2 <= 11,
     "Choose a format from five to eleven players."
   );
 }
 function validateHalf(duration2) {
-  requireThat(
+  requireThat2(
     Number.isSafeInteger(duration2) && duration2 > 0 && duration2 % 1e3 === 0,
     "Each planned half must be a positive whole number of seconds."
   );
 }
 function validateLogo(logo) {
-  requireThat(
+  requireThat2(
     logo === null || ["roundel", "shield", "ball"].includes(logo),
     "Choose one of the original fictional badges."
   );
 }
 function activeSeason(state, seasonId) {
   const season = state.seasons.find((item) => item.id === seasonId);
-  requireThat(season, "Season not found.");
-  requireThat(
+  requireThat2(season, "Season not found.");
+  requireThat2(
     seasonId === state.activeSeasonId,
     "Past seasons are read-only here. Their records are retained unchanged."
   );
@@ -1382,7 +1431,7 @@ function activeSeason(state, seasonId) {
 }
 function dateInSeason(state, seasonId, date) {
   const season = activeSeason(state, seasonId);
-  requireThat(
+  requireThat2(
     validDate(date) && date >= season.startDate && date <= season.endDate,
     "Choose a valid date within the selected September-to-August season."
   );
@@ -1391,29 +1440,39 @@ function checkProfile(state, profileId, seasonId) {
   const profile = state.profiles.find(
     (item) => item.id === profileId && item.seasonId === seasonId && item.active
   );
-  requireThat(profile, "Choose an active player from this team and season.");
+  requireThat2(profile, "Choose an active player from this team and season.");
   return profile;
 }
 function validResponse(value) {
-  requireThat(
+  requireThat2(
     ["available", "unavailable", "unsure", "no_reply"].includes(value),
     "Choose an availability response."
   );
 }
 function validAttendance(value) {
-  requireThat(
+  requireThat2(
     ["present", "absent", "not_recorded"].includes(value),
     "Choose Present, Absent or Not recorded."
   );
 }
 function unique(ids) {
-  requireThat(
+  requireThat2(
     new Set(ids).size === ids.length,
     "Each player or slot can appear only once."
   );
 }
+function validateTraining(state, training) {
+  text(training.id, "Training identity", 150);
+  dateInSeason(state, training.seasonId, training.date);
+  requireThat2(validTime(training.time) && training.time !== null, "Use a 24-hour HH:MM training time.");
+  requireThat2(typeof training.venue === "string" && training.venue.length <= 200, "Use a training venue of at most 200 characters.");
+  requireThat2(training.recurrenceGroupId === null || typeof training.recurrenceGroupId === "string" && training.recurrenceGroupId.trim().length > 0 && training.recurrenceGroupId.length <= 150, "Use a valid training series identity.");
+  requireThat2(Array.isArray(training.expectedProfileIds), "Choose the expected players explicitly.");
+  unique(training.expectedProfileIds);
+  training.expectedProfileIds.forEach((id4) => checkProfile(state, id4, training.seasonId));
+}
 function seasonBounds(startYear) {
-  requireThat(
+  requireThat2(
     Number.isInteger(startYear) && startYear >= 2e3 && startYear <= 2100,
     "Choose a season start year between 2000 and 2100."
   );
@@ -1432,8 +1491,8 @@ function goalkeeperChoice(profile) {
   const rank = profile.preferences.indexOf("GK") + 1;
   return profile.eligiblePositions.includes("GK") && (rank === 1 || rank === 2) ? rank : 0;
 }
-function defaultFormation(format) {
-  validateFormat(format);
+function defaultFormation(format2) {
+  validateFormat(format2);
   const roles = {
     5: ["GK", "CB", "CB", "CM", "ST"],
     6: ["GK", "CB", "CB", "LW", "RW", "ST"],
@@ -1446,23 +1505,23 @@ function defaultFormation(format) {
   const count = {};
   const row = (position) => position === "GK" ? 0.9 : ["CB", "LB", "RB"].includes(position) ? 0.72 : position === "CM" ? 0.5 : ["LW", "RW"].includes(position) ? 0.32 : 0.13;
   return {
-    id: `formation-${format}`,
-    name: `${format}-a-side`,
-    format,
+    id: `formation-${format2}`,
+    name: `${format2}-a-side`,
+    format: format2,
     version: 1,
-    slots: roles[format].map((position) => {
+    slots: roles[format2].map((position) => {
       const ordinal = count[position] = (count[position] ?? 0) + 1;
-      const peers = roles[format].filter((role) => row(role) === row(position));
-      const index = roles[format].slice(
+      const peers = roles[format2].filter((role) => row(role) === row(position));
+      const index = roles[format2].slice(
         0,
-        roles[format].findIndex(
-          (role, i) => role === position && roles[format].slice(0, i + 1).filter((p) => p === position).length === ordinal
+        roles[format2].findIndex(
+          (role, i) => role === position && roles[format2].slice(0, i + 1).filter((p) => p === position).length === ordinal
         )
       ).filter((role) => row(role) === row(position)).length;
       return {
         id: `${position.toLowerCase()}-${ordinal}`,
         position,
-        label: `${position}${roles[format].filter((role) => role === position).length > 1 ? ordinal : ""}`,
+        label: `${position}${roles[format2].filter((role) => role === position).length > 1 ? ordinal : ""}`,
         x: (index + 1) / (peers.length + 1),
         y: row(position)
       };
@@ -1471,26 +1530,27 @@ function defaultFormation(format) {
 }
 function prepareFixtureSnapshot(state, fixtureId, formationId) {
   const fixture = state.fixtures.find((item) => item.id === fixtureId);
-  requireThat(
+  requireThat2(
     fixture && fixture.status === "scheduled",
     "Only a scheduled match can be prepared."
   );
   activeSeason(state, fixture.seasonId);
-  const formation = state.formations.find(
+  if (fixture.matchPlanDraft && fixture.matchPlanDraft.formation.id === formationId) validateFixtureMatchPlan(state, fixture);
+  const formation = fixture.matchPlanDraft && fixture.matchPlanDraft.formation.id === formationId ? fixture.matchPlanDraft.formation : state.formations.find(
     (item) => item.id === (formationId ?? `formation-${fixture.format}`)
   );
-  requireThat(
+  requireThat2(
     formation && formation.format === fixture.format,
     "Choose a saved formation for this match format."
   );
-  requireThat(
+  requireThat2(
     fixture.selectedProfileIds.length >= fixture.format,
     "Select enough players for the match format."
   );
   const profiles = fixture.selectedProfileIds.map(
     (id4) => checkProfile(state, id4, fixture.seasonId)
   );
-  requireThat(
+  requireThat2(
     profiles.some((profile) => goalkeeperChoice(profile) > 0),
     "Select a first- or second-choice eligible goalkeeper."
   );
@@ -1500,6 +1560,7 @@ function prepareFixtureSnapshot(state, fixtureId, formationId) {
     selectedProfileIds: _selected,
     history: _history,
     status: _status,
+    matchPlanDraft: _planDraft,
     ...draft
   } = fixture;
   return clone({
@@ -1516,23 +1577,125 @@ function prepareFixtureSnapshot(state, fixtureId, formationId) {
         profile.playerId,
         fixture.attendance[profile.id] ?? "not_recorded"
       ])
-    )
+    ),
+    ...fixture.matchPlanDraft?.formation.id === formation.id ? { matchPlanDraft: fixture.matchPlanDraft } : {}
   });
 }
-function reducePreparation(previous, command) {
-  requireThat(
+function saveProfile(state, source2) {
+  const profile = clone(source2);
+  activeSeason(state, profile.seasonId);
+  text(profile.id, "Profile identity", 150);
+  text(profile.playerId, "Player identity", 150);
+  const existing = state.profiles.find((item) => item.id === profile.id);
+  if (existing)
+    requireThat2(
+      existing.playerId === profile.playerId && existing.seasonId === profile.seasonId,
+      "Profile identity and season cannot be reassigned."
+    );
+  requireThat2(
+    !state.profiles.some(
+      (item) => item.id !== profile.id && item.seasonId === profile.seasonId && item.playerId === profile.playerId
+    ),
+    "That player already has a profile in this season."
+  );
+  profile.displayName = text(profile.displayName, "Display name", 60);
+  requireThat2(
+    typeof profile.initials === "string" && /^[A-Za-z0-9]{1,2}$/.test(profile.initials),
+    "Use one or two letters or digits for the pitch label."
+  );
+  profile.initials = profile.initials.toUpperCase();
+  requireThat2(
+    profile.shirtNumber === null || Number.isInteger(profile.shirtNumber) && profile.shirtNumber >= 1 && profile.shirtNumber <= 99,
+    "Shirt number must be one to 99 or not recorded."
+  );
+  requireThat2(
+    !state.profiles.some(
+      (item) => item.id !== profile.id && item.seasonId === profile.seasonId && item.active && profile.active && profile.shirtNumber !== null && item.shirtNumber === profile.shirtNumber
+    ),
+    "Another active player already has that shirt number."
+  );
+  requireThat2(
+    profile.preferences.length === 3 && new Set(profile.preferences).size === 3 && profile.preferences.every((position) => positionCodes.includes(position)),
+    "Choose three different ranked positions."
+  );
+  requireThat2(
+    profile.eligiblePositions.length > 0 && new Set(profile.eligiblePositions).size === profile.eligiblePositions.length && profile.eligiblePositions.every(
+      (position) => positionCodes.includes(position)
+    ),
+    "Choose distinct manager-approved eligible positions."
+  );
+  requireThat2(
+    ["left", "right", "both", "not_recorded"].includes(profile.foot),
+    "Choose a preferred foot or Not recorded."
+  );
+  state.profiles = state.profiles.filter((item) => item.id !== profile.id);
+  state.profiles.push(profile);
+  return profile;
+}
+function validateRosterImport(state, profiles) {
+  requireThat2(
+    Array.isArray(profiles) && profiles.length > 0 && profiles.length <= 200,
+    "Import between one and 200 new player profiles."
+  );
+  const candidate = clone(state);
+  return Array.from(profiles).map((profile) => {
+    requireThat2(
+      profile && typeof profile === "object" && Object.keys(profile).length === 10 && Object.keys(profile).every(
+        (key) => [
+          "id",
+          "playerId",
+          "seasonId",
+          "displayName",
+          "initials",
+          "shirtNumber",
+          "foot",
+          "preferences",
+          "eligiblePositions",
+          "active"
+        ].includes(key)
+      ),
+      "Use only the documented player profile fields; accounts, contacts and dates of birth cannot be imported."
+    );
+    requireThat2(
+      Array.isArray(profile.preferences) && Array.isArray(profile.eligiblePositions),
+      "Provide ranked preferences and explicit eligible positions."
+    );
+    requireThat2(
+      typeof profile.initials === "string" && profile.initials.length >= 1 && profile.initials.length <= 2 && !/[^A-Za-z0-9]/.test(profile.initials),
+      "Use one or two letters or digits for the pitch label."
+    );
+    requireThat2(
+      profile.active === true && profile.seasonId === state.activeSeasonId,
+      "Import active players into the current season only."
+    );
+    for (const id4 of [profile.id, profile.playerId])
+      requireThat2(
+        typeof id4 === "string" && id4.length >= 1 && id4.length <= 150 && !/[^A-Za-z0-9_.:-]/.test(id4),
+        "Use a valid opaque player/profile identity of at most 150 characters."
+      );
+    requireThat2(
+      !candidate.profiles.some(
+        (existing) => existing.id === profile.id || existing.playerId === profile.playerId
+      ),
+      "A player or profile identity already exists. Import never merges identities; edit that player separately."
+    );
+    return saveProfile(candidate, profile);
+  });
+}
+function reducePreparation(previous, command, context = {}) {
+  requireThat2(
     command.id && typeof command.id === "string",
     "A stable command identity is required."
   );
-  const signature2 = canonical2(command);
+  const signature2 = canonical3(command);
   if (previous.appliedCommands[command.id]) {
-    requireThat(
+    requireThat2(
       previous.appliedCommands[command.id] === signature2,
       "This command identity already belongs to different content."
     );
     return previous;
   }
-  requireThat(
+  requireThat2(
     command.expectedRevision === previous.revision,
     "Preparation changed on another screen. Reload the saved version before applying this change."
   );
@@ -1561,18 +1724,18 @@ function reducePreparation(previous, command) {
       };
       break;
     case "season.rolled_over": {
-      requireThat(
+      requireThat2(
         command.confirmSpectatorRenewal === true,
         "Confirm that spectator access must be renewed explicitly."
       );
       const old = state.seasons.find(
         (item) => item.id === state.activeSeasonId
       );
-      requireThat(
+      requireThat2(
         command.startYear === old.startYear + 1,
         "Rollover creates the immediately following September-to-August season."
       );
-      requireThat(
+      requireThat2(
         !state.seasons.some(
           (item) => item.id === command.idForSeason || item.startYear === command.startYear
         ),
@@ -1596,64 +1759,38 @@ function reducePreparation(previous, command) {
       state.activeSeasonId = season.id;
       break;
     }
-    case "profile.saved": {
-      const profile = clone(command.profile);
-      activeSeason(state, profile.seasonId);
-      text(profile.id, "Profile identity");
-      text(profile.playerId, "Player identity");
-      const existing = state.profiles.find((item) => item.id === profile.id);
-      if (existing)
-        requireThat(
-          existing.playerId === profile.playerId && existing.seasonId === profile.seasonId,
-          "Profile identity and season cannot be reassigned."
-        );
-      requireThat(
-        !state.profiles.some(
-          (item) => item.id !== profile.id && item.seasonId === profile.seasonId && item.playerId === profile.playerId
+    case "profile.saved":
+      saveProfile(state, command.profile);
+      break;
+    case "roster.imported": {
+      requireThat2(
+        command.id.length <= 150 && !/[^A-Za-z0-9_.:-]/.test(command.id),
+        "Use a valid stable roster import identity."
+      );
+      requireThat2(
+        command.confirmNewPlayers === true,
+        "Confirm that every imported row creates a new player; no accounts or access are granted."
+      );
+      requireThat2(
+        Object.keys(command).every(
+          (key) => [
+            "id",
+            "type",
+            "expectedRevision",
+            "profiles",
+            "confirmNewPlayers"
+          ].includes(key)
         ),
-        "That player already has a profile in this season."
+        "Use the documented roster import command."
       );
-      profile.displayName = text(profile.displayName, "Display name", 60);
-      requireThat(
-        typeof profile.initials === "string" && /^[A-Za-z0-9]{1,2}$/.test(profile.initials),
-        "Use one or two letters or digits for the pitch label."
-      );
-      profile.initials = profile.initials.toUpperCase();
-      requireThat(
-        profile.shirtNumber === null || Number.isInteger(profile.shirtNumber) && profile.shirtNumber >= 1 && profile.shirtNumber <= 99,
-        "Shirt number must be one to 99 or not recorded."
-      );
-      requireThat(
-        !state.profiles.some(
-          (item) => item.id !== profile.id && item.seasonId === profile.seasonId && item.active && profile.active && profile.shirtNumber !== null && item.shirtNumber === profile.shirtNumber
-        ),
-        "Another active player already has that shirt number."
-      );
-      requireThat(
-        profile.preferences.length === 3 && new Set(profile.preferences).size === 3 && profile.preferences.every(
-          (position) => positionCodes.includes(position)
-        ),
-        "Choose three different ranked positions."
-      );
-      requireThat(
-        profile.eligiblePositions.length > 0 && new Set(profile.eligiblePositions).size === profile.eligiblePositions.length && profile.eligiblePositions.every(
-          (position) => positionCodes.includes(position)
-        ),
-        "Choose distinct manager-approved eligible positions."
-      );
-      requireThat(
-        ["left", "right", "both", "not_recorded"].includes(profile.foot),
-        "Choose a preferred foot or Not recorded."
-      );
-      state.profiles = state.profiles.filter((item) => item.id !== profile.id);
-      state.profiles.push(profile);
+      state.profiles.push(...validateRosterImport(state, command.profiles));
       break;
     }
     case "profile.archived": {
       const profile = state.profiles.find(
         (item) => item.id === command.profileId
       );
-      requireThat(profile, "Player profile not found.");
+      requireThat2(profile, "Player profile not found.");
       activeSeason(state, profile.seasonId);
       profile.active = false;
       break;
@@ -1662,18 +1799,18 @@ function reducePreparation(previous, command) {
       const formation = clone(command.formation);
       validateFormat(formation.format);
       formation.name = text(formation.name, "Formation name", 40);
-      requireThat(
+      requireThat2(
         formation.slots.length === formation.format && formation.slots.filter((slot) => slot.position === "GK").length === 1,
         "A formation needs the chosen number of slots and exactly one goalkeeper."
       );
       unique(formation.slots.map((slot) => slot.id));
       for (const slot of formation.slots) {
-        requireThat(
+        requireThat2(
           slot.id.length > 0 && positionCodes.includes(slot.position),
           "Each slot needs an identity and position type."
         );
         slot.label = text(slot.label, "Slot label", 16);
-        requireThat(
+        requireThat2(
           Number.isFinite(slot.x) && slot.x >= 0 && slot.x <= 1 && Number.isFinite(slot.y) && slot.y >= 0 && slot.y <= 1,
           "Formation coordinates must be between zero and one."
         );
@@ -1691,17 +1828,17 @@ function reducePreparation(previous, command) {
       validateFormat(fixture.format);
       validateHalf(fixture.plannedHalfDurationMs);
       fixture.opponent = text(fixture.opponent, "Opposition");
-      requireThat(
+      requireThat2(
         validTime(fixture.kickoff) && validTime(fixture.arrival),
         "Use 24-hour HH:MM times, or leave time not recorded."
       );
-      requireThat(
+      requireThat2(
         ["home", "away"].includes(fixture.homeAway),
         "Choose home or away."
       );
       const existing = state.fixtures.find((item) => item.id === fixture.id);
       if (existing)
-        requireThat(
+        requireThat2(
           existing.seasonId === fixture.seasonId && existing.status !== "cancelled",
           "Cancelled matches must be restored explicitly before rescheduling."
         );
@@ -1712,6 +1849,7 @@ function reducePreparation(previous, command) {
         selectedProfileIds: existing?.selectedProfileIds ?? [],
         responses: existing?.responses ?? {},
         attendance: existing?.attendance ?? {},
+        ...existing?.matchPlanDraft ? { matchPlanDraft: existing.matchPlanDraft } : {},
         history: [
           ...existing?.history ?? [],
           {
@@ -1731,9 +1869,9 @@ function reducePreparation(previous, command) {
       const fixture = state.fixtures.find(
         (item) => item.id === command.fixtureId
       );
-      requireThat(fixture, "Match not found.");
+      requireThat2(fixture, "Match not found.");
       activeSeason(state, fixture.seasonId);
-      requireThat(
+      requireThat2(
         ["scheduled", "postponed", "cancelled"].includes(command.status),
         "Choose a valid fixture state."
       );
@@ -1753,9 +1891,9 @@ function reducePreparation(previous, command) {
       const fixture = state.fixtures.find(
         (item) => item.id === command.fixtureId
       );
-      requireThat(fixture, "Match not found.");
+      requireThat2(fixture, "Match not found.");
       activeSeason(state, fixture.seasonId);
-      requireThat(
+      requireThat2(
         fixture.status === "scheduled",
         "Only a scheduled match can collect responses, selection or attendance."
       );
@@ -1772,7 +1910,7 @@ function reducePreparation(previous, command) {
           fixture.responses[command.profileId] = command.response;
         } else {
           validAttendance(command.attendance);
-          requireThat(
+          requireThat2(
             fixture.selectedProfileIds.includes(command.profileId),
             "Only selected match players can be checked in."
           );
@@ -1790,21 +1928,37 @@ function reducePreparation(previous, command) {
       state.snapshots.push(snapshot);
       break;
     }
+    case "training.series_created":
+    case "training.series_updated":
+    case "training.series_cancelled": {
+      applyTrainingSeries(state, command, (draft) => validateTraining(state, draft));
+      break;
+    }
+    case "match_plan.saved": {
+      const { type: _type, id: _id, expectedRevision: _revision, ...input } = command;
+      const plan = saveMatchPlan(state, input);
+      state.matchPlans = [...state.matchPlans ?? [], plan];
+      break;
+    }
+    case "match_plan.applied": {
+      const { type: _type, id: _id, expectedRevision: _revision, ...input } = command;
+      const draft = applyMatchPlan(state, input, context);
+      state.fixtures.find((item) => item.id === command.fixtureId).matchPlanDraft = draft;
+      break;
+    }
+    case "match_plan.cleared": {
+      const fixture = state.fixtures.find((item) => item.id === command.fixtureId);
+      requireThat2(fixture && fixture.seasonId === state.activeSeasonId, "Choose a fixture in the current season.");
+      delete fixture.matchPlanDraft;
+      break;
+    }
     case "training.saved": {
       const training = clone(command.training);
-      dateInSeason(state, training.seasonId, training.date);
-      requireThat(
-        validTime(training.time),
-        "Use a 24-hour HH:MM training time."
-      );
-      unique(training.expectedProfileIds);
-      training.expectedProfileIds.forEach(
-        (id4) => checkProfile(state, id4, training.seasonId)
-      );
+      validateTraining(state, training);
       const existing = state.training.find((item) => item.id === training.id);
       if (existing)
-        requireThat(
-          existing.seasonId === training.seasonId && existing.status === "scheduled",
+        requireThat2(
+          existing.seasonId === training.seasonId && existing.recurrenceGroupId === training.recurrenceGroupId && existing.status === "scheduled",
           "Held or cancelled training records are retained; create or restore a scheduled occurrence first."
         );
       state.training = state.training.filter((item) => item.id !== training.id);
@@ -1820,9 +1974,9 @@ function reducePreparation(previous, command) {
       const training = state.training.find(
         (item) => item.id === command.trainingId
       );
-      requireThat(training, "Training occurrence not found.");
+      requireThat2(training, "Training occurrence not found.");
       activeSeason(state, training.seasonId);
-      requireThat(
+      requireThat2(
         ["scheduled", "held", "cancelled"].includes(command.status),
         "Choose a valid training state."
       );
@@ -1834,22 +1988,22 @@ function reducePreparation(previous, command) {
       const training = state.training.find(
         (item) => item.id === command.trainingId
       );
-      requireThat(training, "Training occurrence not found.");
+      requireThat2(training, "Training occurrence not found.");
       activeSeason(state, training.seasonId);
       checkProfile(state, command.profileId, training.seasonId);
-      requireThat(
+      requireThat2(
         training.expectedProfileIds.includes(command.profileId),
         "Only expected players belong to this attendance occurrence."
       );
       if (command.type === "training.response_recorded") {
-        requireThat(
+        requireThat2(
           training.status !== "cancelled",
           "Cancelled training cannot collect availability."
         );
         validResponse(command.response);
         training.responses[command.profileId] = command.response;
       } else {
-        requireThat(
+        requireThat2(
           training.status === "held",
           "Mark this occurrence as held before recording actual attendance. Cancelled training is excluded."
         );
@@ -2006,6 +2160,1072 @@ function createPreparationState() {
     audit: []
   };
 }
+
+// packages/application/src/player-preparation.ts
+var time = (value) => typeof value === "string" && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value);
+var format = (value) => Number.isInteger(value) && Number(value) >= 5 && Number(value) <= 11;
+var half = (value) => Number.isSafeInteger(value) && Number(value) > 0 && Number(value) % 1e3 === 0;
+function projectOwnPlayerPreparation(state, profile, seasonId) {
+  const season = state.seasons.find((item) => item.id === seasonId);
+  if (!season || !profile.active || profile.seasonId !== seasonId || !state.profiles.some(
+    (item) => item.id === profile.id && item.playerId === profile.playerId && item.seasonId === seasonId && item.active
+  ))
+    throw new Error("The authorised own-player preparation is unavailable.");
+  return {
+    kind: "player-preparation",
+    revision: state.revision,
+    team: {
+      id: state.team.id,
+      name: state.team.name,
+      ageGroup: state.team.ageGroup
+    },
+    season: {
+      id: season.id,
+      label: season.label,
+      startYear: season.startYear,
+      startDate: season.startDate,
+      endDate: season.endDate,
+      spectatorRenewalRequired: true
+    },
+    profile: {
+      id: profile.id,
+      playerId: profile.playerId,
+      seasonId: profile.seasonId,
+      displayName: profile.displayName,
+      initials: profile.initials,
+      shirtNumber: profile.shirtNumber,
+      foot: profile.foot,
+      preferences: [...profile.preferences],
+      eligiblePositions: [...profile.eligiblePositions],
+      active: profile.active
+    },
+    fixtures: state.fixtures.filter((item) => item.seasonId === seasonId).map((item) => ({
+      id: item.id,
+      opponent: item.opponent,
+      playedDate: item.playedDate,
+      kickoff: time(item.kickoff) ? item.kickoff : null,
+      arrival: time(item.arrival) ? item.arrival : null,
+      venue: item.venue,
+      homeAway: item.homeAway,
+      status: item.status,
+      format: format(item.format) ? item.format : null,
+      plannedHalfDurationMs: half(item.plannedHalfDurationMs) ? item.plannedHalfDurationMs : null,
+      response: item.responses[profile.id] ?? "no_reply",
+      selected: item.selectedProfileIds.includes(profile.id),
+      attendance: item.attendance[profile.id] ?? "not_recorded"
+    })),
+    training: state.training.filter((item) => item.seasonId === seasonId).map((item) => ({
+      id: item.id,
+      date: item.date,
+      time: time(item.time) ? item.time : null,
+      venue: item.venue,
+      status: item.status,
+      expected: item.expectedProfileIds.includes(profile.id),
+      response: item.responses[profile.id] ?? "no_reply",
+      attendance: item.attendance[profile.id] ?? "not_recorded"
+    }))
+  };
+}
+
+// apps/api/src/match-pagination.ts
+import { createHash } from "node:crypto";
+import { Buffer as Buffer2 } from "node:buffer";
+
+// packages/application/src/access.ts
+var AccessError = class extends Error {
+  constructor(code, status, message) {
+    super(message);
+    this.code = code;
+    this.status = status;
+    this.name = "AccessError";
+  }
+  code;
+  status;
+};
+function currentMemberships(principal, memberships, now) {
+  if (principal.status !== "active") return [];
+  return memberships.filter((item) => item.accountId === principal.accountId && item.revokedAt == null && (item.expiresAt == null || item.expiresAt > now));
+}
+function assertTeamRole(principal, memberships, teamId, seasonId, roles, now = Date.now()) {
+  const match = currentMemberships(principal, memberships, now).find((item) => item.teamId === teamId && item.seasonId === seasonId && roles.includes(item.role));
+  if (!match) throw new AccessError("NOT_FOUND", 404, "The requested object is unavailable.");
+  return match;
+}
+function assertAdultAuthority(principal, recent = false, now = Date.now()) {
+  if (principal.status !== "active" || principal.identityClassification !== "adult_individual" || !principal.adultVerified || !principal.strongAuth) {
+    throw new AccessError("ADULT_AUTHORITY_REQUIRED", 403, "A verified adult account with stronger authentication is required.");
+  }
+  if (recent && (principal.authenticatedAt > now + 3e4 || now - principal.authenticatedAt > 3e5)) {
+    throw new AccessError("RECENT_AUTHENTICATION_REQUIRED", 403, "Recent stronger authentication is required.");
+  }
+}
+function assertCanManageTeam(principal, memberships, teamId, seasonId, now = Date.now()) {
+  assertTeamRole(principal, memberships, teamId, seasonId, ["manager"], now);
+  assertAdultAuthority(principal, false, now);
+}
+function assertCanAssignManager(actor, target, memberships, teamId, seasonId, now = Date.now()) {
+  assertTeamRole(actor, memberships, teamId, seasonId, ["administrator"], now);
+  assertAdultAuthority(actor, true, now);
+  assertAdultAuthority(target, false, now);
+  const managers = memberships.filter((item) => item.teamId === teamId && item.role === "manager" && item.revokedAt == null && (item.expiresAt == null || item.expiresAt > now));
+  if (!managers.some((item) => item.accountId === target.accountId) && new Set(managers.map((item) => item.accountId)).size >= 4) {
+    throw new AccessError("MANAGER_LIMIT", 409, "A team can have at most four active managers, including administrators who also manage.");
+  }
+}
+var UNAPPROVED_SHARING_POLICY = {
+  version: "q21-unapproved",
+  approvedBy: null,
+  approvedAt: null,
+  shareScores: false,
+  shareDerivedResults: false
+};
+function filterMatchForPrincipal(input) {
+  const now = input.now ?? Date.now();
+  const current3 = currentMemberships(input.principal, input.memberships, now);
+  const available2 = current3.filter((item) => item.teamId === input.teamId && item.seasonId === input.seasonId && ["manager", "player", "spectator"].includes(item.role));
+  const chosen = input.requestedRole ? available2.find((item) => item.role === input.requestedRole) : available2.find((item) => item.role === "manager") ?? available2.find((item) => item.role === "player") ?? available2[0];
+  if (!chosen) throw new AccessError("NOT_FOUND", 404, "The requested object is unavailable.");
+  const role = assertTeamRole(input.principal, input.memberships, input.teamId, input.seasonId, [chosen.role], now);
+  if (role.role === "manager") {
+    assertAdultAuthority(input.principal, false, now);
+    return { matchId: input.state.config.matchId, teamId: input.teamId, seasonId: input.seasonId, audience: "manager", revision: input.state.revision, state: input.state, lastRecorderSyncAt: input.lastSyncAt };
+  }
+  const scoresAllowed = input.policy.approvedBy !== null && input.policy.approvedAt !== null && input.policy.shareScores;
+  const dto = {
+    matchId: input.state.config.matchId,
+    teamId: input.teamId,
+    seasonId: input.seasonId,
+    audience: role.role,
+    revision: input.state.revision,
+    status: input.state.status,
+    score: scoresAllowed ? input.state.score : null,
+    halfTimeScore: scoresAllowed ? input.state.halfTimeScore : null,
+    sharingPolicyVersion: input.policy.version,
+    sharingRestricted: !scoresAllowed,
+    lastRecorderSyncAt: input.lastSyncAt,
+    ...input.state.config.fixture ? { opponent: input.state.config.fixture.opponent, playedDate: input.state.config.fixture.playedDate, homeAway: input.state.config.fixture.homeAway } : {},
+    freshness: input.lastSyncAt !== null && now - input.lastSyncAt <= 15e3 ? "last_synced" : "updates_delayed"
+  };
+  if (role.role === "player" && role.playerId) {
+    const ownIntervals = input.state.intervals.filter((item) => item.playerId === role.playerId);
+    dto.ownRecord = {
+      playerId: role.playerId,
+      attendance: input.state.attendance[role.playerId] ?? "not_recorded",
+      playingMs: ownIntervals.filter((item) => item.state === "playing").reduce((sum, item) => sum + item.endMs - item.startMs, 0),
+      intervals: ownIntervals,
+      completeness: input.state.recoveryRequired ? "review_required" : "recorded_to_last_sync"
+    };
+  }
+  return dto;
+}
+
+// apps/api/src/match-pagination.ts
+var invalid = () => {
+  throw new AccessError("INVALID_PAGE", 400, "Use the original cursor for this account, team, season and selected role, with a page limit from 1 to 100.");
+};
+var validId = (value) => typeof value === "string" && value.length >= 1;
+function matchPageAudience(principal, memberships, teamId, seasonId, requestedRole, nowMs) {
+  const available2 = currentMemberships(principal, memberships, nowMs).filter((item) => item.teamId === teamId && item.seasonId === seasonId && ["manager", "player", "spectator"].includes(item.role));
+  const chosen = requestedRole ? available2.find((item) => item.role === requestedRole) : available2.find((item) => item.role === "manager") ?? available2.find((item) => item.role === "player") ?? available2[0];
+  if (!chosen) throw new AccessError("NOT_FOUND", 404, "The requested object is unavailable.");
+  if (chosen.role === "manager") assertAdultAuthority(principal, false, nowMs);
+  return chosen;
+}
+var binding = (scope) => createHash("sha256").update(JSON.stringify(["longball.matches.id-asc.v1", scope.principal.accountId, scope.principal.issuer, scope.principal.subject, scope.teamId, scope.seasonId, scope.role, scope.playerId])).digest("base64url");
+function matchPageCursor(scope, afterId) {
+  if (!validId(afterId)) invalid();
+  return Buffer2.from(JSON.stringify({ version: 1, binding: binding(scope), afterId })).toString("base64url");
+}
+function matchPagePosition(scope, query) {
+  if (!Number.isSafeInteger(query.limit) || query.limit < 1 || query.limit > 100) invalid();
+  if (query.cursor === null) return null;
+  try {
+    if (!/^[A-Za-z0-9_-]+$/.test(query.cursor)) invalid();
+    const bytes = Buffer2.from(query.cursor, "base64url");
+    if (bytes.toString("base64url") !== query.cursor) invalid();
+    const cursor = JSON.parse(bytes.toString("utf8"));
+    if (!cursor || typeof cursor !== "object" || Array.isArray(cursor) || Object.keys(cursor).sort().join(",") !== "afterId,binding,version" || cursor.version !== 1 || cursor.binding !== binding(scope) || !validId(cursor.afterId)) invalid();
+    return cursor.afterId;
+  } catch {
+    return invalid();
+  }
+}
+
+// apps/api/src/offline-bundle.ts
+import { randomUUID } from "node:crypto";
+
+// node_modules/.pnpm/@noble+hashes@2.4.0/node_modules/@noble/hashes/_u64.js
+var fromNumH = (n) => n / 2 ** 32 | 0;
+var fromNumL = (n) => n >>> 0;
+function setU64FromNum(view, byteOffset, n, isLE) {
+  const h = fromNumH(n);
+  const l = fromNumL(n);
+  view.setUint32(byteOffset, isLE ? l : h, isLE);
+  view.setUint32(byteOffset + 4, isLE ? h : l, isLE);
+}
+
+// node_modules/.pnpm/@noble+hashes@2.4.0/node_modules/@noble/hashes/utils.js
+function isBytes(a) {
+  return a instanceof Uint8Array || ArrayBuffer.isView(a) && a.constructor.name === "Uint8Array" && "BYTES_PER_ELEMENT" in a && a.BYTES_PER_ELEMENT === 1;
+}
+var atitle = (title) => title ? `"${title}" ` : "";
+function anumber(n, title = "") {
+  if (typeof n !== "number")
+    throw new TypeError(atitle(title) + "expected number, got " + typeof n);
+  if (!Number.isSafeInteger(n) || n < 0)
+    throw new RangeError(atitle(title) + "expected integer >= 0, got " + n);
+  return n;
+}
+function abytes(value, length, title = "") {
+  if (isBytes(value) && (length === void 0 || value.length === length))
+    return value;
+  if (length !== void 0)
+    anumber(length, "length");
+  const bytes = isBytes(value);
+  const ofLen = length !== void 0 ? ` of length ${length}` : "";
+  const got = bytes ? `length=${value.length}` : `type=${typeof value}`;
+  const message = atitle(title) + "expected Uint8Array" + ofLen + ", got " + got;
+  if (!bytes)
+    throw new TypeError(message);
+  throw new RangeError(message);
+}
+var aobject = (value, label) => {
+  if (value === null || typeof value !== "object" || Array.isArray(value))
+    throw new TypeError((label === "object" ? "" : `"${label}" `) + "expected object, got type=" + typeof value);
+};
+var aopts = (value, label) => {
+  aobject(value, label);
+  const proto = Object.getPrototypeOf(value);
+  if (proto !== Object.prototype && proto !== null)
+    throw new TypeError(`"${label}" expected plain object`);
+  if (Object.hasOwn(value, "__proto__"))
+    throw new TypeError(`"${label}.__proto__" is not allowed`);
+};
+function aexists(instance, checkFinished = true) {
+  if (instance.destroyed)
+    throw new Error("hash was destroyed");
+  if (checkFinished && instance.finished)
+    throw new Error("digest() was already called");
+}
+function aoutput(out, instance) {
+  abytes(out, void 0, "output");
+  const min = instance.outputLen;
+  if (!(out.length >= min)) {
+    throw new RangeError('"output" expected length >= ' + min);
+  }
+}
+function clean(...arrays) {
+  for (let i = 0; i < arrays.length; i++) {
+    arrays[i].fill(0);
+  }
+}
+function createView(arr) {
+  return new DataView(arr.buffer, arr.byteOffset, arr.byteLength);
+}
+function rotr(word, shift) {
+  return word << 32 - shift | word >>> shift;
+}
+function checkOpts(defaults, opts, title = "opts") {
+  aopts(defaults, "defaults");
+  if (opts !== void 0)
+    aopts(opts, title);
+  const merged = Object.assign(/* @__PURE__ */ Object.create(null), defaults, opts);
+  return merged;
+}
+function createHasher(hashCons, info = {}) {
+  if (typeof hashCons !== "function")
+    throw new TypeError('"hashCons" expected function, got type=' + typeof hashCons);
+  info = checkOpts({}, info, "info");
+  const hashC = (msg, opts) => hashCons(opts).update(msg).digest();
+  const tmp = hashCons(void 0);
+  hashC.outputLen = tmp.outputLen;
+  hashC.blockLen = tmp.blockLen;
+  hashC.canXOF = tmp.canXOF;
+  hashC.create = (opts) => hashCons(opts);
+  Object.assign(hashC, info);
+  return Object.freeze(hashC);
+}
+var oidNist = (suffix) => ({
+  // Current NIST hashAlgs suffixes used here fit in one DER subidentifier octet.
+  // Larger suffix values would need base-128 OID encoding and a different length byte.
+  oid: Uint8Array.from([6, 9, 96, 134, 72, 1, 101, 3, 4, 2, suffix])
+});
+
+// node_modules/.pnpm/@noble+hashes@2.4.0/node_modules/@noble/hashes/_md.js
+function Chi(a, b, c) {
+  return a & b ^ ~a & c;
+}
+function Maj(a, b, c) {
+  return a & b ^ a & c ^ b & c;
+}
+var HashMD = class {
+  blockLen;
+  outputLen;
+  canXOF = false;
+  padOffset;
+  isLE;
+  // For partial updates less than block size
+  buffer;
+  view;
+  finished = false;
+  length = 0;
+  pos = 0;
+  destroyed = false;
+  constructor(blockLen, outputLen, padOffset, isLE) {
+    this.blockLen = blockLen;
+    this.outputLen = outputLen;
+    this.padOffset = padOffset;
+    this.isLE = isLE;
+    this.buffer = new Uint8Array(blockLen);
+    this.view = createView(this.buffer);
+  }
+  update(data) {
+    aexists(this);
+    abytes(data);
+    const { view, buffer, blockLen } = this;
+    const len = data.length;
+    let processed = false;
+    for (let pos = 0; pos < len; ) {
+      const take = Math.min(blockLen - this.pos, len - pos);
+      if (take === blockLen) {
+        const dataView = createView(data);
+        for (; blockLen <= len - pos; pos += blockLen)
+          this.process(dataView, pos);
+        processed = true;
+        continue;
+      }
+      buffer.set(pos === 0 && take === len ? data : data.subarray(pos, pos + take), this.pos);
+      this.pos += take;
+      pos += take;
+      if (this.pos === blockLen) {
+        this.process(view, 0);
+        this.pos = 0;
+        processed = true;
+      }
+    }
+    this.length += data.length;
+    if (processed)
+      this.roundClean();
+    return this;
+  }
+  digestInto(out) {
+    aexists(this);
+    aoutput(out, this);
+    this.finished = true;
+    const { buffer, view, blockLen, isLE } = this;
+    let { pos } = this;
+    buffer[pos++] = 128;
+    buffer.fill(0, pos);
+    if (this.padOffset > blockLen - pos) {
+      this.process(view, 0);
+      buffer.fill(0);
+    }
+    setU64FromNum(view, blockLen - 8, this.length * 8, isLE);
+    this.process(view, 0);
+    this.roundClean();
+    const oview = out === buffer ? view : createView(out);
+    const len = this.outputLen;
+    const outLen = len / 4;
+    const state = this.get();
+    if (len % 4 || outLen > state.length)
+      throw new Error("invalid outputLen");
+    for (let i = 0; i < outLen; i++)
+      oview.setUint32(4 * i, state[i], isLE);
+  }
+  digest() {
+    const { buffer, outputLen } = this;
+    this.digestInto(buffer);
+    const res = buffer.slice(0, outputLen);
+    this.destroy();
+    return res;
+  }
+  _cloneIntoMeta(to) {
+    const { buffer, length, finished, destroyed, pos } = this;
+    to.destroyed = destroyed;
+    to.finished = finished;
+    to.length = length;
+    to.pos = pos;
+    if (pos)
+      to.buffer.set(buffer);
+    return to;
+  }
+  clone() {
+    return this._cloneInto();
+  }
+};
+var SHA256_IV = /* @__PURE__ */ Uint32Array.from([
+  1779033703,
+  3144134277,
+  1013904242,
+  2773480762,
+  1359893119,
+  2600822924,
+  528734635,
+  1541459225
+]);
+
+// node_modules/.pnpm/@noble+hashes@2.4.0/node_modules/@noble/hashes/sha2.js
+var SHA256_K = /* @__PURE__ */ Uint32Array.from([
+  1116352408,
+  1899447441,
+  3049323471,
+  3921009573,
+  961987163,
+  1508970993,
+  2453635748,
+  2870763221,
+  3624381080,
+  310598401,
+  607225278,
+  1426881987,
+  1925078388,
+  2162078206,
+  2614888103,
+  3248222580,
+  3835390401,
+  4022224774,
+  264347078,
+  604807628,
+  770255983,
+  1249150122,
+  1555081692,
+  1996064986,
+  2554220882,
+  2821834349,
+  2952996808,
+  3210313671,
+  3336571891,
+  3584528711,
+  113926993,
+  338241895,
+  666307205,
+  773529912,
+  1294757372,
+  1396182291,
+  1695183700,
+  1986661051,
+  2177026350,
+  2456956037,
+  2730485921,
+  2820302411,
+  3259730800,
+  3345764771,
+  3516065817,
+  3600352804,
+  4094571909,
+  275423344,
+  430227734,
+  506948616,
+  659060556,
+  883997877,
+  958139571,
+  1322822218,
+  1537002063,
+  1747873779,
+  1955562222,
+  2024104815,
+  2227730452,
+  2361852424,
+  2428436474,
+  2756734187,
+  3204031479,
+  3329325298
+]);
+var SHA256_W = /* @__PURE__ */ new Uint32Array(64);
+var SHA2_32B = class extends HashMD {
+  // We cannot use array here since array allows indexing by variable
+  // which means optimizer/compiler cannot use registers.
+  // Numeric initializers matter: starting the fields as `undefined` changes
+  // V8's field representation and makes sha256 3x slower (measured).
+  A = 0;
+  B = 0;
+  C = 0;
+  D = 0;
+  E = 0;
+  F = 0;
+  G = 0;
+  H = 0;
+  constructor(outputLen, IV) {
+    super(64, outputLen, 8, false);
+    this.A = IV[0] | 0;
+    this.B = IV[1] | 0;
+    this.C = IV[2] | 0;
+    this.D = IV[3] | 0;
+    this.E = IV[4] | 0;
+    this.F = IV[5] | 0;
+    this.G = IV[6] | 0;
+    this.H = IV[7] | 0;
+  }
+  get() {
+    const { A, B, C, D, E, F, G, H } = this;
+    return [A, B, C, D, E, F, G, H];
+  }
+  // prettier-ignore
+  set(A, B, C, D, E, F, G, H) {
+    this.A = A | 0;
+    this.B = B | 0;
+    this.C = C | 0;
+    this.D = D | 0;
+    this.E = E | 0;
+    this.F = F | 0;
+    this.G = G | 0;
+    this.H = H | 0;
+  }
+  _cloneInto(to) {
+    (to ||= new this.constructor()).set(...this.get());
+    return this._cloneIntoMeta(to);
+  }
+  process(view, offset) {
+    for (let i = 0; i < 16; i++, offset += 4)
+      SHA256_W[i] = view.getUint32(offset, false);
+    for (let i = 16; i < 64; i++) {
+      const W15 = SHA256_W[i - 15];
+      const W2 = SHA256_W[i - 2];
+      const s0 = rotr(W15, 7) ^ rotr(W15, 18) ^ W15 >>> 3;
+      const s1 = rotr(W2, 17) ^ rotr(W2, 19) ^ W2 >>> 10;
+      SHA256_W[i] = s1 + SHA256_W[i - 7] + s0 + SHA256_W[i - 16] | 0;
+    }
+    let { A, B, C, D, E, F, G, H } = this;
+    for (let i = 0; i < 64; i++) {
+      const sigma1 = rotr(E, 6) ^ rotr(E, 11) ^ rotr(E, 25);
+      const T1 = H + sigma1 + Chi(E, F, G) + SHA256_K[i] + SHA256_W[i] | 0;
+      const sigma0 = rotr(A, 2) ^ rotr(A, 13) ^ rotr(A, 22);
+      const T2 = sigma0 + Maj(A, B, C) | 0;
+      H = G;
+      G = F;
+      F = E;
+      E = D + T1 | 0;
+      D = C;
+      C = B;
+      B = A;
+      A = T1 + T2 | 0;
+    }
+    A = A + this.A | 0;
+    B = B + this.B | 0;
+    C = C + this.C | 0;
+    D = D + this.D | 0;
+    E = E + this.E | 0;
+    F = F + this.F | 0;
+    G = G + this.G | 0;
+    H = H + this.H | 0;
+    this.set(A, B, C, D, E, F, G, H);
+  }
+  roundClean() {
+    clean(SHA256_W);
+  }
+  destroy() {
+    this.destroyed = true;
+    this.set(0, 0, 0, 0, 0, 0, 0, 0);
+    clean(this.buffer);
+  }
+};
+var _SHA256 = class extends SHA2_32B {
+  constructor() {
+    super(32, SHA256_IV);
+  }
+};
+var sha256 = /* @__PURE__ */ createHasher(
+  () => new _SHA256(),
+  /* @__PURE__ */ oidNist(1)
+);
+
+// packages/application/src/offline-bundle.ts
+var OFFLINE_SNAPSHOT_SCHEMA = 1;
+var OFFLINE_CHECKSUM_SERIALIZATION = "longball.canonical-json/1";
+var MAX_OFFLINE_EVENTS = 1e4;
+function* canonicalTokens(value) {
+  const ancestors = /* @__PURE__ */ new Set();
+  function* encode(input, depth) {
+    if (depth > 100) throw new Error("Offline snapshot nesting exceeds the supported bound.");
+    if (input === null || typeof input === "string" || typeof input === "boolean") {
+      yield JSON.stringify(input);
+      return;
+    }
+    if (typeof input === "number" && Number.isFinite(input)) {
+      yield JSON.stringify(input);
+      return;
+    }
+    if (typeof input !== "object" || !input || ancestors.has(input) || ![Object.prototype, null, Array.prototype].includes(Object.getPrototypeOf(input))) throw new Error("Offline snapshot must contain finite JSON values only.");
+    ancestors.add(input);
+    try {
+      if (Object.getOwnPropertySymbols(input).length) throw new Error("Offline snapshot cannot contain symbolic fields.");
+      const descriptors = Object.getOwnPropertyDescriptors(input);
+      if (Array.isArray(input)) {
+        if (Object.keys(input).length !== input.length || Object.entries(descriptors).some(([key, item]) => key !== "length" && (!("value" in item) || !item.enumerable)) || Array.from({ length: input.length }, (_, index) => index).some((index) => !Object.hasOwn(input, index))) throw new Error("Offline snapshot arrays must be dense JSON arrays.");
+        yield "[";
+        for (let index = 0; index < input.length; index++) {
+          if (index) yield ",";
+          yield* encode(input[index], depth + 1);
+        }
+        yield "]";
+        return;
+      }
+      if (Object.values(descriptors).some((item) => !("value" in item) || !item.enumerable)) throw new Error("Offline snapshot cannot contain accessors or hidden fields.");
+      yield "{";
+      let separator = "";
+      for (const key of Object.keys(input).sort()) {
+        yield separator;
+        separator = ",";
+        yield JSON.stringify(key);
+        yield ":";
+        yield* encode(descriptors[key].value, depth + 1);
+      }
+      yield "}";
+    } finally {
+      ancestors.delete(input);
+    }
+  }
+  yield* encode(value, 0);
+}
+function canonicalOfflineJson(value) {
+  return Array.from(canonicalTokens(value)).join("");
+}
+function offlineUtf8(value) {
+  let length = 0;
+  for (const character of value) {
+    const code = character.codePointAt(0);
+    length += code < 128 ? 1 : code < 2048 ? 2 : code < 65536 ? 3 : 4;
+  }
+  const bytes = new Uint8Array(length);
+  let offset = 0;
+  for (const character of value) {
+    const code = character.codePointAt(0);
+    if (code < 128) bytes[offset++] = code;
+    else if (code < 2048) {
+      bytes[offset++] = 192 | code >> 6;
+      bytes[offset++] = 128 | code & 63;
+    } else if (code < 65536) {
+      bytes[offset++] = 224 | code >> 12;
+      bytes[offset++] = 128 | code >> 6 & 63;
+      bytes[offset++] = 128 | code & 63;
+    } else {
+      bytes[offset++] = 240 | code >> 18;
+      bytes[offset++] = 128 | code >> 12 & 63;
+      bytes[offset++] = 128 | code >> 6 & 63;
+      bytes[offset++] = 128 | code & 63;
+    }
+  }
+  return bytes;
+}
+function offlineChecksum(payload) {
+  const hash4 = sha256.create();
+  let chunk = "";
+  for (const token of canonicalTokens(payload)) {
+    chunk += token;
+    if (chunk.length >= 16384) {
+      hash4.update(offlineUtf8(chunk));
+      chunk = "";
+    }
+  }
+  if (chunk) hash4.update(offlineUtf8(chunk));
+  return Array.from(hash4.digest(), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+function sealOfflineSnapshot(payload) {
+  const unsigned = { ...payload };
+  delete unsigned.checksumSha256;
+  return { ...unsigned, checksumSha256: offlineChecksum(unsigned) };
+}
+var natural = (value) => Number.isSafeInteger(value) && Number(value) >= 0;
+var identifier = (value) => typeof value === "string" && /^[A-Za-z0-9_.:-]{1,150}$/.test(value);
+var iso = (value) => typeof value === "string" && Number.isFinite(Date.parse(value)) && new Date(value).toISOString() === value;
+var equal = (left, right) => canonicalOfflineJson(left) === canonicalOfflineJson(right);
+var only = (value, fields5) => Object.keys(value).every((key) => fields5.includes(key));
+function assertOfflineSnapshot(download, scope) {
+  const fail7 = () => {
+    throw new Error("Offline snapshot is incomplete, inconsistent or unsupported. Existing journal retained; download a fresh verified bundle.");
+  };
+  if (!download || download.snapshotSchemaVersion !== OFFLINE_SNAPSHOT_SCHEMA || download.checksumSerialization !== OFFLINE_CHECKSUM_SERIALIZATION || !identifier(download.bundleId) || !identifier(download.teamId) || !identifier(download.seasonId) || scope.teamId !== void 0 && scope.teamId !== download.teamId || scope.seasonId !== void 0 && scope.seasonId !== download.seasonId || download.deviceId !== scope.deviceId || download.matchId !== scope.matchId || !iso(download.downloadedAt) || !/^[0-9a-f]{64}$/.test(download.checksumSha256 ?? "")) fail7();
+  if (!only(download, ["contractVersion", "schemaVersion", "engineVersion", "bundleId", "snapshotSchemaVersion", "checksumSerialization", "checksumSha256", "matchId", "teamId", "seasonId", "deviceId", "state", "acceptedRevision", "deviceCheckpoint", "controller", "publication", "acceptedEvents", "controllerTransitions", "downloadedAt", "clockAnchor", "syntheticOnly"]) || download.controller && !only(download.controller, ["epoch", "account_id", "device_id", "frozen"])) fail7();
+  if (!Array.isArray(download.acceptedEvents) || !Array.isArray(download.controllerTransitions) || download.acceptedEvents.length > MAX_OFFLINE_EVENTS || download.controllerTransitions.length > MAX_OFFLINE_EVENTS) fail7();
+  const { checksumSha256, ...payload } = download;
+  if (offlineChecksum(payload) !== checksumSha256) fail7();
+  const state = download.state;
+  if (!state?.config || state.config.matchId !== scope.matchId || !natural(state.revision) || state.revision !== download.acceptedRevision || !Array.isArray(state.config.players) || state.config.players.length > 100 || !Array.isArray(state.config.selectedPlayerIds) || state.config.selectedPlayerIds.length > 100 || new Set(state.config.players.map((player) => player.id)).size !== state.config.players.length || state.config.fixture && (state.config.fixture.teamId !== download.teamId || state.config.fixture.seasonId !== download.seasonId)) fail7();
+  if (!only(state.config, ["matchId", "players", "selectedPlayerIds", "pitchPlaces", "plannedHalfDurationMs", "fixedKeeperId", "initialPolicyProposal", "initialLineupProposal", "initialAttendance", "slots", "fixture", "profileSnapshot"]) || state.config.players.some((player) => !only(player, ["id", "displayName", "goalkeeperChoice", "positionPreferences", "profileVersion", "available"])) || state.config.profileSnapshot?.some((profile) => !only(profile, ["playerId", "preferences", "eligiblePositions", "initials"]))) fail7();
+  if (!download.publication || !Object.hasOwn(download.publication, "fixtureClass") || !Object.hasOwn(download.publication, "classificationVersion") || !Object.hasOwn(download.publication, "resultPolicy") || !download.publication.sharingPolicy || typeof download.publication.sharingPolicy.shareScores !== "boolean" || typeof download.publication.sharingPolicy.shareDerivedResults !== "boolean") fail7();
+  if (!Array.isArray(download.acceptedEvents) || !Array.isArray(download.controllerTransitions) || download.acceptedEvents.length > MAX_OFFLINE_EVENTS || download.controllerTransitions.length > MAX_OFFLINE_EVENTS || download.acceptedEvents.length !== state.revision) fail7();
+  const ids = /* @__PURE__ */ new Set();
+  for (const [index, record] of download.acceptedEvents.entries()) {
+    const event = record.event;
+    if (record.serverSequence !== index + 1 || !iso(record.receivedAt) || !event || event.matchId !== scope.matchId || event.baseRevision !== index || !identifier(event.eventId) || !identifier(event.deviceId) || !natural(event.clientSequence) || event.clientSequence < 1 || !natural(event.controllerEpoch) || event.controllerEpoch < 1 || !event.engineVersion || event.command?.id !== event.eventId || ids.has(event.eventId)) fail7();
+    ids.add(event.eventId);
+  }
+  if (state.eventHistory && (state.eventHistory.length !== download.acceptedEvents.length || !state.eventHistory.every((event, index) => event.id === download.acceptedEvents[index].event.eventId && equal({ ...download.acceptedEvents[index].event.command, ...event.actorId === void 0 ? {} : { actorId: event.actorId } }, event)))) fail7();
+  const checkpoint = download.deviceCheckpoint;
+  if (!checkpoint || !natural(checkpoint.clientSequence) || !(checkpoint.previousEventId === null || identifier(checkpoint.previousEventId)) || checkpoint.clientSequence === 0 !== (checkpoint.previousEventId === null)) fail7();
+  for (const record of download.acceptedEvents) if (record.event.deviceId === scope.deviceId && record.event.clientSequence > checkpoint.clientSequence) fail7();
+  for (const transition of download.controllerTransitions) if (!identifier(transition.id) || !natural(transition.epoch) || transition.epoch < 1 || !identifier(transition.actorId) || !identifier(transition.toDevice) || !(transition.fromDevice === null || identifier(transition.fromDevice)) || !iso(transition.createdAt) || typeof transition.kind !== "string" || !(transition.reason === null || typeof transition.reason === "string")) fail7();
+  if (!download.clockAnchor || download.clockAnchor.serverTime !== download.downloadedAt || download.clockAnchor.quality !== "observation_only" || download.clockAnchor.continuousMappingEstablished !== false || typeof download.syntheticOnly !== "boolean") fail7();
+}
+
+// apps/api/src/offline-bundle.ts
+function offlinePublication(matchId, sharingPolicy, records) {
+  const result = records?.results.find((item) => item.id === matchId);
+  const policy = result?.publication;
+  return {
+    fixtureClass: result?.fixtureClass ?? (records?.liveMatch.matchId === matchId ? records.liveMatch.fixtureClass : null),
+    classificationVersion: result?.classificationVersion ?? null,
+    resultPolicy: policy ? { id: policy.id, version: policy.version, fixtureClass: policy.fixtureClass, confirmed: policy.confirmed, confirmationReference: policy.confirmationReference, allowedRoles: [...policy.allowedRoles] } : null,
+    sharingPolicy: { version: sharingPolicy.version, approvedBy: sharingPolicy.approvedBy, approvedAt: sharingPolicy.approvedAt, shareScores: sharingPolicy.shareScores, shareDerivedResults: sharingPolicy.shareDerivedResults }
+  };
+}
+function buildOfflineDownload(input) {
+  if (input.events.length > MAX_OFFLINE_EVENTS || input.transitions.length > MAX_OFFLINE_EVENTS) throw new AccessError("OFFLINE_BUNDLE_UNSUPPORTED", 422, "The pilot requires complete accepted/control history within 10000 records in each stream. Nothing was truncated.");
+  const downloadedAt = new Date(input.nowMs).toISOString();
+  const controllerTransitions = input.transitions.map((row) => ({ id: row.id, epoch: row.epoch, actorId: row.actor_id, fromDevice: row.from_device, toDevice: row.to_device, kind: row.kind, reason: row.reason, createdAt: new Date(row.created_at).toISOString() }));
+  try {
+    const bundle = sealOfflineSnapshot({
+      contractVersion: "longball.events/1.1",
+      schemaVersion: 1,
+      engineVersion: ENGINE_VERSION,
+      bundleId: randomUUID(),
+      snapshotSchemaVersion: OFFLINE_SNAPSHOT_SCHEMA,
+      checksumSerialization: OFFLINE_CHECKSUM_SERIALIZATION,
+      matchId: input.matchId,
+      teamId: input.teamId,
+      seasonId: input.seasonId,
+      deviceId: input.deviceId,
+      state: input.state,
+      acceptedRevision: input.state.revision,
+      deviceCheckpoint: input.checkpoint,
+      controller: input.controller,
+      publication: input.publication,
+      acceptedEvents: input.events.map((row) => ({ serverSequence: row.revision, receivedAt: new Date(row.received_at).toISOString(), event: JSON.parse(row.envelope_json) })),
+      controllerTransitions,
+      downloadedAt,
+      clockAnchor: { serverTime: downloadedAt, quality: "observation_only", continuousMappingEstablished: false },
+      syntheticOnly: input.syntheticOnly
+    });
+    assertOfflineSnapshot(bundle, input);
+    return bundle;
+  } catch {
+    throw new AccessError("OFFLINE_BUNDLE_UNSUPPORTED", 422, "The complete snapshot failed structural or full-history validation. The previous device bundle remains usable; no partial replacement was returned.");
+  }
+}
+
+// apps/api/src/pg.ts
+import { AsyncLocalStorage } from "node:async_hooks";
+import { Pool, types } from "pg";
+import { readFile } from "node:fs/promises";
+var contextKey = (context) => JSON.stringify(Object.entries(context).sort(([a], [b]) => a.localeCompare(b)));
+function validateContext(context) {
+  if (!context || typeof context !== "object" || !Number.isSafeInteger(context.nowMs) || context.nowMs < 0) throw new Error("Invalid PostgreSQL application context.");
+  const required2 = {
+    identity: ["issuer", "subject"],
+    actor: ["accountId", "issuer", "subject"],
+    activation_token: ["tokenHash"],
+    invitation_activation: ["tokenHash"],
+    worker_claim: ["jobKind"],
+    worker_job: ["jobId", "leaseToken", "clubId", "teamId", "seasonId"]
+  };
+  if (!Object.hasOwn(required2, context.kind) || required2[context.kind].some((name) => typeof context[name] !== "string" || !context[name] || context[name].length > 2048)) throw new Error("Invalid PostgreSQL application context.");
+  if (context.kind === "actor" && (typeof context.strongAuth !== "boolean" || !Number.isSafeInteger(context.authenticatedAtMs) || context.authenticatedAtMs < 0 || context.requestedRole !== void 0 && !["administrator", "manager", "player", "spectator", "default"].includes(context.requestedRole))) throw new Error("Invalid PostgreSQL actor context.");
+  if (["activation_token", "invitation_activation"].includes(context.kind) && "tokenHash" in context && (!/^[a-f0-9]{64}$/.test(context.tokenHash) || "completionVerified" in context && context.completionVerified !== void 0 && context.completionVerified !== true)) throw new Error("Invalid PostgreSQL activation context.");
+  if (context.kind === "worker_claim" && !["award.finalise", "notification.dispatch"].includes(context.jobKind)) throw new Error("Invalid PostgreSQL job context.");
+  if (context.kind === "worker_job" && !/^[a-f0-9]{64}$/.test(context.leaseToken)) throw new Error("Invalid PostgreSQL job capability.");
+}
+function isNarrowing(parent, child) {
+  if (parent.kind === "identity" && child.kind === "actor") return parent.issuer === child.issuer && parent.subject === child.subject;
+  if (parent.kind !== child.kind) return false;
+  for (const [name, value] of Object.entries(parent)) {
+    if (name === "nowMs") continue;
+    if (child[name] !== value) return false;
+  }
+  return child.nowMs >= parent.nowMs;
+}
+var PgDatabase = class {
+  pool;
+  migrationMode;
+  transactions = new AsyncLocalStorage();
+  applications = new AsyncLocalStorage();
+  get applicationContext() {
+    const frame = this.applications.getStore();
+    for (let ancestor = frame; ancestor; ancestor = ancestor.parent) if (!ancestor.active) throw new Error("PostgreSQL application context has ended.");
+    return frame?.value;
+  }
+  async withContext(value, work) {
+    validateContext(value);
+    const immutable = Object.freeze({ ...value });
+    const parent = this.applicationContext;
+    if (parent && !isNarrowing(parent, immutable)) throw new Error("PostgreSQL application context cannot widen an existing scope.");
+    const key = contextKey(immutable);
+    const transaction = this.transactions.getStore();
+    if (transaction && !transaction.active) throw new Error("PostgreSQL transaction has ended.");
+    if (transaction && transaction.applicationKey !== key) throw new Error("Narrow PostgreSQL application context before opening its SQL transaction.");
+    const frame = { value: immutable, active: true, key, parent: this.applications.getStore() };
+    try {
+      return await this.applications.run(frame, work);
+    } finally {
+      frame.active = false;
+    }
+  }
+  constructor(connectionString2, options = {}) {
+    let url;
+    try {
+      url = new URL(connectionString2);
+    } catch {
+      throw new Error("A valid PostgreSQL connection URL is required.");
+    }
+    if (!["postgres:", "postgresql:"].includes(url.protocol)) throw new Error("A PostgreSQL connection URL is required.");
+    this.migrationMode = options.migrationMode ?? "apply";
+    this.pool = new Pool({
+      connectionString: connectionString2,
+      max: options.maximumConnections ?? 10,
+      application_name: options.applicationName ?? "longball-api",
+      connectionTimeoutMillis: 1e4,
+      idleTimeoutMillis: 3e4,
+      options: "-c search_path=longball,pg_catalog -c statement_timeout=15000 -c lock_timeout=10000",
+      types: { getTypeParser: (oid, format2) => {
+        if (oid === 114 || oid === 3802) return (value) => value;
+        if (oid === 20) return (value) => {
+          const parsed = Number(value);
+          if (!Number.isSafeInteger(parsed)) throw new Error("PostgreSQL integer exceeds the application range.");
+          return parsed;
+        };
+        return types.getTypeParser(oid, format2);
+      } }
+    });
+    this.pool.on("error", () => {
+      console.error("LONGBALL_POSTGRES_IDLE_CONNECTION_ERROR");
+    });
+  }
+  async query(sql, values = []) {
+    const application = this.applicationContext;
+    const transaction = this.transactions.getStore();
+    if (transaction) {
+      if (!transaction.active) throw new Error("PostgreSQL transaction has ended.");
+      if (transaction.applicationKey !== (application ? contextKey(application) : null)) throw new Error("PostgreSQL transaction context changed.");
+      return transaction.client.query(sql, [...values]);
+    }
+    if (!application) return this.pool.query(sql, [...values]);
+    return this.inTransaction(() => this.query(sql, values), false);
+  }
+  async transaction(work) {
+    return this.inTransaction(work, true);
+  }
+  async inTransaction(work, lockWrites) {
+    const application = this.applicationContext;
+    const applicationKey = application ? contextKey(application) : null;
+    const existing = this.transactions.getStore();
+    if (existing) {
+      if (!existing.active) throw new Error("PostgreSQL transaction has ended.");
+      if (existing.applicationKey !== applicationKey) throw new Error("PostgreSQL transaction context changed.");
+      return work();
+    }
+    const client = await this.pool.connect();
+    let discard = false;
+    try {
+      await client.query("BEGIN");
+      if (application) await client.query("SELECT set_config('longball.context',$1,true)", [JSON.stringify(application)]);
+      if (lockWrites) await client.query("SELECT pg_advisory_xact_lock(hashtextextended('longball:domain-write:v1', 0))");
+      const transaction = { client, applicationKey, active: true };
+      let result;
+      try {
+        result = await this.transactions.run(transaction, work);
+      } finally {
+        transaction.active = false;
+      }
+      await client.query("COMMIT");
+      return result;
+    } catch (error) {
+      try {
+        await client.query("ROLLBACK");
+      } catch {
+        discard = true;
+      }
+      throw error;
+    } finally {
+      client.release(discard);
+    }
+  }
+  async migrate() {
+    if (this.migrationMode === "verify") {
+      const versions = await this.query("SELECT version FROM longball.schema_migrations ORDER BY version");
+      if (versions.rows.some((row) => row.version > 15)) throw new Error("This PostgreSQL schema is newer than the application. Preserve it and use a compatible build.");
+      if (![2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15].every((version) => versions.rows.some((row) => row.version === version))) throw new Error("PostgreSQL migrations are required. Run the separate migrator before starting the runtime.");
+      const protectedTables = ["clubs", "teams", "team_seasons", "game_contexts", "accounts", "memberships", "matches", "documents", "devices", "controller_grants", "controller_history", "events", "streams", "conflicting_submissions", "transfers", "clock_challenges", "clock_mappings", "reconciliation_proposals", "audit", "idempotency", "privacy_requests", "privacy_pending_keys", "jobs", "brand_assets", "brand_slots", "spectator_invitations", "lb_spectator_activation_accounts", "lb_spectator_activation_attempts", "native_app_devices", "team_privilege_states", "team_privilege_decisions", "push_registrations"];
+      const security = await this.query(`SELECT c.relname,c.relrowsecurity,(SELECT count(*)::integer FROM pg_catalog.pg_policy p WHERE p.polrelid=c.oid) AS policies FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='longball' AND c.relname=ANY($1::text[])`, [protectedTables]);
+      if (security.rows.length !== protectedTables.length || security.rows.some((row) => !row.relrowsecurity || row.policies < 1)) throw new Error("PostgreSQL row security is missing. Run the separate migrator before starting runtime.");
+      return;
+    }
+    const migration = await readFile(new URL("../migrations/postgresql/002_runtime.sql", import.meta.url), "utf8");
+    const clockReviewMigration = await readFile(new URL("../migrations/postgresql/003_clock_review.sql", import.meta.url), "utf8");
+    const accountRequestsMigration = await readFile(new URL("../migrations/postgresql/004_account_requests.sql", import.meta.url), "utf8");
+    const scopeSecurityMigration = await readFile(new URL("../migrations/postgresql/005_scope_security.sql", import.meta.url), "utf8");
+    const awardNotificationsMigration = await readFile(new URL("../migrations/postgresql/006_award_notifications.sql", import.meta.url), "utf8");
+    const workerBoundariesMigration = await readFile(new URL("../migrations/postgresql/007_worker_boundaries.sql", import.meta.url), "utf8");
+    const controllerRevocationMigration = await readFile(new URL("../migrations/postgresql/008_controller_revocation.sql", import.meta.url), "utf8");
+    const dispatchClockMigration = await readFile(new URL("../migrations/postgresql/009_dispatch_database_clock.sql", import.meta.url), "utf8");
+    const brandAssetsMigration = await readFile(new URL("../migrations/postgresql/010_brand_assets.sql", import.meta.url), "utf8");
+    const spectatorCapabilitiesMigration = await readFile(new URL("../migrations/postgresql/011_spectator_capabilities.sql", import.meta.url), "utf8");
+    const heicMigration = await readFile(new URL("../migrations/postgresql/012_heic_support.sql", import.meta.url), "utf8");
+    const teamPrivilegesMigration = await readFile(new URL("../migrations/postgresql/013_team_privileges.sql", import.meta.url), "utf8");
+    const pushRegistrationMigration = await readFile(new URL("../migrations/postgresql/014_push_registrations.sql", import.meta.url), "utf8");
+    const privilegeAuditClockMigration = await readFile(new URL("../migrations/postgresql/015_team_privilege_audit_clock.sql", import.meta.url), "utf8");
+    await this.transaction(async () => {
+      const schema = await this.query("SELECT to_regnamespace('longball')::text AS namespace");
+      if (!schema.rows[0]?.namespace) await this.query("CREATE SCHEMA longball");
+      await this.query("CREATE TABLE IF NOT EXISTS longball.schema_migrations(version integer PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())");
+      const versions = await this.query("SELECT version FROM longball.schema_migrations ORDER BY version");
+      if (versions.rows.some((row) => row.version > 15)) throw new Error("This PostgreSQL schema is newer than the application. Preserve it and use a compatible build.");
+      if (!versions.rows.some((row) => row.version === 2)) {
+        await this.query(migration);
+        await this.query("INSERT INTO longball.schema_migrations(version) VALUES(2)");
+      }
+      if (!versions.rows.some((row) => row.version === 3)) {
+        await this.query(clockReviewMigration);
+        await this.query("INSERT INTO longball.schema_migrations(version) VALUES(3)");
+      }
+      if (!versions.rows.some((row) => row.version === 4)) {
+        await this.query(accountRequestsMigration);
+        await this.query("INSERT INTO longball.schema_migrations(version) VALUES(4)");
+      }
+      if (!versions.rows.some((row) => row.version === 5)) {
+        await this.query(scopeSecurityMigration);
+        await this.query("INSERT INTO longball.schema_migrations(version) VALUES(5)");
+      }
+      if (!versions.rows.some((row) => row.version === 6)) {
+        await this.query(awardNotificationsMigration);
+        await this.query("INSERT INTO longball.schema_migrations(version) VALUES(6)");
+      }
+      if (!versions.rows.some((row) => row.version === 7)) {
+        await this.query(workerBoundariesMigration);
+        await this.query("INSERT INTO longball.schema_migrations(version) VALUES(7)");
+      }
+      if (!versions.rows.some((row) => row.version === 8)) {
+        await this.query(controllerRevocationMigration);
+        await this.query("INSERT INTO longball.schema_migrations(version) VALUES(8)");
+      }
+      if (!versions.rows.some((row) => row.version === 9)) {
+        await this.query(dispatchClockMigration);
+        await this.query("INSERT INTO longball.schema_migrations(version) VALUES(9)");
+      }
+      if (!versions.rows.some((row) => row.version === 10)) {
+        await this.query(brandAssetsMigration);
+        await this.query("INSERT INTO longball.schema_migrations(version) VALUES(10)");
+      }
+      if (!versions.rows.some((row) => row.version === 11)) {
+        await this.query(spectatorCapabilitiesMigration);
+        await this.query("INSERT INTO longball.schema_migrations(version) VALUES(11)");
+      }
+      if (!versions.rows.some((row) => row.version === 12)) {
+        await this.query(heicMigration);
+        await this.query("INSERT INTO longball.schema_migrations(version) VALUES(12)");
+      }
+      if (!versions.rows.some((row) => row.version === 13)) {
+        await this.query(teamPrivilegesMigration);
+        await this.query("INSERT INTO longball.schema_migrations(version) VALUES(13)");
+      }
+      if (!versions.rows.some((row) => row.version === 14)) {
+        await this.query(pushRegistrationMigration);
+        await this.query("INSERT INTO longball.schema_migrations(version) VALUES(14)");
+      }
+      if (!versions.rows.some((row) => row.version === 15)) {
+        await this.query(privilegeAuditClockMigration);
+        await this.query("INSERT INTO longball.schema_migrations(version) VALUES(15)");
+      }
+    });
+  }
+  async close() {
+    await this.pool.end();
+  }
+};
+
+// apps/api/src/postgres-store.ts
+import { createHash as createHash2, randomBytes, randomUUID as randomUUID2 } from "node:crypto";
+
+// fixtures/roma.synthetic.json
+var roma_synthetic_default = {
+  synthetic: true,
+  teamId: "synthetic-roma-u10",
+  season: "2026/27",
+  timeZone: "Europe/London",
+  pitchPlaces: 7,
+  plannedHalfDurationMs: 15e5,
+  players: [
+    {
+      id: "synthetic-player-01",
+      displayName: "Player 01",
+      available: true,
+      goalkeeperChoice: 1
+    },
+    {
+      id: "synthetic-player-02",
+      displayName: "Player 02",
+      available: true,
+      goalkeeperChoice: 0
+    },
+    {
+      id: "synthetic-player-03",
+      displayName: "Player 03",
+      available: true,
+      goalkeeperChoice: 0
+    },
+    {
+      id: "synthetic-player-04",
+      displayName: "Player 04",
+      available: true,
+      goalkeeperChoice: 0
+    },
+    {
+      id: "synthetic-player-05",
+      displayName: "Player 05",
+      available: true,
+      goalkeeperChoice: 0
+    },
+    {
+      id: "synthetic-player-06",
+      displayName: "Player 06",
+      available: true,
+      goalkeeperChoice: 0
+    },
+    {
+      id: "synthetic-player-07",
+      displayName: "Player 07",
+      available: true,
+      goalkeeperChoice: 0
+    },
+    {
+      id: "synthetic-player-08",
+      displayName: "Player 08",
+      available: true,
+      goalkeeperChoice: 0
+    },
+    {
+      id: "synthetic-player-09",
+      displayName: "Player 09",
+      available: true,
+      goalkeeperChoice: 0
+    },
+    {
+      id: "synthetic-player-10",
+      displayName: "Player 10",
+      available: false,
+      goalkeeperChoice: 0
+    },
+    {
+      id: "synthetic-player-11",
+      displayName: "Player 11",
+      available: false,
+      goalkeeperChoice: 0
+    },
+    {
+      id: "synthetic-player-12",
+      displayName: "Player 12",
+      available: false,
+      goalkeeperChoice: 0
+    },
+    {
+      id: "synthetic-player-13",
+      displayName: "Player 13",
+      available: false,
+      goalkeeperChoice: 0
+    }
+  ]
+};
+
+// packages/testing/src/index.ts
+var romaFixture = roma_synthetic_default;
 
 // packages/application/src/invitation-credentials.ts
 var validTime2 = (value) => Number.isSafeInteger(value) && value >= 0;
@@ -2411,8 +3631,8 @@ function applyCommunityCommand(state, actor, command, nowMs) {
     case "preferences.changed": {
       const preferences = command.preferences;
       requireRule(["schedule", "match", "awards", "photos"].every((key) => typeof preferences[key] === "boolean"), "invalid", "Notification choices must be on or off.");
-      const time2 = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
-      requireRule(preferences.quietStart === null && preferences.quietEnd === null || typeof preferences.quietStart === "string" && typeof preferences.quietEnd === "string" && time2.test(preferences.quietStart) && time2.test(preferences.quietEnd), "invalid", "Use HH:MM for both quiet-hour boundaries, or leave both empty.");
+      const time3 = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
+      requireRule(preferences.quietStart === null && preferences.quietEnd === null || typeof preferences.quietStart === "string" && typeof preferences.quietEnd === "string" && time3.test(preferences.quietStart) && time3.test(preferences.quietEnd), "invalid", "Use HH:MM for both quiet-hour boundaries, or leave both empty.");
       requireRule(preferences.quietStart === null || preferences.quietStart !== preferences.quietEnd, "invalid", "Quiet hours need distinct boundaries; use channel switches to pause all day.");
       next.preferences[actor.accountId] = { ...preferences };
       break;
@@ -2727,7 +3947,7 @@ function signature(value) {
   if (value !== null && typeof value === "object") return `{${Object.entries(value).filter(([, item]) => item !== void 0).sort(([a], [b]) => a.localeCompare(b)).map(([key, item]) => `${JSON.stringify(key)}:${signature(item)}`).join(",")}}`;
   return JSON.stringify(value);
 }
-function nonnegative(value, label) {
+function nonnegative2(value, label) {
   if (!Number.isSafeInteger(value) || value < 0) throw new Error(`${label} must be a nonnegative whole number.`);
 }
 function validDate2(value) {
@@ -2738,8 +3958,8 @@ function validInstant(value) {
 }
 function validateScore(value) {
   if (value) {
-    nonnegative(value.for, "Our score");
-    nonnegative(value.against, "Opposition score");
+    nonnegative2(value.for, "Our score");
+    nonnegative2(value.against, "Opposition score");
   }
 }
 function managerOnlyPublication(fixtureClass) {
@@ -2749,7 +3969,7 @@ function validateInput(state, input) {
   if (!validDate2(input.playedDate) || input.playedDate < state.startsOn || input.playedDate > state.endsOn) throw new Error("Choose a real played date within this team season.");
   if (!input.opponent.trim()) throw new Error("Record the opposition.");
   if (input.recordedKickoff !== null && !validInstant(input.recordedKickoff)) throw new Error("Known kick-off must include its timezone; otherwise leave it not recorded.");
-  if (input.sameDayOrder !== null) nonnegative(input.sameDayOrder, "Same-day order");
+  if (input.sameDayOrder !== null) nonnegative2(input.sameDayOrder, "Same-day order");
   validateScore(input.finalScore);
   validateScore(input.halfTimeScore);
   if (input.halfTimeScore && input.finalScore && (input.halfTimeScore.for > input.finalScore.for || input.halfTimeScore.against > input.finalScore.against)) throw new Error("Half-time goals cannot exceed the final score.");
@@ -2759,7 +3979,7 @@ function validateInput(state, input) {
     if (goal.scorerPlayerId && !state.players.some((player) => player.id === goal.scorerPlayerId)) throw new Error("The scorer must belong to this archived team-season roster.");
     if ((goal.beneficiary === "opposition" && !goal.isOwnGoal || goal.beneficiary === "us" && goal.isOwnGoal) && goal.scorerPlayerId !== null) throw new Error("An opposition scorer cannot be credited to one of our players.");
     if (goal.halfElapsedMs !== null) {
-      nonnegative(goal.halfElapsedMs, "Known goal time");
+      nonnegative2(goal.halfElapsedMs, "Known goal time");
       if (goal.half === null) throw new Error("A known goal time needs its half.");
     }
   }
@@ -3201,6 +4421,7 @@ function selectMatchReport(state, matchId, viewer, currentMatch = null) {
 
 // packages/application/src/sync.ts
 function effectiveEventTime(previous, next, event) {
+  if (event.type === "policy.changed") return { ...event.effective };
   let effective;
   if (event.type === "goal.recorded" || event.type === "availability.changed" || event.type === "lineup.committed") effective = event.effective;
   if (event.type === "event.corrected") effective = event.replacement.effective;
@@ -3221,7 +4442,7 @@ function fixtureMatchConfig(preparation, snapshot) {
   const keepers = snapshot.profiles.filter(
     (player) => goalkeeperChoice(player) > 0
   );
-  return {
+  const config = {
     matchId: snapshot.fixtureId,
     players: snapshot.profiles.map((player) => ({
       id: player.playerId,
@@ -3232,6 +4453,7 @@ function fixtureMatchConfig(preparation, snapshot) {
     pitchPlaces: snapshot.fixture.format,
     plannedHalfDurationMs: snapshot.fixture.plannedHalfDurationMs,
     fixedKeeperId: keepers.length === 1 ? keepers[0].playerId : null,
+    ...snapshot.matchPlanDraft ? { initialPolicyProposal: snapshot.matchPlanDraft.settings, initialLineupProposal: snapshot.matchPlanDraft.allocations.map((row) => ({ ...row })) } : {},
     initialAttendance: { ...snapshot.attendance },
     slots: snapshot.formation.slots.map((slot) => ({
       slotId: slot.id,
@@ -3257,18 +4479,19 @@ function fixtureMatchConfig(preparation, snapshot) {
       clubName: preparation.club.name
     }
   };
+  return config;
 }
 var defaultPlayerId = romaFixture.players[0].id;
 
 // packages/application/src/season-service.ts
-var copy = (value) => JSON.parse(JSON.stringify(value));
-var fail = (message, code = "INVALID_REQUEST", status = 422) => {
+var copy2 = (value) => JSON.parse(JSON.stringify(value));
+var fail2 = (message, code = "INVALID_REQUEST", status = 422) => {
   throw new AccessError(code, status, message);
 };
-function requireThat2(value, message) {
-  if (!value) fail(message);
+function requireThat3(value, message) {
+  if (!value) fail2(message);
 }
-function validId(value) {
+function validId2(value) {
   return typeof value === "string" && /^[A-Za-z0-9_-]{1,80}$/.test(value);
 }
 function current(item, nowMs) {
@@ -3276,11 +4499,11 @@ function current(item, nowMs) {
 }
 function source(context) {
   const { preparation, records } = context;
-  requireThat2(Number.isSafeInteger(context.nowMs) && context.nowMs >= 0, "A trusted server time is required.");
-  requireThat2(preparation.team.id === records.teamId && preparation.club.id === records.clubId, "Preparation and reports must belong to the same club and team.");
+  requireThat3(Number.isSafeInteger(context.nowMs) && context.nowMs >= 0, "A trusted server time is required.");
+  requireThat3(preparation.team.id === records.teamId && preparation.club.id === records.clubId, "Preparation and reports must belong to the same club and team.");
   const season = preparation.seasons.find((item) => item.id === records.seasonId);
-  requireThat2(season, "The source season is unavailable.");
-  requireThat2(context.community.seasons.some((item) => item.teamId === records.teamId && item.id === season.id), "The source community scope is inconsistent.");
+  requireThat3(season, "The source season is unavailable.");
+  requireThat3(context.community.seasons.some((item) => item.teamId === records.teamId && item.id === season.id), "The source community scope is inconsistent.");
   return season;
 }
 function visibleAccounts(context) {
@@ -3298,7 +4521,7 @@ function seasonAccessEndsAtMs(startYear) {
   const midnightUtc = Date.UTC(startYear + 1, 8, 1);
   const offset = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/London", timeZoneName: "shortOffset" }).formatToParts(midnightUtc).find((part) => part.type === "timeZoneName")?.value;
   const match = /^GMT(?:([+-])(\d{1,2})(?::(\d{2}))?)?$/.exec(offset ?? "");
-  requireThat2(match, "The season boundary timezone is unavailable.");
+  requireThat3(match, "The season boundary timezone is unavailable.");
   const minutes = match[1] ? (match[1] === "+" ? 1 : -1) * (Number(match[2]) * 60 + Number(match[3] ?? 0)) : 0;
   return midnightUtc - minutes * 6e4;
 }
@@ -3313,7 +4536,7 @@ function seasonRolloverOptions(context) {
   return {
     revision: preparation.revision,
     sourceSeasonId: season.id,
-    sourceSeason: copy(season),
+    sourceSeason: copy2(season),
     canRollover: administrator && principal.strongAuth && !existingNextSeasonId && principal.authenticatedAt <= nowMs + 3e4 && nowMs - principal.authenticatedAt <= 3e5,
     existingNextSeasonId,
     requiredAuthority: "administrator_with_recent_stronger_sign_in",
@@ -3331,11 +4554,11 @@ function configurationServiceView(input) {
   assertTeamRole(input.principal, input.memberships, input.preparation.team.id, input.seasonId, ["administrator", "manager"], input.nowMs);
   assertAdultAuthority(input.principal, false, input.nowMs);
   const { version, revision, club, team, activeSeasonId, seasons } = input.preparation;
-  return copy({ version, revision, club, team, activeSeasonId, seasons });
+  return copy2({ version, revision, club, team, activeSeasonId, seasons });
 }
 function applyConfigurationServiceCommand(input) {
   const { principal, memberships, preparation, seasonId, nowMs, command } = input;
-  requireThat2(command?.type === "club.updated" || command?.type === "team.updated", "Configuration accepts only club or team settings.");
+  requireThat3(command?.type === "club.updated" || command?.type === "team.updated", "Configuration accepts only club or team settings.");
   assertTeamRole(principal, memberships, preparation.team.id, seasonId, command.type === "club.updated" ? ["administrator"] : ["administrator", "manager"], nowMs);
   assertAdultAuthority(principal, command.type === "club.updated", nowMs);
   return reducePreparation(preparation, command);
@@ -3343,26 +4566,26 @@ function applyConfigurationServiceCommand(input) {
 function planSeasonRollover(context) {
   const old = source(context), { principal, memberships, accounts, preparation, records, community, command, nowMs } = context;
   assertTeamRole(principal, memberships, records.teamId, old.id, ["administrator"], nowMs);
-  requireThat2(Number.isSafeInteger(principal.authenticatedAt) && principal.authenticatedAt >= 0, "Verified authentication time is required.");
+  requireThat3(Number.isSafeInteger(principal.authenticatedAt) && principal.authenticatedAt >= 0, "Verified authentication time is required.");
   assertAdultAuthority(principal, true, nowMs);
-  requireThat2(command?.type === "season.rolled_over" && validId(command.id) && validId(command.idForSeason), "Use valid command and season identifiers.");
-  requireThat2(command.expectedPreparationRevision === preparation.revision, "The source preparation changed. Refresh before creating its next season.");
-  requireThat2(command.startYear === old.startYear + 1 && command.startYear <= 2100 && command.startYear >= 2020, "Create the immediately following September-to-August season.");
-  requireThat2(command.idForSeason !== old.id && !preparation.seasons.some((item) => item.id === command.idForSeason || item.startYear === command.startYear) && !memberships.some((item) => item.teamId === records.teamId && item.seasonId === command.idForSeason), "That destination season already exists.");
-  requireThat2(!context.existingSeasons.some((item) => item.teamId === records.teamId && (item.id === command.idForSeason || item.startYear === command.startYear)), "That destination season or season year already exists.");
-  requireThat2(command.confirmSpectatorRenewal === true && typeof command.copyPlayers === "boolean", "Acknowledge that spectators receive no automatic new-season access.");
-  requireThat2(Array.isArray(command.managerAccountIds) && Array.isArray(command.administratorAccountIds) && Array.isArray(command.playerAssignments), "Explicit manager, administrator and player assignments are required.");
-  requireThat2(command.playerAssignments.length <= 2e3 && command.playerAssignments.every((item) => item && typeof item === "object" && validId(item.accountId) && validId(item.playerId)), "Player assignments must be a bounded list of known identities.");
-  const unique3 = (items) => items.every(validId) && new Set(items).size === items.length;
-  requireThat2(command.managerAccountIds.length >= 1 && command.managerAccountIds.length <= 4 && unique3(command.managerAccountIds), "Select one to four distinct verified adult managers.");
-  requireThat2(command.administratorAccountIds.length >= 1 && unique3(command.administratorAccountIds), "Explicitly retain at least one current verified administrator.");
+  requireThat3(command?.type === "season.rolled_over" && validId2(command.id) && validId2(command.idForSeason), "Use valid command and season identifiers.");
+  requireThat3(command.expectedPreparationRevision === preparation.revision, "The source preparation changed. Refresh before creating its next season.");
+  requireThat3(command.startYear === old.startYear + 1 && command.startYear <= 2100 && command.startYear >= 2020, "Create the immediately following September-to-August season.");
+  requireThat3(command.idForSeason !== old.id && !preparation.seasons.some((item) => item.id === command.idForSeason || item.startYear === command.startYear) && !memberships.some((item) => item.teamId === records.teamId && item.seasonId === command.idForSeason), "That destination season already exists.");
+  requireThat3(!context.existingSeasons.some((item) => item.teamId === records.teamId && (item.id === command.idForSeason || item.startYear === command.startYear)), "That destination season or season year already exists.");
+  requireThat3(command.confirmSpectatorRenewal === true && typeof command.copyPlayers === "boolean", "Acknowledge that spectators receive no automatic new-season access.");
+  requireThat3(Array.isArray(command.managerAccountIds) && Array.isArray(command.administratorAccountIds) && Array.isArray(command.playerAssignments), "Explicit manager, administrator and player assignments are required.");
+  requireThat3(command.playerAssignments.length <= 2e3 && command.playerAssignments.every((item) => item && typeof item === "object" && validId2(item.accountId) && validId2(item.playerId)), "Player assignments must be a bounded list of known identities.");
+  const unique3 = (items) => items.every(validId2) && new Set(items).size === items.length;
+  requireThat3(command.managerAccountIds.length >= 1 && command.managerAccountIds.length <= 4 && unique3(command.managerAccountIds), "Select one to four distinct verified adult managers.");
+  requireThat3(command.administratorAccountIds.length >= 1 && unique3(command.administratorAccountIds), "Explicitly retain at least one current verified administrator.");
   const options = seasonRolloverOptions(context);
-  for (const id4 of command.managerAccountIds) requireThat2(options.managerCandidates.some((account2) => account2.accountId === id4), "Each manager must be an active verified adult with stronger authentication already enrolled in this team.");
-  for (const id4 of command.administratorAccountIds) requireThat2(options.managerCandidates.some((account2) => account2.accountId === id4 && account2.administrator), "Only a current verified administrator can retain administrator authority in the new season.");
-  if ((/* @__PURE__ */ new Set([...activeManagers(context), ...command.managerAccountIds])).size > 4) fail("A team can have at most four active manager accounts. Revoke departed manager authority explicitly before adding another account.", "MANAGER_LIMIT", 409);
-  requireThat2(new Set(command.playerAssignments.map((item) => item.accountId)).size === command.playerAssignments.length && new Set(command.playerAssignments.map((item) => item.playerId)).size === command.playerAssignments.length, "Player assignments must retain one distinct known account for each player.");
-  requireThat2(command.copyPlayers || command.playerAssignments.length === 0, "Copy the relevant player profiles before assigning their existing accounts.");
-  for (const assignment of command.playerAssignments) requireThat2(validId(assignment.accountId) && validId(assignment.playerId) && options.playerCandidates.some((item) => item.accountId === assignment.accountId && item.playerId === assignment.playerId), "New player membership must preserve the source account/player binding. Use activation for new identity links.");
+  for (const id4 of command.managerAccountIds) requireThat3(options.managerCandidates.some((account2) => account2.accountId === id4), "Each manager must be an active verified adult with stronger authentication already enrolled in this team.");
+  for (const id4 of command.administratorAccountIds) requireThat3(options.managerCandidates.some((account2) => account2.accountId === id4 && account2.administrator), "Only a current verified administrator can retain administrator authority in the new season.");
+  if ((/* @__PURE__ */ new Set([...activeManagers(context), ...command.managerAccountIds])).size > 4) fail2("A team can have at most four active manager accounts. Revoke departed manager authority explicitly before adding another account.", "MANAGER_LIMIT", 409);
+  requireThat3(new Set(command.playerAssignments.map((item) => item.accountId)).size === command.playerAssignments.length && new Set(command.playerAssignments.map((item) => item.playerId)).size === command.playerAssignments.length, "Player assignments must retain one distinct known account for each player.");
+  requireThat3(command.copyPlayers || command.playerAssignments.length === 0, "Copy the relevant player profiles before assigning their existing accounts.");
+  for (const assignment of command.playerAssignments) requireThat3(validId2(assignment.accountId) && validId2(assignment.playerId) && options.playerCandidates.some((item) => item.accountId === assignment.accountId && item.playerId === assignment.playerId), "New player membership must preserve the source account/player binding. Use activation for new identity links.");
   const season = { id: command.idForSeason, startYear: command.startYear, ...seasonBounds(command.startYear), spectatorRenewalRequired: true };
   const newMemberships = [
     ...command.managerAccountIds.map((accountId) => ({ accountId, teamId: records.teamId, seasonId: season.id, role: "manager" })),
@@ -3370,11 +4593,11 @@ function planSeasonRollover(context) {
     ...command.playerAssignments.map((item) => ({ ...item, teamId: records.teamId, seasonId: season.id, role: "player" }))
   ];
   const sourceProfiles = preparation.profiles.filter((profile) => profile.seasonId === old.id && profile.active);
-  requireThat2(sourceProfiles.length <= 2e3 && new Set(sourceProfiles.map((profile) => profile.playerId)).size === sourceProfiles.length, "The source roster must have one distinct active profile for each player.");
-  const profiles = command.copyPlayers ? sourceProfiles.map((profile, index) => ({ ...copy(profile), id: `profile-${season.id.slice(0, 60)}-${String(index + 1).padStart(4, "0")}`, seasonId: season.id })) : [];
-  const nextPreparation = { ...copy(preparation), revision: 0, activeSeasonId: season.id, seasons: [season], profiles, fixtures: [], training: [], snapshots: [], appliedCommands: {}, audit: [{ id: command.id, revision: 0, type: "season.created_from_explicit_assignments" }] };
+  requireThat3(sourceProfiles.length <= 2e3 && new Set(sourceProfiles.map((profile) => profile.playerId)).size === sourceProfiles.length, "The source roster must have one distinct active profile for each player.");
+  const profiles = command.copyPlayers ? sourceProfiles.map((profile, index) => ({ ...copy2(profile), id: `profile-${season.id.slice(0, 60)}-${String(index + 1).padStart(4, "0")}`, seasonId: season.id })) : [];
+  const nextPreparation = { ...copy2(preparation), revision: 0, activeSeasonId: season.id, seasons: [season], profiles, fixtures: [], training: [], snapshots: [], matchPlans: [], appliedCommands: {}, audit: [{ id: command.id, revision: 0, type: "season.created_from_explicit_assignments" }] };
   const nextRecords = {
-    ...copy(records),
+    ...copy2(records),
     revision: 0,
     seasonId: season.id,
     seasonLabel: season.label,
@@ -3389,7 +4612,7 @@ function planSeasonRollover(context) {
   };
   const assignedIds = new Set(newMemberships.map((item) => item.accountId));
   const nextCommunity = {
-    ...copy(community),
+    ...copy2(community),
     revision: 0,
     accounts: accounts.filter((account2) => assignedIds.has(account2.accountId)).map((account2) => ({ id: account2.accountId, label: account2.label, classification: account2.identityClassification === "child_shared" ? "child_shared" : "adult_individual", adultVerified: account2.adultVerified })),
     memberships: newMemberships.filter((item) => item.role === "manager" || item.role === "player").map((item) => ({ accountId: item.accountId, teamId: item.teamId, seasonId: item.seasonId, role: item.role, ...item.playerId ? { playerId: item.playerId } : {}, active: true })),
@@ -3403,8 +4626,8 @@ function planSeasonRollover(context) {
     concerns: [],
     privacyRequests: [],
     appliedCommands: {},
-    hiddenUploaders: community.hiddenUploaders.filter((item) => assignedIds.has(item.accountId)).map(copy),
-    preferences: Object.fromEntries(Object.entries(community.preferences).filter(([accountId]) => assignedIds.has(accountId)).map(([id4, value]) => [id4, copy(value)])),
+    hiddenUploaders: community.hiddenUploaders.filter((item) => assignedIds.has(item.accountId)).map(copy2),
+    preferences: Object.fromEntries(Object.entries(community.preferences).filter(([accountId]) => assignedIds.has(accountId)).map(([id4, value]) => [id4, copy2(value)])),
     audit: [{ id: command.id, actorAccountId: principal.accountId, action: "season.created_from_explicit_assignments", atMs: nowMs }]
   };
   return {
@@ -3428,7 +4651,7 @@ function composeReportCommunity(report, accountId, source2) {
   if (match.sharingAllowed !== true) return empty("withheld", source2.revision);
   const award = match.award;
   const times = award ? [award.voteCutoffAtMs, award.finalisationDeadlineAtMs, award.finalisedAtMs] : [];
-  if (award && (award.matchId !== report.matchId || !["winners", "no_valid_votes"].includes(award.result) || !times.every((time2) => Number.isSafeInteger(time2) && time2 >= 0) || award.finalisationDeadlineAtMs < award.voteCutoffAtMs || award.deadlineMissed !== award.finalisedAtMs > award.finalisationDeadlineAtMs || !Array.isArray(award.winnerLabels) || award.winnerLabels.some((label) => typeof label !== "string" || !label.trim() || label.length > 120) || (award.result === "no_valid_votes" ? award.winnerLabels.length !== 0 : award.winnerLabels.length === 0))) return empty("unavailable");
+  if (award && (award.matchId !== report.matchId || !["winners", "no_valid_votes"].includes(award.result) || !times.every((time3) => Number.isSafeInteger(time3) && time3 >= 0) || award.finalisationDeadlineAtMs < award.voteCutoffAtMs || award.deadlineMissed !== award.finalisedAtMs > award.finalisationDeadlineAtMs || !Array.isArray(award.winnerLabels) || award.winnerLabels.some((label) => typeof label !== "string" || !label.trim() || label.length > 120) || (award.result === "no_valid_votes" ? award.winnerLabels.length !== 0 : award.winnerLabels.length === 0))) return empty("unavailable");
   const photos = new Set(source2.view.gallery.filter((photo) => photo.matchId === report.matchId && typeof photo.id === "string" && photo.id.length > 0).map((photo) => photo.id));
   return {
     communityStatus: "available",
@@ -3439,12 +4662,12 @@ function composeReportCommunity(report, accountId, source2) {
 }
 
 // packages/application/src/records-service.ts
-var copy2 = (value) => JSON.parse(JSON.stringify(value));
-function fail2(message, code = "INVALID_REQUEST", status = 422) {
+var copy3 = (value) => JSON.parse(JSON.stringify(value));
+function fail3(message, code = "INVALID_REQUEST", status = 422) {
   throw new AccessError(code, status, message);
 }
-function requireThat3(value, message) {
-  if (!value) fail2(message);
+function requireThat4(value, message) {
+  if (!value) fail3(message);
 }
 function object(value) {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
@@ -3453,7 +4676,7 @@ function string(value, max = 150) {
   return typeof value === "string" && value.trim().length > 0 && value.length <= max && !/[\u0000-\u001f\u007f]/.test(value);
 }
 function fields(value, permitted) {
-  requireThat3(Object.keys(value).every((key) => permitted.includes(key)), "The request includes unsupported fields.");
+  requireThat4(Object.keys(value).every((key) => permitted.includes(key)), "The request includes unsupported fields.");
 }
 function integer2(value, maximum = Number.MAX_SAFE_INTEGER) {
   return Number.isSafeInteger(value) && value >= 0 && value <= maximum;
@@ -3461,47 +4684,47 @@ function integer2(value, maximum = Number.MAX_SAFE_INTEGER) {
 var fixtureClasses = ["development", "friendly", "trophy", "unclassified"];
 function score(value) {
   if (value === null) return null;
-  requireThat3(object(value), "Provide a known score or explicitly leave it not recorded.");
+  requireThat4(object(value), "Provide a known score or explicitly leave it not recorded.");
   fields(value, ["for", "against"]);
-  requireThat3(integer2(value.for, 999) && integer2(value.against, 999), "Scores must be nonnegative whole goals.");
+  requireThat4(integer2(value.for, 999) && integer2(value.against, 999), "Scores must be nonnegative whole goals.");
   return { for: value.for, against: value.against };
 }
 function parseHistoricalResultInput(value) {
-  requireThat3(object(value), "Historical details are required.");
+  requireThat4(object(value), "Historical details are required.");
   fields(value, ["playedDate", "recordedKickoff", "sameDayOrder", "opponent", "homeAway", "fixtureClass", "status", "specialOutcome", "finalScore", "halfTimeScore", "goals"]);
-  requireThat3(string(value.playedDate, 10) && string(value.opponent, 120), "A played date and opposition are required.");
-  requireThat3(value.recordedKickoff === null || string(value.recordedKickoff, 50), "Known kickoff needs a timestamp; use null for unknown.");
-  requireThat3(value.sameDayOrder === null || integer2(value.sameDayOrder, 100), "Same-day ordering must be a whole number or unknown.");
-  requireThat3(["home", "away", "neutral"].includes(value.homeAway) && fixtureClasses.includes(value.fixtureClass), "Choose a valid venue side and fixture class.");
-  requireThat3(["completed", "abandoned", "cancelled", "postponed", "incomplete"].includes(value.status) && ["ordinary", "awarded", "forfeit", "shootout"].includes(value.specialOutcome), "Choose a known match status and outcome category.");
-  requireThat3(Array.isArray(value.goals) && value.goals.length <= 1e3, "Known goal attribution must be a bounded list.");
+  requireThat4(string(value.playedDate, 10) && string(value.opponent, 120), "A played date and opposition are required.");
+  requireThat4(value.recordedKickoff === null || string(value.recordedKickoff, 50), "Known kickoff needs a timestamp; use null for unknown.");
+  requireThat4(value.sameDayOrder === null || integer2(value.sameDayOrder, 100), "Same-day ordering must be a whole number or unknown.");
+  requireThat4(["home", "away", "neutral"].includes(value.homeAway) && fixtureClasses.includes(value.fixtureClass), "Choose a valid venue side and fixture class.");
+  requireThat4(["completed", "abandoned", "cancelled", "postponed", "incomplete"].includes(value.status) && ["ordinary", "awarded", "forfeit", "shootout"].includes(value.specialOutcome), "Choose a known match status and outcome category.");
+  requireThat4(Array.isArray(value.goals) && value.goals.length <= 1e3, "Known goal attribution must be a bounded list.");
   const goals = value.goals.map((item) => {
-    requireThat3(object(item), "A known goal must be an object.");
+    requireThat4(object(item), "A known goal must be an object.");
     fields(item, ["id", "beneficiary", "isOwnGoal", "scorerPlayerId", "goalType", "half", "halfElapsedMs"]);
-    requireThat3(string(item.id) && ["us", "opposition"].includes(item.beneficiary) && typeof item.isOwnGoal === "boolean", "Known goals require identity, beneficiary and explicit own-goal classification.");
-    requireThat3(item.scorerPlayerId === null || string(item.scorerPlayerId), "Use a saved player identity or unknown scorer.");
-    requireThat3(item.goalType === null || ["open_play", "free_kick", "penalty"].includes(item.goalType), "Use a known goal type or unknown.");
-    requireThat3(item.half === null || item.half === 1 || item.half === 2, "Use a known half or unknown.");
-    requireThat3(item.halfElapsedMs === null || integer2(item.halfElapsedMs, 864e5), "Known active goal time must be nonnegative whole milliseconds.");
+    requireThat4(string(item.id) && ["us", "opposition"].includes(item.beneficiary) && typeof item.isOwnGoal === "boolean", "Known goals require identity, beneficiary and explicit own-goal classification.");
+    requireThat4(item.scorerPlayerId === null || string(item.scorerPlayerId), "Use a saved player identity or unknown scorer.");
+    requireThat4(item.goalType === null || ["open_play", "free_kick", "penalty"].includes(item.goalType), "Use a known goal type or unknown.");
+    requireThat4(item.half === null || item.half === 1 || item.half === 2, "Use a known half or unknown.");
+    requireThat4(item.halfElapsedMs === null || integer2(item.halfElapsedMs, 864e5), "Known active goal time must be nonnegative whole milliseconds.");
     return { id: item.id, beneficiary: item.beneficiary, isOwnGoal: item.isOwnGoal, scorerPlayerId: item.scorerPlayerId, goalType: item.goalType, half: item.half, halfElapsedMs: item.halfElapsedMs };
   });
   return { playedDate: value.playedDate, recordedKickoff: value.recordedKickoff, sameDayOrder: value.sameDayOrder, opponent: value.opponent.trim(), homeAway: value.homeAway, fixtureClass: value.fixtureClass, status: value.status, specialOutcome: value.specialOutcome, finalScore: score(value.finalScore), halfTimeScore: score(value.halfTimeScore), goals };
 }
 function recordsServiceViewer(input) {
   const { principal, memberships, state, nowMs, requestedRole } = input;
-  requireThat3(Number.isSafeInteger(nowMs) && nowMs >= 0, "Trusted server time is required.");
-  if (requestedRole && !["manager", "player", "spectator"].includes(requestedRole)) fail2("Unknown report audience.");
+  requireThat4(Number.isSafeInteger(nowMs) && nowMs >= 0, "Trusted server time is required.");
+  if (requestedRole && !["manager", "player", "spectator"].includes(requestedRole)) fail3("Unknown report audience.");
   const permitted = memberships.filter((item) => item.accountId === principal.accountId && item.teamId === state.teamId && item.seasonId === state.seasonId && item.revokedAt == null && (item.expiresAt == null || item.expiresAt > nowMs));
   const preferred = requestedRole ?? (permitted.some((item) => item.role === "manager") ? "manager" : permitted.some((item) => item.role === "player") ? "player" : "spectator");
   const membership = assertTeamRole(principal, memberships, state.teamId, state.seasonId, [preferred], nowMs);
   if (preferred === "manager") assertAdultAuthority(principal, false, nowMs);
-  if (preferred === "player" && !membership.playerId) fail2("The current membership has no own-player binding.", "NOT_FOUND", 404);
+  if (preferred === "player" && !membership.playerId) fail3("The current membership has no own-player binding.", "NOT_FOUND", 404);
   return { actor: preferred, ...preferred === "player" ? { playerId: membership.playerId } : {}, teamId: state.teamId, seasonId: state.seasonId };
 }
 function accepted(input, matchId) {
   const row = input.acceptedMatches.find((item) => item.teamId === input.state.teamId && item.seasonId === input.state.seasonId && item.match.config.matchId === matchId);
   if (!row) return null;
-  if (row.match.config.fixture && (row.match.config.fixture.teamId !== row.teamId || row.match.config.fixture.seasonId !== row.seasonId)) fail2("Accepted fixture scope is inconsistent.", "NOT_FOUND", 404);
+  if (row.match.config.fixture && (row.match.config.fixture.teamId !== row.teamId || row.match.config.fixture.seasonId !== row.seasonId)) fail3("Accepted fixture scope is inconsistent.", "NOT_FOUND", 404);
   return row.match;
 }
 function contextFor(state, match, fixtureClass) {
@@ -3526,8 +4749,8 @@ function recordsServiceView(input) {
   if (viewer.actor !== "manager") return common;
   return {
     ...common,
-    editableState: copy2(state),
-    activeMatch: activeMatch ? copy2(activeMatch) : null,
+    editableState: copy3(state),
+    activeMatch: activeMatch ? copy3(activeMatch) : null,
     contexts: input.acceptedMatches.filter((row) => row.teamId === state.teamId && row.seasonId === state.seasonId).flatMap((row) => {
       const match = accepted(input, row.match.config.matchId);
       const details = contextFor(state, match, state.liveMatch.matchId === match.config.matchId ? state.liveMatch.fixtureClass : void 0);
@@ -3538,52 +4761,52 @@ function recordsServiceView(input) {
 function applyRecordsServiceCommand(input) {
   const { state, command, principal, memberships, nowMs } = input;
   assertCanManageTeam(principal, memberships, state.teamId, state.seasonId, nowMs);
-  if (input.requestedRole && input.requestedRole !== "manager") fail2("The selected audience cannot edit manager records.", "NOT_FOUND", 404);
-  requireThat3(command && typeof command === "object" && string(command.commandId) && /^[A-Za-z0-9_-]+$/.test(command.commandId), "A stable record command identity is required.");
+  if (input.requestedRole && input.requestedRole !== "manager") fail3("The selected audience cannot edit manager records.", "NOT_FOUND", 404);
+  requireThat4(command && typeof command === "object" && string(command.commandId) && /^[A-Za-z0-9_-]+$/.test(command.commandId), "A stable record command identity is required.");
   let bound;
   const base = { commandId: command.commandId, at: new Date(nowMs).toISOString(), actor: "manager" };
   switch (command.type) {
     case "historical.add":
-      requireThat3(string(command.recordId), "A historical match identity is required.");
+      requireThat4(string(command.recordId), "A historical match identity is required.");
       bound = { ...base, type: command.type, recordId: command.recordId, input: parseHistoricalResultInput(command.input), acknowledgePossibleDuplicate: command.acknowledgePossibleDuplicate === true };
       break;
     case "historical.correct":
-      requireThat3(string(command.recordId) && integer2(command.expectedRevision) && string(command.reason, 500), "Review the current record revision and provide a correction reason.");
+      requireThat4(string(command.recordId) && integer2(command.expectedRevision) && string(command.reason, 500), "Review the current record revision and provide a correction reason.");
       bound = { ...base, type: command.type, recordId: command.recordId, expectedRevision: command.expectedRevision, reason: command.reason.trim(), input: parseHistoricalResultInput(command.input) };
       break;
     case "live.context.set": {
-      requireThat3(command.details && typeof command.details === "object" && string(command.details.matchId) && fixtureClasses.includes(command.details.fixtureClass), "Choose a prepared match and an explicit fixture class.");
+      requireThat4(command.details && typeof command.details === "object" && string(command.details.matchId) && fixtureClasses.includes(command.details.fixtureClass), "Choose a prepared match and an explicit fixture class.");
       const match = accepted(input, command.details.matchId);
-      if (!match) fail2("The prepared match is outside this team and season.", "NOT_FOUND", 404);
+      if (!match) fail3("The prepared match is outside this team and season.", "NOT_FOUND", 404);
       const details = contextFor(state, match, command.details.fixtureClass);
-      requireThat3(details && details.playedDate === command.details.playedDate && details.opponent === command.details.opponent && details.homeAway === command.details.homeAway, "Match report context must retain the accepted fixture date, opponent and home/away side.");
+      requireThat4(details && details.playedDate === command.details.playedDate && details.opponent === command.details.opponent && details.homeAway === command.details.homeAway, "Match report context must retain the accepted fixture date, opponent and home/away side.");
       bound = { ...base, type: command.type, details };
       break;
     }
     case "live.archive": {
       const matchId = "matchId" in command ? command.matchId : command.match?.config?.matchId;
       const expectedRevision = "expectedSourceMatchRevision" in command ? command.expectedSourceMatchRevision : command.match?.revision;
-      requireThat3(string(matchId) && integer2(expectedRevision), "Archive the reviewed accepted match identity and source revision.");
+      requireThat4(string(matchId) && integer2(expectedRevision), "Archive the reviewed accepted match identity and source revision.");
       const match = accepted(input, matchId);
-      if (!match) fail2("The accepted match is outside this team and season.", "NOT_FOUND", 404);
-      if (match.revision !== expectedRevision) fail2("The accepted match changed. Refresh its report before archiving.", "STALE_REVISION", 409);
+      if (!match) fail3("The accepted match is outside this team and season.", "NOT_FOUND", 404);
+      if (match.revision !== expectedRevision) fail3("The accepted match changed. Refresh its report before archiving.", "STALE_REVISION", 409);
       const old = state.results.find((record) => record.id === matchId);
-      if (old && old.fixtureClass !== state.liveMatch.fixtureClass) requireThat3(string(command.reason, 500), "Explain the changed fixture classification before re-archiving.");
+      if (old && old.fixtureClass !== state.liveMatch.fixtureClass) requireThat4(string(command.reason, 500), "Explain the changed fixture classification before re-archiving.");
       bound = { ...base, type: command.type, match, ...command.reason ? { reason: command.reason } : {} };
       break;
     }
     case "participation.exception.noted":
-      requireThat3(string(command.recordId) && string(command.playerId) && integer2(command.expectedRevision) && string(command.reason, 500), "Review the saved participation and explain the exception.");
+      requireThat4(string(command.recordId) && string(command.playerId) && integer2(command.expectedRevision) && string(command.reason, 500), "Review the saved participation and explain the exception.");
       bound = { ...base, type: command.type, recordId: command.recordId, playerId: command.playerId, expectedRevision: command.expectedRevision, reason: command.reason.trim() };
       break;
     case "publication.set":
-      fail2("A manager request cannot approve the unresolved competition policy. Independent operator evidence is required.", "POLICY_APPROVAL_REQUIRED", 503);
+      fail3("A manager request cannot approve the unresolved competition policy. Independent operator evidence is required.", "POLICY_APPROVAL_REQUIRED", 503);
       break;
     case "training.evidence.replace":
-      fail2("Training report evidence is projected from the authorised preparation service.", "SERVICE_OWNED_PROJECTION", 403);
+      fail3("Training report evidence is projected from the authorised preparation service.", "SERVICE_OWNED_PROJECTION", 403);
       break;
     default:
-      fail2("Unsupported record command.");
+      fail3("Unsupported record command.");
   }
   return reduceRecords(state, bound);
 }
@@ -3595,11 +4818,11 @@ function policyFingerprint(state) {
 }
 function recordsServiceExport(input) {
   const viewer = recordsServiceViewer(input), view = recordsServiceView(input), { request, state, nowMs } = input;
-  requireThat3(request && ["season", "match"].includes(request.kind) && ["json", "csv"].includes(request.format), "Choose a report and supported export format.");
+  requireThat4(request && ["season", "match"].includes(request.kind) && ["json", "csv"].includes(request.format), "Choose a report and supported export format.");
   const fingerprint2 = policyFingerprint(state);
-  if (request.expectedProjectionVersion !== void 0 && request.expectedProjectionVersion !== state.revision || request.expectedPolicyFingerprint !== void 0 && request.expectedPolicyFingerprint !== fingerprint2) fail2("This report or audience policy changed. Refresh before exporting.", "STALE_PROJECTION", 409);
+  if (request.expectedProjectionVersion !== void 0 && request.expectedProjectionVersion !== state.revision || request.expectedPolicyFingerprint !== void 0 && request.expectedPolicyFingerprint !== fingerprint2) fail3("This report or audience policy changed. Refresh before exporting.", "STALE_PROJECTION", 409);
   const matches = request.kind === "match" ? view.matches.filter((report) => report.matchId === request.matchId) : view.matches;
-  if (request.kind === "match" && matches.length !== 1) fail2("That permitted match report is unavailable.", "NOT_FOUND", 404);
+  if (request.kind === "match" && matches.length !== 1) fail3("That permitted match report is unavailable.", "NOT_FOUND", 404);
   const generatedAt = new Date(nowMs).toISOString();
   const document = {
     schemaVersion: 1,
@@ -3744,7 +4967,7 @@ var Q08_RECONCILIATION_POLICY = {
   policyId: "q08-reconciliation-authority-unapproved",
   decisionRequired: "Confirm who may approve unresolved history reconciliation: importing old-device evidence, marking submissions duplicate, or retaining a disputed history. Define the reviewer authority and required evidence; assigned-manager access alone does not approve this policy."
 };
-var identifier = /^[a-zA-Z0-9_-]{1,120}$/;
+var identifier2 = /^[a-zA-Z0-9_-]{1,120}$/;
 function canonicalReviewJson(value) {
   if (Array.isArray(value))
     return `[${value.map(canonicalReviewJson).join(",")}]`;
@@ -3872,7 +5095,7 @@ function previewReviewedCommands(state, commands, context) {
   const before = reconciliationSummary(state), issues = [];
   let projected = state;
   let earliestAffected = null;
-  if (!identifier.test(context.previewId) || !context.actorId || !Number.isSafeInteger(context.recordedAtMs) || context.recordedAtMs < 0)
+  if (!identifier2.test(context.previewId) || !context.actorId || !Number.isSafeInteger(context.recordedAtMs) || context.recordedAtMs < 0)
     issues.push(
       "Preview context requires a bounded ID, verified actor and valid entry timestamp."
     );
@@ -3942,7 +5165,7 @@ function previewReconciliation(state, input, submissions, context) {
       earliestAffected: null,
       projectedState: null
     };
-  if (!identifier.test(input.proposalId) || !Number.isSafeInteger(input.baseRevision) || input.baseRevision !== state.revision)
+  if (!identifier2.test(input.proposalId) || !Number.isSafeInteger(input.baseRevision) || input.baseRevision !== state.revision)
     issues.push(
       "The proposal ID or reviewed accepted revision is invalid/stale. Download and review again without rebasing the proposal silently."
     );
@@ -4020,8 +5243,8 @@ function eligibilityEvidence(state) {
 }
 function finishEligibilityChanged(state, original) {
   const evidence = eligibilityEvidence(state);
-  const equal = (left, right) => JSON.stringify([...left].sort()) === JSON.stringify([...right].sort());
-  return evidence.contradictory || !equal(evidence.selected, original.selectedPlayerIds) || !equal(evidence.present, original.presentPlayerIds) || !equal(evidence.played, original.playedPlayerIds);
+  const equal2 = (left, right) => JSON.stringify([...left].sort()) === JSON.stringify([...right].sort());
+  return evidence.contradictory || !equal2(evidence.selected, original.selectedPlayerIds) || !equal2(evidence.present, original.presentPlayerIds) || !equal2(evidence.played, original.playedPlayerIds);
 }
 function deriveFinishedMatchContext(input) {
   const { state, acceptedFinish: finish } = input;
@@ -4085,15 +5308,15 @@ function deriveFinishedMatchContext(input) {
 
 // packages/application/src/team-notifications.ts
 var TEAM_NOTIFICATION_TIME_ZONE = "Europe/London";
-function assert(value, message) {
+function assert2(value, message) {
   if (!value) throw new Error(message);
 }
-var time = (value) => Number.isSafeInteger(value) && value >= 0;
+var time2 = (value) => Number.isSafeInteger(value) && value >= 0;
 var opaque = (value) => typeof value === "string" && /^[A-Za-z0-9_.:-]{1,200}$/.test(value);
 function createTeamNotificationJob(input) {
-  assert(input && ["id", "businessKey", "accountId", "teamId", "seasonId", "entityId"].every((field) => opaque(input[field])), "Notifications require bounded opaque identities.");
-  assert(["manager", "player", "spectator"].includes(input.audience) && ["schedule", "match", "awards", "photos"].includes(input.category) && time(input.dueAtMs), "Invalid notification scope, category or due time.");
-  assert(input.audience === "player" ? input.playerId !== null && opaque(input.playerId) : input.playerId === null, "Player notifications require their original own-player binding.");
+  assert2(input && ["id", "businessKey", "accountId", "teamId", "seasonId", "entityId"].every((field) => opaque(input[field])), "Notifications require bounded opaque identities.");
+  assert2(["manager", "player", "spectator"].includes(input.audience) && ["schedule", "match", "awards", "photos"].includes(input.category) && time2(input.dueAtMs), "Invalid notification scope, category or due time.");
+  assert2(input.audience === "player" ? input.playerId !== null && opaque(input.playerId) : input.playerId === null, "Player notifications require their original own-player binding.");
   return {
     id: input.id,
     businessKey: input.businessKey,
@@ -4147,11 +5370,11 @@ function managerRoster(input) {
 // packages/application/src/privacy-requests.ts
 var object2 = (value) => Boolean(value && typeof value === "object" && !Array.isArray(value));
 var opaque2 = (value) => typeof value === "string" && /^[A-Za-z0-9_-]{1,150}$/.test(value);
-function requireThat4(condition, message) {
+function requireThat5(condition, message) {
   if (!condition) throw new AccessError("INVALID_REQUEST", 400, message);
 }
 function fields2(value, names) {
-  requireThat4(Object.keys(value).length === names.length && Object.keys(value).every((key) => names.includes(key)), "Use only the documented account request fields.");
+  requireThat5(Object.keys(value).length === names.length && Object.keys(value).every((key) => names.includes(key)), "Use only the documented account request fields.");
 }
 function active(principal) {
   if (principal.status !== "active") throw new AccessError("ACCOUNT_UNAVAILABLE", 403, "Use an active signed-in account to review or submit its own requests.");
@@ -4160,36 +5383,36 @@ function validTime4(value) {
   return Number.isSafeInteger(value) && value >= 0;
 }
 function parsePrivacyRequestInput(value) {
-  requireThat4(object2(value), "Choose a scoped account request.");
+  requireThat5(object2(value), "Choose a scoped account request.");
   if (value.kind === "leave_team") {
     fields2(value, ["kind", "teamId", "seasonId", "confirmLeave"]);
-    requireThat4(opaque2(value.teamId) && opaque2(value.seasonId) && value.confirmLeave === true, "Explicitly confirm the selected team and season leave request.");
+    requireThat5(opaque2(value.teamId) && opaque2(value.seasonId) && value.confirmLeave === true, "Explicitly confirm the selected team and season leave request.");
     return { kind: "leave_team", teamId: value.teamId, seasonId: value.seasonId, confirmLeave: true };
   }
   fields2(value, ["kind", "scope", "confirmAllMemberships"]);
-  requireThat4((value.kind === "export" || value.kind === "delete_account") && value.scope === "all_memberships" && value.confirmAllMemberships === true, "Explicitly confirm that this global account request covers every membership.");
+  requireThat5((value.kind === "export" || value.kind === "delete_account") && value.scope === "all_memberships" && value.confirmAllMemberships === true, "Explicitly confirm that this global account request covers every membership.");
   return { kind: value.kind, scope: "all_memberships", confirmAllMemberships: true };
 }
 function parseScope(value) {
   if (value === null) return null;
-  requireThat4(object2(value), "Invalid retained account request scope.");
+  requireThat5(object2(value), "Invalid retained account request scope.");
   if (value.type === "all_memberships") {
     fields2(value, ["type"]);
     return { type: "all_memberships" };
   }
   fields2(value, ["type", "teamId", "seasonId"]);
-  requireThat4(value.type === "team_season" && opaque2(value.teamId) && opaque2(value.seasonId), "Invalid retained team and season scope.");
+  requireThat5(value.type === "team_season" && opaque2(value.teamId) && opaque2(value.seasonId), "Invalid retained team and season scope.");
   return { type: "team_season", teamId: value.teamId, seasonId: value.seasonId };
 }
 function privacyRequestBusinessKey(accountId, kind, scope) {
-  requireThat4(opaque2(accountId) && ["export", "delete_account", "leave_team"].includes(kind), "A stable own-account request scope is required.");
+  requireThat5(opaque2(accountId) && ["export", "delete_account", "leave_team"].includes(kind), "A stable own-account request scope is required.");
   const checked = parseScope(scope);
-  requireThat4(kind === "leave_team" ? checked.type === "team_season" : checked.type === "all_memberships", "The request kind and scope differ.");
+  requireThat5(kind === "leave_team" ? checked.type === "team_season" : checked.type === "all_memberships", "The request kind and scope differ.");
   return JSON.stringify(checked.type === "team_season" ? [accountId, kind, checked.type, checked.teamId, checked.seasonId] : [accountId, kind, checked.type]);
 }
 function ownPrivacyMemberships(principal, memberships, nowMs) {
   active(principal);
-  requireThat4(validTime4(nowMs), "Use the current service time.");
+  requireThat5(validTime4(nowMs), "Use the current service time.");
   return memberships.filter((item) => item.accountId === principal.accountId).map((item) => ({
     teamId: item.teamId,
     seasonId: item.seasonId,
@@ -4216,31 +5439,31 @@ function prepareAccountPrivacyRequest(input) {
   };
 }
 function parseMembership(value) {
-  requireThat4(object2(value), "Invalid affected membership.");
+  requireThat5(object2(value), "Invalid affected membership.");
   fields2(value, ["teamId", "seasonId", "role", "playerId", "status"]);
-  requireThat4(opaque2(value.teamId) && opaque2(value.seasonId) && ["administrator", "manager", "player", "spectator"].includes(value.role) && (value.playerId === null || opaque2(value.playerId)) && ["active", "expired", "revoked"].includes(value.status), "Invalid affected membership fields.");
+  requireThat5(opaque2(value.teamId) && opaque2(value.seasonId) && ["administrator", "manager", "player", "spectator"].includes(value.role) && (value.playerId === null || opaque2(value.playerId)) && ["active", "expired", "revoked"].includes(value.status), "Invalid affected membership fields.");
   return { teamId: value.teamId, seasonId: value.seasonId, role: value.role, playerId: value.playerId, status: value.status };
 }
 function parsePrivacyRequestDto(value) {
-  requireThat4(object2(value), "Invalid account request response.");
+  requireThat5(object2(value), "Invalid account request response.");
   fields2(value, ["requestId", "kind", "status", "scope", "affectedMemberships", "createdAtMs", "verificationRequired", "erased", "fulfilled", "scopeStatus", "reviewStatus", "duplicateOfRequestId"]);
-  requireThat4(opaque2(value.requestId) && ["export", "delete_account", "leave_team"].includes(value.kind) && ["pending_verification_and_policy", "needs_scope"].includes(value.status) && validTime4(value.createdAtMs), "Invalid account request status or identity.");
-  requireThat4(value.verificationRequired === true && value.erased === false && value.fulfilled === false && (value.duplicateOfRequestId === null || opaque2(value.duplicateOfRequestId)), "A pending request never establishes fulfilment or deletion.");
+  requireThat5(opaque2(value.requestId) && ["export", "delete_account", "leave_team"].includes(value.kind) && ["pending_verification_and_policy", "needs_scope"].includes(value.status) && validTime4(value.createdAtMs), "Invalid account request status or identity.");
+  requireThat5(value.verificationRequired === true && value.erased === false && value.fulfilled === false && (value.duplicateOfRequestId === null || opaque2(value.duplicateOfRequestId)), "A pending request never establishes fulfilment or deletion.");
   const scope = parseScope(value.scope), kind = value.kind;
-  requireThat4(scope === null || (kind === "leave_team" ? scope.type === "team_season" : scope.type === "all_memberships"), "The account request kind and scope differ.");
-  requireThat4(value.scopeStatus === (scope === null ? "needs_scope" : "recorded") && value.reviewStatus === (scope === null || value.status === "needs_scope" ? "needs_scope" : value.duplicateOfRequestId === null ? "pending_verification_and_policy" : "duplicate_requires_review"), "The account request review status is inconsistent.");
-  requireThat4(value.affectedMemberships === null || Array.isArray(value.affectedMemberships), "The confirmed membership snapshot is missing or invalid.");
+  requireThat5(scope === null || (kind === "leave_team" ? scope.type === "team_season" : scope.type === "all_memberships"), "The account request kind and scope differ.");
+  requireThat5(value.scopeStatus === (scope === null ? "needs_scope" : "recorded") && value.reviewStatus === (scope === null || value.status === "needs_scope" ? "needs_scope" : value.duplicateOfRequestId === null ? "pending_verification_and_policy" : "duplicate_requires_review"), "The account request review status is inconsistent.");
+  requireThat5(value.affectedMemberships === null || Array.isArray(value.affectedMemberships), "The confirmed membership snapshot is missing or invalid.");
   const affectedMemberships = value.affectedMemberships === null ? null : value.affectedMemberships.map(parseMembership);
-  requireThat4(scope?.type !== "team_season" || affectedMemberships === null || affectedMemberships.every((item) => item.teamId === scope.teamId && item.seasonId === scope.seasonId), "The affected membership snapshot crosses the selected leave scope.");
+  requireThat5(scope?.type !== "team_season" || affectedMemberships === null || affectedMemberships.every((item) => item.teamId === scope.teamId && item.seasonId === scope.seasonId), "The affected membership snapshot crosses the selected leave scope.");
   return { requestId: value.requestId, kind, status: value.status, scope, affectedMemberships, createdAtMs: value.createdAtMs, verificationRequired: true, erased: false, fulfilled: false, scopeStatus: value.scopeStatus, reviewStatus: value.reviewStatus, duplicateOfRequestId: value.duplicateOfRequestId };
 }
 function projectAccountPrivacyRequests(input) {
-  const memberships = ownPrivacyMemberships(input.principal, input.memberships, input.nowMs), canonical4 = /* @__PURE__ */ new Map();
+  const memberships = ownPrivacyMemberships(input.principal, input.memberships, input.nowMs), canonical5 = /* @__PURE__ */ new Map();
   const items = input.records.filter((item) => item.accountId === input.principal.accountId).sort((a, b) => a.createdAtMs - b.createdAtMs || a.requestId.localeCompare(b.requestId)).map((record) => {
     const scope = parseScope(record.scope);
     const key = scope && record.status === "pending_verification_and_policy" ? privacyRequestBusinessKey(record.accountId, record.kind, scope) : null;
-    const duplicateOfRequestId = key ? canonical4.get(key) ?? null : null;
-    if (key && !canonical4.has(key)) canonical4.set(key, record.requestId);
+    const duplicateOfRequestId = key ? canonical5.get(key) ?? null : null;
+    if (key && !canonical5.has(key)) canonical5.set(key, record.requestId);
     return parsePrivacyRequestDto({
       requestId: record.requestId,
       kind: record.kind,
@@ -4271,9 +5494,9 @@ function brandSelectedRole(principal, memberships, teamId, seasonId, role, nowMs
 // packages/application/src/account-devices.ts
 var object3 = (v) => Boolean(v && typeof v === "object" && !Array.isArray(v));
 var opaque3 = (v) => typeof v === "string" && /^[A-Za-z0-9_-]{1,150}$/.test(v);
-var iso = (v) => typeof v === "string" && Number.isFinite(Date.parse(v)) && new Date(v).toISOString() === v;
-function fields3(value, keys) {
-  if (Object.keys(value).length !== keys.length || Object.keys(value).some((key) => !keys.includes(key)))
+var iso2 = (v) => typeof v === "string" && Number.isFinite(Date.parse(v)) && new Date(v).toISOString() === v;
+function fields3(value, keys2) {
+  if (Object.keys(value).length !== keys2.length || Object.keys(value).some((key) => !keys2.includes(key)))
     throw new Error("Invalid own device inventory fields.");
 }
 function parseAccountDevicesDto(value) {
@@ -4285,7 +5508,7 @@ function parseAccountDevicesDto(value) {
     "devices",
     "remoteRevocationAvailable"
   ]);
-  if (value.kind !== "recognised-devices" || !opaque3(value.accountId) || !iso(value.asOf) || !Array.isArray(value.devices) || value.remoteRevocationAvailable !== false)
+  if (value.kind !== "recognised-devices" || !opaque3(value.accountId) || !iso2(value.asOf) || !Array.isArray(value.devices) || value.remoteRevocationAvailable !== false)
     throw new Error("Invalid own device inventory.");
   const seen = /* @__PURE__ */ new Set();
   const devices = value.devices.map((item) => {
@@ -4301,7 +5524,7 @@ function parseAccountDevicesDto(value) {
     ]);
     if (!opaque3(item.deviceId) || seen.has(item.deviceId) || !["native_app_enrolment", "match_controller_enrolment"].includes(
       item.source
-    ) || item.label !== null || ![null, "ios", "android"].includes(item.platform) || item.platformVerified !== false || item.registeredAt !== null && !iso(item.registeredAt) || item.lastSeenAt !== null && !iso(item.lastSeenAt))
+    ) || item.label !== null || ![null, "ios", "android"].includes(item.platform) || item.platformVerified !== false || item.registeredAt !== null && !iso2(item.registeredAt) || item.lastSeenAt !== null && !iso2(item.lastSeenAt))
       throw new Error("Invalid device entry metadata.");
     if (item.source === "native_app_enrolment" && (item.platform === null || item.registeredAt === null || item.lastSeenAt === null))
       throw new Error("Native enrolment requires actual service timestamps.");
@@ -4337,37 +5560,37 @@ function ownDevicesDto(principal, legacy, native, nowMs) {
 // apps/api/src/postgres-store.ts
 var EVENT_CONTRACT_VERSION = "longball.events/1.1";
 var SYNTHETIC_IDS = { teamId: "synthetic-roma-u10", seasonId: "synthetic-season-2026-27", matchId: "synthetic-roma-maple-2026-10-24" };
-function canonical3(value) {
-  if (Array.isArray(value)) return `[${value.map(canonical3).join(",")}]`;
-  if (value !== null && typeof value === "object") return `{${Object.entries(value).sort(([a], [b]) => a.localeCompare(b)).map(([key, item]) => `${JSON.stringify(key)}:${canonical3(item)}`).join(",")}}`;
+function canonical4(value) {
+  if (Array.isArray(value)) return `[${value.map(canonical4).join(",")}]`;
+  if (value !== null && typeof value === "object") return `{${Object.entries(value).sort(([a], [b]) => a.localeCompare(b)).map(([key, item]) => `${JSON.stringify(key)}:${canonical4(item)}`).join(",")}}`;
   return JSON.stringify(value);
 }
-var digest = (value) => createHash("sha256").update(value).digest("hex");
-var validId2 = (value) => typeof value === "string" && value.length > 0 && value.length <= 150 && /^[a-zA-Z0-9_-]+$/.test(value);
-var validDeviceId = (value) => validId2(value) && value.length <= 120;
-var nonnegative2 = (value) => typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
+var digest = (value) => createHash2("sha256").update(value).digest("hex");
+var validId3 = (value) => typeof value === "string" && value.length > 0 && value.length <= 150 && /^[a-zA-Z0-9_-]+$/.test(value);
+var validDeviceId = (value) => validId3(value) && value.length <= 120;
+var nonnegative3 = (value) => typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
 function bad(message) {
   throw new AccessError("INVALID_REQUEST", 400, message);
 }
 function validateEnvelope(value, matchId) {
   if (!value || typeof value !== "object" || Array.isArray(value)) bad("An event envelope is required.");
   const item = value;
-  if (!validId2(item.eventId) || !validDeviceId(item.deviceId) || item.matchId !== matchId || !nonnegative2(item.clientSequence) || item.clientSequence < 1 || !nonnegative2(item.controllerEpoch) || item.controllerEpoch < 1 || !nonnegative2(item.baseRevision)) bad("Invalid event identity, scope or sequence.");
-  if (!(item.previousEventId === null || validId2(item.previousEventId))) bad("Invalid previous event identifier.");
+  if (!validId3(item.eventId) || !validDeviceId(item.deviceId) || item.matchId !== matchId || !nonnegative3(item.clientSequence) || item.clientSequence < 1 || !nonnegative3(item.controllerEpoch) || item.controllerEpoch < 1 || !nonnegative3(item.baseRevision)) bad("Invalid event identity, scope or sequence.");
+  if (!(item.previousEventId === null || validId3(item.previousEventId))) bad("Invalid previous event identifier.");
   if (item.contractVersion !== EVENT_CONTRACT_VERSION || item.schemaVersion !== 1 || item.engineVersion !== ENGINE_VERSION) return item;
   const fields5 = ["contractVersion", "schemaVersion", "engineVersion", "eventId", "matchId", "deviceId", "controllerEpoch", "clientSequence", "previousEventId", "baseRevision", "effectiveHalf", "halfElapsedMs", "matchElapsedMs", "effectiveAt", "recordedAt", "timeQuality", "clockEvidence", "command"];
   if (Object.keys(item).some((key) => !fields5.includes(key))) bad("Unknown event envelope fields are not accepted.");
-  if (!nonnegative2(item.halfElapsedMs) || !nonnegative2(item.matchElapsedMs) || ![0, 1, 2].includes(item.effectiveHalf)) bad("Invalid effective playing-time boundary.");
+  if (!nonnegative3(item.halfElapsedMs) || !nonnegative3(item.matchElapsedMs) || ![0, 1, 2].includes(item.effectiveHalf)) bad("Invalid effective playing-time boundary.");
   if (!["anchored", "estimated", "reviewRequired"].includes(item.timeQuality) || !Number.isFinite(Date.parse(item.recordedAt)) || !(item.effectiveAt === null || Number.isFinite(Date.parse(item.effectiveAt)))) bad("Invalid event time evidence.");
   const command = item.command;
-  if (!command || typeof command !== "object" || command.id !== item.eventId || !command.sample || !Number.isFinite(command.sample.monotonicMs) || command.sample.monotonicMs < 0 || !validId2(command.sample.sessionId) || !nonnegative2(command.sample.wallTimeMs)) bad("Invalid versioned match command.");
-  if (!item.clockEvidence || item.clockEvidence.monotonicMs !== command.sample.monotonicMs || !validId2(item.clockEvidence.anchorId) || !(item.clockEvidence.continuityId === null || validId2(item.clockEvidence.continuityId))) bad("Explicit clock evidence is required.");
+  if (!command || typeof command !== "object" || command.id !== item.eventId || !command.sample || !Number.isFinite(command.sample.monotonicMs) || command.sample.monotonicMs < 0 || !validId3(command.sample.sessionId) || !nonnegative3(command.sample.wallTimeMs)) bad("Invalid versioned match command.");
+  if (!item.clockEvidence || item.clockEvidence.monotonicMs !== command.sample.monotonicMs || !validId3(item.clockEvidence.anchorId) || !(item.clockEvidence.continuityId === null || validId3(item.clockEvidence.continuityId))) bad("Explicit clock evidence is required.");
   const commandTypes = ["attendance.recorded", "availability.changed", "lineup.staged", "half.started", "half.paused", "half.resumed", "half.ended", "lineup.committed", "goal.recorded", "clock.recovery_required", "clock.corrected", "event.corrected", "event.voided", "policy.changed", "match.abandoned"];
   if (!commandTypes.includes(command.type)) bad("Unsupported match command.");
   if (command.type === "goal.recorded" && !["us", "opposition"].includes(command.beneficiary)) bad("Invalid goal side.");
-  if (command.type === "attendance.recorded" && (!validId2(command.playerId) || !["present", "absent", "excused", "not_selected", "not_recorded"].includes(command.status))) bad("Invalid attendance.");
-  if (command.type === "availability.changed" && (!validId2(command.playerId) || typeof command.available !== "boolean")) bad("Invalid availability.");
-  if ((command.type === "lineup.staged" || command.type === "lineup.committed") && (!Array.isArray(command.lineup) || command.lineup.length > 11 || command.lineup.some((item2) => !validId2(item2.playerId) || !validId2(item2.slotId) || typeof item2.position !== "string" || item2.position.length > 30))) bad("Invalid lineup allocations.");
+  if (command.type === "attendance.recorded" && (!validId3(command.playerId) || !["present", "absent", "excused", "not_selected", "not_recorded"].includes(command.status))) bad("Invalid attendance.");
+  if (command.type === "availability.changed" && (!validId3(command.playerId) || typeof command.available !== "boolean")) bad("Invalid availability.");
+  if ((command.type === "lineup.staged" || command.type === "lineup.committed") && (!Array.isArray(command.lineup) || command.lineup.length > 11 || command.lineup.some((item2) => !validId3(item2.playerId) || !validId3(item2.slotId) || typeof item2.position !== "string" || item2.position.length > 30))) bad("Invalid lineup allocations.");
   return item;
 }
 var PostgresStore = class _PostgresStore {
@@ -4524,21 +5747,29 @@ var PostgresStore = class _PostgresStore {
     const row = await this.match(matchId);
     return filterMatchForPrincipal({ principal, memberships: await this.memberships(), teamId: row.team_id, seasonId: row.season_id, state: JSON.parse(row.state_json), policy: JSON.parse(row.sharing_policy_json), lastSyncAt: row.last_sync_at, now: this.now(), requestedRole });
   }
-  async download(principal, matchId, deviceId) {
-    const row = await this.managerMatch(principal, matchId);
-    if (!validDeviceId(deviceId))
-      bad("A device identifier of at most 120 canonical characters is required.");
-    const stream = await this.one("SELECT sequence,previous_event_id FROM streams WHERE match_id=$1 AND device_id=$2", [matchId, deviceId]);
-    const grant = await this.one("SELECT epoch,account_id,device_id,frozen FROM controller_grants WHERE match_id=$1", [matchId]);
-    return { contractVersion: EVENT_CONTRACT_VERSION, schemaVersion: 1, engineVersion: ENGINE_VERSION, matchId, teamId: row.team_id, seasonId: row.season_id, state: JSON.parse(row.state_json), acceptedRevision: JSON.parse(row.state_json).revision, deviceCheckpoint: { clientSequence: stream?.sequence ?? 0, previousEventId: stream?.previous_event_id ?? null }, controller: grant ?? null, downloadedAt: new Date(this.now()).toISOString(), clockAnchor: { serverTime: new Date(this.now()).toISOString(), quality: "observation_only", continuousMappingEstablished: false } };
+  async download(principal, matchId, deviceId, syntheticOnly = false, controllerToken) {
+    return this.transaction(async () => {
+      const row = await this.managerMatch(principal, matchId);
+      if (!validDeviceId(deviceId)) bad("A device identifier of at most 120 canonical characters is required.");
+      if (controllerToken !== void 0) {
+        const authority = await this.assertController(principal, matchId, controllerToken);
+        if (authority.device_id !== deviceId || authority.frozen) throw new AccessError("CONTROLLER_REQUIRED", 409, "Use the current unfrozen controller device and capability.");
+      }
+      const stream = await this.one("SELECT sequence,previous_event_id FROM streams WHERE match_id=$1 AND device_id=$2", [matchId, deviceId]);
+      const controller = await this.one("SELECT epoch,account_id,device_id,frozen FROM controller_grants WHERE match_id=$1", [matchId]);
+      const events = await this.many("SELECT revision,received_at,envelope_json FROM events WHERE match_id=$1 AND disposition='accepted' ORDER BY revision LIMIT 10001", [matchId]);
+      const transitions = await this.many("SELECT id,epoch,actor_id,from_device,to_device,kind,reason,created_at FROM controller_history WHERE match_id=$1 ORDER BY epoch,created_at,id LIMIT 10001", [matchId]);
+      const saved = await this.one("SELECT value_json FROM documents WHERE team_id=$1 AND season_id=$2 AND kind='records'", [row.team_id, row.season_id]);
+      return buildOfflineDownload({ matchId, teamId: row.team_id, seasonId: row.season_id, deviceId, state: JSON.parse(row.state_json), checkpoint: { clientSequence: stream?.sequence ?? 0, previousEventId: stream?.previous_event_id ?? null }, controller: controller ?? null, events, transitions, publication: offlinePublication(matchId, JSON.parse(row.sharing_policy_json), saved ? JSON.parse(saved.value_json) : null), nowMs: this.now(), syntheticOnly });
+    });
   }
   async audit(principal, action, objectId, outcome) {
-    await this.execute("INSERT INTO audit(id,actor_id,action,object_id,outcome,created_at) VALUES($1,$2,$3,$4,$5,$6)", [randomUUID(), principal.accountId, action, objectId, outcome, this.now()]);
+    await this.execute("INSERT INTO audit(id,actor_id,action,object_id,outcome,created_at) VALUES($1,$2,$3,$4,$5,$6)", [randomUUID2(), principal.accountId, action, objectId, outcome, this.now()]);
   }
   async idempotent(principal, operation, key, payload, work) {
-    if (!validId2(key) || key.length < 8)
+    if (!validId3(key) || key.length < 8)
       bad("A stable Idempotency-Key is required for mutations.");
-    const signature2 = digest(canonical3(payload));
+    const signature2 = digest(canonical4(payload));
     return await this.transaction(async () => {
       const prior = await this.one("SELECT signature,response_json FROM idempotency WHERE account_id=$1 AND operation=$2 AND key=$3", [principal.accountId, operation, key]);
       if (prior) {
@@ -4575,9 +5806,9 @@ var PostgresStore = class _PostgresStore {
     const grant = await this.assertController(principal, matchId, token);
     if (!policy)
       throw new AccessError("CLOCK_POLICY_REQUIRED", 503, "An explicitly configured trusted-time policy is required before establishing an anchor.");
-    if (!input || Object.keys(input).some((key) => !["deviceId", "controllerEpoch", "continuityId"].includes(key)) || !validDeviceId(input.deviceId) || !validId2(input.continuityId) || input.deviceId !== grant.device_id || input.controllerEpoch !== grant.epoch || grant.frozen)
+    if (!input || Object.keys(input).some((key) => !["deviceId", "controllerEpoch", "continuityId"].includes(key)) || !validDeviceId(input.deviceId) || !validId3(input.continuityId) || input.deviceId !== grant.device_id || input.controllerEpoch !== grant.epoch || grant.frozen)
       throw new AccessError("CLOCK_SCOPE_CONFLICT", 409, "Use the current unfrozen controller device, epoch and continuous-clock identity.");
-    const challenge = issueClockChallenge({ accountId: principal.accountId, deviceId: grant.device_id, matchId, controllerEpoch: grant.epoch, continuityId: input.continuityId }, randomUUID(), this.now(), policy);
+    const challenge = issueClockChallenge({ accountId: principal.accountId, deviceId: grant.device_id, matchId, controllerEpoch: grant.epoch, continuityId: input.continuityId }, randomUUID2(), this.now(), policy);
     await this.execute("INSERT INTO clock_challenges(id,match_id,account_id,challenge_json) VALUES($1,$2,$3,$4)", [challenge.id, matchId, principal.accountId, JSON.stringify(challenge)]);
     return challenge;
   }
@@ -4613,10 +5844,10 @@ var PostgresStore = class _PostgresStore {
     const conflicts = await this.many("SELECT id,original_json,reason,created_at FROM conflicting_submissions WHERE match_id=$1 ORDER BY created_at,id", [matchId]);
     const submissions = [...events.map((event) => {
       const original = JSON.parse(event.envelope_json);
-      return { submissionId: event.event_id, matchId, eventId: event.event_id, deviceId: event.device_id, clientSequence: event.client_sequence, controllerEpoch: original.controllerEpoch ?? null, reason: event.reason, original, originalDigest: digest(canonical3(original)), receivedAt: new Date(event.received_at).toISOString() };
+      return { submissionId: event.event_id, matchId, eventId: event.event_id, deviceId: event.device_id, clientSequence: event.client_sequence, controllerEpoch: original.controllerEpoch ?? null, reason: event.reason, original, originalDigest: digest(canonical4(original)), receivedAt: new Date(event.received_at).toISOString() };
     }), ...conflicts.map((conflict2) => {
       const original = JSON.parse(conflict2.original_json);
-      return { submissionId: conflict2.id, matchId, eventId: typeof original.eventId === "string" ? original.eventId : null, deviceId: typeof original.deviceId === "string" ? original.deviceId : null, clientSequence: typeof original.clientSequence === "number" ? original.clientSequence : null, controllerEpoch: typeof original.controllerEpoch === "number" ? original.controllerEpoch : null, reason: conflict2.reason, original, originalDigest: digest(canonical3(original)), receivedAt: new Date(conflict2.created_at).toISOString() };
+      return { submissionId: conflict2.id, matchId, eventId: typeof original.eventId === "string" ? original.eventId : null, deviceId: typeof original.deviceId === "string" ? original.deviceId : null, clientSequence: typeof original.clientSequence === "number" ? original.clientSequence : null, controllerEpoch: typeof original.controllerEpoch === "number" ? original.controllerEpoch : null, reason: conflict2.reason, original, originalDigest: digest(canonical4(original)), receivedAt: new Date(conflict2.created_at).toISOString() };
     })];
     const proposals = (await this.many("SELECT receipt_json FROM reconciliation_proposals WHERE match_id=$1 ORDER BY created_at,id", [matchId])).map((item) => JSON.parse(item.receipt_json));
     return { matchId, acceptedRevision: state.revision, submissions, proposals, policy: Q08_RECONCILIATION_POLICY };
@@ -4626,7 +5857,7 @@ var PostgresStore = class _PostgresStore {
     const state = JSON.parse(row.state_json);
     if (!input || Object.keys(input).some((key) => !["proposalId", "baseRevision", "sourceSubmissionIds", "reason", "resolution", "commands"].includes(key)))
       bad("Use only the documented immutable reconciliation proposal fields.");
-    const signature2 = digest(canonical3(input));
+    const signature2 = digest(canonical4(input));
     const existing = await this.one("SELECT signature,receipt_json FROM reconciliation_proposals WHERE id=$1 AND match_id=$2 AND actor_id=$3", [input.proposalId, matchId, principal.accountId]);
     if (existing) {
       if (existing.signature !== signature2)
@@ -4639,7 +5870,7 @@ var PostgresStore = class _PostgresStore {
       throw new AccessError("RECONCILIATION_PREVIEW_REJECTED", 422, preview.issues.join(" ").slice(0, 1500));
     const { projectedState: discarded, ...savedPreview } = preview;
     void discarded;
-    const receipt = { input, matchId, actorId: principal.accountId, createdAt: new Date(this.now()).toISOString(), sourceDigests: input.sourceSubmissionIds.map((id4) => ({ submissionId: id4, originalDigest: snapshot.submissions.find((item) => item.submissionId === id4).originalDigest })), acceptedStateDigest: digest(canonical3(state)), preview: savedPreview, status: "prepared", appliedRevision: null };
+    const receipt = { input, matchId, actorId: principal.accountId, createdAt: new Date(this.now()).toISOString(), sourceDigests: input.sourceSubmissionIds.map((id4) => ({ submissionId: id4, originalDigest: snapshot.submissions.find((item) => item.submissionId === id4).originalDigest })), acceptedStateDigest: digest(canonical4(state)), preview: savedPreview, status: "prepared", appliedRevision: null };
     await this.execute("INSERT INTO reconciliation_proposals(id,match_id,actor_id,signature,receipt_json,created_at) VALUES($1,$2,$3,$4,$5,$6)", [input.proposalId, matchId, principal.accountId, signature2, JSON.stringify(receipt), this.now()]);
     await this.audit(principal, "reconciliation.proposal_prepared", matchId, "q08_authority_unapproved");
     return receipt;
@@ -4662,7 +5893,7 @@ var PostgresStore = class _PostgresStore {
       const sourceEpoch = retainedFinish ? JSON.parse(retainedFinish.envelope_json).controllerEpoch : null;
       const quality = unresolved ? "conflicted" : state.recoveryRequired || sourceEpoch !== currentGrant?.epoch || finishEligibilityChanged(state, existing) ? "review_required" : existing.finishQuality;
       if (quality !== existing.finishQuality) {
-        const next2 = { ...community, revision: community.revision + 1, matches: community.matches.map((match) => match.id === matchId ? { ...match, finishQuality: quality } : match), audit: [...community.audit, { id: randomUUID(), actorAccountId: null, action: "service.finish_evidence_flagged_without_reopening", atMs: this.now() }] };
+        const next2 = { ...community, revision: community.revision + 1, matches: community.matches.map((match) => match.id === matchId ? { ...match, finishQuality: quality } : match), audit: [...community.audit, { id: randomUUID2(), actorAccountId: null, action: "service.finish_evidence_flagged_without_reopening", atMs: this.now() }] };
         await this.saveDocument(row.team_id, row.season_id, "community", next2);
       }
       return { status: "original_context_preserved", finishQuality: quality };
@@ -4679,7 +5910,7 @@ var PostgresStore = class _PostgresStore {
       return { status: "accepted_fixture_date_required" };
     const scheduledAtMs = Date.parse(`${playedDate}T00:00:00Z`);
     const context = deriveFinishedMatchContext({ state, acceptedFinish: finish, acceptedFinishActorId: finishRow?.actor_id ?? null, teamId: row.team_id, seasonId: row.season_id, currentControllerEpoch: grant?.epoch ?? 0, unresolvedConflicts: unresolved, mapping: mappingRow ? JSON.parse(mappingRow.mapping_json) : null, policy: policy ?? null, serverNowMs: this.now(), scheduledAtMs, sharing: "manager_only", sharingPolicyVersion: 0 });
-    const next = { ...community, revision: community.revision + 1, matches: [...community.matches, { ...context, voteCutoffAtMs: null, cutoffSource: "unresolved", finalisationDeadlineAtMs: context.actualFullTimeAtMs === null ? null : context.actualFullTimeAtMs + 36e5 }], audit: [...community.audit, { id: randomUUID(), actorAccountId: null, action: "service.accepted_finish_registered_manager_only", atMs: this.now() }] };
+    const next = { ...community, revision: community.revision + 1, matches: [...community.matches, { ...context, voteCutoffAtMs: null, cutoffSource: "unresolved", finalisationDeadlineAtMs: context.actualFullTimeAtMs === null ? null : context.actualFullTimeAtMs + 36e5 }], audit: [...community.audit, { id: randomUUID2(), actorAccountId: null, action: "service.accepted_finish_registered_manager_only", atMs: this.now() }] };
     await this.saveDocument(row.team_id, row.season_id, "community", next);
     return { status: "registered_from_accepted_history", finishQuality: context.finishQuality };
   }
@@ -4699,7 +5930,7 @@ var PostgresStore = class _PostgresStore {
       return;
     }
     const context = { matchId: archived.id, playedDate: archived.playedDate, opponent: archived.opponent, homeAway: archived.homeAway, fixtureClass: archived.fixtureClass };
-    const updated = reduceRecords({ ...records, liveMatch: context }, { type: "live.archive", commandId: `accepted-archive-${digest(canonical3([archived.id, match.revision]))}`, at: new Date(this.now()).toISOString(), actor: "manager", match, reason: "Existing detailed archive refreshed from the newer accepted canonical match revision; original source events and prior archive audit remain retained." });
+    const updated = reduceRecords({ ...records, liveMatch: context }, { type: "live.archive", commandId: `accepted-archive-${digest(canonical4([archived.id, match.revision]))}`, at: new Date(this.now()).toISOString(), actor: "manager", match, reason: "Existing detailed archive refreshed from the newer accepted canonical match revision; original source events and prior archive audit remain retained." });
     const projected = { ...updated, liveMatch: records.liveMatch };
     await this.saveDocument(row.team_id, row.season_id, "records", projected);
   }
@@ -4716,11 +5947,11 @@ var PostgresStore = class _PostgresStore {
       const device = await this.one("SELECT account_id FROM devices WHERE id=$1", [event.deviceId]);
       if (!device || device.account_id !== principal.accountId)
         throw new AccessError("DEVICE_BINDING_REQUIRED", 403, "This event device is not enrolled to the authenticated account.");
-      const signature2 = digest(canonical3(event));
+      const signature2 = digest(canonical4(event));
       const previous = await this.one("SELECT * FROM events WHERE event_id=$1", [event.eventId]);
       if (previous) {
         if (previous.match_id !== matchId || previous.signature !== signature2) {
-          await this.execute("INSERT INTO conflicting_submissions VALUES($1,$2,$3,$4,$5,$6)", [randomUUID(), matchId, principal.accountId, JSON.stringify(value), "EVENT_ID_CONFLICT", this.now()]);
+          await this.execute("INSERT INTO conflicting_submissions VALUES($1,$2,$3,$4,$5,$6)", [randomUUID2(), matchId, principal.accountId, JSON.stringify(value), "EVENT_ID_CONFLICT", this.now()]);
           results.push({ eventId: event.eventId, clientSequence: event.clientSequence, disposition: "quarantined", reason: "EVENT_ID_CONFLICT", revision: null, duplicate: false });
         } else
           results.push({ eventId: previous.event_id, clientSequence: previous.client_sequence, disposition: previous.disposition, reason: previous.reason, revision: previous.revision, duplicate: true });
@@ -4728,7 +5959,7 @@ var PostgresStore = class _PostgresStore {
       }
       const stream = await this.one("SELECT sequence,previous_event_id FROM streams WHERE match_id=$1 AND device_id=$2", [matchId, event.deviceId]);
       if (event.clientSequence !== (stream?.sequence ?? 0) + 1 || event.previousEventId !== (stream?.previous_event_id ?? null)) {
-        await this.execute("INSERT INTO conflicting_submissions VALUES($1,$2,$3,$4,$5,$6)", [randomUUID(), matchId, principal.accountId, JSON.stringify(value), "SEQUENCE_GAP_OR_REUSE", this.now()]);
+        await this.execute("INSERT INTO conflicting_submissions VALUES($1,$2,$3,$4,$5,$6)", [randomUUID2(), matchId, principal.accountId, JSON.stringify(value), "SEQUENCE_GAP_OR_REUSE", this.now()]);
         results.push({ eventId: event.eventId, clientSequence: event.clientSequence, disposition: "quarantined", reason: "SEQUENCE_GAP_OR_REUSE", revision: null, duplicate: false });
         continue;
       }
@@ -4779,14 +6010,14 @@ var PostgresStore = class _PostgresStore {
       throw new AccessError("STALE_REVISION", 409, "Synchronise the accepted checkpoint before handover.");
     if (state.status.endsWith("_running"))
       throw new AccessError("CLOCK_ANCHOR_REQUIRED", 409, "Running handover requires a verified UTC/device clock exchange. This development service supports handover while the match clock is already paused, at half-time or before kick-off; it never silently pauses play.");
-    if (!validId2(toAccountId) || !validDeviceId(toDeviceId))
+    if (!validId3(toAccountId) || !validDeviceId(toDeviceId))
       bad("A target account and canonical device identifier of at most 120 characters are required.");
     const target = await this.one("SELECT * FROM accounts WHERE id=$1", [toAccountId]);
     if (!target)
       throw new AccessError("NOT_FOUND", 404, "The requested object is unavailable.");
     const targetPrincipal = { accountId: target.id, issuer: target.issuer, subject: target.subject, identityClassification: target.classification, adultVerified: !!target.adult_verified, strongAuth: !!target.strong_auth_enrolled, authenticatedAt: this.now(), status: target.status };
     assertCanManageTeam(targetPrincipal, await this.memberships(), row.team_id, row.season_id, this.now());
-    const id4 = randomUUID();
+    const id4 = randomUUID2();
     await this.execute("INSERT INTO transfers VALUES($1,$2,$3,$4,$5,$6,$7)", [id4, matchId, grant.epoch, toAccountId, toDeviceId, "pending", this.now()]);
     await this.execute("UPDATE controller_grants SET frozen=1 WHERE match_id=$1", [matchId]);
     await this.audit(principal, "controller.transfer_offered", matchId, "pending");
@@ -4806,7 +6037,7 @@ var PostgresStore = class _PostgresStore {
     const epoch = grant.epoch + 1;
     await this.execute("UPDATE controller_grants SET epoch=$1,account_id=$2,device_id=$3,capability_hash=$4,frozen=0 WHERE match_id=$5", [epoch, principal.accountId, deviceId, digest(capability), matchId]);
     await this.execute("UPDATE transfers SET state='accepted' WHERE id=$1", [transferId]);
-    await this.execute("INSERT INTO controller_history VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)", [randomUUID(), matchId, epoch, principal.accountId, grant.device_id, deviceId, "transferred", null, this.now()]);
+    await this.execute("INSERT INTO controller_history VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)", [randomUUID2(), matchId, epoch, principal.accountId, grant.device_id, deviceId, "transferred", null, this.now()]);
     await this.audit(principal, "controller.transferred", matchId, "accepted");
     return { epoch, deviceId, controllerToken: capability, checkpoint: (await this.download(principal, matchId, deviceId)).deviceCheckpoint, acceptedRevision: JSON.parse((await this.match(matchId)).state_json).revision };
   }
@@ -4827,7 +6058,7 @@ var PostgresStore = class _PostgresStore {
     }
     await this.execute("INSERT INTO controller_grants(match_id,epoch,account_id,device_id,capability_hash,frozen) VALUES($1,$2,$3,$4,$5,0) ON CONFLICT(match_id) DO UPDATE SET epoch=excluded.epoch,account_id=excluded.account_id,device_id=excluded.device_id,capability_hash=excluded.capability_hash,frozen=0", [matchId, epoch, principal.accountId, deviceId, digest(capability)]);
     await this.execute("UPDATE transfers SET state='superseded' WHERE match_id=$1 AND state='pending'", [matchId]);
-    await this.execute("INSERT INTO controller_history VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)", [randomUUID(), matchId, epoch, principal.accountId, old?.device_id ?? null, deviceId, "recovered", reason.trim(), this.now()]);
+    await this.execute("INSERT INTO controller_history VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)", [randomUUID2(), matchId, epoch, principal.accountId, old?.device_id ?? null, deviceId, "recovered", reason.trim(), this.now()]);
     await this.audit(principal, "controller.recovered", matchId, "reconciliation_required");
     return { epoch, deviceId, controllerToken: capability, reconciliationRequired: true, checkpoint: (await this.download(principal, matchId, deviceId)).deviceCheckpoint };
   }
@@ -4851,9 +6082,9 @@ var PostgresStore = class _PostgresStore {
   async assignManager(actor, teamId, seasonId, accountId, expectedRevision) {
     assertTeamRole(actor, await this.memberships(), teamId, seasonId, ["administrator"], this.now());
     assertAdultAuthority(actor, true, this.now());
-    if (!validId2(accountId))
+    if (!validId3(accountId))
       bad("A canonical account identifier is required.");
-    if (expectedRevision !== void 0 && (!nonnegative2(expectedRevision) || expectedRevision !== await this.staffRevision(teamId, seasonId)))
+    if (expectedRevision !== void 0 && (!nonnegative3(expectedRevision) || expectedRevision !== await this.staffRevision(teamId, seasonId)))
       throw new AccessError("STALE_REVISION", 409, "Refresh the current staff assignments before changing them.");
     const account2 = await this.one("SELECT * FROM accounts WHERE id=$1", [accountId]);
     if (!account2)
@@ -4871,9 +6102,9 @@ var PostgresStore = class _PostgresStore {
   async revokeManager(actor, teamId, seasonId, input, expectedRevision) {
     assertTeamRole(actor, await this.memberships(), teamId, seasonId, ["administrator"], this.now());
     assertAdultAuthority(actor, true, this.now());
-    if (!input || Object.keys(input).some((key) => !["accountId", "reason", "confirmRevocation"].includes(key)) || !validId2(input.accountId) || input.confirmRevocation !== true || typeof input.reason !== "string" || input.reason.trim().length < 5 || input.reason.length > 500)
+    if (!input || Object.keys(input).some((key) => !["accountId", "reason", "confirmRevocation"].includes(key)) || !validId3(input.accountId) || input.confirmRevocation !== true || typeof input.reason !== "string" || input.reason.trim().length < 5 || input.reason.length > 500)
       bad("Confirm a scoped manager revocation and record its evidence reason.");
-    if (expectedRevision !== void 0 && (!nonnegative2(expectedRevision) || expectedRevision !== await this.staffRevision(teamId, seasonId)))
+    if (expectedRevision !== void 0 && (!nonnegative3(expectedRevision) || expectedRevision !== await this.staffRevision(teamId, seasonId)))
       throw new AccessError("STALE_REVISION", 409, "Refresh the current staff assignments before changing them.");
     const member = await this.one("SELECT account_id,revoked_at FROM memberships WHERE account_id=$1 AND team_id=$2 AND season_id=$3 AND role='manager'", [input.accountId, teamId, seasonId]);
     if (!member)
@@ -4899,7 +6130,7 @@ var PostgresStore = class _PostgresStore {
       requestId = retained?.id;
     }
     if (!requestId) {
-      requestId = randomUUID();
+      requestId = randomUUID2();
       await this.execute("INSERT INTO privacy_requests(id,account_id,kind,status,policy_version,verified_at,created_at,team_id,season_id,affected_memberships_json) VALUES($1,$2,$3,$4,NULL,NULL,$5,$6,$7,$8)", [requestId, principal.accountId, plan.kind, plan.status, this.now(), plan.scope.type === "team_season" ? plan.scope.teamId : null, plan.scope.type === "team_season" ? plan.scope.seasonId : null, JSON.stringify(plan.affectedMemberships)]);
       await this.audit(principal, "privacy.requested", requestId, "pending_verification_and_policy");
     }
@@ -4919,9 +6150,13 @@ var PostgresStore = class _PostgresStore {
       throw new AccessError("DEVICE_ACCOUNT_CONFLICT", 409, "Enrol a separate device identity for this account.");
     await this.execute("INSERT INTO devices(id,account_id) VALUES($1,$2) ON CONFLICT(id) DO NOTHING", [deviceId, principal.accountId]);
   }
-  async teamMatches(principal, teamId, seasonId, requestedRole) {
-    assertTeamRole(principal, await this.memberships(), teamId, seasonId, ["manager", "player", "spectator"], this.now());
-    return await Promise.all((await this.many("SELECT id FROM matches WHERE team_id=$1 AND season_id=$2 ORDER BY id LIMIT 100", [teamId, seasonId])).map(async (row) => await this.matchDto(principal, row.id, requestedRole)));
+  async teamMatches(principal, teamId, seasonId, requestedRole, query = { limit: 25, cursor: null }) {
+    const memberships = await this.memberships();
+    const audience = matchPageAudience(principal, memberships, teamId, seasonId, requestedRole, this.now());
+    const scope = { principal, teamId, seasonId, role: audience.role, playerId: audience.playerId ?? null }, afterId = matchPagePosition(scope, query);
+    const rows = await this.many('SELECT id,state_json,sharing_policy_json,last_sync_at FROM matches WHERE team_id=$1 AND season_id=$2 AND ($3::text IS NULL OR id COLLATE "C" > $3::text COLLATE "C") ORDER BY id COLLATE "C" LIMIT $4', [teamId, seasonId, afterId, query.limit + 1]);
+    const visible = rows.slice(0, query.limit);
+    return { items: visible.map((row) => filterMatchForPrincipal({ principal, memberships, teamId, seasonId, state: JSON.parse(row.state_json), policy: JSON.parse(row.sharing_policy_json), lastSyncAt: row.last_sync_at, requestedRole, now: this.now() })), nextCursor: rows.length > query.limit ? matchPageCursor(scope, visible[visible.length - 1].id) : null, serverTime: new Date(this.now()).toISOString() };
   }
   async document(teamId, seasonId, kind) {
     const row = await this.one("SELECT value_json FROM documents WHERE team_id=$1 AND season_id=$2 AND kind=$3", [teamId, seasonId, kind]);
@@ -4947,8 +6182,8 @@ var PostgresStore = class _PostgresStore {
     for (const member of recipients.values()) {
       if (member.role === "administrator" || member.role === "player" && !member.playerId)
         continue;
-      const businessKey = `notify:${digest(canonical3([teamId, seasonId, category, entityId, sourceId, member.accountId, member.role]))}`;
-      const job = createTeamNotificationJob({ id: randomUUID(), businessKey, accountId: member.accountId, teamId, seasonId, audience: member.role, playerId: member.role === "player" ? member.playerId : null, category, entityId, dueAtMs: observed });
+      const businessKey = `notify:${digest(canonical4([teamId, seasonId, category, entityId, sourceId, member.accountId, member.role]))}`;
+      const job = createTeamNotificationJob({ id: randomUUID2(), businessKey, accountId: member.accountId, teamId, seasonId, audience: member.role, playerId: member.role === "player" ? member.playerId : null, category, entityId, dueAtMs: observed });
       if (workerJob) {
         const result = await this.one("SELECT longball.enqueue_award_notification($1,$2,$3::jsonb,$4) AS changes", [job.id, businessKey, JSON.stringify(job), job.dueAtMs]);
         inserted += Number(result?.changes ?? 0);
@@ -5027,21 +6262,21 @@ var PostgresStore = class _PostgresStore {
     const evidence = trainingAttendanceEvidence({ ...preparation, training: preparation.training.filter((session) => session.seasonId === seasonId) });
     let records = previous;
     const at = new Date(this.now()).toISOString();
-    if (canonical3(players) !== canonical3(previous.players))
+    if (canonical4(players) !== canonical4(previous.players))
       records = {
         ...records,
         players,
         revision: records.revision + 1,
         audit: [...records.audit, { commandId: `preparation-roster-${sourceCommandId}`, action: "preparation.roster.projected", matchId: null, at, reason: "Current season roster labels updated from preparation; saved match snapshots preserved.", before: null, after: null }]
       };
-    if (canonical3(evidence) !== canonical3(previous.trainingAttendance))
+    if (canonical4(evidence) !== canonical4(previous.trainingAttendance))
       records = reduceRecords(records, { type: "training.evidence.replace", commandId: `preparation-training-${sourceCommandId}`, at, actor: "manager", evidence });
     if (records !== previous)
       await this.saveDocument(teamId, seasonId, "records", records);
   }
   async preparationCommand(principal, teamId, seasonId, command) {
     const previous = await this.preparation(principal, teamId, seasonId);
-    const types2 = ["club.updated", "team.updated", "season.rolled_over", "profile.saved", "profile.archived", "formation.saved", "fixture.saved", "fixture.status_changed", "fixture.response_recorded", "fixture.selection_saved", "fixture.attendance_recorded", "fixture.prepared", "training.saved", "training.status_changed", "training.response_recorded", "training.attendance_recorded"];
+    const types2 = ["club.updated", "team.updated", "season.rolled_over", "profile.saved", "roster.imported", "profile.archived", "formation.saved", "fixture.saved", "fixture.status_changed", "fixture.response_recorded", "fixture.selection_saved", "fixture.attendance_recorded", "fixture.prepared", "match_plan.saved", "match_plan.applied", "match_plan.cleared", "training.series_created", "training.series_updated", "training.series_cancelled", "training.saved", "training.status_changed", "training.response_recorded", "training.attendance_recorded"];
     if (!command || !types2.includes(command.type))
       bad("Unsupported preparation command.");
     if (command.type === "season.rolled_over")
@@ -5050,7 +6285,15 @@ var PostgresStore = class _PostgresStore {
       assertTeamRole(principal, await this.memberships(), teamId, seasonId, ["administrator"], this.now());
       assertAdultAuthority(principal, true, this.now());
     }
-    const state = reducePreparation(previous, command);
+    const protectedFixtureIds = [];
+    if (command.type === "match_plan.applied") {
+      const match = await this.one("SELECT state_json FROM matches WHERE id=$1 AND team_id=$2 AND season_id=$3", [command.fixtureId, teamId, seasonId]);
+      if (match) {
+        const accepted2 = JSON.parse(match.state_json);
+        if (accepted2.status !== "preparation" || accepted2.revision !== 0 || await this.one("SELECT match_id FROM controller_grants WHERE match_id=$1", [command.fixtureId]) || await this.one("SELECT event_id FROM events WHERE match_id=$1 LIMIT 1", [command.fixtureId])) protectedFixtureIds.push(command.fixtureId);
+      }
+    }
+    const state = reducePreparation(previous, command, { nowMs: this.now(), protectedFixtureIds });
     if (command.type === "fixture.prepared") {
       const snapshot = state.snapshots.find((snapshot2) => snapshot2.fixtureId === command.fixtureId && snapshot2.preparedRevision === command.expectedRevision + 1);
       if (!snapshot)
@@ -5063,7 +6306,7 @@ var PostgresStore = class _PostgresStore {
       else {
         if (existing.team_id !== teamId || existing.season_id !== snapshot.seasonId)
           throw new AccessError("MATCH_SCOPE_CONFLICT", 409, "That fixture identity already belongs to another match scope.");
-        if (canonical3(JSON.parse(existing.config_json)) !== canonical3(config)) {
+        if (canonical4(JSON.parse(existing.config_json)) !== canonical4(config)) {
           const matchState = JSON.parse(existing.state_json);
           const claimed = await this.one("SELECT match_id FROM controller_grants WHERE match_id=$1", [config.matchId]);
           const history = await this.one("SELECT event_id FROM events WHERE match_id=$1 LIMIT 1", [config.matchId]);
@@ -5073,7 +6316,7 @@ var PostgresStore = class _PostgresStore {
         }
       }
     }
-    if (command.type.startsWith("training.") || command.type.startsWith("profile."))
+    if (command.type.startsWith("training.") || command.type.startsWith("profile.") || command.type === "roster.imported")
       await this.projectPreparationRecords(teamId, seasonId, state, command.id);
     await this.saveDocument(teamId, seasonId, "preparation", state);
     await this.audit(principal, command.type, teamId, "accepted");
@@ -5085,6 +6328,10 @@ var PostgresStore = class _PostgresStore {
       await this.enqueueNotifications(teamId, seasonId, "schedule", command.training.id, command.id);
     else if (command.type === "training.status_changed")
       await this.enqueueNotifications(teamId, seasonId, "schedule", command.trainingId, command.id);
+    else if (command.type === "training.series_created")
+      for (const occurrence of command.occurrences) await this.enqueueNotifications(teamId, seasonId, "schedule", occurrence.id, command.id);
+    else if (command.type === "training.series_updated" || command.type === "training.series_cancelled")
+      for (const id4 of command.occurrenceIds) await this.enqueueNotifications(teamId, seasonId, "schedule", id4, command.id);
     return state;
   }
   async ownPreparation(principal, teamId, seasonId) {
@@ -5094,19 +6341,11 @@ var PostgresStore = class _PostgresStore {
     if (profiles.length !== 1)
       throw new AccessError("NOT_FOUND", 404, "The requested own-player profile is unavailable.");
     const profile = profiles[0];
-    return {
-      kind: "player-preparation",
-      revision: state.revision,
-      team: { id: state.team.id, name: state.team.name, ageGroup: state.team.ageGroup },
-      season: state.seasons.find((season) => season.id === seasonId),
-      profile,
-      fixtures: state.fixtures.filter((fixture) => fixture.seasonId === seasonId).map((fixture) => ({ id: fixture.id, opponent: fixture.opponent, playedDate: fixture.playedDate, kickoff: fixture.kickoff, venue: fixture.venue, homeAway: fixture.homeAway, status: fixture.status, response: fixture.responses[profile.id] ?? "no_reply", selected: fixture.selectedProfileIds.includes(profile.id), attendance: fixture.attendance[profile.id] ?? "not_recorded" })),
-      training: state.training.filter((session) => session.seasonId === seasonId).map((session) => ({ id: session.id, date: session.date, time: session.time, venue: session.venue, status: session.status, expected: session.expectedProfileIds.includes(profile.id), response: session.responses[profile.id] ?? "no_reply", attendance: session.attendance[profile.id] ?? "not_recorded" }))
-    };
+    return projectOwnPlayerPreparation(state, profile, seasonId);
   }
   async ownPreparationCommand(principal, teamId, seasonId, command) {
     const membership = assertTeamRole(principal, await this.memberships(), teamId, seasonId, ["player"], this.now());
-    if (!command || !validId2(command.id) || !nonnegative2(command.expectedRevision) || !["own.preferences_saved", "own.fixture_response_recorded", "own.training_response_recorded"].includes(command.type))
+    if (!command || !validId3(command.id) || !nonnegative3(command.expectedRevision) || !["own.preferences_saved", "own.fixture_response_recorded", "own.training_response_recorded"].includes(command.type))
       bad("A valid own-player command and source revision are required.");
     const allowed = command.type === "own.preferences_saved" ? ["id", "expectedRevision", "type", "preferences"] : command.type === "own.fixture_response_recorded" ? ["id", "expectedRevision", "type", "fixtureId", "response"] : ["id", "expectedRevision", "type", "trainingId", "response"];
     if (Object.keys(command).some((key) => !allowed.includes(key)))
@@ -5158,7 +6397,7 @@ var PostgresStore = class _PostgresStore {
     return { ...getCommunityView(state, actor, this.now()), revision: state.revision };
   }
   async communityCommand(principal, teamId, seasonId, command, role) {
-    if (!command || !validId2(command.id) || typeof command.type !== "string")
+    if (!command || !validId3(command.id) || typeof command.type !== "string")
       bad("A typed community command with a stable identity is required.");
     if (command.type === "concern.updated" && !["under_review", "resolved"].includes(command.status))
       bad("Invalid concern status.");
@@ -5178,7 +6417,7 @@ var PostgresStore = class _PostgresStore {
       await this.synchronizeSpectatorMemberships(state);
     for (const match of state.matches.filter((match2) => match2.voteCutoffAtMs !== null && match2.finishQuality === "trusted" && !state.awards.some((award) => award.matchId === match2.id))) {
       const key = `award:${teamId}:${seasonId}:${match.id}:${match.voteCutoffAtMs}`;
-      await this.execute("INSERT INTO jobs(id,business_key,kind,payload_json,due_at) VALUES($1,$2,$3,$4,$5) ON CONFLICT(business_key) DO NOTHING", [randomUUID(), key, "award.finalise", JSON.stringify({ teamId, seasonId, matchId: match.id }), match.voteCutoffAtMs]);
+      await this.execute("INSERT INTO jobs(id,business_key,kind,payload_json,due_at) VALUES($1,$2,$3,$4,$5) ON CONFLICT(business_key) DO NOTHING", [randomUUID2(), key, "award.finalise", JSON.stringify({ teamId, seasonId, matchId: match.id }), match.voteCutoffAtMs]);
     }
     await this.audit(principal, command.type, teamId, "accepted");
     if (command.type === "photo.submitted" || command.type === "photo.revised" || command.type === "photo.published" || command.type === "photo.reviewed" && command.decision === "approve")
@@ -5233,26 +6472,43 @@ var PostgresStore = class _PostgresStore {
 };
 
 // apps/api/src/postgres-media.ts
-import { createHash as createHash4, randomBytes as randomBytes3, randomUUID as randomUUID3 } from "node:crypto";
+import { createHash as createHash5, randomBytes as randomBytes3, randomUUID as randomUUID4 } from "node:crypto";
 import { chmodSync, mkdirSync, readFileSync } from "node:fs";
 import { open as open2, rename as rename2, unlink as unlink2 } from "node:fs/promises";
 import { join, resolve, sep } from "node:path";
 import { performance } from "node:perf_hooks";
 
 // apps/api/src/media.ts
-import { createHash as createHash3, randomBytes as randomBytes2, randomUUID as randomUUID2, timingSafeEqual } from "node:crypto";
+import { createHash as createHash4, randomBytes as randomBytes2, randomUUID as randomUUID3, timingSafeEqual } from "node:crypto";
 import { execFile as execFile2, spawn } from "node:child_process";
 import { promisify as promisify2 } from "node:util";
 import { DatabaseSync } from "node:sqlite";
 
 // apps/api/src/image-bytes.ts
-import { createHash as createHash2 } from "node:crypto";
-import { execFile } from "node:child_process";
+import { createHash as createHash3 } from "node:crypto";
 import { access, open, readFile as readFile2, rename, unlink } from "node:fs/promises";
 import { constants } from "node:fs";
 import { isAbsolute } from "node:path";
 import { fileURLToPath } from "node:url";
+
+// apps/api/src/image-process.ts
+import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+var executeFile = promisify(execFile);
+var IMAGE_REJECTION_MARKER = "IMAGE_DECODE_REJECTED";
+function imageProcessRejected(error) {
+  if (!error || typeof error !== "object") return false;
+  const result = error;
+  return result.code === 1 && result.signal == null && result.killed !== true && typeof result.stderr === "string" && result.stderr.trim() === IMAGE_REJECTION_MARKER;
+}
+function executeImageDecoder(args, timeoutMs) {
+  return executeFile(process.execPath, [...args], {
+    timeout: timeoutMs,
+    killSignal: "SIGKILL",
+    maxBuffer: 64 * 1024,
+    windowsHide: true
+  });
+}
 
 // packages/application/src/image-formats.ts
 var MAX_ORIGINAL_IMAGE_BYTES = 15 * 1024 * 1024;
@@ -5306,8 +6562,7 @@ var MEDIA_LIMITS = {
   decodeTimeoutMs: 12e3,
   scannerTimeoutMs: 2e4
 };
-var executeFile = promisify(execFile);
-function fail3(code, status, message) {
+function fail4(code, status, message) {
   throw new AccessError(code, status, message);
 }
 async function bounded(promise, milliseconds, code) {
@@ -5334,40 +6589,41 @@ function rejectAnimatedPng(bytes) {
   let offset = 8;
   while (offset + 12 <= bytes.length) {
     const length = bytes.readUInt32BE(offset);
-    if (length > bytes.length - offset - 12) fail3("INVALID_IMAGE", 415, "The image is incomplete or unsupported.");
+    if (length > bytes.length - offset - 12) fail4("INVALID_IMAGE", 415, "The image is incomplete or unsupported.");
     const kind = bytes.toString("ascii", offset + 4, offset + 8);
-    if (kind === "acTL") fail3("ANIMATED_IMAGE_UNSUPPORTED", 415, "Animated images are not supported.");
+    if (kind === "acTL") fail4("ANIMATED_IMAGE_UNSUPPORTED", 415, "Animated images are not supported.");
     offset += length + 12;
     if (kind === "IEND") break;
   }
 }
 async function processPrivateImage(input) {
   const original = await readFile2(input.originalPath);
-  if (original.length !== input.expectedBytes || createHash2("sha256").update(original).digest("hex") !== input.expectedSha) fail3("UPLOAD_INTEGRITY_FAILED", 422, "The private original does not match its recorded size and hash.");
+  if (original.length !== input.expectedBytes || createHash3("sha256").update(original).digest("hex") !== input.expectedSha) fail4("UPLOAD_INTEGRITY_FAILED", 422, "The private original does not match its recorded size and hash.");
   const mimeType = actualMime(original);
-  if (!mimeType || mimeType !== input.declaredMime) fail3("MEDIA_TYPE_MISMATCH", 415, "The image type must match its original JPEG, PNG or supported still HEIC bytes.");
+  if (!mimeType || mimeType !== input.declaredMime) fail4("MEDIA_TYPE_MISMATCH", 415, "The image type must match its original JPEG, PNG or supported still HEIC bytes.");
   rejectAnimatedPng(original);
-  if (!input.scanner) fail3("SCANNER_REQUIRED", 503, "Image safety scanning is not configured. The original remains private; no reviewable or published image was created.");
+  if (!input.scanner) fail4("SCANNER_REQUIRED", 503, "Image safety scanning is not configured. The original remains private; no reviewable or published image was created.");
   const scan = await bounded(input.scanner.scan(original, { mimeType, sha256: input.expectedSha }), MEDIA_LIMITS.scannerTimeoutMs, "SCANNER_UNAVAILABLE");
-  if (scan.verdict === "unavailable") fail3("SCANNER_UNAVAILABLE", 503, "Image scanning is unavailable. The original remains private for a safe retry.");
-  if (scan.verdict !== "clean") fail3("IMAGE_SCAN_REJECTED", 422, "The image did not pass safety scanning and remains unpublished.");
+  if (scan.verdict === "unavailable") fail4("SCANNER_UNAVAILABLE", 503, "Image scanning is unavailable. The original remains private for a safe retry.");
+  if (scan.verdict !== "clean") fail4("IMAGE_SCAN_REJECTED", 422, "The image did not pass safety scanning and remains unpublished.");
   if (mimeType === "image/heic") {
     const decoder = process.env.LONGBALL_HEIC_DECODER_FILE ?? "/opt/longball-heic/bin/longball-heic";
-    if (!isAbsolute(decoder) || decoder.length > 4096) fail3("HEIC_DECODER_REQUIRED", 503, "The private HEIC decoder is not configured. The original remains private for retry.");
+    if (!isAbsolute(decoder) || decoder.length > 4096) fail4("HEIC_DECODER_REQUIRED", 503, "The private HEIC decoder is not configured. The original remains private for retry.");
     try {
       await access(decoder, constants.X_OK);
     } catch {
-      fail3("HEIC_DECODER_REQUIRED", 503, "The private HEIC decoder is unavailable. The original remains private for retry.");
+      fail4("HEIC_DECODER_REQUIRED", 503, "The private HEIC decoder is unavailable. The original remains private for retry.");
     }
   }
   let decoded;
   try {
-    const result = await executeFile(process.execPath, ["--max-old-space-size=128", fileURLToPath(new URL("./media-worker.mjs", import.meta.url)), input.originalPath, input.displayPath, input.thumbnailPath, mimeType, input.kind ?? "photo"], { timeout: MEDIA_LIMITS.decodeTimeoutMs, killSignal: "SIGKILL", maxBuffer: 64 * 1024, windowsHide: true });
+    const result = await executeImageDecoder(["--max-old-space-size=128", fileURLToPath(new URL("./media-worker.mjs", import.meta.url)), input.originalPath, input.displayPath, input.thumbnailPath, mimeType, input.kind ?? "photo"], MEDIA_LIMITS.decodeTimeoutMs);
     decoded = JSON.parse(result.stdout);
     const edge = input.kind === "logo" ? 1024 : MEDIA_LIMITS.displayEdge;
     if (!Number.isSafeInteger(decoded.width) || !Number.isSafeInteger(decoded.height) || decoded.width < 1 || decoded.height < 1 || decoded.width > edge || decoded.height > edge) throw new Error();
-  } catch {
-    fail3("IMAGE_DECODE_REJECTED", 415, "The image could not be safely decoded within the supported format, pixel and processing limits.");
+  } catch (error) {
+    if (imageProcessRejected(error)) fail4("IMAGE_DECODE_REJECTED", 415, "The image was rejected by the supported format, pixel and content checks.");
+    fail4("MEDIA_PROCESSING_FAILED", 503, "The bounded image processor is unavailable. The private upload is retained for a safe retry; no image was published.");
   } finally {
     if (mimeType === "image/heic") await unlink(input.displayPath + ".heic-rgba").catch(() => void 0);
   }
@@ -5376,18 +6632,18 @@ async function processPrivateImage(input) {
 
 // apps/api/src/media.ts
 var executeFile2 = promisify2(execFile2);
-var hash = (value) => createHash3("sha256").update(value).digest("hex");
+var hash = (value) => createHash4("sha256").update(value).digest("hex");
 var id = (value) => typeof value === "string" && /^[a-zA-Z0-9_-]{1,150}$/.test(value);
-function fail4(code, status, message) {
+function fail5(code, status, message) {
   throw new AccessError(code, status, message);
 }
 function auth(state, actor, now, upload = false) {
-  if (!communityCanAccess(state, actor, now) || upload && actor.role === "spectator") fail4("NOT_FOUND", 404, "The requested media operation is unavailable.");
+  if (!communityCanAccess(state, actor, now) || upload && actor.role === "spectator") fail5("NOT_FOUND", 404, "The requested media operation is unavailable.");
 }
 function sameToken(expectedHash, token) {
   return typeof token === "string" && token.length <= 256 && timingSafeEqual(Buffer.from(expectedHash, "hex"), Buffer.from(hash(token), "hex"));
 }
-var mediaInternals = { executeFile: executeFile2, hash, id, fail: fail4, auth, sameToken, bounded, actualMime, rejectAnimatedPng };
+var mediaInternals = { executeFile: executeFile2, hash, id, fail: fail5, auth, sameToken, bounded, actualMime, rejectAnimatedPng };
 
 // apps/api/src/postgres-security.ts
 import { readFile as readFile3 } from "node:fs/promises";
@@ -5407,11 +6663,20 @@ async function verify(database, tables) {
 }
 var installMediaSecurity = (database) => install(database, "media");
 var installActivationSecurity = (database) => install(database, "activation");
-var verifyMediaSecurity = (database) => verify(database, ["media_uploads"]);
+var verifyMediaSecurity = async (database) => {
+  await verify(database, ["media_uploads"]);
+  const policies = await database.query("SELECT policyname FROM pg_catalog.pg_policies WHERE schemaname='longball' AND policyname=ANY($1::text[])", [["media_team_privilege_insert", "media_team_privilege_link", "documents_player_media_insert", "documents_player_media_update"]]);
+  if (policies.rows.length !== 4) throw new Error("Current media contribution row security is missing. Run the separate migrator.");
+};
 var verifyActivationSecurity = (database) => verify(database, ["lb_activation_children", "lb_activation_issues", "lb_activation_tokens", "lb_activation_verification_requests"]);
 async function installHeicMedia(database) {
   if (database.migrationMode !== "apply") throw new Error("Media migration requires the separate schema-owner migrator.");
   const sql = await readFile3(new URL("../migrations/postgresql/media_003_heic.sql", import.meta.url), "utf8");
+  await database.transaction(() => database.query(sql));
+}
+async function installTeamPrivilegeMedia(database) {
+  if (database.migrationMode !== "apply") throw new Error("Media migration requires the separate schema-owner migrator.");
+  const sql = await readFile3(new URL("../migrations/postgresql/media_004_team_privileges.sql", import.meta.url), "utf8");
   await database.transaction(() => database.query(sql));
 }
 
@@ -5423,7 +6688,7 @@ var {
   sameToken: sameToken2,
   bounded: bounded2
 } = mediaInternals;
-function fail5(code, status, message) {
+function fail6(code, status, message) {
   return mediaInternals.fail(code, status, message);
 }
 var PgMediaService = class _PgMediaService {
@@ -5453,8 +6718,8 @@ var PgMediaService = class _PgMediaService {
       const versions = await this.database.query(
         "SELECT version FROM longball.media_schema_migrations ORDER BY version"
       );
-      if (versions.rows.some((row) => row.version > 3)) throw new Error("Media schema is newer than this build.");
-      if (![2, 3].every((version) => versions.rows.some((row) => row.version === version))) throw new Error("Run the separate media migrator before starting the runtime.");
+      if (versions.rows.some((row) => row.version > 4)) throw new Error("Media schema is newer than this build.");
+      if (![2, 3, 4].every((version) => versions.rows.some((row) => row.version === version))) throw new Error("Run the separate media migrator before starting the runtime.");
       await verifyMediaSecurity(this.database);
       return;
     }
@@ -5465,7 +6730,7 @@ var PgMediaService = class _PgMediaService {
       const versions = await this.database.query(
         "SELECT version FROM longball.media_schema_migrations ORDER BY version"
       );
-      if (versions.rows.some((row) => row.version > 3))
+      if (versions.rows.some((row) => row.version > 4))
         throw new Error(
           "Media schema is newer than this build; preserve it and use a compatible version."
         );
@@ -5489,6 +6754,10 @@ var PgMediaService = class _PgMediaService {
         await installHeicMedia(this.database);
         await this.database.query("INSERT INTO longball.media_schema_migrations(version) VALUES(3)");
       }
+      if (!versions.rows.some((row) => row.version === 4)) {
+        await installTeamPrivilegeMedia(this.database);
+        await this.database.query("INSERT INTO longball.media_schema_migrations(version) VALUES(4)");
+      }
     });
   }
   /** Injected connection lifecycle belongs to the API/store. */
@@ -5506,7 +6775,7 @@ var PgMediaService = class _PgMediaService {
   path(key) {
     const path = resolve(this.directory, key);
     if (!path.startsWith(this.directory + sep))
-      fail5(
+      fail6(
         "MEDIA_STORE_INVALID",
         503,
         "The private media object is unavailable."
@@ -5516,13 +6785,13 @@ var PgMediaService = class _PgMediaService {
   async row(state, actor, uploadId, token) {
     auth2(state, actor, this.now(), true);
     if (!id2(uploadId))
-      fail5("NOT_FOUND", 404, "The requested upload is unavailable.");
+      fail6("NOT_FOUND", 404, "The requested upload is unavailable.");
     const row = await this.one(
       "SELECT * FROM longball.media_uploads WHERE id=$1 AND owner_id=$2 AND team_id=$3 AND season_id=$4",
       [uploadId, actor.accountId, actor.teamId, actor.seasonId]
     );
     if (!row || token !== void 0 && !sameToken2(row.token_hash, token))
-      fail5("NOT_FOUND", 404, "The requested upload is unavailable.");
+      fail6("NOT_FOUND", 404, "The requested upload is unavailable.");
     return row;
   }
   async prepare(state, actor, input) {
@@ -5540,7 +6809,7 @@ var PgMediaService = class _PgMediaService {
         "sourceRevision"
       ];
       if (!input || typeof input !== "object" || Object.keys(input).some((key) => !allowedKeys.includes(key)) || !id2(input.requestId) || !id2(input.matchId) || !Number.isSafeInteger(input.byteSize) || input.byteSize < 1 || input.byteSize > MEDIA_LIMITS.maxBytes || !["image/jpeg", "image/png", "image/heic"].includes(input.mimeType) || typeof input.sha256 !== "string" || !/^[a-fA-F0-9]{64}$/.test(input.sha256) || typeof input.caption !== "string" || input.caption.trim().length > 160 || input.policyAcknowledged !== true) {
-        fail5(
+        fail6(
           "INVALID_MEDIA_PREPARATION",
           422,
           "Use an original JPEG, PNG or supported still HEIC up to 15 MiB with a valid size, SHA-256 and policy acknowledgement."
@@ -5549,7 +6818,7 @@ var PgMediaService = class _PgMediaService {
       const match = state.matches.find(
         (item) => item.id === input.matchId && item.teamId === actor.teamId && item.seasonId === actor.seasonId
       );
-      if (!match) fail5("NOT_FOUND", 404, "The requested match is unavailable.");
+      if (!match) fail6("NOT_FOUND", 404, "The requested match is unavailable.");
       const signature2 = hash2(
         JSON.stringify([
           input.matchId,
@@ -5569,13 +6838,13 @@ var PgMediaService = class _PgMediaService {
       const token = randomBytes3(32).toString("base64url");
       if (existing) {
         if (existing.request_signature !== signature2 || existing.team_id !== actor.teamId || existing.season_id !== actor.seasonId)
-          fail5(
+          fail6(
             "IDEMPOTENCY_CONFLICT",
             409,
             "This upload request identity was already used for different content."
           );
         if (existing.expires_at <= this.now() && ["prepared", "uploading"].includes(existing.status))
-          fail5(
+          fail6(
             "UPLOAD_EXPIRED",
             410,
             "The upload window expired. Prepare a new upload without discarding the previous private record."
@@ -5594,13 +6863,13 @@ var PgMediaService = class _PgMediaService {
         };
       }
       let sourceRevision = null;
-      let photoId = `media-${randomUUID3()}`;
+      let photoId = `media-${randomUUID4()}`;
       if (input.photoId !== void 0 || input.sourceRevision !== void 0) {
         const photo = state.photos.find(
           (item) => item.id === input.photoId && item.matchId === match.id && item.teamId === actor.teamId && item.seasonId === actor.seasonId && item.uploaderAccountId === actor.accountId && item.uploaderRole === actor.role && item.removedAtMs === null
         );
         if (!photo || !Number.isSafeInteger(input.sourceRevision) || photo.currentRevision !== input.sourceRevision)
-          fail5(
+          fail6(
             "MEDIA_REVISION_CONFLICT",
             409,
             "The photo changed. Review its current revision before replacing it."
@@ -5608,7 +6877,7 @@ var PgMediaService = class _PgMediaService {
         sourceRevision = photo.currentRevision;
         photoId = photo.id;
       }
-      const uploadId = randomUUID3();
+      const uploadId = randomUUID4();
       const expiresAtMs = this.now() + MEDIA_LIMITS.uploadWindowMs;
       await this.execute(
         "INSERT INTO longball.media_uploads(id,request_id,request_signature,owner_id,team_id,season_id,match_id,photo_id,source_revision,display_revision,status,expected_bytes,expected_sha,declared_mime,caption,token_hash,expires_at,created_at)\n      VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'prepared',$11,$12,$13,$14,$15,$16,$17)",
@@ -5646,14 +6915,14 @@ var PgMediaService = class _PgMediaService {
     const row = await this.row(state, actor, uploadId, token);
     const duplicate = ["uploaded", "processed", "linked"].includes(row.status);
     if (!duplicate && row.expires_at <= this.now())
-      fail5("UPLOAD_EXPIRED", 410, "The write-only upload window expired.");
+      fail6("UPLOAD_EXPIRED", 410, "The write-only upload window expired.");
     if (!duplicate && row.status !== "prepared" && !(row.status === "uploading" && (row.lease_until ?? 0) < this.now()))
-      fail5(
+      fail6(
         "UPLOAD_BUSY",
         409,
         "This upload is already running or cannot be changed."
       );
-    const attempt = randomUUID3();
+    const attempt = randomUUID4();
     const key = `quarantine/${row.id}-${attempt}.upload`;
     const temporary = this.path(key + ".part");
     if (!duplicate) {
@@ -5662,10 +6931,10 @@ var PgMediaService = class _PgMediaService {
         [attempt, this.now() + 65e3, row.id, this.now()]
       );
       if (!updated.changes)
-        fail5("UPLOAD_BUSY", 409, "This upload is already running.");
+        fail6("UPLOAD_BUSY", 409, "This upload is already running.");
     }
     const destination = duplicate ? null : await open2(temporary, "wx", 384);
-    const digest2 = createHash4("sha256");
+    const digest2 = createHash5("sha256");
     let received = 0;
     const began = performance.now();
     const iterator = source2[Symbol.asyncIterator]();
@@ -5680,7 +6949,7 @@ var PgMediaService = class _PgMediaService {
         const chunk = Buffer.from(item.value);
         received += chunk.length;
         if (received > row.expected_bytes || received > MEDIA_LIMITS.maxBytes)
-          fail5(
+          fail6(
             "UPLOAD_TOO_LARGE",
             413,
             "The image exceeds its declared upload size."
@@ -5689,7 +6958,7 @@ var PgMediaService = class _PgMediaService {
         if (destination) await destination.writeFile(chunk);
       }
       if (received !== row.expected_bytes || digest2.digest("hex") !== row.expected_sha)
-        fail5(
+        fail6(
           "UPLOAD_INTEGRITY_FAILED",
           422,
           "The uploaded size or SHA-256 does not match. The private partial upload was not accepted."
@@ -5703,7 +6972,7 @@ var PgMediaService = class _PgMediaService {
           [key, row.id, attempt]
         );
         if (!changed.changes)
-          fail5(
+          fail6(
             "UPLOAD_LEASE_CHANGED",
             409,
             "The upload lease changed. The private branch is retained for review."
@@ -5755,20 +7024,20 @@ var PgMediaService = class _PgMediaService {
     if (row.status === "processed" || row.status === "linked")
       return this.completion(row);
     if (row.status !== "uploaded" && !(row.status === "processing" && (row.lease_until ?? 0) < this.now()))
-      fail5(
+      fail6(
         "UPLOAD_NOT_READY",
         409,
         "Finish the private upload before completion; an active processing lease cannot be duplicated."
       );
     if (!row.original_key)
-      fail5("UPLOAD_NOT_READY", 409, "The private original is unavailable.");
-    const attempt = randomUUID3();
+      fail6("UPLOAD_NOT_READY", 409, "The private original is unavailable.");
+    const attempt = randomUUID4();
     const leased = await this.execute(
       "UPDATE longball.media_uploads SET status='processing',attempt=$1,lease_until=$2,failure_code=NULL WHERE id=$3 AND (status='uploaded' OR (status='processing' AND lease_until<$4))",
       [attempt, this.now() + 6e4, row.id, this.now()]
     );
     if (!leased.changes)
-      fail5("UPLOAD_BUSY", 409, "This image is already processing.");
+      fail6("UPLOAD_BUSY", 409, "This image is already processing.");
     try {
       const displayKey = `derivatives/${row.photo_id}-v${row.display_revision}-${attempt}-display.jpg`;
       const thumbnailKey = `derivatives/${row.photo_id}-v${row.display_revision}-${attempt}-thumbnail.jpg`;
@@ -5786,7 +7055,7 @@ var PgMediaService = class _PgMediaService {
         ]
       );
       if (!saved.changes)
-        fail5(
+        fail6(
           "PROCESSING_LEASE_CHANGED",
           409,
           "The processing lease changed. No publication was performed."
@@ -5817,7 +7086,7 @@ var PgMediaService = class _PgMediaService {
       [uploadId]
     );
     if (!row || !["processed", "linked"].includes(row.status))
-      fail5(
+      fail6(
         "MEDIA_NOT_PROCESSED",
         409,
         "The image has not completed private processing."
@@ -5827,7 +7096,7 @@ var PgMediaService = class _PgMediaService {
         (revision) => revision.version === row.display_revision
       )
     ))
-      fail5(
+      fail6(
         "MEDIA_LINK_CONFLICT",
         409,
         "The matching community revision was not committed."
@@ -5836,11 +7105,11 @@ var PgMediaService = class _PgMediaService {
       "UPDATE longball.media_uploads SET status='linked' WHERE id=$1",
       [uploadId]
     );
-    if (linked.changes !== 1) fail5("MEDIA_LINK_CONFLICT", 409, "The private processing authority changed. No community revision was committed.");
+    if (linked.changes !== 1) fail6("MEDIA_LINK_CONFLICT", 409, "The private processing authority changed. No community revision was committed.");
   }
   async gateway(state, actor, photoId, variant, mode = "gallery", revision) {
     if (!["display", "thumbnail"].includes(variant))
-      fail5("NOT_FOUND", 404, "The media variant is unavailable.");
+      fail6("NOT_FOUND", 404, "The media variant is unavailable.");
     const decision = authorizeCommunityMedia(
       state,
       actor,
@@ -5850,20 +7119,20 @@ var PgMediaService = class _PgMediaService {
       revision
     );
     if (!decision.allowed)
-      fail5("NOT_FOUND", 404, "The requested image is unavailable.");
+      fail6("NOT_FOUND", 404, "The requested image is unavailable.");
     const row = await this.one(
       "SELECT * FROM longball.media_uploads WHERE photo_id=$1 AND display_revision=$2 AND status='linked'",
       [photoId, decision.revision.version]
     );
     if (!row || row.team_id !== actor.teamId || row.season_id !== actor.seasonId)
-      fail5("NOT_FOUND", 404, "The requested image is unavailable.");
+      fail6("NOT_FOUND", 404, "The requested image is unavailable.");
     const key = variant === "display" ? row.display_key : row.thumbnail_key;
-    if (!key) fail5("NOT_FOUND", 404, "The requested image is unavailable.");
+    if (!key) fail6("NOT_FOUND", 404, "The requested image is unavailable.");
     let body;
     try {
       body = readFileSync(this.path(key));
     } catch {
-      fail5("NOT_FOUND", 404, "The requested image is unavailable.");
+      fail6("NOT_FOUND", 404, "The requested image is unavailable.");
     }
     return {
       body,
@@ -5896,8 +7165,8 @@ var PgMediaService = class _PgMediaService {
 };
 
 // apps/api/src/postgres-activation.ts
-import { createHash as createHash5, randomBytes as randomBytes4, randomUUID as randomUUID4 } from "node:crypto";
-var hash3 = (value) => createHash5("sha256").update(value).digest("hex");
+import { createHash as createHash6, randomBytes as randomBytes4, randomUUID as randomUUID5 } from "node:crypto";
+var hash3 = (value) => createHash6("sha256").update(value).digest("hex");
 var id3 = (value) => typeof value === "string" && /^[A-Za-z0-9_-]{1,150}$/.test(value);
 var uuid = (value) => typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 function unavailable() {
@@ -5907,7 +7176,7 @@ function unavailable() {
     "This activation cannot be used. Request a new activation through the agreed household process."
   );
 }
-function invalid() {
+function invalid2() {
   throw new AccessError(
     "INVALID_REQUEST",
     400,
@@ -5923,7 +7192,7 @@ function conflict() {
 }
 function fields4(value, names) {
   if (!value || typeof value !== "object" || Array.isArray(value) || Object.keys(value).some((key) => !names.includes(key)) || names.some((key) => !(key in value)))
-    invalid();
+    invalid2();
 }
 function fingerprint(actor, input) {
   return hash3(
@@ -6116,9 +7385,9 @@ CREATE TRIGGER lb_activation_immutable_child BEFORE UPDATE OF classification ON 
     const { provider } = await this.enabled();
     fields4(input, ["requestId", "teamId", "seasonId", "playerId"]);
     if (![input.requestId, input.teamId, input.seasonId, input.playerId].every(id3))
-      invalid();
+      invalid2();
     const signature2 = fingerprint(principal.accountId, input);
-    const candidateAccountId = randomUUID4();
+    const candidateAccountId = randomUUID5();
     const row = await this.withProvisionedAccount(
       candidateAccountId,
       () => this.store.transaction(async () => {
@@ -6238,11 +7507,11 @@ CREATE TRIGGER lb_activation_immutable_child BEFORE UPDATE OF classification ON 
             );
           return await this.receipt(fresh);
         }
-        const binding = await this.store.one(
+        const binding2 = await this.store.one(
           "SELECT id FROM accounts WHERE issuer=$1 AND subject=$2 AND id!=$3",
           [result.issuer, result.subject, row.account_id]
         );
-        if (binding)
+        if (binding2)
           throw new AccessError(
             "PROVIDER_BINDING_REJECTED",
             409,
@@ -6287,7 +7556,7 @@ CREATE TRIGGER lb_activation_immutable_child BEFORE UPDATE OF classification ON 
     const { provider, policy } = await this.enabled();
     fields4(input, ["requestId", "teamId", "seasonId", "accountId"]);
     if (![input.requestId, input.teamId, input.seasonId].every(id3) || !uuid(input.accountId))
-      invalid();
+      invalid2();
     const signature2 = fingerprint(principal.accountId, input);
     const preparation = await this.store.transaction(async () => {
       const child = await this.child(
@@ -6385,7 +7654,7 @@ CREATE TRIGGER lb_activation_immutable_child BEFORE UPDATE OF classification ON 
           "Another activation request superseded this operation."
         );
       const token = randomBytes4(32).toString("base64url");
-      const activationId = randomUUID4();
+      const activationId = randomUUID5();
       const expiresAt = this.store.now() + policy.activationTtlMs;
       if (!Number.isSafeInteger(expiresAt))
         throw new AccessError(
@@ -6592,7 +7861,7 @@ CREATE TRIGGER lb_activation_immutable_child BEFORE UPDATE OF classification ON 
           await this.store.execute(
             "INSERT INTO audit(id,actor_id,action,object_id,outcome,created_at,club_id,team_id,season_id,context_operation) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)",
             [
-              randomUUID4(),
+              randomUUID5(),
               child.account_id,
               "identity.activation_completed",
               child.account_id,
@@ -6618,7 +7887,7 @@ CREATE TRIGGER lb_activation_immutable_child BEFORE UPDATE OF classification ON 
       "playerId",
       "existingAccountId"
     ]);
-    if (!id3(input.playerId) || !uuid(input.existingAccountId)) invalid();
+    if (!id3(input.playerId) || !uuid(input.existingAccountId)) invalid2();
     return await this.verificationRequest(
       principal,
       "link",
@@ -6630,7 +7899,7 @@ CREATE TRIGGER lb_activation_immutable_child BEFORE UPDATE OF classification ON 
   async requestRecovery(principal, input) {
     await this.ready;
     fields4(input, ["requestId", "teamId", "seasonId", "accountId"]);
-    if (!uuid(input.accountId)) invalid();
+    if (!uuid(input.accountId)) invalid2();
     return await this.verificationRequest(
       principal,
       "recovery",
@@ -6641,7 +7910,7 @@ CREATE TRIGGER lb_activation_immutable_child BEFORE UPDATE OF classification ON 
   }
   async verificationRequest(principal, kind, input, target, playerId) {
     const { policy } = await this.enabled();
-    if (![input.requestId, input.teamId, input.seasonId].every(id3)) invalid();
+    if (![input.requestId, input.teamId, input.seasonId].every(id3)) invalid2();
     const signature2 = fingerprint(principal.accountId, { ...input, kind });
     return await this.store.transaction(async () => {
       await this.manager(principal, input.teamId, input.seasonId);
@@ -6711,29 +7980,31 @@ function readDatabaseUrl(env, key = "LONGBALL_DATABASE_URL") {
 
 // apps/api/src/runtime-grants.ts
 async function applyRuntimeGrants(database, roles = { apiRole: "longball_api", workerRole: "longball_worker" }) {
-  const identifier2 = (name) => {
+  const identifier3 = (name) => {
     if (!/^[a-z_][a-z0-9_]{0,62}$/.test(name)) throw new Error("Invalid runtime database role name.");
     return `"${name}"`;
   };
-  const api = identifier2(roles.apiRole), worker = identifier2(roles.workerRole);
+  const api = identifier3(roles.apiRole), worker = identifier3(roles.workerRole);
   await database.transaction(async () => {
     await database.query("INSERT INTO longball.runtime_roles(role_name,purpose) VALUES($1,'api'),($2,'worker') ON CONFLICT(role_name) DO UPDATE SET purpose=EXCLUDED.purpose", [roles.apiRole, roles.workerRole]);
     await database.query("REVOKE ALL ON SCHEMA longball FROM PUBLIC");
     await database.query(`GRANT USAGE ON SCHEMA longball TO ${api},${worker}`);
     await database.query(`REVOKE ALL ON ALL TABLES IN SCHEMA longball FROM ${api},${worker}`);
     await database.query(`REVOKE ALL ON ALL FUNCTIONS IN SCHEMA longball FROM PUBLIC,${api},${worker}`);
-    const apiTables = ["clubs", "teams", "team_seasons", "game_contexts", "accounts", "memberships", "matches", "documents", "devices", "controller_grants", "controller_history", "events", "streams", "conflicting_submissions", "transfers", "clock_challenges", "clock_mappings", "reconciliation_proposals", "audit", "idempotency", "privacy_requests", "privacy_pending_keys", "jobs", "media_uploads", "lb_activation_children", "lb_activation_issues", "lb_activation_tokens", "lb_activation_verification_requests", "brand_assets", "brand_slots", "spectator_invitations", "lb_spectator_activation_accounts", "lb_spectator_activation_attempts", "native_app_devices"];
+    const apiTables = ["clubs", "teams", "team_seasons", "game_contexts", "accounts", "memberships", "matches", "documents", "devices", "controller_grants", "controller_history", "events", "streams", "conflicting_submissions", "transfers", "clock_challenges", "clock_mappings", "reconciliation_proposals", "audit", "idempotency", "privacy_requests", "privacy_pending_keys", "jobs", "media_uploads", "lb_activation_children", "lb_activation_issues", "lb_activation_tokens", "lb_activation_verification_requests", "brand_assets", "brand_slots", "spectator_invitations", "lb_spectator_activation_accounts", "lb_spectator_activation_attempts", "native_app_devices", "team_privilege_states", "team_privilege_decisions", "push_registrations"];
     await database.query(`GRANT SELECT,INSERT,UPDATE ON ${apiTables.map((table) => `longball.${table}`).join(",")} TO ${api}`);
     await database.query(`GRANT SELECT ON longball.schema_migrations,longball.media_schema_migrations,longball.lb_activation_schema TO ${api},${worker}`);
-    await database.query(`REVOKE UPDATE ON longball.events,longball.audit,longball.controller_history,longball.reconciliation_proposals,longball.clock_mappings FROM ${api}`);
+    await database.query(`REVOKE UPDATE ON longball.events,longball.audit,longball.controller_history,longball.reconciliation_proposals,longball.clock_mappings,longball.team_privilege_decisions FROM ${api}`);
     await database.query(`GRANT SELECT ON longball.clubs,longball.teams,longball.team_seasons,longball.game_contexts,longball.accounts,longball.memberships,longball.matches TO ${worker}`);
     await database.query(`GRANT SELECT,INSERT,UPDATE ON longball.jobs,longball.documents TO ${worker}`);
     const helpers = ["runtime_purpose()", "context_json()", "context_now()", "actor_valid()", "context_matches(text,text,text)", "actor_role(text,text,text)", "actor_admin(text,text,text)", "actor_manager(text,text,text)", "invite_capability(text,text,text)", "worker_job_valid(text,text,text)", "worker_kind()", "worker_account(text,text,text,text)", "spectator_grant_active(text,text,text,text)", "activation_account(text,boolean)", "spectator_activation_account(text,boolean)", "invitation_live(text,text)", "account_visible(text)", "document_write(text,text,text,text)", "worker_match(text,text,text,text)"];
     await database.query(`GRANT EXECUTE ON FUNCTION ${helpers.map((name) => `longball.${name}`).join(",")} TO ${api},${worker}`);
+    await database.query(`GRANT EXECUTE ON FUNCTION longball.media_completion_write(text,text,text,text) TO ${api},${worker}`);
     await database.query(`GRANT EXECUTE ON FUNCTION longball.media_gallery_allowed(text,integer,text,text,text,text,text) TO ${api}`);
     await database.query(`GRANT EXECUTE ON FUNCTION longball.branding_member(text,text),longball.branding_authority(text,text,text),longball.branding_context(text,text) TO ${api}`);
+    await database.query(`GRANT EXECUTE ON FUNCTION longball.team_privilege_manager(text,text),longball.team_privilege_target(text,text,text),longball.team_privilege_allowed(text,text,text,boolean) TO ${api}`);
     await database.query(`GRANT EXECUTE ON FUNCTION longball.invitation_live(text,text),longball.invitation_preflight(text),longball.invitation_accept_scope(text),longball.spectator_activation_account(text,boolean) TO ${api}`);
-    await database.query(`GRANT EXECUTE ON FUNCTION longball.claim_due_job(text,bigint,text),longball.enqueue_award_notification(text,text,jsonb,bigint) TO ${worker}`);
+    await database.query(`GRANT EXECUTE ON FUNCTION longball.claim_due_job(text,bigint,text),longball.enqueue_award_notification(text,text,jsonb,bigint),longball.push_targets_for_current_job(text) TO ${worker}`);
   });
 }
 
