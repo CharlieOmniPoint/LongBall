@@ -1,0 +1,385 @@
+{
+  "observedAt": "2026-10-21T23:04:26.559698+00:00",
+  "runId": 39689738577,
+  "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/39689738577",
+  "source": {
+    "developmentCommit": "bb509f71425f428d04f3b608d90a1bb8fa68521d",
+    "checkoutCommit": "31b136c9323de42561fb70c5cfddf8a55085df37",
+    "checkoutParents": [
+      "031fdf5fdf4d937a0c638f81f24f9ae34db3579b",
+      "bb509f71425f428d04f3b608d90a1bb8fa68521d"
+    ],
+    "developmentTree": "7cea8249731127e68877ec24f6b2e5a29572c2d7",
+    "checkoutTree": "7cea8249731127e68877ec24f6b2e5a29572c2d7",
+    "treeIdentical": true,
+    "lockMatchesCurrentLocalSource": true
+  },
+  "quality": {
+    "jobId": 119533263297,
+    "conclusion": "failure",
+    "soleFailingStep": "Enforce the dependency audit result",
+    "unit": {
+      "passed": 742,
+      "files": 82,
+      "durationSeconds": 9.58
+    },
+    "api": {
+      "passed": 369,
+      "skipped": 3,
+      "files": 56,
+      "durationSeconds": 55.98,
+      "skipScope": "Three tests in apps/api/src/heic.test.ts require a configured external maintained decoder in the source test job; actual image HEIC decoding is separately exercised."
+    },
+    "migration": {
+      "passed": 24,
+      "files": 4,
+      "durationSeconds": 2.75
+    },
+    "browser": {
+      "passed": true,
+      "checks": 10,
+      "viewport": "390x844",
+      "browserVersion": "155.0.8059.0",
+      "savedRecords": 21,
+      "finalActiveDurationMs": 2992000,
+      "nativeDeviceEvidence": false
+    },
+    "otherPassed": [
+      "Pinned frozen workspace install",
+      "Current-source Gitleaks and resolved dependency/font/licence inventory",
+      "Lint and both TypeScript clients",
+      "Canonical/runtime OpenAPI and contract/source-publication checks",
+      "Sample fixture validation",
+      "Evaluated production native configuration",
+      "Android/iOS Hermes JavaScript exports, web and API exports"
+    ],
+    "nativeExportScope": {
+      "androidModules": 1039,
+      "iosModules": 1044,
+      "androidHermesAsset": "_expo/static/js/android/index-16fb30ee131a9dd89df1c9bf7ad0af91.hbc",
+      "iosHermesAsset": "_expo/static/js/ios/index-ae37bcbe7e45509eadad80b1911a41a6.hbc",
+      "nativeBinaryBuilt": false,
+      "nativeSigningExercised": false,
+      "physicalDeviceEvidence": false
+    }
+  },
+  "runtimeImage": {
+    "jobId": 119533263712,
+    "conclusion": "success",
+    "summary": {
+      "observedAt": "2026-10-21T22:58:38.895Z",
+      "passed": true,
+      "sourceCommit": "31b136c9323de42561fb70c5cfddf8a55085df37",
+      "imageId": "sha256:4de3b937f6918d5a3c70fe1e8e78fb3b8c6f566a54c6efa2d5baee50d26fa44a",
+      "apiSha256": "562073793dcbe540d22096445d7e02848da953b5b906ce6a53d47bd574220ed6",
+      "workerSha256": "75213d327dbb162db0ea31fddb5a72a7a7a816e0b2b041c48ec96475a7e300ce",
+      "checks": [
+        "fresh exact-source production image",
+        "dedicated migrator",
+        "separate restricted API/worker schema16 checks",
+        "nonroot read-only runtimes",
+        "private networks and no host ports",
+        "health and unconfigured identity denial",
+        "actual maintained ClamAV clean/EICAR",
+        "actual image JPEG/HEIC orientation and metadata stripping"
+      ],
+      "pairedRestoreExercised": false,
+      "actualPushDelivered": false,
+      "physicalDeviceEvidence": false,
+      "paidServicesProvisioned": false
+    },
+    "actualChecks": {
+      "passed": true,
+      "observedAt": "2026-10-21T22:58:38.523Z",
+      "uid": 1000,
+      "healthStatus": 200,
+      "unconfiguredPrivateStatus": 503,
+      "actualScannerCleanAndEicar": true,
+      "decoder": {
+        "originalSha256": "dad24840cd53fce49f3cda0461cea8356860587dd45745d1e8afab23b885214e",
+        "displaySha256": "f2761078ac017be369776fb63c9dd61c48db2797ee0d0121b4c5c124cbcf2ea7",
+        "dimensions": [
+          32,
+          64
+        ],
+        "worker": {
+          "width": 32,
+          "height": 64
+        },
+        "orientationAppliedOnce": true,
+        "metadataStripped": true
+      },
+      "reportPdf": {
+        "passed": true,
+        "pages": 1,
+        "bytes": 11706,
+        "magic": "%PDF-1.7",
+        "embeddedFont": true,
+        "unicodeReadable": true,
+        "unknownAndZeroDistinct": true,
+        "pdfSha256": "f445206f8253dd1ed5464fb646a28060eddb4f0cf88b28a6a2a8f36cd2d528b0"
+      },
+      "apiSha256": "562073793dcbe540d22096445d7e02848da953b5b906ce6a53d47bd574220ed6",
+      "workerSha256": "75213d327dbb162db0ea31fddb5a72a7a7a816e0b2b041c48ec96475a7e300ce",
+      "reportPdfProbeSha256": "e946007e7cbcac0ccc47088a2a244367c5442b8d88dfa9e846fa89fdfb35badd",
+      "sharp": "0.35.5",
+      "limitations": [
+        "Isolated image/runtime/decoder/PDF proof only. No identity provider, production hosting, actual push, physical device, operational signature-update SLA or paired restore was exercised in this check."
+      ]
+    },
+    "apiPermissionCheckCount": 16,
+    "workerPermissionCheckCount": 24,
+    "apiPermissions": {
+      "role": "longball_api",
+      "versions": [
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16
+      ],
+      "passed": [
+        "restricted_role_attributes",
+        "cannot_create_schema_objects",
+        "cannot_create_public_objects",
+        "cannot_alter_schema",
+        "cannot_change_migration_version",
+        "schema16_verified",
+        "login_purpose_and_context_free_rls",
+        "api_cannot_delete_domain_rows",
+        "api_cannot_rewrite_audit",
+        "api_scoped_request_schema_and_key_access",
+        "api_feature_verification_and_request_schema",
+        "api_cannot_purge_report_exports",
+        "api_cannot_resolve_raw_report_source",
+        "api_cannot_claim_worker_job",
+        "api_context_free_branding_and_identity_denied",
+        "api_cannot_resolve_worker_push_destinations"
+      ]
+    },
+    "workerPermissions": {
+      "role": "longball_worker",
+      "versions": [
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16
+      ],
+      "passed": [
+        "restricted_role_attributes",
+        "cannot_create_schema_objects",
+        "cannot_create_public_objects",
+        "cannot_alter_schema",
+        "cannot_change_migration_version",
+        "schema16_verified",
+        "login_purpose_and_context_free_rls",
+        "worker_cannot_insert_unscoped_job",
+        "worker_cannot_forge_api_identity",
+        "worker_cannot_change_accounts",
+        "worker_cannot_read_private_media_manifests",
+        "worker_cannot_read_privacy_requests",
+        "worker_cannot_read_privacy_pending_keys",
+        "worker_cannot_read_brand_assets",
+        "worker_cannot_read_invitation_verifiers",
+        "worker_cannot_read_native_devices",
+        "worker_cannot_read_team_privilege_states",
+        "worker_cannot_read_team_privilege_decisions",
+        "worker_cannot_read_push_registrations",
+        "worker_push_destinations_require_exact_lease",
+        "worker_cannot_resolve_raw_report_source",
+        "worker_cannot_insert_report_exports",
+        "worker_cannot_delete_jobs",
+        "worker_job_and_document_operations"
+      ]
+    },
+    "apiRuntime": {
+      "user": "node",
+      "readOnlyRootfs": true,
+      "publishedPorts": {},
+      "image": "sha256:4de3b937f6918d5a3c70fe1e8e78fb3b8c6f566a54c6efa2d5baee50d26fa44a"
+    },
+    "workerRuntime": {
+      "user": "node",
+      "readOnlyRootfs": true,
+      "publishedPorts": {},
+      "image": "sha256:4de3b937f6918d5a3c70fe1e8e78fb3b8c6f566a54c6efa2d5baee50d26fa44a"
+    },
+    "actualQueuedExportLifecycleInImage": false,
+    "scope": "Actual exact-source image build, dedicated migration, restricted runtime schema/negative export-worker permissions, maintained codec/scanner execution and packaged PDF generation/read. Queued export lifecycle is exercised by separate actual restricted-PG API/repository tests, not this image probe."
+  },
+  "inventory": {
+    "observedAt": "2026-10-21T22:56:12.930Z",
+    "sourceCommit": "31b136c9323de42561fb70c5cfddf8a55085df37",
+    "workingTreeDirty": false,
+    "lockSha256": "8d702b43acdc476549452fd8d7e0cdd7a7c3723cb7b4f155c4b364e3a3ec0caf",
+    "packageCount": 411,
+    "assetCount": 1,
+    "retainedLicenseFiles": 320,
+    "sbom": "sbom.spdx.json",
+    "licenses": "licenses.json",
+    "assets": "assets.json",
+    "scope": "Resolved JavaScript workspace and report PDF font; optional uninstalled packages have no retained licence text. Native/image inventories remain separate.",
+    "retainedLicenseHashesVerified": true,
+    "verifiedRetainedLicenseFiles": 320,
+    "font": {
+      "name": "DejaVu Sans",
+      "kind": "report PDF font",
+      "sourcePath": "apps/api/src/assets/fonts/DejaVuSans.ttf",
+      "source": "https://dejavu-fonts.github.io/",
+      "bytes": 759720,
+      "sha256": "57f73e11f51999432bf7ab22ce55b6f945d5eca1bf824404cfa9ec2e3718c84e",
+      "declaredLicense": "Bitstream-Vera",
+      "licenseNote": "Unmodified font; DejaVu changes are in the public domain. See retained notice. No legal approval is inferred.",
+      "retained": [
+        {
+          "file": "licenses/report-font/DejaVuSans-LICENSE",
+          "sha256": "313b3a0d96941787361031e2610533303ded274f814e0dd2e81187a13ca42bb3",
+          "bytes": 2497
+        }
+      ]
+    }
+  },
+  "secretScan": {
+    "observedAt": "2026-10-21T22:56:14.888Z",
+    "sourceCommit": "31b136c9323de42561fb70c5cfddf8a55085df37",
+    "workingTreeDirty": false,
+    "sourceTreeSha256": "eeed6dd8360e532452e8efe76f0a9cdbb53e79289bae195aca6628d9dea1fc0f",
+    "scanner": "gitleaks 8.24.3",
+    "archiveSha256": "9991e0b2903da4c8f6122b5c3186448b927a5da4deef1fe45271c3793f4ee29c",
+    "executableSha256": "e18325d568268b6efb6cd0cc721f8bea5667f4cd1c8d03618ab61987f41269ad",
+    "scope": "Current tracked and nonignored untracked repository files; history is not scanned. Built-in rules; no inline allow comments honored. Only exact reviewed source-line false positives accepted.",
+    "scannedFiles": 873,
+    "passed": true,
+    "executionValid": true,
+    "rawFindingCount": 26,
+    "unexpectedFindings": 0,
+    "exactReviewedFalsePositives": 26
+  },
+  "dependencyGate": {
+    "passed": false,
+    "overrideApplied": false,
+    "ciWorkspace": {
+      "passed": false,
+      "counts": {
+        "info": 0,
+        "low": 0,
+        "moderate": 1,
+        "high": 2,
+        "critical": 0
+      }
+    },
+    "runtime": {
+      "passed": true,
+      "counts": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 0,
+        "critical": 0,
+        "total": 0
+      }
+    },
+    "compiler": {
+      "passed": true,
+      "counts": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 0,
+        "critical": 0,
+        "total": 0
+      }
+    },
+    "allSeverityReadback": {
+      "scope": "Earlier independent registry read at ee7cb6; its dependency lock matches this bb509f7 CI lock. All-severity advisory details supplement the current high-filtered CI audit, without source/install/lock changes.",
+      "path": ".local/quality/dependencies/workspace-all-ee7cb6.json",
+      "sha256": "77212da61dba5fa3b8fb58b5ead2c289e1d390d9972c80df4b58bdd34feb8b84",
+      "advisories": [
+        {
+          "module_name": "uuid",
+          "severity": "moderate",
+          "github_advisory_id": "GHSA-w5hq-g745-h8pq",
+          "title": "uuid: Missing buffer bounds check in v3/v5/v6 when buf is provided",
+          "url": "https://github.com/advisories/GHSA-w5hq-g745-h8pq",
+          "patched_versions": ">=11.1.1",
+          "vulnerable_versions": "<11.1.1"
+        },
+        {
+          "module_name": "node-forge",
+          "severity": "high",
+          "github_advisory_id": "GHSA-86w9-cpqp-85rv",
+          "title": "node-forge RSA PKCS#1 v1.5 signature verification accepts extra nested DigestAlgorithm elements",
+          "url": "https://github.com/advisories/GHSA-86w9-cpqp-85rv",
+          "patched_versions": null,
+          "vulnerable_versions": "<=1.4.0"
+        },
+        {
+          "module_name": "braces",
+          "severity": "high",
+          "github_advisory_id": "GHSA-vfj7-8cjw-p6xm",
+          "title": "braces vulnerable to stack-exhaustion denial of service through deeply nested patterns",
+          "url": "https://github.com/advisories/GHSA-vfj7-8cjw-p6xm",
+          "patched_versions": null,
+          "vulnerable_versions": "<=3.0.3"
+        }
+      ]
+    },
+    "reachability": "Recorded node-forge high is Expo code-signing tooling; braces high is Metro/micromatch tooling; uuid moderate affects v3/v5/v6 with supplied buffers while recorded Xcode helper calls v4. No unsafe crypto or unreviewed transitive major override was applied. Release gate stays failed."
+  },
+  "artifacts": [
+    {
+      "id": 12388875927,
+      "name": "longball-quality-31b136c9323de42561fb70c5cfddf8a55085df37",
+      "sizeBytes": 429133,
+      "sha256": "d9e5d64b0aa7b7e95b256202e19fd6afebec08a54e4343d9316f9e462b70580f",
+      "expiresAt": "2026-10-24T23:00:20Z",
+      "downloadVerified": true
+    },
+    {
+      "id": 12388357155,
+      "name": "longball-runtime-image-31b136c9323de42561fb70c5cfddf8a55085df37",
+      "sizeBytes": 3481,
+      "sha256": "b83b2e693cdba45cc7741bedb043fd88c1104654fa075dcfce7289d26ca8bb8a",
+      "expiresAt": "2026-10-24T22:58:40Z",
+      "downloadVerified": true
+    }
+  ],
+  "limitations": [
+    "Source CI has three explicit decoder skips; separate actual image HEIC proof is recorded without relabelling those skips.",
+    "Native JavaScript exports and evaluated configuration do not prove native binaries, signing or hardware behavior.",
+    "No actual push delivery, production identity/provider/hosting, operational signature-update SLA or paid provisioning.",
+    "No paired restore was exercised by the image job; root current-source host restore is a separate acceptance run.",
+    "Report exports do not fulfill privacy requests. User explicitly left Q05/Q09/Q10 pending.",
+    "Production release remains blocked by the actual dependency gate and recorded owner/hardware/operating decisions."
+  ],
+  "historicalDiagnosticsPath": [
+    ".local/quality/final-ci-summary.json",
+    ".local/quality/ee7cb6-ci-summary.json"
+  ],
+  "paidServicesProvisioned": false,
+  "productionRelease": false,
+  "historicalAfterSourceChanges": "This is exact bb509f7 CI proof. The later lock hierarchy/device-ownership source is separate and not covered.",
+  "historical": true,
+  "supersededBySource": "60789694c89dd4bc8aa5902ddb984dc84f6cba45"
+}

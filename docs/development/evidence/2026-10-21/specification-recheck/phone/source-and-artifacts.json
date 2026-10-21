@@ -1,0 +1,38 @@
+{
+  "sourceRevision": "ee7cb613695b8d96388e742a60dc248277b24091",
+  "artifacts": {
+    "sourceRevision": "ee7cb613695b8d96388e742a60dc248277b24091",
+    "web": {
+      "entry": "/_expo/static/js/web/index-9ddd154bdda7116598b3c07d353833e3.js",
+      "sha256": "b2fc5a1438ac398d43cf59f52ad6691f812e398232698fb2171a8748b2417158"
+    },
+    "api": {
+      "entry": "apps/api/dist/api.mjs",
+      "sha256": "6217c496603d372a6fc80c82e9907b68dc5a5501642d1594fe630eb69df16873"
+    }
+  },
+  "harnesses": [
+    {
+      "path": "scripts/account-entry-review.mjs",
+      "sourceRevision": "ee7cb613695b8d96388e742a60dc248277b24091",
+      "sha256": "e15361e84b3edb4e756f22ba3335f6f1d74998e6e1050600380480ca43936551"
+    },
+    {
+      "path": "scripts/connected-matchday-review.mjs",
+      "sourceRevision": "ee7cb613695b8d96388e742a60dc248277b24091",
+      "sha256": "251679c895477832d1a1c562104854c97558c063a2d8249bd5eba845807cb1c5"
+    },
+    {
+      "path": "scripts/review-artifacts.mjs",
+      "sourceRevision": "ee7cb613695b8d96388e742a60dc248277b24091",
+      "sha256": "c94fe8d2e26a16b7a251f7ced4aefb0d45e2f80a91a9bf5391e0c0b4dd2ae5d0"
+    }
+  ],
+  "checks": {
+    "accountEntryJourneys": 8,
+    "matchdayGroupsAt320": 6,
+    "matchdayGroupsAt390": 6,
+    "browserErrors": 0
+  },
+  "scope": "Actual loopback Chromium interactions against a frozen compiled web bundle and disposable HTTP APIs. This is neither a later-backend regression result nor native device, mobile-network performance, production identity or deployment acceptance."
+}

@@ -1,0 +1,52 @@
+{
+  "compiledSource": "70ed8cf41f60ec495d4c73c7ea8ec0a0578cdad3",
+  "classification": "Historical accepted baseline; not a verification run against607 or a deployed app.",
+  "successfulChecksOrGroups": 16,
+  "suites": [
+    {
+      "suite": "preparation",
+      "successfulChecksOrGroups": 2,
+      "originalPrivateReportSha256": "06b305fa53a47cf3f21180c2865f3a1e037979649516757baeb52da0541a508a"
+    },
+    {
+      "suite": "match-plans",
+      "successfulChecksOrGroups": 2,
+      "originalPrivateReportSha256": "5dc40d73d511b8d65096b6c52c997e1a9d7c64914aca6db171362b985c0ae29c"
+    },
+    {
+      "suite": "training-series",
+      "successfulChecksOrGroups": 2,
+      "originalPrivateReportSha256": "cc4856278408aa5d86cc36efc72bacfbb4b4c6151673512180116a95d95307f0"
+    },
+    {
+      "suite": "import-export",
+      "successfulChecksOrGroups": 3,
+      "originalPrivateReportSha256": "b696caec333c6d7caa5aa14dc62d73b086a7df7c3de85e5f5befa2ed82421b87"
+    },
+    {
+      "suite": "connected-staff",
+      "successfulChecksOrGroups": 2,
+      "originalPrivateReportSha256": "d39557ab5f147eb3213add1c198e3d75268cc06ba5830eceaabcb489b3d75e10"
+    },
+    {
+      "suite": "connected-records-01-through-04",
+      "successfulChecksOrGroups": 4,
+      "originalPrivateReportSha256": "eb6a70c28cbfa92a4f4fd971cb406e3fdc84816d786783f502ea46b9bbd473ac"
+    },
+    {
+      "suite": "connected-records-05",
+      "successfulChecksOrGroups": 1,
+      "originalPrivateReportSha256": "c9a7bcedf6205f8bda9e7a160c5831efbd42e6430a4390579e1e38918e7a567b"
+    }
+  ],
+  "recordsRunScope": "Scenarios 01\u201304 passed together; that attempt then failed on obsolete recipient navigation. Scenario05 subsequently passed independently after harness correction. No uninterrupted five-scenario success is claimed.",
+  "limitations": [
+    "Queued encrypted CSV/PDF jobs were added after this pinned build and await rebuilt-artifact browser verification.",
+    "403 scope-denial scenario uses a transport fixture; it does not prove actual membership revocation.",
+    "The staff album route uses actual API projection but does not fetch photo gateway bytes.",
+    "Physical iPhone/Android timing, encrypted journal, native sharing and OS prompts remain untested.",
+    "Synthetic review identities are not production authentication proof."
+  ],
+  "originalPrivateSummarySha256": "6acfa991410fab8553b8a24ac97e33531a04fde5d7d6b9dfd03ed40fcb03e1cb",
+  "handling": "Only counts, scope and original report digests are retained here; original screenshots, stores and reports remain outside this tracked evidence directory."
+}

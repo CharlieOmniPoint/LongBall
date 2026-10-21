@@ -1,0 +1,88 @@
+{
+  "compiledSource": "ee7cb613695b8d96388e742a60dc248277b24091",
+  "runs": [
+    {
+      "scope": "history-and-workspace-labels",
+      "originalPrivateReportSha256": "5879be012722443fce2a61a708e14e8181049eab632b58de40aa1477005e212f",
+      "namedWorkspaceChoiceVerified": true,
+      "checks": [
+        {
+          "name": "01-rich-history-audited-correction-and-unknown-coverage",
+          "status": "passed",
+          "detail": {
+            "historicalId": "b92bf804-bd91-44ad-9216-e9ee65d3c10d",
+            "correctedRevision": 2,
+            "historicalMinutesInvented": false,
+            "unknownScoreExcludedFromDraws": true
+          }
+        }
+      ],
+      "browserErrors": [],
+      "nativeDeviceTested": false
+    },
+    {
+      "scope": "readable-invitation-in-isolation",
+      "originalPrivateReportSha256": "e56202bd67f5784f933fd601c65917f61abd7962dcccf78c3c3ff638c4356c99",
+      "namedWorkspaceChoiceVerified": true,
+      "checks": [
+        {
+          "name": "05-new-account-invitation-remains-online-and-usable",
+          "status": "passed",
+          "detail": {
+            "priorMembershipCount": 0,
+            "explicitlyAddressedSeason": "synthetic-season-2026-27",
+            "grantedRole": "spectator",
+            "acceptanceCodePersisted": false,
+            "serverReviewedReadableContext": true
+          }
+        }
+      ],
+      "browserErrors": [],
+      "nativeDeviceTested": false
+    },
+    {
+      "scope": "rollover-denial-recovery-and-renamed-invitation",
+      "originalPrivateReportSha256": "ebc064fbd14d4a55b7f50a4580a008a41a3779ac9c8d2fa09b54264a627781f9",
+      "namedWorkspaceChoiceVerified": true,
+      "checks": [
+        {
+          "name": "03-administrator-configuration-explicit-rollover-preserves-source",
+          "status": "passed",
+          "detail": {
+            "destinationSeasonId": "bd613bdd-3c2d-4419-ac16-85ef5a30dbe5",
+            "sourcePreparationRecordsMembershipsPreserved": true,
+            "ongoingMatchUnchanged": true,
+            "explicitPlayerLinkCount": 1,
+            "spectatorGrantsCopied": 0,
+            "duplicateNextSeasonBlocked": true
+          }
+        },
+        {
+          "name": "04-delayed-scope-denial-closes-parallel-private-replies",
+          "status": "passed",
+          "detail": {
+            "delayed403Fixture": true,
+            "realMembershipRevocationTested": false,
+            "parallelPrivateRepliesClosed": true,
+            "staleRoleAndNavigationCleared": true,
+            "freshIdentityRequiredToReopen": true
+          }
+        },
+        {
+          "name": "05-new-account-invitation-remains-online-and-usable",
+          "status": "passed",
+          "detail": {
+            "priorMembershipCount": 0,
+            "explicitlyAddressedSeason": "synthetic-season-2026-27",
+            "grantedRole": "spectator",
+            "acceptanceCodePersisted": false,
+            "serverReviewedReadableContext": true
+          }
+        }
+      ],
+      "browserErrors": [],
+      "nativeDeviceTested": false
+    }
+  ],
+  "note": "Repeated scenario05 is additional independent proof, not a sixth unique records scenario."
+}

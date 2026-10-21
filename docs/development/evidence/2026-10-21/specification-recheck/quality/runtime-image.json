@@ -1,0 +1,175 @@
+{
+  "api-runtime.json": {
+    "user": "node",
+    "readOnlyRootfs": true,
+    "publishedPorts": {},
+    "image": "sha256:9187c54cc0e41a7412abe82005cfeba75324dd61482c55f00c59f1799206e702"
+  },
+  "api-permissions.json": {
+    "role": "longball_api",
+    "versions": [
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16
+    ],
+    "passed": [
+      "restricted_role_attributes",
+      "cannot_create_schema_objects",
+      "cannot_create_public_objects",
+      "cannot_alter_schema",
+      "cannot_change_migration_version",
+      "schema16_verified",
+      "login_purpose_and_context_free_rls",
+      "api_cannot_delete_domain_rows",
+      "api_cannot_rewrite_audit",
+      "api_scoped_request_schema_and_key_access",
+      "api_feature_verification_and_request_schema",
+      "api_cannot_purge_report_exports",
+      "api_cannot_resolve_raw_report_source",
+      "api_cannot_claim_worker_job",
+      "api_context_free_branding_and_identity_denied",
+      "api_cannot_resolve_worker_push_destinations"
+    ]
+  },
+  "image-id.json": "sha256:9187c54cc0e41a7412abe82005cfeba75324dd61482c55f00c59f1799206e702",
+  "image-checks.json": {
+    "passed": true,
+    "observedAt": "2026-10-21T23:13:12.736Z",
+    "uid": 1000,
+    "healthStatus": 200,
+    "unconfiguredPrivateStatus": 503,
+    "actualScannerCleanAndEicar": true,
+    "decoder": {
+      "originalSha256": "dad24840cd53fce49f3cda0461cea8356860587dd45745d1e8afab23b885214e",
+      "displaySha256": "f2761078ac017be369776fb63c9dd61c48db2797ee0d0121b4c5c124cbcf2ea7",
+      "dimensions": [
+        32,
+        64
+      ],
+      "worker": {
+        "width": 32,
+        "height": 64
+      },
+      "orientationAppliedOnce": true,
+      "metadataStripped": true
+    },
+    "reportPdf": {
+      "passed": true,
+      "pages": 1,
+      "bytes": 11706,
+      "magic": "%PDF-1.7",
+      "embeddedFont": true,
+      "unicodeReadable": true,
+      "unknownAndZeroDistinct": true,
+      "pdfSha256": "f445206f8253dd1ed5464fb646a28060eddb4f0cf88b28a6a2a8f36cd2d528b0"
+    },
+    "apiSha256": "183ee5d46d438481aa6eca4c9b0176ce3e9fc501e9a147fa26b1e1d837130edf",
+    "workerSha256": "ad03c4b8b1b1cadd50a58df1478a364e78c6b1e344c89039e07e65dcf6c9b4d4",
+    "reportPdfProbeSha256": "e946007e7cbcac0ccc47088a2a244367c5442b8d88dfa9e846fa89fdfb35badd",
+    "sharp": "0.35.5",
+    "limitations": [
+      "Isolated image/runtime/decoder/PDF proof only. No identity provider, production hosting, actual push, physical device, operational signature-update SLA or paired restore was exercised in this check."
+    ]
+  },
+  "jpeg-decoder.json": {
+    "runtime": "production-image",
+    "user": "node",
+    "sharp": "0.35.5",
+    "isolatedWorkerExecuted": true,
+    "dimensions": [
+      16,
+      32
+    ],
+    "metadataStripped": true,
+    "workerResult": {
+      "width": 16,
+      "height": 32
+    }
+  },
+  "summary.json": {
+    "observedAt": "2026-10-21T23:13:13.032Z",
+    "passed": true,
+    "sourceCommit": "94f32d694e56cf09926fbd3c81e1f5182016c00e",
+    "imageId": "sha256:9187c54cc0e41a7412abe82005cfeba75324dd61482c55f00c59f1799206e702",
+    "apiSha256": "183ee5d46d438481aa6eca4c9b0176ce3e9fc501e9a147fa26b1e1d837130edf",
+    "workerSha256": "ad03c4b8b1b1cadd50a58df1478a364e78c6b1e344c89039e07e65dcf6c9b4d4",
+    "checks": [
+      "fresh exact-source production image",
+      "dedicated migrator",
+      "separate restricted API/worker schema16 checks",
+      "nonroot read-only runtimes",
+      "private networks and no host ports",
+      "health and unconfigured identity denial",
+      "actual maintained ClamAV clean/EICAR",
+      "actual image JPEG/HEIC orientation and metadata stripping"
+    ],
+    "pairedRestoreExercised": false,
+    "actualPushDelivered": false,
+    "physicalDeviceEvidence": false,
+    "paidServicesProvisioned": false
+  },
+  "worker-permissions.json": {
+    "role": "longball_worker",
+    "versions": [
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16
+    ],
+    "passed": [
+      "restricted_role_attributes",
+      "cannot_create_schema_objects",
+      "cannot_create_public_objects",
+      "cannot_alter_schema",
+      "cannot_change_migration_version",
+      "schema16_verified",
+      "login_purpose_and_context_free_rls",
+      "worker_cannot_insert_unscoped_job",
+      "worker_cannot_forge_api_identity",
+      "worker_cannot_change_accounts",
+      "worker_cannot_read_private_media_manifests",
+      "worker_cannot_read_privacy_requests",
+      "worker_cannot_read_privacy_pending_keys",
+      "worker_cannot_read_brand_assets",
+      "worker_cannot_read_invitation_verifiers",
+      "worker_cannot_read_native_devices",
+      "worker_cannot_read_team_privilege_states",
+      "worker_cannot_read_team_privilege_decisions",
+      "worker_cannot_read_push_registrations",
+      "worker_push_destinations_require_exact_lease",
+      "worker_cannot_resolve_raw_report_source",
+      "worker_cannot_insert_report_exports",
+      "worker_cannot_delete_jobs",
+      "worker_job_and_document_operations"
+    ]
+  },
+  "worker-runtime.json": {
+    "user": "node",
+    "readOnlyRootfs": true,
+    "publishedPorts": {},
+    "image": "sha256:9187c54cc0e41a7412abe82005cfeba75324dd61482c55f00c59f1799206e702"
+  }
+}

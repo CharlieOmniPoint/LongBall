@@ -1,0 +1,70 @@
+{
+  "passed": true,
+  "checkedAt": "2026-10-21T22:43:23.406Z",
+  "artifacts": {
+    "sourceRevision": "ee7cb613695b8d96388e742a60dc248277b24091",
+    "web": {
+      "entry": "/_expo/static/js/web/index-9ddd154bdda7116598b3c07d353833e3.js",
+      "sha256": "b2fc5a1438ac398d43cf59f52ad6691f812e398232698fb2171a8748b2417158"
+    },
+    "api": {
+      "entry": "apps/api/dist/api.mjs",
+      "sha256": "6217c496603d372a6fc80c82e9907b68dc5a5501642d1594fe630eb69df16873"
+    }
+  },
+  "navigation": "Bottom navigation stays visible while content scrolls in every role at320/390px",
+  "sampleCopy": "No fictional or numbered-player labels in loaded role screens",
+  "serviceDiscovery": "Pinned status and tunnel requests routed to isolated local fictional HTTP service; no production identity simulation",
+  "checks": [
+    {
+      "role": "manager",
+      "width": 320,
+      "passed": true,
+      "requestCount": 11
+    },
+    {
+      "role": "administrator",
+      "width": 320,
+      "passed": true,
+      "requestCount": 7
+    },
+    {
+      "role": "player",
+      "width": 320,
+      "passed": true,
+      "requestCount": 9
+    },
+    {
+      "role": "spectator",
+      "width": 320,
+      "passed": true,
+      "requestCount": 8
+    },
+    {
+      "role": "manager",
+      "width": 390,
+      "passed": true,
+      "requestCount": 11
+    },
+    {
+      "role": "administrator",
+      "width": 390,
+      "passed": true,
+      "requestCount": 7
+    },
+    {
+      "role": "player",
+      "width": 390,
+      "passed": true,
+      "requestCount": 9
+    },
+    {
+      "role": "spectator",
+      "width": 390,
+      "passed": true,
+      "requestCount": 8
+    }
+  ],
+  "runtimeErrors": [],
+  "sanitization": "Request URL/path and header observations are omitted. Per-role request counts and original passed assertions are preserved; no tokens, capabilities or service addresses are published."
+}

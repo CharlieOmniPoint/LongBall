@@ -1,0 +1,83 @@
+{
+  "sourceCommit": "ee7cb613695b8d96388e742a60dc248277b24091",
+  "primaryCommit": "ee7cb613695b8d96388e742a60dc248277b24091",
+  "trackedFilesClean": true,
+  "sourceProof": [
+    {
+      "path": "apps/mobile/app.json",
+      "sha256": "1d942ff7c29012b86f04a50d066bf66e2c59a0e1644c495802470a6c2625e00d",
+      "gitBlob": "4bb70bf14fb2a96fe8fc1ded4c3c9bcac379a45e",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/mobile/app.config.js",
+      "sha256": "d3f81a2f4b29eb49f999cb3f31d1973ddf49729f9084e5ddea16205a8b90c0e9",
+      "gitBlob": "bf544e8826bbf0f315222170f0d5143ede227c99",
+      "byteIdentical": true
+    },
+    {
+      "path": "scripts/test-production-native-config.mjs",
+      "sha256": "72872d91609e59cbfbddf9c4f369fe5f2d15d7cd7d867c76fb23046d7310708e",
+      "gitBlob": "ea5f0f645b0440e4e3b1bad26eeecb1b51c9d276",
+      "byteIdentical": true
+    },
+    {
+      "path": "scripts/production-entry-review.mjs",
+      "sha256": "baa88e5278fa9109a46cd529ef45213414ec917f0030978e3b59be8f9a1d7b0e",
+      "gitBlob": "eaddb6022b87729f7c949bafe120c8450e1a05f1",
+      "byteIdentical": true
+    },
+    {
+      "path": "pnpm-lock.yaml",
+      "sha256": "8d702b43acdc476549452fd8d7e0cdd7a7c3723cb7b4f155c4b364e3a3ec0caf",
+      "gitBlob": "847d719792b2959545cf113ba72c72394e47725a",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/mobile/package.json",
+      "sha256": "5c88a95602295402b52f686fcfcce69fc8e32c68cb443064e07727444f871c98",
+      "gitBlob": "50563bb3a187a10d1961b3fa3a800d9d5a594c8c",
+      "byteIdentical": true
+    },
+    {
+      "path": "apps/mobile/plugins/withProductionNative.js",
+      "sha256": "758a05e113f0b9f486d70f1b93eb3bbd2bd7529f51289585fd67445af5a1295a",
+      "gitBlob": "c05e715e1305c568160012babc2726e7a072bed2",
+      "byteIdentical": true
+    }
+  ],
+  "sourceTrees": {
+    "apps/mobile/src": {
+      "clean": "b4951f200ec1dfb0f3516a44fd93d334103a93f0",
+      "primary": "b4951f200ec1dfb0f3516a44fd93d334103a93f0"
+    },
+    "apps/mobile/modules": {
+      "clean": "7708f19e9308b9a6ce1ce07d9c9c7d0cbd575f24",
+      "primary": "7708f19e9308b9a6ce1ce07d9c9c7d0cbd575f24"
+    },
+    "packages/application/src": {
+      "clean": "f5b8dd3c7826bfa866393122cd1e4d2499b76052",
+      "primary": "f5b8dd3c7826bfa866393122cd1e4d2499b76052"
+    },
+    "packages/domain/src": {
+      "clean": "7271f3819d275caaddf207a765abc73f196ac014",
+      "primary": "7271f3819d275caaddf207a765abc73f196ac014"
+    },
+    "packages/testing/src": {
+      "clean": "c88f1f9e7012365d2bc6bcea9314f5f4aa543435",
+      "primary": "c88f1f9e7012365d2bc6bcea9314f5f4aa543435"
+    }
+  },
+  "nodeModulesLinks": {
+    "root": "/workspace/LongBall/node_modules",
+    "mobile": "/workspace/LongBall/apps/mobile/node_modules"
+  },
+  "generatedNativeDirs": {
+    "cleanIOS": false,
+    "cleanAndroid": false
+  },
+  "untracked": [
+    "?? apps/mobile/node_modules",
+    "?? node_modules"
+  ]
+}

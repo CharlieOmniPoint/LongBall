@@ -1,0 +1,207 @@
+{
+  "recordedAtUtc": "2026-10-21T23:26:26.494217+00:00",
+  "scope": "Bounded local QL04 HTTP rehearsal, with all earlier misses and the separate instrumented diagnostic retained.",
+  "canonicalTarget": {
+    "normalReadCommandP95BelowMs": 500,
+    "concurrentDistinctSessions": 50,
+    "liveGames": 10,
+    "uploadsAndExportsExcluded": true,
+    "identityProviderMeasuredSeparately": false
+  },
+  "workload": {
+    "measuredCohorts": 20,
+    "concurrentSessionSlotsPerCohort": 50,
+    "distinctManagers": 10,
+    "distinctSpectators": 40,
+    "teams": 10,
+    "unfinishedLiveGames": 10,
+    "rosterPerGame": 13,
+    "selectedPerGame": 9,
+    "measuredReads": 800,
+    "measuredCanonicalPauseResumeCommands": 200,
+    "warmupRequestsExcluded": 50,
+    "allHttpResponsesIncludingBootstrapWarmupAndMeasurement": 1080,
+    "percentileMethod": "Nearest-rank p95; sorted sample at ceil(sample count times 0.95).",
+    "benchmarkScript": "scripts/performance-review.mjs",
+    "benchmarkScriptSha256": "1677d44b4316f3219416ea7b936a800bc3501daea62b8b94f0c8ddf177efef2f",
+    "benchmarkScriptIdenticalAcrossAllFiveRuns": true
+  },
+  "runs": [
+    {
+      "description": "Baseline before own-account query filter",
+      "instrumentedDiagnostic": false,
+      "sourceCommit": "70ed8cf41f60ec495d4c73c7ea8ec0a0578cdad3",
+      "sourceFingerprint": "64fa8fee364ca624bfd26284749dabbefb6ae1db6ff7e6e244c1bf7d2436ba19",
+      "sourceUnchangedDuringRun": true,
+      "checkedAtUtc": "2026-10-21T21:42:06.737Z",
+      "status": "target-not-met",
+      "readP95Ms": 1265.717,
+      "commandP95Ms": 2177.951,
+      "readMaximumMs": 1753.334,
+      "commandMaximumMs": 3318.652,
+      "summary": "01-baseline-70ed8cf4-summary.json",
+      "sourceManifest": "01-baseline-70ed8cf4-source-manifest.json"
+    },
+    {
+      "description": "Own-account membership query filter",
+      "instrumentedDiagnostic": false,
+      "sourceCommit": "ee7cb613695b8d96388e742a60dc248277b24091",
+      "sourceFingerprint": "96183a8f65aae93d77723d84d914e6eecda1b9edf44a2eed629518fb5fef3b3b",
+      "sourceUnchangedDuringRun": true,
+      "checkedAtUtc": "2026-10-21T22:37:04.100Z",
+      "status": "target-not-met",
+      "readP95Ms": 550.334,
+      "commandP95Ms": 1064.71,
+      "readMaximumMs": 800.126,
+      "commandMaximumMs": 1572.116,
+      "summary": "02-own-membership-filter-ee7cb613-summary.json",
+      "sourceManifest": "02-own-membership-filter-ee7cb613-source-manifest.json"
+    },
+    {
+      "description": "Instrumented diagnostic of the same runtime source",
+      "instrumentedDiagnostic": true,
+      "sourceCommit": "ee7cb613695b8d96388e742a60dc248277b24091",
+      "sourceFingerprint": "96183a8f65aae93d77723d84d914e6eecda1b9edf44a2eed629518fb5fef3b3b",
+      "sourceUnchangedDuringRun": true,
+      "checkedAtUtc": "2026-10-21T22:41:02.272Z",
+      "status": "target-not-met",
+      "readP95Ms": 583.83,
+      "commandP95Ms": 1265.642,
+      "readMaximumMs": 690.105,
+      "commandMaximumMs": 1828.654,
+      "summary": "03-instrumented-diagnostic-ee7cb613-summary.json",
+      "sourceManifest": "03-instrumented-diagnostic-ee7cb613-source-manifest.json"
+    },
+    {
+      "description": "Scoped notification membership query and API batch insertion",
+      "instrumentedDiagnostic": false,
+      "sourceCommit": "bb509f71425f428d04f3b608d90a1bb8fa68521d",
+      "sourceFingerprint": "b7056eb3d383559a33ebf991f4cc041d898b8905ad1aa196fec863f80d569f73",
+      "sourceUnchangedDuringRun": true,
+      "checkedAtUtc": "2026-10-21T22:54:38.215Z",
+      "status": "target-not-met",
+      "readP95Ms": 1186.69,
+      "commandP95Ms": 2035.796,
+      "readMaximumMs": 1536.45,
+      "commandMaximumMs": 2445.221,
+      "summary": "04-scoped-notifications-bb509f71-summary.json",
+      "sourceManifest": "04-scoped-notifications-bb509f71-source-manifest.json"
+    },
+    {
+      "description": "Reviewed match management team locks with global compatibility",
+      "instrumentedDiagnostic": false,
+      "sourceCommit": "60789694c89dd4bc8aa5902ddb984dc84f6cba45",
+      "sourceFingerprint": "0ca32e8fecd40b27e078b563539903b53b54a92c45e08de191e61936a9af5df8",
+      "sourceUnchangedDuringRun": true,
+      "checkedAtUtc": "2026-10-21T23:08:48.689Z",
+      "status": "passed-local-ql04-scope",
+      "readP95Ms": 489.948,
+      "commandP95Ms": 483.195,
+      "readMaximumMs": 574.186,
+      "commandMaximumMs": 600.531,
+      "summary": "05-match-team-locks-60789694-summary.json",
+      "sourceManifest": "05-match-team-locks-60789694-source-manifest.json"
+    }
+  ],
+  "diagnostic": {
+    "runSummary": "03-instrumented-diagnostic-ee7cb613-summary.json",
+    "aggregate": "03-pool-and-lock-diagnostic-aggregate.json",
+    "instrumentation": "Private preload wrappers aggregate PostgreSQL pool acquisition and named query categories. They do not record SQL, parameters, result rows or credentials. Bootstrap and warmup are included in aggregate timings. Wrapper overhead is not quantified.",
+    "comparisonLimit": "The instrumented run is diagnostic, not interchangeable capacity evidence with ordinary runs.",
+    "peakQueuedPoolRequests": 40,
+    "peakPoolConnections": 10,
+    "peakConcurrentAdvisoryLockQueries": 9,
+    "commandAdvisoryWaitP95Ms": 903.79,
+    "readPoolAcquisitionP95Ms": 230.555,
+    "proofOnlyWorkingTreeDelta": "During the instrumented run, scripts/runtime-contribution-boundaries.ts had three proof-only download-context wrapper changes. That helper is outside the runtime source fingerprint. Do not describe the entire working tree as clean ee7cb613.",
+    "causalityLimit": "Recorded queue and lock delays identify costs in that diagnostic. Timing variation alone does not establish the cause of every difference between runs."
+  },
+  "hostNotes": {
+    "benchmarkLogicalProcessorsReported": 5,
+    "laterObservedCgroupCpuMax": "800000 200000",
+    "laterObservedQuotaEquivalentCpus": 4,
+    "quotaObservedAtUtc": "2026-10-21T23:26:26.494239+00:00",
+    "quotaQualification": "The cgroup selector was read separately after measurement; it was not sampled throughout each benchmark. A shared-host or quota explanation does not excuse a failed target. No such cause is asserted.",
+    "otherOwnedLoads": "Root coordinated each measured run after owned browser, build and test work stopped. The shared execution host is not a dedicated production host."
+  },
+  "latestResult": {
+    "sourceCommit": "60789694c89dd4bc8aa5902ddb984dc84f6cba45",
+    "status": "passed-local-ql04-scope",
+    "readP95Ms": 489.948,
+    "commandP95Ms": 483.195,
+    "readMaximumMs": 574.186,
+    "commandMaximumMs": 600.531,
+    "margin": "Narrow p95 margin below 500 ms; individual maxima exceeded 500 ms.",
+    "allEarlierTargetMissesRetained": true
+  },
+  "limits": [
+    "Actual HTTP and PostgreSQL with separate non-owner, non-bypass API credentials and row-level security. The schema owner closed before HTTP measurements.",
+    "Each run created only its own random database and three roles, then removed those and temporary media. Existing data was not mutated.",
+    "Loopback client latency includes local transit, response parsing and a timed in-memory fixture session verifier. It is not instrumented pure server time.",
+    "No OIDC sign-in, JWT/JWKS or identity-provider performance was measured. No production credentials or real child data were used.",
+    "One bounded local p95 pass is not production capacity, all-requests-under-500-ms behavior, an availability SLA, or a service guarantee.",
+    "No physical device performance, battery, native clock continuity or durable encryption acceptance is established. Other original QL targets retain their own evidence and gates."
+  ],
+  "artifacts": [
+    {
+      "path": "01-baseline-70ed8cf4-summary.json",
+      "bytes": 3569,
+      "sha256": "ebe5fac8627c8dba2fe976055499e5f6784f17772112f07652d1208f18eaad4d"
+    },
+    {
+      "path": "01-baseline-70ed8cf4-source-manifest.json",
+      "bytes": 19931,
+      "sha256": "05a8328b9a933e6d1a6f008e5cfb6fd7b90435ad36ff43a85e7c8a5a6f5cad45"
+    },
+    {
+      "path": "02-own-membership-filter-ee7cb613-summary.json",
+      "bytes": 3565,
+      "sha256": "df3e0b4c47014e2ea0505147011919c9b5cf70fdab882c7c734ea0b3f1c87a20"
+    },
+    {
+      "path": "02-own-membership-filter-ee7cb613-source-manifest.json",
+      "bytes": 21466,
+      "sha256": "d4e4b4b3c3a29bc66334d9ec373f94705ff2b4fc247d7b79f2acc3d5e93af59e"
+    },
+    {
+      "path": "03-instrumented-diagnostic-ee7cb613-summary.json",
+      "bytes": 3565,
+      "sha256": "87dd7e2bdfac55d3c9fb4fac704d948a824e8627ca2e00f456a887d40b50e8bc"
+    },
+    {
+      "path": "03-instrumented-diagnostic-ee7cb613-source-manifest.json",
+      "bytes": 21466,
+      "sha256": "d4e4b4b3c3a29bc66334d9ec373f94705ff2b4fc247d7b79f2acc3d5e93af59e"
+    },
+    {
+      "path": "04-scoped-notifications-bb509f71-summary.json",
+      "bytes": 3568,
+      "sha256": "6158b5c2eccbec07a8dbe7e0f74d023f3c8b48f018e69e9a263f41c8f9fc0054"
+    },
+    {
+      "path": "04-scoped-notifications-bb509f71-source-manifest.json",
+      "bytes": 21466,
+      "sha256": "18445701f3bbfe7b84c845b3ef9ccbaafb13a6eac7be0b7283087525af69a3c6"
+    },
+    {
+      "path": "05-match-team-locks-60789694-summary.json",
+      "bytes": 3571,
+      "sha256": "059e0867518394562c2541706efe2568708d0a5c2c8909a0441a4d1b9ea9fe51"
+    },
+    {
+      "path": "05-match-team-locks-60789694-source-manifest.json",
+      "bytes": 21466,
+      "sha256": "5e3baa74037b0bb59b8cbf4454d1a4d5e5d55b788087aed9ad469d4c6dcef6df"
+    },
+    {
+      "path": "03-pool-and-lock-diagnostic-aggregate.json",
+      "bytes": 5020,
+      "sha256": "4f33b1bf024e3185e7237ad5816a3b8a4809b1a4bc91dc29564baf5f45b497f7"
+    },
+    {
+      "path": "README.md",
+      "bytes": 4922,
+      "sha256": "97a2a44bb38f7fbb36ccde36e94e984483f584d6955668ace483b7b35a719a80"
+    }
+  ]
+}
