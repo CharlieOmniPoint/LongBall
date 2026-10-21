@@ -28,7 +28,7 @@ describe.skipIf(!configuredUrl)('API04/DS13 restricted PostgreSQL match continua
       media = await PgMediaService.open({ directory: join(directory, 'media'), database: owner.db }); await new PostgresActivationService({ store: owner }).initialize();
       const config = JSON.parse((await owner.match(SYNTHETIC_IDS.matchId)).config_json) as MatchConfig;
       const expected: string[] = [SYNTHETIC_IDS.matchId];
-      await owner.transaction(async () => { for (let i = 0; i < 107; i++) { const matchId = `page-match-${String(i).padStart(3, '0')}`; expected.push(matchId); await owner!.insertMatch({ ...config, matchId }, SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId); } });
+      await owner.transaction(async () => { for (let i = 0; i < 107; i++) { const matchId = `page-match-${String(i).padStart(3, '0')}${i === 24 ? '.round:one@v2' : ''}`; expected.push(matchId); await owner!.insertMatch({ ...config, matchId }, SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId); } });
       await applyRuntimeGrants(owner.db, roles);
       const apiUrl = new URL(ownerUrl); apiUrl.username = roles.apiRole; apiUrl.password = '';
       api = await createPostgresApi({ connectionString: apiUrl.href, databasePath: join(directory, 'unused.sqlite'), mediaDirectory: join(directory, 'media'), migrationMode: 'verify', syntheticAuth: true, seedSynthetic: false });

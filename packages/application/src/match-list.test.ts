@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { appendMatchListPage, continueMatchList, MatchListAuthorityDenied, parseMatchListPage, type MatchListPage } from './match-list';
+import { appendMatchListPage, compareMatchIds, continueMatchList, MatchListAuthorityDenied, parseMatchListPage, type MatchListPage } from './match-list';
 import type { Principal, Membership } from './access';
 import type { WorkspaceBinding } from './workspace-boundary';
 const ticket: WorkspaceBinding = { generation: 1, apiBaseUrl: 'https://api.example.test', accountId: 'manager', issuer: 'issuer', subject: 'subject', teamId: 'team', seasonId: 'season', role: 'manager', playerId: null };
@@ -13,6 +13,14 @@ describe('authorised Match Centre continuation', () => {
     const result = await continueMatchList(cached, { me: async () => ({ principal, memberships }), request: async path => { paths.push(path); return page(['m003'], null); }, currentBinding: () => ticket, sessionCurrent: async () => true, now: () => 10 });
     expect(result?.value.items.map(value => value.matchId)).toEqual(['m001', 'm002', 'm003']); expect(result?.value.nextCursor).toBeNull(); expect(cached.value.items).toHaveLength(2);
     expect(paths).toEqual(['/v1/teams/team/matches?seasonId=season&cursor=opaque_cursor']);
+  });
+  it('preserves existing punctuated/long identifiers and database Unicode order across pages', () => {
+    const long = `fixture.preview:one@v2-${'x'.repeat(2000)}`;
+    const first = parseMatchListPage(page([long], 'opaque'), ticket);
+    const second = page(['fixture.z-next', '\ue000', '\u{10000}'], null);
+    expect(appendMatchListPage(first, second, ticket).items.map(item => item.matchId)).toEqual([long, 'fixture.z-next', '\ue000', '\u{10000}']);
+    expect(compareMatchIds('\ue000', '\u{10000}')).toBeLessThan(0);
+    expect(parseMatchListPage({ ...first, nextCursor: 'a'.repeat(3000) }, ticket).nextCursor).toHaveLength(3000);
   });
   it('discards a late response after another role, team or generation opens', async () => {
     let current: WorkspaceBinding | null = ticket;

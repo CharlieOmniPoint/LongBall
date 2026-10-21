@@ -1,7 +1,9 @@
+import { randomUUID } from 'node:crypto';
 import type { AddressInfo } from 'node:net';
 import { describe, expect, it } from 'vitest';
 import { createApi } from './server';
-import { SYNTHETIC_IDS } from './store';
+import { EVENT_CONTRACT_VERSION, SYNTHETIC_IDS } from './store';
+import type { FixtureDraft, PreparationState } from '../../../packages/application/src/preparation';
 import type { MatchConfig } from '../../../packages/domain/src/index';
 
 const rootPath = `/v1/teams/${SYNTHETIC_IDS.teamId}/matches?seasonId=${SYNTHETIC_IDS.seasonId}`;
@@ -42,4 +44,32 @@ describe('API04/DS13 real HTTP scoped keyset match pages', () => {
       expect((await call(`${rootPath}&cursor=${first.body.nextCursor}`)).status).toBe(404);
     } finally { api.server.closeAllConnections(); await api.close(); }
   });
+  it('continues after a legal punctuated match created through the actual preparation HTTP commands', async () => {
+    const api = createApi({ databasePath: ':memory:', syntheticAuth: true });
+    await new Promise<void>(resolve => api.server.listen(0, '127.0.0.1', resolve));
+    const base = `http://127.0.0.1:${(api.server.address() as AddressInfo).port}`;
+    const headers = { Authorization: 'Bearer synthetic-manager-2', 'X-Longball-Role': 'manager' };
+    const preparationPath = `/v1/teams/${SYNTHETIC_IDS.teamId}/preparation?seasonId=${SYNTHETIC_IDS.seasonId}`;
+    try {
+      let state = await (await fetch(base + preparationPath, { headers })).json() as PreparationState;
+      const source = state.fixtures[0], matchId = 'fixture.preview:round-one.v2';
+      const fixture: FixtureDraft = { id: matchId, seasonId: source.seasonId, opponent: 'Punctuation boundary fixture', playedDate: source.playedDate, kickoff: source.kickoff, arrival: source.arrival, venue: source.venue, homeAway: source.homeAway, format: source.format, plannedHalfDurationMs: source.plannedHalfDurationMs };
+      const mutate = async (command: object) => {
+        const id = randomUUID();
+        const reply = await fetch(base + preparationPath, { method: 'POST', headers: { ...headers, 'Content-Type': 'application/json', 'X-Api-Contract-Version': EVENT_CONTRACT_VERSION, 'Idempotency-Key': id }, body: JSON.stringify({ command: { ...command, id, expectedRevision: state.revision } }) });
+        const body = await reply.json(); expect(reply.status, JSON.stringify(body)).toBe(200); state = body as PreparationState;
+      };
+      await mutate({ type: 'fixture.saved', fixture });
+      await mutate({ type: 'fixture.selection_saved', fixtureId: matchId, selectedProfileIds: source.selectedProfileIds });
+      await mutate({ type: 'fixture.prepared', fixtureId: matchId, formationId: state.formations.find(row => row.format === source.format)!.id });
+      expect(api.store.match(matchId).id).toBe(matchId);
+      const firstReply = await fetch(base + rootPath + '&limit=1', { headers });
+      const first = await firstReply.json() as { items: { matchId: string }[]; nextCursor: string | null };
+      expect(firstReply.status).toBe(200); expect(first.items[0].matchId).toBe(matchId); expect(first.nextCursor).toBeTypeOf('string');
+      const nextReply = await fetch(base + rootPath + `&limit=1&cursor=${encodeURIComponent(first.nextCursor!)}`, { headers });
+      const next = await nextReply.json() as { items: { matchId: string }[]; nextCursor: string | null };
+      expect(nextReply.status).toBe(200); expect(next.items.map(item => item.matchId)).toEqual([SYNTHETIC_IDS.matchId]); expect(next.nextCursor).toBeNull();
+    } finally { api.server.closeAllConnections(); await api.close(); }
+  });
+
 });

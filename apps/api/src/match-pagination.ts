@@ -5,13 +5,13 @@ import { AccessError, assertAdultAuthority, currentMemberships, type Membership,
 export interface MatchPageQuery { limit: number; cursor: string | null }
 export interface MatchPageScope { principal: Pick<Principal, 'accountId' | 'issuer' | 'subject'>; teamId: string; seasonId: string; role: Membership['role']; playerId: string | null }
 const invalid = (): never => { throw new AccessError('INVALID_PAGE', 400, 'Use the original cursor for this account, team, season and selected role, with a page limit from 1 to 100.'); };
-const validId = (value: unknown): value is string => typeof value === 'string' && value.length >= 1 && value.length <= 150 && !/[^A-Za-z0-9_-]/.test(value);
+const validId = (value: unknown): value is string => typeof value === 'string' && value.length >= 1;
 export function parseMatchPageQuery(params: URLSearchParams): MatchPageQuery {
   for (const key of params.keys()) if (!['seasonId', 'limit', 'cursor'].includes(key) || params.getAll(key).length !== 1) invalid();
   const rawLimit = params.get('limit');
   if (rawLimit !== null && !/^(?:[1-9]|[1-9][0-9]|100)$/.test(rawLimit)) invalid();
   const cursor = params.get('cursor');
-  if (cursor !== null && (!cursor.length || cursor.length > 1024 || /[^A-Za-z0-9_-]/.test(cursor))) invalid();
+  if (cursor !== null && (!cursor.length || /[^A-Za-z0-9_-]/.test(cursor))) invalid();
   return { limit: rawLimit === null ? 25 : Number(rawLimit), cursor };
 }
 export function matchPageAudience(principal: Principal, memberships: Membership[], teamId: string, seasonId: string, requestedRole: string | undefined, nowMs: number): Membership {
@@ -31,7 +31,7 @@ export function matchPagePosition(scope: MatchPageScope, query: MatchPageQuery):
   if (!Number.isSafeInteger(query.limit) || query.limit < 1 || query.limit > 100) invalid();
   if (query.cursor === null) return null;
   try {
-    if (query.cursor.length > 1024 || !/^[A-Za-z0-9_-]+$/.test(query.cursor)) invalid();
+    if (!/^[A-Za-z0-9_-]+$/.test(query.cursor)) invalid();
     const bytes = Buffer.from(query.cursor, 'base64url');
     if (bytes.toString('base64url') !== query.cursor) invalid();
     const cursor = JSON.parse(bytes.toString('utf8'));
