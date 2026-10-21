@@ -1,0 +1,31 @@
+{
+  "status": "failed_before_compilation",
+  "observedAt": "2026-10-21T13:53:50.099Z",
+  "runId": 39611341666,
+  "jobId": 119260695128,
+  "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/39611341666",
+  "baseSourceCommit": "c71f19dcea05f76adb0f7b5a4e2afb621d49bd40",
+  "bundleSha256": "438742d45601956f0dc9ab4230ed33c494533ada74c5115ed76c0cde56909660",
+  "transportCommit": "ea68fa8886db7051ffc454be3210df620e266d45",
+  "sourceImportProofVerified": true,
+  "declaredNotificationOnlyOverrideStep": "passed",
+  "nativeGenerationStep": "passed",
+  "failure": {
+    "step": "Install the same pinned iOS pod toolchain",
+    "phase": "Post-pod-install verifier, Python line9",
+    "assertion": "SQLITE_HAS_CODEC=1 must appear in ios-pods.log",
+    "podInstallCompleted": true,
+    "precedingVendoredSqlcipherBytesChecksPassed": true,
+    "iphoneosCompile": "skipped"
+  },
+  "retainedArtifacts": [],
+  "ready": false,
+  "physicalDeviceProof": false,
+  "ownerSigningCredentialsUsed": false,
+  "changesByMonitor": false,
+  "diagnosis": "CocoaPods completed and the vendored SQLCipher byte comparisons passed. The subsequent verifier inspected console text for a compiler flag; no iPhoneOS compile was attempted. This run does not establish whether generated release configuration contained the flag.",
+  "installedPodspecReference": {
+    "path": "apps/mobile/node_modules/expo-sqlite/ios/ExpoSQLite.podspec",
+    "flagSetting": "pod_target_xcconfig OTHER_CFLAGS includes -DSQLITE_HAS_CODEC=1 when expo.sqlite.useSQLCipher is true"
+  }
+}

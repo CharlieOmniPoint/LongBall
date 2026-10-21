@@ -93,8 +93,14 @@ is inferred from these build and package checks.
 
 [native-ios-device.yml](native-ios-device.yml) runs separately on
 `preview/native-ios-device`. It builds `iphoneos` ARM64 Release rather than a
-Simulator application. [Run39611341666](https://github.com/CharlieOmniPoint/LongBall/actions/runs/39611341666)
+Simulator application. [Run39612410823](https://github.com/CharlieOmniPoint/LongBall/actions/runs/39612410823)
 is in progress; no successful package or installation is claimed yet.
+
+The first device attempt stopped after pod installation because its verifier
+expected a compiler flag in console output. The retry checks the actual generated
+ExpoSQLite Release configuration, retains that configuration, and still checks
+the vendored SQLCipher bytes and linked binary. See the preserved
+[preflight diagnostic](../../docs/development/evidence/2026-10-21/feature-completion/ios-device-preflight-diagnostic.json).
 
 The candidate uses source `c71f19d` plus one recorded test configuration change:
 `expo-notifications` has `enableRemoteNotifications:false`. This preserves local
@@ -105,9 +111,11 @@ scope remain unchanged. The workflow refuses signing credentials/profiles,
 checks actual device-platform binary metadata and embedded JavaScript, and caps
 the unsigned kit at 250MiB with one-day retention.
 
-The unsigned IPA cannot install directly on an iPhone. Windows personal signing
-is a conditional third-party route; computer availability, signing, renewal and
-physical execution remain unproved. See the [device guide](../../docs/development/device-review.md).
+The unsigned IPA cannot install directly on an iPhone. The owner has confirmed
+Windows access. Personal signing is a third-party route; local tool setup,
+signing, renewal and physical execution remain unproved. See the
+[Windows steps](../../docs/development/iphone-windows-install.md) and
+[device guide](../../docs/development/device-review.md).
 
 ## Logs, artifacts and review
 
