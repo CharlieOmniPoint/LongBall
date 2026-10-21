@@ -1,0 +1,385 @@
+name: LongBall fictional Android phone kit
+
+# Publish only as .github/workflows/native-device.yml on preview/native-device.
+# No .github file is added to the development/source checkpoint by this template.
+on:
+  push:
+    branches: [preview/native-device]
+    paths:
+      - .github/workflows/native-device.yml
+      - preview/device-build-request.txt
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Deliberately independent of the cloud-preview and native-feasibility groups.
+concurrency:
+  group: longball-device-apk-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  CI: "1"
+  EXPO_NO_TELEMETRY: "1"
+  EXPO_NO_DOTENV: "1"
+  EXPO_OFFLINE: "1"
+  EXPO_PUBLIC_ENVIRONMENT: development
+  EXPECTED_SOURCE_HEAD: c71f19dcea05f76adb0f7b5a4e2afb621d49bd40
+
+jobs:
+  standalone_android:
+    if: github.repository == 'CharlieOmniPoint/LongBall' && github.event.repository.private == false && github.ref == 'refs/heads/preview/native-device'
+    name: Fictional Android arm64 offline APK
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      NATIVE_PLATFORM: android
+    steps:
+      - name: Read the isolated device transport branch
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify and import the exact development source
+        id: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/longball-native-logs"
+          python3 - <<'PY'
+          import base64
+          import hashlib
+          import json
+          import os
+          import pathlib
+          import re
+          import subprocess
+
+          root = pathlib.Path.cwd()
+          preview = root / "preview"
+          expected_head = (preview / "source-head.txt").read_text().strip()
+          expected_sha = (preview / "source.bundle.sha256").read_text().strip()
+          if not re.fullmatch(r"[0-9a-f]{40}", expected_head):
+              raise SystemExit("source-head.txt must contain exactly one commit SHA")
+          if not re.fullmatch(r"[0-9a-f]{64}", expected_sha):
+              raise SystemExit("source.bundle.sha256 must contain the decoded SHA256")
+          encoded_path = preview / "source.bundle.base64"
+          if encoded_path.stat().st_size > 96 * 1024 * 1024:
+              raise SystemExit("Encoded source bundle exceeds the 96 MiB transport limit")
+          decoded = base64.b64decode(b"".join(encoded_path.read_bytes().split()), validate=True)
+          actual_sha = hashlib.sha256(decoded).hexdigest()
+          if not decoded or len(decoded) > 64 * 1024 * 1024 or actual_sha != expected_sha:
+              raise SystemExit("Decoded source bundle is empty, oversized or has the wrong SHA256")
+          if expected_head != os.environ["EXPECTED_SOURCE_HEAD"]:
+              raise SystemExit("Device build source is not the reviewed c71 checkpoint")
+          marker = json.loads((preview / "device-build-request.txt").read_text())
+          if not isinstance(marker, dict) or set(marker) != {"sourceHead", "fictionalOnly", "requestId"}:
+              raise SystemExit("Device request must contain only sourceHead, fictionalOnly and requestId")
+          if marker["sourceHead"] != expected_head or marker["fictionalOnly"] is not True:
+              raise SystemExit("Device request must bind the exact reviewed fictional source")
+          if not isinstance(marker["requestId"], str) or not re.fullmatch(r"[A-Za-z0-9_-]{1,80}", marker["requestId"]):
+              raise SystemExit("Device request ID must be a bounded identifier")
+          bundle = pathlib.Path(os.environ["RUNNER_TEMP"]) / "longball-source.bundle"
+          bundle.write_bytes(decoded)
+          source = root / "source"
+          if source.exists():
+              raise SystemExit("Refusing to replace an existing source directory")
+
+          def git(*args, cwd=root):
+              return subprocess.check_output(["git", *args], cwd=cwd, text=True).strip()
+
+          # Cloning the full transport repository preserves the origin/main
+          # prerequisite objects used by the differential bundle.
+          subprocess.run(["git", "clone", "--no-hardlinks", "--no-checkout", str(root), str(source)], check=True)
+          subprocess.run(["git", "bundle", "verify", str(bundle)], cwd=source, check=True)
+          bundle_ref = "refs/heads/dev/longball-m0-journey"
+          heads = git("bundle", "list-heads", str(bundle), bundle_ref, cwd=source).splitlines()
+          if heads != [f"{expected_head} {bundle_ref}"]:
+              raise SystemExit("Bundle development branch does not match source-head.txt")
+          subprocess.run(["git", "fetch", "--no-tags", str(bundle), bundle_ref], cwd=source, check=True)
+          subprocess.run(["git", "checkout", "--detach", expected_head], cwd=source, check=True)
+          if git("rev-parse", "HEAD", cwd=source) != expected_head:
+              raise SystemExit("Imported source HEAD verification failed")
+          proof = {
+              "sourceHead": expected_head,
+              "bundleSha256": actual_sha,
+              "transportHead": git("rev-parse", "HEAD"),
+              "sourceRef": bundle_ref,
+              "platform": os.environ["NATIVE_PLATFORM"],
+              "artifactUploadRequested": True,
+              "requestId": marker["requestId"],
+              "mode": "fictional standalone Android release variant, public debug signing key",
+              "physicalDeviceProof": False,
+          }
+          log_dir = pathlib.Path(os.environ["RUNNER_TEMP"]) / "longball-native-logs"
+          (log_dir / "source-proof.json").write_text(json.dumps(proof, indent=2) + "\n")
+          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+              output.write(f"head={expected_head}\nimported=true\n")
+          print(json.dumps(proof, indent=2))
+          PY
+
+      - name: Use the pinned Node runtime
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "24.19.0"
+
+      - name: Install the pinned package manager and frozen dependencies
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(node --version)" = v24.19.0
+          npm install --global pnpm@11.25.0 --no-audit --no-fund
+          test "$(pnpm --version)" = 11.25.0
+          pnpm install --frozen-lockfile 2>&1 | tee "$RUNNER_TEMP/longball-native-logs/dependencies.log"
+          node --version > "$RUNNER_TEMP/longball-native-logs/tools.log"
+          pnpm --version >> "$RUNNER_TEMP/longball-native-logs/tools.log"
+
+      - name: Use the Android Java toolchain
+        uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install the exact Android SDK components
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${ANDROID_HOME:-}"
+          # API 37 uses the v3 catalog and android-37.0 package name. The
+          # runner's older sdkmanager cannot establish this toolchain.
+          python3 - <<'PY' 2>&1 | tee "$RUNNER_TEMP/longball-native-logs/android-sdk.log"
+          import hashlib
+          import os
+          import pathlib
+          import shutil
+          import subprocess
+          import urllib.request
+          import zipfile
+
+          temp = pathlib.Path(os.environ["RUNNER_TEMP"])
+          tools = temp / "longball-android-cli-23"
+          tools.mkdir()
+          archive = temp / "commandlinetools-linux-16111833_latest.zip"
+          url = "https://dl.google.com/android/repository/commandlinetools-linux-16111833_latest.zip"
+          with urllib.request.urlopen(url, timeout=120) as response, archive.open("wb") as output:
+              shutil.copyfileobj(response, output)
+          if archive.stat().st_size != 181052239:
+              raise SystemExit("Unexpected pinned Android CLI archive size")
+          # SHA1 is the official repository2-3.xml checksum. SHA256 is also
+          # pinned from that verified archive, not inferred from the filename.
+          for algorithm, expected in [
+              ("sha1", "e025545c62a8e64c7559119566a569fb1dec5f60"),
+              ("sha256", "0877a1d048fe4a24efe2eff536ca4223f7adeb58648bb81909d33c446918cfa8"),
+          ]:
+              with archive.open("rb") as source:
+                  actual = hashlib.file_digest(source, algorithm).hexdigest()
+              if actual != expected:
+                  raise SystemExit(f"Pinned Android CLI {algorithm} mismatch")
+          with zipfile.ZipFile(archive) as bundle:
+              for member in bundle.infolist():
+                  destination = (tools / member.filename).resolve()
+                  if not destination.is_relative_to(tools.resolve()):
+                      raise SystemExit("Android CLI archive path escapes staging")
+                  bundle.extract(member, tools)
+                  mode = member.external_attr >> 16
+                  if mode:
+                      destination.chmod(mode & 0o777)
+          android = tools / "cmdline-tools/bin/android"
+          properties = (tools / "cmdline-tools/source.properties").read_text()
+          if "Pkg.Revision=23.0" not in properties.splitlines():
+              raise SystemExit("Pinned Android command-line tools revision mismatch")
+          packages = [
+              "platform-tools", "platforms/android-36", "platforms/android-37.0",
+              "build-tools/36.0.0", "build-tools/37.0.0", "ndk/27.1.12297006",
+              "cmake/3.22.1", "cmake/3.30.5",
+          ]
+          # Android CLI 23 includes terms in its first-run flow; the removed
+          # sdkmanager --licenses command is deliberately not invoked.
+          subprocess.run(
+              [str(android), "--no-metrics", f"--sdk={os.environ['ANDROID_HOME']}", "sdk", "install", *packages],
+              input="y\n" * 200, text=True, check=True,
+          )
+          sdk = pathlib.Path(os.environ["ANDROID_HOME"])
+          for package in packages:
+              if not (sdk / package / "source.properties").is_file():
+                  raise SystemExit(f"Android SDK component was not installed: {package}")
+          version = subprocess.check_output([str(android), "--no-metrics", "--version"], text=True)
+          with (temp / "longball-native-logs/tools.log").open("a") as output:
+              output.write(version)
+          print("Verified pinned Android command-line tools 23.0 and required SDK components.")
+          PY
+          java -version 2>> "$RUNNER_TEMP/longball-native-logs/tools.log"
+
+      - name: Generate Android and verify the standalone build boundary
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$EXPO_PUBLIC_ENVIRONMENT" = development
+          test ! -f apps/mobile/.env
+          pnpm --filter mobile prebuild --platform android 2>&1 | tee "$RUNNER_TEMP/longball-native-logs/prebuild.log"
+          python3 - <<'PYCODE'
+          import json
+          import pathlib
+          import re
+
+          mobile = pathlib.Path("apps/mobile")
+          config = json.loads((mobile / "app.json").read_text())["expo"]
+          assert config["android"]["package"] == "dev.longball.synthetic"
+          assert config["android"].get("allowBackup") is False
+          sqlite = [p for p in config["plugins"] if isinstance(p, list) and p[0] == "expo-sqlite"]
+          assert sqlite and sqlite[0][1].get("useSQLCipher") is True
+          properties = (mobile / "android/gradle.properties").read_text()
+          assert re.search(r"^expo\.sqlite\.useSQLCipher=true$", properties, re.M)
+          manifest = (mobile / "android/app/src/main/AndroidManifest.xml").read_text()
+          assert 'android:allowBackup="false"' in manifest
+          gradle = (mobile / "android/app/build.gradle").read_text()
+          assert 'bundleCommand = "export:embed"' in gradle
+          assert re.search(r"release\s*\{[^}]*signingConfig signingConfigs.debug", gradle)
+          assert re.search(r"storeFile file\('debug.keystore'\)", gradle)
+          native = json.loads((mobile / "modules/longball-native/expo-module.config.json").read_text())
+          assert native["android"]["modules"] == ["dev.longball.nativeclock.LongBallNativeModule"]
+          print("Fictional selector, generated test signing, SQLCipher and backup exclusion configured; runtime proof remains open.")
+          PYCODE
+          pnpm --filter mobile exec expo-modules-autolinking resolve --platform android --json > "$RUNNER_TEMP/longball-native-logs/autolinking.json"
+          python3 - <<'PYCODE'
+          import os
+          import pathlib
+          data = (pathlib.Path(os.environ["RUNNER_TEMP"]) / "longball-native-logs/autolinking.json").read_text()
+          assert "LongBallNativeModule" in data or "longball-native" in data
+          PYCODE
+
+      - name: Assemble the standalone fictional APK with embedded JavaScript
+        id: android
+        working-directory: source/apps/mobile/android
+        shell: bash
+        env:
+          NODE_ENV: production
+          GRADLE_OPTS: -Dorg.gradle.daemon=false -Dorg.gradle.workers.max=2
+        run: |
+          set -euo pipefail
+          ./gradlew --version >> "$RUNNER_TEMP/longball-native-logs/tools.log"
+          ./gradlew :app:assembleRelease --no-daemon --max-workers=2 \
+            '-Dorg.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1g -Dfile.encoding=UTF-8' \
+            -PreactNativeArchitectures=arm64-v8a \
+            2>&1 | tee "$RUNNER_TEMP/longball-native-logs/android-release.log"
+          test -s app/build/outputs/apk/release/app-release.apk
+          "$ANDROID_HOME/build-tools/37.0.0/apksigner" verify --verbose --print-certs app/build/outputs/apk/release/app-release.apk | tee "$RUNNER_TEMP/longball-native-logs/apk-signature.txt"
+          "$ANDROID_HOME/build-tools/37.0.0/aapt" dump badging app/build/outputs/apk/release/app-release.apk > "$RUNNER_TEMP/longball-native-logs/apk-badging.txt"
+
+      - name: Verify the embedded bundle and stage the bounded phone kit
+        id: kit
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PYCODE'
+          import hashlib
+          import json
+          import os
+          import pathlib
+          import re
+          import shutil
+          import zipfile
+
+          temp = pathlib.Path(os.environ["RUNNER_TEMP"])
+          logs = temp / "longball-native-logs"
+          apk = pathlib.Path("source/apps/mobile/android/app/build/outputs/apk/release/app-release.apk")
+          with zipfile.ZipFile(apk) as archive:
+              js = archive.getinfo("assets/index.android.bundle")
+              if js.file_size < 1024:
+                  raise SystemExit("The APK has no substantive embedded JavaScript/Hermes bundle")
+              native_files = [name for name in archive.namelist() if name.startswith("lib/") and name.endswith(".so")]
+              if not native_files or any(not name.startswith("lib/arm64-v8a/") for name in native_files):
+                  raise SystemExit("APK must contain the requested arm64-v8a native ABI only")
+          badging = (logs / "apk-badging.txt").read_text()
+          if "application-debuggable" in badging:
+              raise SystemExit("The standalone release variant unexpectedly permits app debugging")
+          if not re.search(r"^package: name='dev\.longball\.synthetic'", badging, re.M):
+              raise SystemExit("Unexpected Android application identity")
+          minimum = re.search(r"^sdkVersion:'(\d+)'", badging, re.M)
+          target = re.search(r"^targetSdkVersion:'(\d+)'", badging, re.M)
+          if not minimum or not target:
+              raise SystemExit("APK SDK requirements are unavailable")
+          digest = hashlib.file_digest(apk.open("rb"), "sha256").hexdigest()
+          proof = json.loads((logs / "source-proof.json").read_text())
+          proof.update({
+              "artifactName": "LongBall-fictional-c71-arm64.apk",
+              "apkSha256": digest,
+              "apkBytes": apk.stat().st_size,
+              "applicationId": "dev.longball.synthetic",
+              "minSdk": int(minimum[1]), "targetSdk": int(target[1]),
+              "androidAbi": "arm64-v8a", "buildVariant": "release",
+              "signingIdentity": "generated public Android debug key, test distribution only",
+              "embeddedJavaScriptVerified": True,
+              "requiresMetro": False, "fictionalDataOnly": True,
+              "physicalDeviceProof": False,
+              "realAccountDeviceAuthenticationProof": False,
+          })
+          destination = temp / "longball-device-kit"
+          destination.mkdir()
+          shutil.copy2(apk, destination / proof["artifactName"])
+          (destination / "build-proof.json").write_text(json.dumps(proof, indent=2) + "\n")
+          for name in ["tools.log", "apk-signature.txt", "apk-badging.txt", "prebuild.log", "android-release.log"]:
+              log = logs / name
+              with log.open("rb") as handle:
+                  handle.seek(max(0, log.stat().st_size - 2 * 1024 * 1024))
+                  (destination / name).write_bytes(handle.read())
+          (destination / "START-HERE.txt").write_text(
+              "LongBall fictional Android physical-device kit\n"
+              "Exact reviewed source: " + proof["sourceHead"] + "\n"
+              "Release variant; publicly known debug signing key; not an app-store release.\n"
+              "Extract the artifact ZIP. Verify the APK against SHA256SUMS.\n"
+              "Install only on a compatible arm64 Android phone meeting minSdk in build-proof.json.\n"
+              "USB option: adb install -r LongBall-fictional-c71-arm64.apk\n"
+              "Do not uninstall or clear data to resolve a signature mismatch; report it first.\n"
+              "Open LongBall Synthetic Lab, enable airplane mode, and relaunch. No Metro/service is required.\n"
+              "Use fictional Roma U10 records only. Do not configure a real account/API during this local pass.\n"
+              "More > Native feasibility lab > Run journal encryption probe; record its observed result.\n"
+              "Phone guide: https://github.com/CharlieOmniPoint/LongBall/blob/dev/longball-m0-journey/docs/development/device-review.md\n"
+              "Installing/building is not physical-clock, encryption, backup or notification proof.\n"
+          )
+          hashes = []
+          for file in sorted(destination.iterdir()):
+              if file.is_file():
+                  with file.open("rb") as handle:
+                      checksum = hashlib.file_digest(handle, "sha256").hexdigest()
+                  hashes.append(f"{checksum}  {file.name}")
+          (destination / "SHA256SUMS").write_text("\n".join(hashes) + "\n")
+          if sum(file.stat().st_size for file in destination.iterdir()) > 250 * 1024 * 1024:
+              raise SystemExit("Phone kit exceeds 250 MiB; refusing artifact upload")
+          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+              output.write(f"apk_sha256={digest}\nmin_sdk={minimum[1]}\n")
+          print(json.dumps(proof, indent=2))
+          PYCODE
+
+      - name: Retain the requested fictional phone kit for one day
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: longball-fictional-android-c71-arm64
+          path: ${{ runner.temp }}/longball-device-kit/
+          retention-days: 1
+          compression-level: 0
+          if-no-files-found: error
+
+      - name: Record build status and physical-proof limits
+        if: always()
+        shell: bash
+        env:
+          SOURCE_HEAD: ${{ steps.source.outputs.head }}
+          BUILD_RESULT: ${{ steps.android.outcome }}
+          APK_SHA256: ${{ steps.kit.outputs.apk_sha256 }}
+          MIN_SDK: ${{ steps.kit.outputs.min_sdk }}
+        run: |
+          python3 - <<'PYCODE'
+          import os
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as output:
+              output.write("## Fictional Android phone kit\n\n")
+              output.write(f"Source `{os.environ.get('SOURCE_HEAD') or 'not imported'}`; Android release-variant compile: **{os.environ.get('BUILD_RESULT') or 'not run'}**.\n\n")
+              if os.environ.get("APK_SHA256"):
+                  output.write(f"APK SHA256: `{os.environ['APK_SHA256']}`. Minimum Android API: `{os.environ['MIN_SDK']}`; ABI `arm64-v8a`.\n\n")
+              output.write("The APK embeds JavaScript and uses the generated public debug signing key with fictional data. No Metro, EAS, paid runner, service provisioning or real account grant is required. Artifact cap250MiB; retention one day.\n\n")
+              output.write("Build/package checks do not prove physical SQLCipher/key/backup behaviour, clock continuity/drift, notifications, native OS authentication or any iPhone hardware installation.\n")
+          PYCODE
