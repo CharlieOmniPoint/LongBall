@@ -1,0 +1,25 @@
+name: LongBall temporary cloud review
+
+on:
+  push:
+    branches: [preview/longball-m0]
+    paths: ['site/**', 'preview/**', '.github/workflows/cloud-preview.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: longball-fictional-cloud-review
+  cancel-in-progress: true
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 70
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ github.ref_name }}
+      - name: Serve the fictional export for one hour
+        run: bash preview/run.sh

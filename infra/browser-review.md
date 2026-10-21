@@ -1,6 +1,16 @@
 # Browser review deployment preparation
 
-The additional browser surface is an Expo/React Native Web export of the same UI and `@longball/domain` rules used by the native application. It is a synthetic review build, not the production match controller. No hosting service, account, domain, database or paid resource has been provisioned.
+The additional browser surface is an Expo/React Native Web export of the same UI and `@longball/domain` rules used by the native application. It is a synthetic review build, not the production match controller. Development stays in cloud Codex. No paid resource, database, custom domain or production service has been provisioned.
+
+## Temporary cloud review
+
+The public repository's separate `preview/longball-m0` branch contains only the generated `site/`, the runner scripts and its workflow. A standard public GitHub Actions runner serves `site/` through a Cloudflare Quick Tunnel for one hour. This runs on that independent runner, not through the managed Codex workspace's network. It requires no Cloudflare account or secret. The source project, supplied pack and native targets remain on the development branch; main is unchanged.
+
+The workflow source is maintained in [cloud-preview/workflow.yml](cloud-preview/workflow.yml), with [run.sh](cloud-preview/run.sh) and [serve.py](cloud-preview/serve.py). The runner verifies the pinned cloudflared checksum, refuses directory listing and repository paths, checks its public HTML, then records the link, run URL, source revision and expiry in `preview-status.json` on the preview branch. `site/build-info.json` records the compiled application's development commit. Only a `ready` status with an externally verified URL is a usable review link. A job can end early; no uptime or persistent storage guarantee is made. The final status is stopped/failed when cleanup can run.
+
+To renew, publish a new commit changing `site/**` or `preview/**` on that branch. Do not merge this generated tree into main. A fresh tunnel hostname creates a fresh IndexedDB origin; local fictional match records do not migrate between sessions. The workflow is bounded to prevent an abandoned review session running indefinitely. A lasting review address remains an open hosting setup task; GitHub Pages first needs a repository publishing source enabled, which the connected tools do not currently expose.
+
+This is public adult review using fictional Roma U10 data only. It does not select or approve production child-account, identity, media, privacy or recovery policies. Sites is excluded by its under-13 targeting restriction; this workflow does not use Sites. Current reference terms and unresolved decisions are recorded in [decisions](../docs/development/decisions.md).
 
 Run `pnpm package:review`. The ZIP at `.local/longball-browser-review.zip` contains only the static `site/` output, review instructions and source revision metadata. It excludes local journal data, development caches and credentials. Rebuild from a clean committed tree for a reproducible candidate; the manifest flags uncommitted changes. Keep the generated files together at the root of a static HTTPS origin. There is no API or server start command for this export. `index.html` is the entry point; browser navigation is in application state.
 
