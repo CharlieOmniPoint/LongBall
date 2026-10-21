@@ -5,9 +5,10 @@ import type {
 } from './types';
 import { cloneValue, effectiveTime, goalRecord, scoresFromGoals } from './live-events';
 import { reprojectParticipation } from './participation-corrections';
+import { applyPolicyChange, assertInitialLineupProposal, assertMatchPolicyProposal, currentFixedKeeper, updatePolicyPositionMode } from './policy';
 export type * from './types';
 
-export const ENGINE_VERSION = 'synthetic-live-3';
+export const ENGINE_VERSION = 'synthetic-live-4';
 
 function integer(value: number, label: string): void {
   if (!Number.isSafeInteger(value) || value < 0) throw new Error(`${label} must be a nonnegative safe integer.`);
@@ -46,6 +47,8 @@ export function createMatch(config: MatchConfig): MatchState {
   if (config.slots && (config.slots.length !== config.pitchPlaces || new Set(config.slots.map(slot => slot.slotId)).size !== config.slots.length || config.slots.filter(slot => slot.position === 'GK').length !== 1 || config.slots.some(slot => !slot.slotId || !slot.position))) throw new Error('Saved formation needs one distinct slot per pitch place and exactly one goalkeeper.');
   if (config.profileSnapshot && (new Set(config.profileSnapshot.map(profile => profile.playerId)).size !== config.profileSnapshot.length || config.profileSnapshot.some(profile => !ids.includes(profile.playerId) || profile.preferences.length > 3 || new Set(profile.preferences).size !== profile.preferences.length || new Set(profile.eligiblePositions).size !== profile.eligiblePositions.length))) throw new Error('Match profile snapshots must belong to distinct roster players with distinct preferences and eligibility.');
   if (config.fixedKeeperId !== null && (!config.selectedPlayerIds.includes(config.fixedKeeperId) || ![1, 2].includes(keeperChoice(config, config.fixedKeeperId)))) throw new Error('Fixed keeper must be a selected first- or second-choice goalkeeper.');
+  if (config.initialPolicyProposal !== undefined) assertMatchPolicyProposal(config.initialPolicyProposal, config);
+  if (config.initialLineupProposal !== undefined) assertInitialLineupProposal(config, config.initialLineupProposal);
   return {
     config: cloneValue(config),
     status: 'preparation', revision: 0,
@@ -75,6 +78,7 @@ export function upgradeMatchState(previous: MatchState): MatchState {
 /** Validation is strict for the initial journey; under-strength exceptions need Q07. */
 export function validateLineup(state: MatchState, lineup: Allocation[], requireComplete = true): string[] {
   const errors: string[] = [];
+  const fixedKeeperId = currentFixedKeeper(state);
   if (lineup.length > state.config.pitchPlaces || (requireComplete && lineup.length !== state.config.pitchPlaces)) errors.push(`Choose exactly ${state.config.pitchPlaces} pitch players.`);
   if (new Set(lineup.map(item => item.playerId)).size !== lineup.length) errors.push('A player can occupy only one pitch place.');
   if (new Set(lineup.map(item => item.slotId)).size !== lineup.length) errors.push('Each pitch slot must be unique.');
@@ -95,10 +99,10 @@ export function validateLineup(state: MatchState, lineup: Allocation[], requireC
   for (const keeper of keepers) {
     const player = state.config.players.find(item => item.id === keeper.playerId);
     if (!player || ![1, 2].includes(keeperChoice(state.config, keeper.playerId))) errors.push('Goalkeeper cover requires a first- or second-choice eligible keeper.');
-    if (state.config.fixedKeeperId && keeper.playerId !== state.config.fixedKeeperId) errors.push('The fixed keeper policy cannot be changed by moving a pitch piece.');
+    if (fixedKeeperId && keeper.playerId !== fixedKeeperId) errors.push('The fixed keeper policy cannot be changed by moving a pitch piece.');
   }
   const qualifying = state.config.players.filter(player => available(state, player.id) && [1, 2].includes(keeperChoice(state.config, player.id)));
-  if (state.config.fixedKeeperId && qualifying.length > 1) errors.push('Multiple qualifying available keepers require a reviewed shared-keeper policy.');
+  if (fixedKeeperId && qualifying.length > 1) errors.push('Multiple qualifying available keepers require a reviewed shared-keeper policy.');
   return [...new Set(errors)];
 }
 
@@ -129,6 +133,7 @@ function accrue(state: MatchState, sample: ClockSample): MatchState {
   const clock = readClock(state, sample);
   if (clock.recoveryRequired) throw new Error('Time needs checking. Confirm the clock against a referee or trusted source.');
   const durationMs = clock.matchActiveMs - state.matchActiveMs;
+  const fixedKeeperId = currentFixedKeeper(state);
   if (!isRunning(state) || durationMs === 0) return state;
   if (state.half !== 1 && state.half !== 2) throw new Error('No active half.');
   const intervals = state.config.selectedPlayerIds.map(playerId => {
@@ -147,7 +152,8 @@ function accrue(state: MatchState, sample: ClockSample): MatchState {
     targetIntervals: [...state.targetIntervals, {
       durationMs, availablePlayerIds: state.config.selectedPlayerIds.filter(id => available(state, id)),
       pitchPlaces: state.config.pitchPlaces,
-      fixedKeeperId: state.config.fixedKeeperId && available(state, state.config.fixedKeeperId) ? state.config.fixedKeeperId : null,
+      fixedKeeperId: fixedKeeperId && available(state, fixedKeeperId) ? fixedKeeperId : null,
+      ...(state.activePolicy ? { policyVersion: state.activePolicy.policyVersion } : {}),
     }],
   };
 }
@@ -180,7 +186,16 @@ export function reduceMatch(previous: MatchState, event: MatchEvent): MatchState
   let auditPrior: unknown = null;
   let auditValue: unknown = event;
   const reviewedParticipationEntry = (event.type === 'lineup.committed' || event.type === 'availability.changed') && event.effective !== undefined && event.sourceRevision !== undefined && Boolean(event.lateEntryReason?.trim());
-  if (event.type === 'availability.changed' && event.effective && !reviewedParticipationEntry) {
+  if (event.type === 'policy.changed') {
+    const latest = accrue(previous, event.sample);
+    const boundary = event.effective;
+    if (!boundary || boundary.half !== previous.half || !Number.isSafeInteger(boundary.matchElapsedMs) || boundary.matchElapsedMs < previous.matchActiveMs || boundary.matchElapsedMs > latest.matchActiveMs) throw new Error('A policy change must use its captured current continuous boundary, never earlier history or future play.');
+    if (isRunning(previous)) {
+      if (!previous.anchor) throw new Error('A continuous anchor is required for prospective policy changes.');
+      const boundarySample = { ...event.sample, monotonicMs: Math.floor(previous.anchor.sample.monotonicMs) + boundary.matchElapsedMs - previous.anchor.matchActiveMs };
+      state = accrue(previous, boundarySample);
+    } else state = latest;
+  } else if (event.type === 'availability.changed' && event.effective && !reviewedParticipationEntry) {
     if (previous.half === 0) throw new Error('Preparation availability has no active-time boundary.');
     const latest = accrue(previous, event.sample);
     const boundary = effectiveTime(latest, event.effective);
@@ -194,6 +209,15 @@ export function reduceMatch(previous: MatchState, event: MatchEvent): MatchState
     auditEffective = boundary;
   } else if (event.type !== 'clock.recovery_required' && event.type !== 'clock.corrected') state = accrue(previous, event.sample);
   switch (event.type) {
+    case 'policy.changed': {
+      auditPrior = state.activePolicy ?? null;
+      state = applyPolicyChange(state, event, previous.revision);
+      auditEffective = event.effective.half === 0 ? null : { ...event.effective, half: event.effective.half };
+      auditValue = state.policyHistory?.at(-1);
+      // Only the uncommitted suffix after the captured change uses the new policy.
+      state = accrue(state, event.sample);
+      break;
+    }
     case 'attendance.recorded': {
       selectedPlayer(state, event.playerId);
       if (!['present', 'absent', 'excused', 'not_selected', 'not_recorded'].includes(event.status)) throw new Error('Attendance status is invalid.');
@@ -400,6 +424,7 @@ export function reduceMatch(previous: MatchState, event: MatchEvent): MatchState
     }
     default: throw new Error('Unsupported match command type.');
   }
+  state = updatePolicyPositionMode(state, previous.revision + 1);
   const audit: MatchAuditEntry = {
     eventId: event.id, type: event.type, revision: previous.revision + 1, recordedAtMs: event.sample.wallTimeMs,
     actorId: event.actorId ?? null,

@@ -1,4 +1,5 @@
 import { cloneValue, effectiveTime, goalRecord } from "./live-events";
+import { fixedKeeperAtBoundary, policyAtBoundary } from './policy';
 import type {
   Allocation,
   Attendance,
@@ -52,6 +53,10 @@ type ValidateLineup = (
 ) => string[];
 const copyLineup = (lineup: Allocation[]) =>
   lineup.map((item) => ({ ...item }));
+function policyStateAt(state: MatchState, half: 0 | 1 | 2, activeMs: number, maximumRevision = Infinity): MatchState {
+  const policy = policyAtBoundary(state, half, activeMs, maximumRevision);
+  return { ...state, activePolicy: policy ? { ...policy, positionMode: 'normal', manualResetAtSourceRevision: null } : undefined };
+}
 const compare = (left: Fact, right: Fact) =>
   (left.effective?.half ?? 0) - (right.effective?.half ?? 0) ||
   (left.effective?.matchElapsedMs ?? 0) -
@@ -384,7 +389,7 @@ export function reprojectParticipation(
     ) {
       const errors = validateLineup(
         {
-          ...state,
+          ...policyStateAt(state, fact.effective?.half ?? 0, fact.effective?.matchElapsedMs ?? 0, fact.order + 1),
           attendance: current.attendance,
           availability: current.availability,
         },
@@ -410,6 +415,7 @@ export function reprojectParticipation(
         ...sorted
           .filter((fact) => !fact.voided && fact.effective?.half === half)
           .map((fact) => fact.effective!.matchElapsedMs),
+        ...(state.policyHistory ?? []).filter(policy => policy.effective.half === half).map(policy => policy.effective.matchElapsedMs),
       ]),
     ].sort((a, b) => a - b);
     for (let index = 0; index + 1 < boundaries.length; index++) {
@@ -419,7 +425,7 @@ export function reprojectParticipation(
       const actual = factsAt(state, sorted, half, from);
       const errors = validateLineup(
         {
-          ...state,
+          ...policyStateAt(state, half, from),
           attendance: actual.attendance,
           availability: actual.availability,
         },
@@ -454,15 +460,14 @@ export function reprojectParticipation(
       const availablePlayerIds = state.config.selectedPlayerIds.filter(
         (id) => actual.attendance[id] === "present" && actual.availability[id],
       );
+      const policy = policyAtBoundary(state, half, from);
+      const fixedKeeperId = fixedKeeperAtBoundary(state, half, from);
       targetIntervals.push({
         durationMs: to - from,
         availablePlayerIds,
         pitchPlaces: state.config.pitchPlaces,
-        fixedKeeperId:
-          state.config.fixedKeeperId &&
-          availablePlayerIds.includes(state.config.fixedKeeperId)
-            ? state.config.fixedKeeperId
-            : null,
+        fixedKeeperId: fixedKeeperId && availablePlayerIds.includes(fixedKeeperId) ? fixedKeeperId : null,
+        ...(policy ? { policyVersion: policy.policyVersion } : {}),
       });
     }
   }

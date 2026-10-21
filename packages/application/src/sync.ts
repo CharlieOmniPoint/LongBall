@@ -67,6 +67,7 @@ export class ServiceError extends Error {
 }
 
 export function effectiveEventTime(previous: MatchState, next: MatchState, event: MatchEvent): { half: 0 | 1 | 2; halfElapsedMs: number; matchElapsedMs: number } {
+  if (event.type === 'policy.changed') return { ...event.effective };
   let effective: { half: 1 | 2; halfElapsedMs: number; matchElapsedMs: number } | null | undefined;
   if (event.type === 'goal.recorded' || event.type === 'availability.changed' || event.type === 'lineup.committed') effective = event.effective;
   if (event.type === 'event.corrected') effective = event.replacement.effective;

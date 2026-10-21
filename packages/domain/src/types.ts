@@ -10,6 +10,48 @@ export interface Player {
 export type Attendance = 'present' | 'absent' | 'excused' | 'not_selected' | 'not_recorded';
 export type MatchStatus = 'preparation' | 'first_half_running' | 'first_half_paused' | 'half_time' | 'second_half_running' | 'second_half_paused' | 'completed' | 'abandoned';
 export interface Allocation { slotId: string; position: string; playerId: string }
+/** The supplied canonical PolicyPayload. Applicability is explicit in the runtime extension below. */
+export interface MatchPolicyPayload {
+  keeperMode: 'sole_fixed' | 'common_pool';
+  fixedKeeperPlayerSeasonId: string | null;
+  minimumStintMs: number;
+  batchLimit: number;
+  scoreLeadThreshold: number;
+  returnToNormalEnabled: boolean;
+}
+export interface MatchPolicyApplicability {
+  minimumStint: 'soft_preference';
+  batchLimit: 'soft_preference';
+  q07: 'unapproved';
+}
+/** A reusable plan may propose settings; only an explicit controller event activates them. */
+export interface MatchPolicyProposal {
+  payload: MatchPolicyPayload;
+  applicability: MatchPolicyApplicability;
+  softPreferences: { halfBufferFraction: number };
+}
+export interface PolicyEffectiveTime { half: 0 | 1 | 2; halfElapsedMs: number; matchElapsedMs: number }
+export interface PolicyChangeDetails extends MatchPolicyProposal {
+  policySchemaVersion: 1;
+  policyVersion: number;
+  previousPolicyVersion: number;
+  sourceRevision: number;
+  effective: PolicyEffectiveTime;
+  reason: string;
+  /** A deliberate reset is a new prospective policy event, never an edit to a prior event. */
+  resetPositionMode?: boolean;
+}
+export interface MatchPolicyRecord extends PolicyChangeDetails {
+  eventId: string;
+  revision: number;
+  recordedAtMs: number;
+  actorId: string | null;
+}
+export interface ActiveMatchPolicy extends MatchPolicyRecord {
+  /** Derived from confirmed policy/score history; never a player movement. */
+  positionMode: 'normal' | 'adventurous';
+  manualResetAtSourceRevision: number | null;
+}
 export interface MatchConfig {
   matchId: string;
   players: Player[];
@@ -18,6 +60,9 @@ export interface MatchConfig {
   plannedHalfDurationMs: number;
   /** Explicit synthetic experiment policy; never inferred from a pitch drag. */
   fixedKeeperId: string | null;
+  /** Prepared proposals remain inactive until reviewed; they infer neither attendance nor a lineup. */
+  initialPolicyProposal?: MatchPolicyProposal;
+  initialLineupProposal?: Allocation[];
   /** Explicit manager check-in copied at preparation; never inferred from RSVP. */
   initialAttendance?: Record<string, Attendance>;
   slots?: { slotId: string; position: string; x?: number; y?: number; label?: string }[];
@@ -41,6 +86,8 @@ export interface TargetInterval {
   availablePlayerIds: string[];
   pitchPlaces: number;
   fixedKeeperId: string | null;
+  /** Absent on earlier accepted history; never backfilled or silently relabelled. */
+  policyVersion?: number;
 }
 export interface MatchState {
   config: MatchConfig;
@@ -74,6 +121,9 @@ export interface MatchState {
   availabilityHistory?: AvailabilityRecord[];
   eventHistory?: MatchEvent[];
   audit?: MatchAuditEntry[];
+  /** Optional so historical projections without EV05 remain byte-for-byte replay compatible. */
+  activePolicy?: ActiveMatchPolicy;
+  policyHistory?: MatchPolicyRecord[];
 }
 export interface EffectiveMatchTime { half: 1 | 2; halfElapsedMs: number; matchElapsedMs: number }
 export type GoalType = 'open_play' | 'free_kick' | 'penalty' | 'not_recorded';
@@ -136,6 +186,7 @@ export type MatchEvent = EventBase & (
   | { type: 'half.paused' }
   | { type: 'half.resumed' }
   | { type: 'half.ended' }
+  | ({ type: 'policy.changed' } & PolicyChangeDetails)
   | { type: 'match.abandoned'; reason: 'weather' | 'safety' | 'insufficient_players' | 'other'; note?: string }
   | { type: 'lineup.committed'; lineup: Allocation[]; sourceRevision: number; effective?: EffectiveMatchTime; lateEntryReason?: string }
   | ({ type: 'goal.recorded'; lateEntryReason?: string } & GoalDetails)
