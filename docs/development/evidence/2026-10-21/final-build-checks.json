@@ -1,0 +1,204 @@
+{
+  "recordedAt": "2026-10-21T19:38:38.122719+00:00",
+  "status": "passed-for-fictional-functional-review",
+  "productSourceCommit": "7ede8d1ef944823cfd6a5f6965ab51d4c37d286e",
+  "recordedFromCommit": "d9c702b00b86a0896584a992f4d2a5316b6df544",
+  "productInputsUnchanged": {
+    "apps/mobile": {
+      "tested": "0076e910c6c870f84eee992e99387624b36a500a",
+      "recorded": "0076e910c6c870f84eee992e99387624b36a500a"
+    },
+    "apps/api": {
+      "tested": "88b8c03525ad4fe2b00c627ec412b305b479b928",
+      "recorded": "88b8c03525ad4fe2b00c627ec412b305b479b928"
+    },
+    "packages": {
+      "tested": "594e650bf59fe546ca057c2cd6b094f7b139a90b",
+      "recorded": "594e650bf59fe546ca057c2cd6b094f7b139a90b"
+    },
+    "package.json": {
+      "tested": "aaef6f5825d23f65f7f3505a6b58d3f640aee7c6",
+      "recorded": "aaef6f5825d23f65f7f3505a6b58d3f640aee7c6"
+    },
+    "pnpm-lock.yaml": {
+      "tested": "088419d0631b952727b53c3302e4ebed4fd99ea9",
+      "recorded": "088419d0631b952727b53c3302e4ebed4fd99ea9"
+    }
+  },
+  "sharedPlatformSuite": {
+    "sourceCommit": "55465b04b00bb97df1c87ae1a82d67a589159471",
+    "tests": 678,
+    "files": 74,
+    "passed": true,
+    "durationSeconds": 156.16,
+    "candidateInputsIdentical": {
+      "packages": {
+        "tested": "594e650bf59fe546ca057c2cd6b094f7b139a90b",
+        "candidate": "594e650bf59fe546ca057c2cd6b094f7b139a90b"
+      },
+      "apps/mobile/src": {
+        "tested": "55e044b873c2e271c491435b12cfd4ad00afaa42",
+        "candidate": "55e044b873c2e271c491435b12cfd4ad00afaa42"
+      },
+      "vitest.config.ts": {
+        "tested": "f27d1a54e91856b8e1e4883fe7cab959fe33e050",
+        "candidate": "f27d1a54e91856b8e1e4883fe7cab959fe33e050"
+      },
+      "package.json": {
+        "tested": "aaef6f5825d23f65f7f3505a6b58d3f640aee7c6",
+        "candidate": "aaef6f5825d23f65f7f3505a6b58d3f640aee7c6"
+      },
+      "pnpm-lock.yaml": {
+        "tested": "088419d0631b952727b53c3302e4ebed4fd99ea9",
+        "candidate": "088419d0631b952727b53c3302e4ebed4fd99ea9"
+      }
+    }
+  },
+  "apiSuite": {
+    "sourceCommit": "7ede8d1ef944823cfd6a5f6965ab51d4c37d286e",
+    "passed": 284,
+    "files": 45,
+    "skipped": 0,
+    "durationSeconds": 232.6,
+    "restrictedPostgreSQLAvailable": true,
+    "maintainedHeicDecoderAvailable": true,
+    "privateLogSha256": "2ab1933cd980a5e89325c5a0e1b1abb466ef91492f2f4f4f9b149906b0117425"
+  },
+  "browser": {
+    "sourceCommit": "7ede8d1ef944823cfd6a5f6965ab51d4c37d286e",
+    "passedNamedGroups": 18,
+    "runtimeErrors": [],
+    "suiteRetries": 0,
+    "durationSeconds": 118.94,
+    "groups": [
+      {
+        "suite": "role-entry",
+        "namedGroups": 8,
+        "seconds": 53.54
+      },
+      {
+        "suite": "matchday",
+        "namedGroups": 4,
+        "seconds": 12.53
+      },
+      {
+        "suite": "policy-handover",
+        "namedGroups": 2,
+        "seconds": 12.72
+      },
+      {
+        "suite": "accepted-view",
+        "namedGroups": 4,
+        "seconds": 40.15
+      }
+    ],
+    "evidence": "final-functional-review/summary.json"
+  },
+  "nativeConfigurationAndExports": {
+    "evidence": "final-native-review/verification.json",
+    "evaluatedConfigGroups": 6,
+    "anonymousBrowserChecks": 6,
+    "androidHermesExport": true,
+    "iosHermesExport": true,
+    "actualHashesDifferFromHistorical554": true,
+    "matchingMobileSharedInputs": true,
+    "compiledOrPhysicalDeviceProof": false
+  },
+  "restrictedRuntimeAndRestore": {
+    "evidence": "runtime/schema15-operational/summary.json",
+    "operationalRunCommit": "5185f0022770c9acc98ffb2cf569800fcb949277",
+    "exitCodes": {
+      "heic": 0,
+      "retainedRestore": 0
+    },
+    "coreVersions": [
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15
+    ],
+    "mediaVersions": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "activationVersion": 2,
+    "protectedTables": 37,
+    "compositeForeignKeys": 30,
+    "productionImageExercised": false
+  },
+  "staticChecks": {
+    "sourceCommit": "55465b04b00bb97df1c87ae1a82d67a589159471",
+    "all": true,
+    "nativeConfigFollowOn": {
+      "rootCommit": "ff0691c",
+      "scopedLint": true,
+      "rootTypes": true,
+      "mobileTypes": true,
+      "evaluatedGroups": 6
+    },
+    "mediaRetryFollowOn": {
+      "rootCommit": "7ede8d1ef944823cfd6a5f6965ab51d4c37d286e",
+      "scopedLint": true,
+      "rootTypes": true,
+      "focusedTests": 49,
+      "files": 5,
+      "skipped": 0
+    }
+  },
+  "harnessBoundaryTests": {
+    "passed": 2,
+    "skipped": 0
+  },
+  "artifacts": [
+    {
+      "path": "apps/mobile/dist-web/_expo/static/js/web/index-0e10e3d0fbd5528d8ee4e090a5d1e659.js",
+      "bytes": 1486506,
+      "sha256": "c007d2543cbff4ce46c1eded82f8ce9d485b2dba7b2fa68f25e1eee7e2e126c7"
+    },
+    {
+      "path": "apps/api/dist/api.mjs",
+      "bytes": 782954,
+      "sha256": "d1568c20879d2e1df83843fc31e35a6fa053751785560988f53093c546e10798"
+    },
+    {
+      "path": "apps/api/dist/media-worker.mjs",
+      "bytes": 3467,
+      "sha256": "4b878815f5255ec427900db496df40c278176e381bfc3b7f6809912fe4cea5ed"
+    }
+  ],
+  "diagnostics": [
+    {
+      "source": "55465b04b00bb97df1c87ae1a82d67a589159471",
+      "fullApiPassed": 276,
+      "fullApiTotal": 277,
+      "failure": "Photo completion returned415; unchanged selected rerun passed. Original cause unproved. Media transient-failure handling corrected independently with49 focused checks; final quiet284/45 suite passed."
+    },
+    {
+      "source": "7ede8d1ef944823cfd6a5f6965ab51d4c37d286e",
+      "stage": "retained-runtime-proof-before-5185f00",
+      "failure": "Exact worker-claim clock differed because helper sampled Date.now twice; guard correctly refused42501. One shared clock sample fixes the operational harness; both freshly bundled proofs then passed.",
+      "evidence": "runtime/schema15-operational/summary.json"
+    }
+  ],
+  "publication": "Pending separate exact-source external publication evidence. This file does not claim a public deployment.",
+  "limits": [
+    "Fictional Roma U10 data only.",
+    "Real public provider onboarding, permanent connected hosting and operator product/privacy decisions remain unapproved.",
+    "Physical iPhone/Android acceptance deferred by the user; encrypted storage, OS prompts, sharing, continuous timing and push delivery are not passed.",
+    "Native configuration/Hermes exports are not signed distribution or physical execution proof.",
+    "The actual schema15 host-bundled runtime proofs do not validate a newly built production container image."
+  ],
+  "paidServicesProvisioned": false
+}
