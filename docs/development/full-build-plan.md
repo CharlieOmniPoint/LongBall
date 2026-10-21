@@ -6,7 +6,7 @@ Updated 21 October 2026. The supplied canonical pack, approved visual boards, na
 
 The lasting [Pages review](https://charlieomnipoint.github.io/LongBall/) is published and externally verified. Pages now serves source `c53841966c822f7a5172584370b6a557833398b4`, containing accepted product `e899e29` and its discovery-cache correction. Actual [external 390px entry](evidence/2026-10-21/full-publication/final-entry.json) passed at 20:21:22 UTC; [all four loaded connected roles](evidence/2026-10-21/full-publication/final-connected-roles.json) passed at 20:28:27 UTC on 21 October, with fresh API/source/CORS checks, no failed API responses, runtime errors or horizontal overflow. The role check made no service writes and left the default fixture unclaimed.
 
-The fictional API session expires at 01:24:02 UTC on 22 October; see the [review walkthrough](functional-review-walkthrough.md). The latest [native CI run](https://github.com/CharlieOmniPoint/LongBall/actions/runs/39669375022) has passed Android; iOS compilation is running. The earlier [source-bound native run](evidence/2026-10-21/full-publication/native-initial.json) passed both Android debug and unsigned iOS Simulator Debug for `d08666f`. No installation or physical execution is proved.
+The fictional API session expires at 01:24:02 UTC on 22 October; see the [review walkthrough](functional-review-walkthrough.md). The latest [native CI proof](evidence/2026-10-21/full-publication/native-final.json) passed Android arm64 Debug and unsigned x86_64 iOS Simulator Debug for exact published source `c538419`. The earlier [source-bound native run](evidence/2026-10-21/full-publication/native-initial.json) passed both Android debug and unsigned iOS Simulator Debug for `d08666f`. No installation or physical execution is proved.
 
 The full F01–F28 implementation and four Should features retain native iPhone/Android and the approved visuals/rules. Real operating providers, production policy/signing and deferred physical M0 remain separate gates.
 
@@ -73,7 +73,7 @@ Generic notifications are also integrated into event transactions and a durable 
 
 ## Must/Should completeness boundary
 
-The identified functional Must work and all four Should features are implemented, integrated and accepted for fictional review. The [latest summary](evidence/2026-10-21/review-discovery-followup.json) binds the product, tested inputs and artifacts. Pages entry and all four loaded connected roles passed external verification; the latest Android compile passed and iOS compilation is running.
+The identified functional Must work and all four Should features are implemented, integrated and accepted for fictional review. The [latest summary](evidence/2026-10-21/review-discovery-followup.json) binds the product, tested inputs and artifacts. Pages entry and all four loaded connected roles passed external verification; the latest Android arm64 Debug and unsigned x86_64 iOS Simulator Debug compilations both passed for published source `c538419`.
 
 Production identity/push/storage/monitoring/recovery arrangements, privacy/recovery/audience decisions and physical M0 remain separate gates. Hardware testing is deferred at the owner's request. Other-club creation remains future scope. No paid infrastructure, real child-data environment, policy approval or scope reduction is implied.
 
@@ -118,7 +118,7 @@ Review commands and local/remote access are maintained in `review.md`. Local bro
 
 ## Outstanding work and decisions
 
-- Record the latest iOS compilation outcome when it finishes; Pages entry, all four connected roles and latest Android compilation passed.
+- Native compilation passed for both platforms; signed distribution, installation and physical execution remain separate acceptance gates.
 - Keep physical iPhone/Android M0 deferred and unproved: encryption/key loss/backup exclusions, clock continuity/reboot, alerts/Focus/battery, native picker/share/system-browser and accessibility.
 - Q05/Q09/Q10 still require recovery/privacy/moderation/support/lifecycle authority, retention/deletion rules and operating ownership/budget. Request capture/status is not fulfilment.
 - Q06/Q07/Q08/Q15/Q18 and Q21 retain the recorded timing/controller/cutoff/exceptional-result and actual audience decisions. Fictional examples do not approve policy.
