@@ -15,7 +15,7 @@ import { useDocument } from '../useDocument';
 import { Button, Card, Notice, Pill } from '../ui/Button';
 import { colors, typography } from '../ui/tokens';
 import { ConnectedLiveEditor } from './ConnectedLiveEditor';
-import { PlannerPanel, usePlannerModel, type PlannerPersistence } from './PlannerPanel';
+import { PlannerPanel, usePlannerModel, type PlannerPersistence, type PlannerPolicyPort } from './PlannerPanel';
 import { HistoryReviewPanel } from './HistoryReviewPanel';
 
 export interface ConnectedControllerState {
@@ -345,7 +345,7 @@ function ConnectedRehearsal({ connection, journal, physicalDeviceId, matchId, co
   const clockActionReview = actionConfirmation && <View style={styles.stack}><Notice tone="warning">{actionConfirmation.label}</Notice><Button label="Confirm the actual event now" disabled={captureBusy || !editable} onPress={() => { const command = actionConfirmation.command; void record(command).then(saved => { if (saved) setActionConfirmation(null); }); }} /><Button label="Cancel review" variant="quiet" onPress={() => setActionConfirmation(null)} /></View>;
   const sharedEditor = localMatch && sharedEditorAvailable && <>
     <ConnectedLiveEditor mode={fictionalEditor ? 'fictional-review' : 'native'} match={localMatch} clock={clock} busy={captureBusy} onCommand={record} journal={journal} eligible={editable} teamLabel={localMatch.config.fixture?.teamName} onReviewClockAction={reviewClockAction} clockActionReview={clockActionReview} reviewDraft={reviewDraft} onReviewDraftConsumed={() => setReviewDraft(null)} />
-    <ConnectedPlanner match={localMatch} sample={sample} clock={clock} eligible={editable} persistence={{ journal, deviceId: physicalDeviceId, binding: { kind: 'connected', mode: connection.mode, controllerScope: connection.scope } }} onRetainedChange={setPlannerRetained} onReviewLineup={(lineup, sourceRevision) => {
+    <ConnectedPlanner policy={{ commit: record, busy: document.busy, retryPending: document.retryPending, conflict: Boolean(document.conflict), retry: document.retry, reload: document.reload, acceptedRevision: current.acceptedRevision }} match={localMatch} sample={sample} clock={clock} eligible={editable} persistence={{ journal, deviceId: physicalDeviceId, binding: { kind: 'connected', mode: connection.mode, controllerScope: connection.scope } }} onRetainedChange={setPlannerRetained} onReviewLineup={(lineup, sourceRevision) => {
       if (!editable || sourceRevision !== localMatch.revision) { setNetworkError('The match or controller changed. Replan before opening this suggested lineup.'); return; }
       setReviewDraft({ matchId: localMatch.config.matchId, sourceRevision, lineup: lineup.map(item => ({ ...item })) });
     }} />
@@ -475,8 +475,8 @@ function ConnectedRehearsal({ connection, journal, physicalDeviceId, matchId, co
   </View>;
 }
 
-function ConnectedPlanner({ match, sample, clock, eligible, persistence, onRetainedChange, onReviewLineup }: { match: MatchState; sample: ClockSample; clock: ReturnType<typeof connectedClock>; eligible: boolean; persistence: PlannerPersistence; onRetainedChange: (retained: boolean) => void; onReviewLineup: (lineup: Allocation[], sourceRevision: number) => void }) {
-  const model = usePlannerModel(match, sample, clock, { hasControl: eligible, alertOwner: `connected-planner-${match.config.matchId}`, persistence, onRetainedChange });
+function ConnectedPlanner({ match, sample, clock, eligible, persistence, policy, onRetainedChange, onReviewLineup }: { match: MatchState; sample: ClockSample; clock: ReturnType<typeof connectedClock>; eligible: boolean; persistence: PlannerPersistence; policy: PlannerPolicyPort; onRetainedChange: (retained: boolean) => void; onReviewLineup: (lineup: Allocation[], sourceRevision: number) => void }) {
+  const model = usePlannerModel(match, sample, clock, { hasControl: eligible, alertOwner: `connected-planner-${match.config.matchId}`, persistence, onRetainedChange, policy });
   return <View style={styles.stack}>
     {!eligible && <Notice>Planning and reminders require the current confirmed controller and an authoritative downloaded checkpoint. Pending or quarantined records stay retained.</Notice>}
     <PlannerPanel model={model} onReviewLineup={onReviewLineup} />

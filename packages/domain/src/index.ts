@@ -7,6 +7,7 @@ import { cloneValue, effectiveTime, goalRecord, scoresFromGoals } from './live-e
 import { reprojectParticipation } from './participation-corrections';
 import { applyPolicyChange, assertInitialLineupProposal, assertMatchPolicyProposal, currentFixedKeeper, updatePolicyPositionMode } from './policy';
 export type * from './types';
+export { currentFixedKeeper, assertMatchPolicyProposal } from './policy';
 
 export const ENGINE_VERSION = 'synthetic-live-4';
 

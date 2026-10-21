@@ -1,15 +1,27 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
-import { playerMinutes, readClock as deriveClock, rationalToNumber, type Allocation, type ClockReading, type ClockSample, type MatchState } from '@longball/domain';
-import { planMatch, updatePlanAlerts, type FutureSegment, type PastTargetSegment, type PlanAlertState, type PlannerInput, type PlannerResult, type PlannerSettings } from '@longball/domain/planner';
-import { assertConfirmedPlannerSettings, assertPlannerPreferences, authorizePlannerPreferences, confirmPlannerPreferences, createPlannerPreferences, plannerPreferenceDocumentId, plannerPreferencesAtDecision, plannerPreferenceScope, resetPlannerPositionMode, type ConfirmedPlannerSettings, type PlannerPreferenceBinding, type PlannerPreferences, type PlannerPreferenceScope } from '../platform/planner-preferences';
+import { rationalToNumber, type Allocation, type ClockReading, type ClockSample, type MatchState } from '@longball/domain';
+import { planMatch, updatePlanAlerts, type PlanAlertState, type PlannerResult } from '@longball/domain/planner';
+import { assertConfirmedPlannerSettings, assertPlannerPreferences, authorizePlannerPreferences, createPlannerPreferences, plannerPreferenceDocumentId, plannerPreferenceScope, type PlannerPreferenceBinding, type PlannerPreferences, type PlannerPreferenceScope } from '../platform/planner-preferences';
+import { makePolicyChangeCommand, matchPlannerSettings, type PolicyChangeCommand, type ConfirmedMatchPlannerSettings } from '@longball/application/match-policy';
+import { plannerInputFromMatch } from '@longball/application/match-planner';
 import type { Journal } from '../platform/types';
 import { useDocument } from '../useDocument';
 import { getAlertCapability, replaceLocalWarnings, requestAlertPermission } from '../platform/alerts';
 import { Button, Card, Notice, Pill } from '../ui/Button';
 import { colors, typography } from '../ui/tokens';
 
-export type { ConfirmedPlannerSettings } from '../platform/planner-preferences';
+export type ConfirmedPlannerSettings = ConfirmedMatchPlannerSettings;
+
+export interface PlannerPolicyPort {
+  commit: (command: PolicyChangeCommand) => Promise<boolean>;
+  busy?: boolean;
+  retryPending?: boolean;
+  conflict?: boolean;
+  retry?: () => Promise<boolean>;
+  reload?: () => void;
+  acceptedRevision?: number;
+}
 
 export interface PlannerPersistence {
   journal: Journal | null;
@@ -54,65 +66,24 @@ function usePlannerPreferences(matchId: string | undefined, persistence: Planner
   return { ...document, ready: Boolean(permitted && document.state), permissionError: error, storageAvailable: Boolean(journal && scope) };
 }
 
-/** Builds a projection from frozen game snapshots; no availability or recorded time is invented. */
-export function plannerInputFromMatch(match: MatchState, sample: ClockSample, accepted: ConfirmedPlannerSettings, planVersion: number, mode: 'normal' | 'adventurous'): PlannerInput {
-  const clock = deriveClock(match, sample);
-  if (clock.recoveryRequired) throw new Error('Time needs checking before planning.');
-  const snapshots = match.config.profileSnapshot;
-  if (!snapshots?.length || !match.config.slots?.length) throw new Error('Review and save the formation and player eligibility in Preparation before planning.');
-  const players = match.config.players.filter(player => match.config.selectedPlayerIds.includes(player.id)).map(player => {
-    const profile = snapshots.find(item => item.playerId === player.id);
-    if (!profile) throw new Error(`Saved eligibility is missing for ${player.displayName}; review Preparation.`);
-    const rank = profile.preferences.indexOf('GK');
-    return { id: player.id, goalkeeperChoice: rank === 0 || rank === 1 ? rank + 1 : 0, eligiblePositions: [...profile.eligiblePositions], preferences: [...profile.preferences] };
-  });
-  const keeperIdsFor = (availableIds: string[]) => players.filter(player => availableIds.includes(player.id) && (player.goalkeeperChoice === 1 || player.goalkeeperChoice === 2) && player.eligiblePositions.includes('GK')).map(player => player.id);
-  const present = match.config.selectedPlayerIds.filter(id => match.attendance[id] === 'present' && match.availability[id]);
-  const fixed = match.config.fixedKeeperId;
-  const keepers = keeperIdsFor(present);
-  const goalkeeperPolicy: FutureSegment['goalkeeperPolicy'] = fixed ? { kind: 'fixed', playerId: fixed } : { kind: 'shared', eligibleKeeperIds: keepers };
-  const history: PastTargetSegment[] = match.targetIntervals.map(interval => ({ ...interval, availablePlayerIds: [...interval.availablePlayerIds], keeperIds: interval.fixedKeeperId ? [interval.fixedKeeperId] : keeperIdsFor(interval.availablePlayerIds) }));
-  const checkpointGap = clock.matchActiveMs - match.matchActiveMs;
-  if (checkpointGap > 0) history.push({ durationMs: checkpointGap, availablePlayerIds: present, fixedKeeperId: fixed && present.includes(fixed) ? fixed : null, pitchPlaces: match.config.pitchPlaces, keeperIds: fixed && present.includes(fixed) ? [fixed] : keeperIdsFor(present) });
-  const actual = Object.fromEntries(playerMinutes(match, sample).map(player => [player.playerId, { playingMs: player.playingMs, goalkeeperMs: player.positionMs.GK ?? 0 }]));
-  const halfMs = match.config.plannedHalfDurationMs;
-  const now = clock.matchActiveMs;
-  const segments: FutureSegment[] = [];
-  const append = (startMs: number, endMs: number, half: 1 | 2, halfStartMs: number) => {
-    if (endMs > startMs) segments.push({ startMs, endMs, half, halfStartMs, plannedHalfMs: halfMs, availablePlayerIds: present, goalkeeperPolicy, availabilityBasis: 'confirmed', underStrengthApproval: null });
-  };
-  if (match.status === 'preparation') { append(0, halfMs, 1, 0); append(halfMs, halfMs * 2, 2, halfMs); }
-  else if (match.status === 'half_time') append(now, now + halfMs, 2, now);
-  else if (match.half === 1 && (match.status === 'first_half_running' || match.status === 'first_half_paused')) {
-    const secondStart = now + Math.max(0, halfMs - clock.halfActiveMs);
-    append(now, secondStart, 1, 0); append(secondStart, secondStart + halfMs, 2, secondStart);
-  } else if (match.half === 2 && (match.status === 'second_half_running' || match.status === 'second_half_paused')) append(now, now + Math.max(0, halfMs - clock.halfActiveMs), 2, match.firstHalfDurationMs ?? now - clock.halfActiveMs);
-  const currentLineup = match.status === 'preparation' || match.status === 'half_time' ? match.stagedLineup : match.lineup;
-  const spells: Record<string, number> = {};
-  for (const allocation of currentLineup) {
-    let boundary = match.matchActiveMs;
-    const intervals = match.intervals.filter(interval => interval.playerId === allocation.playerId).sort((left, right) => right.endMs - left.endMs);
-    for (const interval of intervals) { if (interval.endMs !== boundary || interval.state !== 'playing') break; boundary = interval.startMs; }
-    spells[allocation.playerId] = match.status === 'preparation' ? 0 : match.lineup.some(item => item.playerId === allocation.playerId) ? boundary : now;
-  }
-  const settings: PlannerSettings = {
-    policyStatus: 'synthetic_experiment', preferredMinSpellMs: 300_000, preferredBufferFraction: 0.15, preferredBatchSize: accepted.batchPreference,
-    hardMinSpellMs: null, hardBufferFraction: null, hardBatchCap: null, hardSubstitutionGridMs: null,
-    normalPositionCosts: [0, 1, 4, 8], adventurousPositionCosts: [1, 0, 0.5, 8], positionMode: mode, maxWork: 500_000,
-  };
-  return { planId: `${match.config.matchId}-suggestion`, planVersion, sourceRevision: match.revision, seed: `${match.config.matchId}-rotation`, nowMs: now, players, slots: match.config.slots.map(slot => ({ slotId: slot.slotId, position: slot.position })), currentLineup: currentLineup.map(item => ({ ...item })), currentSpellStartedMs: spells, actual, pastTargetSegments: history, futureSegments: segments, locks: [], settings };
-}
+export { plannerInputFromMatch } from '@longball/application/match-planner';
 
-export function usePlannerModel(match: MatchState | null, sample: ClockSample, clock: ClockReading | null, context: { hasControl?: boolean; alertOwner?: string; persistence?: PlannerPersistence; onRetainedChange?: (retained: boolean) => void } = {}) {
+export function usePlannerModel(match: MatchState | null, sample: ClockSample, clock: ClockReading | null, context: { hasControl?: boolean; alertOwner?: string; persistence?: PlannerPersistence; onRetainedChange?: (retained: boolean) => void; policy?: PlannerPolicyPort } = {}) {
   const [batchPreference, setBatchPreference] = useState(2);
   const [threshold, setThreshold] = useState('4');
+  const [stintMinutes, setStintMinutes] = useState('5');
+  const [bufferPercent, setBufferPercent] = useState('15');
   const [returnToNormal, setReturnToNormal] = useState<boolean | null>(null);
   const preferences = usePlannerPreferences(match?.config.matchId, context.persistence);
-  const changePreferences = preferences.change;
-  const preferencesReady = preferences.ready;
+  const preferencesReady = preferences.ready && Boolean(context.policy);
   const preferenceRecord = preferences.state;
-  const confirmed = preferenceRecord?.settings ?? null;
-  const confirmedFor = preferenceRecord?.scope.matchId ?? null;
+  const confirmed = useMemo(() => match ? matchPlannerSettings(match) : null, [match]);
+  const confirmedFor = match?.activePolicy ? match.config.matchId : null;
+  const proposed = match?.config.initialPolicyProposal?.payload;
+  const legacyDraft = preferenceRecord?.settings;
+  const [reason, setReason] = useState('');
+  const [policySaving, setPolicySaving] = useState(false);
+  const commitPolicy = context.policy?.commit;
   const [settingsError, setSettingsError] = useState<string | null>(null);
   const [result, setResult] = useState<PlannerResult | null>(null);
   const [planningError, setPlanningError] = useState<string | null>(null);
@@ -132,46 +103,40 @@ export function usePlannerModel(match: MatchState | null, sample: ClockSample, c
   const previousStatus = useRef(match?.status);
 
   useEffect(() => { sampleRef.current = sample; clockRef.current = clock; }, [sample, clock]);
-  const preferencesRetained = preferences.busy || preferences.retryPending || preferences.conflict;
+  const preferencesRetained = preferences.busy || preferences.retryPending || preferences.conflict || policySaving || Boolean(context.policy?.busy || context.policy?.retryPending || context.policy?.conflict);
   const onRetainedChange = context.onRetainedChange;
   useEffect(() => { onRetainedChange?.(preferencesRetained); }, [onRetainedChange, preferencesRetained]);
   useEffect(() => {
     let active = true;
     void Promise.resolve().then(() => {
       if (!active) return;
-      setBatchPreference(confirmed?.batchPreference ?? 2);
-      setThreshold(String(confirmed?.leadThreshold ?? 4));
-      setReturnToNormal(confirmed?.returnToNormal ?? null);
+      setBatchPreference(confirmed?.batchPreference ?? proposed?.batchLimit ?? legacyDraft?.batchPreference ?? 2);
+      setThreshold(String(confirmed?.leadThreshold ?? proposed?.scoreLeadThreshold ?? legacyDraft?.leadThreshold ?? 4));
+      setReturnToNormal(confirmed?.returnToNormal ?? proposed?.returnToNormalEnabled ?? legacyDraft?.returnToNormal ?? null);
+      setStintMinutes(String((confirmed?.minimumStintMs ?? proposed?.minimumStintMs ?? 300_000) / 60_000));
+      setBufferPercent(String((confirmed?.halfBufferFraction ?? match?.config.initialPolicyProposal?.softPreferences.halfBufferFraction ?? 0.15) * 100));
       setSettingsError(null);
     });
     return () => { active = false; };
-  }, [confirmedFor, confirmed?.batchPreference, confirmed?.leadThreshold, confirmed?.returnToNormal]);
+  }, [confirmedFor, match?.config.matchId, confirmed?.batchPreference, confirmed?.leadThreshold, confirmed?.returnToNormal, proposed?.batchLimit, proposed?.scoreLeadThreshold, proposed?.returnToNormalEnabled, legacyDraft?.batchPreference, legacyDraft?.leadThreshold, legacyDraft?.returnToNormal, confirmed?.minimumStintMs, confirmed?.halfBufferFraction, proposed?.minimumStintMs, match?.config.initialPolicyProposal?.softPreferences.halfBufferFraction]);
   useEffect(() => { let active = true; void getAlertCapability().then(value => { if (active) setAlertCapability(value); }).catch(error => { if (active) setAlertError(error instanceof Error ? error.message : 'Notification capability could not be checked.'); }); return () => { active = false; }; }, []);
 
   useEffect(() => {
     let active = true;
     void Promise.resolve().then(async () => {
       if (!active) return;
-      if (!match || !confirmed || !preferenceRecord || confirmedFor !== match.config.matchId || !hasControl || preferencesRetained || clockRef.current?.recoveryRequired || match.status === 'completed' || match.status === 'abandoned') { setResult(null); setPlanning(false); return; }
+      if (!match || !confirmed || confirmedFor !== match.config.matchId || !hasControl || preferencesRetained || clockRef.current?.recoveryRequired || match.status === 'completed' || match.status === 'abandoned') { setResult(null); setPlanning(false); return; }
       setPlanning(true);
       setPlanningError(null);
       try {
-        const decision = { matchId: match.config.matchId, revision: match.revision, ourScore: match.score.for, oppositionScore: match.score.against };
-        const selected = plannerPreferencesAtDecision(preferenceRecord, decision);
-        if (selected.positionMode !== preferenceRecord.positionMode) {
-          setResult(null);
-          const saved = await changePreferences(value => plannerPreferencesAtDecision(value, decision), 'planner.position_mode.changed');
-          if (!saved && active) { setPlanning(false); setPlanningError('Position mode was not saved. Retry the local save before using a new suggestion.'); }
-          return;
-        }
-        const input = plannerInputFromMatch(match, sampleRef.current, confirmed, ++planVersion.current, preferenceRecord.positionMode);
+        const input = plannerInputFromMatch(match, sampleRef.current, confirmed, ++planVersion.current, match.activePolicy?.positionMode ?? 'normal');
         const planned = planMatch(input);
         if (active) { setResult(planned); setPlanning(false); }
       } catch (error) { if (active) { setResult(null); setPlanning(false); setPlanningError(error instanceof Error ? error.message : 'Planning could not be completed.'); } }
     });
     return () => { active = false; };
     // sample/clock render ticks are deliberately read from refs; they never run the solver.
-  }, [match, confirmed, confirmedFor, preferenceRecord, changePreferences, preferencesRetained, requestVersion, hasControl]);
+  }, [match, confirmed, confirmedFor, preferencesRetained, requestVersion, hasControl]);
 
   const currentMatchId = match?.config.matchId;
   const currentResult = result?.planId === `${currentMatchId}-suggestion` ? result : null;
@@ -204,25 +169,34 @@ export function usePlannerModel(match: MatchState | null, sample: ClockSample, c
 
   const confirmSettings = useCallback(async () => {
     const leadThreshold = Number(threshold);
-    if (!currentMatchId || !preferencesReady || !hasControl) { setSettingsError('Open this match with the available controller and journal before confirming settings.'); return false; }
+    if (!match || !preferencesReady || !hasControl || !commitPolicy || policySaving) { setSettingsError('Open this match with the available controller and journal before confirming settings.'); return false; }
     try {
-      const proposed = { batchPreference, leadThreshold, returnToNormal };
-      assertConfirmedPlannerSettings(proposed);
-      setSettingsError(null);
-      return await changePreferences(value => confirmPlannerPreferences(value, proposed), 'planner.settings.confirmed');
+      if (!stintMinutes.trim() || !bufferPercent.trim()) throw new Error('Choose explicit preferred spell and half-buffer values before confirming.');
+      const settings = { batchPreference, leadThreshold, returnToNormal, minimumStintMs: Number(stintMinutes) * 60_000, halfBufferFraction: Number(bufferPercent) / 100 };
+      assertConfirmedPlannerSettings(settings);
+      const command = makePolicyChangeCommand(match, sampleRef.current, settings, reason);
+      setSettingsError(null); setPolicySaving(true);
+      const saved = await commitPolicy(command);
+      if (saved) setReason('');
+      return saved;
     } catch (error) { setSettingsError(error instanceof Error ? error.message : 'Planner settings are invalid.'); return false; }
-  }, [threshold, batchPreference, returnToNormal, currentMatchId, preferencesReady, changePreferences, hasControl]);
+    finally { setPolicySaving(false); }
+  }, [threshold, batchPreference, returnToNormal, match, preferencesReady, hasControl, commitPolicy, policySaving, reason, stintMinutes, bufferPercent]);
   const resetPositionMode = useCallback(async () => {
-    if (!match || !confirmed || !preferencesReady || !hasControl) return false;
-    return changePreferences(value => resetPlannerPositionMode(value, match.revision), 'planner.position_mode.manually_reset');
-  }, [match, confirmed, preferencesReady, changePreferences, hasControl]);
+    if (!match || !confirmed || !preferencesReady || !hasControl || !commitPolicy || policySaving) return false;
+    try {
+      setSettingsError(null); setPolicySaving(true);
+      return await commitPolicy(makePolicyChangeCommand(match, sampleRef.current, confirmed, 'Manager explicitly reset future position suggestions to normal.', true));
+    } catch(error) { setSettingsError(error instanceof Error ? error.message : 'The position-mode reset was not saved.'); return false; }
+    finally { setPolicySaving(false); }
+  }, [match, confirmed, preferencesReady, hasControl, commitPolicy, policySaving]);
   const requestNotifications = useCallback(async () => {
     try { setAlertCapability(await requestAlertPermission()); setAlertError(null); setPermissionVersion(value => value + 1); }
     catch (error) { setAlertError(error instanceof Error ? error.message : 'Permission request failed. Keep the visual console open.'); }
   }, []);
   const nextChange = currentResult?.status === 'feasible' && currentResult.sourceRevision === revision ? currentResult.nextChange : null;
   const awaitingHalfTime = Boolean(nextChange?.half === 2 && currentHalf === 1 && matchStatus !== 'half_time');
-  return { match, awaitingHalfTime, batchPreference, setBatchPreference, threshold, setThreshold, returnToNormal, setReturnToNormal, confirmed: currentConfirmed, confirmSettings, settingsError: settingsError ?? preferences.permissionError, preferencesReady: preferences.ready, preferencesSaving: preferences.busy, preferencesRetained, preferencesConflict: preferences.conflict, retryPreferences: preferences.retry, reloadPreferences: preferences.reload, storageAvailable: preferences.storageAvailable, positionMode: preferenceRecord?.positionMode ?? 'normal', resetPositionMode, result: currentResult, planningError, planning, replan: () => setRequestVersion(value => value + 1), nextChange, dueInMs: nextChange ? nextChange.dueMatchActiveMs - (clock?.matchActiveMs ?? 0) : null, alertCapability, alertError, lastWarning, requestNotifications, hasControl, setHasControl, timeCertain: !recoveryRequired };
+  return { match, awaitingHalfTime, batchPreference, setBatchPreference, threshold, setThreshold, returnToNormal, setReturnToNormal, confirmed: currentConfirmed, confirmSettings, settingsError: settingsError ?? preferences.permissionError, preferencesReady, preferencesSaving: preferences.busy || policySaving || Boolean(context.policy?.busy), preferencesRetained, preferencesConflict: preferences.conflict || Boolean(context.policy?.conflict), retryPreferences: context.policy?.retryPending && context.policy.retry ? context.policy.retry : preferences.retry, reloadPreferences: context.policy?.conflict && context.policy.reload ? context.policy.reload : preferences.reload, storageAvailable: preferences.storageAvailable, positionMode: match?.activePolicy?.positionMode ?? 'normal', reason, setReason, stintMinutes, setStintMinutes, bufferPercent, setBufferPercent, policyVersion: match?.activePolicy?.policyVersion ?? null, policyAcknowledged: match?.activePolicy && context.policy?.acceptedRevision !== undefined ? context.policy.acceptedRevision >= match.activePolicy.revision : null, legacySettingsRetained: !match?.activePolicy && Boolean(preferenceRecord?.settings), resetPositionMode, result: currentResult, planningError, planning, replan: () => setRequestVersion(value => value + 1), nextChange, dueInMs: nextChange ? nextChange.dueMatchActiveMs - (clock?.matchActiveMs ?? 0) : null, alertCapability, alertError, lastWarning, requestNotifications, hasControl, setHasControl, timeCertain: !recoveryRequired };
 }
 export type PlannerModel = ReturnType<typeof usePlannerModel>;
 
@@ -239,7 +213,11 @@ export function PlannerPanel({ model, onReviewLineup }: { model: PlannerModel; o
       {model.preferencesRetained && !model.preferencesSaving && !model.preferencesConflict && <Button label="Retry planner settings save" disabled={!model.hasControl} onPress={() => { void model.retryPreferences(); }} />}
       {model.preferencesConflict && <Button label="Reload saved planner settings; retain conflict" onPress={model.reloadPreferences} />}
       {!model.confirmed || editing ? <View style={styles.stack}>
-        <Notice tone="info">Roma’s five-minute playing spells and 15% half buffers are flexible preferences. Choose and confirm the other settings before planning.</Notice>
+        <Notice tone="info">Roma’s suggested starting values are five-minute playing spells and 15% half buffers. Review the flexible preferences below; they never become a hard grid or constraint.</Notice>
+        <Text style={typography.label}>Preferred continuous playing spell · minutes</Text>
+        <TextInput accessibilityLabel="Preferred continuous spell minutes" keyboardType="decimal-pad" editable={!model.preferencesRetained} value={model.stintMinutes} onChangeText={model.setStintMinutes} style={styles.input} />
+        <Text style={typography.label}>Avoid routine changes at each half’s start/end · percent</Text>
+        <TextInput accessibilityLabel="Preferred half buffer percent" keyboardType="decimal-pad" editable={!model.preferencesRetained} value={model.bufferPercent} onChangeText={model.setBufferPercent} style={styles.input} />
         <Text style={typography.label}>Preferred batch size · proposed starting value 2</Text>
         <View style={styles.row}>
           <Button label="−" variant="secondary" disabled={model.preferencesRetained || model.batchPreference <= 1} onPress={() => model.setBatchPreference(Math.max(1, model.batchPreference - 1))} />
@@ -254,11 +232,15 @@ export function PlannerPanel({ model, onReviewLineup }: { model: PlannerModel; o
           <Button label={model.returnToNormal === true ? 'Yes · selected' : 'Yes'} disabled={model.preferencesRetained} variant={model.returnToNormal === true ? 'primary' : 'secondary'} onPress={() => model.setReturnToNormal(true)} />
           <Button label={model.returnToNormal === false ? 'No · selected' : 'No'} disabled={model.preferencesRetained} variant={model.returnToNormal === false ? 'primary' : 'secondary'} onPress={() => model.setReturnToNormal(false)} />
         </View>
-        <Text style={typography.muted}>Position weights and Q07 availability/keeper transitions are labelled synthetic experiments. Confirming these review settings does not approve unresolved product policy.</Text>
+        <Text style={typography.muted}>Position weights and Q07 target calculations remain synthetic experiments. Keeper-policy transitions remain unapproved and are refused; confirming these soft preferences cannot approve them.</Text>
+        {model.legacySettingsRetained && <Notice>Earlier device-only settings were retained as a review draft. They are not yet part of this match’s accepted policy history.</Notice>}
+        <Text style={typography.label}>Reason for these future settings</Text>
+        <TextInput accessibilityLabel="Match policy change reason" value={model.reason} onChangeText={model.setReason} editable={!model.preferencesRetained} multiline maxLength={500} style={styles.input} />
         {model.settingsError && <Notice tone="error">{model.settingsError}</Notice>}
         <Button label={model.preferencesSaving ? 'Saving settings…' : 'Confirm settings and plan'} testID="planner-settings-confirm" disabled={!model.preferencesReady || !model.hasControl || model.preferencesRetained} onPress={() => { void model.confirmSettings().then(saved => { if (saved) setEditing(false); }); }} />
       </View> : <View style={styles.stack}>
-        <Text style={typography.muted} testID="planner-settings-saved">Preferred batch {model.confirmed.batchPreference} · lead {model.confirmed.leadThreshold} · return to normal {model.confirmed.returnToNormal ? 'on' : 'off'}. Saved for this match on this device.</Text>
+        <Text style={typography.muted} testID="planner-settings-saved">Preferred batch {model.confirmed.batchPreference} · lead {model.confirmed.leadThreshold} · return to normal {model.confirmed.returnToNormal ? 'on' : 'off'}. Preferred spell {model.confirmed.minimumStintMs / 60_000} min · half buffer {model.confirmed.halfBufferFraction * 100}%. Saved as match policy version {model.policyVersion}.</Text>
+        <Text style={typography.muted}>{model.policyAcknowledged === true ? 'Acknowledged by the service; policy history follows controller handover.' : model.policyAcknowledged === false ? 'Saved on this device; service acknowledgement is still pending.' : 'Saved in this device’s durable match event history.'}</Text>
         <Text style={typography.muted} testID="planner-position-mode">Position mode: {model.positionMode}. The saved match mode survives closing this panel.</Text>
         {model.settingsError && <Notice tone="error">{model.settingsError}</Notice>}
         <Button label="Review settings" variant="quiet" disabled={model.preferencesRetained} onPress={() => setEditing(true)} />

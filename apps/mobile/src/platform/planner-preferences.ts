@@ -22,7 +22,7 @@ export interface PlannerPreferenceScope {
   controllerCacheId: string | null;
 }
 
-/** Separate local projection: never a canonical match command or a service acknowledgement. */
+/** Retained legacy device projection. Values require explicit EV05 confirmation; they are not accepted match policy. */
 export interface PlannerPreferences {
   kind: 'longball-planner-preferences';
   schemaVersion: 1;

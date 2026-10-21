@@ -1,0 +1,53 @@
+{
+  "status": "passed",
+  "checkedAt": "2026-10-21T17:52:52.263Z",
+  "baseURL": "http://127.0.0.1:4390",
+  "checks": [
+    "Reason and explicit three-minute/ten-percent soft settings become canonical match policy version1 only after the real journal commit.",
+    "Actual fictional score changes enter adventurous mode and retain it when the lead falls with return-to-normal off.",
+    "Confirmed settings and sticky adventurous mode survive panel closure and a complete page reload.",
+    "Editing paused future preferences appends version2 with a new reason, preserves exact earlier intervals/targets/policy, and survives reopening.",
+    "An explicit manual reset is committed and remains normal after reload of the same match checkpoint."
+  ],
+  "browserErrors": [],
+  "policyVersions": [
+    {
+      "version": 1,
+      "sourceRevision": 11,
+      "reason": "Reviewed three-minute spells and ten-percent soft half buffers.",
+      "effective": {
+        "half": 1,
+        "halfElapsedMs": 1934,
+        "matchElapsedMs": 1934
+      },
+      "minimumStintMs": 180000,
+      "halfBufferFraction": 0.1
+    },
+    {
+      "version": 2,
+      "sourceRevision": 15,
+      "reason": "Explicit future review prefers seven-minute spells and twenty-percent half buffers.",
+      "effective": {
+        "half": 1,
+        "halfElapsedMs": 10589,
+        "matchElapsedMs": 10589
+      },
+      "minimumStintMs": 420000,
+      "halfBufferFraction": 0.2
+    },
+    {
+      "version": 3,
+      "sourceRevision": 16,
+      "reason": "Manager explicitly reset future position suggestions to normal.",
+      "effective": {
+        "half": 1,
+        "halfElapsedMs": 10589,
+        "matchElapsedMs": 10589
+      },
+      "minimumStintMs": 420000,
+      "halfBufferFraction": 0.2
+    }
+  ],
+  "method": "Real fictional UI controls and browser journal; no domain state injection.",
+  "nativeDeviceEvidence": false
+}

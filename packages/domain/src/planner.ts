@@ -61,6 +61,7 @@ export interface PlannerInput {
   futureSegments: FutureSegment[];
   locks: PlannerLock[];
   settings: PlannerSettings;
+  policyReference?: { policyVersion: number; eventId: string; revision: number; reason: string };
 }
 export interface ScheduledLineup {
   startMs: number;
@@ -100,6 +101,7 @@ export interface PlannerResult {
   planId: string;
   planVersion: number;
   sourceRevision: number;
+  policyReference?: PlannerInput['policyReference'];
   engineVersion: string;
   seed: string;
   schedule: ScheduledLineup[];
@@ -546,7 +548,7 @@ export function planMatch(input: PlannerInput): PlannerResult {
     'Projection assumes the supplied future availability; expected arrivals still require actual manager confirmation.',
     'Every proposed lineup/substitution requires manager confirmation; actual recorded history is unchanged.',
   ];
-  const base = (): PlannerResult => ({ status: 'indeterminate', planId: input.planId, planVersion: input.planVersion, sourceRevision: input.sourceRevision, engineVersion: PLANNER_VERSION, seed: input.seed, schedule: [], nextChange: null, players: [], proof: null, explanations: [], assumptions, diagnostics: { work: budget.used, budgetExhausted: false, strategiesTried: 0, fairBands: false, equalKeeperDuties: false } });
+  const base = (): PlannerResult => ({ status: 'indeterminate', planId: input.planId, planVersion: input.planVersion, sourceRevision: input.sourceRevision, ...(input.policyReference ? { policyReference: { ...input.policyReference } } : {}), engineVersion: PLANNER_VERSION, seed: input.seed, schedule: [], nextChange: null, players: [], proof: null, explanations: [], assumptions, diagnostics: { work: budget.used, budgetExhausted: false, strategiesTried: 0, fairBands: false, equalKeeperDuties: false } });
   const invalid = validateInput(input);
   if (invalid) return { ...base(), status: invalid.kind === 'invalid_input' ? 'indeterminate' : 'infeasible', proof: invalid.kind === 'invalid_input' ? null : invalid, explanations: [invalid.detail] };
   let strategiesTried = 0;

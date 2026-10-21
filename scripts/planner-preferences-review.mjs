@@ -6,7 +6,7 @@ import { chromium } from 'playwright';
 import { enterFictionalReview } from './review-entry.mjs';
 
 const baseURL = process.env.LONGBALL_REVIEW_BASE_URL ?? 'http://127.0.0.1:4173';
-const output = path.resolve('.local/planner-preferences-review');
+const output = path.resolve(process.env.LONGBALL_REVIEW_OUTPUT ?? '.local/planner-preferences-review');
 await mkdir(output, { recursive: true });
 const browser = await chromium.launch({ executablePath: process.env.LONGBALL_CHROMIUM_PATH ?? (existsSync('/usr/bin/chromium') ? '/usr/bin/chromium' : undefined), headless: true, args: ['--no-sandbox'] });
 const page = await browser.newPage({ viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' });
@@ -17,6 +17,23 @@ const button = name => page.getByRole('button', { name, exact: true }).click();
 const assertMode = async mode => {
   await page.getByTestId('planner-position-mode').filter({ hasText: `Position mode: ${mode}.` }).waitFor();
 };
+async function readMatch() {
+  return page.evaluate(() => new Promise((resolve, reject) => {
+    const opened = indexedDB.open('longball-synthetic-m0', 1);
+    opened.onerror = () => reject(opened.error);
+    opened.onsuccess = () => {
+      const db = opened.result;
+      const transaction = db.transaction('journal', 'readonly');
+      const request = transaction.objectStore('journal').get('record');
+      request.onerror = () => { db.close(); reject(request.error); };
+      request.onsuccess = () => {
+        const record = request.result;
+        const match = Object.values(record.projections).find(value => value?.config?.matchId && value.activePolicy);
+        db.close(); resolve(match);
+      };
+    };
+  }));
+}
 async function reopenPlanner() {
   await page.reload({ waitUntil: 'networkidle' });
   await enterFictionalReview(page);
@@ -36,11 +53,20 @@ try {
   assert.equal(await page.getByTestId('planner-settings-saved').count(), 0, 'Proposed settings must not count as confirmed.');
   await page.getByLabel('Score lead threshold', { exact: true }).fill('1');
   await button('No');
+  await page.getByLabel('Preferred continuous spell minutes', { exact: true }).fill('3');
+  await page.getByLabel('Preferred half buffer percent', { exact: true }).fill('10');
+  await page.getByLabel('Match policy change reason', { exact: true }).fill('Reviewed three-minute spells and ten-percent soft half buffers.');
   await page.getByTestId('planner-settings-confirm').click();
   const saved = page.getByTestId('planner-settings-saved');
   await saved.waitFor();
   assert.match(await saved.innerText(), /lead 1 · return to normal off/);
-  checks.push('Explicit settings become confirmed only after the real browser journal save.');
+  assert.match(await saved.innerText(), /Preferred spell 3 min · half buffer 10%/);
+  assert.match(await saved.innerText(), /match policy version 1/);
+  const initialPolicy = await readMatch();
+  assert.equal(initialPolicy.policyHistory[0].reason, 'Reviewed three-minute spells and ten-percent soft half buffers.');
+  assert.equal(initialPolicy.policyHistory[0].payload.minimumStintMs, 180000);
+  assert.equal(initialPolicy.policyHistory[0].softPreferences.halfBufferFraction, 0.1);
+  checks.push('Reason and explicit three-minute/ten-percent soft settings become canonical match policy version1 only after the real journal commit.');
   await button('Back to match');
   await page.getByTestId('open-goal').click();
   await button('Open play');
@@ -62,16 +88,40 @@ try {
   await reopenPlanner();
   assert.match(await saved.innerText(), /lead 1 · return to normal off/);
   await assertMode('adventurous');
+  assert.match(await saved.innerText(), /Preferred spell 3 min · half buffer 10%/);
   checks.push('Confirmed settings and sticky adventurous mode survive panel closure and a complete page reload.');
+  const pausedBefore = await readMatch();
+  await button('Review settings');
+  await page.getByLabel('Preferred continuous spell minutes', { exact: true }).fill('7');
+  await page.getByLabel('Preferred half buffer percent', { exact: true }).fill('20');
+  await page.getByLabel('Match policy change reason', { exact: true }).fill('Explicit future review prefers seven-minute spells and twenty-percent half buffers.');
+  await page.getByTestId('planner-settings-confirm').click();
+  await saved.filter({ hasText: 'match policy version 2' }).waitFor();
+  assert.match(await saved.innerText(), /Preferred spell 7 min · half buffer 20%/);
+  const pausedAfter = await readMatch();
+  assert.deepEqual(pausedAfter.intervals, pausedBefore.intervals);
+  assert.deepEqual(pausedAfter.targetIntervals, pausedBefore.targetIntervals);
+  assert.deepEqual(pausedAfter.policyHistory[0], pausedBefore.policyHistory[0]);
+  assert.equal(pausedAfter.matchActiveMs, pausedBefore.matchActiveMs);
+  assert.equal(pausedAfter.policyHistory.length, 2);
+  await reopenPlanner();
+  assert.match(await saved.innerText(), /Preferred spell 7 min · half buffer 20%/);
+  await assertMode('adventurous');
+  checks.push('Editing paused future preferences appends version2 with a new reason, preserves exact earlier intervals/targets/policy, and survives reopening.');
   await page.getByTestId('planner-reset-normal').click();
   await assertMode('normal');
   await reopenPlanner();
   await assertMode('normal');
+  assert.match(await saved.innerText(), /match policy version 3/);
+  const finalMatch = await readMatch();
+  assert.equal(finalMatch.policyHistory.length, 3);
+  assert.equal(finalMatch.activePolicy.policyVersion, 3);
+  assert.equal(finalMatch.activePolicy.payload.minimumStintMs, 420000);
   checks.push('An explicit manual reset is committed and remains normal after reload of the same match checkpoint.');
   assert.deepEqual(errors, []);
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
   await page.screenshot({ path: path.join(output, 'saved-reset-after-reload.png'), fullPage: true, animations: 'disabled' });
-  const result = { status: 'passed', checkedAt: new Date().toISOString(), baseURL, checks, browserErrors: errors, method: 'Real fictional UI controls and browser journal; no domain state injection.', nativeDeviceEvidence: false };
+  const result = { status: 'passed', checkedAt: new Date().toISOString(), baseURL, checks, browserErrors: errors, policyVersions: finalMatch.policyHistory.map(policy => ({ version: policy.policyVersion, sourceRevision: policy.sourceRevision, reason: policy.reason, effective: policy.effective, minimumStintMs: policy.payload.minimumStintMs, halfBufferFraction: policy.softPreferences.halfBufferFraction })), method: 'Real fictional UI controls and browser journal; no domain state injection.', nativeDeviceEvidence: false };
   await writeFile(path.join(output, 'report.json'), `${JSON.stringify(result, null, 2)}\n`);
   console.log(JSON.stringify(result, null, 2));
 } catch (error) {

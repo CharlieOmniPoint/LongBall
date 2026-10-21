@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://longball.invalid/contracts/events-v1.1.schema.json",
   "title": "LongBall incremental command envelope 1.1",
-  "description": "Deliberate C-001 companion: engineVersion is required immutable provenance. This incremental command transport adapts the shared reducer, including local preparation commands, and does not claim that the archived v0.1 OpenAPI Event variants accept an added property. Original archived artifacts remain unchanged. The service assigns receipt time and accepted revision. Unknown versions are retained in quarantine. Real controller handover, identity and release gates remain separately documented.",
+  "description": "Deliberate C-001 companion: engineVersion is required immutable provenance. This incremental command transport adapts the shared reducer, including local preparation commands, and does not claim that the archived v0.1 OpenAPI Event variants accept an added property. Original archived artifacts remain unchanged. The service assigns receipt time and accepted revision. The current accepting engine is synthetic-live-4; archived v2/v3 envelopes keep their original versions. Unknown versions are retained in quarantine. Real controller handover, identity and release gates remain separately documented.",
   "type": "object",
   "additionalProperties": false,
   "required": ["contractVersion", "schemaVersion", "engineVersion", "eventId", "matchId", "deviceId", "controllerEpoch", "clientSequence", "previousEventId", "baseRevision", "effectiveHalf", "halfElapsedMs", "matchElapsedMs", "effectiveAt", "recordedAt", "timeQuality", "clockEvidence", "command"],
