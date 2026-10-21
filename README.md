@@ -17,7 +17,7 @@ The combined development server defaults to `http://127.0.0.1:4310`. Open it on 
 
 Start with **Prepare match → check in → continue → place starters → start**. **More** opens team settings, photos, invitations, awards, the native feasibility lab and the connected service. The connected workspace has its own persistent HTTP data; local rehearsal changes are not silently uploaded. Separate fictional player/spectator accounts demonstrate their restricted views. A production build (`EXPO_PUBLIC_ENVIRONMENT=production`) starts at connected sign-in and disables fictional identities.
 
-`pnpm dev` starts Metro for a custom native development client. Expo Go cannot prove SQLCipher. Native code includes a sleep-inclusive clock, continuity checks, SQLCipher/SecureStore journal and backup exclusions. JavaScript exports do not prove native compilation or physical phone behaviour. A pinned, standard public CI workflow is prepared for native compilation; actual run evidence belongs in the review register.
+`pnpm dev` starts Metro for a custom native development client. Expo Go cannot prove SQLCipher. Native code includes a sleep-inclusive clock, continuity checks, SQLCipher/SecureStore journal and backup exclusions. JavaScript exports do not prove native compilation or physical phone behaviour. Standard public CI compiled Android debug and the unsigned iOS simulator application for source `36223f7`. Binaries were not retained. Physical-phone behaviour remains unproved; see the review evidence.
 
 - [Review, commands and actual evidence](docs/development/review.md)
 - [Full feature implementation and remaining gates](docs/development/full-build-plan.md)

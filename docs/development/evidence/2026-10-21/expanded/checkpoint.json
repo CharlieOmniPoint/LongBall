@@ -13,7 +13,13 @@
   "archivedChecksums": 14,
   "openApi31Validation": "passed",
   "androidAndIosJavaScriptExport": "passed",
-  "nativeCompilation": "pending independent CI",
+  "nativeCompilation": {
+    "sourceCommit": "36223f726d69a51408d40a443376341b9b52f163",
+    "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/39561530615",
+    "androidDebug": "passed",
+    "unsignedIosSimulator": "passed",
+    "retainedArtifacts": 0
+  },
   "physicalDeviceEvidence": false,
   "realProviderOrScannerConfigured": false,
   "productionRelease": false

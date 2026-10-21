@@ -1,0 +1,74 @@
+{
+  "repository": "CharlieOmniPoint/LongBall",
+  "runURL": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/39561530615",
+  "runID": 39561530615,
+  "runAttempt": 1,
+  "sourceSHA": "36223f726d69a51408d40a443376341b9b52f163",
+  "transportSHA": "b8b27972c328d6a518a1806a5fa59449f34fa0d0",
+  "observedAtUTC": "2026-10-21 07:35:01 UTC",
+  "overallResult": "success",
+  "platforms": {
+    "android": {
+      "jobID": 119093700052,
+      "result": "success",
+      "runner": "ubuntu-24.04 (standard public GitHub-hosted)",
+      "target": "Android arm64-v8a debug development client",
+      "compileChecksObserved": {
+        "sourceBundleChecksumAndExactHeadVerified": true,
+        "frozenDependenciesInstalled": true,
+        "nativePrebuildSecurityConfigurationAndAutolinkingPassed": true,
+        "sqlCipherBuildConfigurationRequested": true,
+        "longBallNativeKotlinCompiled": true,
+        "expoSQLiteKotlinJavaAndCMakeCompiled": true,
+        "assembleDebugPassed": true,
+        "apkExistenceCheckPassed": true
+      },
+      "buildSummary": "BUILD SUCCESSFUL in 6m 35s; 396 actionable tasks: 396 executed",
+      "generatedOutput": "app-debug.apk; generated debug-key signing; ephemeral runner only",
+      "artifactRetained": false,
+      "deviceInstalled": false,
+      "physicalDeviceTested": false
+    },
+    "ios": {
+      "jobID": 119093700413,
+      "result": "success",
+      "runner": "macos-15 (standard public GitHub-hosted)",
+      "target": "iOS arm64 Simulator Debug development client; unsigned",
+      "compileChecksObserved": {
+        "sourceBundleChecksumAndExactHeadVerified": true,
+        "frozenDependenciesInstalled": true,
+        "xcode26_3Selected": true,
+        "nativePrebuildSecurityConfigurationAndAutolinkingPassed": true,
+        "cocoaPodsInstallPassed": true,
+        "sqlCipherBuildConfigurationRequested": true,
+        "sqlCipherCodecAndCommonCryptoFlagsObserved": true,
+        "longBallNativeSwiftCompiled": true,
+        "signingDisabled": true,
+        "xcodeBuildPassed": true,
+        "simulatorAppExistenceCheckPassed": true
+      },
+      "buildSummary": "** BUILD SUCCEEDED **; Xcode26.3; arm64-apple-ios16.4-simulator; iPhoneSimulator26.2 SDK",
+      "generatedOutput": "LongBallSyntheticLab.app; unsigned simulator application; ephemeral runner only",
+      "artifactRetained": false,
+      "simulatorLaunched": false,
+      "physicalDeviceTested": false
+    }
+  },
+  "artifactUploadRequested": false,
+  "retainedArtifactsObserved": 0,
+  "noArtifactRetained": true,
+  "physicalDeviceEvidence": false,
+  "paidServicesProvisioned": false,
+  "evidenceLimit": "Successful native compilation/linking and output-existence checks only. No app launch, phone interaction, store distribution or runtime security claim.",
+  "remainingDeviceChecks": [
+    "Runtime SQLCipher activation, correct-key reopen and wrong-key refusal on iPhone and Android",
+    "SecureStore key loss/recovery and startup concurrency",
+    "Durable journal/outbox transactions across process death and storage failure",
+    "Database, WAL, SHM and rollback-journal backup/restore and transfer exclusions",
+    "Continuous clock behaviour through sleep, process death and reboot",
+    "Configured-provider OIDC manager journey and secure recording on physical phones",
+    "Notification permission, scheduling/cancellation, sound, Focus, lock and force-stop behaviour",
+    "Physical photo permission/upload flows and supported-device performance"
+  ],
+  "nonBlockingWarning": "Pinned v4 GitHub actions declare deprecated Node20 runtimes and the hosted runner forced them onto Node24; both jobs succeeded."
+}

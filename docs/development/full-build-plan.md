@@ -73,7 +73,7 @@ The canonical offline suffix correction is implemented. A retained upload keeps 
 
 ## Open release gates
 
-- **M0 physical feasibility:** no physical iPhone/Android report exists. The Android compile attempt is blocked by managed-network refusal of `repo.reactnative.dev`; no APK was produced in that attempt. iPhone compilation requires macOS/Xcode. See `android-build-evidence.md` and the native proof register.
+- **M0 physical feasibility:** no physical iPhone/Android report exists. An earlier managed-cloud Android attempt was blocked by its network policy. Independent standard public CI later compiled Android debug and unsigned iOS Simulator successfully for source `36223f7`; binaries were not retained. See the [actual native build evidence](evidence/2026-10-21/expanded/native-ci.json). See `android-build-evidence.md` and the native proof register.
 - **Native-only behaviour:** SQLCipher activation/wrong-key rejection, SecureStore loss/backup exclusions, monotonic continuity across lock/reboot, process kill, foreground/background alerts, Focus/battery restrictions, camera/library permissions and credential/PIN lockout require actual devices.
 - **Identity and operations:** Q05/Q10 ownership, recovery authority, verified adult sign-in, support/privacy/moderation owners, retention/deletion rules and operating budget remain open. Local drafts do not submit or fulfil account deletion/export.
 - **Match policies:** Q06/Q07 practical timing/keeper/fairness defaults, Q08 control/reconciliation/background guarantees, Q09 attendance/excused handling, Q15 cutoff and Q18 exceptional results are not silently approved by implementing an experiment.
