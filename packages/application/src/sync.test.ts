@@ -1,3 +1,4 @@
+import { offlineDownloadFixture } from './offline-bundle.test-fixture';
 import { describe, expect, it, vi } from 'vitest';
 import { createMatch, ENGINE_VERSION, reduceMatch, type MatchEvent } from '../../domain/src/index';
 import { applyMutationResponse, applyUploadReceipt, attachGrant, createConnectedDocument, effectiveEventTime, LongBallServiceClient, mergeDownload, prepareServiceRequest, queueConnectedCommand, retainClockMapping, selectAcceptedBranch, ServiceError, settleDefiniteRefusal, WIRE_CONTRACT_VERSION, type ConnectedMatchDocument, type HttpFetch, type MatchDownload, type UploadReceipt } from './sync';
@@ -6,7 +7,7 @@ const now = 1_800_000_000_000;
 const state = createMatch({ matchId: 'synthetic-wire-match', players: Array.from({ length: 9 }, (_, index) => ({ id: `p${index + 1}`, displayName: `Player ${index + 1}`, goalkeeperChoice: index === 0 ? 1 : 0 })), selectedPlayerIds: Array.from({ length: 9 }, (_, index) => `p${index + 1}`), pitchPlaces: 7, plannedHalfDurationMs: 1_500_000, fixedKeeperId: 'p1' });
 const sample = (monotonicMs = 0) => ({ monotonicMs, sessionId: 'wire-session', wallTimeMs: now + monotonicMs });
 function downloaded(checkpoint = { clientSequence: 0, previousEventId: null as string | null }): MatchDownload {
-  return { contractVersion: WIRE_CONTRACT_VERSION, schemaVersion: 1, engineVersion: ENGINE_VERSION, matchId: state.config.matchId, state, acceptedRevision: 0, deviceCheckpoint: checkpoint, controller: { epoch: 1, account_id: 'manager-a', device_id: 'device-a', frozen: 0 }, downloadedAt: new Date(now).toISOString(), clockAnchor: { serverTime: new Date(now).toISOString(), quality: 'observation_only', continuousMappingEstablished: false }, syntheticOnly: true };
+  return offlineDownloadFixture({ contractVersion: WIRE_CONTRACT_VERSION, schemaVersion: 1, engineVersion: ENGINE_VERSION, matchId: state.config.matchId, state, acceptedRevision: 0, deviceCheckpoint: checkpoint, controller: { epoch: 1, account_id: 'manager-a', device_id: 'device-a', frozen: 0 }, downloadedAt: new Date(now).toISOString(), clockAnchor: { serverTime: new Date(now).toISOString(), quality: 'observation_only', continuousMappingEstablished: false }, syntheticOnly: true });
 }
 function ready(): ConnectedMatchDocument {
   return mergeDownload(attachGrant(mergeDownload(createConnectedDocument('device-a', state.config.matchId, 'http://127.0.0.1:4310'), downloaded()), { epoch: 1, deviceId: 'device-a', controllerToken: 'synthetic-capability-a', checkpoint: { clientSequence: 0, previousEventId: null } }), downloaded());
@@ -35,7 +36,7 @@ describe('canonical connected outbox separate from M0 local history', () => {
     expect(requests[1]).toBe(requests[0]); expect(document.outbox[0].disposition).toBe('accepted'); expect(document.pendingRequest).toBeNull(); expect(document.acceptedState?.attendance.p1).toBe('not_recorded');
     expect(() => selectAcceptedBranch(document)).toThrow('authoritative accepted snapshot');
     const authoritative = reduceMatch(state, { ...document.outbox[0].envelope.command, actorId: 'verified-server-account' });
-    document = mergeDownload(document, { ...downloaded({ clientSequence: 1, previousEventId: 'event-one' }), state: authoritative, acceptedRevision: 1 });
+    document = mergeDownload(document, offlineDownloadFixture({ ...downloaded({ clientSequence: 1, previousEventId: 'event-one' }), state: authoritative, acceptedRevision: 1 }));
     expect(document.acceptedState?.audit).toEqual(authoritative.audit);
     expect(document.acceptedState?.audit?.at(-1)?.actorId).toBe('verified-server-account');
   });
@@ -60,7 +61,7 @@ describe('canonical connected outbox separate from M0 local history', () => {
     // Even if the follow-up download is offline, the held controller keeps capturing actual events.
     document = queueConnectedCommand(document, { type: 'half.ended' }, sample(40_000), 'offline-half-end');
     const suffix = JSON.stringify(document.outbox.filter(entry => entry.disposition === 'pending').map(entry => entry.envelope));
-    document = mergeDownload(document, { ...downloaded({ clientSequence: prefix.length, previousEventId: 'prefix-pause' }), state: authoritative, acceptedRevision: authoritative.revision });
+    document = mergeDownload(document, offlineDownloadFixture({ ...downloaded({ clientSequence: prefix.length, previousEventId: 'prefix-pause' }), state: authoritative, acceptedRevision: authoritative.revision }));
     expect(document.reconciliationRequired).toBe(false); expect(document.controllerConfirmed).toBe(true);
     expect(document.localState?.status).toBe('half_time'); expect(document.localState?.matchActiveMs).toBe(25_000);
     expect(document.localState?.goals?.length).toBe(1); expect(document.acceptedState?.goals?.length).toBe(0);
@@ -95,13 +96,13 @@ describe('canonical connected outbox separate from M0 local history', () => {
     expect(document.controllerConfirmed).toBe(false); expect(document.reconciliationRequired).toBe(true);
     expect(document.localState?.attendance.p2).toBe('present'); expect(document.acceptedState?.attendance.p2).toBe('not_recorded');
     expect(document.outbox[0]).toMatchObject({ disposition: 'quarantined', reason: 'STALE_CONTROLLER' }); expect(document.allocatedSequence).toBe(1);
-    document = mergeDownload(document, { ...downloaded({ clientSequence: 1, previousEventId: 'old-epoch-event' }), controller: { epoch: 2, account_id: 'manager-b', device_id: 'device-b', frozen: 0 } });
+    document = mergeDownload(document, offlineDownloadFixture({ ...downloaded({ clientSequence: 1, previousEventId: 'old-epoch-event' }), controller: { epoch: 2, account_id: 'manager-b', device_id: 'device-b', frozen: 0 } }));
     expect(selectAcceptedBranch(document).localState?.attendance.p2).toBe('not_recorded'); expect(selectAcceptedBranch(document).outbox).toHaveLength(1);
   });
   it('never overwrites unsynchronised local history when another controller advanced the server', () => {
     const original = queueConnectedCommand(ready(), { type: 'attendance.recorded', playerId: 'p2', status: 'present' }, sample(), 'unsynced');
     const otherState = reduceMatch(state, { type: 'attendance.recorded', playerId: 'p3', status: 'present', id: 'other-device-event', sample: sample() });
-    const server = { ...downloaded(), state: otherState, acceptedRevision: 1, controller: { epoch: 2, account_id: 'manager-b', device_id: 'device-b', frozen: 0 } };
+    const server = offlineDownloadFixture({ ...downloaded(), state: otherState, acceptedRevision: 1, controller: { epoch: 2, account_id: 'manager-b', device_id: 'device-b', frozen: 0 } });
     const merged = mergeDownload(original, server);
     expect(merged.localState).toBe(original.localState); expect(merged.acceptedState).toBe(otherState); expect(merged.reconciliationRequired).toBe(true); expect(merged.controllerConfirmed).toBe(false);
     expect(() => selectAcceptedBranch(merged)).toThrow('pending');
@@ -114,7 +115,7 @@ describe('canonical connected outbox separate from M0 local history', () => {
     document = attachGrant(document, { epoch: 3, deviceId: 'device-a', controllerToken: 'synthetic-returned-capability', checkpoint: { clientSequence: 1, previousEventId: 'sequence-one' } });
     expect(() => queueConnectedCommand(document, { type: 'attendance.recorded', playerId: 'p2', status: 'present' }, sample(), 'not-ready')).toThrow('Download');
     const returned = reduceMatch(state, { ...document.outbox[0].envelope.command, actorId: 'server-manager' });
-    document = mergeDownload(document, { ...downloaded({ clientSequence: 1, previousEventId: 'sequence-one' }), state: returned, acceptedRevision: 1, controller: { epoch: 3, account_id: 'manager-a', device_id: 'device-a', frozen: 0 } });
+    document = mergeDownload(document, offlineDownloadFixture({ ...downloaded({ clientSequence: 1, previousEventId: 'sequence-one' }), state: returned, acceptedRevision: 1, controller: { epoch: 3, account_id: 'manager-a', device_id: 'device-a', frozen: 0 } }));
     document = queueConnectedCommand(document, { type: 'attendance.recorded', playerId: 'p2', status: 'present' }, sample(), 'sequence-two');
     expect(document.outbox[1].envelope).toMatchObject({ controllerEpoch: 3, clientSequence: 2, previousEventId: 'sequence-one', baseRevision: 1 });
   });
@@ -141,7 +142,7 @@ describe('canonical connected outbox separate from M0 local history', () => {
     let document = queueConnectedCommand(ready(), { type: 'attendance.recorded', playerId: 'p1', status: 'present' }, sample(), 'accepted-earlier');
     document = prepareServiceRequest(document, 'upload', 'old-receipt-key');
     const serverState = reduceMatch(reduceMatch(state, document.outbox[0].envelope.command), { id: 'another-accepted', type: 'attendance.recorded', playerId: 'p2', status: 'present', sample: sample() });
-    document = mergeDownload(document, { ...downloaded({ clientSequence: 1, previousEventId: 'accepted-earlier' }), state: serverState, acceptedRevision: 2 });
+    document = mergeDownload(document, offlineDownloadFixture({ ...downloaded({ clientSequence: 1, previousEventId: 'accepted-earlier' }), state: serverState, acceptedRevision: 2 }));
     document = applyUploadReceipt(document, { revision: 1, pendingReview: false, results: [{ eventId: 'accepted-earlier', clientSequence: 1, disposition: 'accepted', reason: null, revision: 1, duplicate: true }] }, new Date(now).toISOString());
     expect(document.acceptedRevision).toBe(2); expect(document.acceptedState?.attendance.p2).toBe('present'); expect(document.localState?.attendance.p2).toBe('not_recorded');
   });

@@ -1,3 +1,4 @@
+import { assertOfflineSnapshot, type OfflineSnapshotMetadata } from './offline-bundle';
 import type { ClockMappingReceipt } from './clock-exchange';
 import { ENGINE_VERSION, readClock, reduceMatch, type ClockSample, type MatchEvent, type MatchState } from '../../domain/src/index';
 
@@ -17,7 +18,7 @@ export interface DeviceCheckpoint { clientSequence: number; previousEventId: str
 export interface ControllerGrant { epoch: number; deviceId: string; controllerToken: string; checkpoint: DeviceCheckpoint; reconciliationRequired?: boolean }
 /** Last downloaded recorder metadata is display-only; it is never a capability. */
 export interface ControllerObservation { epoch: number; accountId: string; deviceId: string; frozen: boolean }
-export interface MatchDownload {
+export interface MatchDownload extends OfflineSnapshotMetadata {
   contractVersion: typeof WIRE_CONTRACT_VERSION; schemaVersion: 1; engineVersion: string;
   matchId: string; state: MatchState; acceptedRevision: number; deviceCheckpoint: DeviceCheckpoint;
   controller: { epoch: number; account_id: string; device_id: string; frozen: number } | null;
@@ -57,6 +58,9 @@ export interface ConnectedMatchDocument {
   reconciliationRequired: boolean;
   downloadedAt: string | null;
   controllerObservation?: ControllerObservation | null;
+  verifiedSnapshot?: { bundleId: string; snapshotSchemaVersion: 1; checksumSha256: string; acceptedRevision: number; teamId: string; seasonId: string } | null;
+  /** Full checksummed payload metadata/history; state is stored once in acceptedState. */
+  installedSnapshot?: Omit<MatchDownload, 'state'> | null;
   pendingRequest: DurableRequest | null;
   lastReceiptAt: string | null;
   lastTransferId: string | null;
@@ -121,6 +125,7 @@ export class LongBallServiceClient {
   }
   me<T = { accountId: string; syntheticOnly: boolean }>(): Promise<T> { return this.request('/v1/me'); }
   download(matchId: string, deviceId: string): Promise<MatchDownload> { return this.request(`/v1/matches/${encodeURIComponent(matchId)}/download?deviceId=${encodeURIComponent(deviceId)}`); }
+  offlineBundle(matchId: string, deviceId: string, grant: ControllerGrant): Promise<MatchDownload> { return this.request(`/v1/matches/${encodeURIComponent(matchId)}/offline-bundle?deviceId=${encodeURIComponent(deviceId)}`, { controllerToken: grant.controllerToken }); }
   quarantine(matchId: string): Promise<{ items: unknown[] }> { return this.request(`/v1/matches/${encodeURIComponent(matchId)}/quarantine`); }
   execute<T>(request: DurableRequest, grant: ControllerGrant | null): Promise<T> { return this.request(request.path, { request, ...(grant ? { controllerToken: grant.controllerToken } : {}) }); }
 }
@@ -131,6 +136,11 @@ export function createConnectedDocument(deviceId: string, matchId: string, baseU
 export function assertConnectedDocument(value: ConnectedMatchDocument): void {
   if (value.kind !== 'longball-canonical-connected-v1' || !Number.isSafeInteger(value.revision) || !value.deviceId || !value.matchId || !Array.isArray(value.outbox) || !Number.isSafeInteger(value.allocatedSequence) || value.allocatedSequence < 0) throw new Error('Connected rehearsal document is incompatible. Preserve it for recovery; no legacy M0 data is uploaded.');
   if (value.controllerObservation != null) assertControllerObservation(value.controllerObservation);
+  if (value.installedSnapshot) {
+    if (!value.acceptedState) throw new Error('The installed offline snapshot has no accepted projection. Preserve it for recovery.');
+    assertOfflineSnapshot({ ...value.installedSnapshot, state: value.acceptedState }, { matchId: value.matchId, deviceId: value.deviceId, teamId: value.verifiedSnapshot?.teamId, seasonId: value.verifiedSnapshot?.seasonId });
+    if (value.verifiedSnapshot && (value.verifiedSnapshot.checksumSha256 !== value.installedSnapshot.checksumSha256 || value.verifiedSnapshot.bundleId !== value.installedSnapshot.bundleId)) throw new Error('Installed offline snapshot verification metadata differs. Preserve it for recovery.');
+  }
   const ids = new Set<string>();
   for (const entry of value.outbox) {
     if (entry.envelope.matchId !== value.matchId || entry.envelope.deviceId !== value.deviceId || ids.has(entry.envelope.eventId) || entry.envelope.clientSequence > value.allocatedSequence) throw new Error('Canonical outbox chain is inconsistent. Preserve it for reconciliation.');
@@ -142,14 +152,15 @@ function assertControllerObservation(value: ControllerObservation): void {
   if (!value || Object.keys(value).some(key => !['epoch', 'accountId', 'deviceId', 'frozen'].includes(key)) || !Number.isSafeInteger(value.epoch) || value.epoch < 1 || !id(value.accountId) || !id(value.deviceId) || typeof value.frozen !== 'boolean') throw new Error('Saved recorder display metadata is invalid. Retain the journal and refresh the matching connection.');
 }
 
-export function mergeDownload(previous: ConnectedMatchDocument, download: MatchDownload): ConnectedMatchDocument {
+export function mergeDownload(previous: ConnectedMatchDocument, download: MatchDownload, options: { observationOnly?: boolean } = {}): ConnectedMatchDocument {
   if (download.contractVersion !== WIRE_CONTRACT_VERSION || download.schemaVersion !== 1 || download.engineVersion !== ENGINE_VERSION || download.matchId !== previous.matchId || download.state.config.matchId !== previous.matchId) throw new Error('Downloaded contract/engine/match differs from this client. Existing journal retained.');
+  assertOfflineSnapshot(download, { matchId: previous.matchId, deviceId: previous.deviceId, teamId: previous.verifiedSnapshot?.teamId ?? previous.acceptedState?.config.fixture?.teamId, seasonId: previous.verifiedSnapshot?.seasonId ?? previous.acceptedState?.config.fixture?.seasonId });
   const pending = previous.outbox.some(entry => entry.disposition === 'pending');
   const controller = download.controller;
   const controllerObservation: ControllerObservation | null = controller ? { epoch: controller.epoch, accountId: controller.account_id, deviceId: controller.device_id, frozen: controller.frozen === 1 } : null;
   if (controller && ![0, 1].includes(controller.frozen)) throw new Error('Downloaded recorder display metadata is invalid. Existing journal retained.');
   if (controllerObservation) assertControllerObservation(controllerObservation);
-  const assigned = Boolean(previous.grant && controller && controller.device_id === previous.deviceId && controller.epoch === previous.grant.epoch && !controller.frozen);
+  const assigned = Boolean(!options.observationOnly && previous.grant && controller && controller.device_id === previous.deviceId && controller.epoch === previous.grant.epoch && !controller.frozen);
   const disagreement = pending && download.acceptedRevision !== previous.acceptedRevision;
   const serverAhead = download.deviceCheckpoint.clientSequence > previous.allocatedSequence;
   const checkpointBehindKnownReceipt = download.deviceCheckpoint.clientSequence < previous.serverCheckpoint.clientSequence;
@@ -176,14 +187,17 @@ export function mergeDownload(previous: ConnectedMatchDocument, download: MatchD
       localState = projection;
     } catch { replayFailed = true; }
   }
+  const { state: acceptedState, ...installedSnapshot } = download;
   return {
-    ...previous, acceptedState: download.state, acceptedRevision: download.acceptedRevision, authoritativeDownloadRequired: false, captureBlockedUntilDownload: false,
+    ...previous, acceptedState, acceptedRevision: download.acceptedRevision, authoritativeDownloadRequired: false, captureBlockedUntilDownload: Boolean(options.observationOnly),
     localState,
     allocatedSequence: Math.max(previous.allocatedSequence, download.deviceCheckpoint.clientSequence),
     previousEventId: serverAhead ? download.deviceCheckpoint.previousEventId : previous.previousEventId,
     serverCheckpoint: download.deviceCheckpoint, controllerConfirmed: assigned,
     reconciliationRequired: previous.reconciliationRequired || disagreement || checkpointBehindKnownReceipt || missingLocalStream || replayFailed || pending && !assigned || pending && serverAhead,
     downloadedAt: download.downloadedAt, controllerObservation,
+    verifiedSnapshot: { bundleId: download.bundleId, snapshotSchemaVersion: download.snapshotSchemaVersion, checksumSha256: download.checksumSha256, acceptedRevision: download.acceptedRevision, teamId: download.teamId, seasonId: download.seasonId },
+    installedSnapshot,
   };
 }
 
@@ -220,6 +234,7 @@ function assertCaptureAllowed(document: ConnectedMatchDocument): void {
   if (document.outbox.some(entry => entry.disposition === 'pending' && entry.envelope.engineVersion !== ENGINE_VERSION)) throw new Error('An older-engine pending stream is retained byte-for-byte. Submit its original upload for version quarantine or review it explicitly before recording with the new engine.');
   if (!document.localState || !document.grant || !document.controllerConfirmed) throw new Error('Download the match and acquire/accept its explicit controller capability before recording.');
   if (document.reconciliationRequired || document.pendingRequest && document.pendingRequest.kind !== 'upload') throw new Error('Resolve the retained request or reconciliation branch before recording another command.');
+  if (!document.verifiedSnapshot || !document.installedSnapshot) throw new Error('Download a verified offline snapshot before recording. The older journal and original pending bytes remain retained.');
   if (document.captureBlockedUntilDownload ?? document.authoritativeDownloadRequired) throw new Error('Download the authoritative accepted snapshot before recording another command.');
   if (document.pendingRequest) {
     const request = document.pendingRequest;

@@ -1,5 +1,6 @@
 import { projectOwnPlayerPreparation } from '../../../packages/application/src/player-preparation';
 import { matchPageAudience, matchPageCursor, matchPagePosition, type MatchPageQuery } from './match-pagination';
+import { buildOfflineDownload, offlinePublication, type OfflineEventRow, type OfflineTransitionRow } from './offline-bundle';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { chmodSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
@@ -259,12 +260,19 @@ export class DevelopmentStore {
     const row = this.match(matchId);
     return filterMatchForPrincipal({ principal, memberships: this.memberships(), teamId: row.team_id, seasonId: row.season_id, state: JSON.parse(row.state_json) as MatchState, policy: JSON.parse(row.sharing_policy_json) as SharingPolicy, lastSyncAt: row.last_sync_at, now: this.now(), requestedRole });
   }
-  download(principal: Principal, matchId: string, deviceId: string): Record<string, unknown> {
-    const row = this.managerMatch(principal, matchId);
-    if (!validDeviceId(deviceId)) bad('A device identifier of at most 120 canonical characters is required.');
-    const stream = this.database.prepare('SELECT sequence,previous_event_id FROM streams WHERE match_id=? AND device_id=?').get(matchId, deviceId) as StreamRow | undefined;
-    const grant = this.database.prepare('SELECT epoch,account_id,device_id,frozen FROM controller_grants WHERE match_id=?').get(matchId);
-    return { contractVersion: EVENT_CONTRACT_VERSION, schemaVersion: 1, engineVersion: ENGINE_VERSION, matchId, teamId: row.team_id, seasonId: row.season_id, state: JSON.parse(row.state_json), acceptedRevision: (JSON.parse(row.state_json) as MatchState).revision, deviceCheckpoint: { clientSequence: stream?.sequence ?? 0, previousEventId: stream?.previous_event_id ?? null }, controller: grant ?? null, downloadedAt: new Date(this.now()).toISOString(), clockAnchor: { serverTime: new Date(this.now()).toISOString(), quality: 'observation_only', continuousMappingEstablished: false } };
+  download(principal: Principal, matchId: string, deviceId: string, syntheticOnly = false, controllerToken?: string): ReturnType<typeof buildOfflineDownload> {
+    const read = () => {
+      const row = this.managerMatch(principal, matchId);
+      if (!validDeviceId(deviceId)) bad('A device identifier of at most 120 canonical characters is required.');
+      if (controllerToken !== undefined) { const authority = this.assertController(principal, matchId, controllerToken); if (authority.device_id !== deviceId || authority.frozen) throw new AccessError('CONTROLLER_REQUIRED',409,'Use the current unfrozen controller device and capability.'); }
+      const stream = this.database.prepare('SELECT sequence,previous_event_id FROM streams WHERE match_id=? AND device_id=?').get(matchId,deviceId) as StreamRow | undefined;
+      const controller = this.database.prepare('SELECT epoch,account_id,device_id,frozen FROM controller_grants WHERE match_id=?').get(matchId) as ReturnType<typeof buildOfflineDownload>['controller'];
+      const events = this.database.prepare("SELECT revision,received_at,envelope_json FROM events WHERE match_id=? AND disposition='accepted' ORDER BY revision LIMIT 10001").all(matchId) as unknown as OfflineEventRow[];
+      const transitions = this.database.prepare('SELECT id,epoch,actor_id,from_device,to_device,kind,reason,created_at FROM controller_history WHERE match_id=? ORDER BY epoch,created_at,id LIMIT 10001').all(matchId) as unknown as OfflineTransitionRow[];
+      const saved = this.database.prepare("SELECT value_json FROM documents WHERE team_id=? AND season_id=? AND kind='records'").get(row.team_id,row.season_id) as {value_json:string}|undefined;
+      return buildOfflineDownload({matchId,teamId:row.team_id,seasonId:row.season_id,deviceId,state:JSON.parse(row.state_json) as MatchState,checkpoint:{clientSequence:stream?.sequence??0,previousEventId:stream?.previous_event_id??null},controller:controller??null,events,transitions,publication:offlinePublication(matchId,JSON.parse(row.sharing_policy_json) as SharingPolicy,saved?JSON.parse(saved.value_json) as RecordsState:null),nowMs:this.now(),syntheticOnly});
+    };
+    return this.database.isTransaction ? read() : this.transaction(read);
   }
   audit(principal: Principal, action: string, objectId: string, outcome: string): void {
     this.database.prepare('INSERT INTO audit(id,actor_id,action,object_id,outcome,created_at) VALUES(?,?,?,?,?,?)').run(randomUUID(), principal.accountId, action, objectId, outcome, this.now());

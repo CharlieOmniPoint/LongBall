@@ -43,5 +43,5 @@ def unique_mapping(loader, node, deep=False):
 UniqueRuntimeLoader.add_constructor(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, unique_mapping)
 validate(yaml.load(runtime_contract.read_text(), Loader=UniqueRuntimeLoader))
 print('Runtime extension OpenAPI 3.1 validation passed', flush=True)
-for script in ['test-branding-contract.py', 'test-identity-contract.py', 'test-policy-contract.py', 'test-push-privilege-contract.py']:
+for script in ['test-branding-contract.py', 'test-identity-contract.py', 'test-policy-contract.py', 'test-push-privilege-contract.py', 'test-offline-download-contract.py']:
     subprocess.run([sys.executable, str(root.parents[1] / 'scripts' / script)], check=True)

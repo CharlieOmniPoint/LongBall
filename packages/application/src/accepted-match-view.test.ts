@@ -1,3 +1,5 @@
+import { sealOfflineSnapshot } from './offline-bundle';
+import { offlineDownloadFixture } from './offline-bundle.test-fixture';
 import { describe, expect, it } from "vitest";
 import {
   createMatch,
@@ -72,7 +74,7 @@ function fixture(): MatchState {
   });
 }
 function download(state = fixture()): MatchDownload {
-  return {
+  return offlineDownloadFixture({
     contractVersion: WIRE_CONTRACT_VERSION,
     schemaVersion: 1,
     engineVersion: ENGINE_VERSION,
@@ -93,7 +95,7 @@ function download(state = fixture()): MatchDownload {
       continuousMappingEstablished: false,
     },
     syntheticOnly: true,
-  };
+  }, "phone-b");
 }
 describe("accepted second-manager view", () => {
   it("separates available bench, unavailable and unchecked players without inventing attendance", () => {
@@ -187,9 +189,10 @@ describe("accepted second-manager view", () => {
       controllerToken: "must-not-copy",
       capability_hash: "must-not-copy",
     });
+    expect(() => mergeDownload(createConnectedDocument("phone-b", "view-match", "/"), sealOfflineSnapshot(received))).toThrow();
     const saved = mergeDownload(
       createConnectedDocument("phone-b", "view-match", "/"),
-      received,
+      download(),
     );
     expect(saved.controllerObservation).toEqual({
       epoch: 3,
@@ -243,7 +246,7 @@ describe("accepted second-manager view", () => {
     expect(acceptedMatchView(legacy, now)?.recorder).toBeNull();
     const invalid = download();
     invalid.controller!.device_id = "phone-a\n";
-    expect(() => mergeDownload(saved, invalid)).toThrow(/metadata is invalid/);
+    expect(() => mergeDownload(saved, sealOfflineSnapshot(invalid))).toThrow(/metadata is invalid/);
     expect(saved.controllerObservation?.deviceId).toBe("phone-a");
   });
 });

@@ -245,11 +245,25 @@ function ConnectedRehearsal({ connection, journal, physicalDeviceId, matchId, co
     const scope = controllerCacheScope(actor, connection.scope, Date.now());
     if (controllerCacheDocumentId(scope) !== controllerCacheDocumentId(connection.scope)) throw Object.assign(new Error('Authenticated account or scope changed. Close this controller cache and reopen the connection.'), { code: 'CONTROLLER_SCOPE_DENIED' });
     setIdentity(actor.accountId);
-    const snapshot = await client.download(matchId, connection.wireDeviceId);
+    let snapshot;
+    try { snapshot = current?.grant ? await client.offlineBundle(matchId, connection.wireDeviceId, current.grant) : await client.download(matchId, connection.wireDeviceId); }
+    catch (error) {
+      if (error instanceof ServiceError && error.code === 'CONTROLLER_REQUIRED') {
+        await document.change(value => ({ ...value, controllerConfirmed: false, authoritativeDownloadRequired: true, captureBlockedUntilDownload: true }), 'connected.controller.refresh_required');
+        // A former recorder may still be a current assigned manager. This explicit
+        // downgrade only refreshes viewing; old grant/outbox bytes remain retained.
+        const observed = await client.download(matchId, connection.wireDeviceId);
+        assertControllerDownloadScope(connection.scope, observed);
+        const viewed = await document.change(value => mergeDownload(value, observed, { observationOnly: true }), 'connected.match.observation_refreshed');
+        if (viewed) setNotice('Recording authority changed. Refreshed the accepted match for viewing only; original local records remain retained. Use explicit handover or recovery to record again.');
+        return;
+      }
+      throw error;
+    }
     assertControllerDownloadScope(connection.scope, snapshot);
     const saved = await document.change(value => mergeDownload(value, snapshot), 'connected.match.downloaded');
     if (saved) setNotice('Downloaded the accepted service snapshot. Pending or quarantined local candidates were preserved.');
-  }, [client, matchId, connection.wireDeviceId, connection.scope, document]);
+  }, [client, matchId, connection.wireDeviceId, connection.scope, document, current?.grant]);
   useEffect(() => {
     // Re-entering from Schedule may follow a newly saved preparation checkpoint.
     // Always refresh this controlled entry through the preserving merge, including
@@ -265,14 +279,18 @@ function ConnectedRehearsal({ connection, journal, physicalDeviceId, matchId, co
     if (!retained) throw new Error('No retained HTTP request to send.');
     try {
       const reply = await client.execute(retained, snapshot.grant);
+      const acknowledged: { document: ConnectedMatchDocument | null } = { document: null };
       const saved = await document.change(value => {
         if (value.pendingRequest?.idempotencyKey !== retained.idempotencyKey) throw new Error('Response differs from the retained request; preserve both for reconciliation.');
-        return applyMutationResponse(value, reply, new Date().toISOString());
+        const next = applyMutationResponse(value, reply, new Date().toISOString());
+        acknowledged.document = next;
+        return next;
       }, 'connected.request.acknowledged');
       if (saved) {
         if (retained.kind !== 'handover') {
           try {
-            const acceptedSnapshot = await client.download(matchId, connection.wireDeviceId);
+            const grant = acknowledged.document?.grant;
+            const acceptedSnapshot = grant ? await client.offlineBundle(matchId, connection.wireDeviceId, grant) : await client.download(matchId, connection.wireDeviceId);
             assertControllerDownloadScope(connection.scope, acceptedSnapshot);
             const merged = await document.change(value => mergeDownload(value, acceptedSnapshot), 'connected.accepted_projection.downloaded');
             if (!merged) throw new Error('The authoritative snapshot was not committed locally; retain the receipt and retry the local save.');

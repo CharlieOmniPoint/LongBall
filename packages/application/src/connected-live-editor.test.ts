@@ -1,3 +1,4 @@
+import { offlineDownloadFixture } from './offline-bundle.test-fixture';
 import { describe, expect, it } from "vitest";
 import {
   createMatch,
@@ -77,7 +78,7 @@ function fixture(): MatchState {
 }
 function ready(): ConnectedMatchDocument {
   const state = fixture();
-  const download: MatchDownload = {
+  const download: MatchDownload = offlineDownloadFixture({
     contractVersion: WIRE_CONTRACT_VERSION,
     schemaVersion: 1,
     engineVersion: ENGINE_VERSION,
@@ -98,7 +99,7 @@ function ready(): ConnectedMatchDocument {
       continuousMappingEstablished: false,
     },
     syntheticOnly: true,
-  };
+  }, "native-account-device");
   const granted = attachGrant(
     mergeDownload(
       createConnectedDocument(

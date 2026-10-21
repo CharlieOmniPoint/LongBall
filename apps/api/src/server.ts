@@ -351,8 +351,11 @@ const windows = new Map<string, {
                 const matchId = parts[2];
                 if (request.method === 'GET' && parts.length === 3)
                     result = (await store.matchDto(principal, matchId, role));
-                else if (request.method === 'GET' && parts[3] === 'download')
-                    result = { ...(await store.download(principal, matchId, url.searchParams.get('deviceId') ?? '')), syntheticOnly:Boolean(options.syntheticAuth) };
+                else if (request.method === 'GET' && parts.length === 4 && (parts[3] === 'download' || parts[3] === 'offline-bundle')) {
+                    if (url.searchParams.getAll('deviceId').length !== 1 || Array.from(url.searchParams.keys()).some(key => key !== 'deviceId')) throw new AccessError('INVALID_REQUEST',400,'Use one explicit deviceId for this snapshot.');
+                    if (parts[3] === 'offline-bundle' && !controllerToken) throw new AccessError('CONTROLLER_REQUIRED',409,'Acquire the current controller capability before downloading its offline bundle.');
+                    result = await store.download(principal, matchId, url.searchParams.get('deviceId') ?? '', Boolean(options.syntheticAuth), parts[3] === 'offline-bundle' ? controllerToken : undefined);
+                }
                 else if (request.method === 'GET' && parts[3] === 'quarantine')
                     result = { items: (await store.quarantine(principal, matchId)) };
                 else if (request.method === 'GET' && parts[3] === 'reconciliation') result = await store.reconciliation(principal,matchId);
