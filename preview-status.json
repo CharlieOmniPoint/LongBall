@@ -1,9 +1,9 @@
 {
-  "state": "ready",
-  "url": "https://prophet-hearing-processed-eugene.trycloudflare.com",
-  "sourceRevision": "b73fbc9aefc2f0858c9c959dfe306012f3817193",
-  "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/39643618870",
-  "startedAt": "2026-10-21T17:28:28Z",
-  "expiresAt": "2026-10-21T22:28:28Z",
+  "state": "starting",
+  "url": "",
+  "sourceRevision": "bb3965bd478934dcede62b1cbcc30d647bed2d70",
+  "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/39664214764",
+  "startedAt": "2026-10-21T19:48:14Z",
+  "expiresAt": "",
   "audience": "Adult review of fictional Roma U10 data only"
 }
