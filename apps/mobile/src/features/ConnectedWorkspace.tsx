@@ -3,6 +3,7 @@ import {
   type OwnPlayerPreparation as OwnPreparationDto,
 } from "@longball/application/player-preparation";
 import { FixtureScheduleDetails } from "./FixtureScheduleDetails";
+import { continueMatchList, parseMatchListPage, MatchListAuthorityDenied, type MatchListPage } from '@longball/application/match-list';
 import { TeamPrivilegesPanel } from "./TeamPrivilegesPanel";
 import {
   assertOwnTeamPrivileges,
@@ -741,8 +742,9 @@ function WorkspaceSession({
   const [teamPrivilegesCache, setTeamPrivileges] =
     useState<BoundWorkspaceValue<TeamPrivilegesView> | null>(null);
   const [matchesCache, setMatches] = useState<BoundWorkspaceValue<
-    ConnectedMatchCentreDto[]
+    MatchListPage<ConnectedMatchCentreDto>
   > | null>(null);
+  const [loadingMoreMatches, setLoadingMoreMatches] = useState(false);
   const [seasonCache, setSeasons] =
     useState<BoundWorkspaceValue<ConnectedSeasonOptions> | null>(null);
   const [configurationCache, setConfiguration] =
@@ -1067,13 +1069,14 @@ function WorkspaceSession({
         membershipTime,
       )
     : null;
-  const matches = readWorkspaceValue(
+  const matchList = readWorkspaceValue(
     matchesCache,
     expectedBinding,
     identity?.principal ?? null,
     identity?.memberships ?? [],
     membershipTime,
   );
+  const matches = matchList?.items ?? null;
   const seasonOptions = readWorkspaceValue(
     seasonCache,
     expectedBinding,
@@ -1574,19 +1577,10 @@ function WorkspaceSession({
     if (!isAdministrator)
       tasks.push(
         client
-          .request<{ items: ConnectedMatchCentreDto[] }>(scopedPath("matches"))
+          .request<unknown>(scopedPath("matches"))
           .then(async (reply) => {
-            if (
-              reply.items.some(
-                (item) =>
-                  item.audience !== ticket.role ||
-                  (ticket.role !== "manager" && item.state),
-              )
-            )
-              throw new Error(
-                "The service returned match data outside the selected role. The view was discarded.",
-              );
-            const attached = await attach(reply.items);
+            const page = parseMatchListPage<ConnectedMatchCentreDto>(reply, ticket);
+            const attached = await attach(page);
             if (attached) setMatches(attached);
           })
           .catch((cause) => readFault("Matches", cause, true)),
@@ -2101,6 +2095,33 @@ function WorkspaceSession({
       lock.current = false;
       setBusy(false);
     }
+  };
+  const loadMoreMatches = async () => {
+    const cached = matchesCache;
+    if (lock.current || !cached || !matchList?.nextCursor || !sameWorkspaceBinding(cached.binding, liveBinding.current)) return;
+    lock.current = true;
+    setLoadingMoreMatches(true);
+    try {
+      const next = await continueMatchList(cached, {
+        me: () => client.me<Identity>(),
+        request: (path) => client.request<unknown>(path),
+        currentBinding: () => liveBinding.current,
+        sessionCurrent: async (ticket) => {
+          if (!sameWorkspaceBinding(ticket, liveBinding.current)) return false;
+          if (!oidcSessionId) return true;
+          const session = await getConnectedSessionSummary();
+          return Boolean(workspaceSessionAllows(session, absoluteApi, Date.now()) && session?.sessionId === oidcSessionId && session.accountId === ticket.accountId && session.issuer === ticket.issuer && session.subject === ticket.subject);
+        },
+        now: serviceActionTime,
+      });
+      if (next) setMatches(next);
+    } catch (cause) {
+      if (!sameWorkspaceBinding(cached.binding, liveBinding.current)) return;
+      if (cause instanceof MatchListAuthorityDenied || cause instanceof ServiceError && [401, 403, 404].includes(cause.status)) {
+        invalidateRequests(); setBinding(null); setMatches(null);
+      }
+      setErrors([failureText(cause)]);
+    } finally { lock.current = false; setLoadingMoreMatches(false); }
   };
   const changeCommunity = (payload: CommunityPayload) =>
     mutate(
@@ -2937,6 +2958,9 @@ function WorkspaceSession({
         (matches ? (
           <ConnectedMatchCentre
             matches={matches}
+            hasMore={Boolean(matchList?.nextCursor)}
+            loadingMore={loadingMoreMatches}
+            onLoadMore={() => { void loadMoreMatches(); }}
             reportView={records}
             scope={
               teamId && seasonId

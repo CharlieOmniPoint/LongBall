@@ -1,4 +1,5 @@
 import { projectOwnPlayerPreparation } from '../../../packages/application/src/player-preparation';
+import { matchPageAudience, matchPageCursor, matchPagePosition, type MatchPageQuery } from './match-pagination';
 import { PgDatabase, type PgApplicationContext } from './pg';
 import type { DatabaseRequestScope } from './request-context';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
@@ -708,11 +709,13 @@ async bindDevice(principal: Principal, deviceId: string): Promise<void> {
         throw new AccessError('DEVICE_ACCOUNT_CONFLICT', 409, 'Enrol a separate device identity for this account.');
     (await this.execute("INSERT INTO devices(id,account_id) VALUES($1,$2) ON CONFLICT(id) DO NOTHING", [deviceId, principal.accountId]));
 }
-async teamMatches(principal: Principal, teamId: string, seasonId: string, requestedRole?: string): Promise<unknown[]> {
-    assertTeamRole(principal, (await this.memberships()), teamId, seasonId, ['manager', 'player', 'spectator'], this.now());
-    return (await Promise.all(((await this.many("SELECT id FROM matches WHERE team_id=$1 AND season_id=$2 ORDER BY id LIMIT 100", [teamId, seasonId])) as {
-        id: string;
-    }[]).map(async (row) => (await this.matchDto(principal, row.id, requestedRole)))));
+async teamMatches(principal: Principal, teamId: string, seasonId: string, requestedRole?: string, query: MatchPageQuery = { limit: 25, cursor: null }): Promise<{ items: Record<string, unknown>[]; nextCursor: string | null; serverTime: string }> {
+    const memberships = await this.memberships();
+    const audience = matchPageAudience(principal, memberships, teamId, seasonId, requestedRole, this.now());
+    const scope = { principal, teamId, seasonId, role: audience.role, playerId: audience.playerId ?? null }, afterId = matchPagePosition(scope, query);
+    const rows = await this.many('SELECT id,state_json,sharing_policy_json,last_sync_at FROM matches WHERE team_id=$1 AND season_id=$2 AND ($3::text IS NULL OR id COLLATE "C" > $3::text COLLATE "C") ORDER BY id COLLATE "C" LIMIT $4', [teamId, seasonId, afterId, query.limit + 1]) as Pick<MatchRow, 'id' | 'state_json' | 'sharing_policy_json' | 'last_sync_at'>[];
+    const visible = rows.slice(0, query.limit);
+    return { items: visible.map(row => filterMatchForPrincipal({ principal, memberships, teamId, seasonId, state: JSON.parse(row.state_json), policy: JSON.parse(row.sharing_policy_json), lastSyncAt: row.last_sync_at, requestedRole, now: this.now() })), nextCursor: rows.length > query.limit ? matchPageCursor(scope, visible[visible.length - 1].id) : null, serverTime: new Date(this.now()).toISOString() };
 }
 async document<T>(teamId: string, seasonId: string, kind: string): Promise<T> {
     const row = (await this.one("SELECT value_json FROM documents WHERE team_id=$1 AND season_id=$2 AND kind=$3", [teamId, seasonId, kind])) as {

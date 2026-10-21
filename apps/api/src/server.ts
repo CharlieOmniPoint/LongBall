@@ -1,3 +1,4 @@
+import { parseMatchPageQuery } from './match-pagination';
 import { TeamPrivilegeService } from './team-privileges-service';
 import { SqliteTeamPrivilegeRepository } from './team-privileges-repository';
 import { parseTeamPrivilegeCommand } from '../../../packages/application/src/team-privileges';
@@ -478,8 +479,8 @@ const windows = new Map<string, {
                     else
                         throw new AccessError('NOT_FOUND', 404, 'The requested object is unavailable.');
                 }
-                else if (request.method === 'GET' && parts[3] === 'matches')
-                    result = { items: (await store.teamMatches(principal, teamId, seasonId, role)), nextCursor: null, serverTime: new Date(now()).toISOString() };
+                else if (request.method === 'GET' && parts[3] === 'matches' && !parts[4])
+                    result = await store.teamMatches(principal, teamId, seasonId, role, parseMatchPageQuery(url.searchParams));
                 else if(request.method==='GET'&&parts[3]==='managers'&&!parts[4])result=await store.managers(principal,teamId,seasonId,role);
                 else if (request.method === 'POST' && parts[3] === 'managers' && parts[4] === 'revoke') result = await mutate(url.pathname,async()=>{const input=staffCommand(body!,'manager.revoked',header(request,'idempotency-key')??'');return {kind:'staff-command-receipt',commandId:input.commandId,...await store.revokeManager(principal,teamId,seasonId,{accountId:input.accountId,reason:input.reason,confirmRevocation:input.confirmRevocation},input.expectedRevision)};});
                 else if (request.method === 'POST' && parts[3] === 'managers' && !parts[4])

@@ -1,4 +1,5 @@
 import { projectOwnPlayerPreparation } from '../../../packages/application/src/player-preparation';
+import { matchPageAudience, matchPageCursor, matchPagePosition, type MatchPageQuery } from './match-pagination';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { chmodSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
@@ -575,9 +576,13 @@ export class DevelopmentStore {
     if (device && device.account_id !== principal.accountId) throw new AccessError('DEVICE_ACCOUNT_CONFLICT', 409, 'Enrol a separate device identity for this account.');
     this.database.prepare('INSERT INTO devices(id,account_id) VALUES(?,?) ON CONFLICT(id) DO NOTHING').run(deviceId, principal.accountId);
   }
-  teamMatches(principal: Principal, teamId: string, seasonId: string, requestedRole?: string): unknown[] {
-    assertTeamRole(principal, this.memberships(), teamId, seasonId, ['manager', 'player', 'spectator'], this.now());
-    return (this.database.prepare('SELECT id FROM matches WHERE team_id=? AND season_id=? ORDER BY id LIMIT 100').all(teamId, seasonId) as { id: string }[]).map(row => this.matchDto(principal, row.id, requestedRole));
+  teamMatches(principal: Principal, teamId: string, seasonId: string, requestedRole?: string, query: MatchPageQuery = { limit: 25, cursor: null }): { items: Record<string, unknown>[]; nextCursor: string | null; serverTime: string } {
+    const memberships = this.memberships();
+    const audience = matchPageAudience(principal, memberships, teamId, seasonId, requestedRole, this.now());
+    const scope = { principal, teamId, seasonId, role: audience.role, playerId: audience.playerId ?? null }, afterId = matchPagePosition(scope, query);
+    const rows = this.database.prepare('SELECT id,state_json,sharing_policy_json,last_sync_at FROM matches WHERE team_id=? AND season_id=? AND (? IS NULL OR id > ?) ORDER BY id COLLATE BINARY LIMIT ?').all(teamId, seasonId, afterId, afterId, query.limit + 1) as Pick<MatchRow, 'id' | 'state_json' | 'sharing_policy_json' | 'last_sync_at'>[];
+    const visible = rows.slice(0, query.limit);
+    return { items: visible.map(row => filterMatchForPrincipal({ principal, memberships, teamId, seasonId, state: JSON.parse(row.state_json), policy: JSON.parse(row.sharing_policy_json), lastSyncAt: row.last_sync_at, requestedRole, now: this.now() })), nextCursor: rows.length > query.limit ? matchPageCursor(scope, visible[visible.length - 1].id) : null, serverTime: new Date(this.now()).toISOString() };
   }
   document<T>(teamId: string, seasonId: string, kind: string): T {
     const row = this.database.prepare('SELECT value_json FROM documents WHERE team_id=? AND season_id=? AND kind=?').get(teamId, seasonId, kind) as { value_json: string } | undefined;

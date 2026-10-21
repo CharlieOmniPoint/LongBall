@@ -1,0 +1,45 @@
+import type { AddressInfo } from 'node:net';
+import { describe, expect, it } from 'vitest';
+import { createApi } from './server';
+import { SYNTHETIC_IDS } from './store';
+import type { MatchConfig } from '../../../packages/domain/src/index';
+
+const rootPath = `/v1/teams/${SYNTHETIC_IDS.teamId}/matches?seasonId=${SYNTHETIC_IDS.seasonId}`;
+describe('API04/DS13 real HTTP scoped keyset match pages', () => {
+  it('discovers every accepted match beyond100, bounds pages, preserves replay positions and validates query/cursor scope', async () => {
+    const api = createApi({ databasePath: ':memory:', syntheticAuth: true, now: () => 1_800_000_000_000 });
+    const config = JSON.parse(api.store.match(SYNTHETIC_IDS.matchId).config_json) as MatchConfig;
+    const expected: string[] = [SYNTHETIC_IDS.matchId];
+    for (let i = 0; i < 107; i++) { const matchId = `page-match-${String(i).padStart(3, '0')}`; expected.push(matchId); api.store.insertMatch({ ...config, matchId }, SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId); }
+    for (let i = 0; i < 30; i++) api.store.insertMatch({ ...config, matchId: `foreign-${i}` }, 'synthetic-other-team', SYNTHETIC_IDS.seasonId);
+    api.store.database.prepare('INSERT INTO memberships(account_id,team_id,season_id,role) VALUES(?,?,?,?)').run('synthetic-account-manager-2', 'synthetic-other-team', SYNTHETIC_IDS.seasonId, 'manager');
+    api.store.database.prepare('INSERT INTO memberships(account_id,team_id,season_id,role) VALUES(?,?,?,?)').run('synthetic-account-manager-2', SYNTHETIC_IDS.teamId, 'another-season', 'manager');
+    await new Promise<void>(resolve => api.server.listen(0, '127.0.0.1', resolve));
+    const base = `http://127.0.0.1:${(api.server.address() as AddressInfo).port}`;
+    const call = async (path = rootPath, token = 'synthetic-manager-2', role = 'manager') => {
+      const response = await fetch(base + path, { headers: { Authorization: `Bearer ${token}`, 'X-Longball-Role': role } });
+      return { status: response.status, body: await response.json() as { items: { matchId: string; audience: string; state?: unknown; score?: unknown }[]; nextCursor: string | null; serverTime: string; code?: string } };
+    };
+    try {
+      const first = await call(); expect(first.status).toBe(200); expect(first.body.items).toHaveLength(25); expect(first.body.nextCursor).toBeTypeOf('string'); expect(first.body.serverTime).toBe(new Date(1_800_000_000_000).toISOString());
+      const found = first.body.items.map(item => item.matchId); let cursor = first.body.nextCursor;
+      while (cursor) { const page = await call(`${rootPath}&cursor=${encodeURIComponent(cursor)}`); expect(page.status).toBe(200); expect(page.body.items.length).toBeLessThanOrEqual(25); found.push(...page.body.items.map(item => item.matchId)); cursor = page.body.nextCursor; }
+      expect(found).toEqual(expected.sort()); expect(new Set(found).size).toBe(108); expect(found).not.toContain('foreign-0');
+      const hundred = await call(`${rootPath}&limit=100`); expect(hundred.body.items).toHaveLength(100); expect(hundred.body.nextCursor).toBeTypeOf('string');
+      const eight = await call(`${rootPath}&cursor=${hundred.body.nextCursor}&limit=100`); expect(eight.body.items).toHaveLength(8); expect(eight.body.nextCursor).toBeNull();
+      const repeated = await call(`${rootPath}&cursor=${first.body.nextCursor}`); expect(repeated.body.items.map(item => item.matchId)).toEqual(expected.slice(25, 50));
+      // A new row behind the immutable boundary does not shift the next page as OFFSET would.
+      api.store.insertMatch({ ...config, matchId: 'page-match-000-a' }, SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId);
+      expect((await call(`${rootPath}&cursor=${first.body.nextCursor}`)).body.items).toEqual(repeated.body.items);
+      for (const suffix of ['&limit=0', '&limit=101', '&limit=1.5', '&limit=025', '&limit=', '&limit=1&limit=2', '&sort=id', '&filter=all', '&cursor=', '&cursor=bad*cursor', '&cursor=Zm9v']) expect((await call(rootPath + suffix)).status, suffix).toBe(400);
+      expect((await call(`${rootPath}&cursor=${first.body.nextCursor}`, 'synthetic-manager-3')).status).toBe(400);
+      expect((await call(`/v1/teams/synthetic-other-team/matches?seasonId=${SYNTHETIC_IDS.seasonId}&cursor=${first.body.nextCursor}`)).status).toBe(400);
+      expect((await call(`/v1/teams/${SYNTHETIC_IDS.teamId}/matches?seasonId=another-season&cursor=${first.body.nextCursor}`)).status).toBe(400);
+      expect((await call(`${rootPath}&cursor=${first.body.nextCursor}`, 'synthetic-account-player-01', 'player')).status).toBe(400);
+      const child = await call(`${rootPath}&limit=100`, 'synthetic-account-player-01', 'player'); expect(child.status).toBe(200); expect(child.body.items).toHaveLength(100); expect(child.body.items.every(item => item.audience === 'player' && item.state === undefined && item.score === null)).toBe(true);
+      expect((await call(rootPath, 'synthetic-admin', 'administrator')).status).toBe(404);
+      api.store.database.prepare('UPDATE memberships SET revoked_at=? WHERE account_id=? AND team_id=? AND role=?').run(1_800_000_000_000, 'synthetic-account-manager-2', SYNTHETIC_IDS.teamId, 'manager');
+      expect((await call(`${rootPath}&cursor=${first.body.nextCursor}`)).status).toBe(404);
+    } finally { api.server.closeAllConnections(); await api.close(); }
+  });
+});

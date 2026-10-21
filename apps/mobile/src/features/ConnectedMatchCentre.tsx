@@ -55,6 +55,9 @@ export function ConnectedMatchCentre({
   onOpenReport,
   onOpenAlbum,
   busy,
+  hasMore = false,
+  loadingMore = false,
+  onLoadMore,
 }: {
   matches: ConnectedMatchCentreDto[];
   observedAtMs: number;
@@ -67,6 +70,9 @@ export function ConnectedMatchCentre({
   onOpenReport?: (matchId: string) => void;
   onOpenAlbum?: (matchId: string) => void;
   busy: boolean;
+  hasMore?: boolean;
+  loadingMore?: boolean;
+  onLoadMore?: () => void;
 }) {
   const [expanded, setExpanded] = useState<string | null>(null);
   return (
@@ -334,6 +340,7 @@ export function ConnectedMatchCentre({
           outside this view.
         </Notice>
       )}
+      {hasMore && onLoadMore && <Button label={loadingMore ? "Loading accepted matches…" : "Load more accepted matches"} testID="match-centre-load-more" variant="secondary" disabled={busy || loadingMore} onPress={onLoadMore} />}
     </View>
   );
 }

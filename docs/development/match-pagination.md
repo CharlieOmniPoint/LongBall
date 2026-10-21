@@ -1,0 +1,18 @@
+# Accepted match-list continuation
+
+The team match list now follows canonical API04 and DS13: an authorised, typed page with `items`, `nextCursor` and `serverTime`, a default limit of 25 and an explicit maximum of 100. The only query parameters are `seasonId`, `limit` and `cursor`; unknown, repeated or malformed parameters are rejected. The supplied canonical specification and archived contracts remain unchanged.
+
+SQLite and PostgreSQL both apply current account, team, season and selected-audience access before keyset pagination. The query uses immutable match IDs in ascending ASCII order and fetches at most limit+1 scoped records. The extra record determines whether a continuation exists. The page projects through the existing role/sharing filter; a child receives only its own permitted details and withheld scores remain null. Current manager membership still requires the existing adult/strong-auth checks, including empty lists.
+
+The versioned opaque cursor records the last immutable ID and a digest binding of the verified account, issuer, subject, team, season, effective audience and player identity. It is a collection position, not an authentication or access capability. Every continuation repeats current access checks and the SQL scope predicate. A cursor from another scope/account/role is rejected. Inserts behind a boundary do not shift or repeat the next page; refresh discovers changes before that boundary. This is live keyset pagination, not a frozen historical snapshot.
+
+Match Centre keeps the cursor with its existing account/team/season/role/generation view binding. The explicit **Load more accepted matches** control fetches one further page, checks current service identity/membership and native-session eligibility, validates the returned scope and ordering, and discards late replies after a workspace change. Authoritative access denial closes the private match view. Refresh starts again from the first page. It does not fetch the entire collection in the background or alter controller history.
+
+Focused evidence:
+
+- Actual SQLite HTTP walks all 108 fictional matches, checks default 25 and 100+8 boundaries, stable retry and an insert behind the cursor, malformed/unknown/duplicate query rejection, cross-account/team/season/role cursor rejection, revoked-manager and administrator denial, and masked child pages.
+- Actual PostgreSQL HTTP uses a disposable database and real non-bypass API role to walk all 108 matches and verify scoped cursors, administrator denial and masked child pages. Page projection loads scoped rows and memberships once rather than issuing per-card repository queries.
+- Four client-boundary tests cover ordered append, stale-generation/scope response discard, revoked/locked authority and malformed/private/repeated pages.
+- The 390px browser review clicks through 25 → 50 → 75 → 100 → 108 distinct records and resets to 25 on refresh. Its network log contains exactly four cursor requests; there are no browser errors or horizontal overflow. It uses a disposable fictional 108-snapshot service fixture and a transport-only discovery redirect, with no browser business-state injection.
+
+The [browser report](evidence/2026-10-21/match-pagination/browser.json) records export SHA-256 `9c4226d0209c50c2b62e62b0d708ba31d683ef9528652a6fb436af916300c981`. The [screenshot](evidence/2026-10-21/match-pagination/beyond-first 100.png) shows a match beyond the former first 100 boundary. Native physical-device testing and any broader list-family pagination remain separate work; this increment closes the accepted team match list and its Match Centre continuation.
