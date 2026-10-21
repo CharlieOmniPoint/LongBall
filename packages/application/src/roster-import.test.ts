@@ -37,13 +37,7 @@ describe("roster import boundary", () => {
   it("rejects existing player IDs and duplicate shirts while warning instead of merging coincident names", () => {
     const state = createPreparationState();
     const known = previewRosterImport(
-      ROSTER_CSV_TEMPLATE.replace(
-        "displayName,",
-        "playerId,displayName,",
-      ).replace(
-        "Fictional Player,",
-        `${state.profiles[0].playerId},Fictional Player,`,
-      ),
+      `playerId,displayName,initials,shirtNumber,foot,preference1,preference2,preference3,eligiblePositions\n${state.profiles[0].playerId},Existing identity,EI,20,not_recorded,CM,CB,ST,CM|CB|ST`,
       state,
       allocate(),
     );
@@ -55,10 +49,7 @@ describe("roster import boundary", () => {
     );
     expect(duplicate.errors.join()).toMatch(/shirt number/);
     const names = previewRosterImport(
-      ROSTER_CSV_TEMPLATE.replace(
-        "Fictional Player",
-        state.profiles[0].displayName,
-      ),
+      `displayName,initials,shirtNumber,foot,preference1,preference2,preference3,eligiblePositions\n${state.profiles[0].displayName},NP,20,not_recorded,CM,CB,ST,CM|CB|ST`,
       state,
       allocate(),
     );
