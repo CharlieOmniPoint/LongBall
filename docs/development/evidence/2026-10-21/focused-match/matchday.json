@@ -1,0 +1,15 @@
+{
+  "passed": true,
+  "checkedAt": "2026-10-21T17:48:32.378Z",
+  "checks": [
+    "Opening an unprepared fixture cannot claim its controller; saved formation and player snapshots are required first.",
+    "Selected manager account downloads the real service fixture, explicitly claims recording, and records actual attendance through the shared editor.",
+    "A complete eligible staged lineup is saved locally; the independent service read remains unchanged before explicit upload.",
+    "The focused match hides team navigation; Back to team and return preserve the running clock without another event. Explicit kickoff and referee pause use the existing confirmation, journal and canonical upload; an independent HTTP read verifies accepted attendance, lineup, time and unchanged score."
+  ],
+  "acceptedRevision": 12,
+  "acceptedStatus": "first_half_paused",
+  "browserErrors": [],
+  "fixture": "Isolated fictional SQLite; transport-only discovery redirect; actual HTTP commands, no state injection",
+  "nativeDeviceEvidence": false
+}
