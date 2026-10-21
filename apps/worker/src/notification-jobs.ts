@@ -175,7 +175,12 @@ export async function runDueTeamNotifications(store: Store, options: { provider?
     // The claim/payload transactions may take time. Re-observe at every asynchronous
     // dispatch boundary instead of treating receipt as the original claim instant.
     await inJobContext(store, claimed.context, dispatchNow(), observeDatabaseNow);
-    const settled = await dispatchClaimedTeamNotification(claimed.job, { now: dispatchNow, provider,
+    const scopedProvider: TeamNotificationProvider | null = provider ? { ...provider, send: async input => {
+      if (!provider.prepareSend) return provider.send(input);
+      const prepared = await inJobContext(store, claimed.context, dispatchNow(), () => provider.prepareSend!(input));
+      return prepared();
+    } } : null;
+    const settled = await dispatchClaimedTeamNotification(claimed.job, { now: dispatchNow, provider:scopedProvider,
       readCurrentEvidence: (job, at) => inJobContext(store, claimed.context, at, async () => { const current = await evidence(store, job, await observeDatabaseNow()); await observeDatabaseNow(); return current; }),
       stillOwnsLease: (job, at) => inJobContext(store, claimed.context, at, async () => owns(await readRow(store, job.id), job, await observeDatabaseNow())),
       commit: (leased, next) => inJobContext(store, claimed.context, dispatchNow(), async () => commit(store, leased, next, await observeDatabaseNow())),

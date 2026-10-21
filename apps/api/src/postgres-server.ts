@@ -11,6 +11,8 @@ import { SpectatorActivationService } from './spectator-activation';
 import { PostgresSpectatorActivationRepository } from './postgres-spectator-activation';
 import { SpectatorInvitationService } from './invitation-service';
 import { PostgresInvitationRepository } from './postgres-invitation-repository';
+import { PostgresPushRepository } from './postgres-push-registrations';
+import { PushRegistrationService } from './push-registrations';
 
 export async function createPostgresApi(options: ApiOptions & { connectionString: string; migrationMode?:'apply'|'verify'; seedSynthetic?:boolean; allowOwnerTestFixture?:true }) {
   const store = await PostgresStore.open(options.connectionString, options.now, {migrationMode:options.migrationMode});
@@ -26,6 +28,7 @@ export async function createPostgresApi(options: ApiOptions & { connectionString
     const spectator=new SpectatorActivationService({repository:new PostgresSpectatorActivationRepository(store),provider:options.activationProvider,policy:options.activationPolicy,now:store.now});
     const invitations=new SpectatorInvitationService({...options,repository:new PostgresInvitationRepository(store),now:store.now});
     const privileges=new TeamPrivilegeService(new PostgresTeamPrivilegeRepository(store),store.now);
-    return createRuntimeApi(options, store, port, media, activation,undefined,{branding,spectator,invitations,privileges});
+    const push=new PushRegistrationService(new PostgresPushRepository(store.db),options,store.now);
+    return createRuntimeApi(options, store, port, media, activation,undefined,{branding,spectator,invitations,privileges,push});
   } catch (error) { await store.close(); throw error; }
 }

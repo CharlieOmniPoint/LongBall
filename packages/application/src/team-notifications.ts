@@ -29,6 +29,9 @@ export interface TeamNotificationProvider {
   configured: boolean;
   /** Without provider deduplication, an unknown external outcome requires review, not blind retry. */
   idempotency: 'provider' | 'none';
+  /** Optional server-side destination lookup within the exact leased job context.
+   * The returned closure runs after that context ends; external transports get no DB authority. */
+  prepareSend?: (input: Parameters<TeamNotificationProvider['send']>[0]) => Promise<() => ReturnType<TeamNotificationProvider['send']>>;
   send(input: { idempotencyKey: string; accountId: string; payload: GenericTeamNotificationPayload; signal: AbortSignal }): Promise<
     { status: 'accepted'; receiptId: string } | { status: 'retryable'; code: string } | { status: 'rejected'; code: string }
   >;

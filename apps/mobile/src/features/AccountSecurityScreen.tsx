@@ -1,3 +1,4 @@
+import { PushRegistrationPanel } from "./PushRegistrationPanel";
 import { useEffect, useRef, useState } from "react";
 import {
   AppState,
@@ -604,6 +605,12 @@ export function AccountSecurityScreen({
             </>
           )}
         </Card>
+      )}
+      {session && connected && Platform.OS !== "web" && (
+        <PushRegistrationPanel
+          key={JSON.stringify([session.issuer, session.accountId, session.sessionId, session.config.apiBaseUrl])}
+          session={session}
+        />
       )}
       {session && connected && (
         <RecognizedDevicesPanel

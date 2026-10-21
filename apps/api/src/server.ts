@@ -26,8 +26,10 @@ import { assertBrandAuthority,parseBrandingCommand } from '../../../packages/app
 import type { SpectatorActivationService } from './spectator-activation';
 import { SpectatorInvitationService,invitationVerifier,parseInvitationAccept } from './invitation-service';
 import { SqliteInvitationRepository } from './invitation-repository';
+import { PushRegistrationService,pushRevision,type PushOptions } from './push-registrations';
+import { SqlitePushRepository } from './sqlite-push-registrations';
 
-export interface ApiOptions {
+export interface ApiOptions extends PushOptions {
   databasePath: string;
   syntheticAuth?: boolean;
   verifyIdentity?: (token: string) => Promise<VerifiedIdentity>;
@@ -111,9 +113,10 @@ export function createApi(options:ApiOptions) {
  const ready=runtime.serialize(()=>repository.initialize());void ready.catch(()=>undefined);
  const invitations=new SpectatorInvitationService({...options,repository,now});
  const privileges=new TeamPrivilegeService(new SqliteTeamPrivilegeRepository(source,runtime.store),now);
- return createRuntimeApi(options,source,runtime.store,media,activation,work=>ready.then(()=>runtime.serialize(work)),{branding,invitations,privileges});
+ const push=new PushRegistrationService(new SqlitePushRepository(source.database,runtime.store.transaction),options,now);
+ return createRuntimeApi(options,source,runtime.store,media,activation,work=>ready.then(()=>runtime.serialize(work)),{branding,invitations,privileges,push});
 }
-export function createRuntimeApi<T>(options:ApiOptions,source:T,store:RuntimeStore,media:RuntimeMedia,activation:RuntimeActivation,serialize:<R>(work:()=>Promise<R>)=>Promise<R> = work=>work(),services:{branding?:BrandMediaService;spectator?:RuntimeSpectatorActivation;invitations?:SpectatorInvitationService;privileges?:TeamPrivilegeService}={}) {
+export function createRuntimeApi<T>(options:ApiOptions,source:T,store:RuntimeStore,media:RuntimeMedia,activation:RuntimeActivation,serialize:<R>(work:()=>Promise<R>)=>Promise<R> = work=>work(),services:{branding?:BrandMediaService;spectator?:RuntimeSpectatorActivation;invitations?:SpectatorInvitationService;privileges?:TeamPrivilegeService;push?:PushRegistrationService}={}) {
  const now=options.now??Date.now;
  const privilegeService=()=>{if(!services.privileges)throw new AccessError('TEAM_PRIVILEGES_UNAVAILABLE',503,'Current team privileges are unavailable.');return services.privileges;};
  const verifyIdentity=options.verifyIdentity??(options.oidc?createOidcVerifier({...options.oidc,now}):null);
@@ -275,11 +278,12 @@ const windows = new Map<string, {
                     throw new AccessError('POLICY_APPROVAL_REQUIRED', 503, 'Connected award/sharing context requires accepted match evidence, verified finish-time anchors and independently approved policy.');
                 body.command = parseCommunityCommand(body.command);
             }
-            const mutate = async <T>(operation: string, work: () => T | Promise<T>): Promise<T> => store.transaction(async () => {
+            const mutate = async <T>(operation: string, work: () => T | Promise<T>,beforeReplay?:()=>Promise<unknown>,signaturePayload:unknown=body): Promise<T> => store.transaction(async () => {
                 requireContract();
                 const fresh = await store.principal(identity);
                 if (fresh.accountId !== principal.accountId) throw new AccessError('INVALID_SESSION', 401, 'The account binding changed. Sign in again.');
                 principal = fresh;
+                await beforeReplay?.();
                 // Re-check current permissions even when an old idempotency result exists.
                 if(url.pathname==='/v1/privacy/requests')prepareAccountPrivacyRequest({principal,memberships:await store.memberships(),input:body,nowMs:now()});
                 if (parts[1] === 'matches' && parts[2])
@@ -305,7 +309,7 @@ const windows = new Map<string, {
                     else
                         assertCanManageTeam(principal, (await store.memberships()), parts[2], seasonId, now());
                 }
-                return (await store.idempotent(principal, scopedOperation(operation), header(request, 'idempotency-key') ?? '', body, work));
+                return (await store.idempotent(principal, scopedOperation(operation), header(request, 'idempotency-key') ?? '', signaturePayload, work));
             });
             let result: unknown;
             if (request.method === 'GET' && url.pathname === '/v1/me')
@@ -314,6 +318,19 @@ const windows = new Map<string, {
                 result = eventContract;
             else if(request.method==='GET'&&url.pathname==='/v1/identity/devices')result=await store.recognisedDevices(principal);
             else if(request.method==='POST'&&url.pathname==='/v1/identity/devices')result=await mutate(url.pathname,()=>store.enrolDevice(principal,body));
+            else if(parts[1]==='me'&&parts[2]==='push-registrations'&&services.push){
+                const push=services.push;
+                if(request.method==='GET'&&parts.length===3)result=await push.read(principal);
+                else if(request.method==='POST'&&parts.length===3){
+                    const revision=pushRevision(header(request,'if-match')),key=requireContract();
+                    result=await mutate(url.pathname,async()=>{const receipt=await push.register(principal,body,revision,key);await store.audit(principal,'push.register',receipt.id,'registered');return receipt;},()=>push.validateRegistration(principal,body),{body,revision});
+                }
+                else if(request.method==='DELETE'&&parts.length===4){
+                    const deviceId=parts[3],revision=pushRevision(header(request,'if-match')),key=requireContract();
+                    const receipt=await mutate(url.pathname,async()=>{const value=await push.revoke(principal,deviceId,revision,key);await store.audit(principal,'push.revoke',deviceId,'revoked');return value;},()=>push.assertEnrolled(principal,deviceId),{deviceId,revision});
+                    response(reply,202,receipt,requestId);return;
+                }else throw new AccessError('NOT_FOUND',404,'The requested object is unavailable.');
+            }
             else if (request.method === 'GET' && url.pathname === '/v1/privacy/requests')
                 result = await store.privacyRequests(principal);
             else if (request.method === 'POST' && url.pathname === '/v1/privacy/requests')

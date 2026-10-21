@@ -18,6 +18,7 @@ import { issueClockChallenge as makeClockChallenge, acknowledgeClockChallenge as
 import { Q08_RECONCILIATION_POLICY, previewReconciliation, type ReconciliationProposal, type ReconciliationProposalInput, type ReconciliationSnapshot, type ReconciliationSubmission } from '../../../packages/application/src/reconciliation';
 import { deriveFinishedMatchContext, finishEligibilityChanged } from './finished-match-context';
 import { createTeamNotificationJob, type TeamNotificationCategory } from '../../../packages/application/src/team-notifications';
+import { PUSH_SQLITE_MIGRATION } from './sqlite-push-registrations';
 import { managerRoster as projectManagerRoster, type StaffAccountEvidence } from '../../../packages/application/src/staff';
 import { prepareAccountPrivacyRequest, projectAccountPrivacyRequests, type PrivacyRequestRecord } from '../../../packages/application/src/privacy-requests';
 import { brandSelectedRole,type BrandingAuthority } from './brand-repository';
@@ -112,7 +113,7 @@ export class DevelopmentStore {
     this.transaction(() => {
     // Read the version only after acquiring the migration lock; API and worker can start together.
     const version = Number((this.database.prepare('PRAGMA user_version').get() as { user_version: number }).user_version);
-    if (version > 9) throw new Error('This store version is newer than this application; preserve it and use a compatible build.');
+    if (version > 10) throw new Error('This store version is newer than this application; preserve it and use a compatible build.');
     if (version === 0) this.database.exec(`
       CREATE TABLE accounts(id TEXT PRIMARY KEY,issuer TEXT NOT NULL,subject TEXT NOT NULL,classification TEXT NOT NULL CHECK(classification IN ('child_shared','adult_individual','unclassified')),adult_verified INTEGER NOT NULL DEFAULT 0,status TEXT NOT NULL DEFAULT 'active',UNIQUE(issuer,subject));
       CREATE TABLE teams(id TEXT PRIMARY KEY,name TEXT NOT NULL);
@@ -162,6 +163,7 @@ export class DevelopmentStore {
       CREATE TRIGGER native_device_identity_immutable BEFORE UPDATE ON native_app_devices WHEN NEW.device_id<>OLD.device_id OR NEW.account_id<>OLD.account_id OR NEW.issuer<>OLD.issuer OR NEW.registered_at<>OLD.registered_at BEGIN SELECT RAISE(ABORT,'Immutable native device identity'); END;
       PRAGMA user_version=8;`);
     if(version<9)this.database.exec(SQLITE_TEAM_PRIVILEGES_DDL + 'PRAGMA user_version=9;');
+    if(version<10)this.database.exec(PUSH_SQLITE_MIGRATION + 'PRAGMA user_version=10;');
     });
   }
   async backup(destination: string): Promise<void> {

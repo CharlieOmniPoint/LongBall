@@ -20,7 +20,7 @@ export function requestDatabaseScope(input:{method:string;parts:string[];seasonI
   const scope:DatabaseRequestScope={operation:'unavailable',requestedRole:input.role as Role|undefined??'default'};
   const command=object(body?.command)?body.command:null;
   if(parts[0]!=='v1')return scope;
-  if(parts[1]==='me')scope.operation='account.read';
+  if(parts[1]==='me')scope.operation=parts[2]==='push-registrations'?(method==='GET'?'push.read':method==='POST'?'push.register':method==='DELETE'?'push.revoke':'unavailable'):'account.read';
   else if(parts[1]==='identity'&&parts[2]==='devices')scope.operation=method==='GET'?'identity.devices':'identity.enrol';
   else if(parts[1]==='contracts')scope.operation='contracts.read';
   else if(parts[1]==='privacy'&&parts[2]==='requests')scope.operation=method==='GET'?'privacy.read':'privacy.request';

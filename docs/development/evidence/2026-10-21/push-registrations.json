@@ -1,0 +1,105 @@
+{
+  "feature": "DS14 native enrolled-device push registration",
+  "recordedAt": "2026-10-21T18:09:07.843444+00:00",
+  "sourceBase": "f4fbffe99ae977d89172afb86f78bbf262b275e1",
+  "prerequisiteLocalCommit": "4b25172956b678d764ee8f1188b509f060a456b5",
+  "prerequisiteOriginCommit": "7a87e58",
+  "isolatedBranch": "dev/longball-push",
+  "schema": {
+    "postgresqlCore": 14,
+    "sqliteDevelopment": 10,
+    "existingNamedRuntimeMigrated": false
+  },
+  "checks": [
+    {
+      "name": "authenticated HTTP and additive PostgreSQL migration",
+      "files": ["apps/api/src/push-registrations.test.ts"],
+      "passed": 13,
+      "failed": 0,
+      "actualPostgres": true,
+      "restrictedServingRoles": true,
+      "finishedRunStartedAt": "2026-10-21T18:07:29Z"
+    },
+    {
+      "name": "AES-GCM binding and explicit key rotation",
+      "files": ["apps/api/src/push-token-crypto.test.ts"],
+      "passed": 2,
+      "failed": 0
+    },
+    {
+      "name": "private selected-processor destination/reflection boundary",
+      "files": ["apps/api/src/registered-push-provider.test.ts"],
+      "passed": 3,
+      "failed": 0
+    },
+    {
+      "name": "existing notification worker regression",
+      "files": ["apps/worker/src/notification-jobs.test.ts"],
+      "passed": 19,
+      "failed": 0,
+      "actualPostgres": true,
+      "note": "Passed after moving only destination preparation into leased authority; sender runs outside it."
+    },
+    {
+      "name": "SQLite migration regression and push9-to10 preservation/rollback",
+      "files": ["apps/api/src/migration.test.ts"],
+      "passed": 9,
+      "failed": 0
+    },
+    {
+      "name": "pure native exact-retry and protected manifest boundary",
+      "files": ["apps/mobile/src/platform/push-registration-core.test.ts"],
+      "passed": 12,
+      "failed": 0
+    },
+    {
+      "name": "allowlisted metadata DTO and transport contracts",
+      "files": ["packages/application/src/push-registrations.test.ts"],
+      "passed": 4,
+      "failed": 0
+    }
+  ],
+  "totalUniqueTestsPassed": 62,
+  "staticChecks": {
+    "rootTypeScript": "passed",
+    "mobileTypeScript": "passed",
+    "scopedEslintMaxWarnings0": "passed",
+    "gitDiffCheck": "passed"
+  },
+  "securityEvidence": [
+    "SQLite main/WAL bytes and all PostgreSQL application table JSON were scanned for the fictional raw token; absent.",
+    "Idempotency receipts and audit contain metadata and request-signature hashes only.",
+    "Exact cached registration receipt after withdrawal did not change the revoked row.",
+    "Withdrawal before initial registration creates a tombstone that rejects delayed revision-zero registration.",
+    "Current active account, issuer, own enrollment/platform and configured transport bind registration.",
+    "Restricted worker cannot SELECT the push table; only a protected exact-lease recipient resolver obtains ciphertext.",
+    "External selected sender was asserted to have no ambient PostgreSQL applicationContext.",
+    "Missing/wrong encryption keys and AAD changes fail closed; retained old keys decrypt through explicit rotation.",
+    "A processor receipt reflecting a raw token is refused before generic queue persistence.",
+    "Account/session changes and uncertain OS-protected manifest writes preserve exact pending evidence without sending under replacement authority."
+  ],
+  "independentReadOnlyReview": {
+    "agent": "community",
+    "files": [
+      "apps/api/migrations/postgresql/014_push_registrations.sql",
+      "apps/api/src/registered-push-provider.ts",
+      "apps/worker/src/notification-jobs.ts"
+    ],
+    "materialBoundaryDefectsFound": false,
+    "independentTestRerun": false
+  },
+  "runtimeExtensions": [
+    "GET /v1/me/push-registrations metadata status",
+    "Quoted If-Match generation for POST and DELETE, zero when absent; canonical JSON bodies/responses unchanged"
+  ],
+  "limits": [
+    "No production notification processor, project, credentials, account or paid service selected/provisioned.",
+    "Injected fake sender proves plumbing and boundaries, not real remote acceptance or delivery.",
+    "No physical OS permission, token rotation, native SecureStore/process-loss or device delivery proof.",
+    "Native and browser export/compile integration is deferred to parent after merge.",
+    "Browser review cannot obtain, persist or submit phone tokens.",
+    "Local sign-out alone does not promise remote withdrawal; explicit Stop and observed permission withdrawal are separate.",
+    "OS-protected cleanup may leave unreachable encrypted chunks if the OS rejects cleanup; no token is moved into generic storage.",
+    "No remote enrollment-revocation policy was invented; current enrollment/platform and active account are rechecked."
+  ]
+}
