@@ -17,6 +17,7 @@ Open `http://localhost:4173` on the machine running the server. A cloud workspac
 `pnpm dev` starts Metro for a custom native development client. Expo Go cannot prove SQLCipher. Native code includes a sleep-inclusive clock, boot continuity evidence, SQLCipher/SecureStore journal and backup-exclusion handling. These require native compilation and physical iPhone/Android testing; JavaScript exports do not prove them. Android compilation is currently blocked by the environment's denial of the official `repo.reactnative.dev` artifact host. No APK or signed iOS build is claimed.
 
 - [Review, commands and actual evidence](docs/development/review.md)
+- [Local Windows Codex review and transfer](docs/development/local-review-windows.md)
 - [M0 scope and native proof register](docs/development/implementation-scope.md)
 - [All 28 features](docs/development/traceability.md) and [unresolved decisions](docs/development/decisions.md)
 - [Android build evidence](docs/development/android-build-evidence.md)

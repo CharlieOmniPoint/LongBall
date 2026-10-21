@@ -39,4 +39,6 @@ The pack identifies Q05A/B/C, Q06A/B, Q07A/B, Q08A/B, Q11/Q12/Q13/Q16, Q17 and Q
 
 ## Deployment preparation boundary
 
+21 October clarification: continue the independent native app and companion browser build in Codex. [Local Windows review](local-review-windows.md) addresses the cloud/desktop loopback mismatch. Sites is not selected as a hosting workaround: its [current terms, section 2.5(d)](https://openai.com/policies/chatgpt-sites-terms/), prohibit Sites designed for children under 13 or the applicable digital-consent age. Public access or parent account sharing does not remove that audience restriction. No Sites project has been created. A later independent hosting choice and LongBall's own identity/privacy design remain separate from the adult developer's use of Codex.
+
 Prepare deterministic builds, secret-free configuration names, source/test evidence and a review-build output. Do not create paid infrastructure, store enrolments, domains or live-data environments. Railway, Keycloak hosting, region, service sizing and EAS remain proposed choices to evaluate at their milestones. Server authority, backup restoration and real-data access controls must be implemented and tested before a connected pilot; a local browser preview supplies none of those guarantees.
