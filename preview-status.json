@@ -1,5 +1,5 @@
 {
-  "state": "ready",
+  "state": "stopped",
   "url": "https://dennis-klein-initiatives-recipient.trycloudflare.com",
   "sourceRevision": "423a434f15c864e8bc61cae5b7adfaa47f3578d5",
   "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/39605988102",
