@@ -4,7 +4,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { AddressInfo } from 'node:net';
 import sharp from 'sharp';
-import { afterEach,describe,expect,it } from 'vitest';
+import { afterEach,describe,expect,it,vi } from 'vitest';
+import * as imageProcess from './image-process';
 import { createApi } from './server';
 import { EVENT_CONTRACT_VERSION,SYNTHETIC_IDS } from './store';
 import type { MediaScanner } from './media';
@@ -12,7 +13,7 @@ import type { BrandingDto,BrandReference } from '../../../packages/application/s
 import { parseAccountDevicesDto } from '../../../packages/application/src/account-devices';
 
 const running:ReturnType<typeof createApi>[]=[],directories:string[]=[];
-afterEach(async()=>{for(const api of running.splice(0)){api.server.closeAllConnections();await api.close();}for(const directory of directories.splice(0))rmSync(directory,{recursive:true,force:true});});
+afterEach(async()=>{vi.restoreAllMocks();for(const api of running.splice(0)){api.server.closeAllConnections();await api.close();}for(const directory of directories.splice(0))rmSync(directory,{recursive:true,force:true});});
 const root=`/v1/teams/${SYNTHETIC_IDS.teamId}/branding?seasonId=${SYNTHETIC_IDS.seasonId}`;
 const path=(suffix:string)=>`/v1/teams/${SYNTHETIC_IDS.teamId}/branding${suffix}?seasonId=${SYNTHETIC_IDS.seasonId}`;
 const scanner:MediaScanner={scan:async()=>({verdict:'clean',engine:'explicit-unit-test-double'})};
@@ -32,7 +33,7 @@ async function start(scan:MediaScanner|null=scanner){
     const prepared=await json(path(`/${kind}/uploads/prepare`),{role,body:{kind,...(kind==='club_logo'?{clubId:'synthetic-richmond-rovers'}:{teamId:SYNTHETIC_IDS.teamId}),byteSize:png.length,mimeType:'image/png',sha256:createHash('sha256').update(png).digest('hex'),policyAcknowledged:true}});expect(prepared.status).toBe(200);
     const uploadId=prepared.body.uploadId as string,cap=prepared.body.uploadToken as string,asset=prepared.body.asset as BrandReference;
     expect((await json(path(`/uploads/${uploadId}`),{role,raw:png,cap})).status).toBe(200);
-    const complete=await json(path(`/uploads/${uploadId}/complete`),{role,body:{},cap});return{prepared,complete,uploadId,cap,asset};
+    const completionKey=randomUUID(),complete=await json(path(`/uploads/${uploadId}/complete`),{role,body:{},cap,key:completionKey});return{prepared,complete,uploadId,cap,asset,completionKey};
   };
   const publish=async(asset:BrandReference,version:number,role=asset.kind==='club_logo'?'administrator':'manager',key=randomUUID())=>json(path(`/${asset.kind}/publish`),{role,key,body:{command:{id:key,type:'logo.published',kind:asset.kind,assetId:asset.assetId,reviewedRevision:asset.revision,expectedSlotVersion:version,confirmRightsToUse:true,policyVersion:'logo-rights-v1'}}});
   return{api,json,request,stage,publish,png,tick:()=>{now+=1000;}};
@@ -72,6 +73,18 @@ describe('F01 supplied private logos and live inheritance',()=>{
     const client=await start(null);const staged=await client.stage('team_logo');
     expect(staged.complete.status).toBe(503);expect(staged.complete.body.code).toBe('SCANNER_REQUIRED');expect((await client.json(root,{role:'manager'})).body.effective).toEqual({source:'neutral',logo:null});
     expect(client.api.store.database.prepare('SELECT status,display_key FROM brand_assets WHERE id=?').get(staged.uploadId)).toEqual({status:'uploaded',display_key:null});
+  });
+  it('retains private logo bytes and the same capability after a decoder crash, then processes without publishing on retry',async()=>{
+    const client=await start();
+    const decoder=vi.spyOn(imageProcess,'executeImageDecoder').mockRejectedValueOnce(Object.assign(new Error('controlled decoder crash'),{signal:'SIGABRT',code:null}));
+    const staged=await client.stage('team_logo');decoder.mockRestore();
+    expect(staged.complete).toMatchObject({status:503,body:{code:'MEDIA_PROCESSING_FAILED'}});
+    expect(client.api.store.database.prepare('SELECT status,original_key,display_key,thumbnail_key,failure_code,token_hash FROM brand_assets WHERE id=?').get(staged.uploadId)).toMatchObject({status:'uploaded',original_key:expect.any(String),display_key:null,thumbnail_key:null,failure_code:'MEDIA_PROCESSING_FAILED',token_hash:createHash('sha256').update(staged.cap).digest('hex')});
+    expect((await client.json(root,{role:'manager'})).body.effective).toEqual({source:'neutral',logo:null});
+    expect((await client.request(path(`/assets/${staged.asset.assetId}/revisions/1/display`)+'&mode=own',{role:'manager'})).status).toBe(404);
+    expect((await client.json(path(`/uploads/${staged.uploadId}/complete`),{role:'manager',body:{},cap:staged.cap,key:staged.completionKey})).status).toBe(200);
+    expect((await client.json(root,{role:'manager'})).body.effective).toEqual({source:'neutral',logo:null});
+    expect((await client.request(path(`/assets/${staged.asset.assetId}/revisions/1/display`),{role:'player',token:'synthetic-account-player-01'})).status).toBe(404);
   });
 });
 describe('UI33 own native installation inventory',()=>{

@@ -5,7 +5,8 @@ import { join } from "node:path";
 import type { AddressInfo } from "node:net";
 import { Pool } from "pg";
 import sharp from "sharp";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import * as imageProcess from "./image-process";
 import { createApi } from "./server";
 import { createPostgresApi } from "./postgres-server";
 import { PostgresStore } from "./postgres-store";
@@ -48,6 +49,7 @@ for (const kind of ["SQLite", "PostgreSQL"] as const)
         admin: Pool | null = null,
         database = "";
       let bytes: Buffer;
+      const scannerFixtures = new Set<string>();
       let useCurrentClock = false;
       let scanGate: { entered: () => void; wait: Promise<void> } | null = null;
       const roles: string[] = [];
@@ -154,6 +156,7 @@ for (const kind of ["SQLite", "PostgreSQL"] as const)
       beforeAll(async () => {
         directory = await mkdtemp(join(tmpdir(), `longball-sec17-${kind}-`));
         bytes = await png();
+        scannerFixtures.add(createHash("sha256").update(bytes).digest("hex"));
         const options = {
           databasePath: join(directory, "service.sqlite"),
           syntheticAuth: true,
@@ -168,11 +171,11 @@ for (const kind of ["SQLite", "PostgreSQL"] as const)
                 await gate.wait;
               }
               return {
-                verdict:
-                  createHash("sha256").update(input).digest("hex") ===
-                  createHash("sha256").update(bytes).digest("hex")
-                    ? ("clean" as const)
-                    : ("rejected" as const),
+                verdict: scannerFixtures.has(
+                  createHash("sha256").update(input).digest("hex"),
+                )
+                  ? ("clean" as const)
+                  : ("rejected" as const),
                 engine: "known-fictional-image-test-only",
               };
             },
@@ -526,6 +529,184 @@ for (const kind of ["SQLite", "PostgreSQL"] as const)
         expect(JSON.stringify(community.body)).toContain(
           String(prepared.body.photoId),
         );
+      });
+      it("retains the same private upload and capability after decoder timeout, crash or startup failure", async () => {
+        const account = target("09"),
+          role = "player";
+        for (const error of [
+          Object.assign(new Error("controlled timeout"), {
+            killed: true,
+            signal: "SIGKILL",
+          }),
+          Object.assign(new Error("controlled crash"), {
+            code: null,
+            signal: "SIGABRT",
+          }),
+          Object.assign(new Error("controlled startup failure"), {
+            code: "ENOENT",
+          }),
+        ]) {
+          const prepared = await call("media/uploads/prepare", {
+            account,
+            role,
+            body: uploadInput(),
+          });
+          expect(prepared.status).toBe(200);
+          const uploadId = String(prepared.body.uploadId),
+            token = String(prepared.body.uploadToken),
+            photoId = String(prepared.body.photoId),
+            key = randomUUID();
+          expect(
+            (
+              await call(`media/uploads/${uploadId}`, {
+                account,
+                role,
+                method: "PUT",
+                token,
+                raw: bytes,
+              })
+            ).status,
+          ).toBe(200);
+          const decoder = vi
+            .spyOn(imageProcess, "executeImageDecoder")
+            .mockRejectedValueOnce(error);
+          try {
+            const unavailable = await call(
+              `media/uploads/${uploadId}/complete`,
+              { account, role, token, key, body: {} },
+            );
+            expect(unavailable).toMatchObject({
+              status: 503,
+              body: { code: "MEDIA_PROCESSING_FAILED" },
+            });
+            expect(decoder.mock.calls[0][1]).toBe(12_000);
+          } finally {
+            decoder.mockRestore();
+          }
+          const rows = await query(
+            "SELECT status,original_key,display_key,thumbnail_key,failure_code,token_hash FROM media_uploads WHERE id=$1",
+            [uploadId],
+          );
+          expect(rows[0]).toMatchObject({
+            status: "uploaded",
+            original_key: expect.any(String),
+            display_key: null,
+            thumbnail_key: null,
+            failure_code: "MEDIA_PROCESSING_FAILED",
+            token_hash: createHash("sha256").update(token).digest("hex"),
+          });
+          expect(
+            JSON.stringify((await call("community", { account, role })).body),
+          ).not.toContain(photoId);
+          for (const variant of ["display", "thumbnail"]) {
+            const response = await fetch(
+              `${base}${path(`media/photos/${photoId}/revisions/1/${variant}`)}&mode=own`,
+              {
+                headers: {
+                  Authorization: `Bearer ${account}`,
+                  "X-Longball-Role": role,
+                },
+              },
+            );
+            expect(response.status).toBe(404);
+          }
+          expect(
+            (
+              await call(`media/uploads/${uploadId}/complete`, {
+                account,
+                role,
+                token: "wrong-capability",
+                key,
+                body: {},
+              })
+            ).status,
+          ).toBe(404);
+          expect(
+            (
+              await call(`media/uploads/${uploadId}/complete`, {
+                account,
+                role,
+                token,
+                key,
+                body: {},
+              })
+            ).status,
+          ).toBe(200);
+          expect(
+            (
+              await query("SELECT status FROM media_uploads WHERE id=$1", [
+                uploadId,
+              ])
+            )[0].status,
+          ).toBe("linked");
+        }
+      });
+      it("keeps confirmed malformed image rejection terminal and unpublished through HTTP", async () => {
+        const account = target("10"),
+          role = "player",
+          invalid = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
+        scannerFixtures.add(createHash("sha256").update(invalid).digest("hex"));
+        const prepared = await call("media/uploads/prepare", {
+          account,
+          role,
+          body: {
+            ...uploadInput(),
+            byteSize: invalid.length,
+            sha256: createHash("sha256").update(invalid).digest("hex"),
+          },
+        });
+        expect(prepared.status).toBe(200);
+        const uploadId = String(prepared.body.uploadId),
+          token = String(prepared.body.uploadToken),
+          photoId = String(prepared.body.photoId);
+        expect(
+          (
+            await call(`media/uploads/${uploadId}`, {
+              account,
+              role,
+              method: "PUT",
+              token,
+              raw: invalid,
+            })
+          ).status,
+        ).toBe(200);
+        expect(
+          await call(`media/uploads/${uploadId}/complete`, {
+            account,
+            role,
+            token,
+            body: {},
+          }),
+        ).toMatchObject({
+          status: 415,
+          body: { code: "IMAGE_DECODE_REJECTED" },
+        });
+        expect(
+          (
+            await query(
+              "SELECT status,display_key,thumbnail_key,failure_code FROM media_uploads WHERE id=$1",
+              [uploadId],
+            )
+          )[0],
+        ).toEqual({
+          status: "rejected",
+          display_key: null,
+          thumbnail_key: null,
+          failure_code: "IMAGE_DECODE_REJECTED",
+        });
+        expect(
+          (
+            await call(`media/uploads/${uploadId}/complete`, {
+              account,
+              role,
+              token,
+              body: {},
+            })
+          ).status,
+        ).toBe(409);
+        expect(
+          JSON.stringify((await call("community", { account, role })).body),
+        ).not.toContain(photoId);
       });
       it("keeps the decision across a second explicit season while leaving another team unaffected", async () => {
         const account = target("07"),

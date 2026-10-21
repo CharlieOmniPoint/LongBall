@@ -1,11 +1,10 @@
 import { createHash } from 'node:crypto';
-import { execFile } from 'node:child_process';
 import { access, open, readFile, rename, unlink } from 'node:fs/promises';
 import { constants } from 'node:fs';
 import { isAbsolute } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { fileURLToPath } from 'node:url';
-import { promisify } from 'node:util';
+import { executeImageDecoder, imageProcessRejected } from './image-process';
 import { AccessError } from '../../../packages/application/src/access';
 import { originalImageMime } from '../../../packages/application/src/image-formats';
 
@@ -14,7 +13,6 @@ export const MEDIA_LIMITS = { maxBytes: 15 * 1024 * 1024, maxPixels: 40_000_000,
 export interface MediaScanner {
   scan(bytes: Buffer, context: { mimeType: string; sha256: string }): Promise<{ verdict: 'clean' | 'rejected' | 'unavailable'; engine: string }>;
 }
-const executeFile=promisify(execFile);
 function fail(code:string,status:number,message:string):never{throw new AccessError(code,status,message);}
 export async function bounded<T>(promise:Promise<T>,milliseconds:number,code:string):Promise<T>{
   let timer:ReturnType<typeof setTimeout>|undefined;
@@ -77,11 +75,14 @@ export async function processPrivateImage(input:{originalPath:string;displayPath
   }
   let decoded:{width:number;height:number};
   try{
-    const result=await executeFile(process.execPath,['--max-old-space-size=128',fileURLToPath(new URL('./media-worker.mjs',import.meta.url)),input.originalPath,input.displayPath,input.thumbnailPath,mimeType,input.kind??'photo'],{timeout:MEDIA_LIMITS.decodeTimeoutMs,killSignal:'SIGKILL',maxBuffer:64*1024,windowsHide:true});
+    const result=await executeImageDecoder(['--max-old-space-size=128',fileURLToPath(new URL('./media-worker.mjs',import.meta.url)),input.originalPath,input.displayPath,input.thumbnailPath,mimeType,input.kind??'photo'],MEDIA_LIMITS.decodeTimeoutMs);
     decoded=JSON.parse(result.stdout) as {width:number;height:number};
     const edge=input.kind==='logo'?1024:MEDIA_LIMITS.displayEdge;
     if(!Number.isSafeInteger(decoded.width)||!Number.isSafeInteger(decoded.height)||decoded.width<1||decoded.height<1||decoded.width>edge||decoded.height>edge)throw new Error();
-  }catch{fail('IMAGE_DECODE_REJECTED',415,'The image could not be safely decoded within the supported format, pixel and processing limits.');}
+  }catch(error){
+    if(imageProcessRejected(error))fail('IMAGE_DECODE_REJECTED',415,'The image was rejected by the supported format, pixel and content checks.');
+    fail('MEDIA_PROCESSING_FAILED',503,'The bounded image processor is unavailable. The private upload is retained for a safe retry; no image was published.');
+  }
   finally{if(mimeType==='image/heic')await unlink(input.displayPath+'.heic-rgba').catch(()=>undefined);}
   return{...decoded,scannerEngine:scan.engine.slice(0,100),contentType:input.kind==='logo'?'image/png':'image/jpeg'};
 }
