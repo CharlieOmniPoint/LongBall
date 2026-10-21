@@ -1,5 +1,5 @@
 {
-  "state": "ready",
+  "state": "stopped",
   "url": "https://ware-fisher-express-hazardous.trycloudflare.com",
   "sourceRevision": "6b27dce9152dcbda00a53aabbb5cb493815dd3b0",
   "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/39549565863",
