@@ -1,7 +1,7 @@
 name: LongBall native compilation feasibility
 
 # Publish this template as .github/workflows/native-feasibility.yml on the
-# public preview branch. The development branch deliberately has no workflow.
+# public preview branch. The development branch runs separate quality checks.
 on:
   push:
     branches: [preview/longball-m0]

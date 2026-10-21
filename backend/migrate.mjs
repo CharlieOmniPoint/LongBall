@@ -1,3 +1,369 @@
+// fixtures/roma.synthetic.json
+var roma_synthetic_default = {
+  synthetic: true,
+  teamId: "synthetic-roma-u10",
+  season: "2026/27",
+  timeZone: "Europe/London",
+  pitchPlaces: 7,
+  plannedHalfDurationMs: 15e5,
+  players: [
+    {
+      id: "synthetic-player-01",
+      displayName: "Oliver Bennett",
+      available: true,
+      goalkeeperChoice: 1
+    },
+    {
+      id: "synthetic-player-02",
+      displayName: "Noah Patel",
+      available: true,
+      goalkeeperChoice: 0
+    },
+    {
+      id: "synthetic-player-03",
+      displayName: "Leo Martin",
+      available: true,
+      goalkeeperChoice: 0
+    },
+    {
+      id: "synthetic-player-04",
+      displayName: "Theo Clarke",
+      available: true,
+      goalkeeperChoice: 0
+    },
+    {
+      id: "synthetic-player-05",
+      displayName: "Oscar Evans",
+      available: true,
+      goalkeeperChoice: 0
+    },
+    {
+      id: "synthetic-player-06",
+      displayName: "Ethan Brooks",
+      available: true,
+      goalkeeperChoice: 0
+    },
+    {
+      id: "synthetic-player-07",
+      displayName: "Jack Turner",
+      available: true,
+      goalkeeperChoice: 0
+    },
+    {
+      id: "synthetic-player-08",
+      displayName: "Freddie Lewis",
+      available: true,
+      goalkeeperChoice: 0
+    },
+    {
+      id: "synthetic-player-09",
+      displayName: "Arthur James",
+      available: true,
+      goalkeeperChoice: 0
+    },
+    {
+      id: "synthetic-player-10",
+      displayName: "Lucas Wilson",
+      available: false,
+      goalkeeperChoice: 0
+    },
+    {
+      id: "synthetic-player-11",
+      displayName: "Muhammad Khan",
+      available: false,
+      goalkeeperChoice: 0
+    },
+    {
+      id: "synthetic-player-12",
+      displayName: "Archie Green",
+      available: false,
+      goalkeeperChoice: 0
+    },
+    {
+      id: "synthetic-player-13",
+      displayName: "George Taylor",
+      available: false,
+      goalkeeperChoice: 0
+    }
+  ],
+  demo: {
+    name: "Roma autumn matchdays",
+    generated: true,
+    description: "Simulated club, players and matchdays for testing. No real people, photographs or contact details."
+  },
+  club: {
+    id: "synthetic-richmond-rovers",
+    name: "Richmond Rovers"
+  },
+  team: {
+    name: "Roma",
+    ageGroup: "U10"
+  },
+  opponents: [
+    {
+      id: "demo-maple",
+      name: "Maple FC",
+      venue: "Maple Sports Ground \xB7 Pitch 1"
+    },
+    {
+      id: "demo-oak",
+      name: "Oak FC",
+      venue: "Oak Meadow \xB7 Junior pitch"
+    },
+    {
+      id: "demo-hill",
+      name: "Hill FC",
+      venue: "Hill Park \xB7 Pitch 3"
+    },
+    {
+      id: "demo-willow",
+      name: "Willow FC",
+      venue: "Willow Playing Fields \xB7 Pitch 2"
+    },
+    {
+      id: "demo-cedar",
+      name: "Cedar Athletic",
+      venue: "Cedar Lane Sports Ground"
+    }
+  ],
+  fixtures: [
+    {
+      id: "synthetic-roma-maple-2026-10-24",
+      opponent: "Maple FC",
+      playedDate: "2026-10-24",
+      kickoff: "10:00",
+      arrival: "09:30",
+      venue: "Rovers Sports Ground \xB7 Pitch 2",
+      homeAway: "home",
+      status: "scheduled",
+      selectedCount: 9
+    },
+    {
+      id: "synthetic-roma-oak-2026-10-31",
+      opponent: "Oak FC",
+      playedDate: "2026-10-31",
+      kickoff: "10:30",
+      arrival: "10:00",
+      venue: "Oak Meadow \xB7 Junior pitch",
+      homeAway: "away",
+      status: "scheduled",
+      selectedCount: 10
+    },
+    {
+      id: "synthetic-roma-hill-2026-11-07",
+      opponent: "Hill FC",
+      playedDate: "2026-11-07",
+      kickoff: "09:30",
+      arrival: "09:00",
+      venue: "Rovers Sports Ground \xB7 Pitch 2",
+      homeAway: "home",
+      status: "scheduled",
+      selectedCount: 9
+    },
+    {
+      id: "synthetic-roma-willow-2026-11-14",
+      opponent: "Willow FC",
+      playedDate: "2026-11-14",
+      kickoff: "11:00",
+      arrival: "10:30",
+      venue: "Willow Playing Fields \xB7 Pitch 2",
+      homeAway: "away",
+      status: "scheduled",
+      selectedCount: 9
+    },
+    {
+      id: "synthetic-roma-cedar-2026-11-21",
+      opponent: "Cedar Athletic",
+      playedDate: "2026-11-21",
+      kickoff: "10:00",
+      arrival: "09:30",
+      venue: "Rovers Sports Ground \xB7 Pitch 2",
+      homeAway: "home",
+      status: "postponed",
+      selectedCount: 0
+    },
+    {
+      id: "synthetic-history-maple",
+      opponent: "Maple FC",
+      playedDate: "2026-10-03",
+      kickoff: "10:00",
+      arrival: "09:30",
+      venue: "Rovers Sports Ground \xB7 Pitch 2",
+      homeAway: "home",
+      status: "scheduled",
+      selectedCount: 9
+    },
+    {
+      id: "synthetic-history-oak",
+      opponent: "Oak FC",
+      playedDate: "2026-10-10",
+      kickoff: "10:30",
+      arrival: "10:00",
+      venue: "Oak Meadow \xB7 Junior pitch",
+      homeAway: "away",
+      status: "scheduled",
+      selectedCount: 9
+    },
+    {
+      id: "synthetic-history-hill",
+      opponent: "Hill FC",
+      playedDate: "2026-10-17",
+      kickoff: "09:30",
+      arrival: "09:00",
+      venue: "Rovers Sports Ground \xB7 Pitch 2",
+      homeAway: "home",
+      status: "scheduled",
+      selectedCount: 8
+    }
+  ],
+  training: [
+    {
+      id: "synthetic-training-1",
+      date: "2026-10-22",
+      time: "18:00",
+      venue: "Rovers Sports Ground \xB7 Training area",
+      status: "scheduled"
+    },
+    {
+      id: "synthetic-training-2",
+      date: "2026-10-29",
+      time: "18:00",
+      venue: "Rovers Sports Ground \xB7 Training area",
+      status: "scheduled"
+    },
+    {
+      id: "synthetic-training-2026-11-05",
+      date: "2026-11-05",
+      time: "18:00",
+      venue: "Rovers Sports Ground \xB7 Training area",
+      status: "scheduled"
+    },
+    {
+      id: "synthetic-training-2026-10-01",
+      date: "2026-10-01",
+      time: "18:00",
+      venue: "Rovers Sports Ground \xB7 Training area",
+      status: "held"
+    },
+    {
+      id: "synthetic-training-2026-10-08",
+      date: "2026-10-08",
+      time: "18:00",
+      venue: "Rovers Sports Ground \xB7 Training area",
+      status: "held"
+    },
+    {
+      id: "synthetic-training-2026-10-15",
+      date: "2026-10-15",
+      time: "18:00",
+      venue: "Rovers Sports Ground \xB7 Training area",
+      status: "held"
+    },
+    {
+      id: "synthetic-training-2026-09-24",
+      date: "2026-09-24",
+      time: "18:00",
+      venue: "Rovers Sports Ground \xB7 Training area",
+      status: "cancelled"
+    }
+  ],
+  profiles: [
+    {
+      playerId: "synthetic-player-01",
+      initials: "OB",
+      shirtNumber: 1,
+      foot: "right"
+    },
+    {
+      playerId: "synthetic-player-02",
+      initials: "NP",
+      shirtNumber: 2,
+      foot: "right"
+    },
+    {
+      playerId: "synthetic-player-03",
+      initials: "LM",
+      shirtNumber: 3,
+      foot: "left"
+    },
+    {
+      playerId: "synthetic-player-04",
+      initials: "TC",
+      shirtNumber: 4,
+      foot: "both"
+    },
+    {
+      playerId: "synthetic-player-05",
+      initials: "OE",
+      shirtNumber: 5,
+      foot: "left"
+    },
+    {
+      playerId: "synthetic-player-06",
+      initials: "EB",
+      shirtNumber: 6,
+      foot: "right"
+    },
+    {
+      playerId: "synthetic-player-07",
+      initials: "JT",
+      shirtNumber: 7,
+      foot: "right"
+    },
+    {
+      playerId: "synthetic-player-08",
+      initials: "FL",
+      shirtNumber: 8,
+      foot: "left"
+    },
+    {
+      playerId: "synthetic-player-09",
+      initials: "AJ",
+      shirtNumber: 9,
+      foot: "right"
+    },
+    {
+      playerId: "synthetic-player-10",
+      initials: "LW",
+      shirtNumber: 10,
+      foot: "both"
+    },
+    {
+      playerId: "synthetic-player-11",
+      initials: "MK",
+      shirtNumber: 11,
+      foot: "right"
+    },
+    {
+      playerId: "synthetic-player-12",
+      initials: "AG",
+      shirtNumber: 12,
+      foot: "left"
+    },
+    {
+      playerId: "synthetic-player-13",
+      initials: "GT",
+      shirtNumber: 13,
+      foot: "right"
+    }
+  ]
+};
+
+// packages/testing/src/index.ts
+var romaFixture = roma_synthetic_default;
+var demoAccountLabels = {
+  "synthetic-account-manager": "Alex Morgan",
+  "synthetic-account-manager-2": "Priya Shah",
+  "synthetic-account-manager-3": "Dan Foster",
+  "synthetic-account-manager-4": "Chris Lewis",
+  "synthetic-account-manager-5": "Nicky Hughes",
+  "synthetic-account-admin": "Sam Taylor",
+  "synthetic-account-spectator": "Jamie Bennett",
+  "synthetic-account-invitee": "Casey Bennett",
+  "synthetic-account-other-manager": "Robin Ellis",
+  ...Object.fromEntries(roma_synthetic_default.players.map((player) => [`synthetic-account-player-${player.id.slice(-2)}`, player.displayName]))
+};
+
 // packages/application/src/training-series.ts
 var maximumTrainingOccurrences = 52;
 function requireThat(condition, message) {
@@ -45,8 +411,8 @@ function applyTrainingSeries(state, command, validate) {
 function cloneValue(value) {
   return JSON.parse(JSON.stringify(value));
 }
-function duration(value, label) {
-  if (!Number.isSafeInteger(value) || value < 0) throw new Error(`${label} must be a nonnegative safe integer.`);
+function duration(value, label2) {
+  if (!Number.isSafeInteger(value) || value < 0) throw new Error(`${label2} must be a nonnegative safe integer.`);
 }
 function effectiveTime(state, requested) {
   if (state.half !== 1 && state.half !== 2) throw new Error("An effective match event requires a started half.");
@@ -100,11 +466,11 @@ function scoresFromGoals(state, goals) {
 function fail(message) {
   throw new Error(message);
 }
-function keys(value, fields5, label) {
-  if (!value || typeof value !== "object" || Array.isArray(value) || Object.keys(value).some((key) => !fields5.includes(key)) || fields5.some((key) => !Object.hasOwn(value, key))) fail(`Use the exact versioned ${label} fields.`);
+function keys(value, fields5, label2) {
+  if (!value || typeof value !== "object" || Array.isArray(value) || Object.keys(value).some((key) => !fields5.includes(key)) || fields5.some((key) => !Object.hasOwn(value, key))) fail(`Use the exact versioned ${label2} fields.`);
 }
-function nonnegative(value, label) {
-  if (!Number.isSafeInteger(value) || Number(value) < 0) fail(`${label} must be a nonnegative safe integer.`);
+function nonnegative(value, label2) {
+  if (!Number.isSafeInteger(value) || Number(value) < 0) fail(`${label2} must be a nonnegative safe integer.`);
 }
 function keeperRank(config, playerId) {
   const saved = config.profileSnapshot?.find((profile) => profile.playerId === playerId);
@@ -552,11 +918,11 @@ function reprojectParticipation(state, correction, validateLineup2) {
 
 // packages/domain/src/index.ts
 var ENGINE_VERSION = "synthetic-live-4";
-function integer(value, label) {
-  if (!Number.isSafeInteger(value) || value < 0) throw new Error(`${label} must be a nonnegative safe integer.`);
+function integer(value, label2) {
+  if (!Number.isSafeInteger(value) || value < 0) throw new Error(`${label2} must be a nonnegative safe integer.`);
 }
 function assertSample(sample) {
-  if (!Number.isFinite(sample.monotonicMs) || sample.monotonicMs < 0 || !sample.sessionId) throw new Error("Clock sample is invalid.");
+  if (!Number.isFinite(sample.monotonicMs) || sample.monotonicMs < 0 || !Number.isSafeInteger(Math.floor(sample.monotonicMs)) || !sample.sessionId) throw new Error("Clock sample is invalid.");
   integer(sample.wallTimeMs, "Wall time");
 }
 function isRunning(state) {
@@ -680,6 +1046,8 @@ function readClock(state, sample) {
       matchActiveMs = anchor.matchActiveMs + delta;
     }
   }
+  integer(halfActiveMs, "Half active time");
+  integer(matchActiveMs, "Match active time");
   return {
     halfActiveMs,
     matchActiveMs,
@@ -1096,10 +1464,10 @@ function shape(value, keys2) {
     "Match-plan data contains unsupported fields."
   );
 }
-function required(value, maximum, label) {
+function required(value, maximum, label2) {
   assert(
     typeof value === "string" && value.trim() && value.trim().length <= maximum && !/[\u0000-\u001f\u007f]/.test(value),
-    `${label} is required and must be at most ${maximum} characters.`
+    `${label2} is required and must be at most ${maximum} characters.`
   );
   return value.trim();
 }
@@ -1382,10 +1750,10 @@ function requireThat2(condition, message) {
   if (!condition) throw new Error(message);
 }
 var clone = (value) => JSON.parse(JSON.stringify(value));
-function text(value, label, maximum = 80) {
+function text(value, label2, maximum = 80) {
   requireThat2(
     typeof value === "string" && value.trim().length > 0 && value.trim().length <= maximum,
-    `${label} is required and must be at most ${maximum} characters.`
+    `${label2} is required and must be at most ${maximum} characters.`
   );
   return value.trim();
 }
@@ -1417,7 +1785,7 @@ function validateHalf(duration2) {
 function validateLogo(logo) {
   requireThat2(
     logo === null || ["roundel", "shield", "ball"].includes(logo),
-    "Choose one of the original fictional badges."
+    "Choose one of the sample badges."
   );
 }
 function activeSeason(state, seasonId) {
@@ -2024,6 +2392,8 @@ function reducePreparation(previous, command, context = {}) {
 }
 function trainingAttendanceEvidence(state) {
   return state.training.map((session) => ({
+    sourcePreparationRevision: state.revision,
+    sourceCommandId: state.audit.at(-1)?.id ?? null,
     sessionId: session.id,
     playedDate: session.date,
     eventStatus: session.status,
@@ -2048,6 +2418,7 @@ function createPreparationState() {
   const seasonId = "synthetic-season-2026-27";
   const profiles = Array.from({ length: 13 }, (_, index) => {
     const number = String(index + 1).padStart(2, "0");
+    const details = romaFixture.profiles.find((profile) => profile.playerId === `synthetic-player-${number}`);
     const preferred = index === 0 ? "GK" : [
       "CB",
       "CB",
@@ -2072,56 +2443,49 @@ function createPreparationState() {
       id: `synthetic-player-${number}:${seasonId}`,
       playerId: `synthetic-player-${number}`,
       seasonId,
-      displayName: `Player ${number}`,
-      initials: number,
-      shirtNumber: index + 1,
-      foot: "not_recorded",
+      displayName: romaFixture.players[index].displayName,
+      initials: details.initials,
+      shirtNumber: details.shirtNumber,
+      foot: details.foot,
       preferences,
       eligiblePositions: index === 0 ? ["GK", "CB", "ST"] : ["CB", "LB", "RB", "CM", "LW", "RW", "ST"],
       active: true
     };
   });
-  const fixture = {
-    id: "synthetic-roma-maple-2026-10-24",
-    seasonId,
-    opponent: "Maple FC",
-    playedDate: "2026-10-24",
-    kickoff: "10:00",
-    arrival: "09:30",
-    venue: "Roma recreation ground",
-    homeAway: "home",
-    format: 7,
-    plannedHalfDurationMs: 15e5,
-    status: "scheduled",
-    selectedProfileIds: profiles.slice(0, 9).map((profile) => profile.id),
-    responses: Object.fromEntries(
-      profiles.slice(0, 9).map((profile) => [profile.id, "available"])
-    ),
-    attendance: {},
-    history: [
-      {
-        revision: 0,
-        action: "created",
-        playedDate: "2026-10-24",
-        kickoff: "10:00",
-        status: "scheduled"
-      }
-    ]
-  };
-  const training = ["2026-10-22", "2026-10-29"].map(
-    (date, index) => ({
-      id: `synthetic-training-${index + 1}`,
+  const fixtures = romaFixture.fixtures.map((item, index) => {
+    const selected = profiles.slice(0, item.selectedCount);
+    const past = item.playedDate < "2026-10-21";
+    return {
+      id: item.id,
       seasonId,
-      date,
-      time: "18:00",
-      venue: "Roma recreation ground",
-      recurrenceGroupId: "synthetic-thursday-training",
-      expectedProfileIds: profiles.map((profile) => profile.id),
-      status: "scheduled",
-      responses: {},
-      attendance: {}
-    })
-  );
+      opponent: item.opponent,
+      playedDate: item.playedDate,
+      kickoff: item.kickoff,
+      arrival: item.arrival,
+      venue: item.venue,
+      homeAway: item.homeAway,
+      format: 7,
+      plannedHalfDurationMs: 15e5,
+      status: item.status,
+      selectedProfileIds: selected.map((profile) => profile.id),
+      responses: Object.fromEntries(profiles.flatMap((profile, playerIndex) => {
+        if (index === 0) return playerIndex < 9 ? [[profile.id, "available"]] : [];
+        if (past) return [[profile.id, playerIndex < item.selectedCount ? "available" : "unavailable"]];
+        return playerIndex < 6 ? [[profile.id, "available"]] : playerIndex === 6 ? [[profile.id, "unsure"]] : playerIndex === 10 ? [[profile.id, "unavailable"]] : [];
+      })),
+      attendance: past ? Object.fromEntries(selected.map((profile) => [profile.id, "present"])) : {},
+      history: [{ revision: 0, action: "created", playedDate: item.playedDate, kickoff: item.kickoff, status: item.status }]
+    };
+  });
+  const training = romaFixture.training.map((item, sessionIndex) => ({
+    ...item,
+    seasonId,
+    recurrenceGroupId: "synthetic-thursday-training",
+    status: item.status,
+    expectedProfileIds: profiles.map((profile) => profile.id),
+    responses: item.status === "held" ? Object.fromEntries(profiles.map((profile, index) => [profile.id, index === (sessionIndex + 3) % 13 ? "unavailable" : "available"])) : {},
+    attendance: item.status === "held" ? Object.fromEntries(profiles.map((profile, index) => [profile.id, index === (sessionIndex + 3) % 13 ? "absent" : "present"])) : {}
+  }));
   return {
     version: 1,
     synthetic: true,
@@ -2153,7 +2517,7 @@ function createPreparationState() {
       { length: 7 },
       (_, index) => defaultFormation(index + 5)
     ),
-    fixtures: [fixture],
+    fixtures,
     training,
     snapshots: [],
     appliedCommands: {},
@@ -2331,13 +2695,14 @@ function matchPageAudience(principal, memberships, teamId, seasonId, requestedRo
   if (chosen.role === "manager") assertAdultAuthority(principal, false, nowMs);
   return chosen;
 }
-var binding = (scope) => createHash("sha256").update(JSON.stringify(["longball.matches.id-asc.v1", scope.principal.accountId, scope.principal.issuer, scope.principal.subject, scope.teamId, scope.seasonId, scope.role, scope.playerId])).digest("base64url");
+var binding = (scope) => createHash("sha256").update(JSON.stringify(["longball.matches.id-asc.v1", scope.principal.accountId, scope.principal.issuer, scope.principal.subject, scope.teamId, scope.seasonId, scope.role, scope.playerId, ...scope.status === "active" ? ["active"] : []])).digest("base64url");
 function matchPageCursor(scope, afterId) {
   if (!validId(afterId)) invalid();
   return Buffer2.from(JSON.stringify({ version: 1, binding: binding(scope), afterId })).toString("base64url");
 }
 function matchPagePosition(scope, query) {
   if (!Number.isSafeInteger(query.limit) || query.limit < 1 || query.limit > 100) invalid();
+  if (query.status !== void 0 && query.status !== "active" || query.status !== scope.status) invalid();
   if (query.cursor === null) return null;
   try {
     if (!/^[A-Za-z0-9_-]+$/.test(query.cursor)) invalid();
@@ -2389,17 +2754,17 @@ function abytes(value, length, title = "") {
     throw new TypeError(message);
   throw new RangeError(message);
 }
-var aobject = (value, label) => {
+var aobject = (value, label2) => {
   if (value === null || typeof value !== "object" || Array.isArray(value))
-    throw new TypeError((label === "object" ? "" : `"${label}" `) + "expected object, got type=" + typeof value);
+    throw new TypeError((label2 === "object" ? "" : `"${label2}" `) + "expected object, got type=" + typeof value);
 };
-var aopts = (value, label) => {
-  aobject(value, label);
+var aopts = (value, label2) => {
+  aobject(value, label2);
   const proto = Object.getPrototypeOf(value);
   if (proto !== Object.prototype && proto !== null)
-    throw new TypeError(`"${label}" expected plain object`);
+    throw new TypeError(`"${label2}" expected plain object`);
   if (Object.hasOwn(value, "__proto__"))
-    throw new TypeError(`"${label}.__proto__" is not allowed`);
+    throw new TypeError(`"${label2}.__proto__" is not allowed`);
 };
 function aexists(instance, checkFinished = true) {
   if (instance.destroyed)
@@ -2908,6 +3273,12 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { Pool, types } from "pg";
 import { readFile } from "node:fs/promises";
 var contextKey = (context) => JSON.stringify(Object.entries(context).sort(([a], [b]) => a.localeCompare(b)));
+function matchWriteTeam(context) {
+  if (context?.kind !== "actor" || context.operation !== "match.manage" || !["manager", "default"].includes(context.requestedRole ?? "")) return null;
+  const ids = [context.clubId, context.teamId, context.seasonId, context.matchId];
+  if (ids.some((id4) => typeof id4 !== "string" || !/^[A-Za-z0-9_-]{1,150}$/.test(id4))) return null;
+  return JSON.stringify([context.clubId, context.teamId]);
+}
 function validateContext(context) {
   if (!context || typeof context !== "object" || !Number.isSafeInteger(context.nowMs) || context.nowMs < 0) throw new Error("Invalid PostgreSQL application context.");
   const required2 = {
@@ -2921,7 +3292,7 @@ function validateContext(context) {
   if (!Object.hasOwn(required2, context.kind) || required2[context.kind].some((name) => typeof context[name] !== "string" || !context[name] || context[name].length > 2048)) throw new Error("Invalid PostgreSQL application context.");
   if (context.kind === "actor" && (typeof context.strongAuth !== "boolean" || !Number.isSafeInteger(context.authenticatedAtMs) || context.authenticatedAtMs < 0 || context.requestedRole !== void 0 && !["administrator", "manager", "player", "spectator", "default"].includes(context.requestedRole))) throw new Error("Invalid PostgreSQL actor context.");
   if (["activation_token", "invitation_activation"].includes(context.kind) && "tokenHash" in context && (!/^[a-f0-9]{64}$/.test(context.tokenHash) || "completionVerified" in context && context.completionVerified !== void 0 && context.completionVerified !== true)) throw new Error("Invalid PostgreSQL activation context.");
-  if (context.kind === "worker_claim" && !["award.finalise", "notification.dispatch"].includes(context.jobKind)) throw new Error("Invalid PostgreSQL job context.");
+  if (context.kind === "worker_claim" && !["award.finalise", "notification.dispatch", "report.export"].includes(context.jobKind)) throw new Error("Invalid PostgreSQL job context.");
   if (context.kind === "worker_job" && !/^[a-f0-9]{64}$/.test(context.leaseToken)) throw new Error("Invalid PostgreSQL job capability.");
 }
 function isNarrowing(parent, child) {
@@ -3010,6 +3381,7 @@ var PgDatabase = class {
     if (existing) {
       if (!existing.active) throw new Error("PostgreSQL transaction has ended.");
       if (existing.applicationKey !== applicationKey) throw new Error("PostgreSQL transaction context changed.");
+      if (lockWrites && existing.writeLock === "none") throw new Error("An unlocked PostgreSQL transaction cannot be upgraded to a write transaction.");
       return work();
     }
     const client = await this.pool.connect();
@@ -3017,8 +3389,14 @@ var PgDatabase = class {
     try {
       await client.query("BEGIN");
       if (application) await client.query("SELECT set_config('longball.context',$1,true)", [JSON.stringify(application)]);
-      if (lockWrites) await client.query("SELECT pg_advisory_xact_lock(hashtextextended('longball:domain-write:v1', 0))");
-      const transaction = { client, applicationKey, active: true };
+      const team = lockWrites ? matchWriteTeam(application) : null;
+      if (lockWrites) {
+        if (team !== null) {
+          await client.query("SELECT pg_advisory_xact_lock_shared(hashtextextended('longball:domain-write:v1', 0))");
+          await client.query("SELECT pg_advisory_xact_lock(hashtext('longball:team-write:v1'),hashtext($1))", [team]);
+        } else await client.query("SELECT pg_advisory_xact_lock(hashtextextended('longball:domain-write:v1', 0))");
+      }
+      const transaction = { client, applicationKey, active: true, writeLock: lockWrites ? team === null ? "global" : "team" : "none" };
       let result;
       try {
         result = await this.transactions.run(transaction, work);
@@ -3041,9 +3419,9 @@ var PgDatabase = class {
   async migrate() {
     if (this.migrationMode === "verify") {
       const versions = await this.query("SELECT version FROM longball.schema_migrations ORDER BY version");
-      if (versions.rows.some((row) => row.version > 15)) throw new Error("This PostgreSQL schema is newer than the application. Preserve it and use a compatible build.");
-      if (![2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15].every((version) => versions.rows.some((row) => row.version === version))) throw new Error("PostgreSQL migrations are required. Run the separate migrator before starting the runtime.");
-      const protectedTables = ["clubs", "teams", "team_seasons", "game_contexts", "accounts", "memberships", "matches", "documents", "devices", "controller_grants", "controller_history", "events", "streams", "conflicting_submissions", "transfers", "clock_challenges", "clock_mappings", "reconciliation_proposals", "audit", "idempotency", "privacy_requests", "privacy_pending_keys", "jobs", "brand_assets", "brand_slots", "spectator_invitations", "lb_spectator_activation_accounts", "lb_spectator_activation_attempts", "native_app_devices", "team_privilege_states", "team_privilege_decisions", "push_registrations"];
+      if (versions.rows.some((row) => row.version > 16)) throw new Error("This PostgreSQL schema is newer than the application. Preserve it and use a compatible build.");
+      if (![2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16].every((version) => versions.rows.some((row) => row.version === version))) throw new Error("PostgreSQL migrations are required. Run the separate migrator before starting the runtime.");
+      const protectedTables = ["clubs", "teams", "team_seasons", "game_contexts", "accounts", "memberships", "matches", "documents", "devices", "controller_grants", "controller_history", "events", "streams", "conflicting_submissions", "transfers", "clock_challenges", "clock_mappings", "reconciliation_proposals", "audit", "idempotency", "privacy_requests", "privacy_pending_keys", "jobs", "brand_assets", "brand_slots", "spectator_invitations", "lb_spectator_activation_accounts", "lb_spectator_activation_attempts", "native_app_devices", "team_privilege_states", "team_privilege_decisions", "push_registrations", "report_exports"];
       const security = await this.query(`SELECT c.relname,c.relrowsecurity,(SELECT count(*)::integer FROM pg_catalog.pg_policy p WHERE p.polrelid=c.oid) AS policies FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='longball' AND c.relname=ANY($1::text[])`, [protectedTables]);
       if (security.rows.length !== protectedTables.length || security.rows.some((row) => !row.relrowsecurity || row.policies < 1)) throw new Error("PostgreSQL row security is missing. Run the separate migrator before starting runtime.");
       return;
@@ -3062,12 +3440,13 @@ var PgDatabase = class {
     const teamPrivilegesMigration = await readFile(new URL("../migrations/postgresql/013_team_privileges.sql", import.meta.url), "utf8");
     const pushRegistrationMigration = await readFile(new URL("../migrations/postgresql/014_push_registrations.sql", import.meta.url), "utf8");
     const privilegeAuditClockMigration = await readFile(new URL("../migrations/postgresql/015_team_privilege_audit_clock.sql", import.meta.url), "utf8");
+    const reportExportsMigration = await readFile(new URL("../migrations/postgresql/016_report_exports.sql", import.meta.url), "utf8");
     await this.transaction(async () => {
       const schema = await this.query("SELECT to_regnamespace('longball')::text AS namespace");
       if (!schema.rows[0]?.namespace) await this.query("CREATE SCHEMA longball");
       await this.query("CREATE TABLE IF NOT EXISTS longball.schema_migrations(version integer PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())");
       const versions = await this.query("SELECT version FROM longball.schema_migrations ORDER BY version");
-      if (versions.rows.some((row) => row.version > 15)) throw new Error("This PostgreSQL schema is newer than the application. Preserve it and use a compatible build.");
+      if (versions.rows.some((row) => row.version > 16)) throw new Error("This PostgreSQL schema is newer than the application. Preserve it and use a compatible build.");
       if (!versions.rows.some((row) => row.version === 2)) {
         await this.query(migration);
         await this.query("INSERT INTO longball.schema_migrations(version) VALUES(2)");
@@ -3124,6 +3503,10 @@ var PgDatabase = class {
         await this.query(privilegeAuditClockMigration);
         await this.query("INSERT INTO longball.schema_migrations(version) VALUES(15)");
       }
+      if (!versions.rows.some((row) => row.version === 16)) {
+        await this.query(reportExportsMigration);
+        await this.query("INSERT INTO longball.schema_migrations(version) VALUES(16)");
+      }
     });
   }
   async close() {
@@ -3133,99 +3516,6 @@ var PgDatabase = class {
 
 // apps/api/src/postgres-store.ts
 import { createHash as createHash2, randomBytes, randomUUID as randomUUID2 } from "node:crypto";
-
-// fixtures/roma.synthetic.json
-var roma_synthetic_default = {
-  synthetic: true,
-  teamId: "synthetic-roma-u10",
-  season: "2026/27",
-  timeZone: "Europe/London",
-  pitchPlaces: 7,
-  plannedHalfDurationMs: 15e5,
-  players: [
-    {
-      id: "synthetic-player-01",
-      displayName: "Player 01",
-      available: true,
-      goalkeeperChoice: 1
-    },
-    {
-      id: "synthetic-player-02",
-      displayName: "Player 02",
-      available: true,
-      goalkeeperChoice: 0
-    },
-    {
-      id: "synthetic-player-03",
-      displayName: "Player 03",
-      available: true,
-      goalkeeperChoice: 0
-    },
-    {
-      id: "synthetic-player-04",
-      displayName: "Player 04",
-      available: true,
-      goalkeeperChoice: 0
-    },
-    {
-      id: "synthetic-player-05",
-      displayName: "Player 05",
-      available: true,
-      goalkeeperChoice: 0
-    },
-    {
-      id: "synthetic-player-06",
-      displayName: "Player 06",
-      available: true,
-      goalkeeperChoice: 0
-    },
-    {
-      id: "synthetic-player-07",
-      displayName: "Player 07",
-      available: true,
-      goalkeeperChoice: 0
-    },
-    {
-      id: "synthetic-player-08",
-      displayName: "Player 08",
-      available: true,
-      goalkeeperChoice: 0
-    },
-    {
-      id: "synthetic-player-09",
-      displayName: "Player 09",
-      available: true,
-      goalkeeperChoice: 0
-    },
-    {
-      id: "synthetic-player-10",
-      displayName: "Player 10",
-      available: false,
-      goalkeeperChoice: 0
-    },
-    {
-      id: "synthetic-player-11",
-      displayName: "Player 11",
-      available: false,
-      goalkeeperChoice: 0
-    },
-    {
-      id: "synthetic-player-12",
-      displayName: "Player 12",
-      available: false,
-      goalkeeperChoice: 0
-    },
-    {
-      id: "synthetic-player-13",
-      displayName: "Player 13",
-      available: false,
-      goalkeeperChoice: 0
-    }
-  ]
-};
-
-// packages/testing/src/index.ts
-var romaFixture = roma_synthetic_default;
 
 // packages/application/src/invitation-credentials.ts
 var validTime2 = (value) => Number.isSafeInteger(value) && value >= 0;
@@ -3346,7 +3636,7 @@ function sealAward(state, match, nowMs) {
   });
 }
 function validateArt(art, caption) {
-  requireRule(["pitch", "ball", "cones"].includes(art), "invalid", "Choose a fictional review illustration. Arbitrary URLs and raw image uploads are not supported here.");
+  requireRule(["pitch", "ball", "cones"].includes(art), "invalid", "Choose a demo review illustration. Arbitrary URLs and raw image uploads are not supported here.");
   requireRule(typeof caption === "string" && caption.trim().length <= 160, "invalid", "Keep the caption within 160 characters.");
 }
 function defaultCommunityPreferences() {
@@ -3368,12 +3658,12 @@ function applyCommunityCommand(state, actor, command, nowMs) {
   if (!personal && command.type !== "invite.accepted") assertAccess(next, actor, nowMs);
   switch (command.type) {
     case "invite.created": {
-      requireRule(next.synthetic === true, "forbidden", "Review codes are available only in the fictional local journey.");
+      requireRule(next.synthetic === true, "forbidden", "Review codes are available only in the local demo journey.");
       requireRule(actor.role !== "spectator", "forbidden", "Spectators cannot invite other spectators.");
       const season = next.seasons.find((item) => item.id === actor.seasonId && item.teamId === actor.teamId);
       requireRule(season, "invalid", "The team season is missing.");
       requireRule(validTime3(command.expiresAtMs) && nowMs < command.expiresAtMs && command.expiresAtMs <= season.accessEndsAtMs, "invalid", "Choose an invitation expiry after now and before the season ends.");
-      requireRule(command.reviewCode.trim().length >= 6 && !next.invitations.some((item) => item.reviewCode === command.reviewCode || item.id === command.invitationId), "invalid", "The fictional invitation identity/code must be unique.");
+      requireRule(command.reviewCode.trim().length >= 6 && !next.invitations.some((item) => item.reviewCode === command.reviewCode || item.id === command.invitationId), "invalid", "The demo invitation identity/code must be unique.");
       next.invitations.push({
         id: command.invitationId,
         teamId: actor.teamId,
@@ -3391,7 +3681,7 @@ function applyCommunityCommand(state, actor, command, nowMs) {
       break;
     }
     case "invite.accepted": {
-      requireRule(next.synthetic === true, "forbidden", "Review codes are available only in the fictional local journey.");
+      requireRule(next.synthetic === true, "forbidden", "Review codes are available only in the local demo journey.");
       const invite = next.invitations.find((item) => item.credential?.kind === "fictional_review" && item.credential.code === command.reviewCode && item.reviewCode === command.reviewCode);
       requireRule(invite && invite.teamId === actor.teamId && invite.seasonId === actor.seasonId, "forbidden", "That invitation is not valid for this team and season.");
       requireRule(invite.revokedAtMs === null && invite.acceptedBy === null, "closed", "That invitation has already been accepted or revoked.");
@@ -3449,7 +3739,7 @@ function applyCommunityCommand(state, actor, command, nowMs) {
       const match = scopedMatch(next, actor, command.matchId);
       requireRule(match.actualFullTimeAtMs !== null && match.finishQuality === "trusted", "policy_needed", "Trustworthy original full-time evidence is required first.");
       requireRule(!next.awards.some((item) => item.matchId === match.id) && match.cutoffSource === "unresolved", "closed", "A configured/closed award cannot be reopened by changing its cutoff.");
-      requireRule(Number.isSafeInteger(command.minutesAfterFullTime) && command.minutesAfterFullTime > 0 && command.minutesAfterFullTime < 60, "invalid", "Choose an explicit fictional cutoff from 1 to 59 minutes. This does not approve a production default.");
+      requireRule(Number.isSafeInteger(command.minutesAfterFullTime) && command.minutesAfterFullTime > 0 && command.minutesAfterFullTime < 60, "invalid", "Choose an explicit demo cutoff from 1 to 59 minutes. This does not approve a production default.");
       match.voteCutoffAtMs = match.actualFullTimeAtMs + command.minutesAfterFullTime * 6e4;
       match.cutoffSource = "explicit_fictional_setting";
       break;
@@ -3461,7 +3751,7 @@ function applyCommunityCommand(state, actor, command, nowMs) {
       requireRule(match.finishQuality === "trusted", "policy_needed", "The finish/eligibility evidence requires review before voting.");
       requireRule(!next.awards.some((item) => item.matchId === match.id), "closed", "Voting is closed.");
       if (match.actualFullTimeAtMs !== null) {
-        requireRule(match.voteCutoffAtMs !== null, "policy_needed", "The automatic ballot cutoff is unresolved (Q15). A manager must set an explicit fictional rehearsal cutoff or close deliberately.");
+        requireRule(match.voteCutoffAtMs !== null, "policy_needed", "The automatic ballot cutoff is unresolved (Q15). A manager must set an explicit demo cutoff or close deliberately.");
         requireRule(nowMs < match.voteCutoffAtMs && nowMs < match.finalisationDeadlineAtMs, "closed", "Voting is closed at its original cutoff, even if finalisation is delayed.");
       }
       requireRule(command.candidatePlayerId !== actor.playerId && match.playedPlayerIds.includes(command.candidatePlayerId), "invalid", "Choose a teammate who actually played. Self-votes are not permitted.");
@@ -3771,10 +4061,10 @@ function createCommunityState(nowMs = Date.now()) {
   const seasonId = "synthetic-season-2026-27";
   const playerIds = Array.from({ length: 13 }, (_, index) => `synthetic-player-${String(index + 1).padStart(2, "0")}`);
   const accounts = [
-    { id: "synthetic-account-manager", label: "Fictional manager", classification: "adult_individual", adultVerified: true },
-    ...playerIds.map((id4, index) => ({ id: `synthetic-account-player-${String(index + 1).padStart(2, "0")}`, label: `Player ${id4.slice(-2)}`, classification: "child_shared", adultVerified: false })),
-    { id: "synthetic-account-spectator", label: "Fictional spectator", classification: "spectator", adultVerified: false },
-    { id: "synthetic-account-invitee", label: "Fictional invited spectator", classification: "spectator", adultVerified: false }
+    { id: "synthetic-account-manager", label: demoAccountLabels["synthetic-account-manager"], classification: "adult_individual", adultVerified: true },
+    ...playerIds.map((id4, index) => ({ id: `synthetic-account-player-${String(index + 1).padStart(2, "0")}`, label: romaFixture.players[index].displayName, classification: "child_shared", adultVerified: false })),
+    { id: "synthetic-account-spectator", label: demoAccountLabels["synthetic-account-spectator"], classification: "spectator", adultVerified: false },
+    { id: "synthetic-account-invitee", label: demoAccountLabels["synthetic-account-invitee"], classification: "spectator", adultVerified: false }
   ];
   const memberships = [
     { accountId: accounts[0].id, teamId, seasonId, role: "manager", active: true },
@@ -3785,7 +4075,7 @@ function createCommunityState(nowMs = Date.now()) {
     id: "synthetic-community-willow",
     teamId,
     seasonId,
-    label: "Roma vs Willow FC \xB7 fictional review",
+    label: "Roma v Willow FC \xB7 Practice match",
     playedAtMs: Math.max(0, fullTime - 36e5),
     selectedPlayerIds: playerIds.slice(0, 9),
     presentPlayerIds: playerIds.slice(0, 9),
@@ -3840,7 +4130,7 @@ function createCommunityState(nowMs = Date.now()) {
     revisions: [{
       version: 1,
       art: "pitch",
-      caption: "A fictional matchday illustration. No children or real photographs.",
+      caption: "Matchday at Rovers Sports Ground \xB7 sample illustration",
       status: "published",
       createdAtMs: fullTime,
       reviewedAtMs: fullTime,
@@ -3862,7 +4152,7 @@ function createCommunityState(nowMs = Date.now()) {
     revisions: [{
       version: 1,
       art: "ball",
-      caption: "Fictional football illustration awaiting review.",
+      caption: "Saturday football \xB7 sample illustration awaiting review",
       status: "pending",
       createdAtMs: fullTime,
       reviewedAtMs: null,
@@ -3947,8 +4237,8 @@ function signature(value) {
   if (value !== null && typeof value === "object") return `{${Object.entries(value).filter(([, item]) => item !== void 0).sort(([a], [b]) => a.localeCompare(b)).map(([key, item]) => `${JSON.stringify(key)}:${signature(item)}`).join(",")}}`;
   return JSON.stringify(value);
 }
-function nonnegative2(value, label) {
-  if (!Number.isSafeInteger(value) || value < 0) throw new Error(`${label} must be a nonnegative whole number.`);
+function nonnegative2(value, label2) {
+  if (!Number.isSafeInteger(value) || value < 0) throw new Error(`${label2} must be a nonnegative whole number.`);
 }
 function validDate2(value) {
   return /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(Date.parse(`${value}T00:00:00Z`)) && (/* @__PURE__ */ new Date(`${value}T00:00:00Z`)).toISOString().slice(0, 10) === value;
@@ -4009,7 +4299,7 @@ function historicalRecord(state, id4, input, at) {
     awardStatus: "not_recorded"
   };
 }
-function createRecordsSeed() {
+function createRecordsSeed(options = {}) {
   const state = {
     schemaVersion: 1,
     clubId: "synthetic-richmond-rovers",
@@ -4036,7 +4326,7 @@ function createRecordsSeed() {
     recordedKickoff: null,
     sameDayOrder: null,
     opponent: example.opponent,
-    homeAway: "home",
+    homeAway: index === 1 ? "away" : "home",
     fixtureClass: example.fixtureClass,
     status: "completed",
     specialOutcome: "ordinary",
@@ -4044,12 +4334,32 @@ function createRecordsSeed() {
     halfTimeScore: null,
     goals: index === 0 ? [{ id: "synthetic-history-known-goal", beneficiary: "us", isOwnGoal: false, scorerPlayerId: romaFixture.players[1].id, goalType: null, half: null, halfElapsedMs: null }] : []
   }, "2026-10-20T12:00:00Z"));
+  if (options.demoSharing) {
+    state.initialLivePublication = { matchId: state.liveMatch.matchId, fixtureClass: state.liveMatch.fixtureClass, publication: {
+      id: "demo-simulated-scores-v1",
+      version: 1,
+      fixtureClass: state.liveMatch.fixtureClass,
+      confirmed: true,
+      confirmationReference: "Generated test scenario only; no competition or real-data approval.",
+      allowedRoles: ["player", "spectator"]
+    } };
+    state.results = state.results.map((record) => ({ ...record, publication: {
+      id: "demo-simulated-scores-v1",
+      version: 1,
+      fixtureClass: record.fixtureClass,
+      confirmed: true,
+      confirmationReference: "Generated test scenario only; no competition or real-data approval.",
+      allowedRoles: ["player", "spectator"]
+    } }));
+  }
   return state;
 }
 function snapshotLiveMatch(state, match, at) {
   if (match.config.matchId !== state.liveMatch.matchId) throw new Error("Set this match\u2019s recorded fixture details before reporting it.");
   const previousRecord = state.results.find((record) => record.id === match.config.matchId);
   const sameClassification = previousRecord?.fixtureClass === state.liveMatch.fixtureClass;
+  const initial2 = state.initialLivePublication;
+  const initialPublication = !previousRecord && initial2?.matchId === match.config.matchId && initial2.fixtureClass === state.liveMatch.fixtureClass && initial2.publication.fixtureClass === state.liveMatch.fixtureClass ? initial2.publication : null;
   const sample = match.anchor?.sample ?? { monotonicMs: 0, sessionId: "records-checkpoint", wallTimeMs: 0 };
   const started = match.status !== "preparation";
   const targets = started ? currentTargets(match, sample) : [];
@@ -4079,7 +4389,7 @@ function snapshotLiveMatch(state, match, at) {
     seasonId: state.seasonId,
     recordMode: "detailed_live",
     detailCompleteness: match.recoveryRequired ? "review_required" : "complete",
-    publication: sameClassification ? clone2(previousRecord.publication) : managerOnlyPublication(state.liveMatch.fixtureClass),
+    publication: sameClassification ? clone2(previousRecord.publication) : initialPublication ? clone2(initialPublication) : managerOnlyPublication(state.liveMatch.fixtureClass),
     classificationVersion: previousRecord ? previousRecord.classificationVersion + Number(!sameClassification) : 1,
     selectedPlayerIds: [...match.config.selectedPlayerIds],
     attendance: { ...match.attendance },
@@ -4168,6 +4478,13 @@ function reduceRecords(previous, command) {
     case "live.context.set": {
       if (!validDate2(command.details.playedDate) || command.details.playedDate < state.startsOn || command.details.playedDate > state.endsOn || !command.details.opponent.trim()) throw new Error("Choose valid fixture details in this season.");
       state = { ...state, liveMatch: clone2(command.details) };
+      before = state.results.find((record) => record.id === command.details.matchId) ?? null;
+      if (before && before.fixtureClass !== command.details.fixtureClass) {
+        after = { ...before, publication: managerOnlyPublication(before.fixtureClass), revision: before.revision + 1, updatedAt: command.at };
+        state = { ...state, results: state.results.map((record) => record.id === after.id ? after : record) };
+      }
+      if (state.initialLivePublication?.matchId === command.details.matchId && state.initialLivePublication.fixtureClass !== command.details.fixtureClass)
+        delete state.initialLivePublication;
       reason = "Current fixture context recorded.";
       break;
     }
@@ -4186,6 +4503,13 @@ function reduceRecords(previous, command) {
       if (new Set(ids).size !== ids.length || command.evidence.some((item) => !validDate2(item.playedDate) || item.playedDate < state.startsOn || item.playedDate > state.endsOn || new Set(item.expectedPlayerIds).size !== item.expectedPlayerIds.length)) throw new Error("Training evidence needs distinct sessions, unique expected players and dates in this season.");
       state = { ...state, trainingAttendance: clone2(command.evidence) };
       reason = "Training evidence updated from the local schedule; cancelled sessions remain excluded.";
+      break;
+    }
+    case "game.evidence.replace": {
+      const ids = command.evidence.map((item) => item.matchId);
+      if (new Set(ids).size !== ids.length || command.evidence.some((item) => !item.matchId || !Number.isSafeInteger(item.sourcePreparationRevision) || item.sourcePreparationRevision < 0 || !item.sourceCommandId || Object.entries(item.responses).some(([playerId, response]) => !state.players.some((player) => player.id === playerId) || !["available", "unavailable", "unsure", "no_reply"].includes(response)))) throw new Error("Game preparation evidence needs distinct fixtures, known season players and a recorded source revision.");
+      state = { ...state, gamePreparation: clone2(command.evidence) };
+      reason = "Game responses projected separately from actual attendance and active availability.";
       break;
     }
     case "participation.exception.noted": {
@@ -4366,8 +4690,22 @@ function selectParticipationReport(state, match, viewer) {
       minutesPerPlayedAppearance: matchesPlayed ? playingMs / matchesPlayed / 6e4 : null,
       games,
       training,
-      gameRecords: selected.map((record) => ({ eventId: record.id, heldDate: record.playedDate, eventStatus: record.status, selection: "selected", actualAttendance: record.attendance?.[player.id] ?? "not_recorded", availabilityResponse: null })),
-      trainingRecords: trainingEvidence.map((item) => ({ eventId: item.sessionId, heldDate: item.playedDate, eventStatus: "held", expected: true, actualAttendance: item.attendance[player.id] ?? "not_recorded", availabilityResponse: item.responses?.[player.id] ?? null })),
+      gameRecords: selected.map((record) => {
+        const preparation = state.gamePreparation?.find((item) => item.matchId === record.id);
+        const actualAttendance = record.attendance?.[player.id] ?? "not_recorded";
+        return {
+          eventId: record.id,
+          eventType: "game",
+          heldDate: record.playedDate,
+          eventStatus: record.status,
+          selection: "selected",
+          actualAttendance,
+          excusedStatus: actualAttendance === "excused" ? "excused" : null,
+          availabilityResponse: preparation?.responses[player.id] ?? null,
+          correctionProvenance: { recordRevision: record.revision, sourceMatchRevision: record.sourceMatchRevision, updatedAt: record.updatedAt, sourcePreparationRevision: preparation?.sourcePreparationRevision ?? null, sourcePreparationCommandId: preparation?.sourceCommandId ?? null }
+        };
+      }),
+      trainingRecords: trainingEvidence.map((item) => ({ eventId: item.sessionId, eventType: "training", heldDate: item.playedDate, eventStatus: "held", expected: true, actualAttendance: item.attendance[player.id] ?? "not_recorded", excusedStatus: item.attendance[player.id] === "excused" ? "excused" : null, availabilityResponse: item.responses?.[player.id] ?? null, correctionProvenance: { sourcePreparationRevision: item.sourcePreparationRevision ?? null, sourcePreparationCommandId: item.sourceCommandId ?? null } })),
       coverageLabel: `Minutes recorded for ${evidence.length} of ${records.length} recorded games; ${unknown} historical squad${unknown === 1 ? "" : "s"} not recorded.`,
       evidenceState: selected.some((record) => record.detailCompleteness === "review_required") ? "review_required" : unknown || selected.length !== evidence.length ? "partial" : "complete"
     };
@@ -4607,6 +4945,7 @@ function planSeasonRollover(context) {
     liveMatch: { matchId: "", playedDate: season.startDate, opponent: "", homeAway: "home", fixtureClass: "unclassified" },
     results: [],
     trainingAttendance: [],
+    gamePreparation: [],
     audit: [],
     appliedCommands: {}
   };
@@ -4651,7 +4990,7 @@ function composeReportCommunity(report, accountId, source2) {
   if (match.sharingAllowed !== true) return empty("withheld", source2.revision);
   const award = match.award;
   const times = award ? [award.voteCutoffAtMs, award.finalisationDeadlineAtMs, award.finalisedAtMs] : [];
-  if (award && (award.matchId !== report.matchId || !["winners", "no_valid_votes"].includes(award.result) || !times.every((time3) => Number.isSafeInteger(time3) && time3 >= 0) || award.finalisationDeadlineAtMs < award.voteCutoffAtMs || award.deadlineMissed !== award.finalisedAtMs > award.finalisationDeadlineAtMs || !Array.isArray(award.winnerLabels) || award.winnerLabels.some((label) => typeof label !== "string" || !label.trim() || label.length > 120) || (award.result === "no_valid_votes" ? award.winnerLabels.length !== 0 : award.winnerLabels.length === 0))) return empty("unavailable");
+  if (award && (award.matchId !== report.matchId || !["winners", "no_valid_votes"].includes(award.result) || !times.every((time3) => Number.isSafeInteger(time3) && time3 >= 0) || award.finalisationDeadlineAtMs < award.voteCutoffAtMs || award.deadlineMissed !== award.finalisedAtMs > award.finalisationDeadlineAtMs || !Array.isArray(award.winnerLabels) || award.winnerLabels.some((label2) => typeof label2 !== "string" || !label2.trim() || label2.length > 120) || (award.result === "no_valid_votes" ? award.winnerLabels.length !== 0 : award.winnerLabels.length === 0))) return empty("unavailable");
   const photos = new Set(source2.view.gallery.filter((photo) => photo.matchId === report.matchId && typeof photo.id === "string" && photo.id.length > 0).map((photo) => photo.id));
   return {
     communityStatus: "available",
@@ -4659,6 +4998,20 @@ function composeReportCommunity(report, accountId, source2) {
     award: award ? { matchId: report.matchId, result: award.result, winnerLabels: [...award.winnerLabels], voteCutoffAtMs: award.voteCutoffAtMs, finalisationDeadlineAtMs: award.finalisationDeadlineAtMs, finalisedAtMs: award.finalisedAtMs, deadlineMissed: award.deadlineMissed } : null,
     publishedAlbum: { matchId: report.matchId, photoCount: photos.size }
   };
+}
+
+// packages/application/src/game-preparation-evidence.ts
+function gamePreparationEvidence(state, seasonId, sourceCommandId) {
+  const players = new Map(state.profiles.filter((profile) => profile.seasonId === seasonId).map((profile) => [profile.id, profile.playerId]));
+  return state.fixtures.filter((fixture) => fixture.seasonId === seasonId).map((fixture) => ({
+    matchId: fixture.id,
+    responses: Object.fromEntries(Object.entries(fixture.responses).flatMap(([profileId, response]) => {
+      const playerId = players.get(profileId);
+      return playerId ? [[playerId, response]] : [];
+    })),
+    sourcePreparationRevision: state.revision,
+    sourceCommandId
+  }));
 }
 
 // packages/application/src/records-service.ts
@@ -4732,8 +5085,31 @@ function contextFor(state, match, fixtureClass) {
   if (!fixture) return state.liveMatch.matchId === match.config.matchId ? { ...state.liveMatch, fixtureClass: fixtureClass ?? state.liveMatch.fixtureClass } : null;
   return { matchId: match.config.matchId, playedDate: fixture.playedDate, opponent: fixture.opponent, homeAway: fixture.homeAway, fixtureClass: fixtureClass ?? state.results.find((record) => record.id === match.config.matchId)?.fixtureClass ?? "unclassified" };
 }
+function currentSharingState(input, viewer, derived) {
+  if (viewer.actor === "manager") return input.state;
+  const denied = new Set(input.acceptedMatches.filter((row) => {
+    if (row.teamId !== input.state.teamId || row.seasonId !== input.state.seasonId || !row.sharingPolicy) return false;
+    const policy = row.sharingPolicy;
+    return policy.approvedBy === null || policy.approvedAt === null || !policy.shareScores || derived && !policy.shareDerivedResults;
+  }).map((row) => row.match.config.matchId));
+  if (!denied.size) return input.state;
+  const initial2 = input.state.initialLivePublication;
+  return {
+    ...input.state,
+    ...initial2 && denied.has(initial2.matchId) ? { initialLivePublication: { ...initial2, publication: { ...initial2.publication, confirmed: false, allowedRoles: [] } } } : {},
+    results: input.state.results.map((record) => denied.has(record.id) ? { ...record, publication: { ...record.publication, confirmed: false, allowedRoles: [] } } : record)
+  };
+}
 function recordsServiceView(input) {
   const viewer = recordsServiceViewer(input), { state, nowMs } = input;
+  const scoreState = currentSharingState(input, viewer, false), derivedState = currentSharingState(input, viewer, true);
+  const preparation = input.preparation;
+  if (preparation && (preparation.team.id !== state.teamId || !preparation.seasons.some((season) => season.id === state.seasonId))) fail3("Preparation evidence is outside this report scope.", "NOT_FOUND", 404);
+  const reportState = preparation ? {
+    ...state,
+    gamePreparation: gamePreparationEvidence(preparation, state.seasonId, preparation.audit.at(-1)?.id ?? "initial-preparation"),
+    trainingAttendance: trainingAttendanceEvidence({ ...preparation, training: preparation.training.filter((session) => session.seasonId === state.seasonId) })
+  } : state;
   const activeMatch = accepted(input, state.liveMatch.matchId);
   const generatedAt = new Date(nowMs).toISOString();
   const stamp = (value) => ({ ...value, generatedAt });
@@ -4743,9 +5119,9 @@ function recordsServiceView(input) {
   const reports = [...ids].map((id4) => {
     const match = accepted(input, id4);
     const details = match ? contextFor(state, match, id4 === state.liveMatch.matchId ? state.liveMatch.fixtureClass : void 0) : null;
-    return selectMatchReport(details ? { ...state, liveMatch: details } : state, id4, viewer, match);
+    return selectMatchReport(details ? { ...scoreState, liveMatch: details } : scoreState, id4, viewer, match);
   }).filter((item) => item !== null);
-  const common = { revision: state.revision, results: stamp(selectSeasonResults(state, viewer)), participation: stamp(selectParticipationReport(state, activeMatch, viewer)), matches: reports.map((report) => stamp({ ...report, ...composeReportCommunity(report, input.principal.accountId, input.community), goals: report.goals.map((goal) => ({ ...goal, scorerLabel: goal.scorerPlayerId ? state.players.find((player) => player.id === goal.scorerPlayerId)?.label ?? null : null })) })) };
+  const common = { revision: state.revision, results: stamp(selectSeasonResults(derivedState, viewer)), participation: stamp({ ...selectParticipationReport(reportState, activeMatch, viewer), ...viewer.actor === "spectator" ? {} : { sourcePreparationRevision: preparation?.revision ?? null } }), matches: reports.map((report) => stamp({ ...report, ...composeReportCommunity(report, input.principal.accountId, input.community), goals: report.goals.map((goal) => ({ ...goal, scorerLabel: goal.scorerPlayerId ? state.players.find((player) => player.id === goal.scorerPlayerId)?.label ?? null : null })) })) };
   if (viewer.actor !== "manager") return common;
   return {
     ...common,
@@ -4775,7 +5151,8 @@ function applyRecordsServiceCommand(input) {
       bound = { ...base, type: command.type, recordId: command.recordId, expectedRevision: command.expectedRevision, reason: command.reason.trim(), input: parseHistoricalResultInput(command.input) };
       break;
     case "live.context.set": {
-      requireThat4(command.details && typeof command.details === "object" && string(command.details.matchId) && fixtureClasses.includes(command.details.fixtureClass), "Choose a prepared match and an explicit fixture class.");
+      requireThat4(object(command.details) && string(command.details.matchId) && fixtureClasses.includes(command.details.fixtureClass), "Choose a prepared match and an explicit fixture class.");
+      fields(command.details, ["matchId", "playedDate", "opponent", "homeAway", "fixtureClass"]);
       const match = accepted(input, command.details.matchId);
       if (!match) fail3("The prepared match is outside this team and season.", "NOT_FOUND", 404);
       const details = contextFor(state, match, command.details.fixtureClass);
@@ -4803,15 +5180,17 @@ function applyRecordsServiceCommand(input) {
       fail3("A manager request cannot approve the unresolved competition policy. Independent operator evidence is required.", "POLICY_APPROVAL_REQUIRED", 503);
       break;
     case "training.evidence.replace":
-      fail3("Training report evidence is projected from the authorised preparation service.", "SERVICE_OWNED_PROJECTION", 403);
+    case "game.evidence.replace":
+      fail3("Attendance report evidence is projected from the authorised preparation service.", "SERVICE_OWNED_PROJECTION", 403);
       break;
     default:
       fail3("Unsupported record command.");
   }
   return reduceRecords(state, bound);
 }
-function policyFingerprint(state) {
-  const source2 = JSON.stringify(state.results.map((record) => [record.id, record.classificationVersion, record.fixtureClass, record.publication]));
+function policyFingerprint(state, acceptedMatches) {
+  const currentPolicies = acceptedMatches.filter((row) => row.teamId === state.teamId && row.seasonId === state.seasonId && row.sharingPolicy).map((row) => [row.match.config.matchId, row.sharingPolicy]).sort((left, right) => String(left[0]).localeCompare(String(right[0])));
+  const source2 = JSON.stringify([state.results.map((record) => [record.id, record.classificationVersion, record.fixtureClass, record.publication]), state.initialLivePublication ?? null, currentPolicies]);
   let hash4 = 2166136261;
   for (const character of source2) hash4 = Math.imul(hash4 ^ character.charCodeAt(0), 16777619) >>> 0;
   return `policy-v1-${hash4.toString(16).padStart(8, "0")}`;
@@ -4819,17 +5198,26 @@ function policyFingerprint(state) {
 function recordsServiceExport(input) {
   const viewer = recordsServiceViewer(input), view = recordsServiceView(input), { request, state, nowMs } = input;
   requireThat4(request && ["season", "match"].includes(request.kind) && ["json", "csv"].includes(request.format), "Choose a report and supported export format.");
-  const fingerprint2 = policyFingerprint(state);
+  const fingerprint2 = policyFingerprint(state, input.acceptedMatches);
   if (request.expectedProjectionVersion !== void 0 && request.expectedProjectionVersion !== state.revision || request.expectedPolicyFingerprint !== void 0 && request.expectedPolicyFingerprint !== fingerprint2) fail3("This report or audience policy changed. Refresh before exporting.", "STALE_PROJECTION", 409);
   const matches = request.kind === "match" ? view.matches.filter((report) => report.matchId === request.matchId) : view.matches;
   if (request.kind === "match" && matches.length !== 1) fail3("That permitted match report is unavailable.", "NOT_FOUND", 404);
   const generatedAt = new Date(nowMs).toISOString();
+  const preparation = input.preparation;
+  const displayLabel = (value) => string(value, 150) ? value.trim() : null;
+  const displayContext = preparation ? {
+    clubName: displayLabel(preparation.club.name),
+    teamName: displayLabel(preparation.team.name),
+    ageGroup: displayLabel(preparation.team.ageGroup),
+    seasonLabel: displayLabel(preparation.seasons.find((season) => season.id === state.seasonId)?.label)
+  } : {};
   const document = {
     schemaVersion: 1,
     reportType: request.kind,
     teamId: state.teamId,
     seasonId: state.seasonId,
     audience: viewer.actor,
+    ...displayContext,
     appliedFilters: { matchId: request.kind === "match" ? request.matchId : null, playerId: viewer.actor === "player" ? viewer.playerId : null },
     generatedAt,
     asOf: request.kind === "match" ? matches[0].asOf : view.participation.asOf,
@@ -5557,6 +5945,23 @@ function ownDevicesDto(principal, legacy, native, nowMs) {
   return parseAccountDevicesDto({ kind: "recognised-devices", accountId: principal.accountId, asOf: new Date(nowMs).toISOString(), devices: [...native.map((row) => ({ deviceId: row.device_id, source: "native_app_enrolment", label: null, platform: row.platform, platformVerified: false, registeredAt: new Date(row.registered_at).toISOString(), lastSeenAt: new Date(row.last_seen_at).toISOString() })), ...legacy.filter((row) => !nativeIds.has(row.id)).map((row) => ({ deviceId: row.id, source: "match_controller_enrolment", label: null, platform: null, platformVerified: false, registeredAt: null, lastSeenAt: null }))], remoteRevocationAvailable: false });
 }
 
+// apps/api/src/workspace-memberships.ts
+function label(value) {
+  if (typeof value !== "string" || value.length > 120 || /[\u0000-\u001f\u007f]/.test(value)) return void 0;
+  return value.trim() || void 0;
+}
+function namedWorkspaceMembership(membership, names) {
+  const team = label(names?.team_name), ageGroup = label(names?.age_group);
+  const teamName = team && ageGroup && !team.toLocaleLowerCase("en-GB").endsWith(` ${ageGroup.toLocaleLowerCase("en-GB")}`) ? label(`${team} ${ageGroup}`) ?? team : team;
+  const seasonLabel = label(names?.season_label), clubName = label(names?.club_name);
+  return {
+    ...membership,
+    ...teamName ? { teamName } : {},
+    ...seasonLabel ? { seasonLabel } : {},
+    ...clubName ? { clubName } : {}
+  };
+}
+
 // apps/api/src/postgres-store.ts
 var EVENT_CONTRACT_VERSION = "longball.events/1.1";
 var SYNTHETIC_IDS = { teamId: "synthetic-roma-u10", seasonId: "synthetic-season-2026-27", matchId: "synthetic-roma-maple-2026-10-24" };
@@ -5653,13 +6058,13 @@ var PostgresStore = class _PostgresStore {
   async execute(sql, values = []) {
     return { changes: (await this.db.query(sql, values)).rowCount ?? 0 };
   }
-  async seedSynthetic() {
+  async seedSynthetic(options = {}) {
     await this.transaction(async () => {
       if (await this.one("SELECT id FROM teams LIMIT 1", []))
         return;
-      await this.execute("INSERT INTO clubs(id,name) VALUES($1,$2),($3,$4)", ["synthetic-richmond-rovers", "Richmond Rovers \xB7 fictional", "synthetic-other-club", "Other fictional club"]);
-      await this.execute("INSERT INTO teams(id,name,club_id,scope_status) VALUES($1,$2,$3,'resolved')", [SYNTHETIC_IDS.teamId, "Roma U10 \xB7 fictional", "synthetic-richmond-rovers"]);
-      await this.execute("INSERT INTO teams(id,name,club_id,scope_status) VALUES($1,$2,$3,'resolved')", ["synthetic-other-team", "Other fictional team", "synthetic-other-club"]);
+      await this.execute("INSERT INTO clubs(id,name) VALUES($1,$2),($3,$4)", ["synthetic-richmond-rovers", "Richmond Rovers", "synthetic-other-club", "Brookfield Juniors"]);
+      await this.execute("INSERT INTO teams(id,name,club_id,scope_status) VALUES($1,$2,$3,'resolved')", [SYNTHETIC_IDS.teamId, "Roma U10", "synthetic-richmond-rovers"]);
+      await this.execute("INSERT INTO teams(id,name,club_id,scope_status) VALUES($1,$2,$3,'resolved')", ["synthetic-other-team", "Milan U11", "synthetic-other-club"]);
       await this.execute("INSERT INTO team_seasons(club_id,team_id,season_id,label,start_year,start_date,end_date) VALUES($1,$2,$3,$4,$5,$6,$7),($8,$9,$3,$4,$5,$6,$7)", ["synthetic-richmond-rovers", SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId, "2026/27", 2026, "2026-09-01", "2027-08-31", "synthetic-other-club", "synthetic-other-team"]);
       const add2 = async (id4, classification, adult) => await this.execute("INSERT INTO accounts(id,issuer,subject,classification,adult_verified,strong_auth_enrolled) VALUES($1,$2,$3,$4,$5,$6)", [id4, "urn:longball:synthetic", id4, classification, Number(adult), Number(adult)]);
       const membership = async (id4, role, playerId = null, teamId = SYNTHETIC_IDS.teamId) => await this.execute("INSERT INTO memberships(account_id,team_id,season_id,role,player_id) VALUES($1,$2,$3,$4,$5)", [id4, teamId, SYNTHETIC_IDS.seasonId, role, playerId]);
@@ -5684,18 +6089,27 @@ var PostgresStore = class _PostgresStore {
       await add2("synthetic-account-invitee", "adult_individual", false);
       await add2("synthetic-account-other-manager", "adult_individual", true);
       await membership("synthetic-account-other-manager", "manager", null, "synthetic-other-team");
-      const config = { matchId: SYNTHETIC_IDS.matchId, players: romaFixture.players, selectedPlayerIds: romaFixture.players.filter((player) => player.available).map((player) => player.id), pitchPlaces: 7, plannedHalfDurationMs: 15e5, fixedKeeperId: romaFixture.players[0].id };
+      const config = { matchId: SYNTHETIC_IDS.matchId, players: romaFixture.players, selectedPlayerIds: romaFixture.players.filter((player) => player.available).map((player) => player.id), pitchPlaces: 7, plannedHalfDurationMs: 15e5, fixedKeeperId: romaFixture.players[0].id, fixture: { opponent: "Maple FC", playedDate: "2026-10-24", kickoff: "10:00", homeAway: "home", teamId: SYNTHETIC_IDS.teamId, seasonId: SYNTHETIC_IDS.seasonId, teamName: "Roma", clubName: "Richmond Rovers" } };
       await this.insertMatch(config, SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId);
       const community = createCommunityState(this.now());
-      community.matches = community.matches.map((match) => ({ ...match, sharing: "manager_only" }));
+      if (options.demoSharing) await this.execute("UPDATE matches SET sharing_policy_json=$1 WHERE id=$2", [JSON.stringify({ version: "demo-simulated-scores-v1", approvedBy: "generated-demo-scenario-only", approvedAt: this.now(), shareScores: true, shareDerivedResults: true }), SYNTHETIC_IDS.matchId]);
+      if (options.demoSharing) {
+        community.photos = [];
+        community.matches = community.matches.map((match) => ({ ...match, voteCutoffAtMs: match.actualFullTimeAtMs + 45 * 6e4, cutoffSource: "explicit_fictional_setting" }));
+      }
+      if (!options.demoSharing) community.matches = community.matches.map((match) => ({ ...match, sharing: "manager_only" }));
       for (let number = 2; number <= 4; number++) {
         const id4 = `synthetic-account-manager-${number}`;
-        community.accounts.push({ id: id4, label: `Fictional manager ${number}`, classification: "adult_individual", adultVerified: true });
+        community.accounts.push({ id: id4, label: demoAccountLabels[id4], classification: "adult_individual", adultVerified: true });
         community.memberships.push({ accountId: id4, teamId: SYNTHETIC_IDS.teamId, seasonId: SYNTHETIC_IDS.seasonId, role: "manager", active: true });
       }
       await this.saveDocument(SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId, "preparation", createPreparationState());
       await this.saveDocument(SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId, "community", community);
-      await this.saveDocument(SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId, "records", createRecordsSeed());
+      await this.saveDocument(SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId, "records", createRecordsSeed(options));
+      if (options.demoSharing) for (const match of community.matches) {
+        const key = `award:${SYNTHETIC_IDS.teamId}:${SYNTHETIC_IDS.seasonId}:${match.id}:${match.voteCutoffAtMs}`;
+        await this.execute("INSERT INTO jobs(id,business_key,kind,payload_json,due_at) VALUES($1,$2,$3,$4,$5) ON CONFLICT(business_key) DO NOTHING", [randomUUID2(), key, "award.finalise", JSON.stringify({ teamId: SYNTHETIC_IDS.teamId, seasonId: SYNTHETIC_IDS.seasonId, matchId: match.id }), match.voteCutoffAtMs]);
+      }
     });
   }
   async insertMatch(config, teamId, seasonId) {
@@ -5707,12 +6121,27 @@ var PostgresStore = class _PostgresStore {
       throw new AccessError("ACCOUNT_UNAVAILABLE", 403, "The account is not active for this service.");
     return { accountId: account2.id, issuer: account2.issuer, subject: account2.subject, identityClassification: account2.classification, adultVerified: Boolean(account2.adult_verified), strongAuth: identity.strongAuth, authenticatedAt: identity.authenticatedAt, status: account2.status };
   }
-  async memberships() {
-    const rows = await this.many("SELECT m.*,CASE WHEN m.role='spectator' THEN longball.spectator_grant_active(m.account_id,m.club_id,m.team_id,m.season_id) ELSE true END AS grant_active FROM memberships m");
+  async memberships(accountId, scope) {
+    const values = [], predicates = [];
+    if (accountId !== void 0) {
+      values.push(accountId);
+      predicates.push(`m.account_id=$${values.length}`);
+    }
+    if (scope) {
+      values.push(scope.teamId, scope.seasonId);
+      predicates.push(`m.team_id=$${values.length - 1}`, `m.season_id=$${values.length}`);
+    }
+    const rows = await this.many("SELECT m.*,CASE WHEN m.role='spectator' THEN longball.spectator_grant_active(m.account_id,m.club_id,m.team_id,m.season_id) ELSE true END AS grant_active FROM memberships m" + (predicates.length ? " WHERE " + predicates.join(" AND ") : ""), values);
     return rows.map((row) => ({ accountId: row.account_id, teamId: row.team_id, seasonId: row.season_id, role: row.role, playerId: row.player_id ?? void 0, expiresAt: row.expires_at, revokedAt: row.role === "spectator" && !row.grant_active ? row.revoked_at ?? Math.max(1, this.now()) : row.revoked_at }));
   }
   async myMemberships(principal) {
-    return currentMemberships(principal, await this.memberships(), this.now());
+    return currentMemberships(principal, await this.memberships(principal.accountId), this.now());
+  }
+  async workspaceMemberships(principal) {
+    const own = await this.myMemberships(principal);
+    if (!own.length) return [];
+    const rows = await this.many("SELECT * FROM longball.workspace_membership_names()");
+    return own.map((member) => namedWorkspaceMembership(member, rows.find((row) => row.team_id === member.teamId && row.season_id === member.seasonId)));
   }
   async recognisedDevices(principal) {
     const legacy = await this.many("SELECT id,account_id FROM devices WHERE account_id=$1 ORDER BY id", [principal.accountId]);
@@ -5740,12 +6169,12 @@ var PostgresStore = class _PostgresStore {
   }
   async managerMatch(principal, matchId) {
     const row = await this.match(matchId);
-    assertCanManageTeam(principal, await this.memberships(), row.team_id, row.season_id, this.now());
+    assertCanManageTeam(principal, await this.myMemberships(principal), row.team_id, row.season_id, this.now());
     return row;
   }
   async matchDto(principal, matchId, requestedRole) {
     const row = await this.match(matchId);
-    return filterMatchForPrincipal({ principal, memberships: await this.memberships(), teamId: row.team_id, seasonId: row.season_id, state: JSON.parse(row.state_json), policy: JSON.parse(row.sharing_policy_json), lastSyncAt: row.last_sync_at, now: this.now(), requestedRole });
+    return filterMatchForPrincipal({ principal, memberships: await this.myMemberships(principal), teamId: row.team_id, seasonId: row.season_id, state: JSON.parse(row.state_json), policy: JSON.parse(row.sharing_policy_json), lastSyncAt: row.last_sync_at, now: this.now(), requestedRole });
   }
   async download(principal, matchId, deviceId, syntheticOnly = false, controllerToken) {
     return this.transaction(async () => {
@@ -6149,12 +6578,14 @@ var PostgresStore = class _PostgresStore {
     if (device && device.account_id !== principal.accountId)
       throw new AccessError("DEVICE_ACCOUNT_CONFLICT", 409, "Enrol a separate device identity for this account.");
     await this.execute("INSERT INTO devices(id,account_id) VALUES($1,$2) ON CONFLICT(id) DO NOTHING", [deviceId, principal.accountId]);
+    const bound = await this.one("SELECT account_id FROM devices WHERE id=$1 AND account_id=$2", [deviceId, principal.accountId]);
+    if (!bound) throw new AccessError("DEVICE_ACCOUNT_CONFLICT", 409, "Enrol a separate device identity for this account.");
   }
   async teamMatches(principal, teamId, seasonId, requestedRole, query = { limit: 25, cursor: null }) {
     const memberships = await this.memberships();
     const audience = matchPageAudience(principal, memberships, teamId, seasonId, requestedRole, this.now());
-    const scope = { principal, teamId, seasonId, role: audience.role, playerId: audience.playerId ?? null }, afterId = matchPagePosition(scope, query);
-    const rows = await this.many('SELECT id,state_json,sharing_policy_json,last_sync_at FROM matches WHERE team_id=$1 AND season_id=$2 AND ($3::text IS NULL OR id COLLATE "C" > $3::text COLLATE "C") ORDER BY id COLLATE "C" LIMIT $4', [teamId, seasonId, afterId, query.limit + 1]);
+    const scope = { principal, teamId, seasonId, role: audience.role, playerId: audience.playerId ?? null, status: query.status }, afterId = matchPagePosition(scope, query);
+    const rows = await this.many(`SELECT id,state_json,sharing_policy_json,last_sync_at FROM matches WHERE team_id=$1 AND season_id=$2 AND ($3::text IS NULL OR id COLLATE "C" > $3::text COLLATE "C") AND (NOT $4::boolean OR state_json::jsonb ->> 'status' IN ('first_half_running','first_half_paused','half_time','second_half_running','second_half_paused')) ORDER BY id COLLATE "C" LIMIT $5`, [teamId, seasonId, afterId, query.status === "active", query.limit + 1]);
     const visible = rows.slice(0, query.limit);
     return { items: visible.map((row) => filterMatchForPrincipal({ principal, memberships, teamId, seasonId, state: JSON.parse(row.state_json), policy: JSON.parse(row.sharing_policy_json), lastSyncAt: row.last_sync_at, requestedRole, now: this.now() })), nextCursor: rows.length > query.limit ? matchPageCursor(scope, visible[visible.length - 1].id) : null, serverTime: new Date(this.now()).toISOString() };
   }
@@ -6173,12 +6604,13 @@ var PostgresStore = class _PostgresStore {
     if (typeof observed !== "number" || !Number.isSafeInteger(observed) || observed < 0) throw new Error("DATABASE_CLOCK_UNAVAILABLE");
     const recipients = /* @__PURE__ */ new Map();
     const priority = { manager: 3, player: 2, spectator: 1, administrator: 0 };
-    for (const member of (await this.memberships()).filter((item) => item.teamId === teamId && item.seasonId === seasonId && ["manager", "player", "spectator"].includes(item.role) && item.revokedAt == null && (item.expiresAt == null || item.expiresAt > observed))) {
+    for (const member of (await this.memberships(void 0, { teamId, seasonId })).filter((item) => item.teamId === teamId && item.seasonId === seasonId && ["manager", "player", "spectator"].includes(item.role) && item.revokedAt == null && (item.expiresAt == null || item.expiresAt > observed))) {
       const current3 = recipients.get(member.accountId);
       if (!current3 || priority[member.role] > priority[current3.role])
         recipients.set(member.accountId, member);
     }
     let inserted = 0;
+    const pending = [];
     for (const member of recipients.values()) {
       if (member.role === "administrator" || member.role === "player" && !member.playerId)
         continue;
@@ -6187,10 +6619,12 @@ var PostgresStore = class _PostgresStore {
       if (workerJob) {
         const result = await this.one("SELECT longball.enqueue_award_notification($1,$2,$3::jsonb,$4) AS changes", [job.id, businessKey, JSON.stringify(job), job.dueAtMs]);
         inserted += Number(result?.changes ?? 0);
-      } else {
-        const result = await this.execute("INSERT INTO jobs(id,business_key,kind,payload_json,due_at) VALUES($1,$2,'notification.dispatch',$3,$4) ON CONFLICT(business_key) DO NOTHING", [job.id, businessKey, JSON.stringify(job), job.dueAtMs]);
-        inserted += Number(result.changes);
-      }
+      } else pending.push(job);
+    }
+    for (let offset = 0; offset < pending.length; offset += 100) {
+      const batch = pending.slice(offset, offset + 100);
+      const result = await this.execute("INSERT INTO jobs(id,business_key,kind,payload_json,due_at) SELECT incoming.value->>'id',incoming.value->>'businessKey','notification.dispatch',incoming.value,(incoming.value->>'dueAtMs')::bigint FROM jsonb_array_elements($1::jsonb) AS incoming(value) ON CONFLICT(business_key) DO NOTHING", [JSON.stringify(batch)]);
+      inserted += Number(result.changes);
     }
     return inserted;
   }
@@ -6271,6 +6705,9 @@ var PostgresStore = class _PostgresStore {
       };
     if (canonical4(evidence) !== canonical4(previous.trainingAttendance))
       records = reduceRecords(records, { type: "training.evidence.replace", commandId: `preparation-training-${sourceCommandId}`, at, actor: "manager", evidence });
+    const gameEvidence = gamePreparationEvidence(preparation, seasonId, sourceCommandId);
+    if (canonical4(gameEvidence.map(({ matchId, responses }) => ({ matchId, responses }))) !== canonical4((previous.gamePreparation ?? []).map(({ matchId, responses }) => ({ matchId, responses }))))
+      records = reduceRecords(records, { type: "game.evidence.replace", commandId: `preparation-games-${sourceCommandId}`, at, actor: "manager", evidence: gameEvidence });
     if (records !== previous)
       await this.saveDocument(teamId, seasonId, "records", records);
   }
@@ -6316,7 +6753,7 @@ var PostgresStore = class _PostgresStore {
         }
       }
     }
-    if (command.type.startsWith("training.") || command.type.startsWith("profile.") || command.type === "roster.imported")
+    if (command.type.startsWith("training.") || command.type.startsWith("profile.") || command.type.startsWith("fixture.") || command.type === "roster.imported")
       await this.projectPreparationRecords(teamId, seasonId, state, command.id);
     await this.saveDocument(teamId, seasonId, "preparation", state);
     await this.audit(principal, command.type, teamId, "accepted");
@@ -6358,8 +6795,6 @@ var PostgresStore = class _PostgresStore {
     const base = { id: command.id, expectedRevision: command.expectedRevision };
     const bound = command.type === "own.preferences_saved" ? { ...base, type: "profile.saved", profile: { ...profile, preferences: command.preferences } } : command.type === "own.fixture_response_recorded" ? { ...base, type: "fixture.response_recorded", fixtureId: command.fixtureId, profileId: profile.id, response: command.response } : { ...base, type: "training.response_recorded", trainingId: command.trainingId, profileId: profile.id, response: command.response };
     const updated = reducePreparation(state, bound);
-    if (bound.type.startsWith("training.") || bound.type.startsWith("profile."))
-      await this.projectPreparationRecords(teamId, seasonId, updated, command.id);
     await this.saveDocument(teamId, seasonId, "preparation", updated);
     await this.audit(principal, command.type, teamId, "accepted");
     return await this.ownPreparation(principal, teamId, seasonId);
@@ -6451,11 +6886,11 @@ var PostgresStore = class _PostgresStore {
   }
   async recordsContext(principal, teamId, seasonId, role) {
     const viewer = await this.recordsViewer(principal, teamId, seasonId, role);
-    const rows = await this.many("SELECT state_json FROM matches WHERE team_id=$1 AND season_id=$2 ORDER BY id", [teamId, seasonId]);
+    const rows = await this.many("SELECT state_json,sharing_policy_json FROM matches WHERE team_id=$1 AND season_id=$2 ORDER BY id", [teamId, seasonId]);
     const community = await this.communityState(teamId, seasonId);
     const actor = await this.communityActor(principal, teamId, seasonId, viewer.actor);
     const filtered = getCommunityView(community, actor, this.now());
-    return { principal, memberships: await this.memberships(), nowMs: this.now(), requestedRole: viewer.actor, state: await this.document(teamId, seasonId, "records"), acceptedMatches: rows.map((row) => ({ teamId, seasonId, match: JSON.parse(row.state_json) })), community: { accountId: principal.accountId, teamId, seasonId, audience: viewer.actor, playerId: viewer.playerId ?? null, revision: community.revision, view: { allowed: filtered.allowed, matches: filtered.matches, gallery: filtered.gallery } } };
+    return { principal, memberships: await this.memberships(), nowMs: this.now(), requestedRole: viewer.actor, state: await this.document(teamId, seasonId, "records"), preparation: await this.document(teamId, seasonId, "preparation"), acceptedMatches: rows.map((row) => ({ teamId, seasonId, match: JSON.parse(row.state_json), sharingPolicy: JSON.parse(row.sharing_policy_json) })), community: { accountId: principal.accountId, teamId, seasonId, audience: viewer.actor, playerId: viewer.playerId ?? null, revision: community.revision, view: { allowed: filtered.allowed, matches: filtered.matches, gallery: filtered.gallery } } };
   }
   async records(principal, teamId, seasonId, role) {
     return recordsServiceView(await this.recordsContext(principal, teamId, seasonId, role));
@@ -7229,7 +7664,7 @@ var PostgresActivationService = class {
     this.policy = options.policy;
     if (options.policy && (options.policy.fictionalOnly !== true || !id3(options.policy.version) || !Number.isSafeInteger(options.policy.activationTtlMs) || options.policy.activationTtlMs <= 0))
       throw new Error(
-        "An explicit versioned fictional activation policy and positive expiry are required."
+        "An explicit versioned test activation policy and positive expiry are required."
       );
     if (options.provider) {
       const issuer = new URL(options.provider.issuer);
@@ -7991,19 +8426,25 @@ async function applyRuntimeGrants(database, roles = { apiRole: "longball_api", w
     await database.query(`GRANT USAGE ON SCHEMA longball TO ${api},${worker}`);
     await database.query(`REVOKE ALL ON ALL TABLES IN SCHEMA longball FROM ${api},${worker}`);
     await database.query(`REVOKE ALL ON ALL FUNCTIONS IN SCHEMA longball FROM PUBLIC,${api},${worker}`);
-    const apiTables = ["clubs", "teams", "team_seasons", "game_contexts", "accounts", "memberships", "matches", "documents", "devices", "controller_grants", "controller_history", "events", "streams", "conflicting_submissions", "transfers", "clock_challenges", "clock_mappings", "reconciliation_proposals", "audit", "idempotency", "privacy_requests", "privacy_pending_keys", "jobs", "media_uploads", "lb_activation_children", "lb_activation_issues", "lb_activation_tokens", "lb_activation_verification_requests", "brand_assets", "brand_slots", "spectator_invitations", "lb_spectator_activation_accounts", "lb_spectator_activation_attempts", "native_app_devices", "team_privilege_states", "team_privilege_decisions", "push_registrations"];
+    const apiTables = ["clubs", "teams", "team_seasons", "game_contexts", "accounts", "memberships", "matches", "documents", "devices", "controller_grants", "controller_history", "events", "streams", "conflicting_submissions", "transfers", "clock_challenges", "clock_mappings", "reconciliation_proposals", "audit", "idempotency", "privacy_requests", "privacy_pending_keys", "jobs", "media_uploads", "lb_activation_children", "lb_activation_issues", "lb_activation_tokens", "lb_activation_verification_requests", "brand_assets", "brand_slots", "spectator_invitations", "lb_spectator_activation_accounts", "lb_spectator_activation_attempts", "native_app_devices", "team_privilege_states", "team_privilege_decisions", "push_registrations", "report_exports"];
     await database.query(`GRANT SELECT,INSERT,UPDATE ON ${apiTables.map((table) => `longball.${table}`).join(",")} TO ${api}`);
     await database.query(`GRANT SELECT ON longball.schema_migrations,longball.media_schema_migrations,longball.lb_activation_schema TO ${api},${worker}`);
     await database.query(`REVOKE UPDATE ON longball.events,longball.audit,longball.controller_history,longball.reconciliation_proposals,longball.clock_mappings,longball.team_privilege_decisions FROM ${api}`);
     await database.query(`GRANT SELECT ON longball.clubs,longball.teams,longball.team_seasons,longball.game_contexts,longball.accounts,longball.memberships,longball.matches TO ${worker}`);
     await database.query(`GRANT SELECT,INSERT,UPDATE ON longball.jobs,longball.documents TO ${worker}`);
-    const helpers = ["runtime_purpose()", "context_json()", "context_now()", "actor_valid()", "context_matches(text,text,text)", "actor_role(text,text,text)", "actor_admin(text,text,text)", "actor_manager(text,text,text)", "invite_capability(text,text,text)", "worker_job_valid(text,text,text)", "worker_kind()", "worker_account(text,text,text,text)", "spectator_grant_active(text,text,text,text)", "activation_account(text,boolean)", "spectator_activation_account(text,boolean)", "invitation_live(text,text)", "account_visible(text)", "document_write(text,text,text,text)", "worker_match(text,text,text,text)"];
+    await database.query(`GRANT SELECT,UPDATE ON longball.report_exports TO ${worker}`);
+    const helpers = ["runtime_purpose()", "context_json()", "context_now()", "actor_valid()", "context_matches(text,text,text)", "actor_role(text,text,text)", "actor_admin(text,text,text)", "actor_manager(text,text,text)", "invite_capability(text,text,text)", "worker_job_valid(text,text,text)", "worker_kind()", "worker_account(text,text,text,text)", "spectator_grant_active(text,text,text,text)", "activation_account(text,boolean)", "spectator_activation_account(text,boolean)", "invitation_live(text,text)", "account_visible(text)", "document_write(text,text,text,text)", "worker_match(text,text,text,text)", "report_export_actor(text,text,text,text,text,text)", "report_export_worker(text,text,text,text,text)"];
     await database.query(`GRANT EXECUTE ON FUNCTION ${helpers.map((name) => `longball.${name}`).join(",")} TO ${api},${worker}`);
     await database.query(`GRANT EXECUTE ON FUNCTION longball.media_completion_write(text,text,text,text) TO ${api},${worker}`);
     await database.query(`GRANT EXECUTE ON FUNCTION longball.media_gallery_allowed(text,integer,text,text,text,text,text) TO ${api}`);
     await database.query(`GRANT EXECUTE ON FUNCTION longball.branding_member(text,text),longball.branding_authority(text,text,text),longball.branding_context(text,text) TO ${api}`);
     await database.query(`GRANT EXECUTE ON FUNCTION longball.team_privilege_manager(text,text),longball.team_privilege_target(text,text,text),longball.team_privilege_allowed(text,text,text,boolean) TO ${api}`);
     await database.query(`GRANT EXECUTE ON FUNCTION longball.invitation_live(text,text),longball.invitation_preflight(text),longball.invitation_accept_scope(text),longball.spectator_activation_account(text,boolean) TO ${api}`);
+    await database.query(`GRANT EXECUTE ON FUNCTION longball.invitation_preview_context(text) TO ${api}`);
+    await database.query(`GRANT EXECUTE ON FUNCTION longball.workspace_membership_names() TO ${api}`);
+    await database.query(`GRANT EXECUTE ON FUNCTION longball.report_export_source(text,text) TO ${api}`);
+    await database.query(`GRANT EXECUTE ON FUNCTION longball.report_export_current(text) TO ${api},${worker}`);
+    await database.query(`GRANT EXECUTE ON FUNCTION longball.purge_report_exports() TO ${worker}`);
     await database.query(`GRANT EXECUTE ON FUNCTION longball.claim_due_job(text,bigint,text),longball.enqueue_award_notification(text,text,jsonb,bigint),longball.push_targets_for_current_job(text) TO ${worker}`);
   });
 }

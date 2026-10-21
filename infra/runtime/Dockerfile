@@ -36,6 +36,7 @@ COPY . .
 RUN node scripts/build-api.mjs && \
     mkdir -p release/backend release/migrations/postgresql && \
     cp apps/api/dist/*.mjs release/backend/ && \
+    cp -R apps/api/dist/assets release/backend/assets && \
     cp apps/api/migrations/postgresql/*.sql release/migrations/postgresql/
 
 FROM node:24.19.0-bookworm-slim@sha256:a9f5f7c91a432850b2a8a7797adf5eadb6c733ceed61167806cee7ea7fbc29df AS runtime

@@ -1,4 +1,4 @@
-name: LongBall temporary cloud review
+name: LongBall temporary demo service
 
 on:
   push:
@@ -21,6 +21,7 @@ concurrency:
 
 jobs:
   review:
+    if: github.repository == 'CharlieOmniPoint/LongBall' && github.event.repository.private == false
     runs-on: ubuntu-24.04
     timeout-minutes: 360
     steps:
@@ -40,5 +41,5 @@ jobs:
           --secret id=proxy_ca,src=/etc/ssl/certs/ca-certificates.crt
           --output type=local,dest=.local/heic-runtime
           -f infra/runtime/Dockerfile .
-      - name: Serve the fictional export for a bounded five-hour review
+      - name: Serve the demo for a bounded five-hour review
         run: bash preview/run.sh
