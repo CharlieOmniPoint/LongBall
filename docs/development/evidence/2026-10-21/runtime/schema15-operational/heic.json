@@ -1,0 +1,144 @@
+{
+  "status": "passed",
+  "observedAt": "2026-10-21T19:34:32.626Z",
+  "syntheticOnly": true,
+  "execution": "host-bundled-operational-proof",
+  "productionImageExercised": false,
+  "actualPushDelivered": false,
+  "versions": [
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15
+  ],
+  "featureVersions": {
+    "media": 4,
+    "mediaVersions": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "activation": 2
+  },
+  "protectedTables": 37,
+  "sourceSha256": {
+    "apps/api/src/pg.ts": "c6f91c5045031bc083aff884e10e5af460548a44a5a8b4354453c2938eebcaae",
+    "apps/api/src/runtime-grants.ts": "93f6d591c87c7ba609df8f9f7b61bf6489238ee6b51a5cdf445f68a02d846577",
+    "apps/api/migrations/postgresql/013_team_privileges.sql": "5fb3ea71eec74ec2f23370d102cab117f5f03918ff53023f0dad7dc4c580205d",
+    "apps/api/migrations/postgresql/014_push_registrations.sql": "4b94f3b563084c9e9eb442a4ea291241fdb772c978254c89f83044dd4b63d6b3",
+    "apps/api/migrations/postgresql/015_team_privilege_audit_clock.sql": "51f85dd33068db7321c4be5da053edefc3ce20509607f2862a9859b7ad47efe9",
+    "apps/api/migrations/postgresql/media_004_team_privileges.sql": "fb0c26cfae3bf1c4732cd7cdd589829ae1b7d8ce64b13ec70dacc39e335a2c05",
+    "scripts/runtime-contribution-boundaries.ts": "fd16ee07389a0530f243a348d57c6243c3951849af9473d6d47734847b6843a6",
+    "scripts/runtime-heic.ts": "e0bbc78e000033daef85fff3991ed266e491911f5af2a03e8087a887669873a7",
+    "scripts/runtime-rls-restore.ts": "b75a622116b34c88271f8de3108f0f1f9df6335b5b66e69aead25419d89d5163"
+  },
+  "proofBundle": {
+    "file": "heic-proof.mjs",
+    "sha256": "7370e2339cc77476fd8f4235c62d6aed56f2863a1eb0d1dff30356979e94b335"
+  },
+  "checks": [
+    {
+      "name": "actual-maintained-clamav-clean-and-eicar",
+      "detail": {
+        "engine": "clamav:1.5.4/db:28157",
+        "clean": "clean",
+        "standardHarmlessAntivirusPattern": "rejected"
+      }
+    },
+    {
+      "name": "actual-restricted-pg-scanned-heic-logo-journey",
+      "detail": {
+        "originalSha256": "dad24840cd53fce49f3cda0461cea8356860587dd45745d1e8afab23b885214e",
+        "clubDerivativeSha256": "1d7bdf928333f278ccc95a84d7af8db96a2d6e9a5f7f41e188932bba6f4f66c0",
+        "teamDerivativeSha256": "1d7bdf928333f278ccc95a84d7af8db96a2d6e9a5f7f41e188932bba6f4f66c0",
+        "dimensions": [
+          32,
+          64
+        ],
+        "metadataStripped": true,
+        "pendingPrivate": true,
+        "explicitReviewedPublication": true,
+        "staleVersionDenied": true,
+        "teamClubNeutralInheritance": true,
+        "removedRevisionPrivate": true
+      }
+    },
+    {
+      "name": "actual-original-heic-scan-photo-decode-and-reject-controls",
+      "detail": {
+        "jpegSha256": "f2761078ac017be369776fb63c9dd61c48db2797ee0d0121b4c5c124cbcf2ea7",
+        "dimensions": [
+          32,
+          64
+        ],
+        "orientationAppliedOnce": true,
+        "exifGpsStripped": true,
+        "multiplePrimaryRejected": true,
+        "oversizeHiddenThumbnailRejected": true,
+        "noRejectedDerivative": true
+      }
+    },
+    {
+      "name": "actual-scanner-unavailable-fail-closed",
+      "detail": {
+        "originalRetainedPrivate": true,
+        "noProcessedPointer": true
+      }
+    },
+    {
+      "name": "actual-schema15-encrypted-push-and-audited-privilege-restore",
+      "detail": {
+        "exactPrivateRowsRestored": true,
+        "auditedSuspensionsPreserved": 2,
+        "ownPrivilegesRemainSuspended": true,
+        "privateDecisionNotesWithheld": true,
+        "exactEncryptedRegistrationPreserved": true,
+        "encryptedRegistrationSha256": "7453f0c0c3763dc845ad1ea910cfa291c932e77cc317b9470f55ebf5d0fb081b",
+        "decryptsWithSeparatelyRetainedEphemeralTestKey": true,
+        "ownStatusHasNoToken": true,
+        "otherAccountDenied": true,
+        "foreignTeamPrivilegesDenied": true,
+        "contextFreeNewTablesDenied": true,
+        "workerRawNewTablesDenied": true,
+        "apiWorkerFunctionDenied": true,
+        "unclaimedWorkerDestinationDenied": true,
+        "exactLeasedRecipientOnly": true,
+        "wrongLeaseCapabilityDenied": true,
+        "actualPushDelivered": false
+      }
+    },
+    {
+      "name": "actual-schema15-paired-archive-object-restore",
+      "detail": {
+        "archiveSha256": "73973b2b3abeedfe6d7c97e73461f3fae2707aecc03a66b01c1b0a85e5efff3f",
+        "exactPhotoDerivativeSha256": "f2761078ac017be369776fb63c9dd61c48db2797ee0d0121b4c5c124cbcf2ea7",
+        "exactCurrentLogoDerivativeSha256": "1d7bdf928333f278ccc95a84d7af8db96a2d6e9a5f7f41e188932bba6f4f66c0",
+        "protectedTables": 37,
+        "apiWorkerNonOwnerNonBypass": true,
+        "verifyOnlyStartup": true,
+        "currentReviewedPointerPreserved": true,
+        "contextFreeAndForeignTeamDenied": true,
+        "workerForgedActorDenied": true,
+        "temporaryCreateGrantRevoked": true
+      }
+    }
+  ],
+  "limitations": [
+    "Generated flat-color fictional HEIC fixtures with deliberate fictional EXIF/GPS, and standard harmless EICAR scanner probe; no people.",
+    "Actual PostgreSQL uses isolated non-owner API/worker roles and disposable loopback trust authentication.",
+    "Scanner verdict/version is an observation, not an operating signature-update SLA.",
+    "Paired private object copy and database archive; no offsite encryption, retention, RPO or RTO claim.",
+    "Physical iPhone/Android picker behavior remains separate native device testing."
+  ]
+}

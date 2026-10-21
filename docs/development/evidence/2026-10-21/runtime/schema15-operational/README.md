@@ -1,0 +1,17 @@
+# Schema15 operational verification
+
+Both final harnesses passed with product source `7ede8d1ef944823cfd6a5f6965ab51d4c37d286e` and operational-only harness correction `5185f0022770c9acc98ffb2cf569800fcb949277`. The initial operational source is `5bf390bba7239af90bc66aa47dbacf4de8a8663c`. The correction changes no app, API or SQL policy. These are host-bundled checks against existing owned PostgreSQL 18.6 and ClamAV containers. No new production API/worker image or physical-device execution is claimed.
+
+[Summary and artifact hashes](summary.json) · [Fresh HEIC/scanner/restore](heic.json) · [Retained-data upgrade and restore](retained-restore.json)
+
+- Both reports read and assert actual core versions 2–15, media versions 1–4, activation2 and 37 protected tables. They record source hashes and the exact executed bundle SHA-256.
+- Fresh proof, 19:34:32UTC: real ClamAV 1.5.4/db28157 clean/EICAR controls, original HEIC decoding/orientation/metadata stripping, invalid-container rejection, scanner-unavailable refusal, reviewed club/team logo inheritance and private removal, and paired database/private-object restore with exact current photo/logo hashes.
+- Retained proof, 19:35:21UTC: upgrades the preserved 08:53:54 dataset, restores the paired database/private objects, preserves all 3 manifests and the exact published derivative, and verifies 30 composite foreign keys.
+- Both create an actual enrolled-device encrypted destination and two audited team contribution suspensions through restricted repositories before archiving. Both restore the exact rows, decrypt using a separately retained ephemeral fixture key, preserve own suspension state, withhold private notes/tokens, and deny other-account, foreign-team, ambient and raw-worker access. A real protected worker claim resolves only its original recipient; an unclaimed worker, wrong recipient/capability and API invocation are denied. No provider send occurs.
+- Restricted API/worker repositories start in verify-only mode without owner/superuser/bypass authority. Temporary database CREATE is revoked. The scripts remove their disposable databases and roles. No daemon restart, Docker build, prune or paid provisioning was used.
+
+Both final processes exited 0 with no stderr observation. Earlier superseded reports remain under ignored `.local/runtime/operational-checkpoints`, including their generic idle-connection warnings. They are not relabeled as final evidence.
+
+The earlier [schema14 failed run](schema14-clock-failure.json) remains explicitly failed before archive creation. It caught a real volatile timestamp equality in the privilege audit policy; additive migration 015 provides a database timestamp. A later retained-restore attempt correctly failed because the harness sampled its claim clock twice; its actual diagnostic is preserved in [the summary](summary.json). The corrected harness captures one clock value for the exact SQL equality contract. Neither failure is marked passed. Earlier successful schema9/schema12 evidence is unchanged.
+
+The archive and private objects remain under ignored `.local/runtime`; they are not included here. The ephemeral push fixture key is held separately in process memory, not embedded in the archive. This proves local recovery correctness, not production key custody, offsite encryption, retention, signature-update operations, RPO/RTO, real push delivery or native hardware behavior.
