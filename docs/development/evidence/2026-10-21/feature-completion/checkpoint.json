@@ -110,6 +110,7 @@
     "publication": "publication.json",
     "nativeCompilation": "native-ci.json",
     "androidDeviceKit": "android-device-kit.json",
-    "scope": "Exact-source public review and actual native compilations passed; the standalone Android artifact was downloaded and verified. Physical installation/execution remains unproved."
+    "scope": "Exact-source public review and actual native compilations passed; the standalone Android artifact was downloaded and verified. Physical installation/execution remains unproved.",
+    "cloudReviewRenewal": "cloud-review-renewal.json"
   }
 }
