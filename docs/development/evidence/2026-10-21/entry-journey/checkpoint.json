@@ -22,7 +22,13 @@
     "apiTestFiles": 31,
     "normalBrowserChecks": 25,
     "plannerReloadChecks": 4,
-    "anonymousProductionChecks": 6
+    "anonymousProductionChecks": 6,
+    "lint": true,
+    "rootAndMobileTypeScript": true,
+    "nativeJavaScriptExports": [
+      "iPhone",
+      "Android"
+    ]
   },
   "scope": "Connected role entries and four matchday groups ran against this final web artifact. Other suites retain their distinct earlier artifact and source bindings. API sources unchanged since full 220-test pass. No native device evidence.",
   "diagnostics": [
@@ -30,12 +36,25 @@
     "initial-api-diagnostic.log"
   ],
   "pending": [
-    "native JavaScript exports refresh",
-    "public Pages and connected API verification",
     "SEC17 privilege suspension",
     "DS14 native push registration",
     "EV05 canonical policy changes",
     "four Should features",
     "physical and operational acceptance"
-  ]
+  ],
+  "sourceCommit": "f4fbffe99ae977d89172afb86f78bbf262b275e1",
+  "nativeExports": [
+    {
+      "path": "_expo/static/js/android/index-06a5d006a2532f81a4bcaa3115ec0a31.hbc",
+      "sha256": "3b202f105a64452c8084cf63c12e37decddafdb7f87214bf53dc129832b1b1cd",
+      "bytes": 3497204
+    },
+    {
+      "path": "_expo/static/js/ios/index-bdafeacadff60713f965762a4b86fbd2.hbc",
+      "sha256": "f23bcdbdfaf61a0c62b1b1fa56d0eb627d4289b90edd059a57a7cbb64126ece8",
+      "bytes": 3483279
+    }
+  ],
+  "nativeExportScope": "Hermes JavaScript bundles only; no new binaries, device installation, encryption/OS/lifecycle proof.",
+  "publication": "publication.json"
 }
