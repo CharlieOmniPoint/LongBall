@@ -1,0 +1,90 @@
+{
+  "scope": "Current uncommitted demo-data files; not a published release claim. Other parallel implementation files were present during aggregate checks.",
+  "fixtures": {
+    "players": 13,
+    "matches": 4,
+    "completed": [
+      {
+        "date": "2026-10-10",
+        "opponent": "Oak FC",
+        "homeAway": "away",
+        "score": "2\u20132"
+      },
+      {
+        "date": "2026-10-17",
+        "opponent": "Hill FC",
+        "homeAway": "home",
+        "score": "3\u20131"
+      }
+    ],
+    "upcoming": [
+      {
+        "date": "2026-10-24",
+        "opponent": "Maple FC",
+        "homeAway": "home",
+        "kickoff": "10:00"
+      },
+      {
+        "date": "2026-10-31",
+        "opponent": "Oak FC",
+        "homeAway": "away",
+        "kickoff": "10:30"
+      }
+    ],
+    "timeZone": "Europe/London",
+    "completedActiveMinutes": 50,
+    "selectedPerGame": 9,
+    "keeperMinutes": 50,
+    "outfieldMinutesEach": 37.5,
+    "totalPlayerMinutesPerGame": 350,
+    "futureAttendanceRecorded": false,
+    "historicalVoteWindowsRemainClosed": true
+  },
+  "checks": {
+    "unitFocused": {
+      "passed": 16,
+      "files": 3
+    },
+    "apiSqliteFocused": {
+      "passed": 6,
+      "files": 2,
+      "postgresWasSkippedWithoutExplicitSelector": 1
+    },
+    "actualSqliteAndRestrictedPostgresPublication": {
+      "passed": 2,
+      "files": 1,
+      "skipped": 0
+    },
+    "unitAggregate": {
+      "passed": 756,
+      "files": 85,
+      "durationSeconds": 66.08
+    },
+    "rootTypecheckPassed": true,
+    "ownedEslintPassed": true,
+    "fixtureValidationPassed": true,
+    "diffCheckPassed": true
+  },
+  "preservedFailedAttempts": [
+    "Initial generated award bootstrap finalized the older match before its ballots; chronological bootstrap order fixed before passing checks.",
+    "First full unit run failed two manager-home expectations tied to the removed extra future fixtures. Expected actual schedule dates and unanswered replies were corrected; the subsequent full 756-test run passed.",
+    "Initial root typecheck found broad DTO union accesses in the new test. Explicit property narrowing fixed them; root typecheck passed."
+  ],
+  "files": {
+    "fixtures/roma.synthetic.json": "b4769b4de37708a134ef21842f3ca630759214a92b4969a7aef15fad232b2a63",
+    "packages/testing/src/index.ts": "e1192d3d2ac127bef68bd2cc8040297464cb8c0b5086b0f9620684bc80c48678",
+    "packages/application/src/preparation.ts": "44b23d46d01129562783813af3f629f34f9f483b75e8f3649baae6dd9f9b94bf",
+    "packages/application/src/records.ts": "080d75d162248bfccf5857fa360d77801d8b14bfb077e36ec947e75869748378",
+    "packages/application/src/community.ts": "120d3660a29404e78e748a007ce1726030ed7c674f199da2fc94932ae632ef8d",
+    "packages/application/src/demo-season.ts": "4e1de19b8b94ae380eff5675ab8114d319aeff41b0724846825cfb523e921f76",
+    "packages/application/src/demo-season.test.ts": "3625a07e97827ca2894ccd4d33389292aea8a1db7b4da1a4afdbd15ffaf141fa",
+    "packages/application/src/manager-home.test.ts": "9e75e9086393c2bb1d17f6e8521eb8e6aeca2b74532b771dacd64886aaa70ccc",
+    "packages/application/src/records-demo-publication.test.ts": "a72c1d90be1237611db7a7ada2442fb48e8c5782318c1b7b383e2c4073d6f37d",
+    "apps/api/src/store.ts": "ad9de538ece3c60af5cd77e0fddacc65a86505f7baa6c92530c1607d14115eef",
+    "apps/api/src/postgres-store.ts": "5cd82f9de092ba599f2ac1e0b38415f4832ada75200ebad93fa5f8e91a339b3b",
+    "apps/api/src/demo-scenario.test.ts": "e3fc8a8b60f3d84d407ad92b5d310f8852231698473a2878fa265d2d5131db9e",
+    "apps/api/src/live-publication.test.ts": "ff64e68b355754b540d1b0c7f75ab2c7cfd8b72f53749d4aa0f129285461f6fe",
+    "infra/cloud-preview/seed-demo-media.mjs": "08d1833855dde3ad984ee23ed414e3b3c20254575e272fbfc531922214d653c1",
+    "scripts/synthetic-fixtures.ts": "25447d4790d5aa24fd971d530d6f0803f1e68d7b8a1c1011268eebf88c529e42"
+  }
+}

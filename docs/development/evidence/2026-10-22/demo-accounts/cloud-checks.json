@@ -1,0 +1,527 @@
+{
+  "observedAt": "2026-10-22 09:52:30 UTC",
+  "requestedSource": "214844e65310ccd4bb070b2f5a35395837fed19c",
+  "developmentTree": "7599c6ab2a891902dd2def493b8aa6fa27a9851a",
+  "run": {
+    "id": 39757361652,
+    "url": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/39757361652",
+    "event": "pull_request",
+    "headSha": "214844e65310ccd4bb070b2f5a35395837fed19c",
+    "status": "completed",
+    "conclusion": "failure"
+  },
+  "jobs": [
+    {
+      "id": 119753295810,
+      "name": "quality",
+      "status": "completed",
+      "conclusion": "failure",
+      "run_id": 39757361652,
+      "logs_url": null,
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1
+        },
+        {
+          "name": "Initialize containers",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2
+        },
+        {
+          "name": "Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3
+        },
+        {
+          "name": "Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4
+        },
+        {
+          "name": "Install the pinned frozen workspace",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5
+        },
+        {
+          "name": "Retain resolved dependency and licence inventories",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6
+        },
+        {
+          "name": "Scan current source for secrets",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7
+        },
+        {
+          "name": "Audit workspace and runtime dependency locks",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8
+        },
+        {
+          "name": "Lint and check both TypeScript clients",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 9
+        },
+        {
+          "name": "Shared rules, platform adapters and real PostgreSQL API boundaries",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 10
+        },
+        {
+          "name": "Retained-history and actual PostgreSQL migration checks",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 11
+        },
+        {
+          "name": "Validate canonical contracts, source publication and sample fixtures",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 12
+        },
+        {
+          "name": "Check native production configuration and compile JavaScript exports",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 13
+        },
+        {
+          "name": "Exercise the built browser journey",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 14
+        },
+        {
+          "name": "Enforce the dependency audit result",
+          "status": "completed",
+          "conclusion": "failure",
+          "number": 15
+        },
+        {
+          "name": "Retain safe quality evidence",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 16
+        },
+        {
+          "name": "Post Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 30
+        },
+        {
+          "name": "Post Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 31
+        },
+        {
+          "name": "Stop containers",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 32
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 33
+        }
+      ]
+    },
+    {
+      "id": 119753296209,
+      "name": "runtime-image",
+      "status": "completed",
+      "conclusion": "success",
+      "run_id": 39757361652,
+      "logs_url": null,
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1
+        },
+        {
+          "name": "Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2
+        },
+        {
+          "name": "Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3
+        },
+        {
+          "name": "Build and exercise the isolated production image",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4
+        },
+        {
+          "name": "Retain safe image acceptance evidence",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5
+        },
+        {
+          "name": "Post Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 9
+        },
+        {
+          "name": "Post Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 10
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 11
+        }
+      ]
+    }
+  ],
+  "limits": [
+    "CI failed solely at the dependency enforcement step. This is not a completed all-pass release claim.",
+    "Host394 API with zero skips is separate from the391+3skip CI result.",
+    "Runtime-image job succeeded; retained archive digests are API metadata and have not been independently downloaded/verified by this monitor.",
+    "Android Debug compiled successfully with demoAccountLogin:true for the exact source/bundle; iOS compilation remains in progress. No binary download, Release signing or physical device result is claimed."
+  ],
+  "native": {
+    "runId": 39757554938,
+    "transportCommit": "52710880706fcf94f502b766157f0119cb455e04",
+    "expectedSourceBundleSha256": "259ce5f0870a2df65d0d30d8d3abd7fc9be9be8c70e79ab74c0764742d202152",
+    "jobs": [
+      {
+        "id": 119753307070,
+        "name": "ios native compile",
+        "status": "in_progress",
+        "conclusion": null,
+        "run_id": 39757554938,
+        "logs_url": null,
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1
+          },
+          {
+            "name": "Read the preview transport branch",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2
+          },
+          {
+            "name": "Verify and import the exact development source",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3
+          },
+          {
+            "name": "Use the pinned Node runtime",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 4
+          },
+          {
+            "name": "Install the pinned package manager and frozen dependencies",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 5
+          },
+          {
+            "name": "Use the Android Java toolchain",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 6
+          },
+          {
+            "name": "Install the exact Android SDK components",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 7
+          },
+          {
+            "name": "Select the explicit iOS toolchain",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 8
+          },
+          {
+            "name": "Generate the native project and verify security configuration",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 9
+          },
+          {
+            "name": "Compile the Android debug development client",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 10
+          },
+          {
+            "name": "Install iOS pods",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 11
+          },
+          {
+            "name": "Compile the iOS simulator development client without signing",
+            "status": "in_progress",
+            "conclusion": null,
+            "number": 12
+          },
+          {
+            "name": "Prepare bounded logs and optional binary artifacts",
+            "status": "pending",
+            "conclusion": null,
+            "number": 13
+          },
+          {
+            "name": "Retain requested artifacts for one day",
+            "status": "pending",
+            "conclusion": null,
+            "number": 14
+          },
+          {
+            "name": "Record the scope of this evidence",
+            "status": "pending",
+            "conclusion": null,
+            "number": 15
+          },
+          {
+            "name": "Post Use the pinned Node runtime",
+            "status": "pending",
+            "conclusion": null,
+            "number": 29
+          },
+          {
+            "name": "Post Read the preview transport branch",
+            "status": "pending",
+            "conclusion": null,
+            "number": 30
+          }
+        ]
+      },
+      {
+        "id": 119753307495,
+        "name": "android native compile",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 39757554938,
+        "logs_url": null,
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1
+          },
+          {
+            "name": "Read the preview transport branch",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2
+          },
+          {
+            "name": "Verify and import the exact development source",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3
+          },
+          {
+            "name": "Use the pinned Node runtime",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 4
+          },
+          {
+            "name": "Install the pinned package manager and frozen dependencies",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 5
+          },
+          {
+            "name": "Use the Android Java toolchain",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 6
+          },
+          {
+            "name": "Install the exact Android SDK components",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 7
+          },
+          {
+            "name": "Select the explicit iOS toolchain",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 8
+          },
+          {
+            "name": "Generate the native project and verify security configuration",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 9
+          },
+          {
+            "name": "Compile the Android debug development client",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 10
+          },
+          {
+            "name": "Install iOS pods",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 11
+          },
+          {
+            "name": "Compile the iOS simulator development client without signing",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 12
+          },
+          {
+            "name": "Prepare bounded logs and optional binary artifacts",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 13
+          },
+          {
+            "name": "Retain requested artifacts for one day",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 14
+          },
+          {
+            "name": "Record the scope of this evidence",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 15
+          },
+          {
+            "name": "Post Use the Android Java toolchain",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 28
+          },
+          {
+            "name": "Post Use the pinned Node runtime",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 29
+          },
+          {
+            "name": "Post Read the preview transport branch",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 30
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 31
+          }
+        ]
+      }
+    ],
+    "binaryUploadRequested": false,
+    "actualSourceLogProofPending": "iOS only",
+    "android": {
+      "conclusion": "success",
+      "jobId": 119753307495,
+      "sourceProof": {
+        "sourceHead": "214844e65310ccd4bb070b2f5a35395837fed19c",
+        "bundleSha256": "259ce5f0870a2df65d0d30d8d3abd7fc9be9be8c70e79ab74c0764742d202152",
+        "transportHead": "52710880706fcf94f502b766157f0119cb455e04",
+        "sourceRef": "refs/heads/dev/longball-m0-journey",
+        "platform": "android",
+        "artifactUploadRequested": false,
+        "demoAccountLogin": true,
+        "physicalDeviceProof": false
+      },
+      "actualBuild": ":app:assembleDebug",
+      "architecture": "arm64-v8a",
+      "outputExistenceAsserted": true,
+      "completedAt": "2026-10-22T09:51:25.9596957Z",
+      "duration": "7m28s",
+      "executedGradleTasks": 396,
+      "binaryDownloadAvailable": false
+    }
+  },
+  "checkout": {
+    "commit": "04e46a0d378ed8ae06edefd7fc4a0c6fb63e852e",
+    "tree": "7599c6ab2a891902dd2def493b8aa6fa27a9851a",
+    "parents": [
+      "031fdf5fdf4d937a0c638f81f24f9ae34db3579b",
+      "214844e65310ccd4bb070b2f5a35395837fed19c"
+    ],
+    "treeIdentical": true,
+    "verifiedFromActualJobLogs": true
+  },
+  "quality": {
+    "unitPassed": 756,
+    "unitFiles": 85,
+    "apiPassed": 391,
+    "apiSkipped": 3,
+    "apiFiles": 60,
+    "apiSkipScope": "Three decoder-dependent HEIC source-job cases; actual runtime-image decoder proof is separate.",
+    "migrationPassed": 24,
+    "migrationFiles": 4,
+    "browserChecksPassed": 10,
+    "secretScan": {
+      "passed": true,
+      "files": 942,
+      "unexpected": 0,
+      "exactReviewedFalsePositives": 38
+    },
+    "dependencyOutcome": "failure",
+    "soleFailedStep": "Enforce the dependency audit result",
+    "inventory": {
+      "resolvedPackages": 411,
+      "fontAssets": 1,
+      "licenceFiles": 320
+    }
+  },
+  "artifacts": [
+    {
+      "id": 12416667433,
+      "name": "longball-quality-04e46a0d378ed8ae06edefd7fc4a0c6fb63e852e",
+      "bytes": 429316,
+      "digest": "sha256:9e190d47e0ffad5473d06c98e08b0117d1f78778b5b882535e3b596d554e0c66",
+      "expired": false,
+      "independentZipDigestVerified": false
+    },
+    {
+      "id": 12416571810,
+      "name": "longball-runtime-image-04e46a0d378ed8ae06edefd7fc4a0c6fb63e852e",
+      "bytes": 3481,
+      "digest": "sha256:707a6bddd6e122c5f6ce562f7d8b1b0dfc48badde11a4fef27033e5121cc74e6",
+      "expired": false,
+      "independentZipDigestVerified": false
+    }
+  ]
+}

@@ -1,5 +1,7 @@
 # Demo accounts and Roma U10 season
 
+Current account-build source: `214844e65310ccd4bb070b2f5a35395837fed19c`. Use [the verified review entry](https://charlieomnipoint.github.io/LongBall/?v=214844e) and **Sign in**; current publication and expiry are recorded in [review status](review.md). The exact packaged browser export passed all four role logins/sign-outs at 320/390px, and the actual public 390px role checks also passed. Use the versioned entry to avoid older cached HTML. The actual current-source Android arm64 Debug build passed; iOS is still compiling. Binary upload was disabled, and signing/distribution, installation and physical testing remain separate.
+
 The demo login build opens with **Sign in → username and password/passcode → assigned team workspace**. Four preauthorised sample accounts cover Manager, Administrator, Player/household and Spectator. The service checks the credentials and current membership; the app derives the role from `/v1/me`. The account list and login details are supplied in the conversation, outside the app and repository documentation.
 
 This profile replaces the public role chooser. Its API rejects the old static demo bearer tokens. Production builds keep their existing club OIDC sign-in, activation and permission checks; `EXPO_PUBLIC_DEMO_ACCOUNT_LOGIN=1` enables this separate journey only outside the production environment.
