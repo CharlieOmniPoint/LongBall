@@ -1,9 +1,9 @@
 {
-  "state": "starting",
-  "url": "",
+  "state": "ready",
+  "url": "https://carroll-longest-leadership-ada.trycloudflare.com",
   "sourceRevision": "52710880706fcf94f502b766157f0119cb455e04",
   "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/39757554853",
-  "startedAt": "2026-10-22T09:44:55Z",
-  "expiresAt": "",
+  "startedAt": "2026-10-22T09:45:26Z",
+  "expiresAt": "2026-10-22T14:45:26Z",
   "audience": "LongBall demo review with simulated Roma U10 teams and matches"
 }
