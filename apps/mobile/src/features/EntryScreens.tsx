@@ -25,6 +25,7 @@ interface EntryFeedback {
   status?: string | null;
 }
 export interface WelcomeScreenProps extends EntryFeedback {
+  demoAccountLogin?: boolean;
   onSignIn: () => void;
   onActivate: () => void;
   onReview?: () => void;
@@ -114,6 +115,7 @@ function EntryStatus({ loading = false, error, status }: EntryFeedback) {
 
 /** Real account access and fictional review have separate, explicit entry actions. */
 export function WelcomeScreen({
+  demoAccountLogin = false,
   onSignIn,
   onActivate,
   onReview,
@@ -148,11 +150,10 @@ export function WelcomeScreen({
           <EntryStatus loading={loading} error={error} status={status} />
           <Card>
             <Text style={typography.section} accessibilityRole="header">
-              Your club account
+              {demoAccountLogin ? "Your team account" : "Your club account"}
             </Text>
             <Text style={typography.body}>
-              Sign in to your club. Your access is assigned by the club after
-              sign-in.
+              {demoAccountLogin ? "Sign in with your demo username and password to open your team space." : "Sign in to your club. Your access is assigned by the club after sign-in."}
             </Text>
             <Button
               label="Sign in"
@@ -161,13 +162,13 @@ export function WelcomeScreen({
               disabled={loading}
               onPress={onSignIn}
             />
-            <Button
+            {!demoAccountLogin && <Button
               label="Activate account"
               variant="secondary"
               testID="welcome-activate"
               disabled={loading}
               onPress={onActivate}
-            />
+            />}
           </Card>
           {onReview && (
             <Card style={styles.reviewCard}>

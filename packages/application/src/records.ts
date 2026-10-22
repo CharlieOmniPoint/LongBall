@@ -1,5 +1,6 @@
 import { currentTargets, goalRecords, playerMinutes, rationalToNumber, withinTargetBand, type Attendance, type MatchState } from '@longball/domain';
 import { romaFixture } from '@longball/testing';
+import { createDemoCompletedMatches } from './demo-season';
 
 /** Local rehearsal projections. These selectors do not replace server authorisation. */
 export type RecordsActor = 'manager' | 'player' | 'spectator';
@@ -201,6 +202,16 @@ export function createRecordsSeed(options: { demoSharing?: boolean } = {}): Reco
     goals: index === 0 ? [{ id: 'synthetic-history-known-goal', beneficiary: 'us', isOwnGoal: false, scorerPlayerId: romaFixture.players[1].id, goalType: null, half: null, halfElapsedMs: null }] : [],
   }, '2026-10-20T12:00:00Z'));
   if (options.demoSharing) {
+    // Only the explicit demo adapter replaces legacy rules-test summaries with
+    // full generated play. Records are derived from canonical match intervals.
+    state.results = createDemoCompletedMatches().map(match => {
+      const fixture = romaFixture.fixtures.find(item => item.id === match.config.matchId)!;
+      const record = snapshotLiveMatch({ ...state, results: [], liveMatch: {
+        matchId: fixture.id, playedDate: fixture.playedDate, opponent: fixture.opponent,
+        homeAway: fixture.homeAway as 'home' | 'away', fixtureClass: fixture.fixtureClass as FixtureClass,
+      } }, match, new Date(match.completedAtMs!).toISOString());
+      return { ...record, recordedKickoff: `${fixture.playedDate}T${fixture.kickoff}:00+01:00` };
+    });
     state.initialLivePublication = { matchId: state.liveMatch.matchId, fixtureClass: state.liveMatch.fixtureClass, publication: {
       id: 'demo-simulated-scores-v1', version: 1, fixtureClass: state.liveMatch.fixtureClass,
       confirmed: true, confirmationReference: 'Generated test scenario only; no competition or real-data approval.', allowedRoles: ['player', 'spectator'],

@@ -32,6 +32,7 @@ import { SpectatorInvitationService,invitationVerifier,parseInvitationAccept } f
 import { SqliteInvitationRepository } from './invitation-repository';
 import { PushRegistrationService,pushRevision,type PushOptions } from './push-registrations';
 import { SqlitePushRepository } from './sqlite-push-registrations';
+import { DemoSessions, type DemoAccountOptions } from './demo-sessions';
 
 export interface ApiOptions extends PushOptions {
   databasePath: string;
@@ -39,6 +40,8 @@ export interface ApiOptions extends PushOptions {
   syntheticAuth?: boolean;
   /** Generated review scores/media only; requires synthetic authentication and a nonproduction process. */
   demoScenario?: boolean;
+  /** Verifier-only, preauthorised demo login; when configured, static synthetic bearer aliases are refused. */
+  demoAccounts?: DemoAccountOptions;
   verifyIdentity?: (token: string) => Promise<VerifiedIdentity>;
   oidc?: { issuer: string; audience: string; jwksUri: string; mfaAcrValues?: string[] };
   now?: () => number;
@@ -99,8 +102,9 @@ export function createBrandMedia(options:ApiOptions,store:RuntimeStore,repositor
     return store.brandingContext(fresh,session.teamId,session.seasonId,session.role);
   },audit:(principal,action,objectId,outcome)=>store.audit(principal,action,objectId,outcome)});
 }
-export function assertDemoScenarioOptions(options: Pick<ApiOptions, "demoScenario" | "syntheticAuth">): void {
+export function assertDemoScenarioOptions(options: Pick<ApiOptions, "demoScenario" | "syntheticAuth" | "demoAccounts">): void {
  if(options.demoScenario && (!options.syntheticAuth || process.env.NODE_ENV === "production")) throw new Error("The demo scenario requires isolated synthetic authentication outside production.");
+ if(options.demoAccounts && (!options.demoScenario || !options.syntheticAuth || process.env.NODE_ENV === 'production')) throw new Error('Demo account login requires an explicitly isolated nonproduction demo.');
 }
 export function createApi(options:ApiOptions) {
  assertDemoScenarioOptions(options);
@@ -122,6 +126,8 @@ export function createApi(options:ApiOptions) {
 }
 export function createRuntimeApi<T>(options:ApiOptions,source:T,store:RuntimeStore,media:RuntimeMedia,activation:RuntimeActivation,serialize:<R>(work:()=>Promise<R>)=>Promise<R> = work=>work(),services:{branding?:BrandMediaService;spectator?:RuntimeSpectatorActivation;invitations?:SpectatorInvitationService;privileges?:TeamPrivilegeService;push?:PushRegistrationService;reports?:ReportExportService}={}) {
  const now=options.now??Date.now;
+ assertDemoScenarioOptions(options);
+ const demoSessions=options.demoAccounts?new DemoSessions(options.demoAccounts,now):null;
  const privilegeService=()=>{if(!services.privileges)throw new AccessError('TEAM_PRIVILEGES_UNAVAILABLE',503,'Current team privileges are unavailable.');return services.privileges;};
  const verifyIdentity=options.verifyIdentity??(options.oidc?createOidcVerifier({...options.oidc,now}):null);
 const windows = new Map<string, {
@@ -169,7 +175,7 @@ const windows = new Map<string, {
             const url = new URL(request.url ?? '/', 'http://localhost');
             const parts = url.pathname.split('/').filter(Boolean).map(decodeURIComponent);
             if (url.pathname === '/health') {
-                response(reply, 200, { status: 'ok', service: 'longball-api', contractVersion: EVENT_CONTRACT_VERSION, backend: source instanceof DevelopmentStore ? 'fictional-sqlite' : 'postgresql', syntheticOnly: Boolean(options.syntheticAuth), demoScenario: options.demoScenario === true }, requestId);
+                response(reply, 200, { status: 'ok', service: 'longball-api', contractVersion: EVENT_CONTRACT_VERSION, backend: source instanceof DevelopmentStore ? 'fictional-sqlite' : 'postgresql', syntheticOnly: Boolean(options.syntheticAuth), demoScenario: options.demoScenario === true, ...(demoSessions?{demoAccountLogin:true}:{}) }, requestId);
                 return;
             }
             if (staticRoot && parts[0] !== 'v1' && ['GET', 'HEAD'].includes(request.method ?? '')) {
@@ -192,6 +198,23 @@ const windows = new Map<string, {
             }
             if (options.syntheticAuth && !loopback(request.socket.remoteAddress))
                 throw new AccessError('SYNTHETIC_LOCAL_ONLY', 403, 'Demo authentication is restricted to loopback clients.');
+            if(url.pathname==='/v1/demo/sessions'&&request.method==='POST'){
+                if(!demoSessions)throw new AccessError('NOT_FOUND',404,'The requested object is unavailable.');
+                const result=await demoSessions.login(readJson(request,parsedBody),request.socket.remoteAddress??'unknown');
+                try{
+                    const identity=demoSessions.identity(result.accessToken);
+                    const principal=await store.withIdentityContext(identity,()=>store.principal(identity));
+                    if(principal.accountId!==result.accountId)throw new AccessError('INVALID_SESSION',401,'A valid authenticated session is required.');
+                }catch(error){demoSessions.revoke(result.accessToken);throw error;}
+                response(reply,200,result,requestId);return;
+            }
+            if(url.pathname==='/v1/demo/sessions/current'&&request.method==='DELETE'){
+                if(!demoSessions)throw new AccessError('NOT_FOUND',404,'The requested object is unavailable.');
+                const authorization=header(request,'authorization');
+                if(!authorization?.startsWith('Bearer ')||authorization.length>17000)throw new AccessError('INVALID_SESSION',401,'A valid authenticated session is required.');
+                demoSessions.revoke(authorization.slice(7));
+                reply.writeHead(204,{'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','X-Request-Id':requestId});reply.end();return;
+            }
             const requireContract = () => {
                 if (header(request, 'x-api-contract-version') !== EVENT_CONTRACT_VERSION)
                     throw new AccessError('CONTRACT_VERSION_REQUIRED', 409, `Use X-Api-Contract-Version: ${EVENT_CONTRACT_VERSION}.`);
@@ -246,7 +269,7 @@ const windows = new Map<string, {
             if (!authorization?.startsWith('Bearer ') || authorization.length > 17000)
                 throw new AccessError('INVALID_SESSION', 401, 'A valid authenticated session is required.');
             const token = authorization.slice(7);
-            const identity = options.syntheticAuth ? syntheticIdentity(token, now()) : await verifyIdentity!(token);
+            const identity = options.syntheticAuth ? demoSessions?demoSessions.identity(token):syntheticIdentity(token, now()) : await verifyIdentity!(token);
             let principal = await store.withIdentityContext(identity,()=>store.principal(identity));
             const rate = windows.get(principal.accountId);
             const count = rate && now() - rate.begins < 60000 ? rate : { begins: now(), ordinary: 0, mutation: 0 };
@@ -553,10 +576,11 @@ const windows = new Map<string, {
             const status = error instanceof AccessError ? error.status : unavailable ? 503 : domainCode === 'forbidden' ? 403 : domainCode === 'expired' ? 410 : domainCode === 'conflict' || domainCode === 'closed' ? 409 : 422;
             const code = error instanceof AccessError ? error.code : unavailable ? 'STORAGE_UNAVAILABLE' : domainCode && ['forbidden', 'invalid', 'conflict', 'expired', 'closed', 'policy_needed'].includes(domainCode) ? domainCode.toUpperCase() : 'COMMAND_REJECTED';
             const safeMessage = error instanceof AccessError ? error.message : unavailable ? 'Storage is temporarily unavailable. Retain pending commands and retry the same request.' : 'The command could not be applied. Check the current saved state and request fields.';
+            if(status===429)reply.setHeader('Retry-After','60');
             response(reply, status, { code, message: safeMessage, requestId, retryable: status === 429 || status === 503 }, requestId);
         }
     }) });
     const server = framework.server;
-    return { server, framework, store: source, media, activation,branding:services.branding,spectator:services.spectator, close: async () => { await framework.close(); await media.close(); await store.close(); } };
+    return { server, framework, store: source, media, activation,branding:services.branding,spectator:services.spectator, close: async () => { demoSessions?.close(); await framework.close(); await media.close(); await store.close(); } };
 }
 export type { Principal };

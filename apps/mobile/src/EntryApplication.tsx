@@ -28,6 +28,7 @@ import {
 import { ConnectedApplication } from "./ConnectedApplication";
 import { FictionalReviewWorkspace } from "./features/FictionalReviewWorkspace";
 import { ReviewAccountScreen, WelcomeScreen } from "./features/EntryScreens";
+import { DemoLoginApplication } from "./features/DemoLoginApplication";
 import { Button, Card, colors, Notice, Pill, typography } from "./ui";
 
 export interface LocalReviewEntryProps {
@@ -44,6 +45,7 @@ type Route =
   | "local"
   | "connected-review"
   | "auth"
+  | "demo-login"
   | "privacy"
   | "help";
 type ReviewService = Awaited<ReturnType<typeof discoverFictionalReview>>;
@@ -55,6 +57,7 @@ export function EntryApplication({
   renderLocalReview: (props: LocalReviewEntryProps) => ReactNode;
 }) {
   const production = process.env.EXPO_PUBLIC_ENVIRONMENT === "production";
+  const demoAccountLogin = !production && process.env.EXPO_PUBLIC_DEMO_ACCOUNT_LOGIN === "1";
   const [route, setRoute] = useState<Route>("welcome");
   const [intent, setIntent] = useState<"sign-in" | "activate">("sign-in");
   const [intentRevision, setIntentRevision] = useState(0);
@@ -195,9 +198,10 @@ export function EntryApplication({
   const content =
     route === "welcome" ? (
       <WelcomeScreen
-        onSignIn={() => openAuth("sign-in")}
+        onSignIn={() => demoAccountLogin ? setRoute("demo-login") : openAuth("sign-in")}
         onActivate={() => openAuth("activate")}
-        onReview={production ? undefined : () => setRoute("accounts")}
+        demoAccountLogin={demoAccountLogin}
+        onReview={production || demoAccountLogin ? undefined : () => setRoute("accounts")}
         onPrivacy={() => setRoute("privacy")}
         onHelp={() => setRoute("help")}
         invitationNotice={
@@ -206,6 +210,8 @@ export function EntryApplication({
             : undefined
         }
       />
+    ) : route === "demo-login" && demoAccountLogin ? (
+      <DemoLoginApplication onBack={() => setRoute("welcome")} onNavigationGuardChange={retainReviewNavigationGuard} />
     ) : route === "accounts" ? (
       <ReviewAccountScreen
         onBack={() => setRoute("welcome")}
@@ -367,7 +373,7 @@ export function EntryApplication({
                 : "A remembered native session may offer device authentication or a local PIN. Resetting that local unlock is different from recovering your account. Full account recovery uses the configured sign-in provider and authorised support route."}
             </Text>
           </Card>
-          <Button label="Sign in" onPress={() => openAuth("sign-in")} />
+          <Button label="Sign in" onPress={() => demoAccountLogin ? setRoute("demo-login") : openAuth("sign-in")} />
           <Button
             label="Activate account"
             variant="secondary"
@@ -394,7 +400,7 @@ export function EntryApplication({
             initialDestination={destination}
             onBackToWelcome={() => setRoute("welcome")}
             onEnterFictionalReview={
-              production ? undefined : () => setRoute("accounts")
+              production ? undefined : () => setRoute(demoAccountLogin ? "demo-login" : "accounts")
             }
           />
         </View>

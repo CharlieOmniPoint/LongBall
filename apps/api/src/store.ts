@@ -10,11 +10,12 @@ import { AccessError, assertAdultAuthority, assertCanAssignManager, assertCanMan
 import { createMatch, ENGINE_VERSION, reduceMatch, type MatchConfig, type MatchEvent, type MatchState } from '../../../packages/domain/src/index';
 import { demoAccountLabels, romaFixture } from '../../../packages/testing/src/index';
 import type { VerifiedIdentity } from './oidc';
-import { createPreparationState, reducePreparation, trainingAttendanceEvidence, type PreparationCommand, type PreparationState, type PositionCode, type AvailabilityResponse } from '../../../packages/application/src/preparation';
+import { createPreparationState, prepareFixtureSnapshot, reducePreparation, trainingAttendanceEvidence, type PreparationCommand, type PreparationState, type PositionCode, type AvailabilityResponse } from '../../../packages/application/src/preparation';
 import { applyCommunityCommand, createCommunityState, getCommunityView, authorizeCommunityMedia, communityCanAccess, type CommunityActor, type CommunityCommand, type CommunityState } from '../../../packages/application/src/community';
 import { createRecordsSeed, reduceRecords, type RecordsState, type RecordsViewer } from '../../../packages/application/src/records';
 import { effectiveEventTime } from '../../../packages/application/src/sync';
 import { fixtureMatchConfig } from '../../../packages/application/src/application';
+import { createDemoCompletedMatches } from '../../../packages/application/src/demo-season';
 import { applyConfigurationServiceCommand, configurationServiceView, planSeasonRollover, seasonRolloverOptions, type SeasonRolloverCommand, type SeasonRolloverContext } from '../../../packages/application/src/season-service';
 import { applyRecordsServiceCommand, recordsServiceExport, recordsServiceView, type RecordsExportRequest, type RecordsServiceCommand, type RecordsServiceInput } from '../../../packages/application/src/records-service';
 import { gamePreparationEvidence } from '../../../packages/application/src/game-preparation-evidence';
@@ -200,9 +201,18 @@ export class DevelopmentStore {
       add('synthetic-account-other-manager', 'adult_individual', true); membership('synthetic-account-other-manager', 'manager', null, 'synthetic-other-team');
       const config: MatchConfig = { matchId: SYNTHETIC_IDS.matchId, players: romaFixture.players, selectedPlayerIds: romaFixture.players.filter(player => player.available).map(player => player.id), pitchPlaces: 7, plannedHalfDurationMs: 1_500_000, fixedKeeperId: romaFixture.players[0].id, fixture: { opponent: 'Maple FC', playedDate: '2026-10-24', kickoff: '10:00', homeAway: 'home', teamId: SYNTHETIC_IDS.teamId, seasonId: SYNTHETIC_IDS.seasonId, teamName: 'Roma', clubName: 'Richmond Rovers' } };
       this.insertMatch(config, SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId);
-      const community = createCommunityState(this.now());
+      const preparation = createPreparationState({ demoScenario: options.demoSharing });
+      const community = createCommunityState(this.now(), { demoScenario: options.demoSharing });
       if (options.demoSharing) this.database.prepare('UPDATE matches SET sharing_policy_json=? WHERE id=?').run(JSON.stringify({ version: 'demo-simulated-scores-v1', approvedBy: 'generated-demo-scenario-only', approvedAt: this.now(), shareScores: true, shareDerivedResults: true }), SYNTHETIC_IDS.matchId);
       if (options.demoSharing) {
+        for (const fixture of preparation.fixtures.filter(item => item.playedDate >= romaFixture.demo.referenceDate && item.id !== SYNTHETIC_IDS.matchId)) {
+          this.insertMatch(fixtureMatchConfig(preparation, prepareFixtureSnapshot(preparation, fixture.id)), SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId);
+        }
+        for (const completed of createDemoCompletedMatches()) {
+          this.insertMatch(completed.config, SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId);
+          this.database.prepare('UPDATE matches SET state_json=?,last_sync_at=? WHERE id=?').run(JSON.stringify(completed), completed.completedAtMs, completed.config.matchId);
+        }
+        this.database.prepare('UPDATE matches SET sharing_policy_json=? WHERE team_id=? AND season_id=?').run(JSON.stringify({ version: 'demo-simulated-scores-v1', approvedBy: 'generated-demo-scenario-only', approvedAt: this.now(), shareScores: true, shareDerivedResults: true }), SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId);
         community.photos = [];
         // This generated scenario explicitly uses 45 minutes, not a real competition default or the unresolved +59 proposal.
         community.matches = community.matches.map(match => ({ ...match, voteCutoffAtMs: match.actualFullTimeAtMs! + 45 * 60_000, cutoffSource: 'explicit_fictional_setting' }));
@@ -213,7 +223,7 @@ export class DevelopmentStore {
         community.accounts.push({ id, label: demoAccountLabels[id], classification: 'adult_individual', adultVerified: true });
         community.memberships.push({ accountId: id, teamId: SYNTHETIC_IDS.teamId, seasonId: SYNTHETIC_IDS.seasonId, role: 'manager', active: true });
       }
-      this.saveDocument(SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId, 'preparation', createPreparationState());
+      this.saveDocument(SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId, 'preparation', preparation);
       this.saveDocument(SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId, 'community', community);
       this.saveDocument(SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId, 'records', createRecordsSeed(options));
       if (options.demoSharing) for (const match of community.matches) {

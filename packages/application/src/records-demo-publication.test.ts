@@ -31,7 +31,7 @@ describe('explicit initial live demo publication', () => {
   it('projects the explicit demo decision without inventing a result or relaxing match/class boundaries', () => {
     const state = createRecordsSeed({ demoSharing: true });
     expect(report(state)).toMatchObject({ score: { for: 1, against: 0 }, policyId: 'demo-simulated-scores-v1' });
-    expect(state.results).toHaveLength(3);
+    expect(state.results).toHaveLength(2);
     const wrongMatch = structuredClone(state); wrongMatch.initialLivePublication!.matchId = 'different-match';
     expect(report(wrongMatch).score).toBeNull();
     const wrongPolicyClass = structuredClone(state); wrongPolicyClass.initialLivePublication!.publication.fixtureClass = 'friendly';

@@ -12,6 +12,33 @@ worker_pid=""
 scanner_container=""
 scanner_volume=""
 export_key_directory=""
+demo_accounts_file=""
+
+# Verifiers are a separate, explicit demo-only runtime input. The source bundle
+# and browser export never contain the chat-only plaintext credentials.
+demo_account_login="$(python3 - <<'PY'
+import hashlib, json, re
+from pathlib import Path
+preview = Path('preview')
+request = json.loads((preview / 'native-build-request.txt').read_text())
+enabled = request.get('demo_account_login', False)
+if type(enabled) is not bool:
+    raise SystemExit('Invalid demo-login build marker.')
+config, digest = preview / 'demo-accounts.json', preview / 'demo-accounts.sha256'
+if enabled:
+    if any(path.is_symlink() or not path.is_file() for path in [config, digest]) or config.stat().st_size >65536:
+        raise SystemExit('Missing or invalid demo verifier transport.')
+    expected = digest.read_text().strip()
+    if not re.fullmatch(r'[0-9a-f]{64}', expected) or hashlib.sha256(config.read_bytes()).hexdigest() != expected:
+        raise SystemExit('Demo verifier transport digest does not match.')
+elif config.exists() or digest.exists():
+    raise SystemExit('Unexpected stale demo verifier transport.')
+print(int(enabled))
+PY
+)"
+if [[ "$demo_account_login" == 1 ]]; then demo_accounts_file="$PWD/preview/demo-accounts.json"; fi
+# Bootstrap media over loopback before exposing the credential-required server.
+unset LONGBALL_DEMO_ACCOUNTS_FILE
 
 publish_status() {
   export PREVIEW_STATE="$1"
@@ -117,22 +144,48 @@ export LONGBALL_STATIC_DIRECTORY="$PWD/site"
 # The lasting fictional Pages review can explicitly connect to this bounded API
 # session. Same-origin combined review remains supported by the server itself.
 export LONGBALL_API_ORIGINS="https://charlieomnipoint.github.io"
+# The combined demo also checks the pinned public service-status document.
+export LONGBALL_OIDC_CONNECT_ORIGINS="https://raw.githubusercontent.com"
 # One-time fictional review invitations return to the existing static app entry.
 # Recipients still choose the explicit review service; links supply no API/role authority.
 export LONGBALL_PUBLIC_APP_ENTRY_URL="https://charlieomnipoint.github.io/LongBall/"
 export LONGBALL_INVITATION_POLICY_VERSION="fictional-review-invitation-v1"
 # No default expiry: the review issuer must select its duration explicitly.
-node backend/api.mjs >/tmp/longball-http.log 2>&1 &
-server_pid=$!
-server_ready=false
-for attempt in {1..60}; do
-  if curl --silent --fail --max-time 2 http://127.0.0.1:4173/health >/tmp/longball-health.json; then server_ready=true; break; fi
-  if ! kill -0 "$server_pid" 2>/dev/null; then cat /tmp/longball-http.log; exit 1; fi
-  sleep 1
-done
-if [[ "$server_ready" != true ]]; then cat /tmp/longball-http.log; exit 1; fi
+start_review_api() {
+  node backend/api.mjs >>/tmp/longball-http.log 2>&1 &
+  server_pid=$!
+  local server_ready=false
+  for attempt in {1..60}; do
+    if curl --silent --fail --max-time 2 http://127.0.0.1:4173/health >/tmp/longball-health.json; then server_ready=true; break; fi
+    if ! kill -0 "$server_pid" 2>/dev/null; then cat /tmp/longball-http.log; exit 1; fi
+    sleep 1
+  done
+  if [[ "$server_ready" != true ]]; then cat /tmp/longball-http.log; exit 1; fi
+}
+start_review_api
 # Create sample gallery/moderation records through real scanning and the private gateway.
 node preview/seed-demo-media.mjs http://127.0.0.1:4173 >/tmp/longball-demo-media.json
+if [[ "$demo_account_login" == 1 ]]; then
+  # The bootstrap server has no public tunnel. Close it before enabling login;
+  # the same database and private files retain the scanner-approved examples.
+  kill -TERM "$server_pid"
+  wait "$server_pid"
+  server_pid=""
+  export LONGBALL_DEMO_ACCOUNTS_FILE="$demo_accounts_file"
+  start_review_api
+  python3 - <<'PY'
+import json
+from pathlib import Path
+health = json.loads(Path('/tmp/longball-health.json').read_text())
+if health.get('syntheticOnly') is not True or health.get('demoAccountLogin') is not True:
+    raise SystemExit('The credential-required demo API did not become ready.')
+PY
+  for legacy in synthetic-manager-2 synthetic-admin synthetic-account-player-01 synthetic-spectator; do
+    status="$(curl --silent --max-time 5 --output /tmp/longball-legacy-probe.json --write-out '%{http_code}' \
+      --header "Authorization: Bearer $legacy" http://127.0.0.1:4173/v1/me)"
+    if [[ "$status" != 401 ]]; then printf 'Legacy demo identity was not refused.\n' >&2; exit 1; fi
+  done
+fi
 node backend/worker.mjs >/tmp/longball-worker.log 2>&1 &
 worker_pid=$!
 /tmp/longball-cloudflared tunnel --no-autoupdate --url http://127.0.0.1:4173 >/tmp/longball-tunnel.log 2>&1 &

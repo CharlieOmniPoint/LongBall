@@ -20,7 +20,7 @@
     "test:e2e": "node scripts/browser-review.mjs",
     "package:review": "pnpm build:web && python3 scripts/package-review.py",
     "test:contracts": ".venv/bin/python scripts/validate-contracts.py",
-    "test:preview": "python3 scripts/test-cloud-source-publication.py",
+    "test:preview": "python3 scripts/test-cloud-source-publication.py && python3 scripts/test-cloud-demo-packaging.py",
     "fixtures:synthetic": "tsx scripts/synthetic-fixtures.ts",
     "mobile:config": "pnpm --filter mobile exec expo config --type prebuild",
     "build": "pnpm --filter mobile build:bundle",

@@ -91,6 +91,9 @@ jobs:
           marker = json.loads((preview / "native-build-request.txt").read_text())
           if not isinstance(marker, dict) or not isinstance(marker.get("upload_artifacts", False), bool):
               raise SystemExit("native-build-request.txt must be JSON with a boolean upload_artifacts")
+          if not isinstance(marker.get("demo_account_login", False), bool):
+              raise SystemExit("demo_account_login must be a boolean")
+          demo_account_login = marker.get("demo_account_login", False)
           upload = os.environ["DISPATCH_UPLOAD"] == "true" or marker.get("upload_artifacts", False)
           bundle = pathlib.Path(os.environ["RUNNER_TEMP"]) / "longball-source.bundle"
           bundle.write_bytes(decoded)
@@ -120,12 +123,15 @@ jobs:
               "sourceRef": bundle_ref,
               "platform": os.environ["NATIVE_PLATFORM"],
               "artifactUploadRequested": upload,
+              "demoAccountLogin": demo_account_login,
               "physicalDeviceProof": False,
           }
           log_dir = pathlib.Path(os.environ["RUNNER_TEMP"]) / "longball-native-logs"
           (log_dir / "source-proof.json").write_text(json.dumps(proof, indent=2) + "\n")
           with open(os.environ["GITHUB_OUTPUT"], "a") as output:
               output.write(f"head={expected_head}\nimported=true\nupload_artifacts={str(upload).lower()}\n")
+          with open(os.environ["GITHUB_ENV"], "a") as environment:
+              environment.write(f"EXPO_PUBLIC_DEMO_ACCOUNT_LOGIN={int(demo_account_login)}\n")
           print(json.dumps(proof, indent=2))
           PY
 

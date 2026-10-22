@@ -993,34 +993,12 @@ export function trainingAttendanceEvidence(state: PreparationState) {
   }));
 }
 
-export function createPreparationState(): PreparationState {
+export function createPreparationState(options: { demoScenario?: boolean } = {}): PreparationState {
   const seasonId = "synthetic-season-2026-27";
   const profiles: PlayerProfile[] = Array.from({ length: 13 }, (_, index) => {
     const number = String(index + 1).padStart(2, "0");
     const details = romaFixture.profiles.find(profile => profile.playerId === `synthetic-player-${number}`)!;
-    const preferred: PositionCode =
-      index === 0
-        ? "GK"
-        : ([
-            "CB",
-            "CB",
-            "CM",
-            "LW",
-            "RW",
-            "ST",
-            "LW",
-            "RW",
-            "CM",
-            "CB",
-            "ST",
-            "CM",
-          ][index - 1] as PositionCode);
-    const preferences = [
-      preferred,
-      ...(["CM", "CB", "ST", "LW"] as PositionCode[]).filter(
-        (position) => position !== preferred,
-      ),
-    ].slice(0, 3);
+    const preferences = [...details.preferences] as PositionCode[];
     return {
       id: `synthetic-player-${number}:${seasonId}`,
       playerId: `synthetic-player-${number}`,
@@ -1030,16 +1008,13 @@ export function createPreparationState(): PreparationState {
       shirtNumber: details.shirtNumber,
       foot: details.foot as PlayerProfile["foot"],
       preferences,
-      eligiblePositions:
-        index === 0
-          ? ["GK", "CB", "ST"]
-          : ["CB", "LB", "RB", "CM", "LW", "RW", "ST"],
+      eligiblePositions: [...details.eligiblePositions] as PositionCode[],
       active: true,
     };
   });
   const fixtures: PreparationFixture[] = romaFixture.fixtures.map((item, index) => {
-    const selected = profiles.slice(0, item.selectedCount);
-    const past = item.playedDate < "2026-10-21";
+    const selected = options.demoScenario ? item.selectedPlayerIds.map(playerId => profiles.find(profile => profile.playerId === playerId)!) : profiles.slice(0, item.selectedCount);
+    const past = item.playedDate < romaFixture.demo.referenceDate;
     return {
       id: item.id, seasonId, opponent: item.opponent, playedDate: item.playedDate,
       kickoff: item.kickoff, arrival: item.arrival, venue: item.venue,
@@ -1049,7 +1024,7 @@ export function createPreparationState(): PreparationState {
       selectedProfileIds: selected.map((profile) => profile.id),
       responses: Object.fromEntries(profiles.flatMap((profile, playerIndex): [string, AvailabilityResponse][] => {
         if (index === 0) return playerIndex < 9 ? [[profile.id, "available"]] : [];
-        if (past) return [[profile.id, playerIndex < item.selectedCount ? "available" : "unavailable"]];
+        if (past) return [[profile.id, selected.some(item => item.id === profile.id) ? "available" : "unavailable"]];
         return playerIndex < 6 ? [[profile.id, "available"]] : playerIndex === 6 ? [[profile.id, "unsure"]] : playerIndex === 10 ? [[profile.id, "unavailable"]] : [];
       })),
       attendance: past ? Object.fromEntries(selected.map((profile) => [profile.id, "present"])) : {},

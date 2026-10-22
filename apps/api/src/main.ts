@@ -5,6 +5,7 @@ import { createClamAvDaemonScanner, createClamAvScanner } from './media';
 import { issueClockChallenge, type TrustedTimePolicy } from './trusted-time';
 import { readDatabaseUrl } from './database-config';
 import { readPushOptions } from './push-config';
+import { readDemoAccountOptions } from './demo-sessions';
 
 const syntheticAuth = process.env.LONGBALL_SYNTHETIC_AUTH === '1';
 const demoScenario = process.env.LONGBALL_DEMO_SCENARIO === '1';
@@ -25,7 +26,7 @@ if(process.env.LONGBALL_FICTIONAL_CLOCK_POLICY){
   clockPolicy=JSON.parse(process.env.LONGBALL_FICTIONAL_CLOCK_POLICY) as TrustedTimePolicy;
   issueClockChallenge({accountId:'configuration-check',deviceId:'configuration-check',matchId:'configuration-check',controllerEpoch:1,continuityId:'configuration-check'},'configuration-check',Date.now(),clockPolicy);
 }
-const options: ApiOptions = { ...readPushOptions(process.env), reportExports:readReportExportOptions(process.env), databasePath: process.env.LONGBALL_API_DATABASE ?? '.local/api/longball.sqlite', syntheticAuth, demoScenario,
+const options: ApiOptions = { ...readPushOptions(process.env), reportExports:readReportExportOptions(process.env), demoAccounts:readDemoAccountOptions(process.env), databasePath: process.env.LONGBALL_API_DATABASE ?? '.local/api/longball.sqlite', syntheticAuth, demoScenario,
   oidc: issuer && audience && jwksUri ? { issuer, audience, jwksUri, mfaAcrValues: process.env.LONGBALL_OIDC_MFA_ACR?.split(',').filter(Boolean) } : undefined,
   allowedOrigins: process.env.LONGBALL_API_ORIGINS?.split(',').filter(Boolean), staticDirectory: process.env.LONGBALL_STATIC_DIRECTORY, browserConnectOrigins: process.env.LONGBALL_OIDC_CONNECT_ORIGINS?.split(',').filter(Boolean),
   mediaDirectory: process.env.LONGBALL_MEDIA_DIRECTORY, mediaScanner, clockPolicy,

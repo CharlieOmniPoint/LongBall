@@ -31,6 +31,17 @@ export function assertSyntheticFixture(value: typeof fixture): void {
   if (value.profiles.length !== 13 || new Set(value.profiles.map(profile => profile.playerId)).size !== 13 || value.profiles.some(profile => !ids.has(profile.playerId) || !/^[A-Z]{2,3}$/.test(profile.initials) || !Number.isSafeInteger(profile.shirtNumber) || profile.shirtNumber < 1 || !['left', 'right', 'both', 'not_recorded'].includes(profile.foot))) {
     throw new Error('Sample profiles need an exact unique player join and valid shirt/initial/foot details.');
   }
+  const positions = ['GK', 'CB', 'LB', 'RB', 'CM', 'LW', 'RW', 'ST'];
+  if (value.profiles.some(profile => profile.preferences.length !== 3 || new Set(profile.preferences).size !== 3 || profile.preferences.some(position => !positions.includes(position)) || profile.eligiblePositions.length === 0 || profile.eligiblePositions.some(position => !positions.includes(position)))) {
+    throw new Error('Sample profiles need three distinct ranked positions and valid eligible positions.');
+  }
+  const played = value.fixtures.filter(fixture => fixture.demoPhase === 'completed'), upcoming = value.fixtures.filter(fixture => fixture.demoPhase === 'scheduled');
+  if (value.fixtures.length !== 4 || played.length !== 2 || upcoming.length !== 2 || played.some(fixture => fixture.playedDate >= value.demo.referenceDate) || upcoming.some(fixture => fixture.playedDate <= value.demo.referenceDate)) {
+    throw new Error('The Roma demo needs exactly four matches: two played and two upcoming.');
+  }
+  if (value.fixtures.some(fixture => fixture.selectedPlayerIds.length !== fixture.selectedCount || new Set(fixture.selectedPlayerIds).size !== fixture.selectedCount || fixture.selectedPlayerIds.some(playerId => !ids.has(playerId)))) {
+    throw new Error('Each sample match needs a distinct selected squad from the Roma roster.');
+  }
   const available = value.players.filter((player) => player.available);
   if (available.length !== 9 || !available.some((player) => player.goalkeeperChoice === 1)) {
     throw new Error('The initial M0 scenario needs nine selected players including a goalkeeper.');

@@ -6,4 +6,4 @@ assertSyntheticFixture(romaFixture);
 const output = resolve('.local/fixtures/roma.json');
 await mkdir(resolve('.local/fixtures'), { recursive: true });
 await writeFile(output, JSON.stringify(romaFixture, null, 2) + '\n');
-console.log(`Wrote 13 fictional Roma players (nine selected) to ${output}`);
+console.log(`Wrote 13 named Roma demo players and four matches (two played, two upcoming) to ${output}`);

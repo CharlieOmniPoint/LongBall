@@ -94,7 +94,7 @@ for (const backend of ['sqlite', 'postgres'] as const) describe.skipIf(backend =
     expect(current(await view())).toMatchObject({ score: { for: 1, against: 0 }, policyId: 'demo-simulated-scores-v1' });
     const before = await call<View & { editableState: RecordsState }>(recordsPath + scope, 'manager');
     const state = before.body.editableState as RecordsState;
-    expect(state.results).toHaveLength(3); // No invented played result was needed for initial approval.
+    expect(state.results).toHaveLength(2); // The demo history is independent of initial live approval.
     const unapproved = structuredClone(state); delete unapproved.initialLivePublication;
     await fixture.setRecords(unapproved);
     expect(current(await view()).score).toBeNull(); // A permissive current row never approves an unconfirmed report.
@@ -105,7 +105,7 @@ for (const backend of ['sqlite', 'postgres'] as const) describe.skipIf(backend =
     expect(injected.status).toBe(422);
     const archived = await command({ type: 'live.archive', matchId: match.config.matchId, expectedSourceMatchRevision: match.revision });
     expect(archived.status, JSON.stringify(archived.body)).toBe(200);
-    expect((await view()).results.totals?.played).toBe(4);
+    expect((await view()).results.totals?.played).toBe(3);
     await fixture.setPolicy(true, false);
     expect(current(await view()).score).toEqual({ for: 1, against: 0 });
     expect((await view()).results.totals).toBeNull();

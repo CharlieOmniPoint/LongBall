@@ -54,11 +54,30 @@ describe('explicit generated demo scenario boundary', () => {
     for (const key of ['initials', 'shirtNumber', 'foot']) expect(snapshot.state.config.players[0]).not.toHaveProperty(key);
 
     const community = await demo.get<ReturnType<typeof getCommunityView>>(`/v1/teams/${SYNTHETIC_IDS.teamId}/community?seasonId=${SYNTHETIC_IDS.seasonId}`, 'player');
-    expect(community.matches[0]).toMatchObject({ sharingAllowed: true, mayVote: true });
-    expect(community.matches[0].candidates.some((item: { label: string }) => item.label === 'Noah Patel')).toBe(true);
+    expect(community.matches[0]).toMatchObject({ id: 'synthetic-history-hill', sharingAllowed: true, mayVote: false, award: { result: 'winners', winnerLabels: ['Noah Patel'] } });
+    expect(community.matches[0].candidates).toEqual([]);
     const reports = await demo.get<ReturnType<typeof recordsServiceView>>(`/v1/teams/${SYNTHETIC_IDS.teamId}/records?seasonId=${SYNTHETIC_IDS.seasonId}`);
     expect(reports.results.totals).not.toBeNull();
     expect(reports.matches.some((item: { score: unknown }) => item.score !== null)).toBe(true);
+  });
+
+  it('serves one coherent Roma squad and exactly two completed plus two upcoming matches', async () => {
+    const { get } = await start(true);
+    const list = await get<{ items: { matchId: string; status: string; score: { for: number; against: number } }[] }>(`/v1/teams/${SYNTHETIC_IDS.teamId}/matches?seasonId=${SYNTHETIC_IDS.seasonId}`);
+    expect(list.items).toHaveLength(4);
+    expect(list.items.filter(item => item.status === 'completed')).toHaveLength(2);
+    expect(list.items.filter(item => item.status === 'preparation')).toHaveLength(2);
+    const prep = await get<{ profiles: { displayName: string }[]; fixtures: { id: string; attendance: Record<string, string>; playedDate: string }[] }>(`/v1/teams/${SYNTHETIC_IDS.teamId}/preparation?seasonId=${SYNTHETIC_IDS.seasonId}`, 'manager', 'synthetic-manager-1');
+    expect(prep.profiles).toHaveLength(13); expect(prep.profiles[0].displayName).toBe('Oliver Bennett');
+    expect(prep.fixtures.map(item => item.id).sort()).toEqual(list.items.map(item => item.matchId).sort());
+    for (const fixture of prep.fixtures.filter(item => item.playedDate >= '2026-10-22')) expect(fixture.attendance).toEqual({});
+    const manager = await get<ReturnType<typeof recordsServiceView>>(`/v1/teams/${SYNTHETIC_IDS.teamId}/records?seasonId=${SYNTHETIC_IDS.seasonId}`, 'manager', 'synthetic-manager-1');
+    expect(manager.results.totals).toMatchObject({ played: 2, wins: 1, draws: 1, losses: 0, goalsFor: 5, goalsAgainst: 3 });
+    expect(manager.matches).toHaveLength(2);
+    expect(manager.matches.every(item => item.recordMode === 'detailed_live' && 'actualActiveDurationMs' in item && item.actualActiveDurationMs === 3_000_000)).toBe(true);
+    const player = await get<ReturnType<typeof recordsServiceView>>(`/v1/teams/${SYNTHETIC_IDS.teamId}/records?seasonId=${SYNTHETIC_IDS.seasonId}`, 'player');
+    expect(player.participation.rows.map(item => item.playerId)).toEqual(['synthetic-player-01']);
+    expect(player.matches.every(item => 'participation' in item && item.participation?.every(row => row.playerId === 'synthetic-player-01'))).toBe(true);
   });
 
   it('seeds gallery derivatives through real processing and keeps player submissions private until review', async () => {

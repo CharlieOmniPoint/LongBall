@@ -17,7 +17,7 @@ describe('UI04 connected manager home selectors', () => {
     const state = createPreparationState();
     const home = selectManagerHome({ state, records: records(), community: community(), nowMs: now });
     expect(home.next).toMatchObject({ id: 'synthetic-training-1', kind: 'training', date: '2026-10-22', time: '18:00', title: 'Team training' });
-    expect(home.upcoming.map(item => item.date)).toEqual(['2026-10-22', '2026-10-24', '2026-10-29', '2026-10-31', '2026-11-05', '2026-11-07', '2026-11-14']);
+    expect(home.upcoming.map(item => item.date)).toEqual(['2026-10-22', '2026-10-24', '2026-10-29', '2026-10-31', '2026-11-05']);
     expect(home.next?.prepared).toBe(false);
     expect(home.recentResults).toHaveLength(3);
   });
@@ -93,7 +93,7 @@ describe('UI04 connected manager home selectors', () => {
     value.results.rows[0] = { ...value.results.rows[0], id: state.fixtures[0].id, status: 'completed' };
     const home = selectManagerHome({ state, records: value, community: null, nowMs: now });
     expect(home.upcoming.some(item => item.id === state.fixtures[0].id)).toBe(false);
-    expect(home.repliesDue).toBe(54);
+    expect(home.repliesDue).toBe(44);
   });
 
   it('keeps recent date-only ties explicit and never converts unknown scores into zero', () => {

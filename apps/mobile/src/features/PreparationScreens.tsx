@@ -26,6 +26,7 @@ import {
   type TrainingDraft,
 } from "@longball/application/preparation";
 import { groupPreparationEvents } from "@longball/application/preparation-presentation";
+import { fixtureScheduleStatus } from "@longball/application/fixture-schedule-status";
 import { TrainingSeriesEditor } from "./TrainingSeriesEditor";
 import { RosterImportPanel } from "./RosterImportPanel";
 import { CalendarExportPanel } from "./CalendarExportPanel";
@@ -45,6 +46,8 @@ export interface PreparationScreensProps {
   onChange: (command: PreparationCommand) => Promise<boolean> | boolean;
   view: "schedule" | "team" | "settings";
   onOpenMatch?: (fixtureId: string) => void;
+  onOpenReport?: (fixtureId: string) => void;
+  completedFixtureIds?: ReadonlySet<string>;
   busy?: boolean;
   error?: string | null;
   storage?: "journal" | "service";
@@ -143,6 +146,8 @@ function PreparationContent({
   onChange,
   view,
   onOpenMatch,
+  onOpenReport,
+  completedFixtureIds = new Set<string>(),
   busy = false,
   error,
   storage = "journal",
@@ -347,11 +352,14 @@ function PreparationContent({
             fixture={selectedFixture}
             state={state}
             disabled={disabled}
+            completed={completedFixtureIds.has(selectedFixture.id)}
+            statusLabel={fixtureScheduleStatus(selectedFixture, completedFixtureIds, todayInLondon())}
             onCommand={commit}
             onEdit={() =>
               setEditor({ type: "fixture", value: selectedFixture })
             }
             onOpenMatch={onOpenMatch}
+            onOpenReport={onOpenReport}
           />
         </>
       ) : selectedTraining ? (
@@ -456,7 +464,7 @@ function PreparationContent({
                             event.status === "scheduled" ? "brand" : "warning"
                           }
                         >
-                          {event.status}
+                          {fixtureScheduleStatus(event, completedFixtureIds, todayInLondon())}
                         </Pill>
                       </View>
                       <Text style={s.section}>
@@ -1512,6 +1520,9 @@ function FixtureDetail({
   onCommand,
   onEdit,
   onOpenMatch,
+  onOpenReport,
+  completed,
+  statusLabel,
 }: {
   fixture: PreparationFixture;
   state: PreparationState;
@@ -1519,9 +1530,12 @@ function FixtureDetail({
   onCommand: (payload: Payload, closeEditor?: boolean) => Promise<boolean>;
   onEdit: () => void;
   onOpenMatch?: (fixtureId: string) => void;
+  onOpenReport?: (fixtureId: string) => void;
+  completed: boolean;
+  statusLabel: string;
 }) {
   const players = seasonPlayers(state, fixture.seasonId);
-  const scheduled = fixture.status === "scheduled";
+  const scheduled = fixture.status === "scheduled" && !completed;
   const [formationId, setFormationId] = useState(fixture.matchPlanDraft?.formation.id ?? `formation-${fixture.format}`);
   const availableFormations = [...(fixture.matchPlanDraft ? [fixture.matchPlanDraft.formation] : []), ...state.formations];
   const formation =
@@ -1535,7 +1549,7 @@ function FixtureDetail({
           <Text style={s.section}>
             {state.team.name} vs {fixture.opponent}
           </Text>
-          <Pill tone={scheduled ? "brand" : "warning"}>{fixture.status}</Pill>
+          <Pill tone={scheduled || completed ? "brand" : "warning"}>{statusLabel}</Pill>
         </View>
         <Text style={s.muted}>
           {dateLabel(fixture.playedDate)} ·{" "}
@@ -1545,7 +1559,7 @@ function FixtureDetail({
           {fixture.venue || "Venue not recorded"} · {fixture.format}-a-side · 2
           × {fixture.plannedHalfDurationMs / 60_000} min
         </Text>
-        {fixture.status !== "cancelled" && (
+        {fixture.status !== "cancelled" && !completed && (
           <Button
             label="Edit or reschedule fixture"
             icon="calendar"
@@ -1554,7 +1568,7 @@ function FixtureDetail({
             onPress={onEdit}
           />
         )}
-        <View style={s.stack}>
+        {!completed && <View style={s.stack}>
           {scheduled ? (
             <>
               <Button
@@ -1596,9 +1610,11 @@ function FixtureDetail({
               }}
             />
           )}
-        </View>
+        </View>}
       </Card>
-      {!scheduled && (
+      {completed && <Notice>This match is completed. Its recorded squad and replies are shown below; use the match report for recorded play and corrections.</Notice>}
+      {completed && onOpenReport && <Button label="Open match report" disabled={disabled} onPress={() => onOpenReport(fixture.id)} />}
+      {!scheduled && !completed && (
         <Notice tone="warning">
           {fixture.status === "cancelled" ? "Cancelled" : "Postponed"} matches
           do not create attendance absences. Existing replies and records are
@@ -1697,7 +1713,7 @@ function FixtureDetail({
           />
         </>
       )}
-      <ReusableMatchPlans key={fixture.id} state={state} fixture={fixture} busy={disabled} onCommand={async command => { const saved = await onCommand(command); if (saved && command.type === 'match_plan.applied') setFormationId(`match-plan:${command.planId}:${command.planVersion}`); if (saved && command.type === 'match_plan.cleared') setFormationId(`formation-${fixture.format}`); return saved; }} onPrepare={() => formation ? onCommand({ type: 'fixture.prepared', fixtureId: fixture.id, formationId: formation.id }) : Promise.resolve(false)} />
+      {!completed && <ReusableMatchPlans key={fixture.id} state={state} fixture={fixture} busy={disabled} onCommand={async command => { const saved = await onCommand(command); if (saved && command.type === 'match_plan.applied') setFormationId(`match-plan:${command.planId}:${command.planVersion}`); if (saved && command.type === 'match_plan.cleared') setFormationId(`formation-${fixture.format}`); return saved; }} onPrepare={() => formation ? onCommand({ type: 'fixture.prepared', fixtureId: fixture.id, formationId: formation.id }) : Promise.resolve(false)} />}
       <Text style={s.section}>Fixture history</Text>
       {fixture.history.map((item) => (
         <Text key={`${item.revision}-${item.action}`} style={s.small}>

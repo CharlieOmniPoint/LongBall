@@ -1,4 +1,5 @@
 import { demoAccountLabels, romaFixture } from '@longball/testing';
+import { createDemoCompletedMatches } from './demo-season';
 /**
  * Serializable community rules shared by the synthetic native and web journeys.
  * Actors must come from an authenticated service in a connected pilot. This module
@@ -875,7 +876,7 @@ export function getCommunityView(state: CommunityState, actor: CommunityActor, n
   };
 }
 
-export function createCommunityState(nowMs = Date.now()): CommunityState {
+export function createCommunityState(nowMs = Date.now(), options: { demoScenario?: boolean } = {}): CommunityState {
   const teamId = 'synthetic-roma-u10';
   const seasonId = 'synthetic-season-2026-27';
   const playerIds = Array.from({ length: 13 }, (_, index) => `synthetic-player-${String(index + 1).padStart(2, '0')}`);
@@ -892,7 +893,7 @@ export function createCommunityState(nowMs = Date.now()): CommunityState {
     playedAtMs: Math.max(0, fullTime - 3_600_000), selectedPlayerIds: playerIds.slice(0, 9), presentPlayerIds: playerIds.slice(0, 9), playedPlayerIds: playerIds.slice(0, 9),
     actualFullTimeAtMs: fullTime, finishQuality: 'trusted', voteCutoffAtMs: null, cutoffSource: 'unresolved', finalisationDeadlineAtMs: fullTime + 3_600_000,
     sharing: 'fictional_review_only', policyVersion: 1 };
-  const state: CommunityState = { schemaVersion: 1, synthetic: true, revision: 0, accounts, memberships,
+  let state: CommunityState = { schemaVersion: 1, synthetic: true, revision: 0, accounts, memberships,
     seasons: [{ id: seasonId, teamId, label: '2026/27', teamLabel: 'Roma U10', accessEndsAtMs: Date.parse('2027-08-31T23:00:00Z') }],
     invitations: [], grants: [{ id: 'synthetic-demo-grant', invitationId: 'synthetic-seeded-invitation', accountId: 'synthetic-account-spectator', teamId, seasonId,
       startsAtMs: Math.max(0, nowMs - 86_400_000), expiresAtMs: Date.parse('2027-08-31T23:00:00Z'), revokedAtMs: null }],
@@ -905,6 +906,33 @@ export function createCommunityState(nowMs = Date.now()): CommunityState {
   state.photos.push({ id: 'synthetic-pending-ball', matchId: match.id, teamId, seasonId, uploaderAccountId: 'synthetic-account-player-01', uploaderRole: 'player',
     currentRevision: 1, publishedRevision: null, removedAtMs: null, revisions: [{ version: 1, art: 'ball', caption: 'Saturday football · sample illustration awaiting review',
       status: 'pending', createdAtMs: fullTime, reviewedAtMs: null, reviewerAccountId: null, rejectionReason: null, processing: 'synthetic_derivative_ready' }] });
+  if (options.demoScenario) {
+    state.matches = createDemoCompletedMatches().map((completed): CommunityMatch => ({
+      id: completed.config.matchId, teamId, seasonId,
+      label: `Roma ${completed.config.fixture!.homeAway === 'home' ? 'v' : 'at'} ${completed.config.fixture!.opponent}`,
+      playedAtMs: Date.parse(`${completed.config.fixture!.playedDate}T${completed.config.fixture!.kickoff}:00+01:00`),
+      selectedPlayerIds: [...completed.config.selectedPlayerIds], presentPlayerIds: [...completed.config.selectedPlayerIds],
+      playedPlayerIds: [...completed.config.selectedPlayerIds], actualFullTimeAtMs: completed.completedAtMs,
+      // Explicitly generated timing evidence for this isolated demo only.
+      finishQuality: 'trusted', voteCutoffAtMs: completed.completedAtMs! + 45 * 60_000,
+      cutoffSource: 'explicit_fictional_setting', finalisationDeadlineAtMs: completed.completedAtMs! + 60 * 60_000,
+      sharing: 'fictional_review_only', policyVersion: 1,
+    })).sort((left, right) => right.playedAtMs - left.playedAtMs);
+    const latest = state.matches[0];
+    state.photos = state.photos.map(photo => ({ ...photo, matchId: latest.id,
+      revisions: photo.revisions.map(revision => ({ ...revision, createdAtMs: latest.actualFullTimeAtMs! + 5 * 60_000,
+        reviewedAtMs: revision.reviewedAtMs === null ? null : latest.actualFullTimeAtMs! + 10 * 60_000 })) }));
+    // These sample ballots were submitted during the recorded historical window;
+    // sealed results do not reopen voting just because the demo is restarted.
+    for (const completed of [...state.matches].sort((left, right) => left.playedAtMs - right.playedAtMs)) {
+      for (const playerId of completed.selectedPlayerIds) {
+        const suffix = playerId.slice(-2), candidatePlayerId = playerId === completed.selectedPlayerIds[1] ? completed.selectedPlayerIds[2] : completed.selectedPlayerIds[1];
+        state = applyCommunityCommand(state, { role: 'player', accountId: `synthetic-account-player-${suffix}`, playerId, teamId, seasonId },
+          { id: `${completed.id}-demo-vote-${suffix}`, type: 'ballot.cast', matchId: completed.id, candidatePlayerId }, completed.actualFullTimeAtMs! + 10 * 60_000);
+      }
+      state = finalizeDueCommunityAwards(state, completed.voteCutoffAtMs! + 60_000);
+    }
+  }
   return state;
 }
 export function syntheticCommunityActors(state = createCommunityState()) {

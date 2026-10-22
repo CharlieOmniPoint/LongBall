@@ -4,6 +4,7 @@ import {
   type OwnPlayerPreparation as OwnPreparationDto,
 } from "@longball/application/player-preparation";
 import { FixtureScheduleDetails } from "./FixtureScheduleDetails";
+import { acceptedCompletedFixtureIds, fixtureScheduleStatus } from "@longball/application/fixture-schedule-status";
 import { startForegroundRefresh } from "@longball/application/foreground-refresh";
 import { isActiveSharedMatch, mergeSharedMatchViews, refreshSharedHistoryPage, refreshSharedMatchViews, SharedMatchRefreshAuthorityDenied } from "@longball/application/shared-match-refresh";
 import { continueMatchList, parseMatchListPage, MatchListAuthorityDenied, type MatchListPage } from '@longball/application/match-list';
@@ -1150,6 +1151,7 @@ function WorkspaceSession({
     identity?.memberships ?? [], membershipTime,
   );
   const matches = matchList ? mergeSharedMatchViews(matchList.items, refreshedMatches ?? []) : null;
+  const completedFixtureIds = acceptedCompletedFixtureIds(matches, { teamId, seasonId });
   const seasonOptions = readWorkspaceValue(
     seasonCache,
     expectedBinding,
@@ -3196,6 +3198,8 @@ function WorkspaceSession({
         ) : manager && preparation ? (
           <PreparationScreens
             storage="service"
+            completedFixtureIds={completedFixtureIds}
+            onOpenReport={(fixtureId) => guardNavigation(() => { setSelectedReportMatchId(fixtureId); setTab("reports"); })}
             onExportCalendar={exportCalendar}
             brandingPanel={brandingPanel}
             state={preparation}
@@ -3228,6 +3232,7 @@ function WorkspaceSession({
         ) : own ? (
           <OwnPreparation
             key={`${own.profile.id}:${own.revision}`}
+            completedFixtureIds={completedFixtureIds}
             value={own}
             onExportCalendar={exportCalendar}
             view={tab === "team" ? "profile" : "schedule"}
@@ -3460,6 +3465,7 @@ function OwnPreparation({
   disabled,
   onChange,
   onExportCalendar,
+  completedFixtureIds,
 }: {
   value: OwnPreparationDto;
   view?: "schedule" | "profile";
@@ -3467,6 +3473,7 @@ function OwnPreparation({
   disabled: boolean;
   onChange: (command: OwnCommand) => Promise<boolean>;
   onExportCalendar: (selectedKeys: string[]) => Promise<string>;
+  completedFixtureIds: ReadonlySet<string>;
 }) {
   const [preferences, setPreferences] = useState<PlayerProfile["preferences"]>([
     ...value.profile.preferences,
@@ -3521,14 +3528,14 @@ function OwnPreparation({
       </Text>
       <Text style={typography.muted}>
         {fixture.playedDate} · {fixture.venue || "Location not recorded"} ·{" "}
-        {fixture.status}
+        {fixtureScheduleStatus(fixture, completedFixtureIds, today)}
       </Text>
       <FixtureScheduleDetails fixture={fixture} />
       <Text style={typography.body}>
         {fixture.selected ? "Selected by manager" : "Not selected"} · actual
         attendance: {fixture.attendance.replaceAll("_", " ")}
       </Text>
-      {fixture.status === "scheduled" ? (
+      {fixture.status === "scheduled" && !completedFixtureIds.has(fixture.id) && fixture.playedDate >= today ? (
         responseButtons(fixture.response, (response) => {
           void command({
             type: "own.fixture_response_recorded",
