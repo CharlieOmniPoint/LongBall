@@ -58799,7 +58799,8 @@ var roma_synthetic_default = {
   demo: {
     name: "Roma autumn matchdays",
     generated: true,
-    description: "Simulated club, players and matchdays for testing. No real people, photographs or contact details."
+    description: "Simulated club, players and matchdays for testing. No real people, photographs or contact details.",
+    referenceDate: "2026-10-22"
   },
   club: {
     id: "synthetic-richmond-rovers",
@@ -58846,7 +58847,20 @@ var roma_synthetic_default = {
       venue: "Rovers Sports Ground \xB7 Pitch 2",
       homeAway: "home",
       status: "scheduled",
-      selectedCount: 9
+      selectedCount: 9,
+      selectedPlayerIds: [
+        "synthetic-player-01",
+        "synthetic-player-02",
+        "synthetic-player-03",
+        "synthetic-player-04",
+        "synthetic-player-05",
+        "synthetic-player-06",
+        "synthetic-player-07",
+        "synthetic-player-08",
+        "synthetic-player-09"
+      ],
+      demoPhase: "scheduled",
+      fixtureClass: "development"
     },
     {
       id: "synthetic-roma-oak-2026-10-31",
@@ -58857,51 +58871,20 @@ var roma_synthetic_default = {
       venue: "Oak Meadow \xB7 Junior pitch",
       homeAway: "away",
       status: "scheduled",
-      selectedCount: 10
-    },
-    {
-      id: "synthetic-roma-hill-2026-11-07",
-      opponent: "Hill FC",
-      playedDate: "2026-11-07",
-      kickoff: "09:30",
-      arrival: "09:00",
-      venue: "Rovers Sports Ground \xB7 Pitch 2",
-      homeAway: "home",
-      status: "scheduled",
-      selectedCount: 9
-    },
-    {
-      id: "synthetic-roma-willow-2026-11-14",
-      opponent: "Willow FC",
-      playedDate: "2026-11-14",
-      kickoff: "11:00",
-      arrival: "10:30",
-      venue: "Willow Playing Fields \xB7 Pitch 2",
-      homeAway: "away",
-      status: "scheduled",
-      selectedCount: 9
-    },
-    {
-      id: "synthetic-roma-cedar-2026-11-21",
-      opponent: "Cedar Athletic",
-      playedDate: "2026-11-21",
-      kickoff: "10:00",
-      arrival: "09:30",
-      venue: "Rovers Sports Ground \xB7 Pitch 2",
-      homeAway: "home",
-      status: "postponed",
-      selectedCount: 0
-    },
-    {
-      id: "synthetic-history-maple",
-      opponent: "Maple FC",
-      playedDate: "2026-10-03",
-      kickoff: "10:00",
-      arrival: "09:30",
-      venue: "Rovers Sports Ground \xB7 Pitch 2",
-      homeAway: "home",
-      status: "scheduled",
-      selectedCount: 9
+      selectedCount: 9,
+      selectedPlayerIds: [
+        "synthetic-player-01",
+        "synthetic-player-02",
+        "synthetic-player-03",
+        "synthetic-player-04",
+        "synthetic-player-05",
+        "synthetic-player-06",
+        "synthetic-player-07",
+        "synthetic-player-08",
+        "synthetic-player-09"
+      ],
+      demoPhase: "scheduled",
+      fixtureClass: "development"
     },
     {
       id: "synthetic-history-oak",
@@ -58912,7 +58895,31 @@ var roma_synthetic_default = {
       venue: "Oak Meadow \xB7 Junior pitch",
       homeAway: "away",
       status: "scheduled",
-      selectedCount: 9
+      selectedCount: 9,
+      selectedPlayerIds: [
+        "synthetic-player-01",
+        "synthetic-player-02",
+        "synthetic-player-03",
+        "synthetic-player-04",
+        "synthetic-player-05",
+        "synthetic-player-06",
+        "synthetic-player-07",
+        "synthetic-player-08",
+        "synthetic-player-09"
+      ],
+      demoPhase: "completed",
+      fixtureClass: "friendly",
+      result: {
+        halfTime: {
+          for: 1,
+          against: 1
+        },
+        final: {
+          for: 2,
+          against: 2
+        },
+        halfMinutes: 25
+      }
     },
     {
       id: "synthetic-history-hill",
@@ -58923,7 +58930,31 @@ var roma_synthetic_default = {
       venue: "Rovers Sports Ground \xB7 Pitch 2",
       homeAway: "home",
       status: "scheduled",
-      selectedCount: 8
+      selectedCount: 9,
+      selectedPlayerIds: [
+        "synthetic-player-01",
+        "synthetic-player-02",
+        "synthetic-player-03",
+        "synthetic-player-04",
+        "synthetic-player-05",
+        "synthetic-player-10",
+        "synthetic-player-11",
+        "synthetic-player-12",
+        "synthetic-player-13"
+      ],
+      demoPhase: "completed",
+      fixtureClass: "development",
+      result: {
+        halfTime: {
+          for: 1,
+          against: 1
+        },
+        final: {
+          for: 3,
+          against: 1
+        },
+        halfMinutes: 25
+      }
     }
   ],
   training: [
@@ -58982,79 +59013,257 @@ var roma_synthetic_default = {
       playerId: "synthetic-player-01",
       initials: "OB",
       shirtNumber: 1,
-      foot: "right"
+      foot: "right",
+      preferences: [
+        "GK",
+        "CM",
+        "CB"
+      ],
+      eligiblePositions: [
+        "GK",
+        "CB",
+        "ST"
+      ]
     },
     {
       playerId: "synthetic-player-02",
       initials: "NP",
       shirtNumber: 2,
-      foot: "right"
+      foot: "right",
+      preferences: [
+        "CB",
+        "CM",
+        "ST"
+      ],
+      eligiblePositions: [
+        "CB",
+        "LB",
+        "RB",
+        "CM",
+        "LW",
+        "RW",
+        "ST"
+      ]
     },
     {
       playerId: "synthetic-player-03",
       initials: "LM",
       shirtNumber: 3,
-      foot: "left"
+      foot: "left",
+      preferences: [
+        "CB",
+        "CM",
+        "ST"
+      ],
+      eligiblePositions: [
+        "CB",
+        "LB",
+        "RB",
+        "CM",
+        "LW",
+        "RW",
+        "ST"
+      ]
     },
     {
       playerId: "synthetic-player-04",
       initials: "TC",
       shirtNumber: 4,
-      foot: "both"
+      foot: "both",
+      preferences: [
+        "CM",
+        "CB",
+        "ST"
+      ],
+      eligiblePositions: [
+        "CB",
+        "LB",
+        "RB",
+        "CM",
+        "LW",
+        "RW",
+        "ST"
+      ]
     },
     {
       playerId: "synthetic-player-05",
       initials: "OE",
       shirtNumber: 5,
-      foot: "left"
+      foot: "left",
+      preferences: [
+        "LW",
+        "CM",
+        "CB"
+      ],
+      eligiblePositions: [
+        "CB",
+        "LB",
+        "RB",
+        "CM",
+        "LW",
+        "RW",
+        "ST"
+      ]
     },
     {
       playerId: "synthetic-player-06",
       initials: "EB",
       shirtNumber: 6,
-      foot: "right"
+      foot: "right",
+      preferences: [
+        "RW",
+        "CM",
+        "CB"
+      ],
+      eligiblePositions: [
+        "CB",
+        "LB",
+        "RB",
+        "CM",
+        "LW",
+        "RW",
+        "ST"
+      ]
     },
     {
       playerId: "synthetic-player-07",
       initials: "JT",
       shirtNumber: 7,
-      foot: "right"
+      foot: "right",
+      preferences: [
+        "ST",
+        "CM",
+        "CB"
+      ],
+      eligiblePositions: [
+        "CB",
+        "LB",
+        "RB",
+        "CM",
+        "LW",
+        "RW",
+        "ST"
+      ]
     },
     {
       playerId: "synthetic-player-08",
       initials: "FL",
       shirtNumber: 8,
-      foot: "left"
+      foot: "left",
+      preferences: [
+        "LW",
+        "CM",
+        "CB"
+      ],
+      eligiblePositions: [
+        "CB",
+        "LB",
+        "RB",
+        "CM",
+        "LW",
+        "RW",
+        "ST"
+      ]
     },
     {
       playerId: "synthetic-player-09",
       initials: "AJ",
       shirtNumber: 9,
-      foot: "right"
+      foot: "right",
+      preferences: [
+        "RW",
+        "CM",
+        "CB"
+      ],
+      eligiblePositions: [
+        "CB",
+        "LB",
+        "RB",
+        "CM",
+        "LW",
+        "RW",
+        "ST"
+      ]
     },
     {
       playerId: "synthetic-player-10",
       initials: "LW",
       shirtNumber: 10,
-      foot: "both"
+      foot: "both",
+      preferences: [
+        "CM",
+        "CB",
+        "ST"
+      ],
+      eligiblePositions: [
+        "CB",
+        "LB",
+        "RB",
+        "CM",
+        "LW",
+        "RW",
+        "ST"
+      ]
     },
     {
       playerId: "synthetic-player-11",
       initials: "MK",
       shirtNumber: 11,
-      foot: "right"
+      foot: "right",
+      preferences: [
+        "CB",
+        "CM",
+        "ST"
+      ],
+      eligiblePositions: [
+        "CB",
+        "LB",
+        "RB",
+        "CM",
+        "LW",
+        "RW",
+        "ST"
+      ]
     },
     {
       playerId: "synthetic-player-12",
       initials: "AG",
       shirtNumber: 12,
-      foot: "left"
+      foot: "left",
+      preferences: [
+        "ST",
+        "CM",
+        "CB"
+      ],
+      eligiblePositions: [
+        "CB",
+        "LB",
+        "RB",
+        "CM",
+        "LW",
+        "RW",
+        "ST"
+      ]
     },
     {
       playerId: "synthetic-player-13",
       initials: "GT",
       shirtNumber: 13,
-      foot: "right"
+      foot: "right",
+      preferences: [
+        "CM",
+        "CB",
+        "ST"
+      ],
+      eligiblePositions: [
+        "CB",
+        "LB",
+        "RB",
+        "CM",
+        "LW",
+        "RW",
+        "ST"
+      ]
     }
   ]
 };
@@ -61124,31 +61333,12 @@ function trainingAttendanceEvidence(state) {
     )
   }));
 }
-function createPreparationState() {
+function createPreparationState(options = {}) {
   const seasonId = "synthetic-season-2026-27";
   const profiles = Array.from({ length: 13 }, (_, index) => {
     const number = String(index + 1).padStart(2, "0");
     const details = romaFixture.profiles.find((profile) => profile.playerId === `synthetic-player-${number}`);
-    const preferred = index === 0 ? "GK" : [
-      "CB",
-      "CB",
-      "CM",
-      "LW",
-      "RW",
-      "ST",
-      "LW",
-      "RW",
-      "CM",
-      "CB",
-      "ST",
-      "CM"
-    ][index - 1];
-    const preferences = [
-      preferred,
-      ...["CM", "CB", "ST", "LW"].filter(
-        (position) => position !== preferred
-      )
-    ].slice(0, 3);
+    const preferences = [...details.preferences];
     return {
       id: `synthetic-player-${number}:${seasonId}`,
       playerId: `synthetic-player-${number}`,
@@ -61158,13 +61348,13 @@ function createPreparationState() {
       shirtNumber: details.shirtNumber,
       foot: details.foot,
       preferences,
-      eligiblePositions: index === 0 ? ["GK", "CB", "ST"] : ["CB", "LB", "RB", "CM", "LW", "RW", "ST"],
+      eligiblePositions: [...details.eligiblePositions],
       active: true
     };
   });
   const fixtures = romaFixture.fixtures.map((item, index) => {
-    const selected = profiles.slice(0, item.selectedCount);
-    const past = item.playedDate < "2026-10-21";
+    const selected = options.demoScenario ? item.selectedPlayerIds.map((playerId) => profiles.find((profile) => profile.playerId === playerId)) : profiles.slice(0, item.selectedCount);
+    const past = item.playedDate < romaFixture.demo.referenceDate;
     return {
       id: item.id,
       seasonId,
@@ -61180,7 +61370,7 @@ function createPreparationState() {
       selectedProfileIds: selected.map((profile) => profile.id),
       responses: Object.fromEntries(profiles.flatMap((profile, playerIndex) => {
         if (index === 0) return playerIndex < 9 ? [[profile.id, "available"]] : [];
-        if (past) return [[profile.id, playerIndex < item.selectedCount ? "available" : "unavailable"]];
+        if (past) return [[profile.id, selected.some((item2) => item2.id === profile.id) ? "available" : "unavailable"]];
         return playerIndex < 6 ? [[profile.id, "available"]] : playerIndex === 6 ? [[profile.id, "unsure"]] : playerIndex === 10 ? [[profile.id, "unavailable"]] : [];
       })),
       attendance: past ? Object.fromEntries(selected.map((profile) => [profile.id, "present"])) : {},
@@ -61905,6 +62095,79 @@ CREATE TRIGGER team_privilege_decision_immutable_update BEFORE UPDATE ON team_pr
 CREATE TRIGGER team_privilege_decision_immutable_delete BEFORE DELETE ON team_privilege_decisions BEGIN SELECT RAISE(ABORT,'Immutable team privilege decision'); END;
 `;
 
+// packages/application/src/demo-season.ts
+function createDemoCompletedMatches() {
+  return romaFixture.fixtures.filter((fixture) => fixture.demoPhase === "completed").map((fixture) => {
+    const selected = [...fixture.selectedPlayerIds];
+    const profiles = selected.map((playerId) => romaFixture.profiles.find((profile) => profile.playerId === playerId));
+    const kickoff = Date.parse(`${fixture.playedDate}T${fixture.kickoff}:00+01:00`);
+    const positions = ["GK", "CB", "CB", "CM", "LW", "RW", "ST"];
+    const config = {
+      matchId: fixture.id,
+      players: romaFixture.players.map((player) => ({
+        id: player.id,
+        displayName: player.displayName,
+        goalkeeperChoice: player.goalkeeperChoice,
+        positionPreferences: [...romaFixture.profiles.find((profile) => profile.playerId === player.id).preferences]
+      })),
+      selectedPlayerIds: selected,
+      pitchPlaces: 7,
+      plannedHalfDurationMs: 15e5,
+      fixedKeeperId: selected[0],
+      fixture: {
+        opponent: fixture.opponent,
+        playedDate: fixture.playedDate,
+        kickoff: fixture.kickoff,
+        homeAway: fixture.homeAway,
+        teamId: romaFixture.teamId,
+        seasonId: "synthetic-season-2026-27",
+        teamName: "Roma",
+        clubName: romaFixture.club.name
+      },
+      slots: positions.map((position, index) => ({ slotId: `demo-slot-${index}`, position })),
+      profileSnapshot: profiles.map((profile) => ({
+        playerId: profile.playerId,
+        initials: profile.initials,
+        preferences: [...profile.preferences],
+        eligiblePositions: [...profile.eligiblePositions]
+      }))
+    };
+    let state = createMatch(config), sequence = 0;
+    const send = (command, milliseconds) => {
+      state = reduceMatch(state, {
+        ...command,
+        id: `${fixture.id}-demo-${++sequence}`,
+        actorId: "synthetic-account-manager",
+        sample: { monotonicMs: milliseconds, sessionId: `demo-history-${fixture.id}`, wallTimeMs: kickoff + milliseconds }
+      });
+    };
+    const quarterLineup = (quarter) => {
+      const omitted = [[7, 8], [5, 6], [3, 4], [1, 2]][quarter];
+      const playing = selected.filter((_, index) => !omitted.includes(index));
+      return playing.map((playerId, index) => ({ playerId, position: positions[index], slotId: `demo-slot-${index}` }));
+    };
+    for (const playerId of selected) send({ type: "attendance.recorded", playerId, status: "present" }, 0);
+    send({ type: "lineup.staged", lineup: quarterLineup(0) }, 0);
+    send({ type: "half.started" }, 0);
+    send({ type: "goal.recorded", beneficiary: "us", scorerPlayerId: selected[1], goalType: "open_play" }, 8 * 6e4);
+    send({ type: "lineup.committed", sourceRevision: state.revision, lineup: quarterLineup(1) }, 75e4);
+    send({ type: "goal.recorded", beneficiary: "opposition", scorerPlayerId: null, goalType: "open_play" }, 18 * 6e4);
+    send({ type: "half.ended" }, 15e5);
+    send({ type: "lineup.staged", lineup: quarterLineup(2) }, 18e5);
+    send({ type: "half.started" }, 18e5);
+    send({ type: "goal.recorded", beneficiary: "us", scorerPlayerId: selected[7], goalType: "open_play" }, 222e4);
+    send({ type: "lineup.committed", sourceRevision: state.revision, lineup: quarterLineup(3) }, 255e4);
+    send({
+      type: "goal.recorded",
+      beneficiary: fixture.id === "synthetic-history-oak" ? "opposition" : "us",
+      scorerPlayerId: fixture.id === "synthetic-history-oak" ? null : selected[8],
+      goalType: "open_play"
+    }, 294e4);
+    send({ type: "half.ended" }, 33e5);
+    return state;
+  });
+}
+
 // packages/application/src/invitation-credentials.ts
 var validTime2 = (value) => Number.isSafeInteger(value) && value >= 0;
 function publicInvitation(invite, nowMs) {
@@ -62463,7 +62726,7 @@ function getCommunityView(state, actor, nowMs) {
     privacyRequests: state.privacyRequests.filter((item) => item.accountId === actor.accountId).map((item) => ({ ...item }))
   };
 }
-function createCommunityState(nowMs = Date.now()) {
+function createCommunityState(nowMs = Date.now(), options = {}) {
   const teamId = "synthetic-roma-u10";
   const seasonId = "synthetic-season-2026-27";
   const playerIds = Array.from({ length: 13 }, (_, index) => `synthetic-player-${String(index + 1).padStart(2, "0")}`);
@@ -62495,7 +62758,7 @@ function createCommunityState(nowMs = Date.now()) {
     sharing: "fictional_review_only",
     policyVersion: 1
   };
-  const state = {
+  let state = {
     schemaVersion: 1,
     synthetic: true,
     revision: 0,
@@ -62568,6 +62831,48 @@ function createCommunityState(nowMs = Date.now()) {
       processing: "synthetic_derivative_ready"
     }]
   });
+  if (options.demoScenario) {
+    state.matches = createDemoCompletedMatches().map((completed) => ({
+      id: completed.config.matchId,
+      teamId,
+      seasonId,
+      label: `Roma ${completed.config.fixture.homeAway === "home" ? "v" : "at"} ${completed.config.fixture.opponent}`,
+      playedAtMs: Date.parse(`${completed.config.fixture.playedDate}T${completed.config.fixture.kickoff}:00+01:00`),
+      selectedPlayerIds: [...completed.config.selectedPlayerIds],
+      presentPlayerIds: [...completed.config.selectedPlayerIds],
+      playedPlayerIds: [...completed.config.selectedPlayerIds],
+      actualFullTimeAtMs: completed.completedAtMs,
+      // Explicitly generated timing evidence for this isolated demo only.
+      finishQuality: "trusted",
+      voteCutoffAtMs: completed.completedAtMs + 45 * 6e4,
+      cutoffSource: "explicit_fictional_setting",
+      finalisationDeadlineAtMs: completed.completedAtMs + 60 * 6e4,
+      sharing: "fictional_review_only",
+      policyVersion: 1
+    })).sort((left, right) => right.playedAtMs - left.playedAtMs);
+    const latest = state.matches[0];
+    state.photos = state.photos.map((photo) => ({
+      ...photo,
+      matchId: latest.id,
+      revisions: photo.revisions.map((revision) => ({
+        ...revision,
+        createdAtMs: latest.actualFullTimeAtMs + 5 * 6e4,
+        reviewedAtMs: revision.reviewedAtMs === null ? null : latest.actualFullTimeAtMs + 10 * 6e4
+      }))
+    }));
+    for (const completed of [...state.matches].sort((left, right) => left.playedAtMs - right.playedAtMs)) {
+      for (const playerId of completed.selectedPlayerIds) {
+        const suffix = playerId.slice(-2), candidatePlayerId = playerId === completed.selectedPlayerIds[1] ? completed.selectedPlayerIds[2] : completed.selectedPlayerIds[1];
+        state = applyCommunityCommand(
+          state,
+          { role: "player", accountId: `synthetic-account-player-${suffix}`, playerId, teamId, seasonId },
+          { id: `${completed.id}-demo-vote-${suffix}`, type: "ballot.cast", matchId: completed.id, candidatePlayerId },
+          completed.actualFullTimeAtMs + 10 * 6e4
+        );
+      }
+      state = finalizeDueCommunityAwards(state, completed.voteCutoffAtMs + 6e4);
+    }
+  }
   return state;
 }
 function communityObjectShape(value, fields4) {
@@ -62742,6 +63047,17 @@ function createRecordsSeed(options = {}) {
     goals: index === 0 ? [{ id: "synthetic-history-known-goal", beneficiary: "us", isOwnGoal: false, scorerPlayerId: romaFixture.players[1].id, goalType: null, half: null, halfElapsedMs: null }] : []
   }, "2026-10-20T12:00:00Z"));
   if (options.demoSharing) {
+    state.results = createDemoCompletedMatches().map((match) => {
+      const fixture = romaFixture.fixtures.find((item) => item.id === match.config.matchId);
+      const record = snapshotLiveMatch({ ...state, results: [], liveMatch: {
+        matchId: fixture.id,
+        playedDate: fixture.playedDate,
+        opponent: fixture.opponent,
+        homeAway: fixture.homeAway,
+        fixtureClass: fixture.fixtureClass
+      } }, match, new Date(match.completedAtMs).toISOString());
+      return { ...record, recordedKickoff: `${fixture.playedDate}T${fixture.kickoff}:00+01:00` };
+    });
     state.initialLivePublication = { matchId: state.liveMatch.matchId, fixtureClass: state.liveMatch.fixtureClass, publication: {
       id: "demo-simulated-scores-v1",
       version: 1,
@@ -64659,9 +64975,18 @@ var DevelopmentStore = class {
       membership("synthetic-account-other-manager", "manager", null, "synthetic-other-team");
       const config = { matchId: SYNTHETIC_IDS.matchId, players: romaFixture.players, selectedPlayerIds: romaFixture.players.filter((player) => player.available).map((player) => player.id), pitchPlaces: 7, plannedHalfDurationMs: 15e5, fixedKeeperId: romaFixture.players[0].id, fixture: { opponent: "Maple FC", playedDate: "2026-10-24", kickoff: "10:00", homeAway: "home", teamId: SYNTHETIC_IDS.teamId, seasonId: SYNTHETIC_IDS.seasonId, teamName: "Roma", clubName: "Richmond Rovers" } };
       this.insertMatch(config, SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId);
-      const community = createCommunityState(this.now());
+      const preparation = createPreparationState({ demoScenario: options.demoSharing });
+      const community = createCommunityState(this.now(), { demoScenario: options.demoSharing });
       if (options.demoSharing) this.database.prepare("UPDATE matches SET sharing_policy_json=? WHERE id=?").run(JSON.stringify({ version: "demo-simulated-scores-v1", approvedBy: "generated-demo-scenario-only", approvedAt: this.now(), shareScores: true, shareDerivedResults: true }), SYNTHETIC_IDS.matchId);
       if (options.demoSharing) {
+        for (const fixture of preparation.fixtures.filter((item) => item.playedDate >= romaFixture.demo.referenceDate && item.id !== SYNTHETIC_IDS.matchId)) {
+          this.insertMatch(fixtureMatchConfig(preparation, prepareFixtureSnapshot(preparation, fixture.id)), SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId);
+        }
+        for (const completed of createDemoCompletedMatches()) {
+          this.insertMatch(completed.config, SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId);
+          this.database.prepare("UPDATE matches SET state_json=?,last_sync_at=? WHERE id=?").run(JSON.stringify(completed), completed.completedAtMs, completed.config.matchId);
+        }
+        this.database.prepare("UPDATE matches SET sharing_policy_json=? WHERE team_id=? AND season_id=?").run(JSON.stringify({ version: "demo-simulated-scores-v1", approvedBy: "generated-demo-scenario-only", approvedAt: this.now(), shareScores: true, shareDerivedResults: true }), SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId);
         community.photos = [];
         community.matches = community.matches.map((match) => ({ ...match, voteCutoffAtMs: match.actualFullTimeAtMs + 45 * 6e4, cutoffSource: "explicit_fictional_setting" }));
       }
@@ -64671,7 +64996,7 @@ var DevelopmentStore = class {
         community.accounts.push({ id, label: demoAccountLabels[id], classification: "adult_individual", adultVerified: true });
         community.memberships.push({ accountId: id, teamId: SYNTHETIC_IDS.teamId, seasonId: SYNTHETIC_IDS.seasonId, role: "manager", active: true });
       }
-      this.saveDocument(SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId, "preparation", createPreparationState());
+      this.saveDocument(SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId, "preparation", preparation);
       this.saveDocument(SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId, "community", community);
       this.saveDocument(SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId, "records", createRecordsSeed(options));
       if (options.demoSharing) for (const match of community.matches) {
@@ -65749,9 +66074,18 @@ var PostgresStore = class _PostgresStore {
       await membership("synthetic-account-other-manager", "manager", null, "synthetic-other-team");
       const config = { matchId: SYNTHETIC_IDS2.matchId, players: romaFixture.players, selectedPlayerIds: romaFixture.players.filter((player) => player.available).map((player) => player.id), pitchPlaces: 7, plannedHalfDurationMs: 15e5, fixedKeeperId: romaFixture.players[0].id, fixture: { opponent: "Maple FC", playedDate: "2026-10-24", kickoff: "10:00", homeAway: "home", teamId: SYNTHETIC_IDS2.teamId, seasonId: SYNTHETIC_IDS2.seasonId, teamName: "Roma", clubName: "Richmond Rovers" } };
       await this.insertMatch(config, SYNTHETIC_IDS2.teamId, SYNTHETIC_IDS2.seasonId);
-      const community = createCommunityState(this.now());
+      const preparation = createPreparationState({ demoScenario: options.demoSharing });
+      const community = createCommunityState(this.now(), { demoScenario: options.demoSharing });
       if (options.demoSharing) await this.execute("UPDATE matches SET sharing_policy_json=$1 WHERE id=$2", [JSON.stringify({ version: "demo-simulated-scores-v1", approvedBy: "generated-demo-scenario-only", approvedAt: this.now(), shareScores: true, shareDerivedResults: true }), SYNTHETIC_IDS2.matchId]);
       if (options.demoSharing) {
+        for (const fixture of preparation.fixtures.filter((item) => item.playedDate >= romaFixture.demo.referenceDate && item.id !== SYNTHETIC_IDS2.matchId)) {
+          await this.insertMatch(fixtureMatchConfig(preparation, prepareFixtureSnapshot(preparation, fixture.id)), SYNTHETIC_IDS2.teamId, SYNTHETIC_IDS2.seasonId);
+        }
+        for (const completed of createDemoCompletedMatches()) {
+          await this.insertMatch(completed.config, SYNTHETIC_IDS2.teamId, SYNTHETIC_IDS2.seasonId);
+          await this.execute("UPDATE matches SET state_json=$1,last_sync_at=$2 WHERE id=$3", [JSON.stringify(completed), completed.completedAtMs, completed.config.matchId]);
+        }
+        await this.execute("UPDATE matches SET sharing_policy_json=$1 WHERE team_id=$2 AND season_id=$3", [JSON.stringify({ version: "demo-simulated-scores-v1", approvedBy: "generated-demo-scenario-only", approvedAt: this.now(), shareScores: true, shareDerivedResults: true }), SYNTHETIC_IDS2.teamId, SYNTHETIC_IDS2.seasonId]);
         community.photos = [];
         community.matches = community.matches.map((match) => ({ ...match, voteCutoffAtMs: match.actualFullTimeAtMs + 45 * 6e4, cutoffSource: "explicit_fictional_setting" }));
       }
@@ -65761,7 +66095,7 @@ var PostgresStore = class _PostgresStore {
         community.accounts.push({ id, label: demoAccountLabels[id], classification: "adult_individual", adultVerified: true });
         community.memberships.push({ accountId: id, teamId: SYNTHETIC_IDS2.teamId, seasonId: SYNTHETIC_IDS2.seasonId, role: "manager", active: true });
       }
-      await this.saveDocument(SYNTHETIC_IDS2.teamId, SYNTHETIC_IDS2.seasonId, "preparation", createPreparationState());
+      await this.saveDocument(SYNTHETIC_IDS2.teamId, SYNTHETIC_IDS2.seasonId, "preparation", preparation);
       await this.saveDocument(SYNTHETIC_IDS2.teamId, SYNTHETIC_IDS2.seasonId, "community", community);
       await this.saveDocument(SYNTHETIC_IDS2.teamId, SYNTHETIC_IDS2.seasonId, "records", createRecordsSeed(options));
       if (options.demoSharing) for (const match of community.matches) {

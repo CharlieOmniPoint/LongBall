@@ -1,0 +1,30 @@
+{
+  "accounts": [
+    {
+      "accountId": "synthetic-account-manager-2",
+      "hash": "4a6388d461fddc3dad251935cac35ec0829ed9c99e2f1d1aab255e0d61651ac6",
+      "salt": "Brt6qHQyUlgqzbIuRpZnXsT-50de7txS",
+      "username": "roma.manager"
+    },
+    {
+      "accountId": "synthetic-account-admin",
+      "hash": "bff5a2e3b032997be500a929fdfd0f1778ab3291ccad344e16029226f7f9de6e",
+      "salt": "4y8ccFuNn6_MoT6q2irAqMMGy9_YYneK",
+      "username": "roma.admin"
+    },
+    {
+      "accountId": "synthetic-account-player-01",
+      "hash": "2ba6a6c6fdf9e46f2f571929b5cba02d9c34199d1f7eda71d7f1396fdaa2aec5",
+      "salt": "8n118r8bXQ-J0Tb4B00iTCC286Q8ES8j",
+      "username": "oliver.bennett"
+    },
+    {
+      "accountId": "synthetic-account-spectator",
+      "hash": "a6ae89c7f706d4349bbfcb8409e1c72a3222726640695c04739e20d38b7d9abd",
+      "salt": "jPgkxdLEmdvWqDHrqMhSd3_ffwrQh9P_",
+      "username": "roma.spectator"
+    }
+  ],
+  "sessionTtlSeconds": 21600,
+  "version": 1
+}

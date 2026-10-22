@@ -6,7 +6,7 @@ import { pathToFileURL } from 'node:url';
 
 const team = '/v1/teams/synthetic-roma-u10';
 const seasonId = 'synthetic-season-2026-27';
-const matchId = 'synthetic-community-willow';
+const matchId = 'synthetic-history-hill';
 const contract = 'longball.events/1.1';
 const crcTable = Array.from({ length: 256 }, (_, index) => {
   let value = index;

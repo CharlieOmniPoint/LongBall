@@ -16733,36 +16733,36 @@ var require_fontkit_umd = __commonJS({
             return false;
           }
         };
-        keysShim = function keys3(object10) {
-          var isObject2 = object10 !== null && typeof object10 === "object";
-          var isFunction2 = toStr$1.call(object10) === "[object Function]";
-          var isArguments2 = isArgs(object10);
-          var isString2 = isObject2 && toStr$1.call(object10) === "[object String]";
+        keysShim = function keys3(object11) {
+          var isObject2 = object11 !== null && typeof object11 === "object";
+          var isFunction2 = toStr$1.call(object11) === "[object Function]";
+          var isArguments2 = isArgs(object11);
+          var isString2 = isObject2 && toStr$1.call(object11) === "[object String]";
           var theKeys = [];
           if (!isObject2 && !isFunction2 && !isArguments2) {
             throw new TypeError("Object.keys called on a non-object");
           }
           var skipProto = hasProtoEnumBug && isFunction2;
-          if (isString2 && object10.length > 0 && !has.call(object10, 0)) {
-            for (var i2 = 0; i2 < object10.length; ++i2) {
+          if (isString2 && object11.length > 0 && !has.call(object11, 0)) {
+            for (var i2 = 0; i2 < object11.length; ++i2) {
               theKeys.push(String(i2));
             }
           }
-          if (isArguments2 && object10.length > 0) {
-            for (var j = 0; j < object10.length; ++j) {
+          if (isArguments2 && object11.length > 0) {
+            for (var j = 0; j < object11.length; ++j) {
               theKeys.push(String(j));
             }
           } else {
-            for (var name in object10) {
-              if (!(skipProto && name === "prototype") && has.call(object10, name)) {
+            for (var name in object11) {
+              if (!(skipProto && name === "prototype") && has.call(object11, name)) {
                 theKeys.push(String(name));
               }
             }
           }
           if (hasDontEnumBug) {
-            var skipConstructor = equalsConstructorPrototypeIfNotBuggy(object10);
+            var skipConstructor = equalsConstructorPrototypeIfNotBuggy(object11);
             for (var k = 0; k < dontEnums.length; ++k) {
-              if (!(skipConstructor && dontEnums[k] === "constructor") && has.call(object10, dontEnums[k])) {
+              if (!(skipConstructor && dontEnums[k] === "constructor") && has.call(object11, dontEnums[k])) {
                 theKeys.push(dontEnums[k]);
               }
             }
@@ -16784,11 +16784,11 @@ var require_fontkit_umd = __commonJS({
             return args && args.length === arguments.length;
           })(1, 2);
           if (!keysWorksWithArguments) {
-            Object.keys = function keys3(object10) {
-              if (isArguments(object10)) {
-                return originalKeys(slice.call(object10));
+            Object.keys = function keys3(object11) {
+              if (isArguments(object11)) {
+                return originalKeys(slice.call(object11));
               }
-              return originalKeys(object10);
+              return originalKeys(object11);
             };
           }
         } else {
@@ -16839,29 +16839,29 @@ var require_fontkit_umd = __commonJS({
         }
       };
       var supportsDescriptors = origDefineProperty && arePropertyDescriptorsSupported();
-      var defineProperty = function defineProperty2(object10, name, value, predicate) {
-        if (name in object10 && (!isFunction$1(predicate) || !predicate())) {
+      var defineProperty = function defineProperty2(object11, name, value, predicate) {
+        if (name in object11 && (!isFunction$1(predicate) || !predicate())) {
           return;
         }
         if (supportsDescriptors) {
-          origDefineProperty(object10, name, {
+          origDefineProperty(object11, name, {
             configurable: true,
             enumerable: false,
             value,
             writable: true
           });
         } else {
-          object10[name] = value;
+          object11[name] = value;
         }
       };
-      var defineProperties = function defineProperties2(object10, map) {
+      var defineProperties = function defineProperties2(object11, map) {
         var predicates = arguments.length > 2 ? arguments[2] : {};
         var props = objectKeys(map);
         if (hasSymbols) {
           props = concat.call(props, Object.getOwnPropertySymbols(map));
         }
         for (var i2 = 0; i2 < props.length; i2 += 1) {
-          defineProperty(object10, props[i2], map[props[i2]], predicates[props[i2]]);
+          defineProperty(object11, props[i2], map[props[i2]], predicates[props[i2]]);
         }
       };
       defineProperties.supportsDescriptors = !!supportsDescriptors;
@@ -43009,21 +43009,21 @@ var require_PDFArray = __commonJS({
         PDFArray2.prototype.size = function() {
           return this.array.length;
         };
-        PDFArray2.prototype.push = function(object10) {
-          this.array.push(object10);
+        PDFArray2.prototype.push = function(object11) {
+          this.array.push(object11);
         };
-        PDFArray2.prototype.insert = function(index, object10) {
-          this.array.splice(index, 0, object10);
+        PDFArray2.prototype.insert = function(index, object11) {
+          this.array.splice(index, 0, object11);
         };
-        PDFArray2.prototype.indexOf = function(object10) {
-          var index = this.array.indexOf(object10);
+        PDFArray2.prototype.indexOf = function(object11) {
+          var index = this.array.indexOf(object11);
           return index === -1 ? void 0 : index;
         };
         PDFArray2.prototype.remove = function(index) {
           this.array.splice(index, 1);
         };
-        PDFArray2.prototype.set = function(idx, object10) {
-          this.array[idx] = object10;
+        PDFArray2.prototype.set = function(idx, object11) {
+          this.array[idx] = object11;
         };
         PDFArray2.prototype.get = function(index) {
           return this.array[index];
@@ -44063,8 +44063,8 @@ var require_PDFContext = __commonJS({
           this.indirectObjects = /* @__PURE__ */ new Map();
           this.rng = rng_1.SimpleRNG.withSeed(1);
         }
-        PDFContext2.prototype.assign = function(ref, object10) {
-          this.indirectObjects.set(ref, object10);
+        PDFContext2.prototype.assign = function(ref, object11) {
+          this.indirectObjects.set(ref, object11);
           if (ref.objectNumber > this.largestObjectNumber) {
             this.largestObjectNumber = ref.objectNumber;
           }
@@ -44073,9 +44073,9 @@ var require_PDFContext = __commonJS({
           this.largestObjectNumber += 1;
           return PDFRef_1.default.of(this.largestObjectNumber);
         };
-        PDFContext2.prototype.register = function(object10) {
+        PDFContext2.prototype.register = function(object11) {
           var ref = this.nextRef();
-          this.assign(ref, object10);
+          this.assign(ref, object11);
           return ref;
         };
         PDFContext2.prototype.delete = function(ref) {
@@ -44125,8 +44125,8 @@ var require_PDFContext = __commonJS({
         PDFContext2.prototype.getObjectRef = function(pdfObject) {
           var entries = Array.from(this.indirectObjects.entries());
           for (var idx = 0, len = entries.length; idx < len; idx++) {
-            var _a = entries[idx], ref = _a[0], object10 = _a[1];
-            if (object10 === pdfObject) {
+            var _a = entries[idx], ref = _a[0], object11 = _a[1];
+            if (object11 === pdfObject) {
               return ref;
             }
           }
@@ -44456,8 +44456,8 @@ var require_PDFObjectCopier = __commonJS({
         function PDFObjectCopier2(src, dest) {
           var _this = this;
           this.traversedObjects = /* @__PURE__ */ new Map();
-          this.copy = function(object10) {
-            return object10 instanceof PDFPageLeaf_1.default ? _this.copyPDFPage(object10) : object10 instanceof PDFDict_1.default ? _this.copyPDFDict(object10) : object10 instanceof PDFArray_1.default ? _this.copyPDFArray(object10) : object10 instanceof PDFStream_1.default ? _this.copyPDFStream(object10) : object10 instanceof PDFRef_1.default ? _this.copyPDFIndirectObject(object10) : object10.clone();
+          this.copy = function(object11) {
+            return object11 instanceof PDFPageLeaf_1.default ? _this.copyPDFPage(object11) : object11 instanceof PDFDict_1.default ? _this.copyPDFDict(object11) : object11 instanceof PDFArray_1.default ? _this.copyPDFArray(object11) : object11 instanceof PDFStream_1.default ? _this.copyPDFStream(object11) : object11 instanceof PDFRef_1.default ? _this.copyPDFIndirectObject(object11) : object11.clone();
           };
           this.copyPDFPage = function(originalPage) {
             var clonedPage = originalPage.clone();
@@ -44794,8 +44794,8 @@ var require_PDFObjectStream = __commonJS({
         PDFObjectStream2.prototype.getContentsString = function() {
           var value = this.offsetsString;
           for (var idx = 0, len = this.objects.length; idx < len; idx++) {
-            var _a = this.objects[idx], object10 = _a[1];
-            value += object10 + "\n";
+            var _a = this.objects[idx], object11 = _a[1];
+            value += object11 + "\n";
           }
           return value;
         };
@@ -44803,8 +44803,8 @@ var require_PDFObjectStream = __commonJS({
           var buffer = new Uint8Array(this.getUnencodedContentsSize());
           var offset = utils_1.copyStringIntoBuffer(this.offsetsString, buffer, 0);
           for (var idx = 0, len = this.objects.length; idx < len; idx++) {
-            var _a = this.objects[idx], object10 = _a[1];
-            offset += object10.copyBytesInto(buffer, offset);
+            var _a = this.objects[idx], object11 = _a[1];
+            offset += object11.copyBytesInto(buffer, offset);
             buffer[offset++] = CharCodes_1.default.Newline;
           }
           return buffer;
@@ -44824,9 +44824,9 @@ var require_PDFObjectStream = __commonJS({
           var offset = 0;
           var offsets = new Array(this.objects.length);
           for (var idx = 0, len = this.objects.length; idx < len; idx++) {
-            var _a = this.objects[idx], ref = _a[0], object10 = _a[1];
+            var _a = this.objects[idx], ref = _a[0], object11 = _a[1];
             offsets[idx] = [ref.objectNumber, offset];
-            offset += object10.sizeInBytes() + 1;
+            offset += object11.sizeInBytes() + 1;
           }
           return offsets;
         };
@@ -44871,7 +44871,7 @@ var require_PDFWriter = __commonJS({
         }
         PDFWriter2.prototype.serializeToBuffer = function() {
           return tslib_1.__awaiter(this, void 0, void 0, function() {
-            var _a, size, header2, indirectObjects, xref, trailerDict, trailer, offset, buffer, idx, len, _b, ref, object10, objectNumber, generationNumber, n;
+            var _a, size, header2, indirectObjects, xref, trailerDict, trailer, offset, buffer, idx, len, _b, ref, object11, objectNumber, generationNumber, n;
             return tslib_1.__generator(this, function(_c) {
               switch (_c.label) {
                 case 0:
@@ -44887,7 +44887,7 @@ var require_PDFWriter = __commonJS({
                   _c.label = 2;
                 case 2:
                   if (!(idx < len)) return [3, 5];
-                  _b = indirectObjects[idx], ref = _b[0], object10 = _b[1];
+                  _b = indirectObjects[idx], ref = _b[0], object11 = _b[1];
                   objectNumber = String(ref.objectNumber);
                   offset += utils_1.copyStringIntoBuffer(objectNumber, buffer, offset);
                   buffer[offset++] = CharCodes_1.default.Space;
@@ -44898,7 +44898,7 @@ var require_PDFWriter = __commonJS({
                   buffer[offset++] = CharCodes_1.default.b;
                   buffer[offset++] = CharCodes_1.default.j;
                   buffer[offset++] = CharCodes_1.default.Newline;
-                  offset += object10.copyBytesInto(buffer, offset);
+                  offset += object11.copyBytesInto(buffer, offset);
                   buffer[offset++] = CharCodes_1.default.Newline;
                   buffer[offset++] = CharCodes_1.default.e;
                   buffer[offset++] = CharCodes_1.default.n;
@@ -44908,7 +44908,7 @@ var require_PDFWriter = __commonJS({
                   buffer[offset++] = CharCodes_1.default.j;
                   buffer[offset++] = CharCodes_1.default.Newline;
                   buffer[offset++] = CharCodes_1.default.Newline;
-                  n = object10 instanceof PDFObjectStream_1.default ? object10.getObjectsCount() : 1;
+                  n = object11 instanceof PDFObjectStream_1.default ? object11.getObjectsCount() : 1;
                   if (!this.shouldWaitForTick(n)) return [3, 4];
                   return [4, utils_1.waitForTick()];
                 case 3:
@@ -44934,9 +44934,9 @@ var require_PDFWriter = __commonJS({
           });
         };
         PDFWriter2.prototype.computeIndirectObjectSize = function(_a) {
-          var ref = _a[0], object10 = _a[1];
+          var ref = _a[0], object11 = _a[1];
           var refSize = ref.sizeInBytes() + 3;
-          var objectSize = object10.sizeInBytes() + 9;
+          var objectSize = object11.sizeInBytes() + 9;
           return refSize + objectSize;
         };
         PDFWriter2.prototype.createTrailerDict = function() {
@@ -45259,7 +45259,7 @@ var require_PDFStreamWriter = __commonJS({
         }
         PDFStreamWriter2.prototype.computeBufferSize = function() {
           return tslib_1.__awaiter(this, void 0, void 0, function() {
-            var objectNumber, header2, size, xrefStream, uncompressedObjects, compressedObjects, objectStreamRefs, indirectObjects, idx, len, indirectObject, ref, object10, shouldNotCompress, chunk, objectStreamRef, idx, len, chunk, ref, objectStream, xrefStreamRef, xrefOffset, trailer;
+            var objectNumber, header2, size, xrefStream, uncompressedObjects, compressedObjects, objectStreamRefs, indirectObjects, idx, len, indirectObject, ref, object11, shouldNotCompress, chunk, objectStreamRef, idx, len, chunk, ref, objectStream, xrefStreamRef, xrefOffset, trailer;
             return tslib_1.__generator(this, function(_a) {
               switch (_a.label) {
                 case 0:
@@ -45276,8 +45276,8 @@ var require_PDFStreamWriter = __commonJS({
                 case 1:
                   if (!(idx < len)) return [3, 6];
                   indirectObject = indirectObjects[idx];
-                  ref = indirectObject[0], object10 = indirectObject[1];
-                  shouldNotCompress = ref === this.context.trailerInfo.Encrypt || object10 instanceof PDFStream_1.default || object10 instanceof PDFInvalidObject_1.default || ref.generationNumber !== 0;
+                  ref = indirectObject[0], object11 = indirectObject[1];
+                  shouldNotCompress = ref === this.context.trailerInfo.Encrypt || object11 instanceof PDFStream_1.default || object11 instanceof PDFInvalidObject_1.default || ref.generationNumber !== 0;
                   if (!shouldNotCompress) return [3, 4];
                   uncompressedObjects.push(indirectObject);
                   xrefStream.addUncompressedEntry(ref, size);
@@ -52078,7 +52078,7 @@ var require_PDFObjectStreamParser = __commonJS({
         }
         PDFObjectStreamParser2.prototype.parseIntoContext = function() {
           return tslib_1.__awaiter(this, void 0, void 0, function() {
-            var offsetsAndObjectNumbers, idx, len, _a, objectNumber, offset, object10, ref;
+            var offsetsAndObjectNumbers, idx, len, _a, objectNumber, offset, object11, ref;
             return tslib_1.__generator(this, function(_b) {
               switch (_b.label) {
                 case 0:
@@ -52093,9 +52093,9 @@ var require_PDFObjectStreamParser = __commonJS({
                   if (!(idx < len)) return [3, 4];
                   _a = offsetsAndObjectNumbers[idx], objectNumber = _a.objectNumber, offset = _a.offset;
                   this.bytes.moveTo(this.firstOffset + offset);
-                  object10 = this.parseObject();
+                  object11 = this.parseObject();
                   ref = PDFRef_1.default.of(objectNumber, 0);
-                  this.context.assign(ref, object10);
+                  this.context.assign(ref, object11);
                   if (!this.shouldWaitForTick()) return [3, 3];
                   return [4, utils_1.waitForTick()];
                 case 2:
@@ -52319,8 +52319,8 @@ var require_PDFParser = __commonJS({
           if (!isValidCatalog(catalog)) {
             var indirectObjects = this.context.enumerateIndirectObjects();
             for (var idx = 0, len = indirectObjects.length; idx < len; idx++) {
-              var _a = indirectObjects[idx], ref = _a[0], object10 = _a[1];
-              if (isValidCatalog(object10)) {
+              var _a = indirectObjects[idx], ref = _a[0], object11 = _a[1];
+              if (isValidCatalog(object11)) {
                 this.context.trailerInfo.Root = ref;
               }
             }
@@ -52363,25 +52363,25 @@ var require_PDFParser = __commonJS({
         };
         PDFParser2.prototype.parseIndirectObject = function() {
           return tslib_1.__awaiter(this, void 0, void 0, function() {
-            var ref, object10;
+            var ref, object11;
             return tslib_1.__generator(this, function(_a) {
               switch (_a.label) {
                 case 0:
                   ref = this.parseIndirectObjectHeader();
                   this.skipWhitespaceAndComments();
-                  object10 = this.parseObject();
+                  object11 = this.parseObject();
                   this.skipWhitespaceAndComments();
                   this.matchKeyword(Keywords_1.Keywords.endobj);
-                  if (!(object10 instanceof PDFRawStream_1.default && object10.dict.lookup(PDFName_1.default.of("Type")) === PDFName_1.default.of("ObjStm"))) return [3, 2];
-                  return [4, PDFObjectStreamParser_1.default.forStream(object10, this.shouldWaitForTick).parseIntoContext()];
+                  if (!(object11 instanceof PDFRawStream_1.default && object11.dict.lookup(PDFName_1.default.of("Type")) === PDFName_1.default.of("ObjStm"))) return [3, 2];
+                  return [4, PDFObjectStreamParser_1.default.forStream(object11, this.shouldWaitForTick).parseIntoContext()];
                 case 1:
                   _a.sent();
                   return [3, 3];
                 case 2:
-                  if (object10 instanceof PDFRawStream_1.default && object10.dict.lookup(PDFName_1.default.of("Type")) === PDFName_1.default.of("XRef")) {
-                    PDFXRefStreamParser_1.default.forStream(object10).parseIntoContext();
+                  if (object11 instanceof PDFRawStream_1.default && object11.dict.lookup(PDFName_1.default.of("Type")) === PDFName_1.default.of("XRef")) {
+                    PDFXRefStreamParser_1.default.forStream(object11).parseIntoContext();
                   } else {
-                    this.context.assign(ref, object10);
+                    this.context.assign(ref, object11);
                   }
                   _a.label = 3;
                 case 3:
@@ -52412,8 +52412,8 @@ var require_PDFParser = __commonJS({
           if (failed)
             throw new errors_1.PDFInvalidObjectParsingError(startPos);
           var end = this.bytes.offset() - Keywords_1.Keywords.endobj.length;
-          var object10 = PDFInvalidObject_1.default.of(this.bytes.slice(start, end));
-          this.context.assign(ref, object10);
+          var object11 = PDFInvalidObject_1.default.of(this.bytes.slice(start, end));
+          this.context.assign(ref, object11);
           return ref;
         };
         PDFParser2.prototype.parseIndirectObjects = function() {
@@ -58711,7 +58711,8 @@ var roma_synthetic_default = {
   demo: {
     name: "Roma autumn matchdays",
     generated: true,
-    description: "Simulated club, players and matchdays for testing. No real people, photographs or contact details."
+    description: "Simulated club, players and matchdays for testing. No real people, photographs or contact details.",
+    referenceDate: "2026-10-22"
   },
   club: {
     id: "synthetic-richmond-rovers",
@@ -58758,7 +58759,20 @@ var roma_synthetic_default = {
       venue: "Rovers Sports Ground \xB7 Pitch 2",
       homeAway: "home",
       status: "scheduled",
-      selectedCount: 9
+      selectedCount: 9,
+      selectedPlayerIds: [
+        "synthetic-player-01",
+        "synthetic-player-02",
+        "synthetic-player-03",
+        "synthetic-player-04",
+        "synthetic-player-05",
+        "synthetic-player-06",
+        "synthetic-player-07",
+        "synthetic-player-08",
+        "synthetic-player-09"
+      ],
+      demoPhase: "scheduled",
+      fixtureClass: "development"
     },
     {
       id: "synthetic-roma-oak-2026-10-31",
@@ -58769,51 +58783,20 @@ var roma_synthetic_default = {
       venue: "Oak Meadow \xB7 Junior pitch",
       homeAway: "away",
       status: "scheduled",
-      selectedCount: 10
-    },
-    {
-      id: "synthetic-roma-hill-2026-11-07",
-      opponent: "Hill FC",
-      playedDate: "2026-11-07",
-      kickoff: "09:30",
-      arrival: "09:00",
-      venue: "Rovers Sports Ground \xB7 Pitch 2",
-      homeAway: "home",
-      status: "scheduled",
-      selectedCount: 9
-    },
-    {
-      id: "synthetic-roma-willow-2026-11-14",
-      opponent: "Willow FC",
-      playedDate: "2026-11-14",
-      kickoff: "11:00",
-      arrival: "10:30",
-      venue: "Willow Playing Fields \xB7 Pitch 2",
-      homeAway: "away",
-      status: "scheduled",
-      selectedCount: 9
-    },
-    {
-      id: "synthetic-roma-cedar-2026-11-21",
-      opponent: "Cedar Athletic",
-      playedDate: "2026-11-21",
-      kickoff: "10:00",
-      arrival: "09:30",
-      venue: "Rovers Sports Ground \xB7 Pitch 2",
-      homeAway: "home",
-      status: "postponed",
-      selectedCount: 0
-    },
-    {
-      id: "synthetic-history-maple",
-      opponent: "Maple FC",
-      playedDate: "2026-10-03",
-      kickoff: "10:00",
-      arrival: "09:30",
-      venue: "Rovers Sports Ground \xB7 Pitch 2",
-      homeAway: "home",
-      status: "scheduled",
-      selectedCount: 9
+      selectedCount: 9,
+      selectedPlayerIds: [
+        "synthetic-player-01",
+        "synthetic-player-02",
+        "synthetic-player-03",
+        "synthetic-player-04",
+        "synthetic-player-05",
+        "synthetic-player-06",
+        "synthetic-player-07",
+        "synthetic-player-08",
+        "synthetic-player-09"
+      ],
+      demoPhase: "scheduled",
+      fixtureClass: "development"
     },
     {
       id: "synthetic-history-oak",
@@ -58824,7 +58807,31 @@ var roma_synthetic_default = {
       venue: "Oak Meadow \xB7 Junior pitch",
       homeAway: "away",
       status: "scheduled",
-      selectedCount: 9
+      selectedCount: 9,
+      selectedPlayerIds: [
+        "synthetic-player-01",
+        "synthetic-player-02",
+        "synthetic-player-03",
+        "synthetic-player-04",
+        "synthetic-player-05",
+        "synthetic-player-06",
+        "synthetic-player-07",
+        "synthetic-player-08",
+        "synthetic-player-09"
+      ],
+      demoPhase: "completed",
+      fixtureClass: "friendly",
+      result: {
+        halfTime: {
+          for: 1,
+          against: 1
+        },
+        final: {
+          for: 2,
+          against: 2
+        },
+        halfMinutes: 25
+      }
     },
     {
       id: "synthetic-history-hill",
@@ -58835,7 +58842,31 @@ var roma_synthetic_default = {
       venue: "Rovers Sports Ground \xB7 Pitch 2",
       homeAway: "home",
       status: "scheduled",
-      selectedCount: 8
+      selectedCount: 9,
+      selectedPlayerIds: [
+        "synthetic-player-01",
+        "synthetic-player-02",
+        "synthetic-player-03",
+        "synthetic-player-04",
+        "synthetic-player-05",
+        "synthetic-player-10",
+        "synthetic-player-11",
+        "synthetic-player-12",
+        "synthetic-player-13"
+      ],
+      demoPhase: "completed",
+      fixtureClass: "development",
+      result: {
+        halfTime: {
+          for: 1,
+          against: 1
+        },
+        final: {
+          for: 3,
+          against: 1
+        },
+        halfMinutes: 25
+      }
     }
   ],
   training: [
@@ -58894,79 +58925,257 @@ var roma_synthetic_default = {
       playerId: "synthetic-player-01",
       initials: "OB",
       shirtNumber: 1,
-      foot: "right"
+      foot: "right",
+      preferences: [
+        "GK",
+        "CM",
+        "CB"
+      ],
+      eligiblePositions: [
+        "GK",
+        "CB",
+        "ST"
+      ]
     },
     {
       playerId: "synthetic-player-02",
       initials: "NP",
       shirtNumber: 2,
-      foot: "right"
+      foot: "right",
+      preferences: [
+        "CB",
+        "CM",
+        "ST"
+      ],
+      eligiblePositions: [
+        "CB",
+        "LB",
+        "RB",
+        "CM",
+        "LW",
+        "RW",
+        "ST"
+      ]
     },
     {
       playerId: "synthetic-player-03",
       initials: "LM",
       shirtNumber: 3,
-      foot: "left"
+      foot: "left",
+      preferences: [
+        "CB",
+        "CM",
+        "ST"
+      ],
+      eligiblePositions: [
+        "CB",
+        "LB",
+        "RB",
+        "CM",
+        "LW",
+        "RW",
+        "ST"
+      ]
     },
     {
       playerId: "synthetic-player-04",
       initials: "TC",
       shirtNumber: 4,
-      foot: "both"
+      foot: "both",
+      preferences: [
+        "CM",
+        "CB",
+        "ST"
+      ],
+      eligiblePositions: [
+        "CB",
+        "LB",
+        "RB",
+        "CM",
+        "LW",
+        "RW",
+        "ST"
+      ]
     },
     {
       playerId: "synthetic-player-05",
       initials: "OE",
       shirtNumber: 5,
-      foot: "left"
+      foot: "left",
+      preferences: [
+        "LW",
+        "CM",
+        "CB"
+      ],
+      eligiblePositions: [
+        "CB",
+        "LB",
+        "RB",
+        "CM",
+        "LW",
+        "RW",
+        "ST"
+      ]
     },
     {
       playerId: "synthetic-player-06",
       initials: "EB",
       shirtNumber: 6,
-      foot: "right"
+      foot: "right",
+      preferences: [
+        "RW",
+        "CM",
+        "CB"
+      ],
+      eligiblePositions: [
+        "CB",
+        "LB",
+        "RB",
+        "CM",
+        "LW",
+        "RW",
+        "ST"
+      ]
     },
     {
       playerId: "synthetic-player-07",
       initials: "JT",
       shirtNumber: 7,
-      foot: "right"
+      foot: "right",
+      preferences: [
+        "ST",
+        "CM",
+        "CB"
+      ],
+      eligiblePositions: [
+        "CB",
+        "LB",
+        "RB",
+        "CM",
+        "LW",
+        "RW",
+        "ST"
+      ]
     },
     {
       playerId: "synthetic-player-08",
       initials: "FL",
       shirtNumber: 8,
-      foot: "left"
+      foot: "left",
+      preferences: [
+        "LW",
+        "CM",
+        "CB"
+      ],
+      eligiblePositions: [
+        "CB",
+        "LB",
+        "RB",
+        "CM",
+        "LW",
+        "RW",
+        "ST"
+      ]
     },
     {
       playerId: "synthetic-player-09",
       initials: "AJ",
       shirtNumber: 9,
-      foot: "right"
+      foot: "right",
+      preferences: [
+        "RW",
+        "CM",
+        "CB"
+      ],
+      eligiblePositions: [
+        "CB",
+        "LB",
+        "RB",
+        "CM",
+        "LW",
+        "RW",
+        "ST"
+      ]
     },
     {
       playerId: "synthetic-player-10",
       initials: "LW",
       shirtNumber: 10,
-      foot: "both"
+      foot: "both",
+      preferences: [
+        "CM",
+        "CB",
+        "ST"
+      ],
+      eligiblePositions: [
+        "CB",
+        "LB",
+        "RB",
+        "CM",
+        "LW",
+        "RW",
+        "ST"
+      ]
     },
     {
       playerId: "synthetic-player-11",
       initials: "MK",
       shirtNumber: 11,
-      foot: "right"
+      foot: "right",
+      preferences: [
+        "CB",
+        "CM",
+        "ST"
+      ],
+      eligiblePositions: [
+        "CB",
+        "LB",
+        "RB",
+        "CM",
+        "LW",
+        "RW",
+        "ST"
+      ]
     },
     {
       playerId: "synthetic-player-12",
       initials: "AG",
       shirtNumber: 12,
-      foot: "left"
+      foot: "left",
+      preferences: [
+        "ST",
+        "CM",
+        "CB"
+      ],
+      eligiblePositions: [
+        "CB",
+        "LB",
+        "RB",
+        "CM",
+        "LW",
+        "RW",
+        "ST"
+      ]
     },
     {
       playerId: "synthetic-player-13",
       initials: "GT",
       shirtNumber: 13,
-      foot: "right"
+      foot: "right",
+      preferences: [
+        "CM",
+        "CB",
+        "ST"
+      ],
+      eligiblePositions: [
+        "CB",
+        "LB",
+        "RB",
+        "CM",
+        "LW",
+        "RW",
+        "ST"
+      ]
     }
   ]
 };
@@ -61036,31 +61245,12 @@ function trainingAttendanceEvidence(state) {
     )
   }));
 }
-function createPreparationState() {
+function createPreparationState(options2 = {}) {
   const seasonId = "synthetic-season-2026-27";
   const profiles = Array.from({ length: 13 }, (_, index) => {
     const number = String(index + 1).padStart(2, "0");
     const details = romaFixture.profiles.find((profile) => profile.playerId === `synthetic-player-${number}`);
-    const preferred = index === 0 ? "GK" : [
-      "CB",
-      "CB",
-      "CM",
-      "LW",
-      "RW",
-      "ST",
-      "LW",
-      "RW",
-      "CM",
-      "CB",
-      "ST",
-      "CM"
-    ][index - 1];
-    const preferences = [
-      preferred,
-      ...["CM", "CB", "ST", "LW"].filter(
-        (position) => position !== preferred
-      )
-    ].slice(0, 3);
+    const preferences = [...details.preferences];
     return {
       id: `synthetic-player-${number}:${seasonId}`,
       playerId: `synthetic-player-${number}`,
@@ -61070,13 +61260,13 @@ function createPreparationState() {
       shirtNumber: details.shirtNumber,
       foot: details.foot,
       preferences,
-      eligiblePositions: index === 0 ? ["GK", "CB", "ST"] : ["CB", "LB", "RB", "CM", "LW", "RW", "ST"],
+      eligiblePositions: [...details.eligiblePositions],
       active: true
     };
   });
   const fixtures = romaFixture.fixtures.map((item, index) => {
-    const selected = profiles.slice(0, item.selectedCount);
-    const past = item.playedDate < "2026-10-21";
+    const selected = options2.demoScenario ? item.selectedPlayerIds.map((playerId) => profiles.find((profile) => profile.playerId === playerId)) : profiles.slice(0, item.selectedCount);
+    const past = item.playedDate < romaFixture.demo.referenceDate;
     return {
       id: item.id,
       seasonId,
@@ -61092,7 +61282,7 @@ function createPreparationState() {
       selectedProfileIds: selected.map((profile) => profile.id),
       responses: Object.fromEntries(profiles.flatMap((profile, playerIndex) => {
         if (index === 0) return playerIndex < 9 ? [[profile.id, "available"]] : [];
-        if (past) return [[profile.id, playerIndex < item.selectedCount ? "available" : "unavailable"]];
+        if (past) return [[profile.id, selected.some((item2) => item2.id === profile.id) ? "available" : "unavailable"]];
         return playerIndex < 6 ? [[profile.id, "available"]] : playerIndex === 6 ? [[profile.id, "unsure"]] : playerIndex === 10 ? [[profile.id, "unavailable"]] : [];
       })),
       attendance: past ? Object.fromEntries(selected.map((profile) => [profile.id, "present"])) : {},
@@ -61917,6 +62107,79 @@ CREATE TRIGGER team_privilege_decision_immutable_update BEFORE UPDATE ON team_pr
 CREATE TRIGGER team_privilege_decision_immutable_delete BEFORE DELETE ON team_privilege_decisions BEGIN SELECT RAISE(ABORT,'Immutable team privilege decision'); END;
 `;
 
+// packages/application/src/demo-season.ts
+function createDemoCompletedMatches() {
+  return romaFixture.fixtures.filter((fixture) => fixture.demoPhase === "completed").map((fixture) => {
+    const selected = [...fixture.selectedPlayerIds];
+    const profiles = selected.map((playerId) => romaFixture.profiles.find((profile) => profile.playerId === playerId));
+    const kickoff = Date.parse(`${fixture.playedDate}T${fixture.kickoff}:00+01:00`);
+    const positions = ["GK", "CB", "CB", "CM", "LW", "RW", "ST"];
+    const config = {
+      matchId: fixture.id,
+      players: romaFixture.players.map((player) => ({
+        id: player.id,
+        displayName: player.displayName,
+        goalkeeperChoice: player.goalkeeperChoice,
+        positionPreferences: [...romaFixture.profiles.find((profile) => profile.playerId === player.id).preferences]
+      })),
+      selectedPlayerIds: selected,
+      pitchPlaces: 7,
+      plannedHalfDurationMs: 15e5,
+      fixedKeeperId: selected[0],
+      fixture: {
+        opponent: fixture.opponent,
+        playedDate: fixture.playedDate,
+        kickoff: fixture.kickoff,
+        homeAway: fixture.homeAway,
+        teamId: romaFixture.teamId,
+        seasonId: "synthetic-season-2026-27",
+        teamName: "Roma",
+        clubName: romaFixture.club.name
+      },
+      slots: positions.map((position, index) => ({ slotId: `demo-slot-${index}`, position })),
+      profileSnapshot: profiles.map((profile) => ({
+        playerId: profile.playerId,
+        initials: profile.initials,
+        preferences: [...profile.preferences],
+        eligiblePositions: [...profile.eligiblePositions]
+      }))
+    };
+    let state = createMatch(config), sequence = 0;
+    const send = (command, milliseconds) => {
+      state = reduceMatch(state, {
+        ...command,
+        id: `${fixture.id}-demo-${++sequence}`,
+        actorId: "synthetic-account-manager",
+        sample: { monotonicMs: milliseconds, sessionId: `demo-history-${fixture.id}`, wallTimeMs: kickoff + milliseconds }
+      });
+    };
+    const quarterLineup = (quarter) => {
+      const omitted = [[7, 8], [5, 6], [3, 4], [1, 2]][quarter];
+      const playing = selected.filter((_, index) => !omitted.includes(index));
+      return playing.map((playerId, index) => ({ playerId, position: positions[index], slotId: `demo-slot-${index}` }));
+    };
+    for (const playerId of selected) send({ type: "attendance.recorded", playerId, status: "present" }, 0);
+    send({ type: "lineup.staged", lineup: quarterLineup(0) }, 0);
+    send({ type: "half.started" }, 0);
+    send({ type: "goal.recorded", beneficiary: "us", scorerPlayerId: selected[1], goalType: "open_play" }, 8 * 6e4);
+    send({ type: "lineup.committed", sourceRevision: state.revision, lineup: quarterLineup(1) }, 75e4);
+    send({ type: "goal.recorded", beneficiary: "opposition", scorerPlayerId: null, goalType: "open_play" }, 18 * 6e4);
+    send({ type: "half.ended" }, 15e5);
+    send({ type: "lineup.staged", lineup: quarterLineup(2) }, 18e5);
+    send({ type: "half.started" }, 18e5);
+    send({ type: "goal.recorded", beneficiary: "us", scorerPlayerId: selected[7], goalType: "open_play" }, 222e4);
+    send({ type: "lineup.committed", sourceRevision: state.revision, lineup: quarterLineup(3) }, 255e4);
+    send({
+      type: "goal.recorded",
+      beneficiary: fixture.id === "synthetic-history-oak" ? "opposition" : "us",
+      scorerPlayerId: fixture.id === "synthetic-history-oak" ? null : selected[8],
+      goalType: "open_play"
+    }, 294e4);
+    send({ type: "half.ended" }, 33e5);
+    return state;
+  });
+}
+
 // packages/application/src/invitation-credentials.ts
 var INVITATION_CREDENTIAL_DOMAIN = "longball.spectator-invitation.v1\0";
 function isCanonicalInvitationToken(token) {
@@ -62581,6 +62844,25 @@ function applyVerifiedInvitationCommand(state, actor, command, nowMs) {
   });
   return next;
 }
+function finalizeDueCommunityAwards(state, nowMs) {
+  requireRule(validTime3(nowMs), "invalid", "A valid worker receipt time is required.");
+  const due = state.matches.filter((match) => match.finishQuality === "trusted" && match.actualFullTimeAtMs !== null && match.voteCutoffAtMs !== null && match.cutoffSource !== "unresolved" && nowMs >= match.voteCutoffAtMs && !state.awards.some((award) => award.matchId === match.id));
+  if (due.length === 0) return state;
+  const next = JSON.parse(JSON.stringify(state));
+  for (const source2 of due) {
+    const match = next.matches.find((item) => item.id === source2.id);
+    sealAward(next, match, nowMs);
+    next.audit.push({
+      id: `worker:award-finalise:${match.id}:${match.voteCutoffAtMs}`,
+      actorAccountId: null,
+      action: "award.finalised",
+      atMs: nowMs,
+      origin: "award_worker"
+    });
+  }
+  next.revision += 1;
+  return next;
+}
 function authorizeCommunityMedia(state, actor, photoId, nowMs, mode = "gallery", requestedRevision) {
   if (!communityCanAccess(state, actor, nowMs)) return { allowed: false, reason: "Access unavailable or expired" };
   const photo = state.photos.find((item) => item.id === photoId && item.teamId === actor.teamId && item.seasonId === actor.seasonId);
@@ -62681,7 +62963,7 @@ function getCommunityView(state, actor, nowMs) {
     privacyRequests: state.privacyRequests.filter((item) => item.accountId === actor.accountId).map((item) => ({ ...item }))
   };
 }
-function createCommunityState(nowMs = Date.now()) {
+function createCommunityState(nowMs = Date.now(), options2 = {}) {
   const teamId = "synthetic-roma-u10";
   const seasonId = "synthetic-season-2026-27";
   const playerIds = Array.from({ length: 13 }, (_, index) => `synthetic-player-${String(index + 1).padStart(2, "0")}`);
@@ -62713,7 +62995,7 @@ function createCommunityState(nowMs = Date.now()) {
     sharing: "fictional_review_only",
     policyVersion: 1
   };
-  const state = {
+  let state = {
     schemaVersion: 1,
     synthetic: true,
     revision: 0,
@@ -62786,12 +63068,54 @@ function createCommunityState(nowMs = Date.now()) {
       processing: "synthetic_derivative_ready"
     }]
   });
+  if (options2.demoScenario) {
+    state.matches = createDemoCompletedMatches().map((completed) => ({
+      id: completed.config.matchId,
+      teamId,
+      seasonId,
+      label: `Roma ${completed.config.fixture.homeAway === "home" ? "v" : "at"} ${completed.config.fixture.opponent}`,
+      playedAtMs: Date.parse(`${completed.config.fixture.playedDate}T${completed.config.fixture.kickoff}:00+01:00`),
+      selectedPlayerIds: [...completed.config.selectedPlayerIds],
+      presentPlayerIds: [...completed.config.selectedPlayerIds],
+      playedPlayerIds: [...completed.config.selectedPlayerIds],
+      actualFullTimeAtMs: completed.completedAtMs,
+      // Explicitly generated timing evidence for this isolated demo only.
+      finishQuality: "trusted",
+      voteCutoffAtMs: completed.completedAtMs + 45 * 6e4,
+      cutoffSource: "explicit_fictional_setting",
+      finalisationDeadlineAtMs: completed.completedAtMs + 60 * 6e4,
+      sharing: "fictional_review_only",
+      policyVersion: 1
+    })).sort((left, right) => right.playedAtMs - left.playedAtMs);
+    const latest = state.matches[0];
+    state.photos = state.photos.map((photo) => ({
+      ...photo,
+      matchId: latest.id,
+      revisions: photo.revisions.map((revision) => ({
+        ...revision,
+        createdAtMs: latest.actualFullTimeAtMs + 5 * 6e4,
+        reviewedAtMs: revision.reviewedAtMs === null ? null : latest.actualFullTimeAtMs + 10 * 6e4
+      }))
+    }));
+    for (const completed of [...state.matches].sort((left, right) => left.playedAtMs - right.playedAtMs)) {
+      for (const playerId of completed.selectedPlayerIds) {
+        const suffix = playerId.slice(-2), candidatePlayerId = playerId === completed.selectedPlayerIds[1] ? completed.selectedPlayerIds[2] : completed.selectedPlayerIds[1];
+        state = applyCommunityCommand(
+          state,
+          { role: "player", accountId: `synthetic-account-player-${suffix}`, playerId, teamId, seasonId },
+          { id: `${completed.id}-demo-vote-${suffix}`, type: "ballot.cast", matchId: completed.id, candidatePlayerId },
+          completed.actualFullTimeAtMs + 10 * 6e4
+        );
+      }
+      state = finalizeDueCommunityAwards(state, completed.voteCutoffAtMs + 6e4);
+    }
+  }
   return state;
 }
 function communityObjectShape(value, fields8) {
   if (value === null || typeof value !== "object" || Array.isArray(value)) return false;
-  const object10 = value;
-  return Object.keys(object10).every((key) => Object.hasOwn(fields8, key)) && Object.entries(fields8).every(([key, rule]) => Object.hasOwn(object10, key) ? rule.accepts(object10[key]) : Boolean(rule.optional));
+  const object11 = value;
+  return Object.keys(object11).every((key) => Object.hasOwn(fields8, key)) && Object.entries(fields8).every(([key, rule]) => Object.hasOwn(object11, key) ? rule.accepts(object11[key]) : Boolean(rule.optional));
 }
 var communityText = (maximum, nonempty = true) => ({ accepts: (value) => typeof value === "string" && value.length <= maximum && (!nonempty || value.trim().length > 0) });
 var communityInteger = (minimum = 0) => ({ accepts: (value) => typeof value === "number" && Number.isSafeInteger(value) && value >= minimum });
@@ -62854,12 +63178,12 @@ var communityCommandFields = {
 };
 function parseCommunityCommand(input, options2 = {}) {
   requireRule(input !== null && typeof input === "object" && !Array.isArray(input), "invalid", "Invalid community command.");
-  const object10 = input;
-  requireRule(typeof object10.type === "string" && Object.hasOwn(communityCommandFields, object10.type), "invalid", "Invalid community command.");
-  requireRule(object10.type !== "match.registered" || options2.allowServiceOwnedCommands === true, "forbidden", "Match publication and finish evidence must be assigned by the service, not a public community command.");
-  const fields8 = communityCommandFields[object10.type];
+  const object11 = input;
+  requireRule(typeof object11.type === "string" && Object.hasOwn(communityCommandFields, object11.type), "invalid", "Invalid community command.");
+  requireRule(object11.type !== "match.registered" || options2.allowServiceOwnedCommands === true, "forbidden", "Match publication and finish evidence must be assigned by the service, not a public community command.");
+  const fields8 = communityCommandFields[object11.type];
   requireRule(
-    communityObjectShape(input, { id: communityId, type: communityEnum(object10.type), expectedRevision: communityOptional(communityInteger()), ...fields8 }),
+    communityObjectShape(input, { id: communityId, type: communityEnum(object11.type), expectedRevision: communityOptional(communityInteger()), ...fields8 }),
     "invalid",
     "Invalid community command fields."
   );
@@ -62973,6 +63297,17 @@ function createRecordsSeed(options2 = {}) {
     goals: index === 0 ? [{ id: "synthetic-history-known-goal", beneficiary: "us", isOwnGoal: false, scorerPlayerId: romaFixture.players[1].id, goalType: null, half: null, halfElapsedMs: null }] : []
   }, "2026-10-20T12:00:00Z"));
   if (options2.demoSharing) {
+    state.results = createDemoCompletedMatches().map((match) => {
+      const fixture = romaFixture.fixtures.find((item) => item.id === match.config.matchId);
+      const record2 = snapshotLiveMatch({ ...state, results: [], liveMatch: {
+        matchId: fixture.id,
+        playedDate: fixture.playedDate,
+        opponent: fixture.opponent,
+        homeAway: fixture.homeAway,
+        fixtureClass: fixture.fixtureClass
+      } }, match, new Date(match.completedAtMs).toISOString());
+      return { ...record2, recordedKickoff: `${fixture.playedDate}T${fixture.kickoff}:00+01:00` };
+    });
     state.initialLivePublication = { matchId: state.liveMatch.matchId, fixtureClass: state.liveMatch.fixtureClass, publication: {
       id: "demo-simulated-scores-v1",
       version: 1,
@@ -64940,9 +65275,18 @@ var DevelopmentStore = class {
       membership("synthetic-account-other-manager", "manager", null, "synthetic-other-team");
       const config = { matchId: SYNTHETIC_IDS.matchId, players: romaFixture.players, selectedPlayerIds: romaFixture.players.filter((player) => player.available).map((player) => player.id), pitchPlaces: 7, plannedHalfDurationMs: 15e5, fixedKeeperId: romaFixture.players[0].id, fixture: { opponent: "Maple FC", playedDate: "2026-10-24", kickoff: "10:00", homeAway: "home", teamId: SYNTHETIC_IDS.teamId, seasonId: SYNTHETIC_IDS.seasonId, teamName: "Roma", clubName: "Richmond Rovers" } };
       this.insertMatch(config, SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId);
-      const community = createCommunityState(this.now());
+      const preparation = createPreparationState({ demoScenario: options2.demoSharing });
+      const community = createCommunityState(this.now(), { demoScenario: options2.demoSharing });
       if (options2.demoSharing) this.database.prepare("UPDATE matches SET sharing_policy_json=? WHERE id=?").run(JSON.stringify({ version: "demo-simulated-scores-v1", approvedBy: "generated-demo-scenario-only", approvedAt: this.now(), shareScores: true, shareDerivedResults: true }), SYNTHETIC_IDS.matchId);
       if (options2.demoSharing) {
+        for (const fixture of preparation.fixtures.filter((item) => item.playedDate >= romaFixture.demo.referenceDate && item.id !== SYNTHETIC_IDS.matchId)) {
+          this.insertMatch(fixtureMatchConfig(preparation, prepareFixtureSnapshot(preparation, fixture.id)), SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId);
+        }
+        for (const completed of createDemoCompletedMatches()) {
+          this.insertMatch(completed.config, SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId);
+          this.database.prepare("UPDATE matches SET state_json=?,last_sync_at=? WHERE id=?").run(JSON.stringify(completed), completed.completedAtMs, completed.config.matchId);
+        }
+        this.database.prepare("UPDATE matches SET sharing_policy_json=? WHERE team_id=? AND season_id=?").run(JSON.stringify({ version: "demo-simulated-scores-v1", approvedBy: "generated-demo-scenario-only", approvedAt: this.now(), shareScores: true, shareDerivedResults: true }), SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId);
         community.photos = [];
         community.matches = community.matches.map((match) => ({ ...match, voteCutoffAtMs: match.actualFullTimeAtMs + 45 * 6e4, cutoffSource: "explicit_fictional_setting" }));
       }
@@ -64952,7 +65296,7 @@ var DevelopmentStore = class {
         community.accounts.push({ id: id9, label: demoAccountLabels[id9], classification: "adult_individual", adultVerified: true });
         community.memberships.push({ accountId: id9, teamId: SYNTHETIC_IDS.teamId, seasonId: SYNTHETIC_IDS.seasonId, role: "manager", active: true });
       }
-      this.saveDocument(SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId, "preparation", createPreparationState());
+      this.saveDocument(SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId, "preparation", preparation);
       this.saveDocument(SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId, "community", community);
       this.saveDocument(SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId, "records", createRecordsSeed(options2));
       if (options2.demoSharing) for (const match of community.matches) {
@@ -66030,9 +66374,18 @@ var PostgresStore = class _PostgresStore {
       await membership("synthetic-account-other-manager", "manager", null, "synthetic-other-team");
       const config = { matchId: SYNTHETIC_IDS2.matchId, players: romaFixture.players, selectedPlayerIds: romaFixture.players.filter((player) => player.available).map((player) => player.id), pitchPlaces: 7, plannedHalfDurationMs: 15e5, fixedKeeperId: romaFixture.players[0].id, fixture: { opponent: "Maple FC", playedDate: "2026-10-24", kickoff: "10:00", homeAway: "home", teamId: SYNTHETIC_IDS2.teamId, seasonId: SYNTHETIC_IDS2.seasonId, teamName: "Roma", clubName: "Richmond Rovers" } };
       await this.insertMatch(config, SYNTHETIC_IDS2.teamId, SYNTHETIC_IDS2.seasonId);
-      const community = createCommunityState(this.now());
+      const preparation = createPreparationState({ demoScenario: options2.demoSharing });
+      const community = createCommunityState(this.now(), { demoScenario: options2.demoSharing });
       if (options2.demoSharing) await this.execute("UPDATE matches SET sharing_policy_json=$1 WHERE id=$2", [JSON.stringify({ version: "demo-simulated-scores-v1", approvedBy: "generated-demo-scenario-only", approvedAt: this.now(), shareScores: true, shareDerivedResults: true }), SYNTHETIC_IDS2.matchId]);
       if (options2.demoSharing) {
+        for (const fixture of preparation.fixtures.filter((item) => item.playedDate >= romaFixture.demo.referenceDate && item.id !== SYNTHETIC_IDS2.matchId)) {
+          await this.insertMatch(fixtureMatchConfig(preparation, prepareFixtureSnapshot(preparation, fixture.id)), SYNTHETIC_IDS2.teamId, SYNTHETIC_IDS2.seasonId);
+        }
+        for (const completed of createDemoCompletedMatches()) {
+          await this.insertMatch(completed.config, SYNTHETIC_IDS2.teamId, SYNTHETIC_IDS2.seasonId);
+          await this.execute("UPDATE matches SET state_json=$1,last_sync_at=$2 WHERE id=$3", [JSON.stringify(completed), completed.completedAtMs, completed.config.matchId]);
+        }
+        await this.execute("UPDATE matches SET sharing_policy_json=$1 WHERE team_id=$2 AND season_id=$3", [JSON.stringify({ version: "demo-simulated-scores-v1", approvedBy: "generated-demo-scenario-only", approvedAt: this.now(), shareScores: true, shareDerivedResults: true }), SYNTHETIC_IDS2.teamId, SYNTHETIC_IDS2.seasonId]);
         community.photos = [];
         community.matches = community.matches.map((match) => ({ ...match, voteCutoffAtMs: match.actualFullTimeAtMs + 45 * 6e4, cutoffSource: "explicit_fictional_setting" }));
       }
@@ -66042,7 +66395,7 @@ var PostgresStore = class _PostgresStore {
         community.accounts.push({ id: id9, label: demoAccountLabels[id9], classification: "adult_individual", adultVerified: true });
         community.memberships.push({ accountId: id9, teamId: SYNTHETIC_IDS2.teamId, seasonId: SYNTHETIC_IDS2.seasonId, role: "manager", active: true });
       }
-      await this.saveDocument(SYNTHETIC_IDS2.teamId, SYNTHETIC_IDS2.seasonId, "preparation", createPreparationState());
+      await this.saveDocument(SYNTHETIC_IDS2.teamId, SYNTHETIC_IDS2.seasonId, "preparation", preparation);
       await this.saveDocument(SYNTHETIC_IDS2.teamId, SYNTHETIC_IDS2.seasonId, "community", community);
       await this.saveDocument(SYNTHETIC_IDS2.teamId, SYNTHETIC_IDS2.seasonId, "records", createRecordsSeed(options2));
       if (options2.demoSharing) for (const match of community.matches) {
@@ -67977,7 +68330,7 @@ function createFastifyTransport(options2) {
 }
 
 // apps/api/src/server.ts
-import { readFileSync as readFileSync4, realpathSync, statSync } from "node:fs";
+import { readFileSync as readFileSync5, realpathSync, statSync as statSync2 } from "node:fs";
 import { dirname as dirname2, extname, join as join3, sep as sep3 } from "node:path";
 
 // apps/api/src/oidc.ts
@@ -70368,6 +70721,109 @@ var PushRegistrationService = class {
   }
 };
 
+// apps/api/src/demo-sessions.ts
+import { createHash as createHash14, randomBytes as randomBytes10, scrypt, timingSafeEqual as timingSafeEqual3 } from "node:crypto";
+import { readFileSync as readFileSync4, statSync } from "node:fs";
+var DEMO_SCRYPT_OPTIONS = { N: 16384, r: 8, p: 1, maxmem: 32 * 1024 * 1024 };
+var ACCOUNT_ID = /^synthetic-account-(?:manager(?:-[2-5])?|admin|player-(?:0[1-9]|1[0-3])|spectator)$/;
+var USERNAME = /^[a-z0-9][a-z0-9._-]{2,63}$/;
+var CONFIG_ERROR = "Configure valid demo account verifiers. No account configuration was loaded.";
+var invalidSession = () => new AccessError("INVALID_SESSION", 401, "A valid authenticated session is required.");
+var invalidLogin = () => new AccessError("INVALID_DEMO_CREDENTIALS", 401, "The username or passcode was not recognised.");
+var sha2562 = (value) => createHash14("sha256").update(value).digest("hex");
+function object10(value) {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+function parseDemoAccountOptions(value) {
+  if (!object10(value) || value.version !== 1 || Object.keys(value).some((key) => !["version", "accounts", "sessionTtlSeconds"].includes(key)) || !Array.isArray(value.accounts) || value.accounts.length < 1 || value.accounts.length > 32 || value.sessionTtlSeconds !== void 0 && (!Number.isSafeInteger(value.sessionTtlSeconds) || Number(value.sessionTtlSeconds) < 600 || Number(value.sessionTtlSeconds) > 43200)) throw new Error(CONFIG_ERROR);
+  const names = /* @__PURE__ */ new Set();
+  const subjects = /* @__PURE__ */ new Set();
+  const accounts = value.accounts.map((account3) => {
+    if (!object10(account3) || Object.keys(account3).length !== 4 || Object.keys(account3).some((key) => !["username", "accountId", "salt", "hash"].includes(key)) || typeof account3.username !== "string" || !USERNAME.test(account3.username) || typeof account3.accountId !== "string" || !ACCOUNT_ID.test(account3.accountId) || typeof account3.salt !== "string" || !/^[A-Za-z0-9_-]{22,43}$/.test(account3.salt) || Buffer.from(account3.salt, "base64url").toString("base64url") !== account3.salt || Buffer.from(account3.salt, "base64url").length < 16 || Buffer.from(account3.salt, "base64url").length > 32 || typeof account3.hash !== "string" || !/^[a-f0-9]{64}$/.test(account3.hash) || names.has(account3.username) || subjects.has(account3.accountId)) throw new Error(CONFIG_ERROR);
+    names.add(account3.username);
+    subjects.add(account3.accountId);
+    return { username: account3.username, accountId: account3.accountId, salt: account3.salt, hash: account3.hash };
+  });
+  return { version: 1, accounts, ...value.sessionTtlSeconds !== void 0 ? { sessionTtlSeconds: Number(value.sessionTtlSeconds) } : {} };
+}
+function readDemoAccountOptions(environment) {
+  const path = environment.LONGBALL_DEMO_ACCOUNTS_FILE;
+  if (path === void 0) return void 0;
+  if (!path || environment.NODE_ENV === "production" || environment.LONGBALL_SYNTHETIC_AUTH !== "1" || environment.LONGBALL_DEMO_SCENARIO !== "1") throw new Error("Demo account login requires an explicitly isolated nonproduction demo.");
+  try {
+    const info = statSync(path);
+    if (!info.isFile() || info.size > 65536) throw new Error(CONFIG_ERROR);
+    return parseDemoAccountOptions(JSON.parse(readFileSync4(path, "utf8")));
+  } catch {
+    throw new Error(CONFIG_ERROR);
+  }
+}
+async function derive(passcode, salt) {
+  return new Promise((resolve4, reject) => scrypt(passcode, Buffer.from(salt, "base64url"), 32, DEMO_SCRYPT_OPTIONS, (error, result) => error ? reject(error) : resolve4(result)));
+}
+var DemoSessions = class {
+  constructor(options2, now = Date.now) {
+    this.now = now;
+    const parsed = parseDemoAccountOptions(options2);
+    this.accounts = parsed.accounts;
+    this.ttl = (parsed.sessionTtlSeconds ?? 21600) * 1e3;
+  }
+  now;
+  accounts;
+  ttl;
+  sessions = /* @__PURE__ */ new Map();
+  attempts = /* @__PURE__ */ new Map();
+  dummySalt = randomBytes10(16).toString("base64url");
+  dummyHash = randomBytes10(32);
+  inFlight = 0;
+  prune() {
+    const now = this.now();
+    for (const [key, session] of this.sessions) if (session.expiresAt <= now) this.sessions.delete(key);
+    for (const [key, attempt2] of this.attempts) if (now - attempt2.begins >= 6e4) this.attempts.delete(key);
+  }
+  async login(value, remoteAddress) {
+    this.prune();
+    const key = sha2562(remoteAddress);
+    const attempt2 = this.attempts.get(key) ?? { begins: this.now(), count: 0 };
+    attempt2.count += 1;
+    if (!this.attempts.has(key) && this.attempts.size >= 1e3 || attempt2.count > 20 || this.inFlight >= 4) throw new AccessError("RATE_LIMIT", 429, "Please retry after the current request window.");
+    this.attempts.set(key, attempt2);
+    if (!object10(value) || Object.keys(value).length !== 2 || Object.keys(value).some((field) => !["username", "passcode"].includes(field)) || typeof value.username !== "string" || value.username.length > 128 || typeof value.passcode !== "string" || value.passcode.length < 6 || value.passcode.length > 128) throw new AccessError("INVALID_REQUEST", 400, "Enter a username and a passcode using only the documented fields.");
+    const username4 = value.username.trim().toLowerCase();
+    const account3 = this.accounts.find((item) => item.username === username4);
+    this.inFlight += 1;
+    let actual;
+    try {
+      actual = await derive(value.passcode, account3?.salt ?? this.dummySalt);
+    } finally {
+      this.inFlight -= 1;
+    }
+    const verified = timingSafeEqual3(actual, account3 ? Buffer.from(account3.hash, "hex") : this.dummyHash);
+    actual.fill(0);
+    if (!account3 || !verified) throw invalidLogin();
+    this.prune();
+    if (this.sessions.size >= 1e3) throw new AccessError("DEMO_SESSION_LIMIT", 503, "The demo has reached its current session limit. Please try again later.");
+    const accessToken = `demo_${randomBytes10(32).toString("base64url")}`;
+    const issuedAt = this.now(), expiresAt = issuedAt + this.ttl;
+    this.sessions.set(sha2562(accessToken), { accountId: account3.accountId, issuedAt, expiresAt });
+    return { accessToken, expiresAt: new Date(expiresAt).toISOString(), accountId: account3.accountId, syntheticOnly: true };
+  }
+  identity(token) {
+    this.prune();
+    const session = /^demo_[A-Za-z0-9_-]{43}$/.test(token) ? this.sessions.get(sha2562(token)) : void 0;
+    if (!session) throw invalidSession();
+    return { issuer: "urn:longball:synthetic", subject: session.accountId, authenticatedAt: session.issuedAt, strongAuth: /^synthetic-account-(?:manager(?:-[2-5])?|admin)$/.test(session.accountId) };
+  }
+  revoke(token) {
+    this.identity(token);
+    this.sessions.delete(sha2562(token));
+  }
+  close() {
+    this.sessions.clear();
+    this.attempts.clear();
+  }
+};
+
 // apps/api/src/server.ts
 var header = (request, name) => {
   const value = request.headers[name];
@@ -70413,6 +70869,7 @@ function createBrandMedia(options2, store, repository) {
 }
 function assertDemoScenarioOptions(options2) {
   if (options2.demoScenario && (!options2.syntheticAuth || process.env.NODE_ENV === "production")) throw new Error("The demo scenario requires isolated synthetic authentication outside production.");
+  if (options2.demoAccounts && (!options2.demoScenario || !options2.syntheticAuth || process.env.NODE_ENV === "production")) throw new Error("Demo account login requires an explicitly isolated nonproduction demo.");
 }
 function createApi(options2) {
   assertDemoScenarioOptions(options2);
@@ -70439,6 +70896,8 @@ function createApi(options2) {
 }
 function createRuntimeApi(options2, source2, store, media, activation, serialize = (work) => work(), services = {}) {
   const now = options2.now ?? Date.now;
+  assertDemoScenarioOptions(options2);
+  const demoSessions = options2.demoAccounts ? new DemoSessions(options2.demoAccounts, now) : null;
   const privilegeService = () => {
     if (!services.privileges) throw new AccessError("TEAM_PRIVILEGES_UNAVAILABLE", 503, "Current team privileges are unavailable.");
     return services.privileges;
@@ -70485,7 +70944,7 @@ function createRuntimeApi(options2, source2, store, media, activation, serialize
       const url = new URL(request.url ?? "/", "http://localhost");
       const parts = url.pathname.split("/").filter(Boolean).map(decodeURIComponent);
       if (url.pathname === "/health") {
-        response(reply, 200, { status: "ok", service: "longball-api", contractVersion: EVENT_CONTRACT_VERSION, backend: source2 instanceof DevelopmentStore ? "fictional-sqlite" : "postgresql", syntheticOnly: Boolean(options2.syntheticAuth), demoScenario: options2.demoScenario === true }, requestId2);
+        response(reply, 200, { status: "ok", service: "longball-api", contractVersion: EVENT_CONTRACT_VERSION, backend: source2 instanceof DevelopmentStore ? "fictional-sqlite" : "postgresql", syntheticOnly: Boolean(options2.syntheticAuth), demoScenario: options2.demoScenario === true, ...demoSessions ? { demoAccountLogin: true } : {} }, requestId2);
         return;
       }
       if (staticRoot && parts[0] !== "v1" && ["GET", "HEAD"].includes(request.method ?? "")) {
@@ -70499,14 +70958,37 @@ function createRuntimeApi(options2, source2, store, media, activation, serialize
         } catch {
           throw new AccessError("NOT_FOUND", 404, "The requested object is unavailable.");
         }
-        if (!resolved.startsWith(`${staticRoot}${sep3}`) || !statSync(resolved).isFile() || !contentTypes[extname(resolved)])
+        if (!resolved.startsWith(`${staticRoot}${sep3}`) || !statSync2(resolved).isFile() || !contentTypes[extname(resolved)])
           throw new AccessError("NOT_FOUND", 404, "The requested object is unavailable.");
         reply.writeHead(200, { "Content-Type": contentTypes[extname(resolved)], "Cache-Control": extname(resolved) === ".html" ? "no-store" : "public, max-age=300", "X-Content-Type-Options": "nosniff", "Content-Security-Policy": `default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' ${connectPolicy}; object-src 'none'; base-uri 'none'; frame-ancestors 'none'`, "X-Request-Id": requestId2 });
-        reply.end(request.method === "HEAD" ? void 0 : readFileSync4(resolved));
+        reply.end(request.method === "HEAD" ? void 0 : readFileSync5(resolved));
         return;
       }
       if (options2.syntheticAuth && !loopback(request.socket.remoteAddress))
         throw new AccessError("SYNTHETIC_LOCAL_ONLY", 403, "Demo authentication is restricted to loopback clients.");
+      if (url.pathname === "/v1/demo/sessions" && request.method === "POST") {
+        if (!demoSessions) throw new AccessError("NOT_FOUND", 404, "The requested object is unavailable.");
+        const result = await demoSessions.login(readJson(request, parsedBody), request.socket.remoteAddress ?? "unknown");
+        try {
+          const identity2 = demoSessions.identity(result.accessToken);
+          const principal2 = await store.withIdentityContext(identity2, () => store.principal(identity2));
+          if (principal2.accountId !== result.accountId) throw new AccessError("INVALID_SESSION", 401, "A valid authenticated session is required.");
+        } catch (error) {
+          demoSessions.revoke(result.accessToken);
+          throw error;
+        }
+        response(reply, 200, result, requestId2);
+        return;
+      }
+      if (url.pathname === "/v1/demo/sessions/current" && request.method === "DELETE") {
+        if (!demoSessions) throw new AccessError("NOT_FOUND", 404, "The requested object is unavailable.");
+        const authorization2 = header(request, "authorization");
+        if (!authorization2?.startsWith("Bearer ") || authorization2.length > 17e3) throw new AccessError("INVALID_SESSION", 401, "A valid authenticated session is required.");
+        demoSessions.revoke(authorization2.slice(7));
+        reply.writeHead(204, { "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff", "Referrer-Policy": "no-referrer", "X-Request-Id": requestId2 });
+        reply.end();
+        return;
+      }
       const requireContract = () => {
         if (header(request, "x-api-contract-version") !== EVENT_CONTRACT_VERSION)
           throw new AccessError("CONTRACT_VERSION_REQUIRED", 409, `Use X-Api-Contract-Version: ${EVENT_CONTRACT_VERSION}.`);
@@ -70563,7 +71045,7 @@ function createRuntimeApi(options2, source2, store, media, activation, serialize
       if (!authorization?.startsWith("Bearer ") || authorization.length > 17e3)
         throw new AccessError("INVALID_SESSION", 401, "A valid authenticated session is required.");
       const token = authorization.slice(7);
-      const identity = options2.syntheticAuth ? syntheticIdentity(token, now()) : await verifyIdentity(token);
+      const identity = options2.syntheticAuth ? demoSessions ? demoSessions.identity(token) : syntheticIdentity(token, now()) : await verifyIdentity(token);
       let principal = await store.withIdentityContext(identity, () => store.principal(identity));
       const rate = windows.get(principal.accountId);
       const count = rate && now() - rate.begins < 6e4 ? rate : { begins: now(), ordinary: 0, mutation: 0 };
@@ -70909,11 +71391,13 @@ function createRuntimeApi(options2, source2, store, media, activation, serialize
       const status2 = error instanceof AccessError ? error.status : unavailable8 ? 503 : domainCode === "forbidden" ? 403 : domainCode === "expired" ? 410 : domainCode === "conflict" || domainCode === "closed" ? 409 : 422;
       const code = error instanceof AccessError ? error.code : unavailable8 ? "STORAGE_UNAVAILABLE" : domainCode && ["forbidden", "invalid", "conflict", "expired", "closed", "policy_needed"].includes(domainCode) ? domainCode.toUpperCase() : "COMMAND_REJECTED";
       const safeMessage = error instanceof AccessError ? error.message : unavailable8 ? "Storage is temporarily unavailable. Retain pending commands and retry the same request." : "The command could not be applied. Check the current saved state and request fields.";
+      if (status2 === 429) reply.setHeader("Retry-After", "60");
       response(reply, status2, { code, message: safeMessage, requestId: requestId2, retryable: status2 === 429 || status2 === 503 }, requestId2);
     }
   }) });
   const server = framework.server;
   return { server, framework, store: source2, media, activation, branding: services.branding, spectator: services.spectator, close: async () => {
+    demoSessions?.close();
     await framework.close();
     await media.close();
     await store.close();
@@ -71033,8 +71517,8 @@ var PostgresTeamPrivilegeRepository = class {
 import { dirname as dirname3, join as join5 } from "node:path";
 
 // apps/api/src/postgres-media.ts
-import { createHash as createHash14, randomBytes as randomBytes10, randomUUID as randomUUID10 } from "node:crypto";
-import { chmodSync as chmodSync4, mkdirSync as mkdirSync4, readFileSync as readFileSync5 } from "node:fs";
+import { createHash as createHash15, randomBytes as randomBytes11, randomUUID as randomUUID10 } from "node:crypto";
+import { chmodSync as chmodSync4, mkdirSync as mkdirSync4, readFileSync as readFileSync6 } from "node:fs";
 import { open as open3, rename as rename3, unlink as unlink3 } from "node:fs/promises";
 import { join as join4, resolve as resolve3, sep as sep4 } from "node:path";
 import { performance as performance4 } from "node:perf_hooks";
@@ -71229,7 +71713,7 @@ var PgMediaService = class _PgMediaService {
         "SELECT * FROM longball.media_uploads WHERE owner_id=$1 AND request_id=$2",
         [actor.accountId, input.requestId]
       );
-      const token = randomBytes10(32).toString("base64url");
+      const token = randomBytes11(32).toString("base64url");
       if (existing) {
         if (existing.request_signature !== signature2 || existing.team_id !== actor.teamId || existing.season_id !== actor.seasonId)
           fail8(
@@ -71328,7 +71812,7 @@ var PgMediaService = class _PgMediaService {
         fail8("UPLOAD_BUSY", 409, "This upload is already running.");
     }
     const destination = duplicate ? null : await open3(temporary, "wx", 384);
-    const digest4 = createHash14("sha256");
+    const digest4 = createHash15("sha256");
     let received = 0;
     const began = performance4.now();
     const iterator = source2[Symbol.asyncIterator]();
@@ -71524,7 +72008,7 @@ var PgMediaService = class _PgMediaService {
     if (!key) fail8("NOT_FOUND", 404, "The requested image is unavailable.");
     let body;
     try {
-      body = readFileSync5(this.path(key));
+      body = readFileSync6(this.path(key));
     } catch {
       fail8("NOT_FOUND", 404, "The requested image is unavailable.");
     }
@@ -71559,8 +72043,8 @@ var PgMediaService = class _PgMediaService {
 };
 
 // apps/api/src/postgres-activation.ts
-import { createHash as createHash15, randomBytes as randomBytes11, randomUUID as randomUUID11 } from "node:crypto";
-var hash5 = (value) => createHash15("sha256").update(value).digest("hex");
+import { createHash as createHash16, randomBytes as randomBytes12, randomUUID as randomUUID11 } from "node:crypto";
+var hash5 = (value) => createHash16("sha256").update(value).digest("hex");
 var id8 = (value) => typeof value === "string" && /^[A-Za-z0-9_-]{1,150}$/.test(value);
 var uuid2 = (value) => typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 function unavailable6() {
@@ -71600,7 +72084,7 @@ function fingerprint2(actor, input) {
 }
 function username2() {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  return `LB${Array.from(randomBytes11(12), (byte) => alphabet[byte & 31]).join("")}`;
+  return `LB${Array.from(randomBytes12(12), (byte) => alphabet[byte & 31]).join("")}`;
 }
 var PostgresActivationService = class {
   async ownsActivationToken(token, activationId) {
@@ -72047,7 +72531,7 @@ CREATE TRIGGER lb_activation_immutable_child BEFORE UPDATE OF classification ON 
           409,
           "Another activation request superseded this operation."
         );
-      const token = randomBytes11(32).toString("base64url");
+      const token = randomBytes12(32).toString("base64url");
       const activationId = randomUUID11();
       const expiresAt = this.store.now() + policy.activationTtlMs;
       if (!Number.isSafeInteger(expiresAt))
@@ -72412,7 +72896,7 @@ var PostgresBrandRepository = class {
 };
 
 // apps/api/src/spectator-activation.ts
-import { createHash as createHash16, randomBytes as randomBytes12, randomUUID as randomUUID12 } from "node:crypto";
+import { createHash as createHash17, randomBytes as randomBytes13, randomUUID as randomUUID12 } from "node:crypto";
 var opaque6 = (v) => typeof v === "string" && /^[A-Za-z0-9_-]{1,150}$/.test(v);
 var uuid3 = (v) => typeof v === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
 function unavailable7() {
@@ -72424,14 +72908,14 @@ function unavailable7() {
 }
 function spectatorInvitationHash(token) {
   try {
-    return createHash16("sha256").update(invitationTokenHashInput(token)).digest("hex");
+    return createHash17("sha256").update(invitationTokenHashInput(token)).digest("hex");
   } catch {
     return unavailable7();
   }
 }
 function username3() {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  return `LB${Array.from(randomBytes12(12), (byte) => alphabet[byte & 31]).join("")}`;
+  return `LB${Array.from(randomBytes13(12), (byte) => alphabet[byte & 31]).join("")}`;
 }
 var SpectatorActivationService = class {
   constructor(options2) {
@@ -72509,7 +72993,7 @@ var SpectatorActivationService = class {
     if (!opaque6(input.deviceId) || !opaque6(input.requestId) || input.policyVersion !== policy.version)
       unavailable7();
     const tokenHash = spectatorInvitationHash(input.token), candidateId = randomUUID12();
-    const signature2 = createHash16("sha256").update(JSON.stringify([input.deviceId, input.policyVersion])).digest("hex");
+    const signature2 = createHash17("sha256").update(JSON.stringify([input.deviceId, input.policyVersion])).digest("hex");
     let account3 = await this.options.repository.withCapability(
       { tokenHash, provisionAccountId: candidateId, nowMs: this.now() },
       async () => this.options.repository.reserveAccount({
@@ -73065,12 +73549,12 @@ async function createPostgresApi(options2) {
 }
 
 // apps/api/src/database-config.ts
-import { readFileSync as readFileSync6 } from "node:fs";
+import { readFileSync as readFileSync7 } from "node:fs";
 function readDatabaseUrl(env, key = "LONGBALL_DATABASE_URL") {
   const inline = env[key];
   const file = env[`${key}_FILE`];
   if (inline && file) throw new Error(`Configure exactly one of ${key} and ${key}_FILE.`);
-  const value = file ? readFileSync6(file, "utf8").trim() : inline;
+  const value = file ? readFileSync7(file, "utf8").trim() : inline;
   if (!value) return void 0;
   let parsed;
   try {
@@ -73083,7 +73567,7 @@ function readDatabaseUrl(env, key = "LONGBALL_DATABASE_URL") {
 }
 
 // apps/api/src/push-config.ts
-import { readFileSync as readFileSync7 } from "node:fs";
+import { readFileSync as readFileSync8 } from "node:fs";
 function readPushOptions(env) {
   const policy = env.LONGBALL_PUSH_PLATFORMS_FILE, keyring = env.LONGBALL_PUSH_KEYRING_FILE;
   if (!policy && !keyring) return {};
@@ -73094,7 +73578,7 @@ function readPushOptions(env) {
   let pushPlatforms;
   try {
     pushPlatforms = parsePushPlatformPolicies(
-      JSON.parse(readFileSync7(policy, "utf8"))
+      JSON.parse(readFileSync8(policy, "utf8"))
     );
   } catch {
     throw new Error("Configure an explicit valid push platform policy file.");
@@ -73125,6 +73609,7 @@ if (process.env.LONGBALL_FICTIONAL_CLOCK_POLICY) {
 var options = {
   ...readPushOptions(process.env),
   reportExports: readReportExportOptions(process.env),
+  demoAccounts: readDemoAccountOptions(process.env),
   databasePath: process.env.LONGBALL_API_DATABASE ?? ".local/api/longball.sqlite",
   syntheticAuth,
   demoScenario,
