@@ -1,0 +1,149 @@
+{
+  "scope": "Built demo-login web application with fresh SQLite API and separate report worker; virtual discovery/API requests rerouted only to loopback.",
+  "roles": [
+    {
+      "role": "manager",
+      "width": 390,
+      "assignedWorkspace": true,
+      "noOverflow": true,
+      "signedOut": true,
+      "revokedTokenRefused": true,
+      "pageErrors": []
+    },
+    {
+      "role": "administrator",
+      "width": 390,
+      "assignedWorkspace": true,
+      "noOverflow": true,
+      "signedOut": true,
+      "revokedTokenRefused": true,
+      "pageErrors": []
+    },
+    {
+      "role": "player",
+      "width": 390,
+      "assignedWorkspace": true,
+      "noOverflow": true,
+      "signedOut": true,
+      "revokedTokenRefused": true,
+      "pageErrors": []
+    },
+    {
+      "role": "spectator",
+      "width": 390,
+      "assignedWorkspace": true,
+      "noOverflow": true,
+      "signedOut": true,
+      "revokedTokenRefused": true,
+      "pageErrors": []
+    },
+    {
+      "role": "manager",
+      "width": 320,
+      "assignedWorkspace": true,
+      "noOverflow": true,
+      "signedOut": true,
+      "revokedTokenRefused": true,
+      "pageErrors": []
+    },
+    {
+      "role": "administrator",
+      "width": 320,
+      "assignedWorkspace": true,
+      "noOverflow": true,
+      "signedOut": true,
+      "revokedTokenRefused": true,
+      "pageErrors": []
+    },
+    {
+      "role": "player",
+      "width": 320,
+      "assignedWorkspace": true,
+      "noOverflow": true,
+      "signedOut": true,
+      "revokedTokenRefused": true,
+      "pageErrors": []
+    },
+    {
+      "role": "spectator",
+      "width": 320,
+      "assignedWorkspace": true,
+      "noOverflow": true,
+      "signedOut": true,
+      "revokedTokenRefused": true,
+      "pageErrors": []
+    }
+  ],
+  "checks": [
+    "Credential/header/key redaction is checked before any diagnostic can be retained.",
+    "Wrong password is refused; empty sign-in stays disabled and the passcode is cleared.",
+    "Browser visibility lifecycle covers the private DOM, waits for actual /v1/me, and restores the same mounted workspace.",
+    "A controlled foreground503 keeps private views covered; explicit retry rechecks the real service and restores the same DOM.",
+    "Separate worker prepares actual PDF/CSV; browser saves and parses protected artifacts at the current report revision.",
+    "Top Sign out closes private views and revokes the session while foreground access checking is stalled.",
+    "A real server-side account disablement closes private views on resume; a fresh login works after independent reactivation.",
+    "An independently disabled account is refused despite a correct passcode.",
+    "Client expiry uses setSystemTime plus a short timer advance and closes private views without replaying hours of intervals.",
+    "All four preauthorised roles pass at 320px and 390px; logout revokes each opaque server session.",
+    "Thirteen named profiles, four accepted fixtures and two completed games agree with manager/player screens.",
+    "Generated passwords and login tokens are absent from built assets, visible workspace text and browser journal/preferences."
+  ],
+  "failures": [],
+  "passed": true,
+  "nativeDeviceEvidence": false,
+  "paidServicesProvisioned": false,
+  "source": {
+    "gitHead": "3e310d458bdc945a620db20728a3934d3d3c925d",
+    "workingTreeDirty": false,
+    "artifacts": [
+      {
+        "file": "scripts/demo-account-review.mjs",
+        "digest": "bb46e30852748dcdf960e83031a6660b22165831b9f557569a97d0aecc81eb54"
+      },
+      {
+        "file": "apps/mobile/dist-demo-web/index.html",
+        "digest": "d12aabc66ee53f9e1570cf911cb27fb31c3900535ae42af378624ec965200792"
+      },
+      {
+        "file": "apps/mobile/dist-demo-web/_expo/static/js/web/index-013584515a6855da478abd86efec7884.js",
+        "digest": "4fde0da7aa2abbd26b0e2138f8d331ea40d98353f7f041abe05b1a5712f639ad"
+      },
+      {
+        "file": "apps/api/dist/api.mjs",
+        "digest": "a8c0eacd04f2bc7858e08665251ce0c32f02ec90bbdee907c72954a82d665fc3"
+      },
+      {
+        "file": "apps/api/dist/worker.mjs",
+        "digest": "7d88610a3aa9d459beb6d290890625f6bbbe410b05e5ef9b1e3cbf49c2d60f8c"
+      }
+    ]
+  },
+  "exports": {
+    "pdf": {
+      "bytes": 22961,
+      "sha256": "1288af7eb2ed61c1f97ec27c392ff0206889e474626dbe904a7bc3d7c599d1fd",
+      "status": 200,
+      "noStore": true,
+      "pages": 4,
+      "readableLabels": {
+        "Roma U10": true,
+        "Oak FC": true,
+        "Hill FC": true
+      }
+    },
+    "csv": {
+      "bytes": 9614,
+      "sha256": "dd4e3e753409d6ac766201e1abbfba5f0a4c1f28a6aeb7be1340e2755c578259",
+      "status": 200,
+      "noStore": true,
+      "rows": 175,
+      "header": [
+        "section",
+        "field",
+        "value"
+      ],
+      "projectionVersion": 0
+    }
+  },
+  "evidenceNote": "The retained report normalizes artifact checksum field names into file/digest rows. Digest values, checks and results are unchanged; the generated original remains in the ignored runner output."
+}

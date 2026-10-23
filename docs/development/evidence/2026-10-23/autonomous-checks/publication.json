@@ -1,0 +1,182 @@
+{
+  "observedAt": "2026-10-23T19:20:05.722310+00:00",
+  "productSource": "3e310d458bdc945a620db20728a3934d3d3c925d",
+  "runtimeTransport": "2cc50f9bee3b04d5f52705bf77f6dfe5ded88a99",
+  "pagesTransport": "9d180b0cdc44f2ef82a051c2312c94a48617135e",
+  "runtimeRun": 40009330562,
+  "pagesRun": 40009982608,
+  "pagesConclusion": "success",
+  "status": {
+    "state": "ready",
+    "url": "https://anti-direct-conjunction-eminem.trycloudflare.com",
+    "sourceRevision": "2cc50f9bee3b04d5f52705bf77f6dfe5ded88a99",
+    "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40009330562",
+    "startedAt": "2026-10-23T19:13:46Z",
+    "expiresAt": "2026-10-24T00:13:46Z",
+    "audience": "LongBall demo review with simulated Roma U10 teams and matches"
+  },
+  "apiHealth": {
+    "status": 200,
+    "demoAccountLogin": true,
+    "buildSourceMatches": true
+  },
+  "knownLegacyAliases": {
+    "manager": 401,
+    "administrator": 401,
+    "player": 401,
+    "spectator": 401
+  },
+  "apiAccounts": {
+    "passed": true,
+    "accounts": [
+      {
+        "role": "manager",
+        "loginStatus": 200,
+        "meStatus": 200,
+        "accountMatches": true,
+        "data": {
+          "profiles": 13,
+          "fixtures": 4,
+          "matches": 4,
+          "statuses": [
+            "completed",
+            "completed",
+            "preparation",
+            "preparation"
+          ]
+        },
+        "logoutStatus": 204,
+        "revokedMeStatus": 401
+      },
+      {
+        "role": "administrator",
+        "loginStatus": 200,
+        "meStatus": 200,
+        "accountMatches": true,
+        "logoutStatus": 204,
+        "revokedMeStatus": 401
+      },
+      {
+        "role": "player",
+        "loginStatus": 200,
+        "meStatus": 200,
+        "accountMatches": true,
+        "logoutStatus": 204,
+        "revokedMeStatus": 401
+      },
+      {
+        "role": "spectator",
+        "loginStatus": 200,
+        "meStatus": 200,
+        "accountMatches": true,
+        "logoutStatus": 204,
+        "revokedMeStatus": 401
+      }
+    ]
+  },
+  "pages": {
+    "url": "https://charlieomnipoint.github.io/LongBall/?v=3e310d4",
+    "httpStatus": 200,
+    "script": "/LongBall/_expo/static/js/web/index-92b8cc385ed32c60b8bacb4c91c5130e.js",
+    "scriptStatus": 200,
+    "scriptDigest": "796cdfb86d75c53968e90111804c409a48f6d80286a0a955404058ae801b7e83",
+    "scriptMatches": true,
+    "build": {
+      "sourceCommit": "3e310d458bdc945a620db20728a3934d3d3c925d",
+      "sourceBranch": "dev/longball-m0-journey",
+      "synthetic": true,
+      "nativeTargets": [
+        "iPhone",
+        "Android"
+      ],
+      "production": false,
+      "basePath": "/LongBall",
+      "connectedBackendIncluded": false
+    },
+    "signInVisible": true,
+    "noOverflow": true
+  },
+  "phoneBrowser": {
+    "passed": true,
+    "roles": [
+      {
+        "role": "manager",
+        "width": 390,
+        "assignedWorkspace": true,
+        "signedOut": true,
+        "noOverflow": true,
+        "logoutStatus": 204
+      },
+      {
+        "role": "administrator",
+        "width": 390,
+        "assignedWorkspace": true,
+        "signedOut": true,
+        "noOverflow": true,
+        "logoutStatus": 204
+      },
+      {
+        "role": "player",
+        "width": 390,
+        "assignedWorkspace": true,
+        "signedOut": true,
+        "noOverflow": true,
+        "logoutStatus": 204
+      },
+      {
+        "role": "spectator",
+        "width": 390,
+        "assignedWorkspace": true,
+        "signedOut": true,
+        "noOverflow": true,
+        "logoutStatus": 204
+      },
+      {
+        "role": "manager",
+        "width": 320,
+        "assignedWorkspace": true,
+        "signedOut": true,
+        "noOverflow": true,
+        "logoutStatus": 204
+      },
+      {
+        "role": "administrator",
+        "width": 320,
+        "assignedWorkspace": true,
+        "signedOut": true,
+        "noOverflow": true,
+        "logoutStatus": 204
+      },
+      {
+        "role": "player",
+        "width": 320,
+        "assignedWorkspace": true,
+        "signedOut": true,
+        "noOverflow": true,
+        "logoutStatus": 204
+      },
+      {
+        "role": "spectator",
+        "width": 320,
+        "assignedWorkspace": true,
+        "signedOut": true,
+        "noOverflow": true,
+        "logoutStatus": 204
+      }
+    ],
+    "pageErrors": []
+  },
+  "completedPlayerCheck": {
+    "completedPlayerMatches": 2,
+    "availabilityButtons": 0,
+    "readOnly": true,
+    "signedOut": true
+  },
+  "qualifications": [
+    "Actual external browser and HTTP against the published application/API; no local route interception.",
+    "No actual shared-review passcodes or opaque tokens retained in this evidence.",
+    "Saved and parsed PDF/CSV evidence belongs to the separate host and CI worker journeys.",
+    "Browser lifecycle checks do not establish native physical-device behavior.",
+    "The Pages address is persistent; the connected API is a bounded disposable five-hour session."
+  ]
+}

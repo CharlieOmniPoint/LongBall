@@ -1,0 +1,25 @@
+# 23 October autonomous verification
+
+Product `3e310d458bdc945a620db20728a3934d3d3c925d`, tree `686159647cecdeff3f965862401b8d38d78269b9`. Work remains on `dev/longball-m0-journey`; main is unmerged. Native iPhone/Android, approved visuals and the full agreed scope remain preserved. Credentials are unchanged and are not retained here.
+
+The update makes demo sign-out available during pending workspace activity, covers retained private views on background and confirms current access before revealing them on return. Temporary failures retain the covered workspace with retry; actual denial/expiry closes the session. Login reading/cancellation, duplicate submission and keyboard focus are improved. Both future sample games now use saved prepared squad/formation/eligibility. Compatible Expo tooling removes legacy uuid7; the native configuration check now isolates its source evaluation and cleans up on success/failure.
+
+| Evidence | Scope |
+| --- | --- |
+| [verification.json](verification.json) | Host 764 unit/platform, final full 396 API without skips, 24 migrations, static/contract/packaging/export checks. Preserves the first full API timeout, unchanged isolated pass and later full pass. Focused tests overlap aggregate results. |
+| [phone-browser.json](phone-browser.json) | Clean committed product, exact runtime artifact digests, eight assigned-role entries at 320/390px and twelve groups. Covers credential denial, retained DOM/background/retry, actual server disablement, stalled-check sign-out and expiry. The real worker's saved four-page PDF and 175-row CSV were parsed. Screenshots are signed-in views only. |
+| [artifacts.json](artifacts.json) | Source-specific packaged browser, Pages and backend file digests/sizes. |
+| [publication.json](publication.json) | Actual external Pages/API checks: exact JavaScript, eight public phone role entries/sign-outs without errors or overflow, current sample counts, token revocation and known legacy-alias denial. Public player completed fixtures are read-only. No local request interception. |
+| [entry-recovery.json](entry-recovery.json) | Actual published entry at 320px: username Enter focuses password; a controlled canonical expired status shows recovery, clears the input and opens no private view. The initial malformed-timestamp test setup and corrected pass are both recorded. |
+| [documentation-secret-scan.json](documentation-secret-scan.json) | Separate scan of added documentation/evidence. Copied artifact checksums use explicit file/digest rows and were checked against all five actual files; no scanner rule or reviewed-finding list changed. |
+| [ci.json](ci.json) | Source-identical PR checkout, completed functional stages, dependency enforcement failure, successful runtime-image stage and artifact metadata. CI has 393 API passes plus three explicit HEIC skips; the separate host run above has no skips. Artifact archives were not independently downloaded. |
+| [runtime-image-archive.json](runtime-image-archive.json) | The artifact connector returned a file reference, but workspace retrieval returned HTTP403. No archive bytes/content were independently verified; the completed image job remains observed in CI. |
+| [native.json](native.json) | Actual exact-source Android arm64 Debug and unsigned x86_64 iOS Simulator compilation passed. Import proofs match the product/bundle/transport. No binaries uploaded or downloaded; no signing, installation or hardware pass. |
+| [native-config.json](native-config.json) | Six evaluated configuration groups. This is not compilation, signing or hardware evidence. |
+| [dependency-review.json](dependency-review.json) | Official compatible tooling patch, frozen install, isolated production prebuild/project roundtrip and cleanup proof. Initial dirty-worktree observation and ad hoc smoke corrections stay qualified. Root subsequently excludes all generated `dist-*` exports from the temporary copy; the maintained six-group check passed. |
+
+[Review LongBall](https://charlieomnipoint.github.io/LongBall/?v=3e310d4). The persistent Pages address uses a separate bounded API session, expiring at **01:13:46 BST, 24 October 2026** (`00:13:46 UTC`). Renewal resets disposable sample changes and ends prior sessions. The published API is a simulated-data review service; real accounts keep the separate production OIDC path.
+
+The registry no longer reports the withdrawn braces advisory, and the compatible Expo patch removes uuid7. One unpatched high node-forge advisory remains; runtime/compiler audits are clear. No gate, assertion or timeout was relaxed. No paid service, real child data or credentials were added to the app or this evidence.
+
+Q05/Q09/Q10 and physical-phone checks remain owner-deferred. SEC20/SEC21 verified privacy fulfilment and UI34 governed support/recovery remain incomplete. Browser lifecycle evidence does not prove iPhone/Android OS behavior. No new performance, offsite recovery, operating SLA, signing or distribution acceptance is inferred from earlier source-bound proofs.

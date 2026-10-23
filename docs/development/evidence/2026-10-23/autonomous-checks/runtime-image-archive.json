@@ -1,0 +1,11 @@
+{
+  "observedAt": "2026-10-23T19:33:08.056115+00:00",
+  "artifactId": 12525920941,
+  "workflowRun": 40008906320,
+  "runtimeImageJob": "success",
+  "connectorReturnedFileReference": true,
+  "workspaceArchiveFetchStatus": 403,
+  "archiveBytesIndependentlyDownloaded": false,
+  "archiveContentsIndependentlyInspected": false,
+  "limit": "The returned file reference was inaccessible from the execution workspace (HTTP403). No artifact-content claim is made; completed runtime-image job and source binding remain verified by CI logs and metadata."
+}

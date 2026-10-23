@@ -1,6 +1,6 @@
 # Demo accounts and Roma U10 season
 
-Current account-build source: `214844e65310ccd4bb070b2f5a35395837fed19c`. Use [the verified review entry](https://charlieomnipoint.github.io/LongBall/?v=214844e) and **Sign in**; current publication and expiry are recorded in [review status](review.md). The exact packaged browser export passed all four role logins/sign-outs at 320/390px, and the actual public 390px role checks also passed. Use the versioned entry to avoid older cached HTML. The actual current-source Android arm64 Debug build passed; iOS is still compiling. Binary upload was disabled, and signing/distribution, installation and physical testing remain separate.
+Current account-build source: `3e310d458bdc945a620db20728a3934d3d3c925d`. Use [the verified review entry](https://charlieomnipoint.github.io/LongBall/?v=3e310d4) and **Sign in** with the unchanged supplied credentials. [Review status](review.md) records current publication and API expiry. All four actual public roles passed sign-in/sign-out at both 320/390px. The clean-source maintained browser check also verifies session recovery and real saved PDF/CSV downloads. Native JavaScript exports, Android Debug and unsigned iOS Simulator compilation passed. Signing, distribution, installation and physical testing remain separate.
 
 The demo login build opens with **Sign in → username and password/passcode → assigned team workspace**. Four preauthorised sample accounts cover Manager, Administrator, Player/household and Spectator. The service checks the credentials and current membership; the app derives the role from `/v1/me`. The account list and login details are supplied in the conversation, outside the app and repository documentation.
 
@@ -36,6 +36,19 @@ Demo login requires explicit synthetic authentication, the demo scenario and a n
 
 ## Session behavior and remaining gates
 
-Successful login creates an opaque expiring token. The client holds it in memory, outside the saved match journal; the server retains its digest in memory. Refreshing the browser, restarting the client process or renewing the API requires another sign-in. Sign-out closes the private workspace and requests revocation of that session. Independent unsent match records remain retained. If the service cannot confirm revocation, the app reports that limitation. Existing recent-authentication rules still apply to sensitive administrator actions.
+Successful login creates an opaque expiring token. The client holds it in memory, outside the saved match journal; the server retains its digest in memory. Refreshing the browser, restarting the client process or renewing the API requires another sign-in. Sign-out immediately closes the private workspace and requests revocation, including while another workspace or access check is pending. Normal navigation retains its unsaved-work guard. Backgrounding covers the mounted workspace without discarding in-memory drafts; foreground rechecks current account and role before revealing it. A temporary failure keeps it covered with Retry; denial or expiry returns to sign-in. Independent unsent match records remain retained. If the service cannot confirm revocation, the app reports that limitation. Existing recent-authentication rules still apply to sensitive administrator actions.
 
 These accounts and populated records support functionality review. The [decision register](decisions.md) preserves the deferred privacy verification, retention and support-authority decisions; privacy fulfilment and the governed support/recovery console remain incomplete. Physical iPhone/Android tests, production providers/hosting/distribution and the recorded dependency-security gate also remain separate. Current deployment source, session expiry and observed checks belong in [review status](review.md), rather than being inferred from this setup guide.
+
+## Repeatable browser acceptance
+
+With the pinned workspace, Python requirements and Chromium installed:
+
+```bash
+source scripts/dev-env.sh
+EXPO_PUBLIC_DEMO_ACCOUNT_LOGIN=1 pnpm --filter mobile exec expo export --platform web --output-dir dist-demo-web
+pnpm build:api
+pnpm test:demo:e2e
+```
+
+The runner creates a fresh private SQLite database, verifier file, encryption key and random preauthorised test credentials, then starts only owned loopback API/worker processes. It intercepts virtual discovery/API transport to those processes; it does not modify the public demo. It removes its temporary files/processes and replaces its own report directory on every run. Retained screenshots show signed-in workspaces only; passwords, opaque tokens and headers are redacted from diagnostics. The safe report and images are under `.local/quality/demo-account-review/`. GitHub CI runs this same check.
