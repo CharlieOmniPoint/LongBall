@@ -23,7 +23,8 @@ const secrets = new Set();
 const children = [];
 const browserStates = [];
 const checks = [];
-const report = { scope: 'Built demo-login web application with fresh SQLite API and separate report worker; virtual discovery/API requests rerouted only to loopback.', roles: [], checks, failures: [], passed: false, loginAttempts: 0, nativeDeviceEvidence: false, paidServicesProvisioned: false };
+const report = { scope: 'Built demo-login web application with fresh SQLite API and separate report worker; virtual discovery/API requests rerouted only to loopback.', roles: [], checks, failures: [], passed: false, loginAttempts: 0, apiRequestWindows: [], apiBudgetWaits: [], httpFailures: [], nativeDeviceEvidence: false, paidServicesProvisioned: false };
+const tokenAccounts = new Map(), requestWindows = new Map();
 let browser, privateDirectory, base, stage = 'preconditions';
 let processDiagnostics = '';
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -33,6 +34,33 @@ function sanitise(value, limit = 2500) {
   let text = String(value);
   for (const secret of [...secrets].sort((a, b) => b.length - a.length)) if (secret) text = text.replaceAll(secret, '[redacted]');
   return text.replace(/Bearer\s+[^\s"',;}]+/gi, 'Bearer [redacted]').replace(/demo_[A-Za-z0-9_-]{43}/g, '[redacted-session]').slice(0, limit);
+}
+function observeApiRequest(token, method, route) {
+  const accountId = tokenAccounts.get(token);
+  if (!accountId || route === '/v1/demo/sessions/current') return;
+  const now = Date.now();
+  let window = requestWindows.get(accountId);
+  if (!window || now - window.startedAtMs >= 60000) {
+    window = { accountId, startedAtMs: now, startedAt: new Date(now).toISOString(), observedAttempts: 0, observedMutations: 0, scope: 'Actual attempted loopback requests in a local sixty-second observation window; pre-authority denials can make this an upper bound on server counts.' };
+    requestWindows.set(accountId, window); report.apiRequestWindows.push(window);
+  }
+  window.observedAttempts++; if (method !== 'GET') window.observedMutations++;
+}
+function observeHttpFailure(token, method, route, status, code, controlled = false) {
+  report.httpFailures.push({ stage, accountId: tokenAccounts.get(token) ?? 'pre-session', method, pathname: new URL(base + route).pathname, status, code: typeof code === 'string' && /^[A-Z0-9_]{1,80}$/.test(code) ? code : 'UNRECOGNISED_ERROR', controlled });
+}
+async function freshManagerRequestWindow(accountId, phase) {
+  const window = requestWindows.get(accountId), began = Date.now();
+  // The real API retains 120 reads/commands and 60 mutations per account/minute,
+  // across all sessions. Pause only between completed phases; no command is
+  // retried, delayed in transit or rebased, and the server limits stay unchanged.
+  const waitMs = window ? Math.max(0, window.startedAtMs + 60300 - began) : 0;
+  const evidence = { accountId, phase, windowStartedAt: window?.startedAt ?? null, observedAttemptsBefore: window?.observedAttempts ?? 0, observedMutationsBefore: window?.observedMutations ?? 0, plannedWaitMs: waitMs, waitedMs: 0, ordinaryLimit: 120, mutationLimit: 60, pendingCommandRetried: false };
+  report.apiBudgetWaits.push(evidence);
+  if (waitMs) console.log(JSON.stringify({ reviewBudgetPause: phase, accountRole: 'manager', waitMs }));
+  const until = began + waitMs;
+  while (Date.now() < until) await delay(Math.min(1000, until - Date.now()));
+  evidence.waitedMs = Date.now() - began;
 }
 function launch(file, environment) {
   const child = spawn(process.execPath, [file], { env: environment, stdio: ['ignore', 'pipe', 'pipe'] });
@@ -78,8 +106,16 @@ async function awaitHealthy(child) {
   throw new Error('The isolated API did not become ready within its bounded startup window.');
 }
 async function currentJson(token, route, role = 'manager') {
+  observeApiRequest(token, 'GET', route);
   const response = await fetch(base + route, { headers: { Authorization: `Bearer ${token}`, 'X-Longball-Role': role }, signal: AbortSignal.timeout(10000) });
-  check(response.status === 200, 'The current authorised API read must succeed.');
+  if (response.status !== 200) {
+    const value = await response.json().catch(() => null);
+    const code = typeof value?.code === 'string' && /^[A-Z0-9_]{1,80}$/.test(value.code) ? value.code : 'UNRECOGNISED_ERROR';
+    observeHttpFailure(token, 'GET', route, response.status, code);
+    const pathname = new URL(base + route).pathname;
+    report.apiReadFailure = { stage, pathname, status: response.status, code };
+    throw new Error(`The current authorised API read failed: HTTP ${response.status}, ${code}, ${pathname}, stage ${stage}.`);
+  }
   return response.json();
 }
 function changeAccountStatus(databasePath, accountId, status) {
@@ -122,6 +158,16 @@ async function safeScreenshot(page, name) {
   for (const secret of secrets) check(!body.includes(secret), 'A signed-in view must not disclose a generated credential.');
   await page.screenshot({ path: path.join(output, `${name}.png`), animations: 'disabled' });
 }
+async function retainFailureWorkspace(state) {
+  try {
+    if (state.closed || await state.page.getByTestId('demo-signed-in').count() !== 1 || await state.page.getByTestId('demo-login-screen').count() !== 0) return;
+    const body = sanitise(await state.page.locator('body').innerText(), 10000);
+    report.failureWorkspaces ??= [];
+    const index = report.failureWorkspaces.length;
+    await safeScreenshot(state.page, `failure-signed-in-${index}`);
+    report.failureWorkspaces.push({ accountId: state.currentSession?.accountId ?? 'unknown', stage, body, screenshot: `failure-signed-in-${index}.png` });
+  } catch { /* A closed or changing view must not replace the original safe failure. */ }
+}
 async function makePage(width) {
   const context = await browser.newContext({ viewport: { width, height: 844 }, acceptDownloads: true, reducedMotion: 'reduce' });
   const page = await context.newPage();
@@ -141,6 +187,7 @@ async function makePage(width) {
     }
     const headers = request.headers();
     for (const name of ['authorization', 'x-controller-token', 'x-media-upload-token']) if (headers[name]) secrets.add(headers[name].replace(/^Bearer\s+/i, ''));
+    const observedToken = headers.authorization?.replace(/^Bearer\s+/i, '');
     try {
       if (address.pathname === '/v1/demo/sessions' && request.method() === 'POST') {
         report.loginAttempts++;
@@ -150,6 +197,7 @@ async function makePage(width) {
       if (/\/configuration$/.test(address.pathname) && request.method() === 'POST') state.configurationPosts++;
       if (state.scopedReadReplyOnce && request.method() === 'GET' && address.pathname.endsWith(state.scopedReadReplyOnce.path)) {
         const status = state.scopedReadReplyOnce.status; state.scopedReadReplyOnce = null;
+        observeHttpFailure(observedToken, request.method(), address.pathname, status, status === 503 ? 'STORAGE_UNAVAILABLE' : 'NOT_FOUND', true);
         return route.fulfill({ status, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': base, 'Cache-Control': 'private, no-store' }, body: JSON.stringify({ code: status === 503 ? 'STORAGE_UNAVAILABLE' : 'NOT_FOUND', message: 'The isolated test service cannot supply this scoped read.', retryable: status === 503 }) });
       }
       if (address.pathname === '/v1/me' && request.method() === 'GET') {
@@ -157,16 +205,22 @@ async function makePage(width) {
         if (state.holdMe) { state.holdMe.seen(); await state.holdMe.wait; }
         if (state.meReplyOnce) {
           const status = state.meReplyOnce; state.meReplyOnce = null;
+          observeHttpFailure(observedToken, request.method(), address.pathname, status, 'STORAGE_UNAVAILABLE', true);
           return route.fulfill({ status, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': base, 'Cache-Control': 'private, no-store' }, body: JSON.stringify({ code: 'STORAGE_UNAVAILABLE', message: 'The isolated test service is temporarily unavailable.', retryable: true }) });
         }
       }
+      observeApiRequest(observedToken, request.method(), address.pathname);
       const response = await route.fetch({ url: base + address.pathname + address.search, maxRedirects: 0 });
+      if (response.status() >= 400) {
+        const failure = await response.json().catch(() => null);
+        observeHttpFailure(observedToken, request.method(), address.pathname, response.status(), failure?.code);
+      }
       if (address.pathname === '/v1/demo/sessions' && request.method() === 'POST') {
         state.lastLoginStatus = response.status();
         if ([200, 201].includes(response.status())) {
           const session = await response.json();
           check(typeof session.accessToken === 'string', 'A successful login must return its opaque session.');
-          secrets.add(session.accessToken); state.currentSession = session;
+          secrets.add(session.accessToken); tokenAccounts.set(session.accessToken, session.accountId); state.currentSession = session;
         }
       }
       await route.fulfill({ response });
@@ -197,6 +251,7 @@ async function logout(state) {
   await page.getByTestId('demo-sign-out').click();
   await page.getByTestId('demo-login-screen').waitFor({ timeout: 15000 });
   check((await deleted).status() === 204, 'Sign-out must revoke its current server session.');
+  observeApiRequest(token, 'GET', '/v1/me');
   const stale = await fetch(base + '/v1/me', { headers: { Authorization: `Bearer ${token}` } });
   check(stale.status === 401, 'A signed-out token must not reopen private service views.');
   check(await page.getByTestId('demo-passcode').inputValue() === '', 'Sign-out must leave the passcode empty.');
@@ -329,11 +384,16 @@ async function preparationCommand(token, payload) {
   const route = `/v1/teams/${teamId}/preparation?seasonId=${seasonId}`;
   const current = await currentJson(token, route);
   const id = randomUUID();
+  observeApiRequest(token, 'POST', route);
   const response = await fetch(base + route, {
     method: 'POST', headers: { Authorization: `Bearer ${token}`, 'X-Longball-Role': 'manager', 'Content-Type': 'application/json', 'X-Api-Contract-Version': report.apiContractVersion, 'Idempotency-Key': id },
     body: JSON.stringify({ command: { ...payload, id, expectedRevision: current.revision } }), signal: AbortSignal.timeout(10000),
   });
-  check(response.status === 200, 'The isolated manager preparation command must be accepted.');
+  if (response.status !== 200) {
+    const failure = await response.json().catch(() => null);
+    observeHttpFailure(token, 'POST', route, response.status, failure?.code);
+    throw new Error(`The isolated preparation command failed: HTTP ${response.status}, ${/^[A-Z0-9_]{1,80}$/.test(failure?.code ?? '') ? failure.code : 'UNRECOGNISED_ERROR'}, ${new URL(base + route).pathname}, stage ${stage}.`);
+  }
   return response.json();
 }
 function fixtureLineup(match) {
@@ -407,6 +467,7 @@ async function administratorDraftRegression(account) {
     await panel.evaluate(node => { node.dataset.qaRetainedConfiguration = 'same-authorised-draft'; });
     const externalId = randomUUID(), conflictingDraft = `${originalClub} retained draft`, externalName = `${originalClub} external review`;
     await club.fill(conflictingDraft);
+    observeApiRequest(state.currentSession.accessToken, 'POST', `/v1/teams/${teamId}/configuration`);
     const external = await fetch(`${base}/v1/teams/${teamId}/configuration?seasonId=${seasonId}`, {
       method: 'POST', headers: { Authorization: `Bearer ${state.currentSession.accessToken}`, 'X-Longball-Role': 'administrator', 'Content-Type': 'application/json', 'X-Api-Contract-Version': report.apiContractVersion, 'Idempotency-Key': externalId },
       body: JSON.stringify({ command: { id: externalId, expectedRevision: configuration.revision, type: 'club.updated', name: externalName, logo: configuration.club.logo } }), signal: AbortSignal.timeout(10000),
@@ -625,9 +686,11 @@ async function managerMatchday(accounts, databasePath) {
     await page.getByTestId('recording-acquire').waitFor();
     await page.getByTestId('workspace-match-header').waitFor();
     check(await page.getByTestId('workspace-tab-home').count() === 0, 'The focused match console must hide team navigation.');
+    stage = 'manager initial accepted checkpoint after current preparation';
     const initial = await readAccepted(), match = initial.state;
     check(initial.acceptedRevision === 0 && match.config.selectedPlayerIds.length === 9 && match.config.pitchPlaces === 7, 'The prepared upcoming game must start with nine selected, seven places and no accepted play.');
     const assignments = fixtureLineup(match), slots = match.config.slots;
+    stage = 'manager initial controller acquisition after accepted checkpoint';
     await page.getByTestId('recording-acquire').click();
     await page.getByTestId('connected-match-attendance').click();
     for (const playerId of match.config.selectedPlayerIds) {
@@ -655,6 +718,7 @@ async function managerMatchday(accounts, databasePath) {
     await button('Confirm the actual event now').click();
     await page.getByTestId('recording-upload').click();
     await page.getByText('Up to date with the service', { exact: true }).waitFor();
+    stage = 'manager accepted attendance, lineup and paused clock';
     const paused = await readAccepted(), saved = paused.state;
     check(paused.acceptedRevision >= 12 && saved.status === 'first_half_paused', 'Actual attendance, lineup, kickoff and referee pause must reach the canonical accepted stream.');
     check(match.config.selectedPlayerIds.every(id => saved.attendance[id] === 'present'), 'All nine selected players must have explicit accepted present attendance.');
@@ -662,6 +726,11 @@ async function managerMatchday(accounts, databasePath) {
     check(saved.matchActiveMs >= 0 && saved.half === 1, 'The accepted first-half clock must remain valid.');
     assert.deepEqual(saved.score, { for: 0, against: 0 });
     checks.push('Manager explicitly claims recording, checks in nine players, stages seven eligible places, confirms kickoff and referee pause, navigates back/return, and uploads; independent HTTP verifies accepted attendance, lineup and clock.');
+    stage = 'bounded API window pause after accepted referee pause';
+    await freshManagerRequestWindow(accounts.find(item => item.role === 'manager').accountId, 'after-accepted-referee-pause');
+    const afterBudgetPause = await readAccepted();
+    check(afterBudgetPause.acceptedRevision === paused.acceptedRevision && afterBudgetPause.state.status === saved.status && afterBudgetPause.state.matchActiveMs === saved.matchActiveMs, 'A completed API-budget phase pause must leave the accepted referee-paused match unchanged.');
+    stage = 'recorded match reopening and future archived selections';
 
     // Profile/template edits are future preparation. They cannot rewrite a claimed match.
     const beforeConfig = structuredClone(saved.config);
@@ -727,6 +796,9 @@ async function managerMatchday(accounts, databasePath) {
       check(state.errors.length === 0 && state.routes.length === 0, 'Scope revalidation, restored login and final sign-out must have no runtime or transport errors.');
     }
     report.matchday = { viewport: { width: 390, height: 844 }, fixtureId: matchId, selectedPlayers: 9, acceptedLineupPlaces: 7, pausedCheckpoint: { acceptedRevision: paused.acceptedRevision, status: saved.status }, finalCheckpoint: { acceptedRevision: final.acceptedRevision, status: final.state.status, score: final.state.score }, savedMatchReopenedAfterFutureEdits: true, openGoalDraftRetained: true, localGoalWithheldUntilUpload: true, acceptedSpectatorAutoRefresh: true, selectedScopeRevocationClosesDespiteOtherManagerGrant: true, signedOut: true, nativeDeviceEvidence: false, latencyBenchmark: false };
+  } catch (error) {
+    for (const state of [manager, viewer]) await retainFailureWorkspace(state);
+    throw error;
   } finally {
     for (const state of [manager, viewer]) { state.closed = true; state.holdMe?.release(); await state.context.close(); }
   }
@@ -860,10 +932,15 @@ try {
   stage = 'player retained schedule reply';
   await playerReplyRegression(accounts.find(account => account.role === 'player'));
   stage = 'actual manager matchday and accepted spectator refresh';
+  await freshManagerRequestWindow(accounts.find(account => account.role === 'manager').accountId, 'before-manager-matchday');
   await managerMatchday(accounts, databasePath);
+  check(!report.httpFailures.some(failure => failure.status === 429 && !failure.controlled), 'The complete review must avoid actual API429 while preserving unchanged account rate limits.');
+  report.actualApiRateLimitsRespected = true;
   report.passed = true;
 } catch (error) {
   report.failures.push({ stage, name: sanitise(error.name), message: sanitise(error.message) });
+  report.failureWorkspaces ??= [];
+  for (const state of browserStates.filter(item => !item.closed)) await retainFailureWorkspace(state);
   report.processDiagnostic = sanitise(processDiagnostics);
   process.exitCode = 1;
 } finally {
