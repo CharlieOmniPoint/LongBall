@@ -20,6 +20,9 @@ const virtualApi = 'https://longball-qa-demo.trycloudflare.com';
 const statusAddress = 'https://raw.githubusercontent.com/CharlieOmniPoint/LongBall/preview/longball-m0/preview-status.json';
 const teamId = 'synthetic-roma-u10', seasonId = 'synthetic-season-2026-27';
 const secrets = new Set();
+// Canonical controller/media capabilities are durable demo work, while account
+// credentials and login sessions must remain memory-only. Both stay redacted.
+const forbiddenBrowserCredentials = new Set();
 const children = [];
 const browserStates = [];
 const checks = [];
@@ -186,7 +189,10 @@ async function makePage(width) {
       return route.abort();
     }
     const headers = request.headers();
-    for (const name of ['authorization', 'x-controller-token', 'x-media-upload-token']) if (headers[name]) secrets.add(headers[name].replace(/^Bearer\s+/i, ''));
+    for (const name of ['authorization', 'x-controller-token', 'x-media-upload-token']) if (headers[name]) {
+      const value = headers[name].replace(/^Bearer\s+/i, ''); secrets.add(value);
+      if (name === 'authorization') forbiddenBrowserCredentials.add(value);
+    }
     const observedToken = headers.authorization?.replace(/^Bearer\s+/i, '');
     try {
       if (address.pathname === '/v1/demo/sessions' && request.method() === 'POST') {
@@ -220,7 +226,7 @@ async function makePage(width) {
         if ([200, 201].includes(response.status())) {
           const session = await response.json();
           check(typeof session.accessToken === 'string', 'A successful login must return its opaque session.');
-          secrets.add(session.accessToken); tokenAccounts.set(session.accessToken, session.accountId); state.currentSession = session;
+          secrets.add(session.accessToken); forbiddenBrowserCredentials.add(session.accessToken); tokenAccounts.set(session.accessToken, session.accountId); state.currentSession = session;
         }
       }
       await route.fulfill({ response });
@@ -340,7 +346,8 @@ async function checkStoredCredentials(page) {
     }
     return values.join('\n');
   });
-  for (const secret of secrets) check(!stored.includes(secret), 'The browser journal and preferences must not store demo credentials or login tokens.');
+  for (const secret of forbiddenBrowserCredentials) check(!stored.includes(secret), 'All browser stores must exclude generated usernames, passwords, demo login tokens and server-only export keys.');
+  report.browserStoreInspections = (report.browserStoreInspections ?? 0) + 1;
 }
 async function exportReports(state) {
   const { page } = state, token = state.currentSession.accessToken;
@@ -511,6 +518,7 @@ async function administratorDraftRegression(account) {
     const currentIdentity = await currentJson(state.currentSession.accessToken, '/v1/me', 'administrator');
     check(currentIdentity.principal?.accountId === account.accountId, 'The scoped-denial regression must independently confirm that current /v1/me still succeeds for the same account.');
     check(state.errors.length === 0 && state.routes.length === 0, 'The administrator draft regression must have no runtime or transport errors.');
+    await checkStoredCredentials(page);
     await logout(state);
     report.administratorDraft = { unrelatedClubSaveAccepted: true, unsavedTeamDraftRetained: true, teamNameUnchangedOnService: true, actual422RetainsEditableDraftWithoutAutomaticWrite: true, explicitConflictRefreshAndReview: true, transientScopedRead503RetainsDisabledDraft: true, explicitRetryRestoresSameDraft: true, scopedRead403ClosesPrivateFormWhileMe200: true, signedOut: true };
     checks.push('Administrator club save preserves the separate unsaved Team name draft across accepted refresh without submitting it.');
@@ -540,6 +548,7 @@ async function playerReplyRegression(account) {
     check(current.response === 'unsure' && current.attendance === previous.attendance && current.selected === previous.selected, 'Own RSVP must change only the current player reply, retaining selection and actual attendance.');
     check(await fixture.evaluate(node => node.dataset.qaRetainedReply === 'same-selected-match') && await page.getByTestId(/^own-schedule-event-training-/).count() === 0, 'Accepted own-reply refresh must retain the mounted match card and Matches filter.');
     check(state.errors.length === 0 && state.routes.length === 0, 'Player RSVP regression must have no runtime or transport errors.');
+    await checkStoredCredentials(page);
     await logout(state);
     report.playerReply = { accepted: 'unsure', actualAttendanceUnchanged: true, selectionUnchanged: true, matchFilterRetained: true, matchCardRetained: true, signedOut: true };
     checks.push('Player upcoming RSVP is accepted without changing actual attendance or manager selection; accepted refresh retains the same match card, Matches filter and usable Schedule.');
@@ -821,13 +830,14 @@ try {
   const databasePath = path.join(privateDirectory, 'demo.sqlite');
   const accounts = [['manager', 'synthetic-account-manager-2'], ['administrator', 'synthetic-account-admin'], ['player', 'synthetic-account-player-01'], ['spectator', 'synthetic-account-spectator']].map(([role, accountId]) => {
     const passcode = randomBytes(24).toString('base64url'), salt = randomBytes(16).toString('base64url');
-    secrets.add(passcode);
-    return { role, accountId, username: `qa-${randomBytes(5).toString('hex')}.${role}`, passcode, salt, hash: scryptSync(passcode, Buffer.from(salt, 'base64url'), 32, { N: 16384, r: 8, p: 1, maxmem: 32 * 1024 * 1024 }).toString('hex') };
+    const username = `qa-${randomBytes(5).toString('hex')}.${role}`;
+    for (const credential of [username, passcode]) { secrets.add(credential); forbiddenBrowserCredentials.add(credential); }
+    return { role, accountId, username, passcode, salt, hash: scryptSync(passcode, Buffer.from(salt, 'base64url'), 32, { N: 16384, r: 8, p: 1, maxmem: 32 * 1024 * 1024 }).toString('hex') };
   });
   for (const account of accounts) check(!scriptBytes.includes(account.passcode) && !scriptBytes.includes(account.username), 'Generated account credentials must not be embedded in compiled assets.');
   const verifierFile = path.join(privateDirectory, 'verifiers.json'), encryptionFile = path.join(privateDirectory, 'export-key');
   await writeFile(verifierFile, JSON.stringify({ version: 1, sessionTtlSeconds: 600, accounts: accounts.map(({ username, accountId, salt, hash }) => ({ username, accountId, salt, hash })) }), { mode: 0o600 });
-  const encryptionKey = randomBytes(32).toString('hex'); secrets.add(encryptionKey);
+  const encryptionKey = randomBytes(32).toString('hex'); secrets.add(encryptionKey); forbiddenBrowserCredentials.add(encryptionKey);
   await writeFile(encryptionFile, encryptionKey, { mode: 0o600 });
   const probeToken = `demo_${randomBytes(32).toString('base64url')}`, probeController = randomBytes(32).toString('base64url');
   secrets.add(probeController);
@@ -890,7 +900,7 @@ try {
         await page.getByRole('radio', { name: 'Event type: Matches', exact: true }).click();
         await page.getByText('Completed', { exact: true }).first().waitFor();
         check(await page.getByText('Completed', { exact: true }).count() === 2, 'Manager Past must recognise both accepted completed fixtures.');
-        if (width === 390) { await checkBackground(state); await exportReports(state); await checkStoredCredentials(page); }
+        if (width === 390) { await checkBackground(state); await exportReports(state); }
       }
       if (account.role === 'player') {
         await page.getByRole('tab', { name: 'Schedule', exact: true }).click();
@@ -906,6 +916,7 @@ try {
         await selectedWorkspaceTab(page, 'centre');
       }
       check(state.errors.length === 0 && state.routes.length === 0, 'The assigned role journey must not have runtime or transport errors.');
+      await checkStoredCredentials(page);
       await safeScreenshot(page, `${account.role}-${width}`);
       if (account.role === 'manager' && width === 390) {
         const release = await coverForSignOut(state);
@@ -927,6 +938,7 @@ try {
   checks.push('All four preauthorised roles pass at 320px and 390px; logout revokes each opaque server session.');
   checks.push('Thirteen named profiles, four accepted fixtures and two completed games agree with manager/player screens.');
   checks.push('Generated passwords and login tokens are absent from built assets, visible workspace text and browser journal/preferences.');
+  report.browserCredentialBoundary = { generatedUsernamesPasswordsForbidden: true, demoSessionBearerTokensForbidden: true, serverOnlyExportKeyForbidden: true, allBrowserStoresInspected: true, canonicalControllerGrantIntentionallyRetained: true, allOpaqueHeadersRedactedFromEvidence: true };
   stage = 'administrator retained configuration draft';
   await administratorDraftRegression(accounts.find(account => account.role === 'administrator'));
   stage = 'player retained schedule reply';
