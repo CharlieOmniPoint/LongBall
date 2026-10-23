@@ -1,9 +1,9 @@
 {
-  "state": "starting",
-  "url": "",
+  "state": "ready",
+  "url": "https://anti-direct-conjunction-eminem.trycloudflare.com",
   "sourceRevision": "2cc50f9bee3b04d5f52705bf77f6dfe5ded88a99",
   "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40009330562",
-  "startedAt": "2026-10-23T19:13:16Z",
-  "expiresAt": "",
+  "startedAt": "2026-10-23T19:13:46Z",
+  "expiresAt": "2026-10-24T00:13:46Z",
   "audience": "LongBall demo review with simulated Roma U10 teams and matches"
 }
