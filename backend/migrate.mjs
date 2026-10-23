@@ -6424,9 +6424,9 @@ var PostgresStore = class _PostgresStore {
       await add2("synthetic-account-invitee", "adult_individual", false);
       await add2("synthetic-account-other-manager", "adult_individual", true);
       await membership("synthetic-account-other-manager", "manager", null, "synthetic-other-team");
-      const config = { matchId: SYNTHETIC_IDS.matchId, players: romaFixture.players, selectedPlayerIds: romaFixture.players.filter((player) => player.available).map((player) => player.id), pitchPlaces: 7, plannedHalfDurationMs: 15e5, fixedKeeperId: romaFixture.players[0].id, fixture: { opponent: "Maple FC", playedDate: "2026-10-24", kickoff: "10:00", homeAway: "home", teamId: SYNTHETIC_IDS.teamId, seasonId: SYNTHETIC_IDS.seasonId, teamName: "Roma", clubName: "Richmond Rovers" } };
-      await this.insertMatch(config, SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId);
       const preparation = createPreparationState({ demoScenario: options.demoSharing });
+      const config = options.demoSharing ? fixtureMatchConfig(preparation, prepareFixtureSnapshot(preparation, SYNTHETIC_IDS.matchId)) : { matchId: SYNTHETIC_IDS.matchId, players: romaFixture.players, selectedPlayerIds: romaFixture.players.filter((player) => player.available).map((player) => player.id), pitchPlaces: 7, plannedHalfDurationMs: 15e5, fixedKeeperId: romaFixture.players[0].id, fixture: { opponent: "Maple FC", playedDate: "2026-10-24", kickoff: "10:00", homeAway: "home", teamId: SYNTHETIC_IDS.teamId, seasonId: SYNTHETIC_IDS.seasonId, teamName: "Roma", clubName: "Richmond Rovers" } };
+      await this.insertMatch(config, SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId);
       const community = createCommunityState(this.now(), { demoScenario: options.demoSharing });
       if (options.demoSharing) await this.execute("UPDATE matches SET sharing_policy_json=$1 WHERE id=$2", [JSON.stringify({ version: "demo-simulated-scores-v1", approvedBy: "generated-demo-scenario-only", approvedAt: this.now(), shareScores: true, shareDerivedResults: true }), SYNTHETIC_IDS.matchId]);
       if (options.demoSharing) {
