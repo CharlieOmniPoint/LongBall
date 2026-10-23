@@ -722,7 +722,7 @@ async function managerMatchday(accounts, databasePath) {
     const paused = await readAccepted(), saved = paused.state;
     check(paused.acceptedRevision >= 12 && saved.status === 'first_half_paused', 'Actual attendance, lineup, kickoff and referee pause must reach the canonical accepted stream.');
     check(match.config.selectedPlayerIds.every(id => saved.attendance[id] === 'present'), 'All nine selected players must have explicit accepted present attendance.');
-    assert.deepEqual(saved.lineup.map(item => ({ slotId: item.slotId, playerId: item.playerId })), slots.map((slot, index) => ({ slotId: slot.id, playerId: assignments[index].id })), 'The accepted seven-place lineup must match the actual eligible UI selections.');
+    assert.deepEqual(saved.lineup.map(item => ({ slotId: item.slotId, playerId: item.playerId })), slots.map((slot, index) => ({ slotId: slot.slotId, playerId: assignments[index].id })), 'The accepted seven-place lineup must match the actual eligible UI selections.');
     check(saved.matchActiveMs >= 0 && saved.half === 1, 'The accepted first-half clock must remain valid.');
     assert.deepEqual(saved.score, { for: 0, against: 0 });
     checks.push('Manager explicitly claims recording, checks in nine players, stages seven eligible places, confirms kickoff and referee pause, navigates back/return, and uploads; independent HTTP verifies accepted attendance, lineup and clock.');
