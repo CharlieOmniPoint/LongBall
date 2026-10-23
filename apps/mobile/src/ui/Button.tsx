@@ -19,6 +19,7 @@ export function Button({ label, accessibilityLabel, onPress, variant = 'primary'
     accessibilityRole="button"
     accessibilityLabel={accessibilityLabel}
     accessibilityState={{ disabled }}
+    aria-disabled={disabled}
     disabled={disabled}
     onPress={onPress}
     onFocus={() => setFocused(true)}

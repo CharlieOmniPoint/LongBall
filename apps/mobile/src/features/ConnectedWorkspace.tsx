@@ -115,6 +115,8 @@ import { base64Url } from "@longball/application/security";
 import { MediaUploadClient } from "../platform/media-client";
 import { selectedRoleHeaders } from "../platform/request-headers";
 import { randomUUID } from "../platform/id";
+import { rebindWorkspaceRefresh } from "../platform/workspace-refresh";
+import { acknowledgeRevisionedValueDraft, refreshRevisionedValueDraft, reviewRevisionedValueDraft, revisionedValueDraft, revisionedValueNeedsReview } from "../platform/revisioned-value-draft";
 import type { Journal, JournalDiagnostics } from "../platform/types";
 import {
   authorizeWorkspaceReplay,
@@ -212,6 +214,8 @@ function WorkspaceFrame({ fullScreen, fixedMatch, resetKey, footer, children }: 
 export interface ConnectedWorkspaceProps {
   /** A retained hidden workspace preserves its journal without polling protected views. */
   active?: boolean;
+  /** Current view identity only; never a controller capability or a persisted grant. */
+  onAuthorityScopeChange?: (scope: WorkspaceBinding | null) => void;
   initialConnection?: {
     baseUrl: string;
     mode: "synthetic" | "oidc";
@@ -844,14 +848,28 @@ function WorkspaceSession({
   const [binding, setBinding] = useState<WorkspaceBinding | null>(null);
   const generation = useRef(0);
   const liveBinding = useRef<WorkspaceBinding | null>(null);
+  const refreshingBinding = useRef<WorkspaceBinding | null>(null);
+  const activeRef = useRef(props.active !== false);
+  useLayoutEffect(() => { activeRef.current = props.active !== false; }, [props.active]);
+  const [refreshRequired, setRefreshRequired] = useState(false);
+  const [refreshSuggested, setRefreshSuggested] = useState(false);
   const invalidateRequests = useCallback(() => {
     ++generation.current;
     liveBinding.current = null;
+    refreshingBinding.current = null;
+  }, []);
+  const suspendRequests = useCallback(() => {
+    const previous = liveBinding.current ?? refreshingBinding.current;
+    ++generation.current;
+    liveBinding.current = null;
+    // A suspended form keeps view metadata so a fresh authorised generation can
+    // rebind it on resume. This metadata cannot authorise a command or late read.
+    refreshingBinding.current = previous;
   }, []);
   const closeDeniedScope = useCallback((source: WorkspaceBinding | null) => {
     // A late response from a previous request must never close a newer account
     // or workspace. Keep retained commands and their journal/outbox intact.
-    if (!source || !sameWorkspaceBinding(source, liveBinding.current)) return false;
+    if (!source || !sameWorkspaceBinding(source, liveBinding.current) && !sameWorkspaceBinding(source, refreshingBinding.current)) return false;
     invalidateRequests();
     setIdentity(null);
     setBinding(null);
@@ -869,6 +887,8 @@ function WorkspaceSession({
     setConfiguration(null);
     setStaff(null);
     setBranding(null);
+    setRefreshRequired(false);
+    setRefreshSuggested(false);
     return true;
   }, [invalidateRequests]);
   const [tab, setTab] = useState<Tab>("home");
@@ -1092,6 +1112,12 @@ function WorkspaceSession({
     binding?.role === membership?.role
       ? binding
       : null;
+  const authorityScope = workspaceBindingIsCurrent(expectedBinding, identity?.principal ?? null, identity?.memberships ?? [], membershipTime) ? expectedBinding : null;
+  const authorityScopeChanged = props.onAuthorityScopeChange;
+  useLayoutEffect(() => {
+    authorityScopeChanged?.(authorityScope);
+    return () => authorityScopeChanged?.(null);
+  }, [authorityScope, authorityScopeChanged]);
   const preparation = readWorkspaceValue(
     preparationCache,
     expectedBinding,
@@ -1152,6 +1178,7 @@ function WorkspaceSession({
   );
   const matches = matchList ? mergeSharedMatchViews(matchList.items, refreshedMatches ?? []) : null;
   const completedFixtureIds = acceptedCompletedFixtureIds(matches, { teamId, seasonId });
+  const acceptedFixtureIds = new Set((matches ?? []).filter(match => match.teamId === teamId && match.seasonId === seasonId).map(match => match.matchId));
   const seasonOptions = readWorkspaceValue(
     seasonCache,
     expectedBinding,
@@ -1401,32 +1428,36 @@ function WorkspaceSession({
   }, [identity, membershipTime]);
 
   const load = useCallback(async () => {
+    if (!activeRef.current) return;
     const requestGeneration = ++generation.current;
+    const previousBinding = liveBinding.current ?? refreshingBinding.current;
+    refreshingBinding.current = previousBinding;
     liveBinding.current = null;
-    setBinding(null);
-    setIdentity(null);
-    setPreparation(null);
-    setOwn(null);
-    setRecords(null);
-    setCommunity(null);
-    setOwnPrivileges(null);
-    setTeamPrivileges(null);
-    setMatches(null);
-    setSeasons(null);
-    setConfiguration(null);
-    setStaff(null);
-    setBranding(null);
-    const nextIdentity = await client.me<Identity>();
+    // Keep the last authorised form mounted while its controls are disabled.
+    // No previous request may attach; fresh authority must rebind every retained DTO.
+    setRefreshRequired(true);
+    let nextIdentity: Identity;
+    try { nextIdentity = await client.me<Identity>(); }
+    catch (cause) {
+      if (generation.current === requestGeneration && cause instanceof ServiceError && [401, 403, 404].includes(cause.status)) closeDeniedScope(previousBinding);
+      throw cause;
+    }
     if (generation.current !== requestGeneration) return;
+    if (!nextIdentity?.principal || !Array.isArray(nextIdentity.memberships)) {
+      closeDeniedScope(previousBinding);
+      throw new Error("The current service identity could not be verified. Private workspace views were closed.");
+    }
     if (
       oidcSessionId &&
       (nextIdentity.principal.accountId !== oidcAccountId ||
         nextIdentity.principal.issuer !== oidcIssuer ||
         nextIdentity.principal.subject !== oidcSubject)
-    )
+    ) {
+      closeDeniedScope(previousBinding);
       throw new Error(
         "The service identity differs from the current sign-in. Reconnect before opening private workspace data.",
       );
+    }
     setIdentity(nextIdentity);
     const preference = await readContextPreference(
       absoluteApi,
@@ -1455,6 +1486,10 @@ function WorkspaceSession({
     });
     const chosen = resolution.selected;
     if (!chosen) {
+      closeDeniedScope(previousBinding);
+      setIdentity(nextIdentity);
+      setRefreshRequired(false);
+      setRefreshSuggested(false);
       setErrors(
         resolution.choices.length
           ? []
@@ -1509,7 +1544,16 @@ function WorkspaceSession({
       playerId: chosen?.playerId ?? null,
     };
     liveBinding.current = ticket;
+    refreshingBinding.current = null;
     setBinding(ticket);
+    const retain = <T,>(cached: BoundWorkspaceValue<T> | null) => rebindWorkspaceRefresh(cached, previousBinding, ticket, nextIdentity.principal, nextIdentity.memberships, serviceActionTime());
+    setPreparation(retain); setOwn(retain); setRecords(retain); setCommunity(retain);
+    setOwnPrivileges(retain); setTeamPrivileges(retain); setMatches(retain);
+    setSeasons(retain); setConfiguration(retain); setStaff(retain); setBranding(retain);
+    setSharedRefreshCache(retain);
+    sharedRefreshRef.current = retain(sharedRefreshRef.current);
+    sharedHistoryCursor.current = sameWorkspaceBinding(previousBinding, sharedHistoryCursor.current?.binding ?? null)
+      ? { binding: ticket, cursor: sharedHistoryCursor.current!.cursor } : null;
     void saveContextPreference(
       absoluteApi,
       nextIdentity.principal,
@@ -1561,6 +1605,7 @@ function WorkspaceSession({
           )
         : null;
     const faults: string[] = [];
+    let preparationRefreshFailed = false;
     const readFault = (
       section: string,
       cause: unknown,
@@ -1568,6 +1613,7 @@ function WorkspaceSession({
     ) => {
       if (generation.current !== requestGeneration || !sameWorkspaceBinding(ticket, liveBinding.current)) return;
       faults.push(`${section}: ${failureText(cause)}`);
+      if (["Preparation", "Own preparation", "Configuration"].includes(section)) preparationRefreshFailed = true;
       if (
         scopedPrivateList &&
         chosen &&
@@ -1672,8 +1718,7 @@ function WorkspaceSession({
             if (attached) setConfiguration(attached);
           })
           .catch((cause) => {
-            if (generation.current === requestGeneration)
-              faults.push(`Configuration: ${failureText(cause)}`);
+            readFault("Configuration", cause, true);
           }),
       );
     if (isAdministrator)
@@ -1695,8 +1740,7 @@ function WorkspaceSession({
             if (attached) setStaff(attached);
           })
           .catch((cause) => {
-            if (generation.current === requestGeneration)
-              faults.push(`Staff: ${failureText(cause)}`);
+            readFault("Staff", cause, true);
           }),
       );
     if (!isAdministrator)
@@ -1747,7 +1791,7 @@ function WorkspaceSession({
           .catch((cause) => readFault("Own preparation", cause, true)),
       );
     await Promise.all(tasks);
-    if (await stillCurrent()) setErrors(faults);
+    if (await stillCurrent()) { setErrors(faults); setRefreshRequired(preparationRefreshFailed); if (!preparationRefreshFailed) setRefreshSuggested(false); }
   }, [
     client,
     scopeChoice,
@@ -1763,6 +1807,7 @@ function WorkspaceSession({
     props.initialRole,
   ]);
   useEffect(() => {
+    if (props.active === false) { suspendRequests(); return; }
     let live = true;
     void Promise.resolve().then(async () => {
       if (!live) return;
@@ -1777,9 +1822,9 @@ function WorkspaceSession({
     });
     return () => {
       live = false;
-      invalidateRequests();
+      if (activeRef.current) invalidateRequests(); else suspendRequests();
     };
-  }, [load, invalidateRequests]);
+  }, [load, invalidateRequests, suspendRequests, props.active]);
 
   // Shared viewers receive accepted score updates without a manual Refresh. Do not
   // reload preparation forms or replace the paginated history/cursor while polling.
@@ -1897,6 +1942,7 @@ function WorkspaceSession({
         );
       const fresh = await client.me<Identity>();
       const verifiedAtMs = serviceActionTime();
+      if (!activeRef.current) throw new Error("This request is retained while the workspace is hidden. Return to the app and retry after current access is verified.");
       if (
         !identity ||
         fresh.principal.accountId !== identity.principal.accountId ||
@@ -2031,7 +2077,12 @@ function WorkspaceSession({
                 code,
               },
         );
-        if (definitive) setPending(null);
+        if (definitive) {
+          setPending(null);
+          // A rejected draft may need fresh comparison, while ordinary validation
+          // failures must still allow correcting the current fields.
+          if ([409, 422].includes(response.status) && sameWorkspaceBinding(source, liveBinding.current)) setRefreshSuggested(true);
+        }
         throw new ServiceError(
           code,
           response.status,
@@ -2310,6 +2361,7 @@ function WorkspaceSession({
     role: WorkspaceBinding["role"] | null = null,
   ) => {
     guardNavigation(() => {
+      setRefreshSuggested(false);
       setAlbumSelection(null);
       invitationAuthority.current = null;
       invitationHeldRef.current = null;
@@ -2480,6 +2532,7 @@ function WorkspaceSession({
       ),
   );
   const disabledWithoutInvitation =
+    refreshRequired ||
     uploadRetained ||
     brandRetained ||
     busy ||
@@ -2880,7 +2933,7 @@ function WorkspaceSession({
             no server acknowledgement or delivery is claimed.
           </Notice>
         )}
-        {(tab === "more" || tab === "account" || !selectedContext) && (
+        {(tab === "more" || tab === "account" || !selectedContext || refreshRequired || refreshSuggested) && (
           <Button
             label={busy ? "Contacting service…" : "Refresh service views"}
             variant="secondary"
@@ -3177,7 +3230,7 @@ function WorkspaceSession({
       {(tab === "schedule" || tab === "team" || tab === "settings") &&
         (administrator && configuration ? (
           <ConnectedClubConfiguration
-            key={`${configuration.team.id}:${configuration.revision}`}
+            key={`${absoluteApi}:${identity?.principal.accountId}:${teamId}:${seasonId}`}
             value={configuration}
             disabled={disabled}
             staff={staff}
@@ -3199,6 +3252,7 @@ function WorkspaceSession({
           <PreparationScreens
             storage="service"
             completedFixtureIds={completedFixtureIds}
+            acceptedFixtureIds={acceptedFixtureIds}
             onOpenReport={(fixtureId) => guardNavigation(() => { setSelectedReportMatchId(fixtureId); setTab("reports"); })}
             onExportCalendar={exportCalendar}
             brandingPanel={brandingPanel}
@@ -3231,7 +3285,7 @@ function WorkspaceSession({
           />
         ) : own ? (
           <OwnPreparation
-            key={`${own.profile.id}:${own.revision}`}
+            key={`${absoluteApi}:${identity?.principal.accountId}:${teamId}:${seasonId}:${own.profile.id}`}
             completedFixtureIds={completedFixtureIds}
             value={own}
             onExportCalendar={exportCalendar}
@@ -3475,14 +3529,22 @@ function OwnPreparation({
   onExportCalendar: (selectedKeys: string[]) => Promise<string>;
   completedFixtureIds: ReadonlySet<string>;
 }) {
-  const [preferences, setPreferences] = useState<PlayerProfile["preferences"]>([
-    ...value.profile.preferences,
-  ]);
-  const command = (payload: OwnPayload) =>
+  const [preferenceDraft, setPreferenceDraft] = useState(() => revisionedValueDraft(value.profile.preferences, value.revision));
+  const [preferenceAck, setPreferenceAck] = useState<{ submitted: PlayerProfile['preferences']; sourceRevision: number } | null>(null);
+  let nextPreferenceDraft = preferenceDraft.revision !== value.revision || JSON.stringify(preferenceDraft.source) !== JSON.stringify(value.profile.preferences)
+    ? refreshRevisionedValueDraft(preferenceDraft, value.profile.preferences, value.revision) : preferenceDraft;
+  if (preferenceAck && value.revision > preferenceAck.sourceRevision) {
+    nextPreferenceDraft = acknowledgeRevisionedValueDraft(nextPreferenceDraft, preferenceAck.submitted);
+    setPreferenceAck(null);
+  }
+  if (nextPreferenceDraft !== preferenceDraft) setPreferenceDraft(nextPreferenceDraft);
+  const preferences = preferenceDraft.value;
+  const preferencesNeedReview = revisionedValueNeedsReview(preferenceDraft);
+  const command = (payload: OwnPayload, expectedRevision = value.revision) =>
     onChange({
       ...payload,
       id: randomUUID(),
-      expectedRevision: value.revision,
+      expectedRevision,
     });
   const responseButtons = (
     response: AvailabilityResponse,
@@ -3613,23 +3675,28 @@ function OwnPreparation({
                     variant={selected === position ? "primary" : "secondary"}
                     disabled={disabled}
                     onPress={() =>
-                      setPreferences(
-                        (current) =>
-                          current.map((item, index) =>
+                      setPreferenceDraft(current => ({ ...current, value:
+                          current.value.map((item, index) =>
                             index === rank ? position : item,
-                          ) as PlayerProfile["preferences"],
-                      )
+                          ) as PlayerProfile["preferences"] }))
                     }
                   />
                 ))}
               </View>
             </View>
           ))}
+          {preferencesNeedReview && <>
+            <Notice tone="warning">Your player record changed while you were editing. Your draft preferences are retained. Review the current service choices before saving.</Notice>
+            <Text style={typography.body}>Current preferences: {value.profile.preferences.join(' · ')}</Text>
+            <Button label="I have reviewed the latest preferences; keep my draft" variant="secondary" disabled={disabled} onPress={() => setPreferenceDraft(current => reviewRevisionedValueDraft(current))} />
+          </>}
           <Button
             label="Save my position preferences to service"
-            disabled={disabled || new Set(preferences).size !== 3}
+            disabled={disabled || preferencesNeedReview || new Set(preferences).size !== 3}
             onPress={() => {
-              void command({ type: "own.preferences_saved", preferences });
+              void command({ type: "own.preferences_saved", preferences }, preferenceDraft.expectedRevision).then(saved => {
+                if (saved) setPreferenceAck({ submitted: preferences, sourceRevision: value.revision });
+              });
             }}
           />
         </Card>

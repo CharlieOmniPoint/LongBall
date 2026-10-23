@@ -282,6 +282,8 @@ function AccountRequestsContent({
                         checked: confirmed,
                         disabled: busy,
                       }}
+                      aria-checked={confirmed}
+                      aria-disabled={busy}
                       disabled={busy}
                       onPress={() => setConfirmed((value) => !value)}
                       style={s.confirm}

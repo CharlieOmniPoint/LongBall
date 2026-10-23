@@ -61,6 +61,8 @@ export function CalendarExportPanel({
                 key={key}
                 accessibilityRole="checkbox"
                 accessibilityState={{ checked, disabled: busy || saving }}
+                aria-checked={checked}
+                aria-disabled={busy || saving}
                 accessibilityLabel={`${event.kind === "match" ? "Match" : "Training"}, ${event.date}, ${event.time ?? "time not recorded"}`}
                 testID={`calendar-event-${key}`}
                 disabled={busy || saving}

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { DemoSessionAccessDenied, demoServiceUnavailableMessage, signInDemo, signOutDemo, verifyDemoSession, type DemoLoginSession } from './demo-login';
+import type { WorkspaceBinding } from '@longball/application/workspace-boundary';
 
 const now = Date.parse('2026-10-22T10:00:00Z');
 const base = 'https://longball-demo.trycloudflare.com';
@@ -134,6 +135,19 @@ describe('demo username/passcode client', () => {
       await expect(failure).rejects.toThrow('Please retry');
       await expect(failure).rejects.not.toBeInstanceOf(DemoSessionAccessDenied);
     }
+  });
+  it('requires the selected workspace grant even when another same-role grant remains current', async () => {
+    const principal = { accountId: session.accountId, status: 'active', issuer: 'https://demo-identity.test', subject: 'demo-person', identityClassification: 'adult_individual', adultVerified: true, strongAuth: true };
+    const scope: WorkspaceBinding = { generation: 5, apiBaseUrl: base, accountId: session.accountId, issuer: principal.issuer, subject: principal.subject, teamId: 'roma', seasonId: '2026-27', role: 'manager', playerId: null };
+    const selected = { ...membership, role: 'manager' }, other = { ...selected, teamId: 'milan' };
+    const manager = { ...signedIn, role: 'manager' as const };
+    const current = (memberships: unknown[], identityPrincipal = principal) => async () => json({ syntheticOnly: true, principal: identityPrincipal, memberships });
+    await expect(verifyDemoSession(manager, new AbortController().signal, current([selected, other]), () => now, scope)).resolves.toBeUndefined();
+    for (const memberships of [[other], [{ ...selected, revokedAt: now - 1 }, other], [{ ...selected, expiresAt: now }, other], [{ ...selected, seasonId: '2027-28' }, other]]) await expect(verifyDemoSession(manager, new AbortController().signal, current(memberships), () => now, scope)).rejects.toBeInstanceOf(DemoSessionAccessDenied);
+    await expect(verifyDemoSession(manager, new AbortController().signal, current([selected, other], { ...principal, subject: 'different' }), () => now, scope)).rejects.toBeInstanceOf(DemoSessionAccessDenied);
+    const administrator = { ...selected, role: 'administrator' };
+    await expect(verifyDemoSession(manager, new AbortController().signal, current([administrator]), () => now, { ...scope, role: 'administrator' })).resolves.toBeUndefined();
+    await expect(verifyDemoSession(signedIn, new AbortController().signal, current([{ ...membership, playerId: 'another-child' }]), () => now, { ...scope, role: 'player', playerId: 'selected-child' })).rejects.toBeInstanceOf(DemoSessionAccessDenied);
   });
   it('keeps login-only service recovery messages accurate without an unavailable local route', () => {
     expect(demoServiceUnavailableMessage('expired')).toContain('renewed');

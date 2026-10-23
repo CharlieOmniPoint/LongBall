@@ -513,6 +513,7 @@ function TabButton({
     <Pressable
       accessibilityRole="tab"
       accessibilityState={{ selected: active }}
+      aria-selected={active}
       onPress={onPress}
       testID={testID}
       style={[s.tab, active && s.activeTab]}
@@ -1524,6 +1525,7 @@ function Selection({
     <Pressable
       accessibilityRole="radio"
       accessibilityState={{ checked: selected }}
+      aria-checked={selected}
       accessibilityLabel={label}
       onPress={onPress}
       style={[s.choice, selected && s.selectedChoice]}

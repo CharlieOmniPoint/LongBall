@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { Buffer } from 'node:buffer';
-import { createHash, randomBytes, scryptSync } from 'node:crypto';
+import { createHash, randomBytes, randomUUID, scryptSync } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:net';
@@ -9,6 +9,7 @@ import path from 'node:path';
 import { spawn, execFileSync } from 'node:child_process';
 import { DatabaseSync } from 'node:sqlite';
 import { chromium } from 'playwright';
+import { openWorkspaceTab } from './review-entry.mjs';
 
 /** Real built clients/API/worker, isolated generated credentials, and loopback-only transport. */
 const output = path.resolve('.local/quality/demo-account-review');
@@ -22,7 +23,7 @@ const secrets = new Set();
 const children = [];
 const browserStates = [];
 const checks = [];
-const report = { scope: 'Built demo-login web application with fresh SQLite API and separate report worker; virtual discovery/API requests rerouted only to loopback.', roles: [], checks, failures: [], passed: false, nativeDeviceEvidence: false, paidServicesProvisioned: false };
+const report = { scope: 'Built demo-login web application with fresh SQLite API and separate report worker; virtual discovery/API requests rerouted only to loopback.', roles: [], checks, failures: [], passed: false, loginAttempts: 0, nativeDeviceEvidence: false, paidServicesProvisioned: false };
 let browser, privateDirectory, base, stage = 'preconditions';
 let processDiagnostics = '';
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -68,6 +69,7 @@ async function awaitHealthy(child) {
       if (response.ok) {
         const health = await response.json();
         check(health.syntheticOnly === true && health.demoScenario === true && health.demoAccountLogin === true, 'The isolated API must require configured demo accounts.');
+        report.apiContractVersion = health.contractVersion;
         return;
       }
     } catch { /* Retry only this newly started loopback process. */ }
@@ -88,6 +90,32 @@ function changeAccountStatus(databasePath, accountId, status) {
     check(result.changes === 1, 'Only the isolated selected demo account may change status.');
   } finally { database.close(); }
 }
+function substituteManagerMembership(databasePath, accountId) {
+  const database = new DatabaseSync(databasePath), otherTeamId = 'synthetic-other-team';
+  let original;
+  try {
+    database.exec('PRAGMA busy_timeout=5000');
+    original = database.prepare("SELECT revoked_at FROM memberships WHERE account_id=? AND team_id=? AND season_id=? AND role='manager'").get(accountId, teamId, seasonId);
+    check(original && original.revoked_at === null, 'The owned manager must initially have the current Roma grant.');
+    check(!database.prepare("SELECT 1 FROM memberships WHERE account_id=? AND team_id=? AND season_id=? AND role='manager'").get(accountId, otherTeamId, seasonId), 'Only this test may create its temporary other-team manager grant.');
+    database.exec('BEGIN IMMEDIATE');
+    database.prepare("INSERT INTO memberships(account_id,team_id,season_id,role) VALUES(?,?,?,'manager')").run(accountId, otherTeamId, seasonId);
+    check(database.prepare("UPDATE memberships SET revoked_at=? WHERE account_id=? AND team_id=? AND season_id=? AND role='manager'").run(Date.now(), accountId, teamId, seasonId).changes === 1, 'Only the selected Roma manager grant may be revoked.');
+    database.exec('COMMIT');
+  } catch (error) { if (database.isTransaction) database.exec('ROLLBACK'); throw error; }
+  finally { database.close(); }
+  return () => {
+    const restoring = new DatabaseSync(databasePath);
+    try {
+      restoring.exec('PRAGMA busy_timeout=5000');
+      restoring.exec('BEGIN IMMEDIATE');
+      restoring.prepare("DELETE FROM memberships WHERE account_id=? AND team_id=? AND season_id=? AND role='manager'").run(accountId, otherTeamId, seasonId);
+      check(restoring.prepare("UPDATE memberships SET revoked_at=? WHERE account_id=? AND team_id=? AND season_id=? AND role='manager'").run(original.revoked_at, accountId, teamId, seasonId).changes === 1, 'The exact owned Roma grant must be restored.');
+      restoring.exec('COMMIT');
+    } catch (error) { if (restoring.isTransaction) restoring.exec('ROLLBACK'); throw error; }
+    finally { restoring.close(); }
+  };
+}
 async function safeScreenshot(page, name) {
   check(await page.getByTestId('demo-signed-in').count() === 1 && await page.getByTestId('demo-login-screen').count() === 0, 'Retained screenshots must contain only a signed-in workspace.');
   const body = await page.locator('body').innerText();
@@ -97,7 +125,7 @@ async function safeScreenshot(page, name) {
 async function makePage(width) {
   const context = await browser.newContext({ viewport: { width, height: 844 }, acceptDownloads: true, reducedMotion: 'reduce' });
   const page = await context.newPage();
-  const state = { context, page, errors: [], routes: [], closed: false, currentSession: null, lastLoginStatus: null, meRequests: 0, holdMe: null, meReplyOnce: null };
+  const state = { context, page, errors: [], routes: [], closed: false, currentSession: null, lastLoginStatus: null, meRequests: 0, holdMe: null, meReplyOnce: null, preparationPosts: 0, configurationPosts: 0, scopedReadReplyOnce: null };
   browserStates.push(state);
   page.on('pageerror', error => state.errors.push(sanitise(error.message)));
   await page.clock.install();
@@ -114,6 +142,16 @@ async function makePage(width) {
     const headers = request.headers();
     for (const name of ['authorization', 'x-controller-token', 'x-media-upload-token']) if (headers[name]) secrets.add(headers[name].replace(/^Bearer\s+/i, ''));
     try {
+      if (address.pathname === '/v1/demo/sessions' && request.method() === 'POST') {
+        report.loginAttempts++;
+        check(report.loginAttempts <= 17, 'The complete isolated review must stay within its bounded seventeen-attempt login budget.');
+      }
+      if (/\/preparation$/.test(address.pathname) && request.method() === 'POST') state.preparationPosts++;
+      if (/\/configuration$/.test(address.pathname) && request.method() === 'POST') state.configurationPosts++;
+      if (state.scopedReadReplyOnce && request.method() === 'GET' && address.pathname.endsWith(state.scopedReadReplyOnce.path)) {
+        const status = state.scopedReadReplyOnce.status; state.scopedReadReplyOnce = null;
+        return route.fulfill({ status, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': base, 'Cache-Control': 'private, no-store' }, body: JSON.stringify({ code: status === 503 ? 'STORAGE_UNAVAILABLE' : 'NOT_FOUND', message: 'The isolated test service cannot supply this scoped read.', retryable: status === 503 }) });
+      }
       if (address.pathname === '/v1/me' && request.method() === 'GET') {
         state.meRequests++;
         if (state.holdMe) { state.holdMe.seen(); await state.holdMe.wait; }
@@ -252,6 +290,7 @@ async function checkStoredCredentials(page) {
 async function exportReports(state) {
   const { page } = state, token = state.currentSession.accessToken;
   await page.getByRole('tab', { name: 'Reports', exact: true }).click();
+  await selectedWorkspaceTab(page, 'reports');
   await page.getByTestId('records-export-panel').waitFor();
   const records = await currentJson(token, `/v1/teams/${teamId}/records?seasonId=${seasonId}`);
   const exports = {};
@@ -284,6 +323,413 @@ async function exportReports(state) {
   check(current.revision === records.revision, 'Preparing and downloading reports must not change the accepted report revision.');
   report.exports = exports;
   checks.push('Separate worker prepares actual PDF/CSV; browser saves and parses protected artifacts at the current report revision.');
+}
+
+async function preparationCommand(token, payload) {
+  const route = `/v1/teams/${teamId}/preparation?seasonId=${seasonId}`;
+  const current = await currentJson(token, route);
+  const id = randomUUID();
+  const response = await fetch(base + route, {
+    method: 'POST', headers: { Authorization: `Bearer ${token}`, 'X-Longball-Role': 'manager', 'Content-Type': 'application/json', 'X-Api-Contract-Version': report.apiContractVersion, 'Idempotency-Key': id },
+    body: JSON.stringify({ command: { ...payload, id, expectedRevision: current.revision } }), signal: AbortSignal.timeout(10000),
+  });
+  check(response.status === 200, 'The isolated manager preparation command must be accepted.');
+  return response.json();
+}
+function fixtureLineup(match) {
+  const assignments = [], { slots, players, selectedPlayerIds, profileSnapshot, fixedKeeperId } = match.config;
+  function choose(index, used = new Set()) {
+    if (index === slots.length) return true;
+    for (const player of players.filter(item => selectedPlayerIds.includes(item.id))) {
+      const profile = profileSnapshot.find(item => item.playerId === player.id);
+      if (used.has(player.id) || !profile?.eligiblePositions.includes(slots[index].position) || slots[index].position === 'GK' && fixedKeeperId && player.id !== fixedKeeperId) continue;
+      assignments[index] = player;
+      if (choose(index + 1, new Set([...used, player.id]))) return true;
+    }
+    return false;
+  }
+  check(choose(0), 'The actual prepared snapshot must support a complete eligible lineup.');
+  return assignments;
+}
+async function openDemo(state, account) {
+  await state.page.goto(base, { waitUntil: 'networkidle' });
+  await state.page.getByTestId('welcome-sign-in').click();
+  await state.page.getByTestId('demo-login-screen').waitFor();
+  await login(state, account);
+}
+async function selectedWorkspaceTab(page, tab) {
+  const target = page.getByTestId('workspace-primary-navigation').getByTestId(`workspace-tab-${tab}`);
+  await target.waitFor();
+  check(await target.getAttribute('aria-selected') === 'true', 'The current workspace navigation tab must expose its selected state to browser assistive technology.');
+}
+async function managerDetailRegression(state, preparation, fixtureId) {
+  const { page } = state;
+  await openWorkspaceTab(page, 'schedule');
+  const fixture = preparation.fixtures.find(item => item.id === fixtureId);
+  await page.getByRole('button', { name: `Open fixture ${fixture.opponent}, ${fixture.playedDate}`, exact: true }).click();
+  for (const profileId of fixture.selectedProfileIds.slice(0, 2)) {
+    const profile = preparation.profiles.find(item => item.id === profileId);
+    const saved = page.waitForResponse(response => /\/preparation$/.test(new URL(response.url()).pathname) && response.request().method() === 'POST');
+    const option = page.getByRole('radio', { name: `${profile.displayName} availability reply: Unsure`, exact: true });
+    await option.click();
+    check((await saved).status() === 200, 'The manager detail mutation must reach the actual service.');
+    await page.getByRole('button', { name: 'Back to schedule', exact: true }).waitFor();
+    await page.waitForFunction(name => document.querySelector(`[role="radio"][aria-label="${name}"]`)?.getAttribute('aria-checked') === 'true', `${profile.displayName} availability reply: Unsure`);
+    check(await page.getByText(`${preparation.team.name} vs ${fixture.opponent}`, { exact: true }).isVisible(), 'Accepted preparation refresh must retain the selected fixture detail.');
+  }
+  const accepted = await currentJson(state.currentSession.accessToken, `/v1/teams/${teamId}/preparation?seasonId=${seasonId}`);
+  const updated = accepted.fixtures.find(item => item.id === fixtureId);
+  check(fixture.selectedProfileIds.slice(0, 2).every(id => updated.responses[id] === 'unsure'), 'Both sequential edits must remain accepted for the same selected fixture.');
+  checks.push('Two actual fixture reply mutations retain the selected Schedule detail through accepted refresh, allowing the next player edit.');
+}
+async function administratorDraftRegression(account) {
+  const state = await makePage(390), { page } = state;
+  try {
+    await openDemo(state, account);
+    await openWorkspaceTab(page, 'clubs');
+    await selectedWorkspaceTab(page, 'clubs');
+    await page.getByRole('button', { name: 'Edit club and team configuration', exact: true }).click();
+    await page.getByTestId('administrator-configuration').waitFor();
+    const team = page.getByLabel('Team name', { exact: true });
+    const originalName = await team.inputValue(), draftName = `${originalName} review draft`;
+    const club = page.getByLabel('Club name', { exact: true });
+    const originalClub = await club.inputValue();
+    await team.fill(draftName);
+    await club.fill(`${originalClub} review`);
+    const saved = page.waitForResponse(response => /\/configuration$/.test(new URL(response.url()).pathname) && response.request().method() === 'POST');
+    await page.getByRole('button', { name: 'Save administrator club configuration', exact: true }).click();
+    check((await saved).status() === 200, 'The club-only command must be accepted.');
+    await page.getByTestId('administrator-configuration').waitFor();
+    await page.waitForFunction(expected => document.querySelector('input[aria-label="Team name"]')?.value === expected, draftName);
+    const configuration = await currentJson(state.currentSession.accessToken, `/v1/teams/${teamId}/configuration?seasonId=${seasonId}`, 'administrator');
+    check(configuration.team.name === originalName && configuration.club.name === `${originalClub} review`, 'Saving club configuration must not submit the separate unsaved team draft.');
+    const panel = page.getByTestId('administrator-configuration');
+    await panel.evaluate(node => { node.dataset.qaRetainedConfiguration = 'same-authorised-draft'; });
+    const externalId = randomUUID(), conflictingDraft = `${originalClub} retained draft`, externalName = `${originalClub} external review`;
+    await club.fill(conflictingDraft);
+    const external = await fetch(`${base}/v1/teams/${teamId}/configuration?seasonId=${seasonId}`, {
+      method: 'POST', headers: { Authorization: `Bearer ${state.currentSession.accessToken}`, 'X-Longball-Role': 'administrator', 'Content-Type': 'application/json', 'X-Api-Contract-Version': report.apiContractVersion, 'Idempotency-Key': externalId },
+      body: JSON.stringify({ command: { id: externalId, expectedRevision: configuration.revision, type: 'club.updated', name: externalName, logo: configuration.club.logo } }), signal: AbortSignal.timeout(10000),
+    });
+    check(external.status === 200, 'An independent actual administrator update must create the stale editor revision.');
+    const postsBeforeConflict = state.configurationPosts;
+    const conflict = page.waitForResponse(response => /\/configuration$/.test(new URL(response.url()).pathname) && response.request().method() === 'POST');
+    await page.getByRole('button', { name: 'Save administrator club configuration', exact: true }).click();
+    const conflictResponse = await conflict;
+    check(conflictResponse.status() === 422 && (await conflictResponse.json()).code === 'COMMAND_REJECTED', 'The current configuration wire contract must reject a stale administrator draft with COMMAND_REJECTED422.');
+    await page.getByRole('button', { name: 'Refresh service views', exact: true }).waitFor();
+    await page.waitForLoadState('networkidle');
+    check(state.configurationPosts === postsBeforeConflict + 1 && await club.inputValue() === conflictingDraft && await club.isEditable(), 'A definitive rejected command must retain its editable draft and avoid automatic resubmission.');
+    const reloaded = page.waitForResponse(response => /\/configuration$/.test(new URL(response.url()).pathname) && response.request().method() === 'GET' && response.status() === 200);
+    await page.getByRole('button', { name: 'Refresh service views', exact: true }).click();
+    await reloaded;
+    await page.getByText(`Current club name: ${externalName}`, { exact: true }).waitFor();
+    check(await club.inputValue() === conflictingDraft && await team.inputValue() === draftName && state.configurationPosts === postsBeforeConflict + 1, 'Explicit refresh must show the latest server value while retaining both drafts without a write.');
+    await page.getByRole('button', { name: 'I have reviewed the latest club configuration; keep my draft', exact: true }).click();
+    check(await club.inputValue() === conflictingDraft, 'Explicit conflict review must keep the reviewer-selected draft unchanged.');
+    await club.fill(`${originalClub} retry review`);
+    state.scopedReadReplyOnce = { path: '/configuration', status: 503 };
+    const unavailable = page.waitForResponse(response => /\/configuration$/.test(new URL(response.url()).pathname) && response.request().method() === 'GET' && response.status() === 503);
+    await page.getByRole('button', { name: 'Save administrator club configuration', exact: true }).click();
+    await unavailable;
+    await page.getByRole('button', { name: 'Refresh service views', exact: true }).waitFor();
+    check(await panel.evaluate(node => node.dataset.qaRetainedConfiguration === 'same-authorised-draft') && await team.inputValue() === draftName && await page.getByRole('button', { name: 'Save administrator team configuration', exact: true }).isDisabled(), 'A transient required scoped read must keep the same private draft mounted but disable further changes.');
+    const retried = page.waitForResponse(response => /\/configuration$/.test(new URL(response.url()).pathname) && response.request().method() === 'GET' && response.status() === 200);
+    await page.getByRole('button', { name: 'Refresh service views', exact: true }).click();
+    await retried;
+    await page.getByRole('button', { name: 'Save administrator team configuration', exact: true }).click({ trial: true });
+    check(await panel.evaluate(node => node.dataset.qaRetainedConfiguration === 'same-authorised-draft') && await team.inputValue() === draftName, 'Successful explicit retry must restore the same authorised unsaved team draft.');
+    const meBeforeDenial = state.meRequests;
+    await club.fill(`${originalClub} denied review`);
+    state.scopedReadReplyOnce = { path: '/configuration', status: 403 };
+    const denied = page.waitForResponse(response => /\/configuration$/.test(new URL(response.url()).pathname) && response.request().method() === 'GET' && response.status() === 403);
+    await page.getByRole('button', { name: 'Save administrator club configuration', exact: true }).click();
+    await denied;
+    await panel.waitFor({ state: 'detached' });
+    check(await page.getByTestId('demo-signed-in').count() === 1 && state.meRequests > meBeforeDenial, 'A denied current scope must close private configuration even when the demo account remains signed in.');
+    const currentIdentity = await currentJson(state.currentSession.accessToken, '/v1/me', 'administrator');
+    check(currentIdentity.principal?.accountId === account.accountId, 'The scoped-denial regression must independently confirm that current /v1/me still succeeds for the same account.');
+    check(state.errors.length === 0 && state.routes.length === 0, 'The administrator draft regression must have no runtime or transport errors.');
+    await logout(state);
+    report.administratorDraft = { unrelatedClubSaveAccepted: true, unsavedTeamDraftRetained: true, teamNameUnchangedOnService: true, actual422RetainsEditableDraftWithoutAutomaticWrite: true, explicitConflictRefreshAndReview: true, transientScopedRead503RetainsDisabledDraft: true, explicitRetryRestoresSameDraft: true, scopedRead403ClosesPrivateFormWhileMe200: true, signedOut: true };
+    checks.push('Administrator club save preserves the separate unsaved Team name draft across accepted refresh without submitting it.');
+    checks.push('Actual concurrent administrator update produces the existing COMMAND_REJECTED422; the editor retains editable drafts with no automatic POST, and explicit refresh exposes the latest value for separate keep-draft review.');
+    checks.push('Controlled required configuration503 retains the same disabled draft and explicit retry restores it; configuration403 closes private views even while independently verified /v1/me remains200.');
+  } finally { state.closed = true; await state.context.close(); }
+}
+async function playerReplyRegression(account) {
+  const state = await makePage(390), { page } = state;
+  try {
+    await openDemo(state, account);
+    await openWorkspaceTab(page, 'schedule');
+    await page.getByTestId('own-schedule-upcoming').click();
+    await page.getByTestId('own-schedule-kind-match').click();
+    const fixtureId = 'synthetic-roma-maple-2026-10-24';
+    const fixture = page.getByTestId(`own-schedule-event-match-${fixtureId}`);
+    await fixture.evaluate(node => { node.dataset.qaRetainedReply = 'same-selected-match'; });
+    const before = await currentJson(state.currentSession.accessToken, `/v1/teams/${teamId}/preparation/own?seasonId=${seasonId}`, 'player');
+    const previous = before.fixtures.find(item => item.id === fixtureId);
+    const saved = page.waitForResponse(response => /\/preparation\/own$/.test(new URL(response.url()).pathname) && response.request().method() === 'POST');
+    const refreshed = page.waitForResponse(response => /\/preparation\/own$/.test(new URL(response.url()).pathname) && response.request().method() === 'GET');
+    await fixture.getByRole('button', { name: 'Unsure', exact: true }).click();
+    check((await saved).status() === 200 && (await refreshed).status() === 200, 'Own RSVP must be accepted and current player preparation reloaded.');
+    await fixture.getByRole('button', { name: 'Available', exact: true }).waitFor();
+    const accepted = await currentJson(state.currentSession.accessToken, `/v1/teams/${teamId}/preparation/own?seasonId=${seasonId}`, 'player');
+    const current = accepted.fixtures.find(item => item.id === fixtureId);
+    check(current.response === 'unsure' && current.attendance === previous.attendance && current.selected === previous.selected, 'Own RSVP must change only the current player reply, retaining selection and actual attendance.');
+    check(await fixture.evaluate(node => node.dataset.qaRetainedReply === 'same-selected-match') && await page.getByTestId(/^own-schedule-event-training-/).count() === 0, 'Accepted own-reply refresh must retain the mounted match card and Matches filter.');
+    check(state.errors.length === 0 && state.routes.length === 0, 'Player RSVP regression must have no runtime or transport errors.');
+    await logout(state);
+    report.playerReply = { accepted: 'unsure', actualAttendanceUnchanged: true, selectionUnchanged: true, matchFilterRetained: true, matchCardRetained: true, signedOut: true };
+    checks.push('Player upcoming RSVP is accepted without changing actual attendance or manager selection; accepted refresh retains the same match card, Matches filter and usable Schedule.');
+  } finally { state.closed = true; await state.context.close(); }
+}
+async function refreshManagerViews(page) {
+  await openWorkspaceTab(page, 'more');
+  const refreshed = page.waitForResponse(response => /\/preparation$/.test(new URL(response.url()).pathname) && response.request().method() === 'GET');
+  await page.getByRole('button', { name: 'Refresh service views', exact: true }).click();
+  check((await refreshed).status() === 200, 'Explicit manager refresh must load actual current preparation.');
+}
+async function staleProfileRegression(state) {
+  const { page } = state, token = state.currentSession.accessToken;
+  const route = `/v1/teams/${teamId}/preparation?seasonId=${seasonId}`;
+  const preparation = await currentJson(token, route);
+  const profile = preparation.profiles.find(item => item.playerId === 'synthetic-player-01');
+  await openWorkspaceTab(page, 'team');
+  await page.getByRole('button', { name: `Edit ${profile.displayName}`, exact: true }).click();
+  const name = page.getByLabel('Player display name', { exact: true }), draftName = `${profile.displayName} unsaved review`;
+  await name.fill(draftName);
+  const remoteFoot = profile.foot === 'both' ? 'right' : 'both';
+  await preparationCommand(token, { type: 'profile.saved', profile: { ...profile, foot: remoteFoot } });
+  const postsBefore = state.preparationPosts;
+  const rejected = page.waitForResponse(response => /\/preparation$/.test(new URL(response.url()).pathname) && response.request().method() === 'POST');
+  await page.getByTestId('preparation-save').click();
+  const response = await rejected;
+  check(response.status() === 422 && (await response.json()).code === 'COMMAND_REJECTED', 'The stale full-form save must be rejected by the actual preparation CAS contract.');
+  await page.getByRole('button', { name: 'Refresh service views', exact: true }).waitFor();
+  check(await name.inputValue() === draftName, 'The rejected profile form must keep its unsaved display-name draft.');
+  const refreshed = page.waitForResponse(reply => /\/preparation$/.test(new URL(reply.url()).pathname) && reply.request().method() === 'GET');
+  await page.getByRole('button', { name: 'Refresh service views', exact: true }).click();
+  check((await refreshed).status() === 200, 'The explicit refresh must verify the newer profile revision.');
+  await page.getByTestId('preparation-discard-stale-draft').waitFor();
+  check(await name.inputValue() === draftName && await page.getByTestId('preparation-save').isDisabled() && state.preparationPosts === postsBefore + 1, 'A refreshed full-form draft must retain its opening revision and stay blocked without another POST.');
+  const accepted = await currentJson(token, route), current = accepted.profiles.find(item => item.id === profile.id);
+  check(current.foot === remoteFoot && current.displayName === profile.displayName, 'The rejected stale form must preserve the independent newer field and never publish its unsaved name.');
+  await page.getByTestId('preparation-discard-stale-draft').click();
+  await page.getByRole('button', { name: `Edit ${profile.displayName}`, exact: true }).click();
+  check(await page.getByLabel('Player display name', { exact: true }).inputValue() === profile.displayName, 'Discard and reopen must show the current saved profile name.');
+  check(await page.getByRole('radio', { name: `Preferred foot: ${remoteFoot === 'both' ? 'Both' : 'Right'}`, exact: true }).getAttribute('aria-checked') === 'true', 'The independently updated foot must be exposed as the checked radio after discard and reopen.');
+  await page.getByRole('button', { name: 'Keep previous values', exact: true }).click();
+  report.staleProfile = { actualRejectedStatus: 422, originalDraftRetained: true, explicitRefreshBlocksStaleForm: true, automaticWriteCount: 0, newerFootPreserved: true, unsavedNameNotPublished: true, discardAndReopenCurrent: true };
+  checks.push('Actual concurrent profile-field change rejects a stale full-form save; explicit refresh retains the draft but blocks saving at its original revision, and discard/reopen reveals the newer saved field without publishing the unsaved name.');
+}
+async function selectedManagerScopeRevocation(state, account, databasePath) {
+  const { page } = state, token = state.currentSession.accessToken;
+  const restore = substituteManagerMembership(databasePath, account.accountId);
+  try {
+    const identity = await currentJson(token, '/v1/me');
+    check(identity.principal.accountId === account.accountId && identity.memberships.some(item => item.role === 'manager' && item.teamId === 'synthetic-other-team') && !identity.memberships.some(item => item.role === 'manager' && item.teamId === teamId && item.seasonId === seasonId), 'Actual current identity must keep another manager grant while denying only the selected Roma scope.');
+    await page.evaluate(() => { Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' }); document.dispatchEvent(new Event('visibilitychange')); });
+    await page.getByTestId('demo-session-cover').waitFor();
+    const freshIdentity = page.waitForResponse(response => new URL(response.url()).pathname === '/v1/me' && response.request().method() === 'GET' && response.status() === 200);
+    await page.evaluate(() => { Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'visible' }); document.dispatchEvent(new Event('visibilitychange')); });
+    await freshIdentity;
+    await page.getByTestId('demo-login-screen').waitFor();
+    check(await page.getByTestId('demo-signed-in').count() === 0 && await page.getByTestId('workspace-match-header').count() === 0, 'A current selected-scope denial must close the private manager match despite another manager grant.');
+  } finally { restore(); }
+  await login(state, account);
+  checks.push('Actual Roma manager grant revocation closes its private workspace on foreground even while /v1/me200 retains a separate Milan manager grant; the exact temporary membership changes are then restored.');
+}
+async function archivedFutureRegression(state) {
+  const { page } = state, token = state.currentSession.accessToken;
+  const route = `/v1/teams/${teamId}/preparation?seasonId=${seasonId}`;
+  const before = await currentJson(token, route);
+  const profile = before.profiles.find(item => item.displayName === 'Noah Patel');
+  const fixture = before.fixtures.find(item => item.id === 'synthetic-roma-oak-2026-10-31');
+  check(profile?.active && fixture.selectedProfileIds.includes(profile.id), 'The archive regression needs an active named player selected for the future Oak game.');
+  const retainedHistory = structuredClone(before.training.filter(item => item.status !== 'scheduled'));
+  const held = retainedHistory.find(item => item.status === 'held' && item.expectedProfileIds.includes(profile.id));
+  const upcomingTraining = before.training.filter(item => item.status === 'scheduled' && item.date >= '2026-10-24').sort((a, b) => a.date.localeCompare(b.date));
+  check(upcomingTraining.length >= 2 && held, 'The archive regression needs future occurrence/series drafts and actual held history.');
+  const occurrence = upcomingTraining.at(-1), seriesOccurrence = upcomingTraining[0];
+  await preparationCommand(token, { type: 'profile.archived', profileId: profile.id });
+  await page.getByTestId('workspace-back-to-team').click();
+  await refreshManagerViews(page);
+  await openWorkspaceTab(page, 'schedule');
+  await page.getByRole('button', { name: `Open fixture ${fixture.opponent}, ${fixture.playedDate}`, exact: true }).click();
+  const remove = page.getByRole('button', { name: `Remove ${profile.displayName} from match squad`, exact: true });
+  await remove.waitFor();
+  check(await page.getByText('Archived', { exact: true }).count() > 0, 'A retained archived selection must remain visible rather than silently disappearing.');
+  const removed = page.waitForResponse(response => /\/preparation$/.test(new URL(response.url()).pathname) && response.request().method() === 'POST');
+  await remove.click();
+  check((await removed).status() === 200, 'Removing the archived future selection must be an explicit accepted command.');
+  await remove.waitFor({ state: 'hidden' });
+  let current = await currentJson(token, route), changed = current.fixtures.find(item => item.id === fixture.id);
+  assert.deepEqual(changed.selectedProfileIds, fixture.selectedProfileIds.filter(id => id !== profile.id));
+  assert.deepEqual(changed.attendance, fixture.attendance, 'Removing an archived future selection must not invent actual attendance.');
+  checks.push('A selected player archived through an actual manager command remains visible in the future fixture until explicit UI removal; accepted selection changes without inferred attendance.');
+
+  await page.getByRole('button', { name: 'Back to schedule', exact: true }).click();
+  await page.getByRole('radio', { name: 'Event type: Training', exact: true }).click();
+  await page.getByRole('button', { name: `Open training ${occurrence.date}`, exact: true }).click();
+  await page.getByRole('button', { name: 'Edit this occurrence', exact: true }).click();
+  await page.getByRole('button', { name: `Remove ${profile.displayName} from expected players`, exact: true }).click();
+  const occurrenceSaved = page.waitForResponse(response => /\/preparation$/.test(new URL(response.url()).pathname) && response.request().method() === 'POST');
+  await page.getByRole('button', { name: 'Save training occurrence', exact: true }).click();
+  check((await occurrenceSaved).status() === 200, 'The future occurrence must save after explicit archived expected-player removal.');
+  await page.getByRole('button', { name: 'Edit this occurrence', exact: true }).waitFor();
+  current = await currentJson(token, route);
+  check(!current.training.find(item => item.id === occurrence.id).expectedProfileIds.includes(profile.id), 'The accepted future occurrence must omit only the explicitly removed expected player.');
+  assert.deepEqual(current.training.filter(item => item.status !== 'scheduled'), retainedHistory, 'Editing a future training occurrence must retain held/cancelled history exactly.');
+
+  await page.getByRole('button', { name: 'Back to schedule', exact: true }).click();
+  await page.getByRole('button', { name: `Open training ${seriesOccurrence.date}`, exact: true }).click();
+  await page.getByTestId('training-series-manage').click();
+  await page.getByRole('button', { name: `Remove ${profile.displayName} from series expected players`, exact: true }).click();
+  await page.getByTestId('training-series-review').click();
+  await page.getByTestId('training-series-confirm').waitFor();
+  const seriesSaved = page.waitForResponse(response => /\/preparation$/.test(new URL(response.url()).pathname) && response.request().method() === 'POST');
+  await page.getByTestId('training-series-confirm').click();
+  check((await seriesSaved).status() === 200, 'The explicitly reviewed future training series must save after archived expected-player removal.');
+  await page.getByTestId('training-series-manage').waitFor();
+  current = await currentJson(token, route);
+  const scheduled = current.training.filter(item => item.recurrenceGroupId === seriesOccurrence.recurrenceGroupId && item.status === 'scheduled');
+  check(scheduled.length > 0 && scheduled.every(item => !item.expectedProfileIds.includes(profile.id)), 'Every explicitly reviewed scheduled occurrence must use the updated expected-player selection.');
+  assert.deepEqual(current.training.filter(item => item.status !== 'scheduled'), retainedHistory, 'Updating scheduled series expectations must retain held/cancelled history exactly.');
+  for (const previous of before.training.filter(item => item.status === 'scheduled')) {
+    assert.deepEqual(current.training.find(item => item.id === previous.id).attendance, previous.attendance, 'Future expected-player changes must not invent training attendance.');
+  }
+  await page.getByRole('button', { name: 'Back to schedule', exact: true }).click();
+  await page.getByRole('radio', { name: 'Schedule period: Past', exact: true }).click();
+  await page.getByRole('button', { name: `Open training ${held.date}`, exact: true }).click();
+  await page.getByText(profile.displayName, { exact: true }).waitFor();
+  check(await page.getByText('Archived', { exact: true }).count() > 0 && await page.getByRole('radio', { name: `${profile.displayName} training attendance: Present`, exact: true }).isDisabled(), 'Past training must retain the archived player and read-only historical attendance.');
+  await page.getByTestId('workspace-return-to-match').click();
+  await page.getByText('Recording on this phone', { exact: true }).waitFor();
+  await page.getByTestId('connected-match-live').click();
+  report.archivedFuture = { playerId: profile.playerId, futureSelectionExplicitlyRemoved: true, futureMatchAttendanceUnchanged: true, occurrenceSaved: true, reviewedSeriesSaved: true, heldAndCancelledHistoryUnchanged: retainedHistory.length, futureTrainingAttendanceUnchanged: true, historicalArchivedRowReadOnly: true };
+  checks.push('Future occurrence and reviewed series drafts expose archived expected players for explicit removal and save successfully; future attendance and complete held/cancelled records remain unchanged, with archived historical attendance visible and read-only.');
+}
+async function managerMatchday(accounts, databasePath) {
+  const matchId = 'synthetic-roma-maple-2026-10-24';
+  const manager = await makePage(390), viewer = await makePage(390), { page } = manager;
+  const button = name => page.getByRole('button', { name, exact: true });
+  try {
+    await openDemo(manager, accounts.find(item => item.role === 'manager'));
+    const token = manager.currentSession.accessToken;
+    const readAccepted = () => currentJson(token, `/v1/matches/${matchId}/download?deviceId=independent-matchday-review`);
+    await staleProfileRegression(manager);
+    const preparation = await currentJson(token, `/v1/teams/${teamId}/preparation?seasonId=${seasonId}`);
+    await managerDetailRegression(manager, preparation, matchId);
+    await page.getByTestId('preparation-open-match').click();
+    await page.getByTestId('recording-acquire').waitFor();
+    await page.getByTestId('workspace-match-header').waitFor();
+    check(await page.getByTestId('workspace-tab-home').count() === 0, 'The focused match console must hide team navigation.');
+    const initial = await readAccepted(), match = initial.state;
+    check(initial.acceptedRevision === 0 && match.config.selectedPlayerIds.length === 9 && match.config.pitchPlaces === 7, 'The prepared upcoming game must start with nine selected, seven places and no accepted play.');
+    const assignments = fixtureLineup(match), slots = match.config.slots;
+    await page.getByTestId('recording-acquire').click();
+    await page.getByTestId('connected-match-attendance').click();
+    for (const playerId of match.config.selectedPlayerIds) {
+      const name = match.config.players.find(item => item.id === playerId).displayName;
+      const row = page.locator('div').filter({ has: page.getByText(new RegExp(`^${name} · `)) }).filter({ has: button('Present') }).last();
+      await row.getByRole('button', { name: 'Present', exact: true }).click();
+      await page.waitForFunction(() => !document.querySelector('[role="progressbar"]'));
+    }
+    await page.getByTestId('connected-match-lineup').click();
+    await button('Show position list').click();
+    for (let index = 0; index < slots.length; index++) {
+      await page.getByRole('button', { name: new RegExp(`^${slots[index].label ?? slots[index].position} · place ${index + 1},`) }).click();
+      await button(assignments[index].displayName).click();
+    }
+    await button('Save staged lineup').click();
+    check((await readAccepted()).acceptedRevision === 0, 'Locally recorded attendance and staged lineup must not claim service acceptance.');
+    await page.getByTestId('connected-match-live').click();
+    await button('Start first half').click();
+    await button('Confirm the actual event now').click();
+    await page.getByTestId('workspace-back-to-team').click();
+    await page.getByTestId('workspace-manager-home').waitFor();
+    await page.getByTestId('workspace-return-to-match').click();
+    await page.getByTestId('connected-match-live').click();
+    await button('Review referee pause').click();
+    await button('Confirm the actual event now').click();
+    await page.getByTestId('recording-upload').click();
+    await page.getByText('Up to date with the service', { exact: true }).waitFor();
+    const paused = await readAccepted(), saved = paused.state;
+    check(paused.acceptedRevision >= 12 && saved.status === 'first_half_paused', 'Actual attendance, lineup, kickoff and referee pause must reach the canonical accepted stream.');
+    check(match.config.selectedPlayerIds.every(id => saved.attendance[id] === 'present'), 'All nine selected players must have explicit accepted present attendance.');
+    assert.deepEqual(saved.lineup.map(item => ({ slotId: item.slotId, playerId: item.playerId })), slots.map((slot, index) => ({ slotId: slot.id, playerId: assignments[index].id })), 'The accepted seven-place lineup must match the actual eligible UI selections.');
+    check(saved.matchActiveMs >= 0 && saved.half === 1, 'The accepted first-half clock must remain valid.');
+    assert.deepEqual(saved.score, { for: 0, against: 0 });
+    checks.push('Manager explicitly claims recording, checks in nine players, stages seven eligible places, confirms kickoff and referee pause, navigates back/return, and uploads; independent HTTP verifies accepted attendance, lineup and clock.');
+
+    // Profile/template edits are future preparation. They cannot rewrite a claimed match.
+    const beforeConfig = structuredClone(saved.config);
+    const profile = preparation.profiles.find(item => item.playerId === assignments[0].id);
+    await preparationCommand(token, { type: 'profile.saved', profile: { ...profile, displayName: `${profile.displayName} future` } });
+    const formation = preparation.formations.find(item => item.id === 'formation-7');
+    const { version: _version, ...template } = formation;
+    await preparationCommand(token, { type: 'formation.saved', formation: { ...template, name: `${template.name} future` } });
+    await page.getByTestId('workspace-back-to-team').click();
+    await refreshManagerViews(page);
+    await openWorkspaceTab(page, 'schedule');
+    await page.getByRole('button', { name: 'Open fixture Maple FC, 2026-10-24', exact: true }).click();
+    const postsBeforeOpen = manager.preparationPosts;
+    await page.getByTestId('preparation-open-saved-match').click();
+    await page.getByText('Recording on this phone', { exact: true }).waitFor();
+    await page.getByTestId('connected-match-live').click();
+    check(manager.preparationPosts === postsBeforeOpen, 'Opening saved recorded play must not attempt another fixture.prepared mutation.');
+    const reopened = await readAccepted();
+    assert.deepEqual(reopened.state.config, beforeConfig, 'Opening a recorded match after profile/template edits must retain its original immutable snapshot.');
+    check(reopened.acceptedRevision === paused.acceptedRevision && reopened.state.status === 'first_half_paused', 'Reopening saved play must preserve the accepted revision and paused clock.');
+    checks.push('After actual future profile/template edits, Schedule reopens the saved recorded match without preparation POST or immutable-history failure; its original squad/formation and accepted clock remain unchanged.');
+    await archivedFutureRegression(manager);
+
+    await openDemo(viewer, accounts.find(item => item.role === 'spectator'));
+    const sharedCard = viewer.page.getByTestId(`match-centre-game-${matchId}`);
+    await sharedCard.getByText('0 – 0', { exact: true }).waitFor();
+    await page.getByTestId('open-goal').click();
+    await button('Penalty').click();
+    const captured = await page.getByText(/^Effective time: half /).innerText();
+    await button('Review clock resume').click();
+    await button('Confirm the actual event now').click();
+    await page.getByTestId('recording-upload').click();
+    await page.getByText('Up to date with the service', { exact: true }).waitFor();
+    await page.getByTestId('save-goal').waitFor();
+    check(await page.getByText(/^Effective time: half /).innerText() === captured, 'A verified clock upload must retain the open goal draft and its original paused capture time.');
+    await page.getByTestId('save-goal').click();
+    await page.getByTestId('save-goal').waitFor({ state: 'hidden' });
+    const queuedGoal = await page.evaluate(async target => {
+      const record = await new Promise((resolve, reject) => {
+        const opening = indexedDB.open('longball-synthetic-m0');
+        opening.onerror = () => reject(new Error('Cannot inspect the owned local match journal.'));
+        opening.onsuccess = () => { const db = opening.result, transaction = db.transaction('journal', 'readonly'), read = transaction.objectStore('journal').get('record'); transaction.oncomplete = () => { db.close(); resolve(read.result); }; transaction.onerror = () => reject(new Error('Cannot read the owned local match journal.')); };
+      });
+      return Object.values(record?.projections ?? {}).find(value => value?.kind === 'longball-canonical-connected-v1' && value.matchId === target)?.outbox.findLast(value => value.envelope.command.type === 'goal.recorded')?.envelope.command;
+    }, matchId);
+    check(queuedGoal?.goalType === 'penalty' && queuedGoal.effective.halfElapsedMs === saved.halfActiveMs, 'The locally queued goal must preserve penalty selection and its original paused effective time.');
+    assert.deepEqual((await readAccepted()).state.score, { for: 0, against: 0 }, 'A local goal must remain absent from independently read accepted play.');
+    check(await sharedCard.getByText('1 – 0', { exact: true }).count() === 0, 'Spectators must not receive locally queued goals.');
+    await page.getByTestId('recording-upload').click();
+    await sharedCard.getByText('1 – 0', { exact: true }).waitFor({ timeout: 15000 });
+    await page.getByText('Up to date with the service', { exact: true }).waitFor();
+    const final = await readAccepted();
+    assert.deepEqual(final.state.score, { for: 1, against: 0 });
+    check(final.acceptedRevision > paused.acceptedRevision && final.state.status === 'first_half_running', 'Only explicit later upload may accept the goal and resumed clock.');
+    checks.push('An open penalty draft survives a clock-resume upload with its captured time; local goal stays invisible to spectators until explicit upload, then actual accepted polling updates a second browser automatically. This is functional loopback evidence, not a network latency benchmark.');
+    for (const state of [manager, viewer]) {
+      check(state.errors.length === 0 && state.routes.length === 0, 'The actual matchday browsers must have no runtime or transport errors.');
+      check(!await state.page.evaluate(() => document.documentElement.scrollWidth > innerWidth), 'The matchday workspace must fit the phone width.');
+      await checkStoredCredentials(state.page);
+      await safeScreenshot(state.page, state === manager ? 'manager-matchday-390' : 'spectator-matchday-390');
+      if (state === manager) await selectedManagerScopeRevocation(state, accounts.find(item => item.role === 'manager'), databasePath);
+      await logout(state);
+      check(state.errors.length === 0 && state.routes.length === 0, 'Scope revalidation, restored login and final sign-out must have no runtime or transport errors.');
+    }
+    report.matchday = { viewport: { width: 390, height: 844 }, fixtureId: matchId, selectedPlayers: 9, acceptedLineupPlaces: 7, pausedCheckpoint: { acceptedRevision: paused.acceptedRevision, status: saved.status }, finalCheckpoint: { acceptedRevision: final.acceptedRevision, status: final.state.status, score: final.state.score }, savedMatchReopenedAfterFutureEdits: true, openGoalDraftRetained: true, localGoalWithheldUntilUpload: true, acceptedSpectatorAutoRefresh: true, selectedScopeRevocationClosesDespiteOtherManagerGrant: true, signedOut: true, nativeDeviceEvidence: false, latencyBenchmark: false };
+  } finally {
+    for (const state of [manager, viewer]) { state.closed = true; state.holdMe?.release(); await state.context.close(); }
+  }
 }
 
 const watchdog = setTimeout(() => { void browser?.close().catch(() => undefined); for (const child of children) child.kill('SIGTERM'); }, 240000);
@@ -319,7 +765,7 @@ try {
   const childEnvironment = { ...process.env };
   for (const key of Object.keys(childEnvironment)) if (key.startsWith('LONGBALL_') || /^PG(?:HOST|PORT|USER|DATABASE|PASSWORD|PASSFILE|SERVICE|SERVICEFILE|SSLMODE)$/.test(key) || ['DATABASE_URL', 'DATABASE_URL_FILE'].includes(key)) delete childEnvironment[key];
   base = `http://127.0.0.1:${await availablePort()}`;
-  Object.assign(childEnvironment, { NODE_ENV: 'test', LONGBALL_SYNTHETIC_AUTH: '1', LONGBALL_DEMO_SCENARIO: '1', LONGBALL_DEMO_ACCOUNTS_FILE: verifierFile, LONGBALL_API_HOST: '127.0.0.1', LONGBALL_API_PORT: new URL(base).port, LONGBALL_API_DATABASE: databasePath, LONGBALL_MEDIA_DIRECTORY: path.join(privateDirectory, 'media'), LONGBALL_STATIC_DIRECTORY: webRoot, LONGBALL_API_ORIGINS: base, LONGBALL_OIDC_CONNECT_ORIGINS: `https://raw.githubusercontent.com,${virtualApi}`, LONGBALL_EXPORT_ENCRYPTION_KEY_FILE: encryptionFile, LONGBALL_EXPORT_TTL_MS: '600000' });
+  Object.assign(childEnvironment, { NODE_ENV: 'test', LONGBALL_SYNTHETIC_AUTH: '1', LONGBALL_DEMO_SCENARIO: '1', LONGBALL_DEMO_ACCOUNTS_FILE: verifierFile, LONGBALL_API_HOST: '127.0.0.1', LONGBALL_API_PORT: new URL(base).port, LONGBALL_API_DATABASE: databasePath, LONGBALL_MEDIA_DIRECTORY: path.join(privateDirectory, 'media'), LONGBALL_STATIC_DIRECTORY: webRoot, LONGBALL_API_ORIGINS: base, LONGBALL_OIDC_CONNECT_ORIGINS: `https://raw.githubusercontent.com,${virtualApi}`, LONGBALL_EXPORT_ENCRYPTION_KEY_FILE: encryptionFile, LONGBALL_EXPORT_TTL_MS: '600000', LONGBALL_FICTIONAL_CLOCK_POLICY: JSON.stringify({ id: 'isolated-demo-matchday-clock-v1', serverClockUncertaintyMs: 1000, maximumRoundTripMs: 5000, maximumMappingAgeMs: 3600000, maximumUncertaintyMs: 3000, maximumDriftPpm: 100 }) });
   stage = 'isolated API/worker startup';
   await awaitHealthy(launch(apiBundle, childEnvironment));
   launch(workerBundle, childEnvironment);
@@ -363,9 +809,11 @@ try {
         const statuses = matches.items.map(item => item.status ?? item.state?.status);
         check(preparation.profiles.length === 13 && preparation.fixtures.length === 4 && matches.items.length === 4 && statuses.filter(status => status === 'completed').length === 2 && statuses.filter(status => status === 'preparation').length === 2, 'The fresh demo must contain thirteen profiles, four accepted fixtures, two completed games and two prepared upcoming games.');
         await page.getByRole('tab', { name: 'Team', exact: true }).click();
+        await selectedWorkspaceTab(page, 'team');
         await page.getByText('13 active players', { exact: true }).waitFor();
         check(await page.getByRole('button', { name: /^Edit / }).count() === 13, 'Manager Team must show all thirteen editable sample players.');
         await page.getByRole('tab', { name: 'Schedule', exact: true }).click();
+        await selectedWorkspaceTab(page, 'schedule');
         await page.getByRole('radio', { name: 'Schedule period: Past', exact: true }).click();
         await page.getByRole('radio', { name: 'Event type: Matches', exact: true }).click();
         await page.getByText('Completed', { exact: true }).first().waitFor();
@@ -374,11 +822,16 @@ try {
       }
       if (account.role === 'player') {
         await page.getByRole('tab', { name: 'Schedule', exact: true }).click();
+        await selectedWorkspaceTab(page, 'schedule');
         await page.getByTestId('own-schedule-past').click();
         await page.getByTestId('own-schedule-kind-match').click();
         await page.getByText(/ · Completed$/).first().waitFor();
         check(await page.getByText(/ · Completed$/).count() === 2 && await page.getByRole('button', { name: 'Available', exact: true }).count() === 0, 'Completed player fixtures must remain read-only rather than accepting RSVP changes.');
         if (width === 390) await checkServerDenial(state, account, databasePath);
+      }
+      if (account.role === 'spectator') {
+        await openWorkspaceTab(page, 'centre');
+        await selectedWorkspaceTab(page, 'centre');
       }
       check(state.errors.length === 0 && state.routes.length === 0, 'The assigned role journey must not have runtime or transport errors.');
       await safeScreenshot(page, `${account.role}-${width}`);
@@ -402,6 +855,12 @@ try {
   checks.push('All four preauthorised roles pass at 320px and 390px; logout revokes each opaque server session.');
   checks.push('Thirteen named profiles, four accepted fixtures and two completed games agree with manager/player screens.');
   checks.push('Generated passwords and login tokens are absent from built assets, visible workspace text and browser journal/preferences.');
+  stage = 'administrator retained configuration draft';
+  await administratorDraftRegression(accounts.find(account => account.role === 'administrator'));
+  stage = 'player retained schedule reply';
+  await playerReplyRegression(accounts.find(account => account.role === 'player'));
+  stage = 'actual manager matchday and accepted spectator refresh';
+  await managerMatchday(accounts, databasePath);
   report.passed = true;
 } catch (error) {
   report.failures.push({ stage, name: sanitise(error.name), message: sanitise(error.message) });

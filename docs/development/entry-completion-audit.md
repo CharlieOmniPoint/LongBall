@@ -1,10 +1,10 @@
 # Entry and screen implementation audit
 
-> Accepted development source `6078969` contains the readable-report and database-locking corrections. The Pages application and demo API are externally verified at product source `6078969`; the bounded API session expires at 04:28:27 UTC on 22 October 2026. All four public role entries passed at 390px, with distinct authorised navigation and no horizontal overflow or page errors. Protected PDF/CSV HTTP checks passed; review.md records the managed-browser saved-file limitation. The [specification recheck](specification-recheck.md) supersedes the earlier blanket completion assessment. SEC20/SEC21 privacy fulfilment and the operator support/recovery console remain incomplete; Q05/Q09/Q10 and physical-device tests are explicitly deferred.
+> Historical specification-recheck evidence at source `6078969` and its named earlier checkpoints. Current demo accounts, publication, tests and native compilation are maintained in [review status](review.md) and the [build register](full-build-plan.md). The expired service links and counts below retain their original observation scope. SEC20/SEC21 privacy fulfilment and UI34 governed support/recovery remain incomplete behind owner-deferred Q05/Q09/Q10; physical-phone testing remains deferred.
 
 The original bounded read-only trace compared the canonical UI01–UI35/F01–F28 catalogue with `c71f19d` after the preview opened directly in Manager. Its original findings and historical evidence remain below. Subsequent source coverage is not a new policy approval or a replacement specification.
 
-## Current source and observed entry checks
+## Historical specification-recheck entry checks
 
 Accepted development source `6078969` is now externally verified on Pages and the connected API. All four actual connected role entries passed at 390px with named Roma/Oliver context, distinct authorised navigation and no horizontal overflow or page errors. Protected PDF/CSV HTTP and an authorised thumbnail passed; review.md records the managed-browser saved-file limitation. The full `ee7cb613` run passed six actual anonymous production-entry checks at 390px and six evaluated native-configuration groups. Entry showed explicit Welcome/sign-in, no demo/seed in the observed anonymous DOM, no recording IndexedDB, hidden advanced provider fields and no runtime errors or overflow. This establishes those entry/configuration checks, not all native behaviour or every screen.
 
@@ -16,7 +16,9 @@ The unchanged local QL04 workload now passes narrowly at source `6078969`: read 
 
 ## Required entry model
 
-One global identity signs in through the real provider, then chooses among its authorised club/team/season/role contexts. There are no separate remote passwords per role, no guardian role and no public self-assignment of adult authority. See canonical mobile specification UI01–03 (lines299–301), UX-P01/navigation (lines274–289), D13/D21 and SEC01–09 (lines1027–1043).
+The production entry model uses one global identity that signs in through the real provider, then chooses among its authorised club/team/season/role contexts. There are no separate remote passwords per role, no guardian role and no public self-assignment of adult authority. See canonical mobile specification UI01–03 (lines299–301), UX-P01/navigation (lines274–289), D13/D21 and SEC01–09 (lines1027–1043).
+
+The separately enabled demo profile uses four generated, preauthorised test identities with their own username/password credentials, as explicitly requested by the owner. Each identity opens only its assigned service role; it does not create a second password for a real person switching roles or change the production identity model. Credentials are supplied in the conversation, outside app screens and repository documentation.
 
 Signed-out launch must offer Welcome, Activate account, Sign in and privacy/help. A child activation follows manager-issued username-only provisioning and household provider credential setup. An existing spectator signs in and explicitly accepts the inspected invitation; a new spectator activates first, then signs in and accepts. Activation alone grants no membership. A returning enrolled device can use a remembered session and optional native local unlock; expiry still requires full sign-in. Multiple contexts require explicit selection with the last valid context as default. Account/security must remain reachable for every role. Expired or denied contexts replace protected content and offer valid alternatives/help.
 

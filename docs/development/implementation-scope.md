@@ -1,8 +1,8 @@
 # M0 implementation scope and native evidence
 
-> Initial M0 journey and current physical proof register. Source `c71f19dcea05f76adb0f7b5a4e2afb621d49bd40` is published at the [fictional Pages review](https://charlieomnipoint.github.io/LongBall/). Its Android and unsigned iOS Simulator builds passed [native CI](https://github.com/CharlieOmniPoint/LongBall/actions/runs/39605988033). The expanded implementation and exact evidence are tracked in [full-build-plan.md](full-build-plan.md) and [review.md](review.md). Every physical-device row below remains open.
+> Historical initial M0 journey and the still-open physical proof register. The source-bound native compilation and current connected demo status are maintained in [review.md](review.md) and [full-build-plan.md](full-build-plan.md). Earlier source `c71f19dcea05f76adb0f7b5a4e2afb621d49bd40` passed its recorded Android/unsigned iOS Simulator [native CI](https://github.com/CharlieOmniPoint/LongBall/actions/runs/39605988033). That historical result does not establish installation or hardware behavior. Every physical-device row below remains open.
 
-Updated 21 October 2026. The initial journey below remains part of [LongBall](../longball/README.md), retaining native iPhone and Android targets and the complete F01–F28 integrated pilot. The current checkpoint passed 450 shared/platform tests and 219 API/access/worker tests with no skipped tests; these results do not complete physical M0 or approve release. See [decisions](decisions.md) and the historical [capability traceability](traceability.md).
+Updated 21 October 2026. The initial journey below remains part of [LongBall](../longball/README.md), retaining native iPhone and Android targets and the complete F01–F28 integrated pilot. The recorded historical checkpoint passed 450 shared/platform tests and 219 API/access/worker tests with no skipped tests; these results do not complete physical M0 or approve release. See [decisions](decisions.md) and the historical [capability traceability](traceability.md).
 
 ## Initial journey and behavioural acceptance
 
@@ -17,7 +17,7 @@ Updated 21 October 2026. The initial journey below remains part of [LongBall](..
 | Persistence | A save claim follows a committed local write. Preserve pending records; server sync cannot be claimed without server acknowledgement. On uncertain clock continuity, require review rather than guessed elapsed time. | ME12, ME50–ME51, QL01/QL02 |
 | Fairness | Preserve actual history and individual 90–110% bands. The implemented budgeted slot-level planner validates suggestions and reports feasible/infeasible/indeterminate outcomes; it cannot guarantee future fairness. | D04/D05/D24, ME20–ME44, MT06–MT13 |
 
-All data is fictional. The original boards use fictional sample names; implementation may use Player 01–13 to keep synthetic provenance explicit. White surfaces, green actions, restrained yellow warnings, platform system fonts, readable score/time and labelled actions preserve the approved visual direction. Screen-reader, outdoor and large-text physical testing remain required.
+The demo uses generated team/player details and contains no real child records. The populated Roma season now uses thirteen named sample players; the original boards also use sample names. White surfaces, green actions, restrained yellow warnings, platform system fonts, readable score/time and labelled actions preserve the approved visual direction. Screen-reader, outdoor and large-text physical testing remain required.
 
 ## Browser review alongside native
 

@@ -25,7 +25,7 @@ import {
   type PreparationTraining,
   type TrainingDraft,
 } from "@longball/application/preparation";
-import { groupPreparationEvents } from "@longball/application/preparation-presentation";
+import { groupPreparationEvents, preparationEditorSaveRevision, retainedPreparationPlayers } from "@longball/application/preparation-presentation";
 import { fixtureScheduleStatus } from "@longball/application/fixture-schedule-status";
 import { TrainingSeriesEditor } from "./TrainingSeriesEditor";
 import { RosterImportPanel } from "./RosterImportPanel";
@@ -48,6 +48,7 @@ export interface PreparationScreensProps {
   onOpenMatch?: (fixtureId: string) => void;
   onOpenReport?: (fixtureId: string) => void;
   completedFixtureIds?: ReadonlySet<string>;
+  acceptedFixtureIds?: ReadonlySet<string>;
   busy?: boolean;
   error?: string | null;
   storage?: "journal" | "service";
@@ -68,6 +69,7 @@ type Editor =
   | { type: "formation"; value: PreparationFormation }
   | { type: "club" | "team" | "rollover" }
   | null;
+type OpenEditor = Exclude<Editor, null> & { sourceRevision: number };
 const responseOptions: { value: AvailabilityResponse; label: string }[] = [
   { value: "available", label: "Available" },
   { value: "unavailable", label: "Unavailable" },
@@ -148,6 +150,7 @@ function PreparationContent({
   onOpenMatch,
   onOpenReport,
   completedFixtureIds = new Set<string>(),
+  acceptedFixtureIds = new Set<string>(),
   busy = false,
   error,
   storage = "journal",
@@ -157,7 +160,8 @@ function PreparationContent({
   onExportCalendar,
 }: PreparationScreensProps) {
   const [observedAt] = useState(() => Date.now());
-  const [editor, setEditor] = useState<Editor>(null);
+  const [editor, setOpenEditor] = useState<OpenEditor | null>(null);
+  const setEditor = (value: Editor) => setOpenEditor(value ? { ...value, sourceRevision: state.revision } : null);
   const [selectedEvent, setSelectedEvent] = useState<{
     kind: "match" | "training";
     id: string;
@@ -171,6 +175,8 @@ function PreparationContent({
     (item) => item.id === state.activeSeasonId,
   )!;
   const disabled = busy || saving;
+  const editorSourceChanged = editor !== null && editor.sourceRevision !== state.revision;
+  const formDisabled = disabled || editorSourceChanged;
   const scheduleGroups = groupPreparationEvents<
     PreparationFixture | PreparationTraining
   >(
@@ -193,10 +199,13 @@ function PreparationContent({
     setSaving(true);
     setLocalError(null);
     try {
+      const expectedRevision = closeEditor && editor
+        ? preparationEditorSaveRevision(editor.sourceRevision, state.revision, reviewed?.expectedRevision)
+        : reviewed?.expectedRevision ?? state.revision;
       const saved = await onChange({
         ...payload,
         id: reviewed?.id ?? randomUUID(),
-        expectedRevision: reviewed?.expectedRevision ?? state.revision,
+        expectedRevision,
       } as PreparationCommand);
       if (saved && closeEditor) setEditor(null);
       return saved;
@@ -267,10 +276,14 @@ function PreparationContent({
       )}
       {editor ? (
         <>
+          {editorSourceChanged && <>
+            <Notice tone="warning">Saved preparation changed while this form was open. Your draft is still here, but saving is blocked to protect newer changes. Copy any values you want to keep, then discard this draft and reopen the form to edit the latest saved values.</Notice>
+            <Button label="Discard draft and close" variant="secondary" onPress={close} testID="preparation-discard-stale-draft" />
+          </>}
           {editor.type === "profile" && (
             <ProfileForm
               profile={editor.value}
-              disabled={disabled}
+              disabled={formDisabled}
               onSubmit={(profile) =>
                 commit({ type: "profile.saved", profile }, true)
               }
@@ -280,7 +293,7 @@ function PreparationContent({
           {editor.type === "fixture" && (
             <FixtureForm
               fixture={editor.value}
-              disabled={disabled}
+              disabled={formDisabled}
               onSubmit={(fixture) =>
                 commit({ type: "fixture.saved", fixture }, true)
               }
@@ -290,8 +303,8 @@ function PreparationContent({
           {editor.type === "training" && (
             <TrainingForm
               training={editor.value}
-              players={players}
-              disabled={disabled}
+              players={retainedPreparationPlayers(state, editor.value.seasonId, editor.value.expectedProfileIds)}
+              disabled={formDisabled}
               onSubmit={(training) =>
                 commit({ type: "training.saved", training }, true)
               }
@@ -299,13 +312,13 @@ function PreparationContent({
             />
           )}
           {editor.type === "training_series" && (
-            <TrainingSeriesEditor state={state} training={editor.value} mode={editor.mode} disabled={disabled}
+            <TrainingSeriesEditor state={state} training={editor.value} mode={editor.mode} disabled={disabled} sourceChanged={editorSourceChanged}
               onSubmit={command => commit(command, true, command)} onClose={close} />
           )}
           {editor.type === "formation" && (
             <FormationForm
               formation={editor.value}
-              disabled={disabled}
+              disabled={formDisabled}
               onSubmit={(formation) =>
                 commit({ type: "formation.saved", formation }, true)
               }
@@ -315,7 +328,7 @@ function PreparationContent({
           {editor.type === "club" && (
             <ClubForm
               state={state}
-              disabled={disabled}
+              disabled={formDisabled}
               onSubmit={(name, logo) =>
                 commit({ type: "club.updated", name, logo }, true)
               }
@@ -325,7 +338,7 @@ function PreparationContent({
           {editor.type === "team" && (
             <TeamForm
               state={state}
-              disabled={disabled}
+              disabled={formDisabled}
               allowPresetLogo={storage !== "service"}
               onSubmit={(payload) => commit(payload, true)}
               onClose={close}
@@ -334,7 +347,7 @@ function PreparationContent({
           {editor.type === "rollover" && (
             <RolloverForm
               state={state}
-              disabled={disabled}
+              disabled={formDisabled}
               onSubmit={(payload) => commit(payload, true)}
               onClose={close}
             />
@@ -353,6 +366,8 @@ function PreparationContent({
             state={state}
             disabled={disabled}
             completed={completedFixtureIds.has(selectedFixture.id)}
+            accepted={acceptedFixtureIds.has(selectedFixture.id)}
+            canLookUpSavedMatch={storage === "service"}
             statusLabel={fixtureScheduleStatus(selectedFixture, completedFixtureIds, todayInLondon())}
             onCommand={commit}
             onEdit={() =>
@@ -372,7 +387,7 @@ function PreparationContent({
           />
           <TrainingDetail
             training={selectedTraining}
-            players={players}
+            players={retainedPreparationPlayers(state, selectedTraining.seasonId, selectedTraining.expectedProfileIds)}
             disabled={disabled}
             onCommand={commit}
             onEditSeries={selectedTraining.recurrenceGroupId ? () => setEditor({ type: "training_series", value: selectedTraining, mode: "manage" }) : undefined}
@@ -846,6 +861,8 @@ function Choice<Value extends string>({
             accessibilityRole="radio"
             accessibilityLabel={`${label}: ${option.label}`}
             accessibilityState={{ checked: value === option.value, disabled }}
+            aria-checked={value === option.value}
+            aria-disabled={disabled}
             disabled={disabled}
             onPress={() => onChange(option.value)}
             style={[s.choice, value === option.value && s.choiceSelected]}
@@ -1194,6 +1211,7 @@ function ProfileForm({
             accessibilityState={{
               checked: draft.eligiblePositions.includes(position),
             }}
+            aria-checked={draft.eligiblePositions.includes(position)}
             accessibilityLabel={`Eligible for ${position}`}
             style={[
               s.choice,
@@ -1362,11 +1380,12 @@ function TrainingForm({
         onChange={(venue) => setDraft((previous) => ({ ...previous, venue }))}
       />
       <Text style={s.section}>Expected players</Text>
-      {players.map((profile) => (
+      {players.map((profile) => profile.active ? (
         <Toggle
           key={profile.id}
           label={profile.displayName}
           value={draft.expectedProfileIds.includes(profile.id)}
+          disabled={disabled}
           onChange={(selected) =>
             setDraft((previous) => ({
               ...previous,
@@ -1376,6 +1395,14 @@ function TrainingForm({
             }))
           }
         />
+      ) : (
+        <Card key={profile.id}>
+          <View style={s.between}><Text style={s.body}>{profile.displayName}</Text><Pill>Archived</Pill></View>
+          {draft.expectedProfileIds.includes(profile.id) ? <>
+            <Text style={s.small}>Still expected in this saved occurrence. Remove this archived player before saving future training changes.</Text>
+            <Button label={`Remove ${profile.displayName} from expected players`} variant="secondary" disabled={disabled} onPress={() => setDraft(previous => ({ ...previous, expectedProfileIds: previous.expectedProfileIds.filter(id => id !== profile.id) }))} />
+          </> : <Text style={s.small}>Removed from the draft for this occurrence. Past attendance stays unchanged.</Text>}
+        </Card>
       ))}
       <Notice tone="info">
         This edits one occurrence. Other dates in the series remain unchanged.
@@ -1522,6 +1549,8 @@ function FixtureDetail({
   onOpenMatch,
   onOpenReport,
   completed,
+  accepted,
+  canLookUpSavedMatch,
   statusLabel,
 }: {
   fixture: PreparationFixture;
@@ -1532,9 +1561,12 @@ function FixtureDetail({
   onOpenMatch?: (fixtureId: string) => void;
   onOpenReport?: (fixtureId: string) => void;
   completed: boolean;
+  accepted: boolean;
+  canLookUpSavedMatch: boolean;
   statusLabel: string;
 }) {
-  const players = seasonPlayers(state, fixture.seasonId);
+  const players = retainedPreparationPlayers(state, fixture.seasonId, [...fixture.selectedProfileIds, ...Object.keys(fixture.responses), ...Object.keys(fixture.attendance)]);
+  const archivedSelected = players.filter(profile => !profile.active && fixture.selectedProfileIds.includes(profile.id));
   const scheduled = fixture.status === "scheduled" && !completed;
   const [formationId, setFormationId] = useState(fixture.matchPlanDraft?.formation.id ?? `formation-${fixture.format}`);
   const availableFormations = [...(fixture.matchPlanDraft ? [fixture.matchPlanDraft.formation] : []), ...state.formations];
@@ -1612,7 +1644,7 @@ function FixtureDetail({
           )}
         </View>}
       </Card>
-      {completed && <Notice>This match is completed. Its recorded squad and replies are shown below; use the match report for recorded play and corrections.</Notice>}
+      {completed && <Notice>This match is completed. The Schedule selections, replies and check-in below use current season names. Open the match report for recorded attendance, play and corrections.</Notice>}
       {completed && onOpenReport && <Button label="Open match report" disabled={disabled} onPress={() => onOpenReport(fixture.id)} />}
       {!scheduled && !completed && (
         <Notice tone="warning">
@@ -1626,16 +1658,26 @@ function FixtureDetail({
         recorded separately.
       </Notice>
       <Text style={s.section}>
-        Match squad · {fixture.selectedProfileIds.length} selected
+        {completed ? "Schedule selections" : "Match squad"} · {fixture.selectedProfileIds.length} selected{completed ? " · current season names" : ""}
       </Text>
+      {scheduled && archivedSelected.length > 0 && <>
+        <Notice tone="warning">Archived players are still selected: {archivedSelected.map(profile => profile.displayName).join(", ")}. Remove these selections before changing or preparing the current squad. Their past records stay unchanged.</Notice>
+        <Button
+          label={archivedSelected.length === 1 ? `Remove ${archivedSelected[0].displayName} from match squad` : `Remove ${archivedSelected.length} archived players from match squad`}
+          variant="secondary"
+          disabled={disabled}
+          onPress={() => { const archivedIds = new Set(archivedSelected.map(profile => profile.id)); void onCommand({ type: "fixture.selection_saved", fixtureId: fixture.id, selectedProfileIds: fixture.selectedProfileIds.filter(id => !archivedIds.has(id)) }); }}
+          testID="preparation-remove-archived-selection"
+        />
+      </>}
       {players.map((profile) => {
         const selected = fixture.selectedProfileIds.includes(profile.id);
         return (
           <Card key={profile.id}>
-            <Toggle
+            {profile.active ? <Toggle
               label={`Select ${profile.displayName}`}
               value={selected}
-              disabled={disabled || !scheduled}
+              disabled={disabled || !scheduled || archivedSelected.length > 0}
               onChange={(value) => {
                 void onCommand({
                   type: "fixture.selection_saved",
@@ -1647,12 +1689,15 @@ function FixtureDetail({
                       ),
                 });
               }}
-            />
+            /> : <>
+              <View style={s.between}><Text style={s.section}>{profile.displayName}</Text><Pill>Archived</Pill></View>
+              <Text style={s.small}>{selected ? completed ? "Selected in Schedule." : "Selected in the saved squad." : "Not selected. Saved replies and attendance are retained."}</Text>
+            </>}
             <Choice
               label={`${profile.displayName} availability reply`}
               value={fixture.responses[profile.id] ?? "no_reply"}
               options={responseOptions}
-              disabled={disabled || !scheduled}
+              disabled={disabled || !scheduled || !profile.active}
               onChange={(response) => {
                 void onCommand({
                   type: "fixture.response_recorded",
@@ -1667,7 +1712,7 @@ function FixtureDetail({
                 label={`${profile.displayName} actual attendance`}
                 value={fixture.attendance[profile.id] ?? "not_recorded"}
                 options={attendanceOptions}
-                disabled={disabled || !scheduled}
+                disabled={disabled || !scheduled || !profile.active}
                 onChange={(attendance) => {
                   void onCommand({
                     type: "fixture.attendance_recorded",
@@ -1683,6 +1728,10 @@ function FixtureDetail({
       })}
       {scheduled && onOpenMatch && (
         <>
+          {(accepted || canLookUpSavedMatch) && <>
+            <Notice>{accepted ? "This match has a saved squad, formation and player positions. Open the saved preparation to continue with them." : "If this fixture was already prepared on another device, open its saved preparation. Otherwise use Open match preparation below to prepare the current squad."} Once a manager has taken control, preparing current changes cannot replace the saved match.</Notice>
+            <Button label="Open saved match preparation" icon="play" variant="secondary" disabled={disabled} onPress={() => onOpenMatch(fixture.id)} testID="preparation-open-saved-match" />
+          </>}
           <Choice
             label="Saved formation for this match"
             value={formation?.id ?? ""}
@@ -1698,7 +1747,7 @@ function FixtureDetail({
           <Button
             label="Open match preparation"
             icon="play"
-            disabled={disabled || !formation}
+            disabled={disabled || !formation || archivedSelected.length > 0}
             onPress={() => {
               if (formation)
                 void onCommand({
@@ -1791,12 +1840,12 @@ function TrainingDetail({
         .filter((profile) => training.expectedProfileIds.includes(profile.id))
         .map((profile) => (
           <Card key={profile.id}>
-            <Text style={s.section}>{profile.displayName}</Text>
+            <View style={s.between}><Text style={s.section}>{profile.displayName}</Text>{!profile.active && <Pill>Archived</Pill>}</View>
             <Choice
               label={`${profile.displayName} training reply`}
               value={training.responses[profile.id] ?? "no_reply"}
               options={responseOptions}
-              disabled={disabled || training.status === "cancelled"}
+              disabled={disabled || training.status === "cancelled" || !profile.active}
               onChange={(response) => {
                 void onCommand({
                   type: "training.response_recorded",
@@ -1810,7 +1859,7 @@ function TrainingDetail({
               label={`${profile.displayName} training attendance`}
               value={training.attendance[profile.id] ?? "not_recorded"}
               options={attendanceOptions}
-              disabled={disabled || training.status !== "held"}
+              disabled={disabled || training.status !== "held" || !profile.active}
               onChange={(attendance) => {
                 void onCommand({
                   type: "training.attendance_recorded",

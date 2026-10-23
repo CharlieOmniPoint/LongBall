@@ -1,6 +1,6 @@
 # Capability traceability
 
-> Accepted development source `6078969` contains the readable-report and database-locking corrections. The Pages application and demo API are externally verified at product source `6078969`; the bounded API session expires at 04:28:27 UTC on 22 October 2026. All four public role entries passed at 390px, with distinct authorised navigation and no horizontal overflow or page errors. Protected PDF/CSV HTTP checks passed; review.md records the managed-browser saved-file limitation. The [specification recheck](specification-recheck.md) supersedes the earlier blanket completion assessment. SEC20/SEC21 privacy fulfilment and the operator support/recovery console remain incomplete; Q05/Q09/Q10 and physical-device tests are explicitly deferred.
+> Historical specification-recheck evidence at source `6078969` and its named earlier checkpoints. Current demo accounts, publication, tests and native compilation are maintained in [review status](review.md) and the [build register](full-build-plan.md). The expired service links and counts below retain their original observation scope. SEC20/SEC21 privacy fulfilment and UI34 governed support/recovery remain incomplete behind owner-deferred Q05/Q09/Q10; physical-phone testing remains deferred.
 
 > Historical 20 October M0 baseline. Its table records the original slice and the work outstanding then. The later implementation/evidence checkpoints are tracked in [full-build-plan.md](full-build-plan.md), [review.md](review.md) and the [entry audit](entry-completion-audit.md). Physical-device acceptance remains open and is currently deferred.
 
@@ -37,7 +37,7 @@
 | F27 Results/points/form | UI21/UI24/UI25, REP07/RT07 | Retained backlog. | 3/1/0 all ordinary completed games incl friendlies; corrections and Q21 aggregate restrictions. |
 | F28 Historical results | UI23–UI26, REP01/MT25 | Retained backlog. | Summary provenance, unknown attendance/minutes/half score, unassigned scorers and no fresh voting/alerts. |
 
-## Current source and acceptance coverage
+## Historical specification-recheck acceptance coverage
 
 The historical table above is the original M0 baseline, not today's gap list. Accepted development source `6078969` retains the full F01–F28 target and four Should features. The [build register](full-build-plan.md), [screen inventory](entry-completion-audit.md) and [specification recheck](specification-recheck.md) identify source and qualifications.
 

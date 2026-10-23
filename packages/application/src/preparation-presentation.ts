@@ -1,3 +1,33 @@
+import type { PlayerProfile, PreparationState } from './preparation';
+
+/** Editors save against the source they opened; later revisions require reopening the draft. */
+export function preparationEditorSaveRevision(
+  openedRevision: number,
+  currentRevision: number,
+  reviewedRevision?: number,
+): number {
+  const valid = (revision: number) => Number.isSafeInteger(revision) && revision >= 0;
+  if (!valid(openedRevision) || !valid(currentRevision) || (reviewedRevision !== undefined && !valid(reviewedRevision))) throw new Error('Use valid nonnegative preparation revisions.');
+  if (openedRevision !== currentRevision) throw new Error('Preparation changed since this editor opened. Close and reopen the editor to review the latest saved values before saving.');
+  if (reviewedRevision !== undefined && reviewedRevision !== openedRevision) throw new Error('The reviewed preparation command belongs to a different source revision. Reopen the editor and review the latest saved values before saving.');
+  return openedRevision;
+}
+
+/** Keep referenced archived players visible for deliberate removal and historical evidence. */
+export function retainedPreparationPlayers(
+  state: Pick<PreparationState, 'profiles'>,
+  seasonId: string,
+  referencedProfileIds: readonly string[],
+): PlayerProfile[] {
+  const referenced = new Set(referencedProfileIds);
+  const seen = new Set<string>();
+  return state.profiles.filter(profile => {
+    if (profile.seasonId !== seasonId || (!profile.active && !referenced.has(profile.id)) || seen.has(profile.id)) return false;
+    seen.add(profile.id);
+    return true;
+  });
+}
+
 /** UI06 compares recorded calendar dates with a caller-supplied London date. */
 export interface PreparationEventGroup<T> { date: string | null; events: T[] }
 export interface PreparationGroupingOptions<T> {

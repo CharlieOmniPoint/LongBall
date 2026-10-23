@@ -1,4 +1,6 @@
 import { fictionalReviewApiUrl, type ReviewRole, type ReviewUnavailableReason } from '@longball/application/review-entry';
+import type { Membership, Principal } from '@longball/application/access';
+import { workspaceBindingIsCurrent, type WorkspaceBinding } from '@longball/application/workspace-boundary';
 
 export interface DemoLoginSession {
   apiBaseUrl: string;
@@ -76,14 +78,16 @@ function authorisedRoles(identity: unknown, accountId: string, nowMs: number): R
   return roles.filter(role => authorised.some(item => item.role === role));
 }
 /** Recheck the same account and selected role before uncovering a backgrounded workspace. */
-export async function verifyDemoSession(session: DemoLoginSession, signal: AbortSignal, fetchRequest: DemoLoginFetch = globalThis.fetch, now: () => number = Date.now): Promise<void> {
+export async function verifyDemoSession(session: DemoLoginSession, signal: AbortSignal, fetchRequest: DemoLoginFetch = globalThis.fetch, now: () => number = Date.now, selectedScope: WorkspaceBinding | null = null): Promise<void> {
   const base = fictionalReviewApiUrl(session.apiBaseUrl);
   if (!base || !Number.isFinite(session.expiresAtMs) || session.expiresAtMs <= now()) throw new DemoSessionAccessDenied();
   const response = await exchange(base, '/v1/me', { method: 'GET', headers: { Accept: 'application/json', Authorization: `Bearer ${session.accessToken}` } }, signal, fetchRequest);
   if ([401, 403, 404].includes(response.status)) throw new DemoSessionAccessDenied();
   if (!response.ok) throw new Error('Current demo access could not be checked. Please retry.');
-  const currentRoles = authorisedRoles(await read(response, signal), session.accountId, now());
-  if (!currentRoles.includes(session.role) || session.expiresAtMs <= now()) throw new DemoSessionAccessDenied();
+  const identity = await read(response, signal);
+  const currentRoles = authorisedRoles(identity, session.accountId, now());
+  if (!currentRoles.includes(selectedScope?.role ?? session.role) || session.expiresAtMs <= now()) throw new DemoSessionAccessDenied();
+  if (selectedScope && (!record(identity) || !record(identity.principal) || !Array.isArray(identity.memberships) || selectedScope.apiBaseUrl !== base || selectedScope.accountId !== session.accountId || !workspaceBindingIsCurrent(selectedScope, identity.principal as unknown as Principal, identity.memberships as Membership[], now()))) throw new DemoSessionAccessDenied();
   if (signal.aborted) throw canceled();
 }
 

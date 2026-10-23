@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 import { existsSync, createWriteStream } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { chromium } from 'playwright';
@@ -30,19 +31,42 @@ async function readAccepted() {
   assert(response.ok, `Independent accepted read HTTP${response.status}`);
   return response.json();
 }
+async function createUnpreparedFixture(contractVersion) {
+  const route = `${api}/v1/teams/synthetic-roma-u10/preparation?seasonId=synthetic-season-2026-27`;
+  let preparation = await (await fetch(route, { headers: { Authorization: `Bearer ${token}` } })).json();
+  const fixtureId = `qa-unprepared-${randomUUID()}`;
+  const commands = [
+    { type: 'fixture.saved', fixture: { id: fixtureId, seasonId: 'synthetic-season-2026-27', opponent: 'Cedar QA FC', playedDate: '2026-10-25', kickoff: '10:00', arrival: '09:30', venue: 'Roma training ground', homeAway: 'home', format: 7, plannedHalfDurationMs: 1_500_000 } },
+    { type: 'fixture.selection_saved', fixtureId, selectedProfileIds: preparation.profiles.filter(profile => profile.active).slice(0, 9).map(profile => profile.id) },
+  ];
+  for (const payload of commands) {
+    const command = { ...payload, id: randomUUID(), expectedRevision: preparation.revision };
+    const response = await fetch(route, { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'X-Longball-Role': 'manager', 'Content-Type': 'application/json', 'X-Api-Contract-Version': contractVersion, 'Idempotency-Key': command.id }, body: JSON.stringify({ command }) });
+    assert.equal(response.status, 200, 'The negative fixture must be created through actual preparation commands.');
+    preparation = await response.json();
+  }
+  assert(!preparation.snapshots.some(snapshot => snapshot.fixtureId === fixtureId), 'The negative fixture must have no prepared snapshot.');
+  const download = await fetch(`${api}/v1/matches/${fixtureId}/download?deviceId=unprepared-negative-review`, { headers: { Authorization: `Bearer ${token}` } });
+  assert.equal(download.status, 404, 'An unprepared fixture must not expose a canonical match.');
+  const claim = await fetch(`${api}/v1/matches/${fixtureId}/controller`, { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', 'X-Api-Contract-Version': contractVersion, 'Idempotency-Key': randomUUID() }, body: JSON.stringify({ deviceId: 'unprepared-negative-review' }) });
+  assert.equal(claim.status, 404, 'An unprepared fixture must not acquire recording authority through HTTP.');
+  return fixtureId;
+}
 try {
   const deadline = Date.now() + 20_000;
   while (true) { try { assert.equal((await (await fetch(`${api}/health`)).json()).syntheticOnly, true); break; } catch (error) { if (Date.now() >= deadline || server.exitCode !== null) throw error; await new Promise(resolve => setTimeout(resolve, 100)); } }
+  const health = await (await fetch(`${api}/health`)).json();
+  const unpreparedFixtureId = await createUnpreparedFixture(health.contractVersion);
   await page.route(REVIEW_STATUS_REQUEST, route => route.fulfill({ headers: { 'access-control-allow-origin': '*' }, json: { state: 'ready', url: tunnel, startedAt: new Date(Date.now() - 1000).toISOString(), expiresAt: new Date(Date.now() + 3_600_000).toISOString(), sourceRevision: 'a'.repeat(40) } }));
   await page.route(`${tunnel}/**`, async route => { const response = await route.fetch({ url: api + route.request().url().slice(tunnel.length) }); await route.fulfill({ response, headers: { ...response.headers(), 'access-control-allow-origin': new URL(baseURL).origin } }); });
   await page.goto(baseURL, { waitUntil: 'networkidle' });
   await enterFictionalReview(page, 'manager', 'connected');
   await page.getByTestId('workspace-context-ready').waitFor();
   await openWorkspaceTab(page, 'controller');
-  await page.getByLabel('Connected match identifier', { exact: true }).fill(matchId);
-  await page.getByText('Open this fixture in Schedule and choose Open match preparation to save its formation and player snapshots before taking control.', { exact: true }).waitFor();
-  assert.equal(await page.getByTestId('recording-acquire').isDisabled(), true, 'An unprepared seed must not claim recording authority');
-  checks.push('Opening an unprepared fixture cannot claim its controller; saved formation and player snapshots are required first.');
+  await page.getByLabel('Connected match identifier', { exact: true }).fill(unpreparedFixtureId);
+  await page.getByTestId('recording-acquire').waitFor();
+  assert.equal(await page.getByTestId('recording-acquire').isDisabled(), true, 'The separately created unprepared fixture must not claim recording authority');
+  checks.push('A separate fixture created through actual preparation commands, with no prepared formation/player snapshot, has no canonical match, refuses HTTP controller claim, and keeps the UI recording claim disabled. Prepared Maple remains the positive matchday fixture.');
   await openWorkspaceTab(page, 'schedule');
   await page.getByRole('button', { name: 'Open fixture Maple FC, 2026-10-24', exact: true }).click();
   await page.getByTestId('preparation-open-match').click();

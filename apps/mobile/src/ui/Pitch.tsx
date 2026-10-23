@@ -110,6 +110,8 @@ export function Pitch({
                   positionEditing ? `formation-position-${slot.id}` : undefined
                 }
                 accessibilityState={{ selected: selectedSlot === slot.id }}
+                aria-pressed={onSlotPress ? selectedSlot === slot.id : undefined}
+                aria-disabled={!onSlotPress}
                 style={[
                   styles.positionRow,
                   selectedSlot === slot.id && styles.selectedRow,
@@ -246,6 +248,8 @@ export function Pitch({
                   positionEditing ? `formation-position-${slot.id}` : undefined
                 }
                 accessibilityState={{ selected }}
+                aria-pressed={onSlotPress ? selected : undefined}
+                aria-disabled={!onSlotPress}
                 style={[
                   styles.slot,
                   (slots.length > 7 || positionEditing) && {

@@ -76,6 +76,8 @@ export function WorkspaceNavigation({
           accessibilityRole="tab"
           accessibilityLabel={item.label}
           accessibilityState={{ selected: selected === item.tab, disabled }}
+          aria-selected={selected === item.tab}
+          aria-disabled={disabled}
           testID={`workspace-tab-${item.tab}`}
           disabled={disabled}
           onPress={() => onSelect(item.tab)}

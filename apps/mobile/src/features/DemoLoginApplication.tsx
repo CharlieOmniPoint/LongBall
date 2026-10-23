@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type ComponentRef } from 'rea
 import { ActivityIndicator, AppState, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { discoverFictionalReview } from '@longball/application/review-entry';
+import type { WorkspaceBinding } from '@longball/application/workspace-boundary';
 import { DemoSessionAccessDenied, demoServiceUnavailableMessage, signInDemo, signOutDemo, verifyDemoSession, type DemoLoginSession } from '../platform/demo-login';
 import { demoSessionDeadline, demoSessionExpired, type DemoSessionDeadline } from '../platform/demo-session-deadline';
 import { Button, Card, colors, Notice, Pill, typography } from '../ui';
@@ -33,13 +34,14 @@ export function DemoLoginApplication({ onBack, onNavigationGuardChange }: {
   const sessionRef = useRef<DemoLoginSession | null>(null);
   const deadline = useRef<DemoSessionDeadline | null>(null);
   const foregroundRef = useRef(foreground);
+  const selectedScope = useRef<WorkspaceBinding | null>(null);
   const generation = useRef(0);
   const passwordInput = useRef<ComponentRef<typeof TextInput>>(null);
   const insets = useSafeAreaInsets();
 
   const closeSession = useCallback((expected: DemoLoginSession, notice: string) => {
     if (sessionRef.current !== expected) return false;
-    sessionRef.current = null; deadline.current = null; generation.current += 1;
+    sessionRef.current = null; selectedScope.current = null; deadline.current = null; generation.current += 1;
     resumeOperation.current?.abort(); resumeOperation.current = null;
     setSession(null); setPasscode(''); setError(null); setMessage(notice); setAccessCheck('ready');
     onNavigationGuardChange?.(null);
@@ -52,11 +54,13 @@ export function DemoLoginApplication({ onBack, onNavigationGuardChange }: {
     if (sessionHasExpired()) { closeSession(checking, expiredMessage); return; }
     resumeOperation.current?.abort();
     const controller = new AbortController(); resumeOperation.current = controller;
+    const scope = selectedScope.current;
     setAccessCheck('checking');
     const timer = setTimeout(() => controller.abort(), 10_000);
     try {
-      await verifyDemoSession(checking, controller.signal);
+      await verifyDemoSession(checking, controller.signal, globalThis.fetch, Date.now, scope);
       if (!mounted.current || sessionRef.current !== checking || resumeOperation.current !== controller || !foregroundRef.current) return;
+      if (selectedScope.current !== scope) { setAccessCheck('failed'); return; }
       if (sessionHasExpired()) { closeSession(checking, expiredMessage); return; }
       setAccessCheck('ready');
     } catch (cause) {
@@ -68,6 +72,7 @@ export function DemoLoginApplication({ onBack, onNavigationGuardChange }: {
       if (resumeOperation.current === controller) resumeOperation.current = null;
     }
   }, [closeSession, sessionHasExpired]);
+  const authorityScopeChanged = useCallback((scope: WorkspaceBinding | null) => { selectedScope.current = scope; }, []);
 
   useEffect(() => {
     mounted.current = true;
@@ -162,6 +167,7 @@ export function DemoLoginApplication({ onBack, onNavigationGuardChange }: {
             initialRole={session.role}
             onLeaveWorkspace={finishSignOut}
             onNavigationGuardChange={onNavigationGuardChange}
+            onAuthorityScopeChange={authorityScopeChanged}
           />
         </View>
       </View>

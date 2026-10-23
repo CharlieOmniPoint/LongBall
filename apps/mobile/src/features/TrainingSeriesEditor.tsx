@@ -2,11 +2,13 @@ import { useState } from 'react';
 import { Switch, Text, TextInput, View } from 'react-native';
 import { reducePreparation, type PreparationCommand, type PreparationState, type TrainingDraft } from '@longball/application/preparation';
 import { trainingSeriesOccurrences, weeklyTrainingDates, type TrainingSeriesPayload } from '@longball/application/training-series';
+import { retainedPreparationPlayers } from '@longball/application/preparation-presentation';
 import { randomUUID } from '../platform/id';
-import { Button, Card, Notice, typography } from '../ui';
+import { Button, Card, Notice, Pill, typography } from '../ui';
 
-export function TrainingSeriesEditor({ state, training, mode, disabled, onSubmit, onClose }: {
+export function TrainingSeriesEditor({ state, training, mode, disabled, sourceChanged = false, onSubmit, onClose }: {
   state: PreparationState; training: TrainingDraft; mode: 'create' | 'manage'; disabled: boolean;
+  sourceChanged?: boolean;
   onSubmit: (command: PreparationCommand) => Promise<boolean>; onClose: () => void;
 }) {
   const series = mode === 'manage' && training.recurrenceGroupId ? trainingSeriesOccurrences(state, training.seasonId, training.recurrenceGroupId) : [];
@@ -18,9 +20,10 @@ export function TrainingSeriesEditor({ state, training, mode, disabled, onSubmit
   const [preview, setPreview] = useState<(TrainingSeriesPayload & { id: string; expectedRevision: number }) | null>(null);
   const [error, setError] = useState<string | null>(null);
   const season = state.seasons.find(item => item.id === training.seasonId)!;
-  const players = state.profiles.filter(item => item.active && item.seasonId === training.seasonId);
+  const players = retainedPreparationPlayers(state, training.seasonId, original.expectedProfileIds);
   const review = () => {
     try {
+      if (sourceChanged) throw new Error('Saved preparation changed. Keep this draft visible until you discard it and reopen the latest saved values.');
       let payload: TrainingSeriesPayload;
       if (mode === 'create') {
         const dates = weeklyTrainingDates(draft.date, /^\d+$/.test(count) ? Number(count) : NaN, season);
@@ -47,7 +50,7 @@ export function TrainingSeriesEditor({ state, training, mode, disabled, onSubmit
       {previewRows.map(item => <Card key={item.id}><Text style={typography.body}>{item.date} · {preview.type === 'training.series_created' ? item.time : preview.type === 'training.series_updated' ? preview.changes.time : item.time}</Text><Text style={typography.muted}>{preview.type === 'training.series_updated' ? preview.changes.venue || 'Venue not recorded' : item.venue || 'Venue not recorded'}</Text></Card>)}
       {preview.type !== 'training.series_cancelled' && <Text style={typography.body}>Expected players: {players.filter(item => (preview.type === 'training.series_created' ? preview.occurrences[0].expectedProfileIds : preview.changes.expectedProfileIds).includes(item.id)).map(item => item.displayName).join(', ') || 'None selected'}.</Text>}
       {stale && <Notice tone="error">The saved team records changed after this preview. Go back and review the current dates again.</Notice>}
-      <Button testID="training-series-confirm" label={`Confirm ${previewRows.length} ${preview.type === 'training.series_cancelled' ? 'cancellations' : 'training occurrences'}`} disabled={disabled || stale} onPress={() => { void onSubmit(preview); }} />
+      <Button testID="training-series-confirm" label={`Confirm ${previewRows.length} ${preview.type === 'training.series_cancelled' ? 'cancellations' : 'training occurrences'}`} disabled={disabled || stale || sourceChanged} onPress={() => { void onSubmit(preview); }} />
       <Button label="Back to series editor" variant="secondary" disabled={disabled} onPress={() => setPreview(null)} />
     </> : <>
       {mode === 'create' ? <>
@@ -64,10 +67,16 @@ export function TrainingSeriesEditor({ state, training, mode, disabled, onSubmit
         <SeriesField label="Series training time (HH:MM)" value={draft.time} disabled={disabled} onChange={time => setDraft(previous => ({ ...previous, time }))} />
         <SeriesField label="Series training venue" value={draft.venue} disabled={disabled} onChange={venue => setDraft(previous => ({ ...previous, venue }))} />
         <Text style={typography.section}>Expected players</Text>
-        {players.map(player => <View key={player.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}><Text style={[typography.body, { flex: 1 }]}>{player.displayName}</Text><Switch accessibilityLabel={`Series expects ${player.displayName}`} value={draft.expectedProfileIds.includes(player.id)} disabled={disabled} onValueChange={selected => setDraft(previous => ({ ...previous, expectedProfileIds: selected ? [...previous.expectedProfileIds, player.id] : previous.expectedProfileIds.filter(id => id !== player.id) }))} /></View>)}
+        {players.map(player => player.active ? <View key={player.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}><Text style={[typography.body, { flex: 1 }]}>{player.displayName}</Text><Switch accessibilityLabel={`Series expects ${player.displayName}`} value={draft.expectedProfileIds.includes(player.id)} disabled={disabled} onValueChange={selected => setDraft(previous => ({ ...previous, expectedProfileIds: selected ? [...previous.expectedProfileIds, player.id] : previous.expectedProfileIds.filter(id => id !== player.id) }))} /></View> : <Card key={player.id}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}><Text style={typography.body}>{player.displayName}</Text><Pill>Archived</Pill></View>
+          {draft.expectedProfileIds.includes(player.id) ? <>
+            <Text style={typography.muted}>Still expected in the scheduled occurrences. Remove this archived player before reviewing future changes.</Text>
+            <Button label={`Remove ${player.displayName} from series expected players`} variant="secondary" disabled={disabled} onPress={() => setDraft(previous => ({ ...previous, expectedProfileIds: previous.expectedProfileIds.filter(id => id !== player.id) }))} />
+          </> : <Text style={typography.muted}>Removed from the series draft. Held and cancelled occurrences stay unchanged.</Text>}
+        </Card>)}
       </>}
       <Notice>Held and cancelled occurrences are retained unchanged. To move one date, use Edit this occurrence. Cancelling one occurrence never cancels its series.</Notice>
-      <Button testID="training-series-review" label="Review training occurrences" disabled={disabled || mode === 'manage' && scheduled.length === 0} onPress={review} />
+      <Button testID="training-series-review" label="Review training occurrences" disabled={disabled || sourceChanged || mode === 'manage' && scheduled.length === 0} onPress={review} />
     </>}
     <Button label="Keep saved training records" variant="quiet" disabled={disabled} onPress={onClose} />
   </View>;
