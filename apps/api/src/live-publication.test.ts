@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import type { AddressInfo } from 'node:net';
 import { Pool } from 'pg';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createMatch, reduceMatch, type MatchConfig, type MatchEvent } from '../../../packages/domain/src';
+import { createMatch, reduceMatch, type MatchConfig, type MatchEvent, type MatchState } from '../../../packages/domain/src';
 import { createApi } from './server';
 import { createPostgresApi } from './postgres-server';
 import { PostgresStore } from './postgres-store';
@@ -15,6 +15,8 @@ import { applyRuntimeGrants } from './runtime-grants';
 import { EVENT_CONTRACT_VERSION, SYNTHETIC_IDS } from './store';
 import type { RecordsState } from '../../../packages/application/src/records';
 import type { recordsServiceView } from '../../../packages/application/src/records-service';
+import { fixtureMatchConfig } from '../../../packages/application/src/application';
+import { prepareFixtureSnapshot, type PreparationState } from '../../../packages/application/src/preparation';
 
 const configuredUrl = process.env.LONGBALL_POSTGRES_TEST_URL;
 const cleanups: (() => Promise<unknown>)[] = [];
@@ -31,14 +33,15 @@ function recordedMatch(config: MatchConfig) {
     } } as MatchEvent);
   };
   for (const playerId of config.selectedPlayerIds) send({ type: 'attendance.recorded', playerId, status: 'present' } as Omit<MatchEvent, 'id' | 'sample'>);
-  send({ type: 'lineup.staged', lineup: ['GK', 'CB', 'CB', 'CM', 'LW', 'RW', 'ST'].map((position, index) => ({ position, slotId: `slot-${index}`, playerId: config.selectedPlayerIds[index] })) } as Omit<MatchEvent, 'id' | 'sample'>);
+  const slots = config.slots ?? ['GK', 'CB', 'CB', 'CM', 'LW', 'RW', 'ST'].map((position, index) => ({ position, slotId: `slot-${index}` }));
+  send({ type: 'lineup.staged', lineup: slots.map((slot, index) => ({ position: slot.position, slotId: slot.slotId, playerId: config.selectedPlayerIds[index] })) } as Omit<MatchEvent, 'id' | 'sample'>);
   send({ type: 'half.started' });
   send({ type: 'goal.recorded', beneficiary: 'us', scorerPlayerId: null, goalType: 'open_play', isOwnGoal: false } as Omit<MatchEvent, 'id' | 'sample'>);
   send({ type: 'half.ended' }); send({ type: 'half.started' }); send({ type: 'half.ended' });
   return match;
 }
 
-async function start(backend: 'sqlite' | 'postgres') {
+async function start(backend: 'sqlite' | 'postgres', recordPrimary = true) {
   const directory = mkdtempSync(join(tmpdir(), 'longball-live-publication-'));
   cleanups.push(async () => rmSync(directory, { recursive: true, force: true }));
   let owner: PostgresStore | undefined;
@@ -63,9 +66,11 @@ async function start(backend: 'sqlite' | 'postgres') {
   await new Promise<void>(resolve => api.server.listen(0, '127.0.0.1', resolve));
   const base = `http://127.0.0.1:${(api.server.address() as AddressInfo).port}`;
   const stored = owner ? await owner.match(SYNTHETIC_IDS.matchId) : (api as ReturnType<typeof createApi>).store.match(SYNTHETIC_IDS.matchId);
-  const match = recordedMatch(JSON.parse(stored.config_json));
-  if (owner) await owner.execute('UPDATE matches SET state_json=$1,last_sync_at=$2 WHERE id=$3', [JSON.stringify(match), Date.now(), SYNTHETIC_IDS.matchId]);
-  else (api as ReturnType<typeof createApi>).store.database.prepare('UPDATE matches SET state_json=?,last_sync_at=? WHERE id=?').run(JSON.stringify(match), Date.now(), SYNTHETIC_IDS.matchId);
+  const match: MatchState = recordPrimary ? recordedMatch(JSON.parse(stored.config_json)) : JSON.parse(stored.state_json);
+  if (recordPrimary) {
+    if (owner) await owner.execute('UPDATE matches SET state_json=$1,last_sync_at=$2 WHERE id=$3', [JSON.stringify(match), Date.now(), SYNTHETIC_IDS.matchId]);
+    else (api as ReturnType<typeof createApi>).store.database.prepare('UPDATE matches SET state_json=?,last_sync_at=? WHERE id=?').run(JSON.stringify(match), Date.now(), SYNTHETIC_IDS.matchId);
+  }
   const setRecords = async (value: RecordsState) => {
     if (owner) await owner.saveDocument(SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId, 'records', value);
     else (api as ReturnType<typeof createApi>).store.saveDocument(SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId, 'records', value);
@@ -88,6 +93,40 @@ async function start(backend: 'sqlite' | 'postgres') {
 }
 
 for (const backend of ['sqlite', 'postgres'] as const) describe.skipIf(backend === 'postgres' && !configuredUrl)(`current live publication through actual ${backend} HTTP`, () => {
+  it('starts both upcoming demo games from the prepared squad, formation and eligibility with no played evidence', async () => {
+    const { call } = await start(backend, false);
+    const preparation = await call<PreparationState>(`/v1/teams/${SYNTHETIC_IDS.teamId}/preparation${scope}`, 'manager');
+    expect(preparation.status).toBe(200);
+    const future = preparation.body.fixtures.filter(fixture => fixture.playedDate >= '2026-10-22');
+    expect(future).toHaveLength(2);
+    for (const fixture of future) {
+      const path = `/v1/matches/${fixture.id}`, deviceId = `prepared-demo-${fixture.id}`;
+      expect((await call(`${path}/controller`, 'manager', { deviceId })).status).toBe(200);
+      const downloaded = await call<{ state: MatchState }>(`${path}/download?deviceId=${deviceId}`, 'manager');
+      expect(downloaded.status).toBe(200);
+      const state = downloaded.body.state;
+      expect(state.config).toEqual(fixtureMatchConfig(preparation.body, prepareFixtureSnapshot(preparation.body, fixture.id)));
+      expect(state.config.profileSnapshot).toHaveLength(9);
+      expect(state.config.slots).toHaveLength(7);
+      expect(state).toMatchObject({ status: 'preparation', matchActiveMs: 0, half: 0, intervals: [], goals: [], completedAtMs: null });
+      expect(Object.values(state.attendance).every(status => status === 'not_recorded')).toBe(true);
+      expect(fixture.attendance).toEqual({});
+      let ready = createMatch(state.config);
+      const sample = { monotonicMs: 0, wallTimeMs: Date.now(), sessionId: 'prepared-demo-check' };
+      for (const playerId of state.config.selectedPlayerIds) ready = reduceMatch(ready, { id: `present-${playerId}`, type: 'attendance.recorded', playerId, status: 'present', sample });
+      // The primary demo game must enforce the same prepared positions as any newly prepared fixture.
+      const allocation = state.config.slots!.map((slot, index) => ({ slotId: slot.slotId, position: slot.position, playerId: state.config.selectedPlayerIds[index] }));
+      expect(reduceMatch(ready, { id: 'valid-lineup', type: 'lineup.staged', lineup: allocation, sample }).stagedLineup).toEqual(allocation);
+      expect(() => reduceMatch(ready, { id: 'invalid-slot', type: 'lineup.staged', lineup: allocation.map((row, index) => index === 0 ? { ...row, slotId: 'not-a-saved-slot' } : row), sample })).toThrow('saved formation slot');
+      const ineligibleKeeper = allocation.map((row, index) => ({ ...row, playerId: state.config.selectedPlayerIds[index === 0 ? 1 : index === 1 ? 0 : index] }));
+      expect(() => reduceMatch(ready, { id: 'invalid-position', type: 'lineup.staged', lineup: ineligibleKeeper, sample })).toThrow('outside the saved match eligibility');
+    }
+    const list = await call<{ items: { status: string }[] }>(`/v1/teams/${SYNTHETIC_IDS.teamId}/matches${scope}`);
+    expect(list.body.items).toHaveLength(4);
+    expect(list.body.items.filter(item => item.status === 'completed')).toHaveLength(2);
+    expect(list.body.items.filter(item => item.status === 'preparation')).toHaveLength(2);
+  });
+
   it('keeps demo publication scoped, intersects current score/derived decisions, rejects injected approval and invalidates class changes', async () => {
     const fixture = await start(backend), { match, view, call, command } = fixture;
     const current = (value: View) => value.matches.find(report => report.matchId === match.config.matchId)!;

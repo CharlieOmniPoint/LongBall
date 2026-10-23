@@ -1,8 +1,17 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { createRequire } from "node:module";
-import { readFileSync, mkdirSync, writeFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import {
+  cpSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 
@@ -17,7 +26,7 @@ const base = JSON.parse(bytes).expo;
 const hash = (value) => createHash("sha256").update(value).digest("hex");
 const require = createRequire(import.meta.url);
 const profile = require(join(mobile, "app.config.js"));
-const configuration = (environment) => {
+const configuration = (environment, projectRoot) => {
   const env = { ...process.env };
   for (const key of Object.keys(env))
     if (key.startsWith("EXPO_PUBLIC_")) delete env[key];
@@ -33,14 +42,14 @@ const configuration = (environment) => {
   const result = spawnSync(
     process.execPath,
     [
-      join(mobile, "node_modules/expo/bin/cli"),
+      join(projectRoot, "node_modules/expo/bin/cli"),
       "config",
       "--type",
       "introspect",
       "--json",
     ],
     {
-      cwd: mobile,
+      cwd: projectRoot,
       env,
       encoding: "utf8",
       timeout: 120_000,
@@ -60,8 +69,47 @@ const configuration = (environment) => {
   );
   return config;
 };
-const development = configuration("development"),
-  production = configuration("production");
+const configurations = () => {
+  const sandbox = mkdtempSync(join(tmpdir(), "longball-native-config-"));
+  const projectRoot = join(sandbox, "apps/mobile");
+  // Introspection reads existing native files. Always start from app sources so
+  // an ignored prebuild from another profile cannot change these assertions.
+  const generated = new Set([
+    "android",
+    "ios",
+    "node_modules",
+    ".expo",
+    "dist",
+    "dist-web",
+  ]);
+  try {
+    cpSync(mobile, projectRoot, {
+      recursive: true,
+      filter: (source) => {
+        const top = relative(mobile, source).split(sep)[0];
+        return !generated.has(top) && !top.startsWith("dist-");
+      },
+    });
+    const linkType = process.platform === "win32" ? "junction" : "dir";
+    symlinkSync(
+      join(root, "node_modules"),
+      join(sandbox, "node_modules"),
+      linkType,
+    );
+    symlinkSync(
+      join(mobile, "node_modules"),
+      join(projectRoot, "node_modules"),
+      linkType,
+    );
+    return {
+      development: configuration("development", projectRoot),
+      production: configuration("production", projectRoot),
+    };
+  } finally {
+    rmSync(sandbox, { recursive: true, force: true });
+  }
+};
+const { development, production } = configurations();
 const mods = (config) => config._internal.modResults;
 const android = (config) =>
   mods(config).android.manifest.manifest.application[0];

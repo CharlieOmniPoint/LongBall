@@ -92,6 +92,14 @@ jobs:
             sleep 1
           done
           pnpm test:e2e
+      - name: Exercise configured demo accounts and queued report downloads
+        env:
+          EXPO_PUBLIC_ENVIRONMENT: "development"
+          EXPO_PUBLIC_DEMO_ACCOUNT_LOGIN: "1"
+          EXPO_PUBLIC_REVIEW_STATIC: "1"
+        run: |
+          pnpm --filter mobile exec expo export --platform web --output-dir dist-demo-web
+          pnpm test:demo:e2e
       - name: Enforce the dependency audit result
         if: always()
         env:
@@ -106,6 +114,8 @@ jobs:
             .local/quality/secrets.json
             .local/quality/dependencies/*.json
             .local/quality/inventory/
+            .local/quality/demo-account-review/report.json
+            .local/quality/demo-account-review/*.png
           if-no-files-found: warn
           retention-days: 3
 
