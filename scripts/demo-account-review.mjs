@@ -289,13 +289,16 @@ async function exportReports(state) {
 const watchdog = setTimeout(() => { void browser?.close().catch(() => undefined); for (const child of children) child.kill('SIGTERM'); }, 240000);
 watchdog.unref();
 try {
+  // This directory contains only this runner's generated report and signed-in images.
+  // A failed later attempt must never retain successful screenshots from an older run.
+  await rm(output, { recursive: true, force: true });
   await mkdir(output, { recursive: true });
   check(existsSync(path.join(webRoot, 'index.html')) && existsSync(apiBundle) && existsSync(workerBundle), 'Build the flagged dist-demo-web application and API/worker exports before this check.');
   const html = await readFile(path.join(webRoot, 'index.html'), 'utf8');
   const scriptPath = html.match(/<script[^>]+src="([^"]+)"/)?.[1];
   check(scriptPath && !scriptPath.includes('..') && !scriptPath.includes('://'), 'The built web entry must reference its own compiled JavaScript.');
   const scriptBytes = await readFile(path.join(webRoot, scriptPath.replace(/^\//, '')));
-  report.source = { gitHead: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(), workingTreeDirty: Boolean(execFileSync('git', ['status', '--porcelain'], { encoding: 'utf8' }).trim()), webIndexSha256: digest(html), webJavaScriptSha256: digest(scriptBytes), apiBundleSha256: digest(await readFile(apiBundle)), workerBundleSha256: digest(await readFile(workerBundle)) };
+  report.source = { gitHead: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(), workingTreeDirty: Boolean(execFileSync('git', ['status', '--porcelain'], { encoding: 'utf8' }).trim()), harnessSha256: digest(await readFile(new URL(import.meta.url))), webIndexSha256: digest(html), webJavaScriptSha256: digest(scriptBytes), apiBundleSha256: digest(await readFile(apiBundle)), workerBundleSha256: digest(await readFile(workerBundle)) };
   privateDirectory = await mkdtemp(path.join(tmpdir(), 'longball-demo-account-qa-'));
   const databasePath = path.join(privateDirectory, 'demo.sqlite');
   const accounts = [['manager', 'synthetic-account-manager-2'], ['administrator', 'synthetic-account-admin'], ['player', 'synthetic-account-player-01'], ['spectator', 'synthetic-account-spectator']].map(([role, accountId]) => {
