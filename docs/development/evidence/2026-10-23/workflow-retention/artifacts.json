@@ -1,0 +1,66 @@
+{
+  "productSource": "e2bf5a6744fbcdebd832d2d4e8795641d9d4488d",
+  "plaintextPasscodesAbsentFromPayload": true,
+  "files": [
+    {
+      "file": ".local/cloud-preview-build/e2bf5a6744fbcdebd832d2d4e8795641d9d4488d/site/index.html",
+      "artifactDigests": [
+        {
+          "file": "digest",
+          "digest": "393ccc0bb28a98fe45f5f16029202e525fab249c650914141abd5006b29260c6"
+        }
+      ]
+    },
+    {
+      "file": ".local/cloud-preview-build/e2bf5a6744fbcdebd832d2d4e8795641d9d4488d/site/_expo/static/js/web/index-dca0d52276eb7dca2d1935996ed54cc2.js",
+      "artifactDigests": [
+        {
+          "file": "digest",
+          "digest": "f95026059c53a6b5339935322f8864ac4cafd85938b5a0e675263c28231f8463"
+        }
+      ]
+    },
+    {
+      "file": ".local/cloud-preview-build/e2bf5a6744fbcdebd832d2d4e8795641d9d4488d/pages-site/index.html",
+      "artifactDigests": [
+        {
+          "file": "digest",
+          "digest": "854fdc52c6091fccd3ab0d6fa28334592d35475a711aca4c5c0a316f5cfab74e"
+        }
+      ]
+    },
+    {
+      "file": ".local/cloud-preview-build/e2bf5a6744fbcdebd832d2d4e8795641d9d4488d/pages-site/_expo/static/js/web/index-0e3db20732c468e36b9d973fb3af771a.js",
+      "artifactDigests": [
+        {
+          "file": "digest",
+          "digest": "6c3ecf368f9187b7901c2c23c629d0b278bf8195826d9be3590375d091c45d67"
+        }
+      ]
+    },
+    {
+      "file": ".local/cloud-preview-build/e2bf5a6744fbcdebd832d2d4e8795641d9d4488d/backend/api.mjs",
+      "artifactDigests": [
+        {
+          "file": "digest",
+          "digest": "a8c0eacd04f2bc7858e08665251ce0c32f02ec90bbdee907c72954a82d665fc3"
+        }
+      ]
+    },
+    {
+      "file": ".local/cloud-preview-build/e2bf5a6744fbcdebd832d2d4e8795641d9d4488d/backend/worker.mjs",
+      "artifactDigests": [
+        {
+          "file": "digest",
+          "digest": "7d88610a3aa9d459beb6d290890625f6bbbe410b05e5ef9b1e3cbf49c2d60f8c"
+        }
+      ]
+    }
+  ],
+  "artifactDigests": [
+    {
+      "file": "sourceBundleDigest",
+      "digest": "99abc97639d1c37c5f3979107dd965054807d79e5dbb0a0465453cb9007b6034"
+    }
+  ]
+}
