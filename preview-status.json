@@ -1,9 +1,9 @@
 {
-  "state": "starting",
-  "url": "",
+  "state": "ready",
+  "url": "https://pharmaceutical-geo-achieved-macintosh.trycloudflare.com",
   "sourceRevision": "7cb2760d8abdcbba1ce5cfefec6345d286f61185",
   "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40118882780",
-  "startedAt": "2026-10-24T18:04:56Z",
-  "expiresAt": "",
+  "startedAt": "2026-10-24T18:05:30Z",
+  "expiresAt": "2026-10-24T23:05:30Z",
   "audience": "LongBall demo review with simulated Roma U10 teams and matches"
 }
