@@ -3,7 +3,7 @@ name: LongBall compatible frontend review
 on:
   push:
     branches: [preview/longball-m0]
-    paths: ["preview/frontend-review-request.json"]
+    paths: ["frontend-review/request.json"]
 
 permissions:
   contents: read
@@ -42,7 +42,7 @@ jobs:
           python3 - <<'PY'
           import base64, datetime, hashlib, json, os, re, urllib.request
           from pathlib import Path
-          request = json.loads(Path("preview/frontend-review-request.json").read_text())
+          request = json.loads(Path("frontend-review/request.json").read_text())
           assert set(request) == {"mode", "frontendSourceCommit", "backendSourceCommit", "backendTransportCommit", "apiSha256", "workerSha256", "testedRunId"}
           assert request["mode"] == "compatible-frontend-review-v1"
           for key in ("frontendSourceCommit", "backendSourceCommit", "backendTransportCommit"):
@@ -114,7 +114,7 @@ jobs:
           python3 - <<'PY'
           import base64, datetime, hashlib, json, os, re, urllib.request
           from pathlib import Path
-          request = json.loads(Path("preview/frontend-review-request.json").read_text())
+          request = json.loads(Path("frontend-review/request.json").read_text())
           def current_file(path):
               req = urllib.request.Request("https://api.github.com/repos/" + os.environ["GITHUB_REPOSITORY"] + "/contents/" + path + "?ref=preview%2Flongball-m0", headers={"Authorization": "Bearer " + os.environ["GH_TOKEN"], "Accept": "application/vnd.github+json"})
               with urllib.request.urlopen(req, timeout=30) as reply:
