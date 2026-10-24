@@ -52,7 +52,7 @@ function observeApiRequest(token, method, route) {
 function observeHttpFailure(token, method, route, status, code, controlled = false) {
   report.httpFailures.push({ stage, accountId: tokenAccounts.get(token) ?? 'pre-session', method, pathname: new URL(base + route).pathname, status, code: typeof code === 'string' && /^[A-Z0-9_]{1,80}$/.test(code) ? code : 'UNRECOGNISED_ERROR', controlled });
 }
-async function freshManagerRequestWindow(accountId, phase) {
+async function freshManagerRequestWindow(accountId, phase, accountRole = 'manager') {
   const window = requestWindows.get(accountId), began = Date.now();
   // The real API retains 120 reads/commands and 60 mutations per account/minute,
   // across all sessions. Pause only between completed phases; no command is
@@ -60,7 +60,7 @@ async function freshManagerRequestWindow(accountId, phase) {
   const waitMs = window ? Math.max(0, window.startedAtMs + 60300 - began) : 0;
   const evidence = { accountId, phase, windowStartedAt: window?.startedAt ?? null, observedAttemptsBefore: window?.observedAttempts ?? 0, observedMutationsBefore: window?.observedMutations ?? 0, plannedWaitMs: waitMs, waitedMs: 0, ordinaryLimit: 120, mutationLimit: 60, pendingCommandRetried: false };
   report.apiBudgetWaits.push(evidence);
-  if (waitMs) console.log(JSON.stringify({ reviewBudgetPause: phase, accountRole: 'manager', waitMs }));
+  if (waitMs) console.log(JSON.stringify({ reviewBudgetPause: phase, accountRole, waitMs }));
   const until = began + waitMs;
   while (Date.now() < until) await delay(Math.min(1000, until - Date.now()));
   evidence.waitedMs = Date.now() - began;
@@ -569,7 +569,87 @@ async function playerHistoricSchedule(state, width) {
   assert.deepEqual(await currentJson(token, route, 'player'), before, 'Reviewing historical game records must leave all saved player preparation, replies and attendance unchanged.');
   (report.playerHistoricSchedule ??= []).push({ width, historicGames: historic.length, upcomingGames: upcoming.length, everyHistoricalReplyActionAbsent: true, recordedReplyAndAttendanceRetained: true, upcomingReplyActionsRetained: true, navigationPosts: 0, servicePreparationUnchanged: true });
 }
+async function playerSummaryProjection(state) {
+  const { page, context } = state, token = state.currentSession.accessToken;
+  const fixtureId = 'synthetic-roma-maple-2026-10-24';
+  const ownRoute = '/v1/teams/' + teamId + '/preparation/own?seasonId=' + seasonId;
+  const recordsPath = '/v1/teams/' + teamId + '/records';
+  const recordsRoute = recordsPath + '?seasonId=' + seasonId;
+  const matchRoute = '/v1/teams/' + teamId + '/matches?seasonId=' + seasonId;
+  const ownBefore = await currentJson(token, ownRoute, 'player');
+  const fixture = ownBefore.fixtures.find(item => item.id === fixtureId);
+  check(fixture, 'The controlled projection case requires the actual current unplayed fixture.');
+  const other = ownBefore.fixtures.find(item => item.id !== fixtureId && item.status === 'scheduled' && item.playedDate >= fixture.playedDate);
+  check(other, 'The controlled projection case requires another actual unplayed fixture.');
+  const matchesBefore = await currentJson(token, matchRoute, 'player');
+  const canonical = matchesBefore.items.find(item => item.matchId === fixtureId && item.teamId === teamId && item.seasonId === seasonId);
+  check(canonical && (canonical.status ?? canonical.state?.status) === 'preparation', 'The projection case must leave the actual canonical match unstarted.');
+  const recordsBefore = await currentJson(token, recordsRoute, 'player');
+  check(!recordsBefore.matches.some(item => item.matchId === fixtureId && ['completed', 'abandoned'].includes(item.status)), 'The actual records must not already contain the controlled terminal summary.');
+  const posts = state.ownPreparationPosts;
+  let mockedReads = 0;
+  const pattern = url => url.origin === virtualApi && url.pathname === recordsPath;
+  const handler = async intercepted => {
+    const request = intercepted.request(), address = new URL(request.url());
+    if (request.method() !== 'GET') return intercepted.fallback();
+    check(address.searchParams.get('seasonId') === seasonId, 'The mock must stay in the current authorised season.');
+    observeApiRequest(token, 'GET', address.pathname);
+    const response = await intercepted.fetch({ url: base + address.pathname + address.search, maxRedirects: 0 });
+    if (response.status() !== 200) {
+      const denial = await response.json().catch(() => null);
+      observeHttpFailure(token, 'GET', address.pathname, response.status(), denial?.code);
+      await intercepted.fulfill({ response });
+      return;
+    }
+    const actual = await response.json();
+    const template = actual.matches.find(item => item.teamId === teamId && item.seasonId === seasonId && item.visibilityScope === 'player' && item.appliedFilters?.playerId === ownBefore.profile.playerId);
+    check(template && actual.results.visibilityScope === 'player', 'Only an actual filtered own-player report may supply the projection template.');
+    const summary = { ...structuredClone(template), matchId: fixtureId, playedDate: fixture.playedDate, opponent: fixture.opponent, status: 'completed', recordMode: 'historical_summary', detailCompleteness: 'summary_only', sourceMatchRevision: null, appliedFilters: { ...template.appliedFilters, matchId: fixtureId, playerId: ownBefore.profile.playerId } };
+    mockedReads++;
+    await intercepted.fulfill({ response, json: { ...actual, matches: [...actual.matches.filter(item => item.matchId !== fixtureId), summary] } });
+  };
+  const refresh = async () => {
+    await openWorkspaceTab(page, 'more');
+    const read = page.waitForResponse(response => new URL(response.url()).pathname === recordsPath && response.request().method() === 'GET');
+    await page.getByRole('button', { name: 'Refresh service views', exact: true }).click();
+    check((await read).status() === 200, 'Explicit refresh must load the current records projection.');
+    await page.getByRole('button', { name: 'Refresh service views', exact: true }).waitFor();
+    await openWorkspaceTab(page, 'schedule');
+    await page.getByTestId('own-schedule-kind-match').click();
+    await page.getByTestId('own-schedule-upcoming').click();
+  };
+  await context.route(pattern, handler);
+  try {
+    await refresh();
+    const closed = page.getByTestId('player-fixture-' + fixtureId);
+    await closed.waitFor();
+    for (const label of ['Available', 'Unavailable', 'Unsure', 'No reply']) check(await closed.getByRole('button', { name: label, exact: true }).count() === 0, 'A controlled same-day terminal summary must hide every reply action even while the canonical match stays in preparation.');
+    const labels = { available: 'Available', unavailable: 'Unavailable', unsure: 'Unsure', no_reply: 'No reply' };
+    const content = (await closed.innerText()).replace(/\s+/g, ' ');
+    check(content.includes('Recorded reply: ' + labels[fixture.response]) && content.includes('actual attendance: ' + fixture.attendance.replaceAll('_', ' ')), 'The controlled summary must retain the actual own-player reply and attendance.');
+    const open = page.getByTestId('player-fixture-' + other.id);
+    for (const label of Object.values(labels)) await open.getByRole('button', { name: label, exact: true }).waitFor();
+    check(mockedReads > 0, 'The separately labelled records projection must actually be observed by the UI.');
+  } finally {
+    await context.unroute(pattern, handler);
+  }
+  await refresh();
+  const restored = page.getByTestId('player-fixture-' + fixtureId);
+  for (const label of ['Available', 'Unavailable', 'Unsure', 'No reply']) await restored.getByRole('button', { name: label, exact: true }).waitFor();
+  await page.getByTestId('own-schedule-past').click();
+  check(state.ownPreparationPosts === posts, 'Projection review and restore must never send a player preparation command.');
+  assert.deepEqual(await currentJson(token, ownRoute, 'player'), ownBefore, 'The controlled client projection must leave actual own preparation unchanged.');
+  const actualRecords = await currentJson(token, recordsRoute, 'player');
+  check(actualRecords.revision === recordsBefore.revision && !actualRecords.matches.some(item => item.matchId === fixtureId && ['completed', 'abandoned'].includes(item.status)), 'Detaching the route must expose the original actual record revision without a terminal summary.');
+  const actualMatches = await currentJson(token, matchRoute, 'player');
+  const actualMatch = actualMatches.items.find(item => item.matchId === fixtureId && item.teamId === teamId && item.seasonId === seasonId);
+  check(actualMatch && (actualMatch.status ?? actualMatch.state?.status) === 'preparation', 'The controlled projection must never start or complete the actual match.');
+  report.playerTerminalSummaryProjection = { mocked: true, method: 'GET', pathname: recordsPath, mockedReads, scope: { teamId, seasonId, playerId: ownBefore.profile.playerId }, fixtureId, canonicalStatusBeforeAndAfter: 'preparation', terminalSummaryOnlyInClientProjection: true, allReplyActionsHidden: true, recordedReplyAndAttendanceRetained: true, otherUnplayedReplyActionsRetained: true, originalRecordsRestored: true, preparationPosts: 0, actualOwnPreparationUnchanged: true, backendGuardScope: 'Separate real SQLite/PostgreSQL HTTP tests; this case only exercises client projection.' };
+  checks.push('One separately labelled filtered-records GET projection marks a same-day game completed while its actual canonical match remains unstarted; the UI hides all reply actions, preserves recorded details, leaves another unplayed game open, and restores the actual records without any preparation write.');
+}
+
 async function playerReplyRegression(account) {
+  await freshManagerRequestWindow(account.accountId, 'before-player-rsvp-and-summary-projection', 'player');
   const state = await makePage(390), { page } = state;
   try {
     await openDemo(state, account);
@@ -591,6 +671,7 @@ async function playerReplyRegression(account) {
     check(current.response === 'unsure' && current.attendance === previous.attendance && current.selected === previous.selected, 'Own RSVP must change only the current player reply, retaining selection and actual attendance.');
     check(await fixture.evaluate(node => node.dataset.qaRetainedReply === 'same-selected-match') && await page.getByTestId(/^own-schedule-event-training-/).count() === 0, 'Accepted own-reply refresh must retain the mounted match card and Matches filter.');
     check(state.errors.length === 0 && state.routes.length === 0, 'Player RSVP regression must have no runtime or transport errors.');
+    await playerSummaryProjection(state);
     await checkStoredCredentials(page);
     await logout(state);
     report.playerReply = { accepted: 'unsure', actualAttendanceUnchanged: true, selectionUnchanged: true, matchFilterRetained: true, matchCardRetained: true, signedOut: true };
