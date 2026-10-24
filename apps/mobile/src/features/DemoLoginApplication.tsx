@@ -147,10 +147,10 @@ export function DemoLoginApplication({ onBack, onNavigationGuardChange }: {
     const ready = foreground && accessCheck === 'ready';
     return (
       <View style={styles.root} testID="demo-signed-in">
-        <View style={[styles.sessionBar, { paddingTop: insets.top }]}>
+        {!ready && <View style={[styles.sessionBar, { paddingTop: insets.top }]}>
           <View style={styles.flex}><Pill tone="muted">{({manager:"Manager",administrator:"Administrator",player:"Player",spectator:"Spectator"})[displayRole ?? session.role]}</Pill></View>
           <Button label="Sign out" accessibilityLabel="Sign out" icon="logout" iconOnly compact testID="demo-sign-out" variant="quiet" onPress={finishSignOut} />
-        </View>
+        </View>}
         {!ready && <View style={styles.cover} testID="demo-session-cover" accessibilityLiveRegion="polite">
           <Card>
             <Text accessibilityRole="header" style={typography.section}>Confirming access</Text>
@@ -166,6 +166,8 @@ export function DemoLoginApplication({ onBack, onNavigationGuardChange }: {
             active={ready}
             initialConnection={{ baseUrl: session.apiBaseUrl, mode: 'synthetic', account: session.accessToken }}
             initialRole={session.role}
+            onSignOut={finishSignOut}
+            signOutTestID={ready ? "demo-sign-out" : undefined}
             onLeaveWorkspace={finishSignOut}
             onNavigationGuardChange={onNavigationGuardChange}
             onAuthorityScopeChange={authorityScopeChanged}

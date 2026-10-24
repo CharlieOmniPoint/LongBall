@@ -115,7 +115,7 @@ try {
   await button('Start first half').click();
   await button('Confirm the actual event now').click();
   await page.getByTestId('workspace-back-to-team').click();
-  await page.getByTestId('workspace-manager-home').waitFor();
+  await page.getByTestId('team-overview').waitFor();
   await page.getByTestId('workspace-return-to-match').click();
   await page.getByTestId('connected-match-live').click();
   await button('Review referee pause').click();

@@ -238,6 +238,7 @@ export interface ConnectedWorkspaceProps {
   onLeaveWorkspace?: () => void;
   /** Immediate account sign-out remains available while ordinary navigation is guarded. */
   onSignOut?: () => void;
+  signOutTestID?: string;
   onOpenAccount?: () => void;
   /** Keeps the workspace mounted while an exit warning or a retained capability is reviewed. */
   onNavigationGuardChange?: (
@@ -2702,9 +2703,9 @@ function WorkspaceSession({
         {focusedMatch && (
           <View style={s.row} testID="workspace-match-header">
             <Text testID="workspace-current-role" style={[typography.muted,{fontWeight:"700",color:colors.brand}]}>Manager</Text>
-            <Button label="Back to team" accessibilityLabel="Back to team; clock continues" testID="workspace-back-to-team" variant="quiet" icon="left" style={{ flex: 1, paddingHorizontal: 4 }} disabled={disabled} onPress={() => setTab("overview")} />
-            <Button label="Account" accessibilityLabel="Account and security" testID="workspace-match-account" variant="quiet" icon="lock" style={{ flex: 1, paddingHorizontal: 4 }} onPress={() => guardNavigation(props.onOpenAccount ?? (() => setTab("account")))} />
-            {props.onSignOut && <Button label="Sign out" compact icon="logout" iconOnly variant="quiet" testID="workspace-sign-out" onPress={props.onSignOut} />}
+            <Button label="Back to team" accessibilityLabel="Back to team; clock continues" testID="workspace-back-to-team" variant="quiet" compact style={{ flex: 1, paddingHorizontal: 4 }} disabled={disabled} onPress={() => setTab("overview")} />
+            <Button label="Account" accessibilityLabel="Account and security" testID="workspace-match-account" variant="quiet" icon="lock" iconOnly compact style={{ paddingHorizontal: 4 }} onPress={() => guardNavigation(props.onOpenAccount ?? (() => setTab("account")))} />
+            {props.onSignOut && <Button label="Sign out" compact icon="logout" iconOnly variant="quiet" testID={props.signOutTestID ?? "workspace-sign-out"} onPress={props.onSignOut} />}
           </View>
         )}
         {!focusedMatch && manager && matchFocused && serviceMatchId && (
@@ -2732,7 +2733,7 @@ function WorkspaceSession({
             </Text>
             {selectedContext && (
               <Text testID="workspace-current-role" style={[typography.muted, {fontWeight:"700", color:colors.brand}]}>
-                {selectedContext.roleLabel} ·{" "}
+                {({manager:"Manager",administrator:"Administrator",player:"Player",spectator:"Spectator"})[selectedContext.role]} ·{" "}
                 {formatUkSeasonLabel(own?.season?.label ??
                   preparation?.seasons.find((item) => item.id === seasonId)
                     ?.label ??
@@ -2744,7 +2745,7 @@ function WorkspaceSession({
             )}
 
           </View>
-          {props.onSignOut && <Button label="Sign out" icon="logout" iconOnly compact testID="workspace-sign-out" variant="quiet" onPress={props.onSignOut} />}
+          {props.onSignOut && <Button label="Sign out" icon="logout" iconOnly compact testID={props.signOutTestID ?? "workspace-sign-out"} variant="quiet" onPress={props.onSignOut} />}
         </View>}
         {!focusedMatch && selectedContext && contextChoices.length > 1 && (
           <Button

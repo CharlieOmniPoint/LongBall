@@ -65,9 +65,12 @@ export function FictionalReviewWorkspace(
         )}
         {props.onLeaveWorkspace && (
           <Button
-            label="Choose another review account"
+            label="Sign out"
+            icon="logout"
+            compact
+            testID={props.signOutTestID ?? "workspace-sign-out"}
             variant="quiet"
-            onPress={props.onLeaveWorkspace}
+            onPress={props.onSignOut ?? props.onLeaveWorkspace}
           />
         )}
       </View>
