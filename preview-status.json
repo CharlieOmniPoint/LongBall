@@ -1,9 +1,9 @@
 {
-  "state": "ready",
-  "url": "https://bent-seller-ministries-strengths.trycloudflare.com",
-  "sourceRevision": "a16ae284cbf71b090b56f10da920a98d53882589",
-  "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40128670191",
-  "startedAt": "2026-10-24T20:22:39Z",
-  "expiresAt": "2026-10-25T01:22:39Z",
+  "state": "starting",
+  "url": "",
+  "sourceRevision": "b5c10153e4e54b41a720ca76fb363e003abab27f",
+  "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40138263103",
+  "startedAt": "2026-10-24T22:26:01Z",
+  "expiresAt": "",
   "audience": "LongBall demo review with simulated Roma U10 teams and matches"
 }
