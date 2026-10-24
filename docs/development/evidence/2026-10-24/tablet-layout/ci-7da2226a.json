@@ -1,0 +1,217 @@
+{
+  "recordedAt": "2026-10-24T18:16:55.354Z",
+  "source": {
+    "productCommit": "7da2226a2b24a878ea2ac1c6cb55fe07df33a220",
+    "productTree": "c77fb0240e7565fa7cb86936992d0f03dadaccc1",
+    "checkoutCommit": "b9bcbe55efaf5ba03bcfe7abfdaf670fd38e5613",
+    "checkoutTree": "c77fb0240e7565fa7cb86936992d0f03dadaccc1",
+    "checkoutRef": "refs/pull/1/merge",
+    "parents": [
+      "031fdf5fdf4d937a0c638f81f24f9ae34db3579b",
+      "7da2226a2b24a878ea2ac1c6cb55fe07df33a220"
+    ],
+    "exactTreeEqualsProduct": true,
+    "bothCheckoutLogsVerified": true
+  },
+  "run": {
+    "id": 40119241501,
+    "url": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40119241501",
+    "event": "pull_request",
+    "status": "completed",
+    "conclusion": "failure",
+    "createdAt": "2026-10-24T18:07:18Z",
+    "updatedAt": "2026-10-24T18:14:42Z",
+    "attempt": 1
+  },
+  "jobs": [
+    {
+      "id": 120946991774,
+      "name": "runtime-image",
+      "status": "completed",
+      "conclusion": "success",
+      "steps": [
+        {
+          "name": "Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+          "conclusion": "success"
+        },
+        {
+          "name": "Build and exercise the isolated production image",
+          "conclusion": "success"
+        },
+        {
+          "name": "Retain safe image acceptance evidence",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "id": 120946991993,
+      "name": "quality",
+      "status": "completed",
+      "conclusion": "failure",
+      "steps": [
+        {
+          "name": "Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+          "conclusion": "success"
+        },
+        {
+          "name": "Install the pinned frozen workspace",
+          "conclusion": "success"
+        },
+        {
+          "name": "Retain resolved dependency and licence inventories",
+          "conclusion": "success"
+        },
+        {
+          "name": "Scan current source for secrets",
+          "conclusion": "success"
+        },
+        {
+          "name": "Audit workspace and runtime dependency locks",
+          "conclusion": "success"
+        },
+        {
+          "name": "Lint and check both TypeScript clients",
+          "conclusion": "success"
+        },
+        {
+          "name": "Shared rules, platform adapters and real PostgreSQL API boundaries",
+          "conclusion": "success"
+        },
+        {
+          "name": "Retained-history and actual PostgreSQL migration checks",
+          "conclusion": "success"
+        },
+        {
+          "name": "Validate canonical contracts, source publication and sample fixtures",
+          "conclusion": "success"
+        },
+        {
+          "name": "Check native production configuration and compile JavaScript exports",
+          "conclusion": "success"
+        },
+        {
+          "name": "Exercise the built browser journey",
+          "conclusion": "success"
+        },
+        {
+          "name": "Exercise configured demo accounts and queued report downloads",
+          "conclusion": "success"
+        },
+        {
+          "name": "Enforce the dependency audit result",
+          "conclusion": "failure"
+        },
+        {
+          "name": "Retain safe quality evidence",
+          "conclusion": "success"
+        }
+      ]
+    }
+  ],
+  "results": {
+    "shared": {
+      "passed": 851,
+      "files": 100
+    },
+    "api": {
+      "passed": 421,
+      "skipped": 3,
+      "total": 424,
+      "files": 65,
+      "skipScope": "Conditional native HEIC helper cases absent in generic quality job. Maintained codec is exercised in the separate successful runtime-image job."
+    },
+    "migration": {
+      "passed": 30,
+      "files": 6,
+      "skipped": 0
+    },
+    "lintAndRootMobileTypes": "passed",
+    "canonicalContractsSourcePublicationFixtures": "passed",
+    "evaluatedNativeConfigurationAndJavaScriptExports": "passed",
+    "normalBuiltBrowser": {
+      "passed": true,
+      "groups": 10
+    },
+    "configuredDemoAccounts": {
+      "passed": true,
+      "roleJourneys": 8,
+      "checks": 24,
+      "failures": [],
+      "report": ".local/quality/demo-account-review/report.json"
+    },
+    "tablet": {
+      "passed": true,
+      "viewportJourneys": 36,
+      "checks": 2,
+      "failures": [],
+      "report": ".local/quality/tablet-review/report.json"
+    }
+  },
+  "tabletEvidence": {
+    "source": "Actual CI log summary after pnpm test:tablet:e2e completed successfully.",
+    "reportAndPngsWhitelistedInQualityArtifact": true,
+    "artifactPaths": [
+      "tablet-review/report.json",
+      "tablet-review/*.png"
+    ],
+    "artifactContentsIndependentlyInspected": false,
+    "physicalDeviceEvidence": false
+  },
+  "dependencyGate": {
+    "passed": false,
+    "workspace": "failed or unavailable; high/critical gate, complete report retained",
+    "runtime": "passed",
+    "compiler": "passed",
+    "enforcement": "failure",
+    "exceptionApproved": false,
+    "limitation": "Known node-forge release gate remains unwaived. Remote advisory archive contents were not downloaded or independently inspected."
+  },
+  "runtimeImage": {
+    "passed": true,
+    "imageIdFromBuildLog": "sha256:43c57497f699af84ee8b81b8b07aa39b4f74c74413c3b3a134469431646f03e0",
+    "scope": "Exact-source production image acceptance with dedicated migration, restricted API/worker roles, private nonroot read-only runtimes, health/identity denial and actual maintained scanner/codec controls.",
+    "pairedRestoreExercised": false
+  },
+  "artifacts": [
+    {
+      "id": 12570745419,
+      "name": "longball-quality-b9bcbe55efaf5ba03bcfe7abfdaf670fd38e5613",
+      "sizeBytes": 3430562,
+      "url": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40119241501/artifacts/12570745419",
+      "createdAt": "2026-10-24T18:14:38Z",
+      "expiresAt": "2026-10-27T18:14:36Z",
+      "expired": false,
+      "githubReportedDigest": "sha256:c6d6bf799bdebd54518aa3f708263d60905596b381c1be9ba11dc8c4f5227551",
+      "archiveDownloaded": false,
+      "contentsIndependentlyInspected": false
+    },
+    {
+      "id": 12569668835,
+      "name": "longball-runtime-image-b9bcbe55efaf5ba03bcfe7abfdaf670fd38e5613",
+      "sizeBytes": 3500,
+      "url": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40119241501/artifacts/12569668835",
+      "createdAt": "2026-10-24T18:10:28Z",
+      "expiresAt": "2026-10-27T18:10:28Z",
+      "expired": false,
+      "githubReportedDigest": "sha256:21b0d6544000711f5da68e39e71509a21d312f3e7db170da1ef4a53d6c48c4f3",
+      "archiveDownloaded": false,
+      "contentsIndependentlyInspected": false
+    }
+  ],
+  "limits": [
+    "Overall CI failed solely at dependency enforcement; tablet and functional acceptance does not approve that release gate.",
+    "Tablet checks are automated browser checks against an isolated generated-account API. They do not establish native tablet rotation, keyboard, split-window, accessibility or background behavior.",
+    "Native compilation, production signing and physical-device acceptance are separate proof.",
+    "Superseded b890/34a attempts are not relabelled as accepted final-source runs.",
+    "No archive downloads, workflow mutations/retries, source edits, operating-policy approvals or paid provisioning by this observer."
+  ]
+}

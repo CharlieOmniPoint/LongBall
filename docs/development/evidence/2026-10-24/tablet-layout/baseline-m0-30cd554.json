@@ -1,0 +1,23 @@
+{
+  "status": "passed",
+  "baseURL": "http://127.0.0.1:4394",
+  "browser": "154.0.8037.57",
+  "viewport": "390×844",
+  "synthetic": true,
+  "firstHalfAnchor": 3600000,
+  "checks": [
+    "Home: 13 fictional roster records, nine selected, zero inferred attendance.",
+    "Attendance: explicit absent/present change and bulk check-in preserve separate availability.",
+    "Lineup: empty start blocked, ineligible keeper change rejected with an error, seven unique places and a bench swap remain drafts.",
+    "Clock: skipped render ticks retain time; pause excludes three minutes; navigation never pauses; manual first-half ending preserves 23:40.",
+    "Half-time: seven-minute break and lineup staging add no time; the second half restarts at 25:00 with one committed lineup.",
+    "Recovery: reload retains the journal and requires explicit referee time plus unchanged-lineup confirmation.",
+    "Full time: wall-clock rollback leaves active time intact; added time keeps running; manual finish totals 49:52 and exact seven-place participation.",
+    "Persistence: event IDs survive reload; sequence and predecessor chain remain complete and unique.",
+    "Storage failure: injected quota failure shows unsaved state, preserves history, and retries the same event exactly once.",
+    "Concurrent tabs: stale projection stays quarantined with its reserved sequence; reloaded writes retain the winning action and predecessor chain."
+  ],
+  "savedRecords": 21,
+  "finalActiveDurationMs": 2992000,
+  "nativeDeviceEvidence": false
+}

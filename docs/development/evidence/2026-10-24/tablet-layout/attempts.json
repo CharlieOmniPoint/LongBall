@@ -1,0 +1,51 @@
+{
+  "scope": "Representative retained attempts; failed/partial runs are not counted as accepted full suites. Raw reports/screenshots remain under ignored .local/quality paths.",
+  "tabletAttempts": [
+    {
+      "source": "921e6398",
+      "result": "failed",
+      "finding": "Visible season-map text measured 11px.",
+      "resolution": "Raised small map/preparation labels to 12px and retained the typography gate."
+    },
+    {
+      "source": "7f803b2b",
+      "result": "failed",
+      "finding": "Logo acknowledgement input measured 40 by 20px.",
+      "resolution": "Made both acknowledgements full-row accessible switch targets of at least 44px, with explicit checked/disabled state."
+    },
+    {
+      "source": "30cd554",
+      "result": "failed",
+      "finding": "The harness checked Welcome visibility before React entry was ready.",
+      "resolution": "Wait for either Welcome or login at the unchanged timeout; preserve actual login assertions."
+    },
+    {
+      "source": "b89081c3",
+      "result": "failed",
+      "finding": "Browser disclosure aria-expanded was absent despite native accessibilityState.",
+      "resolution": "Expose explicit browser aria-expanded. An independent actual-app probe already verified restored keyboard focus."
+    },
+    {
+      "source": "34a548a",
+      "result": "failed",
+      "finding": "The test rejected a valid horizontal row-reverse layout.",
+      "resolution": "Accept both horizontal directions and add actual sibling-rectangle ordering/non-overlap assertions."
+    },
+    {
+      "source": "7da2226a2b24a878ea2ac1c6cb55fe07df33a220",
+      "result": "passed",
+      "viewportJourneys": 36,
+      "compositeBusinessGroups": 2,
+      "report": "tablet-browser-7da2226a.json",
+      "workingTreeClean": true
+    }
+  ],
+  "baselineNotes": [
+    "A schedule-title assertion was scoped to the selected detail pane after tablet master/detail made two titles visible.",
+    "One long baseline run observed failed fetches while its shared export was rebuilt. Cause was not established; it was preserved and the full accepted rerun used a frozen private export with verified before/after hashes.",
+    "Branding setup/navigation failures and an actual rate-limit refusal were preserved. The complete new isolated scenario paused between completed phases for the unchanged real request window; no command was automatically retried and no failed database was reset."
+  ],
+  "limitsChanged": false,
+  "businessRulesChanged": false,
+  "physicalDeviceEvidence": false
+}
