@@ -334,5 +334,5 @@ const s = StyleSheet.create({
     alignItems: "center",
   },
   code: { ...typography.label, color: colors.brand },
-  pitchTime: { fontSize: 11, lineHeight: 15, color: colors.ink },
+  pitchTime: { fontSize: 12, lineHeight: 16, color: colors.ink },
 });

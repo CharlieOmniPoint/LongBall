@@ -2603,7 +2603,7 @@ const s = StyleSheet.create({
   small: { fontSize: 14, lineHeight: 20, color: colors.inkMuted },
   footnote: { fontSize: 12, lineHeight: 18, color: colors.inkMuted },
   eyebrow: {
-    fontSize: 11,
+    fontSize: 12,
     lineHeight: 18,
     fontWeight: "700",
     letterSpacing: 1.2,
