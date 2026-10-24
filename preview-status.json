@@ -1,9 +1,9 @@
 {
-  "state": "ready",
-  "url": "https://record-formats-acids-soul.trycloudflare.com",
-  "sourceRevision": "b5c10153e4e54b41a720ca76fb363e003abab27f",
-  "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40138263103",
-  "startedAt": "2026-10-24T22:26:35Z",
-  "expiresAt": "2026-10-25T03:26:35Z",
+  "state": "starting",
+  "url": "",
+  "sourceRevision": "4721b9aa8997437c48a80aaf2c44efee926b325f",
+  "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40140008956",
+  "startedAt": "2026-10-24T22:50:00Z",
+  "expiresAt": "",
   "audience": "LongBall demo review with simulated Roma U10 teams and matches"
 }
