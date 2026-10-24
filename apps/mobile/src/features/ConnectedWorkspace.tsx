@@ -3103,7 +3103,7 @@ function WorkspaceSession({
         membership.playerId && (
           <ConnectedPlayerHome
             key={`${absoluteApi}:${identity?.principal.accountId}:${teamId}:${seasonId}:${membership.playerId}`}
-            own={own}
+            own={{ ...own, fixtures: own.fixtures.filter(fixture => !replyClosedFixtureIds.has(fixture.id)) }}
             community={community}
             matches={matches ?? []}
             scope={{ teamId, seasonId, playerId: membership.playerId }}
