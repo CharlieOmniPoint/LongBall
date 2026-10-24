@@ -24,7 +24,7 @@ export function ClubAdministration({
   load: () => Promise<ClubAdministrationDto>;
   save: (command: ClubAdministrationCommand) => Promise<ClubAdministrationDto>;
   loadReport: (clubId: string) => Promise<ClubReportDto>;
-  onChanged?: () => void;
+  onChanged?: () => void | Promise<void>;
 }) {
   const [data, setData] = useState<ClubAdministrationDto | null>(null),
     [busy, setBusy] = useState(false),
@@ -85,7 +85,7 @@ export function ClubAdministration({
         d.clubs.some((x) => x.id === c) ? c : (d.clubs[0]?.id ?? ""),
       );
       setReport(null);
-      onChanged?.();
+      await onChanged?.();
     } catch (e) {
       setError(
         e instanceof Error ? e.message : "The change could not be saved.",
