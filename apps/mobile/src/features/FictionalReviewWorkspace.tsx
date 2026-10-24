@@ -12,7 +12,7 @@ export function FictionalReviewWorkspace(
   const fictionalManager =
     process.env.EXPO_PUBLIC_ENVIRONMENT !== "production" &&
     props.initialConnection?.mode === "synthetic" &&
-    props.initialRole === "manager";
+    (props.initialRole === "manager" || props.initialRole === "administrator");
   const [storage, setStorage] = useState<{
     journal: Journal;
     deviceId: string;

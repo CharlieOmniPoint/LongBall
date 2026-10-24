@@ -21,6 +21,20 @@ describe('demo username/passcode client', () => {
     expect(fetch.mock.calls[1]).toEqual([base + '/v1/me', expect.objectContaining({ headers: { Accept: 'application/json', Authorization: `Bearer ${token}` } })]);
     expect(result).not.toHaveProperty('passcode'); expect(result).not.toHaveProperty('username');
   });
+  it('opens club administration before a newly authorized club has any teams', async () => {
+    for (const administration of [{level:'super',clubIds:[]},{level:'club',clubIds:['empty-club']}]) {
+      const authority = {...identity,principal:{...identity.principal,identityClassification:'adult_individual',adultVerified:true,strongAuth:true,administration},memberships:[]};
+      const fetch=vi.fn().mockResolvedValueOnce(json(session)).mockResolvedValueOnce(json(authority));
+      const result=await signInDemo({...input(),fetch});
+      expect(result.role).toBe('administrator');
+      await expect(verifyDemoSession(result,new AbortController().signal,async()=>json(authority),()=>now)).resolves.toBeUndefined();
+    }
+    for (const administration of [{level:'club',clubIds:[]},{level:'other',clubIds:['club']}]) {
+      const authority={...identity,principal:{...identity.principal,identityClassification:'adult_individual',adultVerified:true,strongAuth:true,administration},memberships:[]};
+      const fetch=vi.fn().mockResolvedValueOnce(json(session)).mockResolvedValueOnce(json(authority));
+      await expect(signInDemo({...input(),fetch})).rejects.toThrow('no current team access');
+    }
+  });
   it('does not send credentials to an unverified URL or with invalid input', async () => {
     const fetch = vi.fn();
     for (const apiBaseUrl of ['https://api.example.test', 'http://longball-demo.trycloudflare.com', 'https://longball-demo.trycloudflare.com/foreign']) await expect(signInDemo({ ...input(), apiBaseUrl, fetch })).rejects.toThrow('verified');

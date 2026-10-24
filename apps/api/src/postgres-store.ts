@@ -63,6 +63,7 @@ interface StreamRow { sequence: number; previous_event_id: string }
 export interface UploadResult { eventId: string; clientSequence: number; disposition: 'accepted' | 'quarantined'; reason: string | null; revision: number | null; duplicate: boolean }
 export type OwnPreparationCommand = { id: string; expectedRevision: number } & (
   | { type: 'own.preferences_saved'; preferences: PositionCode[] }
+  | { type: 'own.fa_id_saved'; faPlayerId: string | null }
   | { type: 'own.fixture_response_recorded'; fixtureId: string; response: AvailabilityResponse }
   | { type: 'own.training_response_recorded'; trainingId: string; response: AvailabilityResponse }
 );
@@ -207,6 +208,11 @@ async seedSynthetic(options: { demoSharing?: boolean } = {}): Promise<void> {
         (await this.saveDocument(SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId, 'preparation', preparation));
         (await this.saveDocument(SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId, 'community', community));
         (await this.saveDocument(SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId, 'records', createRecordsSeed(options)));
+        if(options.demoSharing){
+          await add('synthetic-account-club-admin','adult_individual',true);
+          await this.execute("INSERT INTO administration_grants(account_id,scope_key,level,club_id) VALUES('synthetic-account-admin','*','super',NULL),('synthetic-account-club-admin','synthetic-richmond-rovers','club','synthetic-richmond-rovers')");
+          await this.execute('SELECT longball.sync_administrative_memberships()');
+        }
         if (options.demoSharing) for (const match of community.matches) {
           const key = `award:${SYNTHETIC_IDS.teamId}:${SYNTHETIC_IDS.seasonId}:${match.id}:${match.voteCutoffAtMs}`;
           await this.execute('INSERT INTO jobs(id,business_key,kind,payload_json,due_at) VALUES($1,$2,$3,$4,$5) ON CONFLICT(business_key) DO NOTHING', [randomUUID(), key, 'award.finalise', JSON.stringify({ teamId: SYNTHETIC_IDS.teamId, seasonId: SYNTHETIC_IDS.seasonId, matchId: match.id }), match.voteCutoffAtMs!]);
@@ -220,7 +226,9 @@ async principal(identity: VerifiedIdentity): Promise<Principal> {
     const account = (await this.one("SELECT * FROM accounts WHERE issuer=$1 AND subject=$2", [identity.issuer, identity.subject])) as AccountRow | undefined;
     if (!account || account.status !== 'active')
         throw new AccessError('ACCOUNT_UNAVAILABLE', 403, 'The account is not active for this service.');
-    return { accountId: account.id, issuer: account.issuer, subject: account.subject, identityClassification: account.classification, adultVerified: Boolean(account.adult_verified), strongAuth: identity.strongAuth, authenticatedAt: identity.authenticatedAt, status: account.status };
+    const authority=await this.one('SELECT longball.administration_scope($1) AS value',[account.id]);
+    const administration=authority?.value?typeof authority.value==='string'?JSON.parse(authority.value):authority.value:undefined;
+    return { accountId: account.id, issuer: account.issuer, subject: account.subject, identityClassification: account.classification, adultVerified: Boolean(account.adult_verified), strongAuth: identity.strongAuth, authenticatedAt: identity.authenticatedAt, status: account.status,...(administration?{administration}:{}) };
 }
 async memberships(accountId?: string, scope?: {teamId: string; seasonId: string}): Promise<Membership[]> {
     // Bound candidate rows before unchanged RLS and current grant checks. Omit
@@ -228,8 +236,8 @@ async memberships(accountId?: string, scope?: {teamId: string; seasonId: string}
     const values:string[]=[],predicates:string[]=[];
     if(accountId!==undefined){values.push(accountId);predicates.push(`m.account_id=$${values.length}`);}
     if(scope){values.push(scope.teamId,scope.seasonId);predicates.push(`m.team_id=$${values.length-1}`,`m.season_id=$${values.length}`);}
-    const rows=await this.many("SELECT m.*,CASE WHEN m.role='spectator' THEN longball.spectator_grant_active(m.account_id,m.club_id,m.team_id,m.season_id) ELSE true END AS grant_active FROM memberships m" + (predicates.length ? " WHERE "+predicates.join(' AND ') : ""), values) as unknown as {account_id:string;team_id:string;season_id:string;role:Membership['role'];player_id:string|null;expires_at:number|null;revoked_at:number|null;grant_active:boolean}[];
-    return rows.map(row=>({accountId:row.account_id,teamId:row.team_id,seasonId:row.season_id,role:row.role,playerId:row.player_id??undefined,expiresAt:row.expires_at,revokedAt:row.role==='spectator'&&!row.grant_active?row.revoked_at??Math.max(1,this.now()):row.revoked_at}));
+    const rows=await this.many("SELECT m.*,EXISTS(SELECT 1 FROM administrative_memberships am WHERE am.account_id=m.account_id AND am.team_id=m.team_id AND am.season_id=m.season_id AND am.role=m.role) administrative_inheritance,CASE WHEN m.role='spectator' THEN longball.spectator_grant_active(m.account_id,m.club_id,m.team_id,m.season_id) ELSE true END AS grant_active FROM memberships m" + (predicates.length ? " WHERE "+predicates.join(' AND ') : ""), values) as unknown as {account_id:string;team_id:string;season_id:string;role:Membership['role'];administrative_inheritance?:boolean;player_id:string|null;expires_at:number|null;revoked_at:number|null;grant_active:boolean}[];
+    return rows.map(row=>({accountId:row.account_id,teamId:row.team_id,seasonId:row.season_id,role:row.role,playerId:row.player_id??undefined,expiresAt:row.expires_at,revokedAt:row.role==='spectator'&&!row.grant_active?row.revoked_at??Math.max(1,this.now()):row.revoked_at,...(row.administrative_inheritance?{administrativeInheritance:true as const}:{})}));
 }
 async myMemberships(principal: Principal): Promise<Membership[]> { return currentMemberships(principal, (await this.memberships(principal.accountId)), this.now()); }
 async workspaceMemberships(principal: Principal): Promise<NamedWorkspaceMembership[]> {
@@ -883,12 +891,13 @@ async configuration(principal: Principal, teamId: string, seasonId: string, role
 }
 async configurationCommand(principal: Principal, teamId: string, seasonId: string, command: PreparationCommand, role?: string): Promise<ReturnType<typeof configurationServiceView>> {
     (await this.configuration(principal, teamId, seasonId, role));
-    if (!command || !['club.updated', 'team.updated'].includes(command.type))
+    if (!command || !['club.updated', 'team.updated', 'team.league_updated', 'team.alerts_updated'].includes(command.type))
         bad('Only club or team configuration can be changed in this context.');
     if (role && command.type === 'club.updated' && role !== 'administrator')
         throw new AccessError('NOT_FOUND', 404, 'Choose the current administrator context to administer the club.');
     const state = applyConfigurationServiceCommand({ principal, memberships: (await this.memberships()), preparation: (await this.document<PreparationState>(teamId, seasonId, 'preparation')), seasonId, nowMs: this.now(), command });
     (await this.saveDocument(teamId, seasonId, 'preparation', state));
+    if(command.type==='club.updated')await this.execute('SELECT longball.sync_club_configuration($1,$2)',[teamId,seasonId]);
     (await this.audit(principal, command.type, teamId, 'administrator_configuration_accepted'));
     return (await this.configuration(principal, teamId, seasonId, role));
 }
@@ -911,11 +920,12 @@ async createSeason(principal: Principal, teamId: string, seasonId: string, comma
     const destination=plan.preparation.seasons.find(item=>item.id===plan.receipt.seasonId)!;
     if(!team||!destination)throw new AccessError('NOT_FOUND',404,'The authorised team season is unavailable.');
     await this.execute('INSERT INTO team_seasons(club_id,team_id,season_id,label,start_year,start_date,end_date) VALUES($1,$2,$3,$4,$5,$6,$7)',[team.club_id,teamId,destination.id,destination.label,destination.startYear,destination.startDate,destination.endDate]);
-    for (const member of plan.memberships)
+    for (const member of plan.memberships.filter(item=>!item.administrativeInheritance))
         (await this.execute("INSERT INTO memberships(account_id,team_id,season_id,role,player_id,expires_at,revoked_at) VALUES($1,$2,$3,$4,$5,$6,$7)", [member.accountId, member.teamId, member.seasonId, member.role, member.playerId ?? null, member.expiresAt ?? null, member.revokedAt ?? null]));
     (await this.saveDocument(teamId, plan.receipt.seasonId, 'preparation', plan.preparation));
     (await this.saveDocument(teamId, plan.receipt.seasonId, 'records', plan.records));
     (await this.saveDocument(teamId, plan.receipt.seasonId, 'community', plan.community));
+    await this.execute('SELECT longball.inherit_administration_for_season($1,$2)',[teamId,plan.receipt.seasonId]);
     (await this.audit(principal, 'season.created_from_explicit_assignments', plan.receipt.seasonId, 'accepted_no_spectator_renewal'));
     return plan.receipt;
 }
@@ -942,7 +952,7 @@ private async projectPreparationRecords(teamId: string, seasonId: string, prepar
 }
 async preparationCommand(principal: Principal, teamId: string, seasonId: string, command: PreparationCommand): Promise<PreparationState> {
     const previous = (await this.preparation(principal, teamId, seasonId));
-    const types = ['club.updated', 'team.updated', 'season.rolled_over', 'profile.saved', 'roster.imported', 'profile.archived', 'formation.saved', 'position.saved', 'position.archived', 'lineup_template.saved', 'lineup_template.archived', 'lineup_template.applied', 'lineup_template.cleared', 'fixture.saved', 'fixture.status_changed', 'fixture.response_recorded', 'fixture.selection_saved', 'fixture.attendance_recorded', 'fixture.prepared', 'match_plan.saved', 'match_plan.applied', 'match_plan.cleared', 'training.series_created', 'training.series_updated', 'training.series_cancelled', 'training.saved', 'training.status_changed', 'training.response_recorded', 'training.attendance_recorded'];
+    const types = ['club.updated', 'team.updated', 'season.rolled_over', 'profile.saved', 'roster.imported', 'roster.proforma_imported', 'team.league_updated', 'team.alerts_updated', 'profile.archived', 'formation.saved', 'position.saved', 'position.archived', 'lineup_template.saved', 'lineup_template.archived', 'lineup_template.applied', 'lineup_template.cleared', 'fixture.saved', 'fixture.status_changed', 'fixture.response_recorded', 'fixture.selection_saved', 'fixture.attendance_recorded', 'fixture.prepared', 'match_plan.saved', 'match_plan.applied', 'match_plan.cleared', 'training.series_created', 'training.series_updated', 'training.series_cancelled', 'training.saved', 'training.status_changed', 'training.response_recorded', 'training.attendance_recorded'];
     if (!command || !types.includes(command.type))
         bad('Unsupported preparation command.');
     if (command.type === 'season.rolled_over')
@@ -981,9 +991,10 @@ async preparationCommand(principal: Principal, teamId: string, seasonId: string,
             }
         }
     }
-    if (command.type.startsWith('training.') || command.type.startsWith('profile.') || command.type.startsWith('fixture.') || command.type === 'roster.imported')
+    if (command.type.startsWith('training.') || command.type.startsWith('profile.') || command.type.startsWith('fixture.') || command.type === 'roster.imported' || command.type === 'roster.proforma_imported')
         (await this.projectPreparationRecords(teamId, seasonId, state, command.id));
     (await this.saveDocument(teamId, seasonId, 'preparation', state));
+    if(command.type==='club.updated')await this.execute('SELECT longball.sync_club_configuration($1,$2)',[teamId,seasonId]);
     (await this.audit(principal, command.type, teamId, 'accepted'));
     if (command.type === 'fixture.saved')
         (await this.enqueueNotifications(teamId, seasonId, 'schedule', command.fixture.id, command.id));
@@ -1010,9 +1021,9 @@ async ownPreparation(principal: Principal, teamId: string, seasonId: string): Pr
 }
 async ownPreparationCommand(principal: Principal, teamId: string, seasonId: string, command: OwnPreparationCommand): Promise<Record<string, unknown>> {
     const membership = assertTeamRole(principal, (await this.memberships()), teamId, seasonId, ['player'], this.now());
-    if (!command || !validId(command.id) || !nonnegative(command.expectedRevision) || !['own.preferences_saved', 'own.fixture_response_recorded', 'own.training_response_recorded'].includes(command.type))
+    if (!command || !validId(command.id) || !nonnegative(command.expectedRevision) || !['own.preferences_saved', 'own.fa_id_saved', 'own.fixture_response_recorded', 'own.training_response_recorded'].includes(command.type))
         bad('A valid own-player command and source revision are required.');
-    const allowed = command.type === 'own.preferences_saved' ? ['id', 'expectedRevision', 'type', 'preferences'] : command.type === 'own.fixture_response_recorded' ? ['id', 'expectedRevision', 'type', 'fixtureId', 'response'] : ['id', 'expectedRevision', 'type', 'trainingId', 'response'];
+    const allowed = command.type === 'own.preferences_saved' ? ['id', 'expectedRevision', 'type', 'preferences'] : command.type === 'own.fa_id_saved' ? ['id','expectedRevision','type','faPlayerId'] : command.type === 'own.fixture_response_recorded' ? ['id', 'expectedRevision', 'type', 'fixtureId', 'response'] : ['id', 'expectedRevision', 'type', 'trainingId', 'response'];
     if (Object.keys(command).some(key => !allowed.includes(key)))
         bad('Own-player commands cannot change another profile or manager-controlled fields.');
     const state = (await this.document<PreparationState>(teamId, seasonId, 'preparation'));
@@ -1032,6 +1043,7 @@ async ownPreparationCommand(principal: Principal, teamId: string, seasonId: stri
     }
     const base = { id: command.id, expectedRevision: command.expectedRevision };
     const bound: PreparationCommand = command.type === 'own.preferences_saved' ? { ...base, type: 'profile.saved', profile: { ...profile, preferences: command.preferences } }
+        : command.type === 'own.fa_id_saved' ? { ...base, type:'profile.saved',profile:{...profile,faPlayerId:command.faPlayerId} }
         : command.type === 'own.fixture_response_recorded' ? { ...base, type: 'fixture.response_recorded', fixtureId: command.fixtureId, profileId: profile.id, response: command.response }
             : { ...base, type: 'training.response_recorded', trainingId: command.trainingId, profileId: profile.id, response: command.response };
     const updated = reducePreparation(state, bound);

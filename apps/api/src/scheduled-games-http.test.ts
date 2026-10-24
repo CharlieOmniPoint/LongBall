@@ -86,7 +86,11 @@ for (const backend of ['sqlite', 'postgres'] as const) describe.skipIf(backend =
       if (role === 'player') { expect(JSON.stringify(stats.body)).toContain('synthetic-player-01'); expect(JSON.stringify(stats.body)).not.toContain('synthetic-player-02'); }
     }
     expect((await call(`${team}/player-stats${season}`, 'spectator')).status).toBe(404);
-    expect((await call(`${team}/preparation${season}`, 'administrator')).status).toBe(404);
+    const inheritedPreparation=await call(`${team}/preparation${season}`, 'administrator');
+    // The adjusted demo Admin has inherited Manager authority; Player/Spectator remain denied.
+    expect(inheritedPreparation.status).toBe(200);
+    expect((await call(`${team}/preparation${season}`, 'spectator')).status).toBe(404);
+    expect((await call(`${team}/preparation${season}`, 'player')).status).toBe(404);
     expect((await call(`${team}/records${season}`, 'administrator')).status).toBe(404);
     expect((await call(`${team}/match-feedback${season}`, 'administrator')).status).toBe(404);
     expect((await call(`${team}/match-feedback${season}`, 'spectator')).status).toBe(404);

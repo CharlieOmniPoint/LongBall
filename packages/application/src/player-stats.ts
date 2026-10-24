@@ -2,6 +2,7 @@ import { goalRecords, playerMinutes } from "@longball/domain";
 import type { MatchRecord, RecordsState } from "./records";
 import type { AcceptedRecordsMatch } from "./records-service";
 import { AccessError } from "./access";
+import { goalkeeperCleanSheetOutcomes, type GoalkeeperOutcome } from "./goalkeeper-clean-sheets";
 
 export interface StatsPosition {
   code: string;
@@ -51,6 +52,7 @@ export interface StatsMatchEvidence {
     knownOwnGoals: number;
   }[];
   scoringCoverage?: "complete" | "partial" | "unknown";
+  goalkeeperOutcomes?: GoalkeeperOutcome[];
 }
 export interface PlayerStatsSource {
   clubId: string;
@@ -90,6 +92,9 @@ export interface PlayerStatsRow extends PositionStatsTotals {
   knownAppearances: number;
   knownGoals: number;
   knownOwnGoals: number;
+  knownCleanSheets: number;
+  goalkeepingReviewedMatches: number;
+  goalkeepingUnknownMatches: number;
   coverage: StatsCoverage;
 }
 export interface StatsScope {
@@ -150,6 +155,14 @@ function cleanEvidence(record: StatsMatchEvidence): StatsMatchEvidence {
       isOwnGoal: goal.isOwnGoal,
       scorerPlayerId: goal.scorerPlayerId,
     })),
+    goalkeeperOutcomes: record.recordMode === "detailed_live" && (record as MatchRecord).participation?.every(row => Array.isArray(row.intervals))
+      ? goalkeeperCleanSheetOutcomes({
+          completed: record.status === "completed", reviewRequired: record.detailCompleteness !== "complete",
+          activeDurationMs: (record as MatchRecord).actualActiveDurationMs ?? 0,
+          intervals: (record as MatchRecord).participation!.flatMap(row => row.intervals!.map(interval => ({...interval, playerId:row.playerId}))),
+          oppositionGoals: (record as MatchRecord).goals.filter(goal => goal.beneficiary === "opposition").map(goal => ({atMs: goal.half !== null && goal.halfElapsedMs !== null ? goal.halfElapsedMs + (goal.half === 2 ? Math.max(0,...(record as MatchRecord).participation!.flatMap(row => row.intervals!.filter(interval => interval.half === 1).map(interval => interval.endMs))) : 0) : null})),
+          recordedOppositionScore:record.finalScore?.against ?? null,
+        }) : record.goalkeeperOutcomes?.map(row => ({...row})),
     participation:
       record.participation?.map((row) => ({
         playerId: row.playerId,
@@ -237,6 +250,12 @@ export function playerStatsSourceFromRecords(input: {
           isOwnGoal: goal.isOwnGoal,
           scorerPlayerId: goal.scorerPlayerId,
         })),
+      goalkeeperOutcomes: goalkeeperCleanSheetOutcomes({
+        completed:match.status === "completed", reviewRequired:match.recoveryRequired || match.schemaVersion !== 2,
+        activeDurationMs:match.matchActiveMs, intervals:match.intervals,
+        oppositionGoals:goalRecords(match).filter(goal => !goal.voided && goal.beneficiary === "opposition").map(goal => ({atMs:goal.effective.matchElapsedMs})),
+        recordedOppositionScore:match.score.against,
+      }),
       participation: playerMinutes(match, sample).map((row) => ({
         playerId: row.playerId,
         playedMs: row.playingMs,
@@ -370,9 +389,17 @@ export function projectPlayerStats(
       knownAppearances = 0,
       knownGoals = 0,
       knownOwnGoals = 0,
+      knownCleanSheets = 0,
+      goalkeepingReviewedMatches = 0,
+      goalkeepingUnknownMatches = 0,
       unknownPositionMs = 0;
     const positionMs: Record<string, number> = Object.create(null);
     for (const record of records) {
+      const goalkeeper = record.goalkeeperOutcomes?.find(row => row.playerId === player.id);
+      if (goalkeeper && goalkeeper.outcome !== "unknown") {
+        goalkeepingReviewedMatches++;
+        knownCleanSheets += Number(goalkeeper.outcome === "clean_sheet");
+      } else if (goalkeeper || !record.participation || record.participation.some(row => row.playerId === player.id && (row.positionMs.GK ?? 0) > 0)) goalkeepingUnknownMatches++;
       if (record.detailCompleteness === "review_required") {
         coverage.reviewRequiredMatches++;
         coverage.playingTimeUnknownMatches++;
@@ -457,6 +484,9 @@ export function projectPlayerStats(
       knownAppearances,
       knownGoals,
       knownOwnGoals,
+      knownCleanSheets,
+      goalkeepingReviewedMatches,
+      goalkeepingUnknownMatches,
       positions: positionsFor(positionMs, knownPlayingMs, source.positions),
       unknownPositionMs,
       coverage,
@@ -558,6 +588,9 @@ export function assertPlayerStatsDto(
         "knownAppearances",
         "knownGoals",
         "knownOwnGoals",
+        "knownCleanSheets",
+        "goalkeepingReviewedMatches",
+        "goalkeepingUnknownMatches",
         "positions",
         "unknownPositionMs",
         "coverage",
@@ -567,6 +600,10 @@ export function assertPlayerStatsDto(
       !number(item.knownAppearances) ||
       !number(item.knownGoals) ||
       !number(item.knownOwnGoals) ||
+      !number(item.knownCleanSheets) ||
+      !number(item.goalkeepingReviewedMatches) ||
+      !number(item.goalkeepingUnknownMatches) ||
+      item.knownCleanSheets > item.goalkeepingReviewedMatches ||
       !object(item.coverage)
     )
       return false;

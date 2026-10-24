@@ -51,10 +51,10 @@ export async function verifyRuntimeProofSchema(database: PgDatabase) {
       )
     ).rows[0].value,
   );
-  assert.deepEqual(versions, [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]);
+  assert.deepEqual(versions, [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]);
   assert.deepEqual(mediaVersions, [1, 2, 3, 4]);
   assert.deepEqual(activation, [{ version: 2 }]);
-  assert.equal(protectedTables, 38);
+  assert.equal(protectedTables, 45);
   const sourcePaths = [
     "apps/api/src/pg.ts",
     "apps/api/src/runtime-grants.ts",
@@ -62,6 +62,10 @@ export async function verifyRuntimeProofSchema(database: PgDatabase) {
     "apps/api/migrations/postgresql/014_push_registrations.sql",
     "apps/api/migrations/postgresql/015_team_privilege_audit_clock.sql",
     "apps/api/migrations/postgresql/016_report_exports.sql",
+    "apps/api/migrations/postgresql/021_club_administration.sql",
+    "apps/api/migrations/postgresql/022_team_documents.sql",
+    "apps/api/migrations/postgresql/023_opposition_reviews.sql",
+    "apps/api/migrations/postgresql/024_spectator_access.sql",
     "apps/api/migrations/postgresql/media_004_team_privileges.sql",
     "scripts/runtime-contribution-boundaries.ts",
     "scripts/runtime-heic.ts",

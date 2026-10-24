@@ -16,8 +16,8 @@ export function managerRoster(input: { principal: Principal; memberships: Member
   if (!Number.isSafeInteger(input.revision) || input.revision < 0 || !Number.isSafeInteger(nowMs) || nowMs < 0) throw new Error('Use the authoritative staff revision and current service time.');
   const associated = new Set(memberships.filter(item => item.teamId === teamId && current(item, nowMs)).map(item => item.accountId));
   // Match the authoritative assignment cap: a disabled account's place remains occupied until explicitly revoked.
-  const liveManagers = memberships.filter(item => item.teamId === teamId && item.role === 'manager' && current(item, nowMs));
-  const managers = memberships.filter(item => item.teamId === teamId && item.seasonId === seasonId && item.role === 'manager').map(item => {
+  const liveManagers = memberships.filter(item => item.teamId === teamId && item.role === 'manager' && !item.administrativeInheritance && current(item, nowMs));
+  const managers = memberships.filter(item => item.teamId === teamId && item.seasonId === seasonId && item.role === 'manager' && !item.administrativeInheritance).map(item => {
     const account = accounts.find(account => account.accountId === item.accountId);
     return { accountId: item.accountId, label: account && account.identityClassification === 'adult_individual' && account.adultVerified ? account.label : 'Unavailable manager account', status: !account || !eligible(account) ? 'disabled' as const : item.revokedAt != null ? 'revoked' as const : item.expiresAt != null && item.expiresAt <= nowMs ? 'expired' as const : 'active' as const,
       expiresAt: item.expiresAt ?? null, revokedAt: item.revokedAt ?? null, otherActiveSeasonIds: [...new Set(liveManagers.filter(other => other.accountId === item.accountId && other.seasonId !== seasonId).map(other => other.seasonId))].sort() };

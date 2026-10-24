@@ -1,3 +1,9 @@
+import { SpectatorAccessService } from './spectator-access';
+import { PersistedSpectatorAccessRepository } from './spectator-access-repository';
+import { TeamDocumentService } from './team-document-service';
+import { OppositionReviewRepository } from './opposition-review-repository';
+import { OppositionReviewService } from './opposition-review-service';
+import { ClubAdministrationService } from './club-administration';
 import type { ReportExportOptions } from './report-export-config';
 import { ReportExportRepository } from './report-export-repository';
 import { ReportExportService, reportExportRevision } from './report-export-service';
@@ -72,11 +78,11 @@ function syntheticIdentity(token: string, now: number): VerifiedIdentity {
     'synthetic-manager-1': 'synthetic-account-manager', 'synthetic-account-manager-1': 'synthetic-account-manager',
     'synthetic-manager-2': 'synthetic-account-manager-2', 'synthetic-manager-3': 'synthetic-account-manager-3',
     'synthetic-manager-4': 'synthetic-account-manager-4', 'synthetic-manager-5': 'synthetic-account-manager-5',
-    'synthetic-admin': 'synthetic-account-admin', 'synthetic-spectator': 'synthetic-account-spectator',
+    'synthetic-admin': 'synthetic-account-admin', 'synthetic-club-admin':'synthetic-account-club-admin', 'synthetic-spectator': 'synthetic-account-spectator',
     'synthetic-other-manager': 'synthetic-account-other-manager',
   };
   const accountId = aliases[token] ?? token;
-  if (!/^synthetic-account-(?:manager(?:-[2-5])?|admin|player-(?:0[1-9]|1[0-3])|spectator|invitee|other-manager)$/.test(accountId)) throw new AccessError('INVALID_SESSION', 401, 'A valid authenticated session is required.');
+  if (!/^synthetic-account-(?:manager(?:-[2-5])?|admin|club-admin|player-(?:0[1-9]|1[0-3])|spectator|invitee|other-manager)$/.test(accountId)) throw new AccessError('INVALID_SESSION', 401, 'A valid authenticated session is required.');
   return { issuer: 'urn:longball:synthetic', subject: accountId, strongAuth: /manager|admin/.test(accountId), authenticatedAt: now };
 }
 function readJson(request: IncomingMessage, value: unknown): Record<string, unknown> {
@@ -124,13 +130,16 @@ export function createApi(options:ApiOptions) {
  const reports=new ReportExportService(exportsRepository,source,options.reportExports,now);
  const feedbackRepository=new MatchFeedbackRepository(source,runtime.store);
  const feedback=new MatchFeedbackService(feedbackRepository);
- const ready=runtime.serialize(async()=>{await repository.initialize();await exportsRepository.initialize();await feedbackRepository.initialize();});void ready.catch(()=>undefined);
+ const teamDocuments=new TeamDocumentService(source,runtime.store);
+ const oppositionRepository=new OppositionReviewRepository(source,runtime.store);const opposition=new OppositionReviewService(oppositionRepository);
+ const spectatorAccess=new SpectatorAccessService(new PersistedSpectatorAccessRepository(source,runtime.store),now,options.demoScenario===true&&options.syntheticAuth===true?{isolatedDemo:true}:undefined);
+ const ready=runtime.serialize(async()=>{await repository.initialize();await exportsRepository.initialize();await feedbackRepository.initialize();await teamDocuments.initialize();await oppositionRepository.initialize();});void ready.catch(()=>undefined);
  const invitations=new SpectatorInvitationService({...options,repository,now});
  const privileges=new TeamPrivilegeService(new SqliteTeamPrivilegeRepository(source,runtime.store),now);
  const push=new PushRegistrationService(new SqlitePushRepository(source.database,runtime.store.transaction),options,now);
- return createRuntimeApi(options,source,runtime.store,media,activation,work=>ready.then(()=>runtime.serialize(work)),{branding,invitations,privileges,push,reports,feedback});
+ return createRuntimeApi(options,source,runtime.store,media,activation,work=>ready.then(()=>runtime.serialize(work)),{branding,invitations,privileges,push,reports,feedback,teamDocuments,opposition,spectatorAccess});
 }
-export function createRuntimeApi<T>(options:ApiOptions,source:T,store:RuntimeStore,media:RuntimeMedia,activation:RuntimeActivation,serialize:<R>(work:()=>Promise<R>)=>Promise<R> = work=>work(),services:{branding?:BrandMediaService;spectator?:RuntimeSpectatorActivation;invitations?:SpectatorInvitationService;privileges?:TeamPrivilegeService;push?:PushRegistrationService;reports?:ReportExportService;feedback?:MatchFeedbackService}={}) {
+export function createRuntimeApi<T>(options:ApiOptions,source:T,store:RuntimeStore,media:RuntimeMedia,activation:RuntimeActivation,serialize:<R>(work:()=>Promise<R>)=>Promise<R> = work=>work(),services:{branding?:BrandMediaService;spectator?:RuntimeSpectatorActivation;invitations?:SpectatorInvitationService;privileges?:TeamPrivilegeService;push?:PushRegistrationService;reports?:ReportExportService;feedback?:MatchFeedbackService;teamDocuments?:TeamDocumentService;opposition?:OppositionReviewService;spectatorAccess?:SpectatorAccessService}={}) {
  const now=options.now??Date.now;
  assertDemoScenarioOptions(options);
  const demoSessions=options.demoAccounts?new DemoSessions(options.demoAccounts,now):null;
@@ -204,6 +213,19 @@ const windows = new Map<string, {
             }
             if (options.syntheticAuth && !loopback(request.socket.remoteAddress))
                 throw new AccessError('SYNTHETIC_LOCAL_ONLY', 403, 'Demo authentication is restricted to loopback clients.');
+            if(parts[0]==='v1'&&parts[1]==='spectator-access'&&parts.length===3&&services.spectatorAccess){
+                const access=services.spectatorAccess,address=request.socket.remoteAddress??'unknown';
+                if(request.method==='GET'&&parts[2]==='directory'){response(reply,200,await access.repository.directory(),requestId);return;}
+                if(request.method==='POST'&&['preview','register','login','requests'].includes(parts[2])){
+                    const input=readJson(request,parsedBody);
+                    const result=parts[2]==='preview'?await access.preview(input,address):parts[2]==='register'?await access.register(input,address):parts[2]==='login'?await access.login(input,address):await access.request(input,address);
+                    response(reply,parts[2]==='requests'?202:parts[2]==='preview'?200:201,result,requestId);return;
+                }
+                if(request.method==='DELETE'&&parts[2]==='session'){
+                    const authorization=header(request,'authorization');if(!authorization?.startsWith('Bearer '))throw new AccessError('INVALID_SESSION',401,'Sign in again.');
+                    access.logout(authorization.slice(7));reply.writeHead(204,{'Cache-Control':'private, no-store','Referrer-Policy':'no-referrer','X-Content-Type-Options':'nosniff','X-Request-Id':requestId});reply.end();return;
+                }
+            }
             if(url.pathname==='/v1/demo/sessions'&&request.method==='POST'){
                 if(!demoSessions)throw new AccessError('NOT_FOUND',404,'The requested object is unavailable.');
                 const result=await demoSessions.login(readJson(request,parsedBody),request.socket.remoteAddress??'unknown');
@@ -247,6 +269,7 @@ const windows = new Map<string, {
                 const key = requireContract();
                 const input = readJson(request, parsedBody);
                 let result: unknown;
+
                 if(url.pathname.startsWith('/v1/spectator-invites/')){
                     if(!services.spectator)throw new AccessError('ACTIVATION_NOT_CONFIGURED',503,'Invitation activation requires a configured PostgreSQL provider boundary.');
                     if(url.pathname.endsWith('/activation-info')){activationFields(input,['token']);result=await services.spectator.preflight({token:input.token as string});}
@@ -269,13 +292,13 @@ const windows = new Map<string, {
                 response(reply, 200, result, requestId);
                 return;
             }
-            if (!options.syntheticAuth && !verifyIdentity)
+            if (!options.syntheticAuth && !verifyIdentity && !(services.spectatorAccess && header(request,'authorization')?.startsWith('Bearer spectator_')))
                 throw new AccessError('IDENTITY_NOT_CONFIGURED', 503, 'Configure the trusted OIDC issuer, audience and JWKS verifier before accepting requests.');
             const authorization = header(request, 'authorization');
             if (!authorization?.startsWith('Bearer ') || authorization.length > 17000)
                 throw new AccessError('INVALID_SESSION', 401, 'A valid authenticated session is required.');
             const token = authorization.slice(7);
-            const identity = options.syntheticAuth ? demoSessions?demoSessions.identity(token):syntheticIdentity(token, now()) : await verifyIdentity!(token);
+            const identity = token.startsWith('spectator_')&&services.spectatorAccess?services.spectatorAccess.identity(token):options.syntheticAuth ? demoSessions?demoSessions.identity(token):syntheticIdentity(token, now()) : await verifyIdentity!(token);
             let principal = await store.withIdentityContext(identity,()=>store.principal(identity));
             const rate = windows.get(principal.accountId);
             const count = rate && now() - rate.begins < 60000 ? rate : { begins: now(), ordinary: 0, mutation: 0 };
@@ -287,7 +310,7 @@ const windows = new Map<string, {
                 reply.setHeader('Retry-After', '60');
                 throw new AccessError('RATE_LIMIT', 429, 'Please retry after the current request window.');
             }
-            const role = header(request, 'x-longball-role');
+            let role = header(request, 'x-longball-role');
             const controllerToken = header(request, 'x-controller-token');
             const body = request.method === 'POST' ? readJson(request, parsedBody) : null;
             if(request.method==='POST'&&parts[1]==='spectator-invites'&&['inspect','accept'].includes(parts[2])&&parts.length===3){
@@ -304,7 +327,15 @@ const windows = new Map<string, {
             if(invitationWrite&&(typeof bodySeason!=='string'||url.searchParams.has('seasonId')&&url.searchParams.get('seasonId')!==bodySeason))throw new AccessError('INVALID_REQUEST',400,'Use the invitation body season without a contradictory query scope.');
             const seasonId = (typeof bodySeason==='string'?bodySeason:url.searchParams.get('seasonId')) ?? (options.syntheticAuth ? SYNTHETIC_IDS.seasonId : '');
             if (parts[1] === 'teams' && !seasonId) throw new AccessError('SEASON_REQUIRED',400,'Choose an explicit current team-season scope.');
-            const scopedOperation = (operation: string) => parts[1] === 'teams' ? JSON.stringify([operation, parts[2], seasonId, role ?? 'default']) : parts[1] === 'exports' ? JSON.stringify([operation, body?.teamId, body?.seasonId, role ?? 'default']) : operation;
+            if(role==='administrator'&&parts[1]==='teams'&&['spectator-invites','invite-requests'].includes(parts[3])){
+                const own=await store.withActorContext(principal,{operation:'account.read',requestedRole:'default'},()=>store.myMemberships(principal));
+                assertTeamRole(principal,own,parts[2],seasonId,['administrator'],now());assertAdultAuthority(principal,false,now());
+                assertTeamRole(principal,own,parts[2],seasonId,['manager'],now());
+                // A checked Admin uses their inherited Manager invitation rights.
+                // Keep the client-selected account role unchanged; resolve SQL intent here.
+                role='manager';
+            }
+            const scopedOperation = (operation: string) => parts[1] === 'administration' ? JSON.stringify([operation,principal.administration?.level??null,[...(principal.administration?.clubIds??[])].sort()]) : parts[1] === 'teams' ? JSON.stringify([operation, parts[2], seasonId, role ?? 'default']) : parts[1] === 'exports' ? JSON.stringify([operation, body?.teamId, body?.seasonId, role ?? 'default']) : operation;
             await store.withActorContext(principal,requestDatabaseScope({method:request.method??'GET',parts,seasonId,role,body}),async()=>{
             if (body && parts[1] === 'teams' && parts[3] === 'community') {
                 if(body.command&&typeof body.command==='object'&&'type' in body.command&&typeof body.command.type==='string'&&body.command.type.startsWith('invite.'))throw new AccessError('CANONICAL_INVITATION_REQUIRED',409,'Use the server-issued invitation endpoints; client credentials and JSON-only revocation are unavailable.');
@@ -350,8 +381,15 @@ const windows = new Map<string, {
                 return (await store.idempotent(principal, scopedOperation(operation), header(request, 'idempotency-key') ?? '', signaturePayload, work));
             });
             let result: unknown;
+            const administration=new ClubAdministrationService(source as DevelopmentStore | import('./postgres-store').PostgresStore);
             if (request.method === 'GET' && url.pathname === '/v1/me')
                 result = { accountId: principal.accountId, identityClassification: principal.identityClassification, principal, memberships: (await store.workspaceMemberships(principal)), serverTime: new Date(now()).toISOString(), syntheticOnly: Boolean(options.syntheticAuth) };
+            else if(url.pathname==='/v1/administration'&&request.method==='GET')result=await administration.view(principal);
+            else if(url.pathname==='/v1/administration'&&request.method==='POST'){
+                if(Object.keys(body!).length!==1||!Object.hasOwn(body!,'command'))throw new AccessError('INVALID_REQUEST',400,'Use only the captured club administration command.');
+                result=await mutate(url.pathname,()=>administration.command(principal,body?.command),()=>administration.authorizeCommand(principal,body?.command));
+            }
+            else if(parts[1]==='clubs'&&parts[3]==='reports'&&parts.length===4&&request.method==='GET')result=await administration.reports(principal,parts[2]);
             else if (request.method === 'GET' && url.pathname === '/v1/contracts/events')
                 result = eventContract;
             else if(parts[1]==='exports'&&services.reports){
@@ -435,7 +473,24 @@ const windows = new Map<string, {
             }
             else if (parts[0] === 'v1' && parts[1] === 'teams' && parts[2]) {
                 const teamId = parts[2];
-                if(parts[3]==='scheduled-games'&&parts.length===4){
+                if(parts[3]==='spectator-connections'&&parts.length===4&&services.spectatorAccess){
+                    const repository=services.spectatorAccess.repository;
+                    if(request.method==='GET')result=await repository.connections(principal,teamId,seasonId,role);
+                    else if(request.method==='POST'){
+                      const key=requireContract();if(Object.keys(body!).length!==1||!Object.hasOwn(body!,'playerId'))throw new AccessError('INVALID_REQUEST',400,'Choose only a player connection.');
+                      if(body!.playerId!==null&&typeof body!.playerId!=='string')throw new AccessError('INVALID_REQUEST',400,'Choose a player connection or clear the connection.');
+                      result=await repository.follow(principal,teamId,seasonId,role,body!.playerId,key);
+                    }else throw new AccessError('NOT_FOUND',404,'The requested player connection is unavailable.');
+                }
+                else if(parts[3]==='invite-requests'&&services.spectatorAccess){
+                    const repository=services.spectatorAccess.repository;
+                    if(request.method==='GET'&&parts.length===4)result=await repository.requests(principal,teamId,seasonId,role);
+                    else if(request.method==='POST'&&parts.length===6&&parts[5]==='decision'){
+                      requireContract();if(Object.keys(body!).length!==1||!['handled','declined'].includes(String(body!.status)))throw new AccessError('INVALID_REQUEST',400,'Choose the invitation request decision.');
+                      result=await store.transaction(async()=>{await repository.decide(principal,teamId,seasonId,role,parts[4],body!.status as 'handled'|'declined');return {status:body!.status};});
+                    }else throw new AccessError('NOT_FOUND',404,'The requested invitation requests are unavailable.');
+                }
+                else if(parts[3]==='scheduled-games'&&parts.length===4){
                     if(role!=='manager'&&role!=='administrator')throw new AccessError('NOT_FOUND',404,'Choose the current staff schedule context.');
                     const selected=role as FixtureManagementRole;
                     if(request.method==='GET')result=await store.scheduledGames(principal,teamId,seasonId,selected);
@@ -447,6 +502,27 @@ const windows = new Map<string, {
                 }
                 else if(parts[3]==='team-overview'&&parts.length===4&&request.method==='GET')result=await store.teamOverview(principal,teamId,seasonId,role);
                 else if(parts[3]==='player-stats'&&parts.length===4&&request.method==='GET')result=await store.playerStats(principal,teamId,seasonId,role);
+                else if(parts[3]==='team-sheet'&&(parts.length===4||parts.length===5&&parts[4]==='download')){
+                    const service=services.teamDocuments;if(!service)throw new AccessError('DOCUMENTS_UNAVAILABLE',503,'Team documents are unavailable.');
+                    const session={principal,teamId,seasonId,role};
+                    if(request.method==='GET')result=parts[4]==='download'?await service.download(session):await service.view(session);
+                    else if(request.method==='POST'&&parts.length===4){
+                      if(Object.keys(body!).length!==1||!Object.hasOwn(body!,'command'))throw new AccessError('INVALID_REQUEST',400,'Use only the captured team document command.');
+                      const command=body!.command as {id?:string};if(command?.id!==requireContract())throw new AccessError('INVALID_REQUEST',400,'Use the captured command identity.');
+                      result=await mutate(url.pathname,()=>service.command(session,command));
+                    }else throw new AccessError('NOT_FOUND',404,'The requested team document is unavailable.');
+                }
+                else if(parts[3]==='opposition-reviews'&&parts.length===4){
+                    const service=services.opposition;if(!service)throw new AccessError('REVIEWS_UNAVAILABLE',503,'Opposition reviews are unavailable.');
+                    if(role!=='manager'&&role!=='administrator'&&role!=='player')throw new AccessError('NOT_FOUND',404,'The requested opposition reviews are unavailable.');
+                    const session={principal,teamId,seasonId,role};
+                    if(request.method==='GET')result=await service.view(session);
+                    else if(request.method==='POST'){
+                      if(Object.keys(body!).length!==1||!Object.hasOwn(body!,'command'))throw new AccessError('INVALID_REQUEST',400,'Use only the captured opposition review command.');
+                      const command=body!.command as {id?:string};if(command?.id!==requireContract())throw new AccessError('INVALID_REQUEST',400,'Use the captured command identity.');
+                      result=await service.command(session,command);
+                    }else throw new AccessError('NOT_FOUND',404,'The requested opposition review operation is unavailable.');
+                }
                 else if(parts[3]==='match-feedback'&&parts.length===4){
                     if(role!=='manager'&&role!=='player')throw new AccessError('NOT_FOUND',404,'The requested private feedback is unavailable.');
                     const feedback=services.feedback;if(!feedback)throw new AccessError('FEEDBACK_UNAVAILABLE',503,'Private match feedback is unavailable.');
@@ -469,7 +545,7 @@ const windows = new Map<string, {
                       result=await mutate(url.pathname,()=>privilegeService().command(session,command));
                     }else throw new AccessError('NOT_FOUND',404,'The requested team operation is unavailable.');
                 }
-                else if(parts[3]==='spectator-invites'){
+                else if(['spectator-invites','invite-requests'].includes(parts[3])){
                     const invitations=services.invitations;if(!invitations)throw new AccessError('INVITATION_NOT_CONFIGURED',503,'Invitation processing is unavailable.');
                     const session={principal,teamId,seasonId,role};
                     if(request.method==='GET'&&parts.length===4)result=await invitations.list(session);
@@ -615,6 +691,6 @@ const windows = new Map<string, {
         }
     }) });
     const server = framework.server;
-    return { server, framework, store: source, media, activation,branding:services.branding,spectator:services.spectator, close: async () => { demoSessions?.close(); await framework.close(); await media.close(); await store.close(); } };
+    return { server, framework, store: source, media, activation,branding:services.branding,spectator:services.spectator, close: async () => { demoSessions?.close();services.spectatorAccess?.close(); await framework.close(); await media.close(); await store.close(); } };
 }
 export type { Principal };

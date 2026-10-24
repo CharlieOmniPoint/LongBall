@@ -1,45 +1,40 @@
 # Review LongBall
 
-24 October 2026 player-availability update. Frontend/review source `e706fa4c9ba55aaf6d5783f3c74aa68a9415cc39` uses backend source `38e08797755fe5ca154786c0ad2130888f8b6d1a`. Native iPhone/Android, tablet layouts, the seventeen usability requests, F01–F28 and all four Should features remain in scope.
+24 October 2026 club expansion — development candidate, not yet published. The owner-requested account, club, formation, invitation and match-day additions extend the native iPhone/Android application and browser/tablet review. The original F01–F28, earlier usability changes and four Should features remain in scope. Final source/artifact identifiers and hosted results will be added after the current frozen candidate is checked.
 
-## Open the shared review
+## Shared review status
 
-Open **[LongBall](https://charlieomnipoint.github.io/LongBall/?v=e706fa4)**. The [compatible-frontend deployment](https://github.com/CharlieOmniPoint/LongBall/actions/runs/40129608075) passed for request `ac7fcaa634a13606537a950e4f71929559c10f74`; the [final focused public proof](evidence/2026-10-24/past-game-replies/public-e706fa4.json) passed Player Past/Upcoming at 320/390px and a fresh rejected-write check. The [Roma API](https://bent-seller-ministries-strengths.trycloudflare.com/) is ready from **21:22:39 BST on 24 October** (`20:22:39 UTC`) to **01:22:39 GMT on 25 October** (`01:22:39 UTC`), across the clock change. Its ready marker and running job were unchanged before/after the corrected frontend publication. The tested entry JavaScript SHA256 is `60b03265…d2103`, stable before/after. Supplied credentials are unchanged; the previous `silence-stainless` session was cancelled and is historical. No paid hosting is provisioned.
+The last verified public build is [frontend `e706fa4` with backend `38e0879`](https://charlieomnipoint.github.io/LongBall/?v=e706fa4). It does not yet contain the club expansion. Its bounded API session ends at **01:22:39 GMT on 25 October 2026** (`01:22:39 UTC`). New Pages/API readiness, public checks and native binary builds are pending; no new feature is claimed live here.
 
-Use an existing supplied username and password/passcode. Credentials stay outside app screens and repository documentation. The role is visible in the header; its logout icon remains available. Select the team badge for Team Overview.
+Existing supplied credentials remain outside the app and documentation. In the new candidate, the previous Administrator account is labelled **Super Admin** using the same credentials; a separate Club Admin review account is supplied privately. Never enter real child data into this generated-data review.
 
-Roma U10 has thirteen named players, Oak on 10 October (2–2), Hill on 17 October (3–1), Maple on 24 October and Oak on 31 October. The two upcoming games remain unplayed; availability, selection and actual attendance are separate. The supplied credentials are unchanged.
+## What the candidate adds
 
-## Past games: recorded availability only
+[The expansion register](club-expansion.md) records the full behaviour and authority boundaries.
 
-Player → Schedule → Past games shows recorded replies and attendance without availability actions. Today/future scheduled unplayed games keep reply controls; the Europe/London date and accepted game evidence determine eligibility. Passing planned kickoff alone does not finish a game. Home and Schedule also honour a terminal accepted summary when canonical state still says preparation. Both SQLite/PostgreSQL reject fresh closed-game replies; exact receipt replay, Manager historical corrections and training remain supported. [Rule and evidence](past-game-replies.md).
+- **Formation and advice:** choose playing format, type a traditional outfield pattern such as `4-4-2` or `3-2-1`, and review a positions-only pitch. Available eligible players and ranked preferences inform reviewable 65% primary / 35% secondary advice; impossible allocations remain visible and no player is moved automatically.
+- **Five account types:** Super Admin, Club Admin, Manager, Player and Spectator. Club/system authority is server-owned; inherited Manager access is separate from the four appointed coach places. Club/team/season selection, U5–U21 teams, optional league names and sortable/filterable club reports follow current scope.
+- **Spectator access:** scoped invitations can be shared as locally generated QR/link or composed email. First registration uses a username/four-digit PIN with weak-code refusal and bounded login/lockout. Spectators may join multiple teams and choose a player to support without receiving private Player records. An unauthenticated Player/Spectator access request grants no account or membership. [Access notes](spectator-access.md).
+- **Team records:** genuine XLS roster download/previewed import preserves player identities; own/Manager FA IDs and staff-only validated PDF team sheets keep their scope. Known goalkeeper clean sheets come from accepted stint/goal evidence. Completed-game opposition ratings/notes are staff-authored, Player-readable and Spectator-denied.
+- **Match-day controls:** a prominent next-substitution countdown lists the advised changes, with saved lead/volume settings and explicit per-device audio enablement. Substitutions remain manual; pause, uncertainty, stale advice and control/background changes suppress inappropriate tones. [Audio/device limits](substitution-alerts.md).
+- **Presentation:** Spectator blue and Super Admin purple themes, team/context navigation and phone/tablet modes remain accessible. The compact match layout is undergoing final viewport/clock verification.
 
-## What to try
+## Candidate checks and limits
 
-Manager and Administrator: open the **layout icon in the header** to choose **Auto**, **Phone** or **Tablet**. Auto selects tablet layout when the window is at least 768px wide with a 600px short edge; Phone keeps the narrow workspace; Tablet uses the available width and falls back safely where necessary. Columns and the navigation rail adapt to window space and text size. The choice is shared across staff roles on this device. Player/Spectator layouts remain single-column. [Tablet guide](tablet-layout.md). Unsaved fields and match state survive layout changes; these changes send no football command.
+Observed local results belong to the current working candidate; they are not deployment or final-commit acceptance:
 
-The [seventeen-item implementation and acceptance register](2026-10-24-usability-improvements.md) maps every request to behavior and review steps.
+| Check | Observed result / remaining check |
+| --- | --- |
+| Shared rules/platform | 914 tests in 110 files passed, including retained actions/outbox and empty administrative entry. |
+| API | 454 cases passed with three explicit absent-HEIC-helper skips (457 total, 74 files). No full zero-skip HEIC run is claimed. |
+| Static/contracts | Root/mobile TypeScript, lint, full runtime/canonical contracts and supplied archive checks passed; 127 new payload/security/format boundary cases passed. |
+| New browser journeys | Six groups passed against a fresh actual SQLite API/worker, with zero reported page errors and five expected privilege denials. No fabricated feature DTOs were used. |
+| Existing browser/tablet | Eight role/width journeys and 27 groups passed timer decrease/freeze assertions; a clipped timer was then found. The compact layout and nonvacuous geometry guards are fixed, with final rebuilt reruns pending. Tablet 36 journeys/two groups passed before that final layout fix and will be repeated. |
+| Native | Android/iOS JavaScript exports passed before the final layout/boolean correction. Fresh final exports and actual binary builds are pending. Older binary results retain their own source scope; no install/device result is inferred. |
 
-- Manager or Administrator: cancel or remove an unplayed game from Schedule after reviewing the reason. Recorded or claimed games are protected.
-- Manager: Team → Saved player setups holds up to three named setups. A fixture can copy one into its draft. Live lineup preparation can auto-fill checked-in available players using approved eligibility, goalkeeper policy and preferences.
-- Manager: More → Team settings → Manage team positions configures active two-letter codes. Player editing has Select all approved eligibility. Existing history and saved snapshots retain their original positions.
-- Player: My Stats shows that player's recorded playing, position and scoring statistics. Manager/Administrator Stats adds individual summaries and formation views of season position time/percentages.
-- Player: Home or More → Match feedback offers 1–5 enjoyment stars and up to 256 Unicode characters after trusted full time until London midnight that completion day. Only the author and current team Managers can read it; Administrators and Spectators cannot. Earlier saved feedback stays readable.
-- Spectator: Home, Scores, Results, Photos and Account give direct navigation. Home offers today's current game or the next fixture. The team badge works for every role.
+The full workspace dependency gate now has **two unwaived high findings, `node-forge` and `zod`**. Separately locked API/worker runtime and compiler audits reported zero vulnerabilities in their captured inputs. [Dependency evidence and compatible-update investigation](club-expansion-security.md) retain exact lock/source scope; those isolated passes do not waive the full gate.
 
-Squad replies, player actions and preferences are more compact, with paired Edit/Archive actions and optional details. UK dates use short years; all calendar boundaries use Europe/London with daylight-saving changes. Canonical dates and machine inputs keep their full ISO values. Visible dataset labels and the inconsistent notice font are removed.
-
-## Verification and limits
-
-[CI 40127475188](evidence/2026-10-24/past-game-replies/ci-e706fa4.json) passed for exact frontend tree `15e95c43bea53a9014cae1fb67163781cf5e84d6`: 855 shared tests/101 files, 427 API passes plus three explicit absent-HEIC-helper skips (430/65 files), 30 migrations/6 files, ten M0 groups, eight demo journeys/26 groups and 36 tablet journeys/two groups. Runtime-image acceptance passed. No full 430-case maintained-HEIC host pass is claimed.
-
-The 26th demo group deliberately mocks one filtered-records GET as completed while the real canonical match stays in preparation. It verifies Home/Schedule reply suppression, retained details, another unplayed game's controls and restoration of actual records without a preparation write. This is client-projection evidence; the earlier 25 actual API/worker flows and targeted backend-guard checks retain their own scope. The current CI rollup and separately retained earlier raw reports are linked in the [evidence register](evidence/2026-10-24/past-game-replies/README.md).
-
-Native JavaScript exports passed for `e706fa4`. Actual Android Debug arm64 and unsigned x86_64 iOS Simulator builds passed for `38e0879`; those binary results are not relabelled as frontend `e706fa4` compilation or physical proof. The corrected frontend request produced no new backend run. Earlier request placement triggered a renewal, and an initial backend bootstrap failed during a branch push race; [deployment notes](compatible-frontend-review.md) preserve those outcomes.
-
-Earlier [38e availability/public/native proofs](evidence/2026-10-24/past-game-replies/README.md) and [7da tablet proofs](evidence/2026-10-24/tablet-layout/README.md) remain historical; the new public result has its own frontend/backend binding and does not reattribute those earlier reports.
-
-One existing unpatched high `node-forge` advisory remains on the unchanged dependency lock. No suppression or release exception is approved.
+Earlier [e706/38e](evidence/2026-10-24/past-game-replies/README.md), [tablet](evidence/2026-10-24/tablet-layout/README.md) and other feature proofs remain historical. Their one-high audit labels and old test totals describe those sources, not this expansion candidate. No paid provider or production service is provisioned.
 
 ## Deferred owner and device work
 

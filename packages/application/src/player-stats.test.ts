@@ -137,6 +137,19 @@ describe("fetched stats scope and privacy validation", () => {
 });
 
 describe("narrow player statistics projections", () => {
+  it("counts only reviewed goalkeeper outcomes and preserves missing goal-timing coverage", () => {
+    const clean = evidence({ id: "clean", goalkeeperOutcomes: [{ playerId: "p2", outcome: "clean_sheet" }] });
+    const conceded = evidence({ id: "conceded", goalkeeperOutcomes: [{ playerId: "p2", outcome: "conceded" }] });
+    const missing = evidence({ id: "missing" });
+    const result = staff(source([clean, conceded, missing]));
+    expect(result.players.find(row => row.playerId === "p2")).toMatchObject({ knownCleanSheets: 1, goalkeepingReviewedMatches: 2, goalkeepingUnknownMatches: 1 });
+    expect(result.players.find(row => row.playerId === "p1")).toMatchObject({ knownCleanSheets: 0, goalkeepingReviewedMatches: 0, goalkeepingUnknownMatches: 0 });
+    const own = projectPlayerStats(source([clean]), {role:"player",playerId:"p2"});
+    expect(JSON.stringify(own)).not.toContain('Player One');
+    assertPlayerStatsDto(own,{role:"player",playerId:"p2",teamId:"team",seasonId:"season"});
+    if (own.kind === "own-player-stats") own.player.knownCleanSheets = 2;
+    expect(() => assertPlayerStatsDto(own,{role:"player",playerId:"p2",teamId:"team",seasonId:"season"})).toThrow();
+  });
   it("preserves known time, custom/inactive positions and unknown-position denominator", () => {
     const result = staff(source()),
       row = result.players[0];

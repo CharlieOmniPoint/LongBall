@@ -1,3 +1,6 @@
+import { FormationDesigner } from './FormationDesigner';
+import { FormationAdvice } from './FormationAdvice';
+import { TeamLeagueEditor } from './TeamDetailsEditors';
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   Pressable,
@@ -732,7 +735,7 @@ function PreparationContent({
               />
               <Button
                 label={
-                  squadTools ? "Hide squad tools" : "Squad tools and CSV import"
+                  squadTools ? "Hide squad tools" : "Squad tools and Excel import"
                 }
                 variant="quiet"
                 onPress={() => setSquadTools((value) => !value)}
@@ -742,6 +745,7 @@ function PreparationContent({
                 <RosterImportPanel
                   state={state}
                   busy={disabled}
+                  onProformaImport={profiles => commit({type:"roster.proforma_imported",profiles,confirmChanges:true})}
                   onImport={(profiles) =>
                     commit({
                       type: "roster.imported",
@@ -910,6 +914,8 @@ function PreparationContent({
           ) : (
             <>
               {storage === "service" && brandingPanel}
+              <TeamLeagueEditor value={state.team.league} disabled={disabled} onSave={league => commit({type:"team.league_updated",league})} />
+              <FormationDesigner state={state} onChange={onChange} busy={disabled} error={error} />
               <Card>
                 <View style={s.between}>
                   <View style={s.flex}>
@@ -1575,6 +1581,7 @@ function ProfileForm({
               />
             </View>
           </View>
+          <Field label="FA player ID (optional)" numeric value={draft.faPlayerId ?? ""} disabled={disabled} onChange={value => change("faPlayerId",value.trim() || null)} />
           <Choice
             label="Preferred foot"
             value={draft.foot}
@@ -2363,6 +2370,7 @@ function FixtureDetail({
               />
             </>
           )}
+          <FormationAdvice state={state} fixtureId={fixture.id} disabled={disabled} onChooseFormation={setFormationId} onChange={command => onCommand(command,false,command)} />
           <Choice
             label="Saved formation for this match"
             value={formation?.id ?? ""}

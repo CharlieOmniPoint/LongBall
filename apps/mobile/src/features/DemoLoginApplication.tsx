@@ -1,3 +1,6 @@
+import { SpectatorPinEntry } from './SpectatorPinEntry';
+import { InvitationRequestEntry } from './InvitationRequestEntry';
+import { RoleThemeProvider } from '../ui/RoleTheme';
 import { useCallback, useEffect, useRef, useState, type ComponentRef } from 'react';
 import { ActivityIndicator, AppState, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -14,10 +17,17 @@ const isForeground = (nativeState = AppState.currentState) => (nativeState == nu
 const expiredMessage = 'Your demo session has ended. Sign in again to continue.';
 
 /** Preauthorised demo accounts use a server-checked login, separate from club OIDC. */
-export function DemoLoginApplication({ onBack, onNavigationGuardChange }: {
+export function DemoLoginApplication({ onBack, onNavigationGuardChange, initialMode = "team", invitationDestination, onInvitationHandled }: {
+  onInvitationHandled?: () => void;
+  initialMode?: "team"|"spectator"|"request";
+  invitationDestination?: {teamId:string;seasonId:string;code:string};
   onBack: () => void;
   onNavigationGuardChange?: (guard: ((leave: () => void) => void) | null) => void;
 }) {
+  const [entryMode,setEntryMode] = useState(initialMode);
+  const [entryService,setEntryService] = useState<{mode:string;attempt:number;api:string}|null>(null);
+  const [entryRetry,setEntryRetry] = useState(0);
+  const entryApi = entryService?.mode === entryMode && entryService.attempt === entryRetry ? entryService.api : null;
   const [username, setUsername] = useState('');
   const [passcode, setPasscode] = useState('');
   const [session, setSession] = useState<DemoLoginSession | null>(null);
@@ -108,6 +118,21 @@ export function DemoLoginApplication({ onBack, onNavigationGuardChange }: {
     };
   }, [checkCurrentAccess]);
 
+  useEffect(() => {
+    if(entryMode==='team'||session)return;
+    const controller=new AbortController();let current=true;
+    void discoverFictionalReview({fictionalReviewChosen:true,fetch:globalThis.fetch,signal:controller.signal}).then(service => {
+      if(!current)return;
+      if(service.status==='available')setEntryService({mode:entryMode,attempt:entryRetry,api:service.apiBaseUrl});else setError(demoServiceUnavailableMessage(service.reason));
+    }).catch(()=>{if(current)setError('The team service could not be reached. Please try again.');});
+    return()=>{current=false;controller.abort();};
+  },[entryMode,entryRetry,session]);
+  const acceptSpectatorSession=(next:DemoLoginSession)=>{
+    if(!mounted.current||!foregroundRef.current)return;
+    deadline.current=demoSessionDeadline(next.expiresAtMs,Date.now(),monotonicNow());
+    sessionRef.current=next;setAccessCheck('ready');setSession(next);setError(null);
+    if(invitationDestination)onInvitationHandled?.();
+  };
   const login = async () => {
     // The ref prevents two native/web submit events in the same render from starting competing sessions.
     if (operation.current || !foregroundRef.current) return;
@@ -171,19 +196,21 @@ export function DemoLoginApplication({ onBack, onNavigationGuardChange }: {
             onLeaveWorkspace={finishSignOut}
             onNavigationGuardChange={onNavigationGuardChange}
             onAuthorityScopeChange={authorityScopeChanged}
+            invitationDestination={invitationDestination}
           />
         </View>
       </View>
     );
   }
   return (
+    <RoleThemeProvider role={entryMode === "spectator" ? "spectator" : null}>
     <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.page, { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 24 }]} testID="demo-login-screen">
       <View style={styles.column}>
         <LongBallWordmark />
         <Pill tone="muted">ROMA U10</Pill>
-        <Text accessibilityRole="header" style={typography.title}>Welcome back</Text>
+        <Text accessibilityRole="header" style={typography.title}>{entryMode === "request" ? "Join your team" : "Welcome back"}</Text>
         <Text style={typography.body}>Sign in to see your team, fixtures and match day.</Text>
-        <Card>
+        {entryMode === "team" ? <Card>
           <Text style={typography.label}>Username</Text>
           <TextInput accessibilityLabel="Username" testID="demo-username" value={username} onChangeText={setUsername} autoCapitalize="none" autoCorrect={false} autoComplete="username" textContentType="username" editable={!busy} maxLength={64} style={styles.input} returnKeyType="next" onSubmitEditing={() => passwordInput.current?.focus()} />
           <Text style={typography.label}>Password or passcode</Text>
@@ -192,10 +219,12 @@ export function DemoLoginApplication({ onBack, onNavigationGuardChange }: {
           {message && <Notice>{message}</Notice>}
           {busy && <View style={styles.progress}><ActivityIndicator color={colors.brand} /><Text style={typography.body}>Signing in…</Text></View>}
           <Button label="Sign in" testID="demo-login-submit" disabled={busy || !username.trim() || !passcode} onPress={() => { void login(); }} />
-        </Card>
+        </Card> : entryApi ? entryMode === 'spectator' ? <SpectatorPinEntry apiBaseUrl={entryApi} invitation={invitationDestination} onSignedIn={acceptSpectatorSession} onBack={() => setEntryMode('team')} /> : <InvitationRequestEntry apiBaseUrl={entryApi} onBack={() => setEntryMode('team')} /> : <Card>{error ? <><Notice tone="warning">{error}</Notice><Button label="Retry connection" onPress={() => setEntryRetry(value=>value+1)} /></> : <><ActivityIndicator color={colors.brand}/><Text style={typography.body}>Connecting to your team…</Text></>}</Card>}
+        {entryMode === 'team' && <View style={{gap:8}}><Button label="Spectator passcode" testID="demo-open-spectator" variant="secondary" disabled={busy} onPress={()=>{setError(null);setPasscode('');setEntryMode('spectator');}}/><Button label="Request an invitation" testID="demo-request-invite" variant="quiet" disabled={busy} onPress={()=>{setError(null);setPasscode('');setEntryMode('request');}}/></View>}
         <Button label="Back to welcome" variant="quiet" disabled={busy} onPress={onBack} />
       </View>
     </ScrollView>
+    </RoleThemeProvider>
   );
 }
 const styles = StyleSheet.create({

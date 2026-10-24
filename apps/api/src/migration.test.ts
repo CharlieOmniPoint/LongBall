@@ -8,8 +8,8 @@ import { describe, expect, it } from 'vitest';
 import { DevelopmentStore, SYNTHETIC_IDS } from './store';
 import { SqliteBrandRepository } from './brand-repository';
 
-const currentVersion = 10;
-const dropPrivilegeSchema = 'DROP TABLE push_registrations; DROP TRIGGER team_privileges_new_team; DROP TABLE team_privilege_decisions; DROP TABLE team_privilege_states; ';
+const currentVersion = 11;
+const dropPrivilegeSchema = 'DROP TABLE administrative_memberships; DROP TABLE administration_grants; DROP TABLE directory_teams; DROP TABLE directory_clubs; DROP TABLE push_registrations; DROP TRIGGER team_privileges_new_team; DROP TABLE team_privilege_decisions; DROP TABLE team_privilege_states; ';
 const observedAt = 1_800_000_000_000;
 const historicalTables = ['accounts', 'audit', 'conflicting_submissions', 'controller_grants', 'controller_history', 'events', 'idempotency', 'jobs', 'matches', 'memberships', 'privacy_requests', 'streams', 'teams', 'transfers'];
 const versionSixTables = [...historicalTables, 'clock_challenges', 'clock_mappings', 'devices', 'documents', 'reconciliation_proposals'];
@@ -40,7 +40,7 @@ describe('development SQLite expand migrations', () => {
       let store=new DevelopmentStore(path,()=>observedAt);store.seedSynthetic();seedRetainedEvidence(store);
       store.database.exec('DROP TABLE push_registrations; PRAGMA user_version=9;');
       const tables=tableNames(store.database),before=snapshotRows(store.database,tables);store.close();
-      store=new DevelopmentStore(path,()=>observedAt);expect(store.database.prepare('PRAGMA user_version').get()).toEqual({user_version:10});expect(snapshotRows(store.database,tables)).toEqual(before);expect(store.database.prepare('SELECT * FROM push_registrations').all()).toEqual([]);store.close();
+      store=new DevelopmentStore(path,()=>observedAt);expect(store.database.prepare('PRAGMA user_version').get()).toEqual({user_version:11});expect(snapshotRows(store.database,tables)).toEqual(before);expect(store.database.prepare('SELECT * FROM push_registrations').all()).toEqual([]);store.close();
       store=new DevelopmentStore(path,()=>observedAt);expect(snapshotRows(store.database,tables)).toEqual(before);expect(store.database.prepare('SELECT * FROM push_registrations').all()).toEqual([]);store.close();
     }finally{rmSync(directory,{recursive:true,force:true});}
   });
@@ -133,7 +133,7 @@ describe('development SQLite expand migrations', () => {
       store.close(); store = new DevelopmentStore(path, () => observedAt);
       expect(store.database.prepare('PRAGMA user_version').get()).toEqual({ user_version: currentVersion });
       expect(snapshotRows(store.database, previousTables)).toEqual(preserved);
-      expect(store.database.prepare("SELECT type,name,tbl_name,sql FROM sqlite_schema WHERE name NOT LIKE 'sqlite_%' AND name NOT IN('push_registrations','push_registration_identity','push_registration_enrolment_insert','push_registration_enrolment_update','native_app_devices','native_device_identity_immutable','team_privilege_states','team_privilege_decisions','team_privileges_new_team','team_privilege_state_identity','team_privilege_decision_immutable_update','team_privilege_decision_immutable_delete') ORDER BY type,name").all()).toEqual(schema);
+      expect(store.database.prepare("SELECT type,name,tbl_name,sql FROM sqlite_schema WHERE name NOT LIKE 'sqlite_%' AND name NOT IN('administration_grants','administrative_memberships','directory_clubs','directory_teams','push_registrations','push_registration_identity','push_registration_enrolment_insert','push_registration_enrolment_update','native_app_devices','native_device_identity_immutable','team_privilege_states','team_privilege_decisions','team_privileges_new_team','team_privilege_state_identity','team_privilege_decision_immutable_update','team_privilege_decision_immutable_delete') ORDER BY type,name").all()).toEqual(schema);
       // A legacy controller device is not silently enrolled as a native installation.
       expect(store.database.prepare('SELECT * FROM native_app_devices').all()).toEqual([]);
       const principal = store.principal({ issuer: 'urn:longball:synthetic', subject: 'synthetic-account-manager', strongAuth: true, authenticatedAt: observedAt });

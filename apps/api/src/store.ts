@@ -1,3 +1,4 @@
+import { ADMINISTRATION_SQLITE_DDL, sqliteAdministration, syncSqliteAdministration } from './club-administration';
 import { projectOwnPlayerPreparation } from '../../../packages/application/src/player-preparation';
 import { canPlayerReplyToFixture } from '../../../packages/application/src/fixture-response-window';
 import { matchPageAudience, matchPageCursor, matchPagePosition, type MatchPageQuery } from './match-pagination';
@@ -66,6 +67,7 @@ interface StreamRow { sequence: number; previous_event_id: string }
 export interface UploadResult { eventId: string; clientSequence: number; disposition: 'accepted' | 'quarantined'; reason: string | null; revision: number | null; duplicate: boolean }
 export type OwnPreparationCommand = { id: string; expectedRevision: number } & (
   | { type: 'own.preferences_saved'; preferences: PositionCode[] }
+  | { type: 'own.fa_id_saved'; faPlayerId: string | null }
   | { type: 'own.fixture_response_recorded'; fixtureId: string; response: AvailabilityResponse }
   | { type: 'own.training_response_recorded'; trainingId: string; response: AvailabilityResponse }
 );
@@ -125,7 +127,7 @@ export class DevelopmentStore {
     this.transaction(() => {
     // Read the version only after acquiring the migration lock; API and worker can start together.
     const version = Number((this.database.prepare('PRAGMA user_version').get() as { user_version: number }).user_version);
-    if (version > 10) throw new Error('This store version is newer than this application; preserve it and use a compatible build.');
+    if (version > 11) throw new Error('This store version is newer than this application; preserve it and use a compatible build.');
     if (version === 0) this.database.exec(`
       CREATE TABLE accounts(id TEXT PRIMARY KEY,issuer TEXT NOT NULL,subject TEXT NOT NULL,classification TEXT NOT NULL CHECK(classification IN ('child_shared','adult_individual','unclassified')),adult_verified INTEGER NOT NULL DEFAULT 0,status TEXT NOT NULL DEFAULT 'active',UNIQUE(issuer,subject));
       CREATE TABLE teams(id TEXT PRIMARY KEY,name TEXT NOT NULL);
@@ -176,6 +178,7 @@ export class DevelopmentStore {
       PRAGMA user_version=8;`);
     if(version<9)this.database.exec(SQLITE_TEAM_PRIVILEGES_DDL + 'PRAGMA user_version=9;');
     if(version<10)this.database.exec(PUSH_SQLITE_MIGRATION + 'PRAGMA user_version=10;');
+    if(version<11)this.database.exec(ADMINISTRATION_SQLITE_DDL + 'PRAGMA user_version=11;');
     });
   }
   async backup(destination: string): Promise<void> {
@@ -233,6 +236,13 @@ export class DevelopmentStore {
       this.saveDocument(SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId, 'preparation', preparation);
       this.saveDocument(SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId, 'community', community);
       this.saveDocument(SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId, 'records', createRecordsSeed(options));
+      if(options.demoSharing){
+        add('synthetic-account-club-admin','adult_individual',true);
+        this.database.prepare('INSERT INTO directory_clubs(id,name) VALUES(?,?),(?,?)').run('synthetic-richmond-rovers','Richmond Rovers','synthetic-other-club','Brookfield Juniors');
+        this.database.prepare('INSERT INTO directory_teams(team_id,club_id,age_group) VALUES(?,?,?),(?,?,?)').run(SYNTHETIC_IDS.teamId,'synthetic-richmond-rovers','U10','synthetic-other-team','synthetic-other-club','U11');
+        this.database.prepare("INSERT INTO administration_grants(account_id,scope_key,level,club_id) VALUES('synthetic-account-admin','*','super',NULL),('synthetic-account-club-admin','synthetic-richmond-rovers','club','synthetic-richmond-rovers')").run();
+        syncSqliteAdministration(this);
+      }
       if (options.demoSharing) for (const match of community.matches) {
         const key = `award:${SYNTHETIC_IDS.teamId}:${SYNTHETIC_IDS.seasonId}:${match.id}:${match.voteCutoffAtMs}`;
         this.database.prepare('INSERT INTO jobs(id,business_key,kind,payload_json,due_at) VALUES(?,?,?,?,?) ON CONFLICT(business_key) DO NOTHING').run(randomUUID(), key, 'award.finalise', JSON.stringify({ teamId: SYNTHETIC_IDS.teamId, seasonId: SYNTHETIC_IDS.seasonId, matchId: match.id }), match.voteCutoffAtMs!);
@@ -245,10 +255,10 @@ export class DevelopmentStore {
   principal(identity: VerifiedIdentity): Principal {
     const account = this.database.prepare('SELECT * FROM accounts WHERE issuer=? AND subject=?').get(identity.issuer, identity.subject) as AccountRow | undefined;
     if (!account || account.status !== 'active') throw new AccessError('ACCOUNT_UNAVAILABLE', 403, 'The account is not active for this service.');
-    return { accountId: account.id, issuer: account.issuer, subject: account.subject, identityClassification: account.classification, adultVerified: Boolean(account.adult_verified), strongAuth: identity.strongAuth, authenticatedAt: identity.authenticatedAt, status: account.status };
+    return { accountId: account.id, issuer: account.issuer, subject: account.subject, identityClassification: account.classification, adultVerified: Boolean(account.adult_verified), strongAuth: identity.strongAuth, authenticatedAt: identity.authenticatedAt, status: account.status, ...(sqliteAdministration(this,account.id)?{administration:sqliteAdministration(this,account.id)}:{}) };
   }
   memberships(): Membership[] {
-    const rows = (this.database.prepare('SELECT * FROM memberships').all() as unknown as { account_id: string; team_id: string; season_id: string; role: Membership['role']; player_id: string | null; expires_at: number | null; revoked_at: number | null }[]).map(row => ({ accountId: row.account_id, teamId: row.team_id, seasonId: row.season_id, role: row.role, playerId: row.player_id ?? undefined, expiresAt: row.expires_at, revokedAt: row.revoked_at }));
+    const rows = (this.database.prepare('SELECT m.*,EXISTS(SELECT 1 FROM administrative_memberships am WHERE am.account_id=m.account_id AND am.team_id=m.team_id AND am.season_id=m.season_id AND am.role=m.role) administrative_inheritance FROM memberships m').all() as unknown as { account_id: string; team_id: string; season_id: string; role: Membership['role']; administrative_inheritance?:number; player_id: string | null; expires_at: number | null; revoked_at: number | null }[]).map(row => ({ accountId: row.account_id, teamId: row.team_id, seasonId: row.season_id, role: row.role, playerId: row.player_id ?? undefined, expiresAt: row.expires_at, revokedAt: row.revoked_at, ...(row.administrative_inheritance?{administrativeInheritance:true as const}:{}) }));
     const communities = (this.database.prepare("SELECT team_id,season_id,value_json FROM documents WHERE kind='community'").all() as { team_id: string; season_id: string; value_json: string }[]).map(row => ({ ...row, state: JSON.parse(row.value_json) as CommunityState }));
     return rows.map(row => {
       if (row.role !== 'spectator') return row;
@@ -583,7 +593,7 @@ export class DevelopmentStore {
     if(expectedRevision!==undefined&&(!nonnegative(expectedRevision)||expectedRevision!==this.staffRevision(teamId,seasonId)))throw new AccessError('STALE_REVISION',409,'Refresh the current staff assignments before changing them.');
     const account = this.database.prepare('SELECT * FROM accounts WHERE id=?').get(accountId) as AccountRow | undefined;
     if (!account) throw new AccessError('NOT_FOUND', 404, 'The requested object is unavailable.');
-    const target: Principal = { accountId: account.id, issuer: account.issuer, subject: account.subject, identityClassification: account.classification, adultVerified: !!account.adult_verified, strongAuth: !!account.strong_auth_enrolled, authenticatedAt: this.now(), status: account.status };
+    const target: Principal = { accountId: account.id, issuer: account.issuer, subject: account.subject, identityClassification: account.classification, adultVerified: !!account.adult_verified, strongAuth: !!account.strong_auth_enrolled, authenticatedAt: this.now(), status: account.status, ...(sqliteAdministration(this,account.id)?{administration:sqliteAdministration(this,account.id)}:{}) };
     assertCanAssignManager(actor, target, this.memberships(), teamId, seasonId, this.now());
     const alreadyActive=this.memberships().some(item=>item.accountId===accountId&&item.teamId===teamId&&item.seasonId===seasonId&&item.role==='manager'&&item.revokedAt==null&&(item.expiresAt==null||item.expiresAt>this.now()));
     if(!alreadyActive){
@@ -713,12 +723,19 @@ export class DevelopmentStore {
   }
   configurationCommand(principal: Principal, teamId: string, seasonId: string, command: PreparationCommand,role?:string): ReturnType<typeof configurationServiceView> {
     this.configuration(principal, teamId, seasonId,role);
-    if (!command || !['club.updated', 'team.updated'].includes(command.type)) bad('Only club or team configuration can be changed in this context.');
+    if (!command || !['club.updated', 'team.updated', 'team.league_updated', 'team.alerts_updated'].includes(command.type)) bad('Only club or team configuration can be changed in this context.');
     if(role&&command.type==='club.updated'&&role!=='administrator')throw new AccessError('NOT_FOUND',404,'Choose the current administrator context to administer the club.');
     const state = applyConfigurationServiceCommand({principal,memberships:this.memberships(),preparation:this.document<PreparationState>(teamId,seasonId,'preparation'),seasonId,nowMs:this.now(),command});
     this.saveDocument(teamId, seasonId, 'preparation', state);
+    if(command.type==='club.updated')this.syncClubConfiguration(teamId,seasonId);
     this.audit(principal, command.type, teamId, 'administrator_configuration_accepted');
     return this.configuration(principal, teamId, seasonId,role);
+  }
+  private syncClubConfiguration(teamId:string,seasonId:string):void {
+    const current=this.document<PreparationState>(teamId,seasonId,'preparation');
+    this.database.prepare('UPDATE directory_clubs SET name=? WHERE id=?').run(current.club.name,current.club.id);
+    const documents=this.database.prepare("SELECT team_id,season_id,value_json FROM documents WHERE kind='preparation' AND json_extract(value_json,'$.club.id')=? AND json_extract(value_json,'$.club.name')<>?").all(current.club.id,current.club.name) as {team_id:string;season_id:string;value_json:string}[];
+    for(const row of documents){const value=JSON.parse(row.value_json) as PreparationState;const updated:PreparationState={...value,revision:value.revision+1,club:{...value.club,name:current.club.name}};this.saveDocument(row.team_id,row.season_id,'preparation',updated);}
   }
   private seasonContext(principal: Principal, teamId: string, seasonId: string): SeasonRolloverContext {
     const community = this.communityState(teamId, seasonId);
@@ -733,10 +750,11 @@ export class DevelopmentStore {
     const context = this.seasonContext(principal, teamId, seasonId);
     const plan = planSeasonRollover({ ...context, command });
     if (this.database.prepare('SELECT kind FROM documents WHERE team_id=? AND season_id=? LIMIT 1').get(teamId, plan.receipt.seasonId)) throw new AccessError('SEASON_EXISTS', 409, 'That destination season already has saved documents.');
-    for (const member of plan.memberships) this.database.prepare('INSERT INTO memberships(account_id,team_id,season_id,role,player_id,expires_at,revoked_at) VALUES(?,?,?,?,?,?,?)').run(member.accountId, member.teamId, member.seasonId, member.role, member.playerId ?? null, member.expiresAt ?? null, member.revokedAt ?? null);
+    for (const member of plan.memberships.filter(item=>!item.administrativeInheritance)) this.database.prepare('INSERT INTO memberships(account_id,team_id,season_id,role,player_id,expires_at,revoked_at) VALUES(?,?,?,?,?,?,?)').run(member.accountId, member.teamId, member.seasonId, member.role, member.playerId ?? null, member.expiresAt ?? null, member.revokedAt ?? null);
     this.saveDocument(teamId, plan.receipt.seasonId, 'preparation', plan.preparation);
     this.saveDocument(teamId, plan.receipt.seasonId, 'records', plan.records);
     this.saveDocument(teamId, plan.receipt.seasonId, 'community', plan.community);
+    syncSqliteAdministration(this);
     this.audit(principal, 'season.created_from_explicit_assignments', plan.receipt.seasonId, 'accepted_no_spectator_renewal');
     return plan.receipt;
   }
@@ -758,7 +776,7 @@ export class DevelopmentStore {
   }
   preparationCommand(principal: Principal, teamId: string, seasonId: string, command: PreparationCommand): PreparationState {
     const previous = this.preparation(principal, teamId, seasonId);
-    const types = ['club.updated', 'team.updated', 'season.rolled_over', 'profile.saved', 'roster.imported', 'profile.archived', 'formation.saved', 'position.saved', 'position.archived', 'lineup_template.saved', 'lineup_template.archived', 'lineup_template.applied', 'lineup_template.cleared', 'fixture.saved', 'fixture.status_changed', 'fixture.response_recorded', 'fixture.selection_saved', 'fixture.attendance_recorded', 'fixture.prepared', 'match_plan.saved', 'match_plan.applied', 'match_plan.cleared', 'training.series_created', 'training.series_updated', 'training.series_cancelled', 'training.saved', 'training.status_changed', 'training.response_recorded', 'training.attendance_recorded'];
+    const types = ['club.updated', 'team.updated', 'season.rolled_over', 'profile.saved', 'roster.imported', 'roster.proforma_imported', 'team.league_updated', 'team.alerts_updated', 'profile.archived', 'formation.saved', 'position.saved', 'position.archived', 'lineup_template.saved', 'lineup_template.archived', 'lineup_template.applied', 'lineup_template.cleared', 'fixture.saved', 'fixture.status_changed', 'fixture.response_recorded', 'fixture.selection_saved', 'fixture.attendance_recorded', 'fixture.prepared', 'match_plan.saved', 'match_plan.applied', 'match_plan.cleared', 'training.series_created', 'training.series_updated', 'training.series_cancelled', 'training.saved', 'training.status_changed', 'training.response_recorded', 'training.attendance_recorded'];
     if (!command || !types.includes(command.type)) bad('Unsupported preparation command.');
     if (command.type === 'season.rolled_over') throw new AccessError('SEASON_ASSIGNMENT_REQUIRED', 503, 'A connected new season requires approved manager/player assignments and explicit spectator renewal. The local rehearsal supports rollover; this service will not save an inaccessible new season or silently copy authority.');
     if (command.type === 'club.updated') {
@@ -791,8 +809,9 @@ export class DevelopmentStore {
         }
       }
     }
-    if (command.type.startsWith('training.') || command.type.startsWith('profile.') || command.type.startsWith('fixture.') || command.type === 'roster.imported') this.projectPreparationRecords(teamId, seasonId, state, command.id);
+    if (command.type.startsWith('training.') || command.type.startsWith('profile.') || command.type.startsWith('fixture.') || command.type === 'roster.imported' || command.type === 'roster.proforma_imported') this.projectPreparationRecords(teamId, seasonId, state, command.id);
     this.saveDocument(teamId, seasonId, 'preparation', state);
+    if(command.type==='club.updated')this.syncClubConfiguration(teamId,seasonId);
     this.audit(principal, command.type, teamId, 'accepted');
     if(command.type==='fixture.saved')this.enqueueNotifications(teamId,seasonId,'schedule',command.fixture.id,command.id);
     else if(command.type==='fixture.status_changed'||command.type==='fixture.selection_saved')this.enqueueNotifications(teamId,seasonId,'schedule',command.fixtureId,command.id);
@@ -812,8 +831,8 @@ export class DevelopmentStore {
   }
   ownPreparationCommand(principal: Principal, teamId: string, seasonId: string, command: OwnPreparationCommand): Record<string, unknown> {
     const membership = assertTeamRole(principal, this.memberships(), teamId, seasonId, ['player'], this.now());
-    if (!command || !validId(command.id) || !nonnegative(command.expectedRevision) || !['own.preferences_saved', 'own.fixture_response_recorded', 'own.training_response_recorded'].includes(command.type)) bad('A valid own-player command and source revision are required.');
-    const allowed = command.type === 'own.preferences_saved' ? ['id', 'expectedRevision', 'type', 'preferences'] : command.type === 'own.fixture_response_recorded' ? ['id', 'expectedRevision', 'type', 'fixtureId', 'response'] : ['id', 'expectedRevision', 'type', 'trainingId', 'response'];
+    if (!command || !validId(command.id) || !nonnegative(command.expectedRevision) || !['own.preferences_saved', 'own.fa_id_saved', 'own.fixture_response_recorded', 'own.training_response_recorded'].includes(command.type)) bad('A valid own-player command and source revision are required.');
+    const allowed = command.type === 'own.preferences_saved' ? ['id', 'expectedRevision', 'type', 'preferences'] : command.type === 'own.fa_id_saved' ? ['id','expectedRevision','type','faPlayerId'] : command.type === 'own.fixture_response_recorded' ? ['id', 'expectedRevision', 'type', 'fixtureId', 'response'] : ['id', 'expectedRevision', 'type', 'trainingId', 'response'];
     if (Object.keys(command).some(key => !allowed.includes(key))) bad('Own-player commands cannot change another profile or manager-controlled fields.');
     const state = this.document<PreparationState>(teamId, seasonId, 'preparation');
     const profiles = state.profiles.filter(profile => profile.playerId === membership.playerId && profile.seasonId === seasonId && profile.active);
@@ -831,7 +850,8 @@ export class DevelopmentStore {
     }
     const base = { id: command.id, expectedRevision: command.expectedRevision };
     const bound: PreparationCommand = command.type === 'own.preferences_saved' ? { ...base, type: 'profile.saved', profile: { ...profile, preferences: command.preferences } }
-      : command.type === 'own.fixture_response_recorded' ? { ...base, type: 'fixture.response_recorded', fixtureId: command.fixtureId, profileId: profile.id, response: command.response }
+      : command.type === 'own.fa_id_saved' ? { ...base, type:'profile.saved',profile:{...profile,faPlayerId:command.faPlayerId} }
+        : command.type === 'own.fixture_response_recorded' ? { ...base, type: 'fixture.response_recorded', fixtureId: command.fixtureId, profileId: profile.id, response: command.response }
       : { ...base, type: 'training.response_recorded', trainingId: command.trainingId, profileId: profile.id, response: command.response };
     const updated = reducePreparation(state, bound);
     // Own changes persist only in preparation. Reports derive current attendance/RSVP

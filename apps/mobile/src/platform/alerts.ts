@@ -6,6 +6,10 @@ export interface LocalWarningPlan {
   dueInMs: number;
   running: boolean;
   owner?: string;
+  /** Omitted retains the legacy M0 advance warnings. */
+  leadSeconds?: number;
+  /** Configurable foreground audio is separate from system-volume notification sound. */
+  sound?: boolean;
 }
 
 Notifications.setNotificationHandler({
@@ -17,16 +21,19 @@ Notifications.setNotificationHandler({
   }),
 });
 
-async function ensureChannel() {
+async function ensureChannel(silent = false) {
+  const channelId = silent ? 'longball-substitution-silent' : 'longball-match';
   if (Platform.OS === "android") {
-    await Notifications.setNotificationChannelAsync("longball-match", {
+    await Notifications.setNotificationChannelAsync(channelId, {
       // Android NotificationManager.IMPORTANCE_HIGH; SDK exports its enum through platform files.
       name: "LongBall match reminders",
-      importance: 4,
-      sound: "default",
-      vibrationPattern: [0, 250],
+      importance: silent ? 3 : 4,
+      sound: silent ? null : "default",
+      enableVibrate: !silent,
+      vibrationPattern: silent ? undefined : [0, 250],
     });
   }
+  return channelId;
 }
 
 export async function getAlertCapability(): Promise<string> {
@@ -78,9 +85,11 @@ export function replaceLocalWarnings(plan: LocalWarningPlan): Promise<void> {
       if (!running || dueInMs <= 0) return;
       const permission = await Notifications.getPermissionsAsync();
       if (!permission.granted) return;
-      await ensureChannel();
+      const channelId = await ensureChannel(plan.sound === false);
       try {
-        for (const secondsRemaining of [90, 60, 30, 0]) {
+        const thresholds = plan.leadSeconds === undefined ? [90, 60, 30, 0] : [plan.leadSeconds];
+        if (thresholds.some(value => !Number.isInteger(value) || value < 0 || value > 300)) throw new Error('Use a warning from 0 to 300 seconds.');
+        for (const secondsRemaining of thresholds) {
           const seconds = (dueInMs - secondsRemaining * 1000) / 1000;
           if (seconds <= 0) continue;
           await Notifications.scheduleNotificationAsync({
@@ -90,13 +99,13 @@ export function replaceLocalWarnings(plan: LocalWarningPlan): Promise<void> {
                 ? `Change due in ${secondsRemaining} seconds`
                 : "Planned change is due",
               body: "Review the lineup and confirm any change. A reminder never makes a substitution.",
-              sound: "default",
+              sound: plan.sound === false ? false : "default",
               data: { longballM0: true, longballOwner: owner, revision },
             },
             trigger: {
               type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
               seconds: Math.max(1, seconds),
-              channelId: "longball-match",
+              channelId,
             },
           });
         }

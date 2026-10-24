@@ -21,6 +21,8 @@ import { ConnectedLiveEditor } from './ConnectedLiveEditor';
 import { PlannerPanel, usePlannerModel, type PlannerPersistence, type PlannerPolicyPort } from './PlannerPanel';
 import { HistoryReviewPanel } from './HistoryReviewPanel';
 import { useWorkspaceLayout } from '../ui/WorkspaceLayout';
+import type { SubstitutionAlertSettings } from '@longball/application/substitution-alerts';
+import { SubstitutionCountdown, type SubstitutionCountdownSnapshot } from './SubstitutionCountdown';
 
 export interface ConnectedControllerState {
   scope: 'connected-rehearsal'; matchId: string; deviceId: string; epoch: number | null;
@@ -36,6 +38,7 @@ export interface ServicePanelProps {
   journal: Journal | null;
   deviceId: string | null;
   match: MatchState | null;
+  alertSettings?: SubstitutionAlertSettings;
   allowSynthetic?: boolean;
   teamId?: string;
   seasonId?: string;
@@ -140,7 +143,7 @@ export function ServicePanel(props: ServicePanelProps) {
       {!platformAllowsCache && <Notice>Use the native application for the connected match controller. The browser keeps authenticated workspace views in memory; it does not open or persist a real account’s controller match in review storage. Demo browser rehearsal remains available in development.</Notice>}
       {!controlled && <Button label={connecting ? 'Verifying service identity…' : 'Open this service connection'} disabled={connecting || staticBrowser && !selectedBaseUrl.trim() || !platformAllowsCache || !props.journal || !props.deviceId || !matchId || !teamId || !seasonId} onPress={() => { void openConnection(); }} />}
     </Card></ConnectionSettings>}
-    {connection && connection.configurationKey === configurationKey && (allowSynthetic || connection.mode === 'oidc') && connection.scope.matchId === matchId && connection.scope.teamId === teamId && connection.scope.seasonId === seasonId && <AuthorizedRehearsal key={controllerCacheDocumentId(connection.scope)} connection={connection} journal={props.journal} physicalDeviceId={props.deviceId} matchId={matchId} controlled={controlled} fillScreen={props.fillScreen} allowFictionalReview={controlled && allowSynthetic && connection.mode === 'synthetic'} onControllerState={props.onControllerState} />}
+    {connection && connection.configurationKey === configurationKey && (allowSynthetic || connection.mode === 'oidc') && connection.scope.matchId === matchId && connection.scope.teamId === teamId && connection.scope.seasonId === seasonId && <AuthorizedRehearsal key={controllerCacheDocumentId(connection.scope)} connection={connection} journal={props.journal} physicalDeviceId={props.deviceId} matchId={matchId} controlled={controlled} fillScreen={props.fillScreen} alertSettings={props.alertSettings} allowFictionalReview={controlled && allowSynthetic && connection.mode === 'synthetic'} onControllerState={props.onControllerState} />}
     {controlled && <Button label={showConnectionSettings ? 'Hide controller connection settings' : 'Controller connection settings'} testID="controller-connection-settings-toggle" variant="quiet" onPress={() => setShowConnectionSettings(value => !value)} />}
   </View>;
 }
@@ -151,7 +154,7 @@ function ConnectionSettings({ constrained, children }: { constrained?: boolean; 
   return constrained ? <ScrollView style={[{ flexGrow: 0, maxHeight: "45%" }, tablet && styles.settingsWide]} keyboardShouldPersistTaps="handled">{children}</ScrollView> : <View style={tablet && styles.settingsWide}>{children}</View>;
 }
 
-interface RehearsalProps { connection: ConnectionConfig; journal: Journal | null; physicalDeviceId: string | null; matchId: string; controlled: boolean; fillScreen?: boolean; allowFictionalReview: boolean; onControllerState?: ServicePanelProps['onControllerState'] }
+interface RehearsalProps { alertSettings?: SubstitutionAlertSettings; connection: ConnectionConfig; journal: Journal | null; physicalDeviceId: string | null; matchId: string; controlled: boolean; fillScreen?: boolean; allowFictionalReview: boolean; onControllerState?: ServicePanelProps['onControllerState'] }
 
 /** Do not mount useDocument (or expose its cached projection) before checking the unlocked account. */
 function AuthorizedRehearsal(props: RehearsalProps) {
@@ -176,7 +179,7 @@ function AuthorizedRehearsal(props: RehearsalProps) {
   return <ConnectedRehearsal {...props} />;
 }
 
-function ConnectedRehearsal({ connection, journal, physicalDeviceId, matchId, controlled, fillScreen, allowFictionalReview, onControllerState }: RehearsalProps) {
+function ConnectedRehearsal({ alertSettings, connection, journal, physicalDeviceId, matchId, controlled, fillScreen, allowFictionalReview, onControllerState }: RehearsalProps) {
   const layout = useWorkspaceLayout();
   const tablet = layout.mode === 'tablet' && layout.wide;
   const documentId = controllerCacheDocumentId(connection.scope);
@@ -185,6 +188,7 @@ function ConnectedRehearsal({ connection, journal, physicalDeviceId, matchId, co
     value => { assertConnectedDocument(value); if (value.deviceId !== connection.wireDeviceId || value.matchId !== matchId || value.baseUrl !== connection.baseUrl) throw new Error('Connected document identity differs; retain it and use the matching connection.'); });
   const [networkBusy, setNetworkBusy] = useState(false);
   const [plannerRetained, setPlannerRetained] = useState(false);
+  const [substitutionCountdown, setSubstitutionCountdown] = useState<SubstitutionCountdownSnapshot | null>(null);
   const [showRecordingDetails, setShowRecordingDetails] = useState(false);
   const autoDownloadAttempted = useRef(false);
   const [networkError, setNetworkError] = useState<string | null>(null);
@@ -496,22 +500,24 @@ function ConnectedRehearsal({ connection, journal, physicalDeviceId, matchId, co
     </Card>}
     </View>}
   </>;
-  const planner = localMatch && current && (<ConnectedPlanner policy={{ commit: record, busy: document.busy, retryPending: document.retryPending, conflict: Boolean(document.conflict), retry: document.retry, reload: document.reload, acceptedRevision: current.acceptedRevision }} match={localMatch} sample={sample} clock={clock} eligible={editable} persistence={{ journal, deviceId: physicalDeviceId, binding: { kind: 'connected', mode: connection.mode, controllerScope: connection.scope } }} onRetainedChange={setPlannerRetained} onReviewLineup={(lineup, sourceRevision) => {
+  const planner = localMatch && current && (<ConnectedPlanner alertSettings={alertSettings} onCountdownChange={setSubstitutionCountdown} policy={{ commit: record, busy: document.busy, retryPending: document.retryPending, conflict: Boolean(document.conflict), retry: document.retry, reload: document.reload, acceptedRevision: current.acceptedRevision }} match={localMatch} sample={sample} clock={clock} eligible={editable} persistence={{ journal, deviceId: physicalDeviceId, binding: { kind: 'connected', mode: connection.mode, controllerScope: connection.scope } }} onRetainedChange={setPlannerRetained} onReviewLineup={(lineup, sourceRevision) => {
       if (!editable || sourceRevision !== localMatch.revision) { setNetworkError('The match or controller changed. Replan before opening this suggested lineup.'); return; }
       setReviewDraft({ matchId: localMatch.config.matchId, sourceRevision, lineup: lineup.map(item => ({ ...item })) });
     }} />);
-  const sharedEditor = localMatch && current?.controllerConfirmed && sharedEditorAvailable && (<ConnectedLiveEditor fillScreen={fillScreen} header={fillScreen ? recordingStatus : undefined} extraContent={<>{fillScreen && <Button label={showRecordingDetails ? 'Hide recording and sync details' : 'Recording and sync details'} testID="controller-recording-details" variant="quiet" onPress={() => setShowRecordingDetails(value => !value)} />}{planner}{fillScreen && recordingDetails}</>} mode={fictionalEditor ? 'fictional-review' : 'native'} match={localMatch} clock={clock} busy={captureBusy} onCommand={record} journal={journal} eligible={editable} teamLabel={localMatch.config.fixture?.teamName} onReviewClockAction={reviewClockAction} clockActionReview={clockActionReview} reviewDraft={reviewDraft} onReviewDraftConsumed={() => setReviewDraft(null)} />);
+  const sharedEditor = localMatch && current?.controllerConfirmed && sharedEditorAvailable && (<ConnectedLiveEditor substitutionCountdown={substitutionCountdown && localMatch.half !== 0 && !['completed', 'abandoned'].includes(localMatch.status) ? <SubstitutionCountdown value={substitutionCountdown} compact /> : null} fillScreen={fillScreen} header={fillScreen ? recordingStatus : undefined} extraContent={<>{fillScreen && <Button label={showRecordingDetails ? 'Hide recording and sync details' : 'Recording and sync details'} testID="controller-recording-details" variant="quiet" onPress={() => setShowRecordingDetails(value => !value)} />}{planner}{fillScreen && recordingDetails}</>} mode={fictionalEditor ? 'fictional-review' : 'native'} match={localMatch} clock={clock} busy={captureBusy} onCommand={record} journal={journal} eligible={editable} teamLabel={localMatch.config.fixture?.teamName} onReviewClockAction={reviewClockAction} clockActionReview={clockActionReview} reviewDraft={reviewDraft} onReviewDraftConsumed={() => setReviewDraft(null)} />);
   if (fillScreen && sharedEditor) return sharedEditor;
   const content = <View style={styles.stack}>{recordingStatus}{acceptedView}{controlled && sharedEditor}{recordingDetails}{!controlled && sharedEditor}</View>;
   return fillScreen ? <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 12 }} keyboardShouldPersistTaps="handled">{content}</ScrollView> : content;
 
 }
 
-function ConnectedPlanner({ match, sample, clock, eligible, persistence, policy, onRetainedChange, onReviewLineup }: { match: MatchState; sample: ClockSample; clock: ReturnType<typeof connectedClock>; eligible: boolean; persistence: PlannerPersistence; policy: PlannerPolicyPort; onRetainedChange: (retained: boolean) => void; onReviewLineup: (lineup: Allocation[], sourceRevision: number) => void }) {
-  const model = usePlannerModel(match, sample, clock, { hasControl: eligible, alertOwner: `connected-planner-${match.config.matchId}`, persistence, onRetainedChange, policy });
+function ConnectedPlanner({ alertSettings, onCountdownChange, match, sample, clock, eligible, persistence, policy, onRetainedChange, onReviewLineup }: { alertSettings?: SubstitutionAlertSettings; onCountdownChange: (value: SubstitutionCountdownSnapshot) => void; match: MatchState; sample: ClockSample; clock: ReturnType<typeof connectedClock>; eligible: boolean; persistence: PlannerPersistence; policy: PlannerPolicyPort; onRetainedChange: (retained: boolean) => void; onReviewLineup: (lineup: Allocation[], sourceRevision: number) => void }) {
+  const model = usePlannerModel(match, sample, clock, { alertSettings, hasControl: eligible, alertOwner: `connected-planner-${match.config.matchId}`, persistence, onRetainedChange, policy });
+  const countdownJson = JSON.stringify(model.countdown);
+  useEffect(() => { onCountdownChange(JSON.parse(countdownJson) as SubstitutionCountdownSnapshot); }, [countdownJson, onCountdownChange]);
   return <View style={styles.stack}>
     {!eligible && <Notice>Planning and reminders require the current confirmed controller and an authoritative downloaded checkpoint. Pending or quarantined records stay retained.</Notice>}
-    <PlannerPanel model={model} onReviewLineup={onReviewLineup} />
+    <PlannerPanel model={model} hideCountdown onReviewLineup={onReviewLineup} />
   </View>;
 }
 const styles = StyleSheet.create({ stack: { gap: 12 }, row: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 }, settingsWide: { width: '100%', maxWidth: 900, alignSelf: 'center' }, detailsGrid: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start' }, detailsColumn: { flexBasis: '48%', flexGrow: 1, minWidth: 0 }, input: { minHeight: 52, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 8, borderWidth: 1, borderColor: colors.controlBorder, color: colors.ink, backgroundColor: colors.surface, fontSize: 16 } });

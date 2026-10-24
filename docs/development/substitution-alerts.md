@@ -1,0 +1,13 @@
+# Manager substitution countdown and audio
+
+The team saves `substitutionAlerts` through the revisioned `team.alerts_updated` preparation command. Sound starts disabled; the Manager chooses a whole-number lead from 0 to 300 seconds and a foreground volume from 0 to 100%. Team settings carry across that team's games. Each recording device separately requires the Manager to press **Enable audio for this device**; the test tone uses the saved team volume.
+
+The accepted current planner suggestion drives a prominent next-substitution countdown in the connected match score summary. It lists all outgoing/incoming players for the next batch. Paused, waiting, half-time, overdue and uncertain states have explicit labels. It never starts a half or records a player change. A Manager must review and confirm the actual lineup when players change.
+
+Audio runs only for the current controller during an active game with certain time. A configured threshold sounds once per current suggestion, not once per player. Stale revisions, control loss and clock uncertainty cancel eligibility. Late opening, replan, returning from the background, clock reversal and resuming after a missed threshold do not replay old warnings. Separate local/connected owners cannot cancel each other's foreground tone. A paused clock stops the countdown's progress.
+
+Browser sound uses an oscillator/gain graph after an explicit user gesture. Background tabs, suspended audio contexts and browser autoplay can silence it; the UI reports this and retains the countdown. The native bridge implements adjustable foreground tones using Android `ToneGenerator` and iOS `AVAudioPlayer` with an ambient session. It never changes device media volume, ringer or Focus settings. Older native clients without the bridge report that an updated native build is required.
+
+Native local notifications use one selected lead and remain silent to avoid a duplicate alarm at system volume. They are supplementary OS reminders, with cancellation on pause, half-time, recovery, replan, terminal state and control loss. They do not claim the custom foreground volume applies to OS notification audio.
+
+Focused shared/adapter tests exercise one-time crossings, multiple changes, mute, disabled settings, invalid bounds, stale sources, control loss, pause/background/resume, replan, backwards time, browser autoplay, gain amplitude and owner cancellation. Mock audio graphs do not establish audible speaker delivery. Physical iPhone/iPad/Android phone/tablet tests are still required for silent mode, Focus/DND, lock/background, force-stop, battery restrictions, volume and speaker behaviour. Native source compilation is a separate check; it does not establish those device behaviours.

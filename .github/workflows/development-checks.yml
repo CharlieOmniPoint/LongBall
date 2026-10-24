@@ -101,6 +101,7 @@ jobs:
           pnpm --filter mobile exec expo export --platform web --output-dir dist-demo-web
           pnpm test:demo:e2e
           pnpm test:tablet:e2e
+          pnpm test:club-expansion:e2e
       - name: Enforce the dependency audit result
         if: always()
         env:
@@ -119,6 +120,8 @@ jobs:
             .local/quality/demo-account-review/*.png
             .local/quality/tablet-review/report.json
             .local/quality/tablet-review/*.png
+            .local/quality/club-expansion-review/report.json
+            .local/quality/club-expansion-review/*.png
           if-no-files-found: warn
           retention-days: 3
 

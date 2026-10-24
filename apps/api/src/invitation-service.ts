@@ -67,7 +67,7 @@ export class SpectatorInvitationService {
   async list(session: InvitationSession): Promise<InvitationList> {
     this.identity(session);
     const actor = await this.options.repository.actor(session);
-    if (!['manager', 'player'].includes(actor.role)) unavailable();
+    if (!['manager', 'player', 'spectator'].includes(actor.role)) unavailable();
     const state = await this.options.repository.state(session.teamId, session.seasonId), now = this.now();
     const invitationAllowed = await this.options.repository.invitationAllowed(session);
     return { kind: 'spectator-invitations', teamId: session.teamId, seasonId: session.seasonId, revision: state.revision, invitations: state.invitations.filter(invite => invite.teamId === session.teamId && invite.seasonId === session.seasonId && (actor.role === 'manager' || invite.inviterAccountId === actor.accountId)).map((invite): InvitationSummary => {
@@ -84,7 +84,7 @@ export class SpectatorInvitationService {
     const { entry, policy } = this.configuration(), repo = this.options.repository;
     return repo.transaction(async () => {
       const actor = await repo.actor(session);
-      if (!['manager', 'player'].includes(actor.role)) unavailable();
+      if (!['manager', 'player', 'spectator'].includes(actor.role)) unavailable();
       const state = await repo.state(session.teamId, session.seasonId, true);
       const operation = this.operation(sourceInvitationId ? 'reissue' : 'issue', session, sourceInvitationId);
       const { prior, signature } = await this.prior(session, operation, key, input);

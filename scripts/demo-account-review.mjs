@@ -9,7 +9,7 @@ import path from 'node:path';
 import { spawn, execFileSync } from 'node:child_process';
 import { DatabaseSync } from 'node:sqlite';
 import { chromium } from 'playwright';
-import { openWorkspaceTab, reviewDateLabel } from './review-entry.mjs';
+import { openWorkspaceTab, reviewDateLabel, selectWorkspaceContext } from './review-entry.mjs';
 
 /** Real built clients/API/worker, isolated generated credentials, and loopback-only transport. */
 const output = path.resolve('.local/quality/demo-account-review');
@@ -252,6 +252,7 @@ async function login(state, account) {
   await page.getByTestId('demo-passcode').fill(account.passcode);
   await page.getByTestId('demo-login-submit').click();
   await page.getByTestId('demo-signed-in').waitFor({ timeout: 25000 });
+  await selectWorkspaceContext(page, account.role);
   const ready = { manager: 'Next event', administrator: 'View assigned teams', player: 'Your team, Oliver Bennett' };
   if (account.role === 'spectator') await page.getByTestId('team-overview').waitFor({ timeout: 20000 });
   else await page.getByText(ready[account.role], { exact: true }).first().waitFor({ timeout: 20000 });
@@ -848,14 +849,78 @@ async function managerMatchday(accounts, databasePath) {
     await button('Save staged lineup').click();
     check((await readAccepted()).acceptedRevision === 0, 'Locally recorded attendance and staged lineup must not claim service acceptance.');
     await page.getByTestId('connected-match-live').click();
+    const plannerSettings = page.getByTestId('planner-settings-confirm');
+    if (await plannerSettings.count()) {
+      await page.getByRole('button', {name:/^Yes(?: · selected)?$/}).click();
+      await page.getByLabel('Match policy change reason', {exact:true}).fill('Review fixture: confirm substitution planning preferences before kickoff');
+      await plannerSettings.click();
+      await page.getByTestId('planner-position-mode').waitFor();
+    }
     await button('Start first half').click();
     await button('Confirm the actual event now').click();
+    await page.getByTestId('next-substitution-countdown').first().waitFor();
+    check(await page.getByTestId('next-substitution-countdown').first().isVisible(), 'The active Manager clock must keep the next-substitution summary visible.');
+    await page.getByTestId('next-substitution-time').first().waitFor();
+    check(/^\d+:\d{2}$/.test(await page.getByTestId('next-substitution-time').first().innerText()), 'A configured active Manager game must display a numeric next-substitution countdown.');
+    const readLocalLineup = () => page.evaluate(async target => {
+      const record = await new Promise((resolve, reject) => {
+        const opening = indexedDB.open('longball-synthetic-m0');
+        opening.onerror = () => reject(new Error('Cannot inspect the owned match countdown projection.'));
+        opening.onsuccess = () => { const db = opening.result, transaction = db.transaction('journal', 'readonly'), read = transaction.objectStore('journal').get('record'); transaction.oncomplete = () => { db.close(); resolve(read.result); }; transaction.onerror = () => reject(new Error('Cannot read the owned match countdown projection.')); };
+      });
+      const local = Object.values(record?.projections ?? {}).find(value => value?.kind === 'longball-canonical-connected-v1' && value.matchId === target);
+      if (!local || !Number.isSafeInteger(local.localState?.revision) || !Array.isArray(local.localState?.lineup) || !Array.isArray(local.outbox)) throw new Error('The current owned countdown projection must contain a valid match revision, lineup and event queue.');
+      return { revision: local.localState.revision, lineup: local.localState.lineup, queuedChanges: local.outbox.length };
+    }, matchId);
+    const timerGeometry = [];
+    for (const width of [390, 320]) {
+      await page.setViewportSize({ width, height: 844 });
+      await page.waitForTimeout(200);
+      const geometry = await page.evaluate(() => {
+        const result = { width: window.innerWidth, height: window.innerHeight, timers: [] };
+        for (const id of ['connected-match-countdown', 'next-substitution-time']) {
+          const node = document.querySelector(`[data-testid="${id}"]`);
+          if (!node) throw new Error('Both current match countdowns must exist.');
+          const rect = node.getBoundingClientRect();
+          let left = Math.max(0, rect.left), top = Math.max(0, rect.top), right = Math.min(window.innerWidth, rect.right), bottom = Math.min(window.innerHeight, rect.bottom);
+          for (let ancestor = node.parentElement; ancestor; ancestor = ancestor.parentElement) {
+            const style = getComputedStyle(ancestor), bound = ancestor.getBoundingClientRect();
+            if (['hidden', 'auto', 'scroll', 'clip'].includes(style.overflowX)) { left = Math.max(left, bound.left); right = Math.min(right, bound.right); }
+            if (['hidden', 'auto', 'scroll', 'clip'].includes(style.overflowY)) { top = Math.max(top, bound.top); bottom = Math.min(bottom, bound.bottom); }
+          }
+          result.timers.push({ id, text: node.textContent, x: rect.x, y: rect.y, width: rect.width, height: rect.height, fullyInViewportAndUnclipped: rect.width > 0 && rect.height > 0 && left <= rect.left + 1 && top <= rect.top + 1 && right >= rect.right - 1 && bottom >= rect.bottom - 1 });
+        }
+        return result;
+      });
+      check(geometry.width === width && geometry.timers.every(timer => timer.fullyInViewportAndUnclipped), 'The half clock and next-substitution timer must both be fully visible without scrolling at 390px and 320px, including inside the fixed summary.');
+      timerGeometry.push(geometry);
+      await safeScreenshot(page, `manager-countdowns-${width}`);
+    }
+    await page.setViewportSize({ width: 390, height: 844 });
+    const countdownBefore = await page.getByTestId('next-substitution-time').first().innerText();
+    const lineupBeforeCountdown = await readLocalLineup();
+    await page.waitForTimeout(2500);
+    const countdownAfter = await page.getByTestId('next-substitution-time').first().innerText();
+    const countdownSeconds = value => value.split(':').map(Number).reduce((minutes, seconds) => minutes * 60 + seconds);
+    check(countdownSeconds(countdownAfter) < countdownSeconds(countdownBefore), 'The active substitution countdown must decrease as actual active time passes.');
+    assert.deepEqual(await readLocalLineup(), lineupBeforeCountdown, 'Countdown ticks must never queue a substitution or change the confirmed lineup/revision.');
+    report.substitutionCountdown = { configuredBeforeFirstKickoff: true, numericAfterFirstKickoff: true, bothTimersUnclippedAtPhoneWidths: timerGeometry, before: countdownBefore, after: countdownAfter, decreasesDuringActivePlay: true, actualLineupAndQueueUnchanged: true, hardwareSoundDeliveryProved: false };
+    checks.push('The first actual Manager kickoff recovers from its newer event anchor, shows a numeric substitution countdown, decreases during active play and leaves the confirmed lineup/revision/outbox unchanged; speaker delivery remains a separate hardware check.');
     await page.getByTestId('workspace-back-to-team').click();
     await page.getByTestId('team-overview').waitFor();
     await page.getByTestId('workspace-return-to-match').click();
     await page.getByTestId('connected-match-live').click();
     await button('Review referee pause').click();
     await button('Confirm the actual event now').click();
+    await button('Review clock resume').waitFor();
+    await page.getByTestId('next-substitution-time').first().waitFor();
+    const pausedCountdownBefore = await page.getByTestId('next-substitution-time').first().innerText();
+    const pausedLineupBefore = await readLocalLineup();
+    await page.waitForTimeout(2500);
+    const pausedCountdownAfter = await page.getByTestId('next-substitution-time').first().innerText();
+    check(pausedCountdownAfter === pausedCountdownBefore, 'The substitution countdown must freeze with the actual referee-paused clock.');
+    assert.deepEqual(await readLocalLineup(), pausedLineupBefore, 'Paused countdown rendering must not change lineup, revision or queued events.');
+    Object.assign(report.substitutionCountdown, { pausedBefore: pausedCountdownBefore, pausedAfter: pausedCountdownAfter, freezesWhilePaused: true, pausedLineupAndQueueUnchanged: true });
     await page.getByTestId('recording-upload').click();
     await page.getByText('Up to date with the service', { exact: true }).waitFor();
     stage = 'manager accepted attendance, lineup and paused clock';

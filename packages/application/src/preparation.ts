@@ -66,6 +66,8 @@ export interface PlayerProfile {
   displayName: string;
   initials: string;
   shirtNumber: number | null;
+  /** Private team identifier; never used as an account or permission identity. */
+  faPlayerId?: string | null;
   foot: "left" | "right" | "both" | "not_recorded";
   preferences: PositionCode[];
   eligiblePositions: PositionCode[];
@@ -148,9 +150,15 @@ export interface PreparationState {
     id: string;
     name: string;
     ageGroup: string;
+    league?: string;
     defaultPitchPlaces: number;
     defaultHalfDurationMs: number;
     logo: LogoChoice | null;
+  };
+  substitutionAlerts?: {
+    enabled: boolean;
+    leadSeconds: number;
+    volume: number;
   };
   activeSeasonId: string;
   seasons: PreparationSeason[];
@@ -189,7 +197,21 @@ export type PreparationCommand = PreparationCommandBase &
       }
     | { type: "position.saved"; position: TeamPosition }
     | { type: "position.archived"; code: string }
+    | { type: "team.league_updated"; league: string }
+    | {
+        type: "team.alerts_updated";
+        substitutionAlerts: {
+          enabled: boolean;
+          leadSeconds: number;
+          volume: number;
+        };
+      }
     | { type: "profile.saved"; profile: PlayerProfile }
+    | {
+        type: "roster.proforma_imported";
+        profiles: PlayerProfile[];
+        confirmChanges: true;
+      }
     | {
         type: "roster.imported";
         profiles: PlayerProfile[];
@@ -568,6 +590,8 @@ function saveProfile(
     ),
     "That player already has a profile in this season.",
   );
+  if (profile.faPlayerId !== undefined)
+    profile.faPlayerId = normaliseFaPlayerId(profile.faPlayerId);
   profile.displayName = text(profile.displayName, "Display name", 60);
   requireThat(
     typeof profile.initials === "string" &&
@@ -634,7 +658,9 @@ export function validateRosterImport(
     requireThat(
       profile &&
         typeof profile === "object" &&
-        Object.keys(profile).length === 10 &&
+        (Object.keys(profile).length === 10 ||
+          (Object.keys(profile).length === 11 &&
+            Object.hasOwn(profile, "faPlayerId"))) &&
         Object.keys(profile).every((key) =>
           [
             "id",
@@ -643,6 +669,7 @@ export function validateRosterImport(
             "displayName",
             "initials",
             "shirtNumber",
+            "faPlayerId",
             "foot",
             "preferences",
             "eligiblePositions",
@@ -686,6 +713,96 @@ export function validateRosterImport(
   });
 }
 
+/** FA identifiers preserve leading zeroes and are never login credentials. */
+export function normaliseFaPlayerId(value: unknown): string | null {
+  if (value === null || value === "") return null;
+  requireThat(
+    typeof value === "string" && /^[0-9]{1,20}$/.test(value.trim()),
+    "Use an FA player ID of up to 20 digits, or leave it blank.",
+  );
+  return value.trim();
+}
+/** Atomic updates use explicit identities from the downloaded team proforma; names never merge players. */
+export function validateRosterProformaImport(
+  state: PreparationState,
+  profiles: PlayerProfile[],
+): PlayerProfile[] {
+  requireThat(
+    Array.isArray(profiles) && profiles.length > 0 && profiles.length <= 200,
+    "Import between one and 200 player rows.",
+  );
+  const ids = new Set<string>(),
+    players = new Set<string>();
+  for (const profile of profiles) {
+    requireThat(
+      profile && typeof profile === "object" && !Array.isArray(profile),
+      "Use a valid player profile.",
+    );
+    requireThat(
+      Object.keys(profile).every((key) =>
+        [
+          "id",
+          "playerId",
+          "seasonId",
+          "displayName",
+          "initials",
+          "shirtNumber",
+          "faPlayerId",
+          "foot",
+          "preferences",
+          "eligiblePositions",
+          "active",
+        ].includes(key),
+      ),
+      "Use only the documented proforma fields.",
+    );
+    requireThat(
+      profile.active === true && profile.seasonId === state.activeSeasonId,
+      "Import active players into the current season only.",
+    );
+    requireThat(
+      !ids.has(profile.id) && !players.has(profile.playerId),
+      "Each player may appear only once in a proforma.",
+    );
+    ids.add(profile.id);
+    players.add(profile.playerId);
+    for (const value of [profile.id, profile.playerId])
+      requireThat(
+        typeof value === "string" && /^[A-Za-z0-9_.:-]{1,150}$/.test(value),
+        "Use a valid opaque player/profile identity.",
+      );
+    const byId = state.profiles.find((item) => item.id === profile.id);
+    const byPlayer = state.profiles.find(
+      (item) =>
+        item.playerId === profile.playerId &&
+        item.seasonId === state.activeSeasonId,
+    );
+    if (byId || byPlayer)
+      requireThat(
+        byId &&
+          byPlayer &&
+          byId.id === byPlayer.id &&
+          byId.playerId === profile.playerId &&
+          byId.seasonId === state.activeSeasonId &&
+          byId.active,
+        "An existing player must retain their downloaded profile and player identities.",
+      );
+    else
+      requireThat(
+        !state.profiles.some((item) => item.playerId === profile.playerId),
+        "A new row cannot adopt a player identity from another season.",
+      );
+    requireThat(
+      Array.isArray(profile.preferences) &&
+        Array.isArray(profile.eligiblePositions),
+      "Provide preferences and eligible positions.",
+    );
+  }
+  const candidate = clone(state);
+  candidate.profiles = candidate.profiles.filter((item) => !ids.has(item.id));
+  return profiles.map((profile) => saveProfile(candidate, profile));
+}
+
 export function reducePreparation(
   previous: PreparationState,
   command: PreparationCommand,
@@ -724,6 +841,50 @@ export function reducePreparation(
         logo: command.logo,
       };
       break;
+    case "team.league_updated":
+      requireThat(
+        typeof command.league === "string" &&
+          command.league.trim().length <= 120 &&
+          !/[\u0000-\u001f]/.test(command.league),
+        "Use a league name of at most 120 characters, or leave it blank.",
+      );
+      state.team.league = command.league.trim();
+      break;
+    case "team.alerts_updated": {
+      const settings = command.substitutionAlerts;
+      requireThat(
+        settings &&
+          typeof settings === "object" &&
+          Object.keys(settings).length === 3 &&
+          typeof settings.enabled === "boolean" &&
+          Number.isInteger(settings.leadSeconds) &&
+          settings.leadSeconds >= 0 &&
+          settings.leadSeconds <= 300 &&
+          Number.isFinite(settings.volume) &&
+          settings.volume >= 0 &&
+          settings.volume <= 1,
+        "Use substitution alert lead time from zero to 300 seconds and volume from zero to 100%.",
+      );
+      state.substitutionAlerts = {
+        enabled: settings.enabled,
+        leadSeconds: settings.leadSeconds,
+        volume: settings.volume,
+      };
+      break;
+    }
+    case "roster.proforma_imported": {
+      requireThat(
+        command.confirmChanges === true,
+        "Review and confirm all new and updated player rows.",
+      );
+      const imported = validateRosterProformaImport(state, command.profiles);
+      const ids = new Set(imported.map((profile) => profile.id));
+      state.profiles = [
+        ...state.profiles.filter((profile) => !ids.has(profile.id)),
+        ...imported,
+      ];
+      break;
+    }
     case "team.updated":
       validateLogo(command.logo);
       validateFormat(command.defaultPitchPlaces);

@@ -3,11 +3,16 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import type { Role } from "@longball/application/access";
 import { Icon, type IconName } from "../ui";
 import { colors } from "../ui/tokens";
+import { useRoleTheme } from '../ui/RoleTheme';
 
 export type WorkspaceTab =
   | "overview"
   | "stats"
   | "feedback"
+  | "formation"
+  | "clubReports"
+  | "opposition"
+  | "documents"
   | "home"
   | "clubs"
   | "people"
@@ -68,6 +73,7 @@ export function WorkspaceNavigation({
   onSelect: (tab: WorkspaceTab) => void;
 }) {
   const layout=useWorkspaceLayout();
+  const theme=useRoleTheme();
   const rail=layout.rail&&(role==='manager'||role==='administrator');
   const items = primary[role];
   const selected = items.some((item) => item.tab === active) ? active : "more";
@@ -91,7 +97,7 @@ export function WorkspaceNavigation({
           style={({ pressed }) => [
             s.tab,
             rail&&{flex:0,flexDirection:"row",justifyContent:"flex-start",paddingHorizontal:12,gap:10,minHeight:52},
-            selected === item.tab && s.active,
+            selected === item.tab && {backgroundColor:theme.tint},
             disabled && s.disabled,
             pressed && s.pressed,
           ]}
@@ -99,10 +105,10 @@ export function WorkspaceNavigation({
           <Icon
             name={item.icon}
             size={21}
-            color={selected === item.tab ? colors.brand : colors.inkMuted}
+            color={selected === item.tab ? theme.accent : colors.inkMuted}
           />
           <Text
-            style={[s.label, selected === item.tab && s.activeLabel]}
+            style={[s.label, selected === item.tab && {color:theme.accent}]}
           >
             {item.label}
           </Text>

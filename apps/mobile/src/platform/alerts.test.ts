@@ -4,14 +4,17 @@ import { replaceLocalWarnings } from "./alerts";
 const native = vi.hoisted(() => ({
   requests: new Map<
     string,
-    { identifier: string; content: { data?: Record<string, unknown> } }
+    { identifier: string; content: { data?: Record<string, unknown>; sound?: string | boolean }; trigger?: { seconds: number } }
   >(),
   cancelled: [] as string[],
   failAfter: -1,
+  os: 'ios',
+  channels: new Map<string, { sound: string | null }>(),
 }));
-vi.mock("react-native", () => ({ Platform: { OS: "ios" } }));
+vi.mock("react-native", () => ({ Platform: { get OS() { return native.os; } } }));
 vi.mock("expo-notifications", () => ({
   setNotificationHandler: vi.fn(),
+  setNotificationChannelAsync: async (id: string, channel: { sound: string | null }) => { native.channels.set(id, channel); },
   getPermissionsAsync: async () => ({ granted: true }),
   getAllScheduledNotificationsAsync: async () => [...native.requests.values()],
   cancelScheduledNotificationAsync: async (identifier: string) => {
@@ -33,6 +36,7 @@ beforeEach(() => {
   native.requests.clear();
   native.cancelled.length = 0;
   native.failAfter = -1;
+  native.os = 'ios'; native.channels.clear();
 });
 const plan = (owner: string, revision = "revision-one") => ({
   owner,
@@ -46,6 +50,24 @@ const owned = (owner: string) =>
   );
 
 describe("native match reminder ownership", () => {
+  it("uses the configured single lead without system-volume audio duplicating the foreground tone", async () => {
+    await replaceLocalWarnings({ ...plan('configured-manager'), leadSeconds: 45, sound: false });
+    const requests = owned('configured-manager');
+    expect(requests).toHaveLength(1);
+    expect(requests[0].content.sound).toBe(false);
+    expect(requests[0].trigger?.seconds).toBe(75);
+    await replaceLocalWarnings({ ...plan('configured-manager'), leadSeconds: 200, sound: false });
+    expect(owned('configured-manager')).toHaveLength(0);
+    await replaceLocalWarnings({ ...plan('configured-manager'), leadSeconds: 0, sound: false });
+    expect(owned('configured-manager')[0].trigger?.seconds).toBe(120);
+  });
+  it('uses an explicitly silent Android channel rather than a previously audible legacy channel', async () => {
+    native.os = 'android';
+    await replaceLocalWarnings(plan('legacy-manager'));
+    await replaceLocalWarnings({ ...plan('configured-manager'), leadSeconds: 45, sound: false });
+    expect(native.channels.get('longball-match')?.sound).toBe('default');
+    expect(native.channels.get('longball-substitution-silent')?.sound).toBeNull();
+  });
   it("keeps local, connected and another match reminders separate when one planner pauses or replans", async () => {
     await replaceLocalWarnings(plan("local-planner-roma"));
     await replaceLocalWarnings(plan("connected-planner-roma"));

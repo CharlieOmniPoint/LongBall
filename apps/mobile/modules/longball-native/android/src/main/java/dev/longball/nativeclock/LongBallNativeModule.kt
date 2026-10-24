@@ -2,6 +2,10 @@ package dev.longball.nativeclock
 
 import android.os.SystemClock
 import android.provider.Settings
+import android.media.AudioManager
+import android.media.ToneGenerator
+import android.os.Handler
+import android.os.Looper
 import expo.modules.kotlin.exception.Exceptions
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
@@ -9,8 +13,33 @@ import java.io.File
 
 /** M0 experiment: elapsedRealtime advances during deep sleep; BOOT_COUNT fences reboot recovery. */
 class LongBallNativeModule : Module() {
+  private var substitutionTone: ToneGenerator? = null
+  private val toneHandler = Handler(Looper.getMainLooper())
+  private fun stopTone() {
+    substitutionTone?.stopTone()
+    substitutionTone?.release()
+    substitutionTone = null
+  }
   override fun definition() = ModuleDefinition {
     Name("LongBallNative")
+
+    Function("playSubstitutionTone") { volume: Double ->
+      if (!volume.isFinite() || volume < 0 || volume > 1) false
+      else {
+        stopTone()
+        if (volume == 0.0) true
+        else try {
+          // Media stream: respect the device's media volume, never change ringer/Focus.
+          val tone = ToneGenerator(AudioManager.STREAM_MUSIC, (volume * 100).toInt())
+          substitutionTone = tone
+          val started = tone.startTone(ToneGenerator.TONE_PROP_BEEP2, 400)
+          toneHandler.postDelayed({ if (substitutionTone === tone) stopTone() }, 450)
+          started
+        } catch (_: Exception) { stopTone(); false }
+      }
+    }
+    Function("stopSubstitutionTone") { stopTone() }
+    OnDestroy { toneHandler.removeCallbacksAndMessages(null); stopTone() }
 
     Function("readClock") {
       val context = appContext.reactContext ?: throw Exceptions.ReactContextLost()

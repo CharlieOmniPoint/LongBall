@@ -2,6 +2,7 @@ import { Children, Fragment, isValidElement, useState, type ComponentRef, type R
 import { Pressable, StyleSheet, Text, View, type AccessibilityState, type StyleProp, type ViewStyle } from 'react-native';
 import { Icon, type IconName } from './Icon';
 import { colors } from './tokens';
+import { useRoleTheme } from './RoleTheme';
 
 export function Button({ label, accessibilityLabel, accessibilityState, buttonRef, onPress, variant = 'primary', icon, disabled = false, testID, style, compact = false, iconOnly = false }: {
   label: string;
@@ -18,7 +19,8 @@ export function Button({ label, accessibilityLabel, accessibilityState, buttonRe
   iconOnly?: boolean;
 }) {
   const [focused, setFocused] = useState(false);
-  const ink = variant === 'primary' ? colors.surface : variant === 'danger' ? colors.errorInk : colors.brand;
+  const theme = useRoleTheme();
+  const ink = variant === 'primary' ? colors.surface : variant === 'danger' ? colors.errorInk : theme.accent;
   return <Pressable
     ref={buttonRef}
     accessibilityRole="button"
@@ -34,7 +36,7 @@ export function Button({ label, accessibilityLabel, accessibilityState, buttonRe
     style={({ pressed }) => [
       styles.button,
       variant === 'primary' ? styles.primary : variant === 'danger' ? styles.danger : variant === 'quiet' ? styles.quiet : styles.secondary,
-      variant === 'primary' && pressed && { backgroundColor: colors.brandPressed },
+      variant === 'primary' && { backgroundColor: pressed ? theme.pressed : theme.accent, borderColor: theme.accent },
       variant !== 'primary' && pressed && { backgroundColor: colors.bench },
       disabled && styles.disabled,
       focused && { borderColor: colors.focus },
@@ -85,8 +87,9 @@ function noticeChildren(children: ReactNode, color: string): ReactNode {
 }
 
 export function Pill({ children, tone = 'brand' }: { children: ReactNode; tone?: 'brand' | 'muted' | 'warning' | 'info' }) {
-  const background = tone === 'warning' ? colors.warningSurface : tone === 'info' ? colors.infoSurface : tone === 'muted' ? colors.bench : '#E4F1E9';
-  const ink = tone === 'warning' ? colors.warningInk : tone === 'info' ? colors.infoInk : tone === 'muted' ? colors.inkMuted : colors.brand;
+  const theme = useRoleTheme();
+  const background = tone === 'warning' ? colors.warningSurface : tone === 'info' ? colors.infoSurface : tone === 'muted' ? colors.bench : theme.tint;
+  const ink = tone === 'warning' ? colors.warningInk : tone === 'info' ? colors.infoInk : tone === 'muted' ? colors.inkMuted : theme.accent;
   return <View style={[styles.pill, { backgroundColor: background }]}><Text style={[styles.pillText, { color: ink }]}>{children}</Text></View>;
 }
 

@@ -60,6 +60,7 @@ export function EntryApplication({
   const production = process.env.EXPO_PUBLIC_ENVIRONMENT === "production";
   const demoAccountLogin = !production && process.env.EXPO_PUBLIC_DEMO_ACCOUNT_LOGIN === "1";
   const [route, setRoute] = useState<Route>("welcome");
+  const [demoEntryMode,setDemoEntryMode] = useState<"team"|"spectator"|"request">("team");
   const [intent, setIntent] = useState<"sign-in" | "activate">("sign-in");
   const [intentRevision, setIntentRevision] = useState(0);
   const [destination, setDestination] = useState<LongBallDestination | null>(
@@ -199,20 +200,22 @@ export function EntryApplication({
   const content =
     route === "welcome" ? (
       <WelcomeScreen
-        onSignIn={() => demoAccountLogin ? setRoute("demo-login") : openAuth("sign-in")}
+        onSignIn={() => {if(demoAccountLogin){setDemoEntryMode("team");setRoute("demo-login");}else openAuth("sign-in");}}
         onActivate={() => openAuth("activate")}
         demoAccountLogin={demoAccountLogin}
+        onSpectatorSignIn={demoAccountLogin ? () => {setDemoEntryMode("spectator");setRoute("demo-login");} : undefined}
+        onRequestInvite={demoAccountLogin ? () => {setDemoEntryMode("request");setRoute("demo-login");} : undefined}
         onReview={production || demoAccountLogin ? undefined : () => setRoute("accounts")}
         onPrivacy={() => setRoute("privacy")}
         onHelp={() => setRoute("help")}
         invitationNotice={
           destination?.kind === "invitation"
-            ? "You have a team invitation. Sign in to your existing account, or activate the invited account, then review and accept it."
+            ? "You have a team invitation. Choose Spectator sign in / join to create your passcode or connect an existing account."
             : undefined
         }
       />
     ) : route === "demo-login" && demoAccountLogin ? (
-      <DemoLoginApplication onBack={() => setRoute("welcome")} onNavigationGuardChange={retainReviewNavigationGuard} />
+      <DemoLoginApplication onInvitationHandled={() => setDestination(null)} initialMode={demoEntryMode} invitationDestination={destination?.kind === "invitation" ? destination.invitation : undefined} onBack={() => setRoute("welcome")} onNavigationGuardChange={retainReviewNavigationGuard} />
     ) : route === "accounts" ? (
       <ReviewAccountScreen
         onBack={() => setRoute("welcome")}

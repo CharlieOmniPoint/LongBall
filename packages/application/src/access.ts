@@ -10,6 +10,8 @@ export interface Principal {
   strongAuth: boolean;
   authenticatedAt: number;
   status: 'active' | 'disabled';
+  /** Server-owned hierarchy; absence retains legacy team-only authority. */
+  administration?: { level: 'super' | 'club'; clubIds: string[] };
 }
 export interface Membership {
   accountId: string;
@@ -19,6 +21,8 @@ export interface Membership {
   playerId?: string;
   expiresAt?: number | null;
   revokedAt?: number | null;
+  /** Inherited club/system authority, separate from an appointed coach place. */
+  administrativeInheritance?: true;
 }
 export class AccessError extends Error {
   constructor(public readonly code: string, public readonly status: number, message: string) {
@@ -52,7 +56,7 @@ export function assertCanAssignManager(actor: Principal, target: Principal, memb
   assertTeamRole(actor, memberships, teamId, seasonId, ['administrator'], now);
   assertAdultAuthority(actor, true, now);
   assertAdultAuthority(target, false, now);
-  const managers = memberships.filter(item => item.teamId === teamId && item.role === 'manager' && item.revokedAt == null && (item.expiresAt == null || item.expiresAt > now));
+  const managers = memberships.filter(item => item.teamId === teamId && item.role === 'manager' && !item.administrativeInheritance && item.revokedAt == null && (item.expiresAt == null || item.expiresAt > now));
   if (!managers.some(item => item.accountId === target.accountId) && new Set(managers.map(item => item.accountId)).size >= 4) {
     throw new AccessError('MANAGER_LIMIT', 409, 'A team can have at most four active managers, including administrators who also manage.');
   }

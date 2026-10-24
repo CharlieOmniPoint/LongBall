@@ -1,3 +1,4 @@
+import { InvitationShare } from './InvitationShare';
 import { formatUkDateTime } from '@longball/application/uk-display';
 import { useEffect, useRef, useState } from "react";
 import { StyleSheet, Switch, Text, TextInput, View } from "react-native";
@@ -358,9 +359,9 @@ function InvitationSession(props: ConnectedInvitationsPanelProps) {
           ) : (
             <Notice tone="warning">This invitation link has expired.</Notice>
           )}
+          {Date.parse(issued.expiresAt) > now && <InvitationShare url={issued.shareUrl} disabled={busy || disabled} />}
           <Text style={typography.muted}>
-            Expires {when(issued.expiresAt)}. Choose whether and how to share
-            it.
+            Expires {when(issued.expiresAt)}.
           </Text>
           <Button
             label="Close this link display"

@@ -35,7 +35,7 @@ def parse_demo_account_verifiers(raw: bytes) -> dict:
         username, account_id, salt, verifier = (account[key] for key in ["username", "accountId", "salt", "hash"])
         if not isinstance(username, str) or not re.fullmatch(r"[a-z0-9][a-z0-9._-]{2,63}", username):
             raise ValueError("Demo username format is invalid.")
-        if not isinstance(account_id, str) or not re.fullmatch(r"synthetic-account-(?:manager(?:-[2-5])?|admin|player-(?:0[1-9]|1[0-3])|spectator)", account_id):
+        if not isinstance(account_id, str) or not re.fullmatch(r"synthetic-account-(?:manager(?:-[2-5])?|admin|club-admin|player-(?:0[1-9]|1[0-3])|spectator)", account_id):
             raise ValueError("Demo account must identify a pre-existing sample account.")
         if username in usernames or account_id in account_ids:
             raise ValueError("Demo usernames and account bindings must be distinct.")

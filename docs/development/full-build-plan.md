@@ -1,8 +1,20 @@
 # Full feature build and evidence register
 
-> Current frontend/review source `e706fa4` with backend `38e0879` closes the Player Home/Schedule terminal-summary presentation gap while retaining the past-game server guard and complete native/tablet scope. Functional/image CI and corrected compatible-frontend publication passed; the final focused public Player/read-only and rejected-write checks passed. Existing high `node-forge`, incomplete privacy/support and deferred physical-device/operating gates remain unchanged.
+> Current club-expansion candidate implements the owner's later account/club/formation/spectator/records/reminder requests alongside the full native iPhone/Android/browser/tablet and original F01–F28 scope. [The expansion register](club-expansion.md) records implemented behaviour; [review status](review.md) separates observed local passes from pending final source-bound, native and hosted checks. The last public e706/38e build is historical for these new features. Workspace dependency enforcement now has two unwaived high findings (`node-forge`, `zod`); owner-deferred privacy/support and physical-device gates remain open.
 
-## 24 October compatible-frontend checkpoint
+## Club expansion candidate — 24 October
+
+Five requested account types are Super Admin, Club Admin, Manager, Player and Spectator. A server-owned administrative principal distinguishes Super/Club scope while the wire role remains `administrator`. Inherited Manager authority is stored separately from four appointed coach seats. The existing Administrator demo becomes Super Admin with the same privately supplied credentials; the fifth Club Admin review login is supplied privately. Typed formations and reviewable 65/35 advice, scoped QR/email/PIN spectator access, access requests, club/team reports, XLS/FA/PDF records, clean-sheet/opposition evidence and countdown/audio settings are implemented as described in [club-expansion.md](club-expansion.md). No self-entered label, PIN or request grants adult authority.
+
+Local working-candidate checks passed 914 shared tests/110 files, 454 API cases with three explicit HEIC-helper skips (457/74 files), root/mobile types/lint/contracts/archive validation and 127 new contract boundary cases. Six new actual-API browser groups passed with five expected privilege denials. Existing eight role/width journeys with 27 groups and tablet 36/two-group passes precede a final timer layout correction: compact rendering and nonvacuous viewport guards are implemented, but rebuilt final checks are pending. Native JavaScript exports also precede the final layout/boolean correction; no new binary/native-device acceptance or public publication is claimed. Root will record exact final commit, artifacts and observed outcomes after verification.
+
+[The dependency investigation](club-expansion-security.md) preserves captured audit inputs: full workspace fails two high findings while separate runtime/compiler audits pass with zero. Neither isolation nor older one-high checkpoints establishes a current full dependency pass. SEC20/SEC21 fulfilment, UI34 governed support/recovery, Q05/Q09/Q10, operating providers and physical testing remain incomplete/deferred; no policy, signed release or real-data approval is introduced.
+
+## Historical e706fa4 frontend / 38e0879 backend checkpoint
+
+> Historical frontend/review source `e706fa4` with backend `38e0879` closes the Player Home/Schedule terminal-summary presentation gap while retaining the past-game server guard and complete native/tablet scope. Functional/image CI and corrected compatible-frontend publication passed; the final focused public Player/read-only and rejected-write checks passed. Existing high `node-forge`, incomplete privacy/support and deferred physical-device/operating gates remain unchanged.
+
+## Historical 24 October compatible-frontend checkpoint
 
 Frontend `e706fa4c9ba55aaf6d5783f3c74aa68a9415cc39`, tree `15e95c43bea53a9014cae1fb67163781cf5e84d6`, passed [CI 40127475188](evidence/2026-10-24/past-game-replies/ci-e706fa4.json), merge `8300f006e51ec42d3ee01aa6e6cbf404145b4e58`: 855 shared tests/101 files, 427 API passes/three conditional HEIC-helper skips, 30 migrations/6 files, ten M0 groups, eight demo journeys/26 groups and 36 tablet journeys/two groups. The additional group is a labelled mocked records-GET projection, not a real server completion/write. Runtime-image acceptance passed; dependency enforcement remains failed without a waiver.
 

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { AppState, StyleSheet, Text, TextInput, View } from 'react-native';
 import { rationalToNumber, type Allocation, type ClockReading, type ClockSample, type MatchState } from '@longball/domain';
 import { planMatch, updatePlanAlerts, type PlanAlertState, type PlannerResult } from '@longball/domain/planner';
 import { assertConfirmedPlannerSettings, assertPlannerPreferences, authorizePlannerPreferences, createPlannerPreferences, plannerPreferenceDocumentId, plannerPreferenceScope, type PlannerPreferenceBinding, type PlannerPreferences, type PlannerPreferenceScope } from '../platform/planner-preferences';
@@ -10,6 +10,9 @@ import { useDocument } from '../useDocument';
 import { getAlertCapability, replaceLocalWarnings, requestAlertPermission } from '../platform/alerts';
 import { Button, Card, Notice, Pill } from '../ui/Button';
 import { colors, typography } from '../ui/tokens';
+import { DEFAULT_SUBSTITUTION_ALERTS, substitutionToneAtCheckpoint, type SubstitutionAlertSettings, type SubstitutionToneCheckpoint } from '@longball/application/substitution-alerts';
+import { playSubstitutionAudio, prepareSubstitutionAudio, stopSubstitutionAudio, substitutionAudioCapability } from '../platform/substitution-audio';
+import { SubstitutionCountdown, type SubstitutionCountdownSnapshot } from './SubstitutionCountdown';
 
 export type ConfirmedPlannerSettings = ConfirmedMatchPlannerSettings;
 
@@ -68,7 +71,7 @@ function usePlannerPreferences(matchId: string | undefined, persistence: Planner
 
 export { plannerInputFromMatch } from '@longball/application/match-planner';
 
-export function usePlannerModel(match: MatchState | null, sample: ClockSample, clock: ClockReading | null, context: { hasControl?: boolean; alertOwner?: string; persistence?: PlannerPersistence; onRetainedChange?: (retained: boolean) => void; policy?: PlannerPolicyPort } = {}) {
+export function usePlannerModel(match: MatchState | null, sample: ClockSample, clock: ClockReading | null, context: { hasControl?: boolean; alertOwner?: string; alertSettings?: SubstitutionAlertSettings; persistence?: PlannerPersistence; onRetainedChange?: (retained: boolean) => void; policy?: PlannerPolicyPort } = {}) {
   const [batchPreference, setBatchPreference] = useState(2);
   const [threshold, setThreshold] = useState('4');
   const [stintMinutes, setStintMinutes] = useState('5');
@@ -101,9 +104,25 @@ export function usePlannerModel(match: MatchState | null, sample: ClockSample, c
   const planVersion = useRef(0);
   const alertState = useRef<PlanAlertState | null>(null);
   const previousStatus = useRef(match?.status);
+  const toneState = useRef<SubstitutionToneCheckpoint | null>(null);
+  const alertSettings = context.alertSettings ?? DEFAULT_SUBSTITUTION_ALERTS;
+  const [audioReadyOwner, setAudioReadyOwner] = useState<string | null>(null);
+  const audioReady = audioReadyOwner === alertOwner;
+  const [audioMessage, setAudioMessage] = useState<string | null>(null);
+  const [foreground, setForeground] = useState(() => (AppState.currentState == null || AppState.currentState === 'active') && (typeof document === 'undefined' || document.visibilityState !== 'hidden'));
+  useEffect(() => {
+    const refresh = () => { const active = (AppState.currentState == null || AppState.currentState === 'active') && (typeof document === 'undefined' || document.visibilityState !== 'hidden'); setForeground(active); if (!active) stopSubstitutionAudio(alertOwner); };
+    const native = AppState.addEventListener('change', refresh);
+    if (typeof document !== 'undefined') document.addEventListener('visibilitychange', refresh);
+    return () => { native.remove(); if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', refresh); stopSubstitutionAudio(alertOwner); };
+  }, [alertOwner]);
+  useEffect(() => { toneState.current = null; stopSubstitutionAudio(alertOwner); }, [alertOwner]);
 
   useEffect(() => { sampleRef.current = sample; clockRef.current = clock; }, [sample, clock]);
   const preferencesRetained = preferences.busy || preferences.retryPending || preferences.conflict || policySaving || Boolean(context.policy?.busy || context.policy?.retryPending || context.policy?.conflict);
+  // A new event anchor can briefly be newer than the parent's last render sample.
+  // Re-open planning when the next sample restores certainty, without solving on every tick.
+  const recoveryRequired = clock?.recoveryRequired ?? true;
   const onRetainedChange = context.onRetainedChange;
   useEffect(() => { onRetainedChange?.(preferencesRetained); }, [onRetainedChange, preferencesRetained]);
   useEffect(() => {
@@ -125,7 +144,7 @@ export function usePlannerModel(match: MatchState | null, sample: ClockSample, c
     let active = true;
     void Promise.resolve().then(async () => {
       if (!active) return;
-      if (!match || !confirmed || confirmedFor !== match.config.matchId || !hasControl || preferencesRetained || clockRef.current?.recoveryRequired || match.status === 'completed' || match.status === 'abandoned') { setResult(null); setPlanning(false); return; }
+      if (!match || !confirmed || confirmedFor !== match.config.matchId || !hasControl || preferencesRetained || recoveryRequired || match.status === 'completed' || match.status === 'abandoned') { setResult(null); setPlanning(false); return; }
       setPlanning(true);
       setPlanningError(null);
       try {
@@ -136,7 +155,7 @@ export function usePlannerModel(match: MatchState | null, sample: ClockSample, c
     });
     return () => { active = false; };
     // sample/clock render ticks are deliberately read from refs; they never run the solver.
-  }, [match, confirmed, confirmedFor, preferencesRetained, requestVersion, hasControl]);
+  }, [match, confirmed, confirmedFor, preferencesRetained, requestVersion, hasControl, recoveryRequired]);
 
   const currentMatchId = match?.config.matchId;
   const currentResult = result?.planId === `${currentMatchId}-suggestion` ? result : null;
@@ -144,15 +163,14 @@ export function usePlannerModel(match: MatchState | null, sample: ClockSample, c
   const matchStatus = match?.status;
   const currentHalf = match?.half;
   const revision = match?.revision;
-  const recoveryRequired = clock?.recoveryRequired ?? true;
   useEffect(() => {
     const next = currentResult?.status === 'feasible' ? currentResult.nextChange : null;
     const running = Boolean(next && next.half === currentHalf && matchStatus?.endsWith('_running') && hasControl && !recoveryRequired && currentResult?.sourceRevision === revision);
     const reminderRevision = currentResult ? `${currentResult.planId}-${currentResult.planVersion}-${currentResult.sourceRevision}` : 'no-current-plan';
     let active = true;
-    void replaceLocalWarnings({ owner: alertOwner, revision: reminderRevision, dueInMs: next ? next.dueMatchActiveMs - (clockRef.current?.matchActiveMs ?? 0) : 0, running }).catch(error => { if (active) setAlertError(error instanceof Error ? error.message : 'Local reminders could not be scheduled. Use the visual countdown.'); });
+    void replaceLocalWarnings({ owner: alertOwner, revision: reminderRevision, dueInMs: next ? next.dueMatchActiveMs - (clockRef.current?.matchActiveMs ?? 0) : 0, running, leadSeconds: alertSettings.leadSeconds, sound: false }).catch(error => { if (active) setAlertError(error instanceof Error ? error.message : 'Local reminders could not be scheduled. Use the visual countdown.'); });
     return () => { active = false; void replaceLocalWarnings({ owner: alertOwner, revision: `${reminderRevision}-cancel`, dueInMs: 0, running: false }).catch(() => {}); };
-  }, [currentResult, matchStatus, currentHalf, revision, hasControl, recoveryRequired, permissionVersion, alertOwner]);
+  }, [currentResult, matchStatus, currentHalf, revision, hasControl, recoveryRequired, permissionVersion, alertOwner, alertSettings.leadSeconds]);
 
   useEffect(() => {
     const next = currentResult?.status === 'feasible' ? currentResult.nextChange : null;
@@ -166,6 +184,24 @@ export function usePlannerModel(match: MatchState | null, sample: ClockSample, c
       void Promise.resolve().then(() => setLastWarning(thresholdSeconds === 0 ? 'Change due — review and confirm the actual lineup.' : `Planned change in ${thresholdSeconds} seconds.`));
     } else if (update.cancelPrevious) void Promise.resolve().then(() => setLastWarning(null));
   }, [currentResult, clock, matchStatus, currentHalf, revision, hasControl, recoveryRequired]);
+
+  useEffect(() => {
+    const next = currentResult?.status === 'feasible' ? currentResult.nextChange : null;
+    const update = substitutionToneAtCheckpoint({
+      plan: next && next.half === currentHalf && currentResult ? { key: `${alertOwner}:${currentResult.planId}:${currentResult.planVersion}:${currentResult.sourceRevision}`, dueActiveMs: next.dueMatchActiveMs, sourceRevision: currentResult.sourceRevision } : null,
+      activeMs: Math.max(0, Math.floor(clock?.matchActiveMs ?? 0)), sourceRevision: revision ?? 0,
+      running: Boolean(matchStatus?.endsWith('_running')), hasControl, timeCertain: !recoveryRequired,
+      foreground, settings: alertSettings, previous: toneState.current,
+    });
+    toneState.current = update.checkpoint;
+    if (!hasControl || !foreground || !matchStatus?.endsWith('_running') || recoveryRequired) stopSubstitutionAudio(alertOwner);
+    if (update.play && audioReady) void playSubstitutionAudio(alertSettings.volume, alertOwner).catch(error => setAudioMessage(error instanceof Error ? error.message : 'Audio is unavailable. Use the visual countdown.'));
+  }, [currentResult, currentHalf, alertOwner, clock, revision, matchStatus, hasControl, recoveryRequired, foreground, alertSettings, audioReady]);
+  const enableAudio = useCallback(async () => {
+    if (!hasControl) return;
+    try { await prepareSubstitutionAudio(); await playSubstitutionAudio(alertSettings.volume, alertOwner); setAudioReadyOwner(alertOwner); setAudioMessage('Audio enabled on this device. The test tone uses the saved team volume.'); }
+    catch (error) { setAudioReadyOwner(null); setAudioMessage(error instanceof Error ? error.message : 'Audio could not be enabled.'); }
+  }, [hasControl, alertSettings.volume, alertOwner]);
 
   const confirmSettings = useCallback(async () => {
     const leadThreshold = Number(threshold);
@@ -196,16 +232,18 @@ export function usePlannerModel(match: MatchState | null, sample: ClockSample, c
   }, []);
   const nextChange = currentResult?.status === 'feasible' && currentResult.sourceRevision === revision ? currentResult.nextChange : null;
   const awaitingHalfTime = Boolean(nextChange?.half === 2 && currentHalf === 1 && matchStatus !== 'half_time');
-  return { match, awaitingHalfTime, batchPreference, setBatchPreference, threshold, setThreshold, returnToNormal, setReturnToNormal, confirmed: currentConfirmed, confirmSettings, settingsError: settingsError ?? preferences.permissionError, preferencesReady, preferencesSaving: preferences.busy || policySaving || Boolean(context.policy?.busy), preferencesRetained, preferencesConflict: preferences.conflict || Boolean(context.policy?.conflict), retryPreferences: context.policy?.retryPending && context.policy.retry ? context.policy.retry : preferences.retry, reloadPreferences: context.policy?.conflict && context.policy.reload ? context.policy.reload : preferences.reload, storageAvailable: preferences.storageAvailable, positionMode: match?.activePolicy?.positionMode ?? 'normal', reason, setReason, stintMinutes, setStintMinutes, bufferPercent, setBufferPercent, policyVersion: match?.activePolicy?.policyVersion ?? null, policyAcknowledged: match?.activePolicy && context.policy?.acceptedRevision !== undefined ? context.policy.acceptedRevision >= match.activePolicy.revision : null, legacySettingsRetained: !match?.activePolicy && Boolean(preferenceRecord?.settings), resetPositionMode, result: currentResult, planningError, planning, replan: () => setRequestVersion(value => value + 1), nextChange, dueInMs: nextChange ? nextChange.dueMatchActiveMs - (clock?.matchActiveMs ?? 0) : null, alertCapability, alertError, lastWarning, requestNotifications, hasControl, setHasControl, timeCertain: !recoveryRequired };
+  const countdown: SubstitutionCountdownSnapshot = { dueInMs: nextChange ? nextChange.dueMatchActiveMs - (clock?.matchActiveMs ?? 0) : null, state: !hasControl || recoveryRequired ? 'unavailable' : awaitingHalfTime || matchStatus === 'half_time' ? 'half_time' : matchStatus?.endsWith('_running') ? 'running' : matchStatus?.endsWith('_paused') ? 'paused' : 'waiting', outgoing: nextChange?.outgoingPlayerIds.map(id => match?.config.players.find(player => player.id === id)?.displayName ?? id) ?? [], incoming: nextChange?.incomingPlayerIds.map(id => match?.config.players.find(player => player.id === id)?.displayName ?? id) ?? [] };
+  return { countdown, alertSettings, audioReady, audioMessage, enableAudio, match, awaitingHalfTime, batchPreference, setBatchPreference, threshold, setThreshold, returnToNormal, setReturnToNormal, confirmed: currentConfirmed, confirmSettings, settingsError: settingsError ?? preferences.permissionError, preferencesReady, preferencesSaving: preferences.busy || policySaving || Boolean(context.policy?.busy), preferencesRetained, preferencesConflict: preferences.conflict || Boolean(context.policy?.conflict), retryPreferences: context.policy?.retryPending && context.policy.retry ? context.policy.retry : preferences.retry, reloadPreferences: context.policy?.conflict && context.policy.reload ? context.policy.reload : preferences.reload, storageAvailable: preferences.storageAvailable, positionMode: match?.activePolicy?.positionMode ?? 'normal', reason, setReason, stintMinutes, setStintMinutes, bufferPercent, setBufferPercent, policyVersion: match?.activePolicy?.policyVersion ?? null, policyAcknowledged: match?.activePolicy && context.policy?.acceptedRevision !== undefined ? context.policy.acceptedRevision >= match.activePolicy.revision : null, legacySettingsRetained: !match?.activePolicy && Boolean(preferenceRecord?.settings), resetPositionMode, result: currentResult, planningError, planning, replan: () => setRequestVersion(value => value + 1), nextChange, dueInMs: nextChange ? nextChange.dueMatchActiveMs - (clock?.matchActiveMs ?? 0) : null, alertCapability, alertError, lastWarning, requestNotifications, hasControl, setHasControl, timeCertain: !recoveryRequired };
 }
 export type PlannerModel = ReturnType<typeof usePlannerModel>;
 
 function duration(ms: number): string { const seconds = Math.max(0, Math.floor(ms / 1000)); return `${Math.floor(seconds / 60).toString().padStart(2, '0')}:${(seconds % 60).toString().padStart(2, '0')}`; }
-export function PlannerPanel({ model, onReviewLineup }: { model: PlannerModel; onReviewLineup: (lineup: Allocation[], sourceRevision: number) => void }) {
+export function PlannerPanel({ model, onReviewLineup, hideCountdown = false }: { model: PlannerModel; hideCountdown?: boolean; onReviewLineup: (lineup: Allocation[], sourceRevision: number) => void }) {
   const [editing, setEditing] = useState(false);
   const label = (id: string) => model.match?.config.players.find(player => player.id === id)?.displayName ?? id;
   const next = model.nextChange;
   return <View style={styles.stack}>
+    {!hideCountdown && model.match?.half !== 0 && !['completed', 'abandoned'].includes(model.match?.status ?? '') && <SubstitutionCountdown value={model.countdown} />}
     <Card>
       <View style={styles.heading}><Text style={typography.section}>Playing-time plan</Text><Pill tone="muted">MANAGER SUGGESTION</Pill></View>
       <Text style={typography.body}>Fair time, with every change confirmed by you.</Text>
@@ -274,7 +312,11 @@ export function PlannerPanel({ model, onReviewLineup }: { model: PlannerModel; o
       <Text style={typography.muted}>{model.alertCapability ?? 'Checking notification capability…'}</Text>
       {model.alertError && <Notice tone="warning">{model.alertError}</Notice>}
       <Button label="Enable local reminders" variant="secondary" onPress={() => { void model.requestNotifications(); }} />
-      <Text style={typography.muted}>90/60/30/0-second reminders follow the current plan. Pause, half-time, recovery, replan and control loss cancel them. The visual countdown remains available. Phone lock, Focus, force-stop and battery behaviour require native device tests.</Text>
+      <Text style={typography.muted}>The saved team warning is {model.alertSettings.leadSeconds} seconds before each planned batch. Silent local notifications and the visual countdown follow the current plan. Pause, half-time, recovery, replan and control loss cancel them.</Text>
+      <Text style={typography.body}>{model.alertSettings.enabled ? `Team audio on · volume ${Math.round(model.alertSettings.volume * 100)}%` : 'Team audio is off. Change it under Team → Substitution audio.'}</Text>
+      <Button label={model.audioReady ? 'Test sound again' : 'Enable audio for this device'} testID="enable-substitution-audio" compact variant="secondary" disabled={!model.hasControl || !model.alertSettings.enabled} onPress={() => { void model.enableAudio(); }} />
+      {model.audioMessage && <Notice>{model.audioMessage}</Notice>}
+      <Text style={typography.muted}>{substitutionAudioCapability}</Text>
     </Card>}
   </View>;
 }

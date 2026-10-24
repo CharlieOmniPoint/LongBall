@@ -3,6 +3,9 @@ import { assertAdultAuthority, assertTeamRole, currentMemberships, type Membersh
 import { parseBrandingCommand } from './branding';
 import { parseScheduledGameCommand } from './fixture-management';
 import { parseMatchFeedbackCommand } from './match-feedback';
+import { parseOppositionReviewCommand } from './opposition-review';
+import { assertSubstitutionAlertSettings } from './substitution-alerts';
+import { normaliseFaPlayerId } from './preparation';
 import { workspaceBindingIsCurrent, workspaceSessionAllows, type WorkspaceBinding, type WorkspaceSessionAccess } from './workspace-boundary';
 
 /** Local acknowledgement uncertainty only. A queued vote is never a counted vote. */
@@ -92,17 +95,19 @@ function assertPath(path: unknown, value: WorkspaceOutboxScope): asserts path is
   assert(text(path, 2048));
   const prefix = `/v1/teams/${encodeURIComponent(value.teamId)}/`;
   const branding = ['club_logo', 'team_logo'].flatMap(kind => ['publish', 'remove'].map(action => `branding/${kind}/${action}`));
-  assert(['preparation', 'preparation/own', 'community', 'records', 'seasons', 'configuration', 'managers', 'managers/revoke', 'privileges', 'scheduled-games', 'match-feedback', ...branding].some(section => path === `${prefix}${section}?seasonId=${encodeURIComponent(value.seasonId)}`));
+  assert(['preparation', 'preparation/own', 'community', 'records', 'seasons', 'configuration', 'managers', 'managers/revoke', 'privileges', 'scheduled-games', 'match-feedback', 'opposition-reviews', ...branding].some(section => path === `${prefix}${section}?seasonId=${encodeURIComponent(value.seasonId)}`));
   const staff = path.startsWith(`${prefix}managers?`) || path.startsWith(`${prefix}managers/revoke?`);
   const scheduledGames = path.startsWith(`${prefix}scheduled-games?`), feedback = path.startsWith(`${prefix}match-feedback?`);
+  const opposition = path.startsWith(`${prefix}opposition-reviews?`);
   const clubLogo = path.startsWith(`${prefix}branding/club_logo/`), teamLogo = path.startsWith(`${prefix}branding/team_logo/`);
   if (clubLogo) assert(value.role === 'administrator');
   if (teamLogo) assert(value.role === 'manager');
   if (staff) assert(value.role === 'administrator');
   if (scheduledGames) assert(value.role === 'manager' || value.role === 'administrator');
   if (feedback) assert(value.role === 'player');
+  if (opposition) assert(value.role === 'manager' || value.role === 'administrator');
   if(path.startsWith(`${prefix}privileges?`))assert(value.role==='manager');
-  if (value.role === 'administrator') assert(path.startsWith(`${prefix}configuration?`) || path.startsWith(`${prefix}seasons?`) || staff || clubLogo || scheduledGames);
+  if (value.role === 'administrator') assert(path.startsWith(`${prefix}configuration?`) || path.startsWith(`${prefix}seasons?`) || staff || clubLogo || scheduledGames || opposition);
   if (value.role === 'player') assert(path.startsWith(`${prefix}preparation/own?`) || path.startsWith(`${prefix}community?`) || feedback);
   if (value.role === 'spectator') assert(path.startsWith(`${prefix}community?`));
 }
@@ -173,6 +178,55 @@ function assertScheduledGameFeedbackRequest(path: string, bodyJson: string, owne
     parseMatchFeedbackCommand(command);
   } else assert(command.type !== 'feedback.saved');
 }
+/** Bind new commands to their exact existing protocol route, not merely a writable team URL. */
+function assertClubExpansionRequest(path: string, bodyJson: string, owner: WorkspaceOutboxScope): void {
+  const prefix = `/v1/teams/${encodeURIComponent(owner.teamId)}/`;
+  const command = (JSON.parse(bodyJson) as { command: Record<string, unknown> }).command;
+  const opposition = path.startsWith(`${prefix}opposition-reviews?`);
+  if (opposition) {
+    assert(owner.role === 'manager' || owner.role === 'administrator');
+    parseOppositionReviewCommand(command);
+  } else assert(command.type !== 'opposition.review.saved');
+  if (command.type === 'own.fa_id_saved') {
+    assert(owner.role === 'player' && path.startsWith(`${prefix}preparation/own?`));
+    exactFields(command, ['id', 'type', 'expectedRevision', 'faPlayerId']);
+    assert(time(command.expectedRevision));
+    normaliseFaPlayerId(command.faPlayerId);
+  }
+  if (command.type === 'team.league_updated' || command.type === 'team.alerts_updated' || command.type === 'roster.proforma_imported') {
+    assert(owner.role === 'manager' || owner.role === 'administrator');
+    assert(path.startsWith(`${prefix}preparation?`) || path.startsWith(`${prefix}configuration?`));
+    assert(time(command.expectedRevision));
+    if (command.type === 'team.league_updated') {
+      exactFields(command, ['id', 'type', 'expectedRevision', 'league']);
+      assert(typeof command.league === 'string' && command.league.trim().length <= 120 && !/[\u0000-\u001f]/.test(command.league));
+    } else if (command.type === 'team.alerts_updated') {
+      exactFields(command, ['id', 'type', 'expectedRevision', 'substitutionAlerts']);
+      assertSubstitutionAlertSettings(command.substitutionAlerts);
+    } else {
+      assert(owner.role === 'manager' && path.startsWith(`${prefix}preparation?`));
+      exactFields(command, ['id', 'type', 'expectedRevision', 'profiles', 'confirmChanges']);
+      assert(command.confirmChanges === true && Array.isArray(command.profiles) && command.profiles.length > 0 && command.profiles.length <= 200);
+      const profiles = new Set<string>(), players = new Set<string>();
+      const position = (value: unknown): value is string => typeof value === 'string' && /^[A-Z]{2}$/.test(value);
+      for (const profile of command.profiles) {
+        assert(record(profile));
+        exactFields(profile, ['id','playerId','seasonId','displayName','initials','shirtNumber','foot','preferences','eligiblePositions','active', ...(Object.hasOwn(profile,'faPlayerId') ? ['faPlayerId'] : [])]);
+        assert(typeof profile.id === 'string' && /^[A-Za-z0-9_.:-]{1,150}$/.test(profile.id) && typeof profile.playerId === 'string' && /^[A-Za-z0-9_.:-]{1,150}$/.test(profile.playerId));
+        assert(profile.seasonId === owner.seasonId && profile.active === true && !profiles.has(profile.id) && !players.has(profile.playerId));
+        profiles.add(profile.id); players.add(profile.playerId);
+        assert(text(profile.displayName,60) && profile.displayName.trim().length > 0 && typeof profile.initials === 'string' && /^[A-Za-z0-9]{1,2}$/.test(profile.initials));
+        assert(profile.shirtNumber === null || Number.isInteger(profile.shirtNumber) && Number(profile.shirtNumber) >= 1 && Number(profile.shirtNumber) <= 99);
+        assert(['left','right','both','not_recorded'].includes(String(profile.foot)));
+        assert(Array.isArray(profile.preferences) && profile.preferences.length === 3 && profile.preferences.every(position) && new Set(profile.preferences).size === 3);
+        assert(Array.isArray(profile.eligiblePositions) && profile.eligiblePositions.length > 0 && profile.eligiblePositions.every(position) && new Set(profile.eligiblePositions).size === profile.eligiblePositions.length);
+        if (Object.hasOwn(profile,'faPlayerId')) normaliseFaPlayerId(profile.faPlayerId);
+      }
+      // Current catalogue, identity ownership and active-season CAS remain server checks;
+      // no invented local preparation document is used to approve a retained import.
+    }
+  }
+}
 function validateRequest(value: unknown, owner: WorkspaceOutboxScope): asserts value is WorkspaceOutboxRequest {
   assert(record(value)); exactFields(value, ['path', 'key', 'bodyJson', 'label', 'createdAtMs', 'status', 'lastAttemptAtMs', 'lastFailure']); assertPath(value.path, owner);
   assert(key(value.key) && text(value.label, 100) && time(value.createdAtMs));
@@ -182,6 +236,7 @@ function validateRequest(value: unknown, owner: WorkspaceOutboxScope): asserts v
   assertBrandingRequest(value.path, value.bodyJson, owner);
   assertTeamPrivilegeRequest(value.path,value.bodyJson,owner);
   assertScheduledGameFeedbackRequest(value.path, value.bodyJson, owner);
+  assertClubExpansionRequest(value.path, value.bodyJson, owner);
   assert(['awaiting_receipt', 'uncertain', 'access_blocked'].includes(value.status as string));
   assert(value.lastAttemptAtMs === null || time(value.lastAttemptAtMs));
   if (value.lastFailure !== null) {
@@ -224,6 +279,7 @@ export function enqueueWorkspaceRequest(state: WorkspaceOutboxState, binding: Wo
   assertBrandingRequest(input.path, bodyJson, state.scope);
   assertTeamPrivilegeRequest(input.path,bodyJson,state.scope);
   assertScheduledGameFeedbackRequest(input.path, bodyJson, state.scope);
+  assertClubExpansionRequest(input.path, bodyJson, state.scope);
   if (state.pending) {
     assert(state.pending.key === input.key && state.pending.path === input.path && state.pending.bodyJson === bodyJson && state.pending.label === input.label);
     return state;
@@ -252,7 +308,12 @@ function assertWorkspaceRequestAuthority(state: WorkspaceOutboxState, auth: Work
     assertTeamRole(auth.principal, auth.memberships, state.scope.teamId, state.scope.seasonId, ['administrator'], auth.nowMs);
     assertAdultAuthority(auth.principal, true, auth.nowMs);
   }
-  if (state.pending!.path === `/v1/teams/${encodeURIComponent(state.scope.teamId)}/match-feedback?seasonId=${encodeURIComponent(state.scope.seasonId)}`) {
+  if (state.pending!.path === `/v1/teams/${encodeURIComponent(state.scope.teamId)}/opposition-reviews?seasonId=${encodeURIComponent(state.scope.seasonId)}`) {
+    assertTeamRole(auth.principal, auth.memberships, state.scope.teamId, state.scope.seasonId, [state.scope.role === 'administrator' ? 'administrator' : 'manager'], auth.nowMs);
+    assertAdultAuthority(auth.principal, false, auth.nowMs);
+  }
+  const ownFa = (JSON.parse(state.pending!.bodyJson) as {command:{type:string}}).command.type === 'own.fa_id_saved';
+  if (ownFa || state.pending!.path === `/v1/teams/${encodeURIComponent(state.scope.teamId)}/match-feedback?seasonId=${encodeURIComponent(state.scope.seasonId)}`) {
     const currentPlayers = currentMemberships(auth.principal, auth.memberships, auth.nowMs).filter(member => member.accountId === state.scope.accountId && member.teamId === state.scope.teamId && member.seasonId === state.scope.seasonId && member.role === 'player');
     assert(new Set(currentPlayers.map(member => member.playerId)).size === 1 && currentPlayers[0]?.playerId === state.scope.playerId);
   }

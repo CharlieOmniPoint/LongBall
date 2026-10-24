@@ -1,3 +1,4 @@
+import { useRoleTheme } from '../ui/RoleTheme';
 import {
   ActivityIndicator,
   ScrollView,
@@ -27,6 +28,8 @@ export interface WelcomeScreenProps extends EntryFeedback {
   demoAccountLogin?: boolean;
   onSignIn: () => void;
   onActivate: () => void;
+  onSpectatorSignIn?: () => void;
+  onRequestInvite?: () => void;
   onReview?: () => void;
   onPrivacy?: () => void;
   onHelp?: () => void;
@@ -76,6 +79,7 @@ export const reviewAccounts: readonly {
 
 /** Original LongBall branding, without implying a signed-in club or team. */
 export function LongBallWordmark({ compact = false }: { compact?: boolean }) {
+  const theme = useRoleTheme();
   return (
     <View
       style={styles.wordmark}
@@ -83,8 +87,8 @@ export function LongBallWordmark({ compact = false }: { compact?: boolean }) {
       accessibilityRole="header"
       accessibilityLabel="LongBall"
     >
-      <Icon name="ball" size={compact ? 26 : 34} color={colors.brand} />
-      <Text style={[styles.wordmarkText, compact && styles.compactWordmark]}>
+      <Icon name="ball" size={compact ? 26 : 34} color={theme.accent} />
+      <Text style={[styles.wordmarkText, compact && styles.compactWordmark, {color:theme.accent}]}>
         LongBall
       </Text>
     </View>
@@ -117,6 +121,8 @@ export function WelcomeScreen({
   demoAccountLogin = false,
   onSignIn,
   onActivate,
+  onSpectatorSignIn,
+  onRequestInvite,
   onReview,
   onPrivacy,
   onHelp,
@@ -161,6 +167,8 @@ export function WelcomeScreen({
               disabled={loading}
               onPress={onSignIn}
             />
+            {onSpectatorSignIn && <Button label="Spectator sign in / join" testID="welcome-spectator" variant="secondary" disabled={loading} onPress={onSpectatorSignIn} />}
+            {onRequestInvite && <Button label="Request a team invitation" testID="welcome-request-invite" variant="quiet" disabled={loading} onPress={onRequestInvite} />}
             {!demoAccountLogin && <Button
               label="Activate account"
               variant="secondary"

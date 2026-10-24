@@ -10,6 +10,13 @@ import type {
   PreparationState,
 } from "@longball/application/preparation";
 import { randomUUID } from "../platform/id";
+import {
+  createRosterXls,
+  previewRosterXls,
+  rosterXlsFileName,
+  ROSTER_XLS_MIME,
+} from "@longball/application/roster-xls";
+import { deliverTeamFile, pickTeamFile } from "../platform/team-files";
 import { Button, Card, Notice, Pill } from "../ui";
 import { colors, typography } from "../ui/tokens";
 
@@ -17,11 +24,14 @@ export function RosterImportPanel({
   state,
   busy = false,
   onImport,
+  onProformaImport,
 }: {
   state: PreparationState;
   busy?: boolean;
   onImport: (profiles: PlayerProfile[]) => Promise<boolean>;
+  onProformaImport?: (profiles: PlayerProfile[]) => Promise<boolean>;
 }) {
+  const [excel, setExcel] = useState(false);
   const [open, setOpen] = useState(false),
     [csv, setCsv] = useState(""),
     [preview, setPreview] = useState<RosterImportPreview | null>(null),
@@ -31,6 +41,7 @@ export function RosterImportPanel({
   const disabled = busy || saving;
   const close = () => {
     setOpen(false);
+    setExcel(false);
     setCsv("");
     setPreview(null);
     setConfirmed(false);
@@ -39,10 +50,78 @@ export function RosterImportPanel({
     <Card>
       <Text style={typography.section}>Import player profiles</Text>
       <Text style={typography.muted}>
-        Paste CSV, review every row, then add the new players together. Existing
-        players are never merged. This creates no accounts or access.
+        Download the Excel proforma, fill in or update player details, then
+        import it for review. Existing identities are retained. This creates no
+        accounts or access.
       </Text>
       {status && <Notice>{status}</Notice>}
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+        <Button
+          label="Download player XLS"
+          testID="roster-xls-download"
+          compact
+          variant="secondary"
+          disabled={disabled}
+          onPress={() => {
+            void deliverTeamFile({
+              name: rosterXlsFileName(state),
+              bytes: createRosterXls(state),
+              mimeType: ROSTER_XLS_MIME,
+            })
+              .then(() =>
+                setStatus(
+                  "Excel proforma downloaded. Keep the identity cells for existing players; leave both blank for new players.",
+                ),
+              )
+              .catch((error) =>
+                setStatus(
+                  error instanceof Error
+                    ? error.message
+                    : "The proforma could not be downloaded.",
+                ),
+              );
+          }}
+        />
+        <Button
+          label="Import player XLS"
+          testID="roster-xls-import"
+          compact
+          variant="secondary"
+          disabled={disabled}
+          onPress={() => {
+            setSaving(true);
+            setStatus(null);
+            void pickTeamFile("xls")
+              .then((file) => {
+                if (!file) return;
+                const checked = previewRosterXls(file.bytes, state, randomUUID);
+                if (
+                  !onProformaImport &&
+                  checked.profiles.some((profile) =>
+                    state.profiles.some(
+                      (existing) => existing.id === profile.id,
+                    ),
+                  )
+                )
+                  checked.errors.push(
+                    "This screen cannot update existing rows. Open the connected team roster to import this proforma.",
+                  );
+                setExcel(true);
+                setOpen(true);
+                setPreview(checked);
+                setConfirmed(false);
+              })
+              .catch((error) =>
+                setStatus(
+                  error instanceof Error
+                    ? error.message
+                    : "The Excel file could not be read.",
+                ),
+              )
+              .finally(() => setSaving(false));
+          }}
+        />
+      </View>
       {!open ? (
         <Button
           label="Import roster CSV"
@@ -51,58 +130,64 @@ export function RosterImportPanel({
           disabled={disabled}
           onPress={() => {
             setStatus(null);
+            setExcel(false);
             setOpen(true);
           }}
         />
       ) : (
         <View style={styles.stack}>
-          <Text style={typography.body}>
-            Use the template headers. Separate eligible positions with |.
-            Include three distinct preferences and explicitly approved eligible
-            positions; goalkeeper eligibility is never guessed. At most 200 rows
-            and 65,536 characters.
-          </Text>
-          <Button
-            label="Use demo CSV example"
-            testID="roster-import-example"
-            variant="quiet"
-            disabled={disabled}
-            onPress={() => {
-              setCsv(ROSTER_CSV_TEMPLATE);
-              setPreview(null);
-              setConfirmed(false);
-            }}
-          />
-          <TextInput
-            accessibilityLabel="Roster CSV"
-            testID="roster-import-csv"
-            multiline
-            maxLength={65_536}
-            value={csv}
-            editable={!disabled}
-            onChangeText={(value) => {
-              setCsv(value);
-              setPreview(null);
-              setConfirmed(false);
-            }}
-            autoCapitalize="none"
-            autoCorrect={false}
-            style={styles.input}
-            placeholder="Paste CSV including the header row"
-          />
-          <Button
-            label="Preview roster import"
-            testID="roster-import-preview"
-            disabled={disabled || !csv.trim()}
-            onPress={() => {
-              setPreview(previewRosterImport(csv, state, randomUUID));
-              setConfirmed(false);
-            }}
-          />
+          {!excel && (
+            <>
+              <Text style={typography.body}>
+                Use the template headers. Separate eligible positions with |.
+                Include three distinct preferences and explicitly approved
+                eligible positions; goalkeeper eligibility is never guessed. At
+                most 200 rows and 65,536 characters.
+              </Text>
+              <Button
+                label="Use demo CSV example"
+                testID="roster-import-example"
+                variant="quiet"
+                disabled={disabled}
+                onPress={() => {
+                  setCsv(ROSTER_CSV_TEMPLATE);
+                  setPreview(null);
+                  setConfirmed(false);
+                }}
+              />
+              <TextInput
+                accessibilityLabel="Roster CSV"
+                testID="roster-import-csv"
+                multiline
+                maxLength={65_536}
+                value={csv}
+                editable={!disabled}
+                onChangeText={(value) => {
+                  setCsv(value);
+                  setPreview(null);
+                  setConfirmed(false);
+                }}
+                autoCapitalize="none"
+                autoCorrect={false}
+                style={styles.input}
+                placeholder="Paste CSV including the header row"
+              />
+              <Button
+                label="Preview roster import"
+                testID="roster-import-preview"
+                disabled={disabled || !csv.trim()}
+                onPress={() => {
+                  setPreview(previewRosterImport(csv, state, randomUUID));
+                  setConfirmed(false);
+                }}
+              />
+            </>
+          )}
           {preview && (
             <View style={styles.stack} testID="roster-import-review">
               <Text style={typography.section}>
-                {preview.profiles.length} valid new player rows
+                {preview.profiles.length} valid{" "}
+                {excel ? "new or updated" : "new"} player rows
               </Text>
               {preview.errors.map((error, index) => (
                 <Notice key={index} tone="error">
@@ -140,8 +225,9 @@ export function RosterImportPanel({
                   onValueChange={setConfirmed}
                 />
                 <Text style={[typography.body, styles.flex]}>
-                  Every row represents a distinct new player. I checked the
-                  names, preferences and eligibility.
+                  {excel
+                    ? "I checked the new and updated details, identities, preferences and eligibility."
+                    : "Every row represents a distinct new player. I checked the names, preferences and eligibility."}
                 </Text>
               </View>
               <Button
@@ -158,11 +244,15 @@ export function RosterImportPanel({
                 onPress={() => {
                   if (disabled) return;
                   setSaving(true);
-                  void onImport(preview.profiles)
+                  void (
+                    excel && onProformaImport
+                      ? onProformaImport(preview.profiles)
+                      : onImport(preview.profiles)
+                  )
                     .then((saved) => {
                       if (saved) {
                         setStatus(
-                          "All reviewed players were imported together. Existing records and account access were preserved.",
+                          "All reviewed player rows were saved together. Match history and account access were preserved.",
                         );
                         close();
                       } else

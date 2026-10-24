@@ -1,3 +1,8 @@
+import { SpectatorAccessService } from './spectator-access';
+import { PersistedSpectatorAccessRepository } from './spectator-access-repository';
+import { TeamDocumentService } from './team-document-service';
+import { OppositionReviewRepository } from './opposition-review-repository';
+import { OppositionReviewService } from './opposition-review-service';
 import { ReportExportRepository } from './report-export-repository';
 import { ReportExportService } from './report-export-service';
 import { TeamPrivilegeService } from './team-privileges-service';
@@ -38,6 +43,9 @@ export async function createPostgresApi(options: ApiOptions & { connectionString
     const reports=new ReportExportService(exportsRepository,store,options.reportExports,store.now);
     const feedbackRepository=new MatchFeedbackRepository(store,port);await feedbackRepository.initialize();
     const feedback=new MatchFeedbackService(feedbackRepository);
-    return createRuntimeApi(options, store, port, media, activation,undefined,{branding,spectator,invitations,privileges,push,reports,feedback});
+    const teamDocuments=new TeamDocumentService(store,port);await teamDocuments.initialize();
+    const oppositionRepository=new OppositionReviewRepository(store,port);await oppositionRepository.initialize();const opposition=new OppositionReviewService(oppositionRepository);
+    const spectatorAccess=new SpectatorAccessService(new PersistedSpectatorAccessRepository(store,port),store.now,options.demoScenario===true&&options.syntheticAuth===true?{isolatedDemo:true}:undefined);
+    return createRuntimeApi(options, store, port, media, activation,undefined,{branding,spectator,invitations,privileges,push,reports,feedback,teamDocuments,opposition,spectatorAccess});
   } catch (error) { await store.close(); throw error; }
 }

@@ -56,7 +56,7 @@ function visibleAccounts(context: SeasonRolloverContext) {
 }
 function verifiedAdult(account: SeasonAccountEvidence): boolean { return account.status === 'active' && account.identityClassification === 'adult_individual' && account.adultVerified && account.strongAuthEnrolled; }
 function activeManagers(context: SeasonRolloverContext): string[] {
-  return [...new Set(context.memberships.filter(item => item.teamId === context.records.teamId && item.role === 'manager' && current(item, context.nowMs) && context.accounts.find(account => account.accountId === item.accountId)?.status !== 'disabled').map(item => item.accountId))];
+  return [...new Set(context.memberships.filter(item => item.teamId === context.records.teamId && item.role === 'manager' && !item.administrativeInheritance && current(item, context.nowMs) && context.accounts.find(account => account.accountId === item.accountId)?.status !== 'disabled').map(item => item.accountId))];
 }
 /** September 1 midnight in Europe/London, evaluated using the runtime timezone database. */
 export function seasonAccessEndsAtMs(startYear: number): number {
@@ -100,7 +100,7 @@ export function configurationServiceView(input: { principal: Principal; membersh
 }
 export function applyConfigurationServiceCommand(input: { principal: Principal; memberships: Membership[]; preparation: PreparationState; seasonId: string; nowMs: number; command: PreparationCommand }): PreparationState {
   const { principal, memberships, preparation, seasonId, nowMs, command } = input;
-  requireThat(command?.type === 'club.updated' || command?.type === 'team.updated', 'Configuration accepts only club or team settings.');
+  requireThat(command?.type === 'club.updated' || command?.type === 'team.updated' || command?.type === 'team.league_updated' || command?.type === 'team.alerts_updated', 'Configuration accepts only club or team settings.');
   assertTeamRole(principal, memberships, preparation.team.id, seasonId, command.type === 'club.updated' ? ['administrator'] : ['administrator', 'manager'], nowMs);
   assertAdultAuthority(principal, command.type === 'club.updated', nowMs);
   return reducePreparation(preparation, command);
@@ -132,8 +132,8 @@ export function planSeasonRollover(context: SeasonRolloverContext & { command: S
   for (const assignment of command.playerAssignments) requireThat(validId(assignment.accountId) && validId(assignment.playerId) && options.playerCandidates.some(item => item.accountId === assignment.accountId && item.playerId === assignment.playerId), 'New player membership must preserve the source account/player binding. Use activation for new identity links.');
   const season = { id: command.idForSeason, startYear: command.startYear, ...seasonBounds(command.startYear), spectatorRenewalRequired: true as const };
   const newMemberships: Membership[] = [
-    ...command.managerAccountIds.map(accountId => ({ accountId, teamId: records.teamId, seasonId: season.id, role: 'manager' as const })),
-    ...command.administratorAccountIds.map(accountId => ({ accountId, teamId: records.teamId, seasonId: season.id, role: 'administrator' as const })),
+    ...command.managerAccountIds.map(accountId => ({ accountId, teamId: records.teamId, seasonId: season.id, role: 'manager' as const, ...(context.memberships.some(m=>m.accountId===accountId&&m.teamId===records.teamId&&m.seasonId===old.id&&m.role==='manager'&&m.administrativeInheritance)?{administrativeInheritance:true as const}:{}) })),
+    ...command.administratorAccountIds.map(accountId => ({ accountId, teamId: records.teamId, seasonId: season.id, role: 'administrator' as const, ...(context.memberships.some(m=>m.accountId===accountId&&m.teamId===records.teamId&&m.seasonId===old.id&&m.role==='administrator'&&m.administrativeInheritance)?{administrativeInheritance:true as const}:{}) })),
     ...command.playerAssignments.map(item => ({ ...item, teamId: records.teamId, seasonId: season.id, role: 'player' as const })),
   ];
   const sourceProfiles = preparation.profiles.filter(profile => profile.seasonId === old.id && profile.active);

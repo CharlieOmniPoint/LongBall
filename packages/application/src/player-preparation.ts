@@ -99,6 +99,9 @@ export function projectOwnPlayerPreparation(
       displayName: profile.displayName,
       initials: profile.initials,
       shirtNumber: profile.shirtNumber,
+      ...(profile.faPlayerId !== undefined
+        ? { faPlayerId: profile.faPlayerId }
+        : {}),
       foot: profile.foot,
       preferences: [...profile.preferences],
       eligiblePositions: [...profile.eligiblePositions],
@@ -220,6 +223,7 @@ export function parseOwnPlayerPreparation(
       "displayName",
       "initials",
       "shirtNumber",
+      ...(Object.hasOwn(profile, "faPlayerId") ? ["faPlayerId"] : []),
       "foot",
       "preferences",
       "eligiblePositions",
@@ -231,6 +235,10 @@ export function parseOwnPlayerPreparation(
     profile.active !== true ||
     !text(profile.displayName) ||
     !text(profile.initials) ||
+    (profile.faPlayerId !== undefined &&
+      profile.faPlayerId !== null &&
+      (typeof profile.faPlayerId !== "string" ||
+        !/^[0-9]{1,20}$/.test(profile.faPlayerId))) ||
     (profile.shirtNumber !== null &&
       (!Number.isSafeInteger(profile.shirtNumber) ||
         Number(profile.shirtNumber) < 1)) ||

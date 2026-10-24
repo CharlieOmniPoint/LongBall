@@ -123,6 +123,7 @@ function LongBall({ initialRole, onLeaveReview, onSignIn, invitationDestination 
   const [role, setRole] = useState<CommunityRole>(initialRole);
   const { state, clock, busy, send } = model;
   const planner = usePlannerModel(state, model.sample, clock, {
+    alertSettings: app?.preparation.substitutionAlerts,
     policy: { commit: send, busy, retryPending: model.pendingRetry, conflict: Boolean(model.conflict), retry: model.retry, reload: model.reloadAfterConflict },
     persistence: {
       journal: model.journal,

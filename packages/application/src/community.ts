@@ -133,6 +133,8 @@ export interface CommunityPreferences {
   photos: boolean;
   quietStart: string | null;
   quietEnd: string | null;
+  /** An account-owned following preference; it creates no access or player identity. */
+  followedPlayerId?: string | null;
 }
 export interface PrivacyRequestDraft {
   id: string;
@@ -503,6 +505,7 @@ export function applyCommunityCommand(state: CommunityState, actor: CommunityAct
       requireRule((preferences.quietStart === null && preferences.quietEnd === null) ||
         (typeof preferences.quietStart === 'string' && typeof preferences.quietEnd === 'string' && time.test(preferences.quietStart) && time.test(preferences.quietEnd)), 'invalid', 'Use HH:MM for both quiet-hour boundaries, or leave both empty.');
       requireRule(preferences.quietStart === null || preferences.quietStart !== preferences.quietEnd, 'invalid', 'Quiet hours need distinct boundaries; use channel switches to pause all day.');
+      requireRule(preferences.followedPlayerId === undefined || preferences.followedPlayerId === null || /^[A-Za-z0-9_-]{1,150}$/.test(preferences.followedPlayerId), 'invalid', 'Choose a current team player.');
       next.preferences[actor.accountId] = { ...preferences };
       break;
     }
@@ -658,9 +661,9 @@ export function applyVerifiedInvitationCommand(
   } else {
     assertAccess(next, actor, nowMs);
     requireRule(
-      actor.role === "manager" || actor.role === "player",
+      ["manager", "player", "spectator"].includes(actor.role),
       "forbidden",
-      "Only a current player or manager can issue invitations.",
+      "Only a current team member can issue invitations.",
     );
     const season = next.seasons.find(
       (item) => item.id === actor.seasonId && item.teamId === actor.teamId,
@@ -841,7 +844,7 @@ export function getCommunityView(state: CommunityState, actor: CommunityActor, n
     teamLabel: season?.teamLabel ?? 'Team', seasonLabel: season?.label ?? 'Season', accountLabel: person.label,
     memberships: state.memberships.filter(item => item.accountId === actor.accountId).map(item => ({ ...item })),
     preferences: { ...(state.preferences[actor.accountId] ?? defaultCommunityPreferences()) },
-    invitations: allowed && actor.role !== 'spectator' ? scoped(state.invitations).filter(item => actor.role === 'manager' || item.inviterAccountId === actor.accountId).map(item => ({ ...publicInvitation(item, nowMs), reviewCode: item.credential?.kind === 'fictional_review' && state.synthetic === true ? item.credential.code : undefined })) : [],
+    invitations: allowed ? scoped(state.invitations).filter(item => actor.role === 'manager' || item.inviterAccountId === actor.accountId).map(item => ({ ...publicInvitation(item, nowMs), reviewCode: item.credential?.kind === 'fictional_review' && state.synthetic === true ? item.credential.code : undefined })) : [],
     grants: allowed && actor.role === 'manager' ? scoped(state.grants).map(item => ({ ...item, accountLabel: labelForAccount(state, item.accountId) })) : [],
     matches: allowed ? scoped(state.matches).map(match => {
       const share = sharedAllowed(state, actor, match);
@@ -972,6 +975,7 @@ const communityMatchRule: CommunityFieldRule = { accepts: value => communityObje
 const communityPreferencesRule: CommunityFieldRule = { accepts: value => communityObjectShape(value, {
   schedule: communityBoolean, match: communityBoolean, awards: communityBoolean, photos: communityBoolean,
   quietStart: communityNullable(communityText(5)), quietEnd: communityNullable(communityText(5)),
+  followedPlayerId: communityOptional(communityNullable(communityId)),
 }) };
 const communityCommandFields: Record<CommunityCommand['type'], Record<string, CommunityFieldRule>> = {
   'invite.created': { invitationId: communityId, reviewCode: communityText(128), expiresAtMs: communityInteger() },

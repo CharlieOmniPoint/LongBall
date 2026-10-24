@@ -3,10 +3,12 @@ export interface LocalWarningPlan {
   dueInMs: number;
   running: boolean;
   owner?: string;
+  leadSeconds?: number;
+  sound?: boolean;
 }
 
 export async function getAlertCapability(): Promise<string> {
-  return "Browser review: visual clock only. Native local reminders, sound and lock behaviour require phone testing.";
+  return "Browser review: visual countdown and foreground substitution audio. Native local notifications and lock behaviour require device testing.";
 }
 export async function requestAlertPermission(): Promise<string> {
   return getAlertCapability();

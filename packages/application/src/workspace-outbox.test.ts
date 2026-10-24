@@ -376,3 +376,57 @@ describe('protected scheduled-game and private-feedback request routes', () => {
     }
   });
 });
+
+describe('club expansion protected request boundaries', () => {
+  const adult: Principal = { ...principal, identityClassification: 'adult_individual', adultVerified: true, strongAuth: true };
+  const staffAuthorization = (role: 'manager' | 'administrator'): WorkspaceOutboxAuthorization => ({ ...auth, binding: { ...binding, role, playerId: null }, principal: adult, memberships: [{ ...memberships[0], role, playerId: undefined }] });
+  const opposition = { path: '/v1/teams/roma-u10/opposition-reviews?seasonId=2026-27', key: 'opposition-review-001', label: 'Opposition notes', body: { command: { id: 'opposition-review-001', type: 'opposition.review.saved', matchId: 'completed-game', expectedRevision: 2, rating: 4, note: 'Patient passing 🙂' } } };
+  const ownFa = { path: '/v1/teams/roma-u10/preparation/own?seasonId=2026-27', key: 'own-fa-id-command', label: 'My FA identifier', body: { command: { id: 'own-fa-id-command', type: 'own.fa_id_saved', expectedRevision: 3, faPlayerId: '0000123' } } };
+  it('queues and replays opposition notes through exactly the current Manager or Administrator route', () => {
+    for (const role of ['manager', 'administrator'] as const) {
+      const authorization = staffAuthorization(role), owner = authorization.binding;
+      const pending = enqueueWorkspaceRequest(createWorkspaceOutbox(owner), owner, opposition, now);
+      const uncertain = reopened(recordWorkspaceOutcome(pending, opposition.key, {kind:'unconfirmed',reason:'network'}, now + 1));
+      expect(authorizeWorkspaceReplay(uncertain, {...authorization,binding:{...owner,generation:4},nowMs:now+2}).bodyJson).toBe(JSON.stringify(opposition.body));
+      const accepted = recordWorkspaceOutcome(uncertain,opposition.key,{kind:'accepted',httpStatus:200,serverRevision:3},now+3);
+      expect(accepted.pending).toBeNull();expect(accepted.lastSettled?.request.bodyJson).toBe(JSON.stringify(opposition.body));
+      for (const changes of [{memberships:[]},{memberships:[{...authorization.memberships[0],revokedAt:now}]},{memberships:[{...authorization.memberships[0],expiresAt:now}]},{principal:{...adult,strongAuth:false}},{principal:{...adult,adultVerified:false}},{principal:{...adult,identityClassification:'child_shared' as const}},{binding:{...owner,teamId:'other-team'}},{binding:{...owner,seasonId:'other-season'}},{binding:{...owner,role:'player' as const,playerId:'player-01'}},{verifiedAtMs:now-30_001}]) expect(()=>authorizeWorkspaceReplay(uncertain,{...authorization,...changes})).toThrow();
+      expect(uncertain.pending?.bodyJson).toBe(JSON.stringify(opposition.body));
+    }
+  });
+  it('denies opposition writes from players/spectators, alternate paths and malformed restored commands', () => {
+    for (const role of ['player','spectator'] as const) {
+      const owner={...binding,role,playerId:role==='player'?binding.playerId:null};
+      expect(()=>enqueueWorkspaceRequest(createWorkspaceOutbox(owner),owner,opposition,now)).toThrow();
+    }
+    const owner=staffAuthorization('manager').binding;
+    for (const patch of [{rating:6},{rating:0},{note:'x'.repeat(257)},{note:'\u0000'},{playerId:'other-player'},{teamId:'other-team'},{expectedRevision:-1},{id:'changed-request-key'},{type:'profile.saved'}]) expect(()=>enqueueWorkspaceRequest(createWorkspaceOutbox(owner),owner,{...opposition,body:{command:{...opposition.body.command,...patch}}},now)).toThrow();
+    for (const path of [opposition.path+'&extra=1',opposition.path.replace('roma-u10','other-team'),opposition.path.replace('2026-27','other-season'),opposition.path.replace('opposition-reviews','records'),opposition.path.replace('opposition-reviews','community'),opposition.path.replace('opposition-reviews','preparation')]) expect(()=>enqueueWorkspaceRequest(createWorkspaceOutbox(owner),owner,{...opposition,path},now)).toThrow();
+    const pending=enqueueWorkspaceRequest(createWorkspaceOutbox(owner),owner,opposition,now);
+    for(const patch of [{path:opposition.path.replace('opposition-reviews','community')},{bodyJson:JSON.stringify({command:{...opposition.body.command,accountId:'other'}})},{key:'tampered-key'}])expect(()=>validateWorkspaceOutbox({...pending,pending:{...pending.pending!,...patch}})).toThrow();
+  });
+  it('retains only a self-player FA identifier command and rejects role/identity substitution on replay', () => {
+    const pending=enqueueWorkspaceRequest(createWorkspaceOutbox(binding),binding,ownFa,now);
+    expect(authorizeWorkspaceReplay(reopened(pending),auth).bodyJson).toBe(JSON.stringify(ownFa.body));
+    for(const patch of [{playerId:'other-player'},{profileId:'other-profile'},{faPlayerId:123},{faPlayerId:'x'},{faPlayerId:'1'.repeat(21)},{expectedRevision:-1}])expect(()=>enqueueWorkspaceRequest(createWorkspaceOutbox(binding),binding,{...ownFa,body:{command:{...ownFa.body.command,...patch}}},now)).toThrow();
+    for(const role of ['manager','administrator','spectator']as const){const owner={...binding,role,playerId:null};expect(()=>enqueueWorkspaceRequest(createWorkspaceOutbox(owner),owner,ownFa,now)).toThrow();}
+    expect(()=>enqueueWorkspaceRequest(createWorkspaceOutbox(binding),binding,{...ownFa,path:ownFa.path.replace('preparation/own','community')},now)).toThrow();
+    for(const changed of [[{...memberships[0],playerId:'player-02'}],[memberships[0],{...memberships[0],playerId:'player-02'}]])expect(()=>authorizeWorkspaceReplay(pending,{...auth,memberships:changed})).toThrow();
+  });
+  it('keeps league and alert settings on staff preparation/configuration with exact validated values', () => {
+    const owner=staffAuthorization('manager').binding;
+    const commands=[{id:'league-command-0001',type:'team.league_updated',expectedRevision:4,league:'EMFJL 4th Division'},{id:'alerts-command-0001',type:'team.alerts_updated',expectedRevision:4,substitutionAlerts:{enabled:true,leadSeconds:60,volume:0.7}}];
+    for(const command of commands){const input={path:'/v1/teams/roma-u10/preparation?seasonId=2026-27',key:command.id,label:'Team settings',body:{command}};const pending=enqueueWorkspaceRequest(createWorkspaceOutbox(owner),owner,input,now);expect(authorizeWorkspaceReplay(pending,staffAuthorization('manager')).bodyJson).toBe(JSON.stringify(input.body));expect(()=>enqueueWorkspaceRequest(createWorkspaceOutbox(owner),owner,{...input,path:input.path.replace('preparation','community')},now)).toThrow();}
+    for(const command of [{...commands[0],league:'x'.repeat(121)},{...commands[0],league:'invalid\nleague'},{...commands[0],teamId:'another-team'},{...commands[1],substitutionAlerts:{enabled:true,leadSeconds:301,volume:0.7}},{...commands[1],substitutionAlerts:{enabled:true,leadSeconds:60,volume:2}},{...commands[1],substitutionAlerts:{enabled:true,leadSeconds:60,volume:0.7,role:'manager'}}])expect(()=>enqueueWorkspaceRequest(createWorkspaceOutbox(owner),owner,{path:'/v1/teams/roma-u10/configuration?seasonId=2026-27',key:command.id,label:'Team settings',body:{command}},now)).toThrow();
+  });
+  it('binds proforma profile identities to the manager team-season and preserves reviewed import bytes',()=>{
+    const owner=staffAuthorization('manager').binding;
+    const profile={id:'profile-one',playerId:'player-one',seasonId:owner.seasonId,displayName:'Sam Review',initials:'SR',shirtNumber:7,faPlayerId:'0000123',foot:'right',preferences:['CM','CB','ST'],eligiblePositions:['CM','CB','ST'],active:true};
+    const command={id:'roster-import-command',type:'roster.proforma_imported',expectedRevision:8,profiles:[profile],confirmChanges:true};
+    const input={path:'/v1/teams/roma-u10/preparation?seasonId=2026-27',key:command.id,label:'Import reviewed roster',body:{command}};
+    const pending=enqueueWorkspaceRequest(createWorkspaceOutbox(owner),owner,input,now);expect(authorizeWorkspaceReplay(reopened(pending),staffAuthorization('manager')).bodyJson).toBe(JSON.stringify(input.body));
+    for(const patch of [{seasonId:'other-season'},{active:false},{accountId:'other-account'},{faPlayerId:'x'},{preferences:['CM','CM','CB']},{shirtNumber:0},{eligiblePositions:[]}])expect(()=>enqueueWorkspaceRequest(createWorkspaceOutbox(owner),owner,{...input,body:{command:{...command,profiles:[{...profile,...patch}]}}},now)).toThrow();
+    for(const patch of [{confirmChanges:false},{profiles:[profile,profile]},{profiles:[]},{accountId:'caller-account'}])expect(()=>enqueueWorkspaceRequest(createWorkspaceOutbox(owner),owner,{...input,body:{command:{...command,...patch}}},now)).toThrow();
+    expect(()=>enqueueWorkspaceRequest(createWorkspaceOutbox(owner),owner,{...input,path:input.path.replace('preparation','community')},now)).toThrow();
+  });
+});

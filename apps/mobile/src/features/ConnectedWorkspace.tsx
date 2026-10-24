@@ -1,3 +1,16 @@
+import { RetainedAction } from '@longball/application/retained-action';
+import { SpectatorConnection } from './SpectatorConnection';
+import { InvitationRequestsPanel } from './InvitationRequestsPanel';
+import { FormationDesigner } from './FormationDesigner';
+import { SubstitutionAlertSettings } from './SubstitutionAlertSettings';
+import { FaPlayerIdEditor } from './TeamDetailsEditors';
+import { TeamDocumentsPanel } from './TeamDocumentsPanel';
+import { ClubAdministration } from './ClubAdministration';
+import type { ClubAdministrationCommand, ClubAdministrationDto, ClubReportDto } from '@longball/application/club-administration';
+import { OppositionReviews } from './OppositionReviews';
+import { assertOppositionReviewView, type OppositionReviewView, type OppositionReviewCommand } from '@longball/application/opposition-review';
+import { RoleThemeProvider, accountRoleLabel, useRoleTheme } from '../ui/RoleTheme';
+import { ClubTeamSelector } from './ClubTeamSelector';
 import { WorkspaceLayoutProvider, WorkspaceLayoutScope, WorkspaceLayoutMenuButton, WorkspaceLayoutControls, useWorkspaceLayout } from '../ui/WorkspaceLayout';
 import { visibleScheduledMatches } from '@longball/application/scheduled-match-visibility';
 import { assertTeamOverviewDto, type TeamOverviewDto } from '@longball/application/team-overview-service';
@@ -65,7 +78,6 @@ import {
   createWorkspaceContextPreference,
   resolveWorkspaceContext,
   workspaceContextChoices,
-  workspaceContextKey,
   workspaceContextPreferenceKey,
   type WorkspaceContextSelection,
 } from "@longball/application/workspace-context";
@@ -199,12 +211,12 @@ import {
 function WorkspaceFrame({ fullScreen, fixedMatch, resetKey, footer, children }: {
   fullScreen: boolean; fixedMatch?: boolean; resetKey: string; footer: ReactNode; children: ReactNode;
 }) {
-  const insets=useSafeAreaInsets(),layout=useWorkspaceLayout();
+  const insets=useSafeAreaInsets(),layout=useWorkspaceLayout(),theme=useRoleTheme();
   const scroll=useRef<ScrollViewInstance|null>(null);
   useEffect(()=>{if(fullScreen)scroll.current?.scrollTo({y:0,animated:false});},[fullScreen,resetKey]);
   if(!fullScreen)return <WorkspaceLayoutScope style={{width:'100%',gap:12}} testID="workspace-session"><View style={s.stack} testID={`workspace-layout-${layout.mode}`}>{footer}{children}</View></WorkspaceLayoutScope>;
   const rail=layout.rail&&!fixedMatch;
-  return <View style={{flex:1,minHeight:0,backgroundColor:colors.canvas,alignItems:'center',paddingLeft:insets.left,paddingRight:insets.right}} testID="workspace-session">
+  return <View style={{flex:1,minHeight:0,backgroundColor:theme.canvas,alignItems:'center',paddingLeft:insets.left,paddingRight:insets.right}} testID="workspace-session">
     <View style={{flex:1,minHeight:0,width:'100%',maxWidth:layout.shellWidth,flexDirection:rail?'row':'column-reverse'}} testID={`workspace-layout-${layout.mode}`}>
       <View style={{display:footer&&!fixedMatch?'flex':'none',width:rail?152:'100%',paddingHorizontal:rail?8:12,paddingTop:rail?insets.top+16:8,paddingBottom:Math.max(8,insets.bottom),backgroundColor:colors.surface,borderTopWidth:rail?0:1,borderRightWidth:rail?1:0,borderColor:colors.border}} testID={rail?'workspace-side-navigation':'workspace-bottom-navigation'}>{footer}</View>
       <View style={{flex:1,minHeight:0,minWidth:0}}>
@@ -268,6 +280,7 @@ type CommunityDto = ReturnType<typeof getCommunityView> & { revision: number };
 type RecordsDto = ConnectedRecordsDto;
 type OwnCommand = { id: string; expectedRevision: number } & (
   | { type: "own.preferences_saved"; preferences: PlayerProfile["preferences"] }
+  | { type: "own.fa_id_saved"; faPlayerId: string | null }
   | {
       type: "own.fixture_response_recorded";
       fixtureId: string;
@@ -800,6 +813,7 @@ function WorkspaceSession({
     useState<BoundWorkspaceValue<TeamPrivilegesView> | null>(null);
   const [teamOverviewCache, setTeamOverview] = useState<BoundWorkspaceValue<TeamOverviewDto> | null>(null);
   const [statsCache, setStats] = useState<BoundWorkspaceValue<PlayerStatsDto> | null>(null);
+  const [oppositionCache, setOpposition] = useState<BoundWorkspaceValue<OppositionReviewView> | null>(null);
   const [feedbackCache, setFeedback] = useState<BoundWorkspaceValue<MatchFeedbackView> | null>(null);
   const [scheduledGamesCache, setScheduledGames] = useState<BoundWorkspaceValue<ScheduledGameManagementDto> | null>(null);
   const [selectedOverviewGameId, setSelectedOverviewGameId] = useState<string | null>(null);
@@ -889,7 +903,7 @@ function WorkspaceSession({
     invalidateRequests();
     setIdentity(null);
     setBinding(null);
-    setTeamOverview(null); setStats(null); setFeedback(null); setScheduledGames(null); setSelectedStatsPlayerId(undefined); setSelectedOverviewGameId(null);
+    setTeamOverview(null); setStats(null); setFeedback(null); setOpposition(null); setScheduledGames(null); setSelectedStatsPlayerId(undefined); setSelectedOverviewGameId(null);
     setPreparation(null);
     setOwn(null);
     setRecords(null);
@@ -1002,6 +1016,8 @@ function WorkspaceSession({
     },
     [connection, roleChoice],
   );
+  const documentRequest = useCallback<typeof fetch>((input,options) => {if(typeof input!=="string")throw new Error("Use the scoped team document URL.");return authenticatedFetch(input,options ?? {});},[authenticatedFetch]);
+  const documentHeaders = useMemo<HeadersInit>(() => ({}), []);
   const client = useMemo(
     () => new LongBallServiceClient(connection.baseUrl, authenticatedFetch),
     [connection.baseUrl, authenticatedFetch],
@@ -1138,6 +1154,7 @@ function WorkspaceSession({
   const teamOverview = readWorkspaceValue(teamOverviewCache, expectedBinding, identity?.principal ?? null, identity?.memberships ?? [], membershipTime);
   const stats = readWorkspaceValue(statsCache, expectedBinding, identity?.principal ?? null, identity?.memberships ?? [], membershipTime);
   const feedback = readWorkspaceValue(feedbackCache, expectedBinding, identity?.principal ?? null, identity?.memberships ?? [], membershipTime);
+  const opposition = readWorkspaceValue(oppositionCache, expectedBinding, identity?.principal ?? null, identity?.memberships ?? [], membershipTime);
   const scheduledGames = readWorkspaceValue(scheduledGamesCache, expectedBinding, identity?.principal ?? null, identity?.memberships ?? [], membershipTime);
   const preparation = readWorkspaceValue(
     preparationCache,
@@ -1514,10 +1531,11 @@ function WorkspaceSession({
     if (!chosen) {
       closeDeniedScope(previousBinding);
       setIdentity(nextIdentity);
+      if(nextIdentity.principal.administration)setTab("clubs");
       setRefreshRequired(false);
       setRefreshSuggested(false);
       setErrors(
-        resolution.choices.length
+        resolution.choices.length || nextIdentity.principal.administration
           ? []
           : [
               "This account has no current team, season and role assignment. A received invitation can still be reviewed below.",
@@ -1573,7 +1591,7 @@ function WorkspaceSession({
     refreshingBinding.current = null;
     setBinding(ticket);
     const retain = <T,>(cached: BoundWorkspaceValue<T> | null) => rebindWorkspaceRefresh(cached, previousBinding, ticket, nextIdentity.principal, nextIdentity.memberships, serviceActionTime());
-    setTeamOverview(retain); setStats(retain); setFeedback(retain); setScheduledGames(retain);
+    setTeamOverview(retain); setStats(retain); setFeedback(retain); setOpposition(retain); setScheduledGames(retain);
     setPreparation(retain); setOwn(retain); setRecords(retain); setCommunity(retain);
     setOwnPrivileges(retain); setTeamPrivileges(retain); setMatches(retain);
     setSeasons(retain); setConfiguration(retain); setStaff(retain); setBranding(retain);
@@ -1826,6 +1844,12 @@ function WorkspaceSession({
         assertPlayerStatsDto(value, { role: chosen.role, teamId: ticket.teamId, seasonId: ticket.seasonId, ...(isPlayer ? { playerId: ticket.playerId ?? '' } : {}) });
         const attached = await attach(value); if (attached) setStats(attached);
       }).catch(cause => readFault('Player statistics', cause, true)),
+    );
+    if (isManager || isAdministrator || isPlayer) tasks.push(
+      client.request<unknown>(scopedPath('opposition-reviews')).then(async value => {
+        assertOppositionReviewView(value, {teamId:ticket.teamId,seasonId:ticket.seasonId,role:chosen.role});
+        const attached=await attach(value); if(attached)setOpposition(attached);
+      }).catch(cause => readFault('Opposition notes',cause,true)),
     );
     if (isManager || isPlayer) tasks.push(
       client.request<unknown>(scopedPath('match-feedback')).then(async value => {
@@ -2276,7 +2300,8 @@ function WorkspaceSession({
       | BrandingCommand
       | TeamPrivilegeCommand
       | MatchFeedbackCommand
-      | ScheduledGameCommand,
+      | ScheduledGameCommand
+      | OppositionReviewCommand,
     label: string,
   ): Promise<boolean> => {
     if (
@@ -2430,7 +2455,7 @@ function WorkspaceSession({
       setUploadRetained(false);
       invalidateRequests();
       setBinding(null);
-      setTeamOverview(null); setStats(null); setFeedback(null); setScheduledGames(null); setSelectedStatsPlayerId(undefined); setSelectedOverviewGameId(null);
+      setTeamOverview(null); setStats(null); setFeedback(null); setOpposition(null); setScheduledGames(null); setSelectedStatsPlayerId(undefined); setSelectedOverviewGameId(null);
     setPreparation(null);
       setOwn(null);
       setRecords(null);
@@ -2669,8 +2694,13 @@ function WorkspaceSession({
     } else if (administrator) setTab('schedule');
     else setTab('centre');
   });
+  const [administrationAction] = useState(() => new RetainedAction<ClubAdministrationCommand,ClubAdministrationDto>());
+  const loadAdministration = useCallback(() => client.request<ClubAdministrationDto>('/v1/administration'), [client]);
+  const saveAdministration = useCallback((command:ClubAdministrationCommand) => administrationAction.run(command,randomUUID,(captured,key) => client.request<ClubAdministrationDto>('/v1/administration', {request:{idempotencyKey:key,path:'/v1/administration',kind:'upload',body:{command:captured}}})), [client,administrationAction]);
+  const loadClubReport = useCallback((clubId:string) => client.request<ClubReportDto>(`/v1/clubs/${encodeURIComponent(clubId)}/reports`), [client]);
   const focusedMatch = Boolean(props.initialConnection && manager && tab === "controller" && matchFocused);
   return (
+    <RoleThemeProvider role={expectedBinding&&membership?membership.role:null} superAdmin={identity?.principal.administration?.level === "super"}>
     <WorkspaceLayoutProvider role={expectedBinding&&membership?membership.role:null}>
     <WorkspaceFrame fullScreen={Boolean(props.initialConnection)} fixedMatch={focusedMatch} resetKey={tab} footer={
       expectedBinding && membership && !focusedMatch && (
@@ -2702,7 +2732,7 @@ function WorkspaceSession({
       <Card style={{ padding: focusedMatch ? 2 : 8 }}>
         {focusedMatch && (
           <View style={s.row} testID="workspace-match-header">
-            <Text testID="workspace-current-role" style={[typography.muted,{fontWeight:"700",color:colors.brand}]}>Manager</Text>
+            <Text testID="workspace-current-role" style={[typography.muted,{fontWeight:"700",color:identity?.principal.administration?.level === "super" ? "#713AA2" : colors.brand}]}>{accountRoleLabel(identity?.principal,membership?.role)}</Text>
             <Button label="Team" accessibilityLabel="Back to team; clock continues" testID="workspace-back-to-team" variant="quiet" compact style={{ flex: 1, paddingHorizontal: 4 }} disabled={disabled} onPress={() => setTab("overview")} />
             <Button label="Account" accessibilityLabel="Account and security" testID="workspace-match-account" variant="quiet" icon="lock" iconOnly compact style={{ paddingHorizontal: 4 }} onPress={() => guardNavigation(props.onOpenAccount ?? (() => setTab("account")))} />
             <WorkspaceLayoutMenuButton />
@@ -2733,8 +2763,8 @@ function WorkspaceSession({
                   : "Checking your account…"}
             </Text>
             {selectedContext && (
-              <Text testID="workspace-current-role" style={[typography.muted, {fontWeight:"700", color:colors.brand}]}>
-                {({manager:"Manager",administrator:"Administrator",player:"Player",spectator:"Spectator"})[selectedContext.role]} ·{" "}
+              <Text testID="workspace-current-role" style={[typography.muted, {fontWeight:"700", color:identity?.principal.administration?.level === "super" ? "#713AA2" : selectedContext.role === "spectator" ? "#1557A5" : colors.brand}]}>
+                {accountRoleLabel(identity?.principal,selectedContext.role)} ·{" "}
                 {formatUkSeasonLabel(own?.season?.label ??
                   preparation?.seasons.find((item) => item.id === seasonId)
                     ?.label ??
@@ -2750,9 +2780,11 @@ function WorkspaceSession({
           {props.onSignOut && <Button label="Sign out" icon="logout" iconOnly compact testID={props.signOutTestID ?? "workspace-sign-out"} variant="quiet" onPress={props.onSignOut} />}
         </View>}
         <WorkspaceLayoutControls />
+        {!focusedMatch && administrator && contextChoices.some(choice => choice.teamId===teamId && choice.seasonId===seasonId && choice.role==='manager') && <Button label="Manage this team" icon="users" compact variant="secondary" disabled={disabled} testID="workspace-admin-manage-team" onPress={() => switchScope({teamId:teamId!,seasonId:seasonId!,playerId:null},'manager')} />}
+
         {!focusedMatch && selectedContext && contextChoices.length > 1 && (
           <Button
-            label="Change space"
+            label="Club and team"
             testID="workspace-change-context"
             variant="quiet"
             icon="swap"
@@ -2785,48 +2817,7 @@ function WorkspaceSession({
         {identity &&
           (!selectedContext || contextPickerOpen) &&
           contextChoices.length > 0 && (
-            <View style={s.stack} testID="workspace-context-choices">
-              <Text style={typography.section}>
-                Choose a team, season and role
-              </Text>
-              <Text style={typography.body}>
-                Only current assignments returned by the service are available.
-                Your last valid choice can be remembered on this device.
-              </Text>
-              {contextChoices.map((choice) => (
-                <Card key={workspaceContextKey(choice)}>
-                  {choice.clubLabel && (
-                    <Text style={typography.muted}>{choice.clubLabel}</Text>
-                  )}
-                  <Text style={typography.section}>{choice.teamLabel}</Text>
-                  <Text style={typography.body}>
-                    {formatUkSeasonLabel(choice.seasonLabel)} · {choice.roleLabel}
-                  </Text>
-                  <Button
-                    label={`Open ${choice.roleLabel} · ${choice.teamLabel} · ${formatUkSeasonLabel(choice.seasonLabel)}`}
-                    testID={`workspace-context-${choice.role}-${choice.teamId}-${choice.seasonId}-${choice.playerId ?? "none"}`}
-                    disabled={disabled}
-                    variant={
-                      selectedContext &&
-                      workspaceContextKey(selectedContext) ===
-                        workspaceContextKey(choice)
-                        ? "secondary"
-                        : "primary"
-                    }
-                    onPress={() =>
-                      switchScope(
-                        {
-                          teamId: choice.teamId,
-                          seasonId: choice.seasonId,
-                          playerId: choice.playerId,
-                        },
-                        choice.role,
-                      )
-                    }
-                  />
-                </Card>
-              ))}
-            </View>
+            <ClubTeamSelector choices={contextChoices} selected={selectedContext} principal={identity.principal} disabled={disabled} onSelect={choice => switchScope({teamId:choice.teamId,seasonId:choice.seasonId,playerId:choice.playerId},choice.role)} />
           )}
         {props.invitationDestination && (
           <Button
@@ -2846,7 +2837,7 @@ function WorkspaceSession({
             {error}
           </Notice>
         ))}
-        {notice && <Notice>{notice}</Notice>}
+        {notice && !focusedMatch && <Notice>{notice}</Notice>}
         {!focusedMatch && (activeController?.unsent || activeController?.pendingNetwork) && (
           <Notice tone="warning">
             This match has {activeController.pendingCount} event(s) awaiting
@@ -3014,6 +3005,11 @@ function WorkspaceSession({
           />
         )}
       </Card>
+      {tab === 'clubs' && administrator && identity?.principal.administration && <View style={s.row}><Button label="Edit club and team configuration" compact variant="secondary" disabled={disabled} onPress={() => setTab('settings')} /><Button label="View assigned teams" compact variant="quiet" disabled={disabled} onPress={() => setTab('team')} /></View>}
+      {tab === 'account' && membership?.role === 'spectator' && teamId && seasonId && <SpectatorConnection key={`${absoluteApi}:${identity?.principal.accountId}:${teamId}:${seasonId}`} baseUrl={connection.baseUrl || '/'} authenticatedFetch={authenticatedFetch} teamId={teamId} seasonId={seasonId} active={!disabledWithoutInvitation} assertCurrent={assertInvitationCurrent} />}
+      {tab === 'formation' && manager && preparation && <FormationDesigner state={preparation} busy={disabled} onChange={command => mutate('preparation',command,'Formation')} />}
+      {(tab === 'clubs' || tab === 'clubReports' || !selectedContext) && identity?.principal.administration && <ClubAdministration key={`${absoluteApi}:${identity.principal.accountId}`} principal={identity.principal} section={tab === "clubReports" ? "reports" : "all"} load={loadAdministration} save={saveAdministration} loadReport={loadClubReport} onChanged={() => {void reload();}} />}
+      {tab === 'opposition' && (manager || administrator || membership?.role==='player') && (opposition ? <OppositionReviews value={opposition} busy={disabled} onSave={manager || administrator ? command => mutate('opposition-reviews',command,'Opposition notes') : undefined} /> : <Notice>Opposition notes are loading. Refresh your team view if they remain unavailable.</Notice>)}
       {tab === 'overview' && selectedContext && (teamOverview ? <TeamOverview team={teamOverview.team} games={overviewGames} nowMs={membershipTime} busy={disabled} onOpenGame={openOverviewGame} onRefresh={() => { void reload(); }} /> : <Notice>Your team overview is loading. Refresh your team view if it remains unavailable.</Notice>)}
       {tab === 'stats' && (manager || administrator || membership?.role === 'player') && <View style={s.stack}><Button label="Refresh stats" compact variant="quiet" disabled={disabled} onPress={() => {void reload();}} />{stats ? stats.kind === 'own-player-stats' ? <PlayerStats value={stats} teamLabel={overviewTeamLabel} /> : <TeamStats value={stats} teamLabel={overviewTeamLabel} selectedPlayerId={selectedStatsPlayerId} onSelectPlayer={setSelectedStatsPlayerId} /> : <Notice>Your statistics are loading. Refresh your team view if they remain unavailable.</Notice>}</View>}
       {tab === 'feedback' && (manager || membership?.role === 'player') && (feedback ? <MatchFeedback value={feedback} disabled={disabled} onSave={manager ? undefined : command => mutate('match-feedback',command,'Match feedback')} onRefresh={reload} /> : <Notice>Match feedback is loading. Refresh your team view if it remains unavailable.</Notice>)}
@@ -3024,14 +3020,14 @@ function WorkspaceSession({
               More
             </Text>
             {(manager ? [
-              ["overview", "Team overview"], ["centre", "Match centre"], ["reports", "Team records"], ["feedback", "Player feedback"],
+              ["overview", "Team overview"], ["centre", "Match centre"], ["reports", "Team records"], ["feedback", "Player feedback"], ["opposition", "Opposition notes"],
               ["community", "Photos and player of the match"], ["settings", "Team settings"], ["seasons", "Seasons"],
-              ["invitations", "Invitations"], ["privileges", "Upload and invitation privileges"],
+              ["formation", "Formation"], ["invitations", "Invite a spectator"], ["privileges", "Upload and invitation privileges"],
               ...(props.journal && props.deviceId ? [["controller", "Match recording"]] : []),
             ] : administrator ? [
-              ["overview", "Team overview"], ["people", "People"], ["seasons", "Seasons"], ["settings", "Club and team settings"],
+              ["overview", "Team overview"], ["people", "People"], ["clubReports", "Club reports"], ["opposition", "Opposition notes"], ["invitations", "Invite a spectator"], ["seasons", "Seasons"], ["settings", "Club and team settings"],
             ] : membership?.role === 'player' ? [
-              ["overview", "Team overview"], ["centre", "My game"], ["feedback", "My match feedback"], ["team", "My profile"], ["reports", "My reports"], ["invitations", "Invitations"],
+              ["overview", "Team overview"], ["centre", "My game"], ["feedback", "My match feedback"], ["opposition", "Opposition notes"], ["team", "My profile"], ["reports", "My reports"], ["invitations", "Invitations"],
             ] : [["overview", "Team overview"]]
             ).map(([value, label]) => (
               <Button
@@ -3187,7 +3183,7 @@ function WorkspaceSession({
             your manager assignment.
           </Notice>
         ))}
-      {tab === "clubs" && administrator && configuration && (
+      {tab === "clubs" && administrator && !identity?.principal.administration && configuration && (
         <Card>
           <Text style={typography.section}>Clubs</Text>
           <Text style={typography.body}>{configuration.club.name}</Text>
@@ -3233,6 +3229,7 @@ function WorkspaceSession({
       {tab === "account" && (
         <Card>
           <Text style={typography.section}>Account</Text>
+          {selectedContext && <Button label="Invite a spectator" icon="users" variant="secondary" testID="workspace-account-invite" onPress={() => setTab('invitations')} />}
           <Text style={typography.body}>
             {selectedContext?.roleLabel ?? "No selected workspace"}
           </Text>
@@ -3302,6 +3299,9 @@ function WorkspaceSession({
               : "Match updates are unavailable in this current authorised context."}
           </Notice>
         ))}
+      {(tab === 'team' || tab === 'schedule') && manager && preparation && <View style={s.row}><Button label="Formation" icon="ball" compact variant="secondary" testID="workspace-formation" disabled={disabled} onPress={() => setTab('formation')} /><Button label="FA team sheet" icon="shield" compact variant="secondary" testID="workspace-team-sheet" disabled={disabled} onPress={() => setTab('documents')} /></View>}
+      {tab === 'documents' && manager && teamId && seasonId && <TeamDocumentsPanel key={`${absoluteApi}:${identity?.principal.accountId}:${teamId}:${seasonId}:${membership?.role}`} baseUrl={connection.baseUrl || '/'} teamId={teamId} seasonId={seasonId} headers={documentHeaders} request={documentRequest} disabled={disabled} />}
+      {tab === 'settings' && manager && preparation && <SubstitutionAlertSettings key={`${teamId}:${seasonId}`} scopeKey={`${teamId}:${seasonId}`} value={preparation.substitutionAlerts} disabled={disabled} onSave={settings => mutate('preparation',{id:randomUUID(),expectedRevision:preparation.revision,type:'team.alerts_updated',substitutionAlerts:settings},'Team substitution alerts')} />}
       {(tab === "schedule" || tab === "team" || tab === "settings") &&
         (administrator && tab === "schedule" ? (
           scheduledGames ? <ScheduledGameManagement value={scheduledGames} fixtureId={selectedOverviewGameId ?? undefined} busy={disabled} onCommand={command => mutate("scheduled-games", command, "Scheduled game change")} /> : <Notice>Scheduled games are loading. Refresh your team view if they remain unavailable.</Notice>
@@ -3502,6 +3502,7 @@ function WorkspaceSession({
             )}
         </>
       )}
+      {tab === "invitations" && (manager || administrator) && teamId && seasonId && <InvitationRequestsPanel key={`${absoluteApi}:${identity?.principal.accountId}:${teamId}:${seasonId}:${membership?.role}`} baseUrl={connection.baseUrl || "/"} authenticatedFetch={authenticatedFetch} teamId={teamId} seasonId={seasonId} active={!disabledWithoutInvitation} assertCurrent={assertInvitationCurrent} />}
       {(tab === "community" || tab === "invitations") &&
         identity &&
         invitationScopeKey && (
@@ -3515,9 +3516,9 @@ function WorkspaceSession({
             teamId={teamId ?? null}
             seasonId={seasonId ?? null}
             canIssue={
-              invitationRole === "manager" || invitationRole === "player"
+              invitationRole !== null
             }
-            contributionsAllowed={ownPrivileges?.invitationsAllowed === true}
+            contributionsAllowed={invitationRole === "administrator" || invitationRole === "manager" || invitationRole === "spectator" || ownPrivileges?.invitationsAllowed === true}
             invitationDestination={props.invitationDestination}
             onRetainedChange={onInvitationRetained}
             onChanged={async (acceptedScope) => {
@@ -3578,6 +3579,7 @@ function WorkspaceSession({
               initialConnection={
                 props.initialConnection ? connection : undefined
               }
+              alertSettings={preparation?.substitutionAlerts}
               onControllerState={handleControllerState}
             />
           ) : (
@@ -3590,6 +3592,7 @@ function WorkspaceSession({
       )}
     </WorkspaceFrame>
     </WorkspaceLayoutProvider>
+    </RoleThemeProvider>
   );
 }
 
@@ -3741,6 +3744,7 @@ function OwnPreparation({
             positions:{" "}
             {value.profile.eligiblePositions.join(", ") || "not recorded"}.
           </Text>
+          <FaPlayerIdEditor value={value.profile.faPlayerId} disabled={disabled} onSave={faPlayerId => command({type:"own.fa_id_saved",faPlayerId})} />
           <Text style={typography.body}>Choose your first, second and backup positions. Your manager confirms eligibility.</Text>
           <View style={s.row}>
             {preferences.map((selected, rank) => <Button key={rank} label={`${['First','Second','Backup'][rank]} · ${selected}`} compact testID={`own-preference-rank-${rank}`} variant={preferenceRank === rank ? 'primary' : 'secondary'} style={{flex:1,minWidth:74}} disabled={disabled} onPress={() => setPreferenceRank(rank)} />)}

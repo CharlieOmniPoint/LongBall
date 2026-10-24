@@ -7,6 +7,7 @@
     "./*": "./src/*.ts"
   },
   "dependencies": {
+    "@e965/xlsx": "0.20.3",
     "@longball/domain": "workspace:*",
     "@longball/testing": "workspace:*",
     "@noble/hashes": "2.4.0"

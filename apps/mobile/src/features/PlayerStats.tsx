@@ -58,11 +58,17 @@ export function PlayerStatsDetails({
           />
           <Total label="Known goals" value={String(row.knownGoals)} />
           <Total label="Recorded own goals" value={String(row.knownOwnGoals)} />
+          <Total label="Clean sheets in goal" value={String(row.knownCleanSheets)} />
         </View>
         <Text style={typography.muted}>
           Appearances count only matches with recorded playing time above zero.
           Known goals count explicit scorer attribution; gaps are not treated as
-          zero.
+          zero. Clean sheets count completed games with no opposition goal during
+          the recorded goalkeeper stints, including opposition goals from own goals.
+        </Text>
+        <Text style={typography.muted}>
+          Goalkeeping reviewed: {row.goalkeepingReviewedMatches} games.
+          {row.goalkeepingUnknownMatches > 0 ? ` ${row.goalkeepingUnknownMatches} games lack complete goalkeeper or goal-timing evidence.` : ""}
         </Text>
       </Card>
       <Card>

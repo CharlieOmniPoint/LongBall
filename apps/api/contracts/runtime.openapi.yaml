@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: LongBall implemented runtime extensions
-  version: 1.8.0
+  version: 1.9.0
   description: >-
     Runtime additions beside the unchanged supplied canonical contract. Server
     authorization, explicit policy decisions and native-device acceptance remain
@@ -30,7 +30,7 @@ paths:
                 properties:
                   accountId: {$ref: '#/components/schemas/Identifier'}
                   identityClassification: {enum: [child_shared, adult_individual, unclassified]}
-                  principal: {type: object, description: Current authenticated runtime principal; no credentials}
+                  principal: {$ref: '#/components/schemas/RuntimePrincipal'}
                   memberships:
                     type: array
                     items: {$ref: '#/components/schemas/NamedWorkspaceMembership'}
@@ -442,7 +442,7 @@ paths:
       - {$ref: '#/components/parameters/SelectedRole'}
     get:
       operationId: listCurrentSpectatorInvitations
-      summary: List safe invitation summaries for a current manager or the original current player
+      summary: List current manager team invitations or the inviter's own scoped invitations
       parameters:
         - {$ref: '#/components/parameters/SeasonId'}
       responses:
@@ -452,8 +452,8 @@ paths:
         '404': {$ref: '#/components/responses/Unavailable'}
     post:
       operationId: issueServerGeneratedSpectatorInvitation
-      summary: Issue a single-use spectator credential without a player approval step
-      description: The season comes from the body; a contradictory query is refused. The service CSPRNG generates 32 bytes and stores only a domain-separated SHA-256 verifier. Explicit expiry is 1–48 hours and bounded by the selected season. No proposed default or player invitation cap is silently selected. The raw share URL is returned once and remains memory-only; it never enters generic outboxes, logs or durable receipts.
+      summary: Issue a single-use spectator invitation from a current authorized user
+      description: Current Managers, Players, Spectators and Administrators with the appropriate inherited scope may issue spectator invitations; current team contribution restrictions still apply. The season comes from the body; a contradictory query is refused. The service CSPRNG generates 32 bytes and stores only a domain-separated SHA-256 verifier. Explicit expiry is 1–48 hours and bounded by the selected season. No proposed default or player invitation cap is silently selected. The raw share URL is returned once and remains memory-only; it never enters generic outboxes, logs or durable receipts.
       parameters:
         - {$ref: '#/components/parameters/ContractVersion'}
         - {$ref: '#/components/parameters/IdempotencyKey'}
@@ -776,6 +776,9 @@ paths:
         '404': {$ref: '#/components/responses/Unavailable'}
     post:
       operationId: updateAdministratorConfiguration
+      x-command-schemas:
+        - {$ref: '#/components/schemas/TeamLeagueCommand'}
+        - {$ref: '#/components/schemas/TeamAlertSettingsCommand'}
       summary: Save an allowlisted configuration command under current administrator authority
       parameters:
         - {$ref: '#/components/parameters/ContractVersion'}
@@ -1128,7 +1131,7 @@ paths:
     get:
       operationId: readScopedPlayerStatistics
       summary: Read staff aggregates or only the currently linked player's aggregates
-      description: Spectators are denied. Administrators use a narrow database projection; existing private records, preparation and feedback access is not widened. Accepted checkpoints override older archived revisions once per game. Unknown or reviewed detail stays explicit; no scheduled duration becomes actual participation. No attendance, RSVP, injury, preferences or private feedback is returned.
+      description: Spectators are denied. Administrators use a narrow database projection; existing private records, preparation and feedback access is not widened. Clean sheets require completed accepted active goalkeeper intervals and explicit opposition goal timings; unknown or ambiguous history is never inferred from a zero final score. Accepted checkpoints override older archived revisions once per game. Unknown or reviewed detail stays explicit; no scheduled duration becomes actual participation. No attendance, RSVP, injury, preferences or private feedback is returned.
       responses:
         '200': {description: Exact own-player or team aggregate projection, content: {application/json: {schema: {$ref: '#/components/schemas/PlayerStatistics'}}}}
         '404': {$ref: '#/components/responses/Unavailable'}
@@ -1173,10 +1176,1502 @@ paths:
         '200': {description: Current safe team metadata, content: {application/json: {schema: {$ref: '#/components/schemas/TeamOverview'}}}}
         '404': {$ref: '#/components/responses/Unavailable'}
 
+  /administration:
+    get:
+      operationId: readClubAdministration
+      summary: Read the server-owned Super Admin or Club Admin directory
+      description: Super Admin sees the application club directory; Club Admin sees only authorized clubs. The role
+        header cannot confer administration. Current verified adult authority is required.
+      responses:
+        '200':
+          description: Current authorized, private no-store response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClubAdministration'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/Unavailable'
+    post:
+      operationId: manageClubAdministration
+      summary: Create clubs or teams and administer privileged adult grants
+      description: Super Admin may create clubs and grant/revoke administrative scope; recent strong adult authentication
+        is required for those operations. Club Admin may create teams only inside their current clubs. Grant targets
+        must already be verified adult accounts. One Super Admin must remain. The request uses a stable Idempotency-Key;
+        this command has no caller-selected object ID.
+      parameters:
+      - $ref: '#/components/parameters/ContractVersion'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClubAdministrationInput'
+      responses:
+        '200':
+          description: Current authorized, private no-store response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClubAdministration'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/Unavailable'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /clubs/{clubId}/reports:
+    parameters:
+    - name: clubId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Identifier'
+    get:
+      operationId: readClubPerformanceReport
+      summary: Read authorized club performance across its teams
+      description: Super Admin or an authorized Club Admin only. The scoped response includes team/age/season/league
+        metadata and accepted completed-game counts. Canonical accepted revisions are merged with archives once per
+        game. Missing scores are excluded from scored-game totals. Filtering and sorting by age group/team occur in
+        the client; this is not a public league table.
+      responses:
+        '200':
+          description: Current authorized, private no-store response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClubReport'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/Unavailable'
+  /teams/{teamId}/team-sheet:
+    parameters:
+    - $ref: '#/components/parameters/TeamId'
+    - $ref: '#/components/parameters/SeasonId'
+    - name: X-Longball-Role
+      in: header
+      required: true
+      schema:
+        enum:
+        - manager
+        - administrator
+    get:
+      operationId: readPrivateTeamSheetMetadata
+      summary: Read the private team FA sheet metadata
+      responses:
+        '200':
+          description: Current authorized, private no-store response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamSheet'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/Unavailable'
+    post:
+      operationId: savePrivateTeamSheet
+      summary: Upload, replace or remove the private team FA PDF
+      description: Current verified adult staff scope is checked. Command id must equal Idempotency-Key; expectedRevision
+        implements CAS. Team-bound storage persists across seasons but every access requires current team-season authority.
+        Upload accepts canonical base64 of a genuine unencrypted PDF, one to 50 pages and at most five MiB, without
+        scripts, attachments or launch actions. The transport permits a seven MiB JSON body for this route only.
+      parameters:
+      - $ref: '#/components/parameters/ContractVersion'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TeamSheetInput'
+      responses:
+        '200':
+          description: Current authorized, private no-store response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamSheet'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/Unavailable'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          description: Invalid PDF structure, pages, size, encryption or active content
+  /teams/{teamId}/team-sheet/download:
+    parameters:
+    - $ref: '#/components/parameters/TeamId'
+    - $ref: '#/components/parameters/SeasonId'
+    - name: X-Longball-Role
+      in: header
+      required: true
+      schema:
+        enum:
+        - manager
+        - administrator
+    get:
+      operationId: downloadPrivateTeamSheet
+      summary: Read private PDF bytes for game-day presentation
+      description: Authenticated private no-store JSON envelope containing base64, not a public file link or a raw
+        application/pdf response. The client creates a local file for viewing/sharing after a deliberate user action.
+      responses:
+        '200':
+          description: Current authorized, private no-store response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamSheetDownload'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/Unavailable'
+  /teams/{teamId}/opposition-reviews:
+    parameters:
+    - $ref: '#/components/parameters/TeamId'
+    - $ref: '#/components/parameters/SeasonId'
+    - name: X-Longball-Role
+      in: header
+      required: true
+      schema:
+        enum:
+        - manager
+        - administrator
+        - player
+    get:
+      operationId: readOppositionReviews
+      summary: Read manager opposition notes for completed games
+      description: Current players receive read-only team opposition notes. Spectators are denied. These manager-entered
+        capability ratings are separate from private player enjoyment feedback.
+      responses:
+        '200':
+          description: Current authorized, private no-store response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OppositionReviews'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/Unavailable'
+    post:
+      operationId: saveOppositionReview
+      summary: Save a completed-game opposition capability rating and note
+      description: Only current adult Manager/Administrator context may write. The command id equals Idempotency-Key;
+        expectedRevision provides CAS and command receipts preserve exact retries. Completed canonical or accepted
+        historic results are required; merely passing kickoff does not permit a review. Notes have at most 256 Unicode
+        characters.
+      parameters:
+      - name: X-Longball-Role
+        in: header
+        required: true
+        schema:
+          enum:
+          - manager
+          - administrator
+      - $ref: '#/components/parameters/ContractVersion'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OppositionReviewInput'
+      responses:
+        '200':
+          description: Current authorized, private no-store response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OppositionReviewReceipt'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/Unavailable'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /spectator-access/preview:
+    post:
+      operationId: previewSpectatorPinInvitation
+      summary: Inspect an invitation capability before spectator registration
+      security: []
+      description: No authenticated account or event-contract headers are required. A live, unaccepted, unrevoked
+        server-issued invitation token is required; only the exact invitation club/team/season metadata is returned.
+        The raw capability is never returned or logged.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvitationTokenInput'
+      responses:
+        '200':
+          description: Current authorized, private no-store response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpectatorAccessPreview'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/Unavailable'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          description: Bounded authentication/request rate limit; retry later
+  /spectator-access/register:
+    post:
+      operationId: registerInvitedSpectatorPinAccount
+      summary: Redeem a scoped invitation and set a spectator username and PIN
+      security: []
+      description: Anonymous capability redemption accepts exactly four fields; requestId is a stable body identity
+        and event mutation headers are not used. A live invitation, unique username and nontrivial four-digit passcode
+        are required. Salted scrypt verifiers are stored, not PIN plaintext. This creates an unclassified spectator
+        identity and exactly the invitation membership; it never creates adult, manager or player authority. The first
+        successful response creates an in-memory session.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SpectatorRegistrationInput'
+      responses:
+        '201':
+          description: Current authorized, private no-store response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpectatorSession'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/Unavailable'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          description: Bounded authentication/request rate limit; retry later
+  /spectator-access/login:
+    post:
+      operationId: loginSpectatorPinAccount
+      summary: Sign in to an existing spectator-only PIN account
+      security: []
+      description: Anonymous login checks the normalized username and four-digit passcode with constant-time verifier
+        comparison. Generic credential failures avoid username disclosure. Source-address attempts and concurrent
+        derivations are bounded; five persisted account failures lock the username for 15 minutes. Sessions last six
+        hours and service restart ends them; current memberships/grants are still checked for team data.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SpectatorLoginInput'
+      responses:
+        '201':
+          description: Current authorized, private no-store response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpectatorSession'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/Unavailable'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          description: Bounded authentication/request rate limit; retry later
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+  /spectator-access/session:
+    delete:
+      operationId: logoutSpectatorPinSession
+      summary: Revoke the current spectator PIN session
+      description: Requires the current opaque spectator bearer session. No body or event-contract mutation headers
+        are used. Subsequent use of the same token is denied.
+      responses:
+        '204':
+          description: Session revoked; private, no-store
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/Unavailable'
+  /spectator-access/directory:
+    get:
+      operationId: readPublicInviteRequestDirectory
+      summary: List safe club/team choices for an invitation request
+      security: []
+      description: Anonymous metadata-only club/team/age/season directory. No roster, player names, scores, contacts,
+        attendance or account directory is returned.
+      responses:
+        '200':
+          description: Current authorized, private no-store response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InviteDirectory'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/Unavailable'
+        '429':
+          description: Bounded authentication/request rate limit; retry later
+  /spectator-access/requests:
+    post:
+      operationId: requestScopedPlayerOrSpectatorInvitation
+      summary: Request an invitation to one club and team
+      security: []
+      description: Anonymous request accepts only Player or Spectator and does not create an account, membership,
+        invitation or session. The selected club/team/season combination is rechecked. A stable requestId provides
+        retry identity; source-address requests are limited to five per hour. Staff later handle or decline the request;
+        handling does not itself grant access.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InviteRequestInput'
+      responses:
+        '202':
+          description: Current authorized, private no-store response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InviteRequestPending'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/Unavailable'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          description: Bounded authentication/request rate limit; retry later
+  /teams/{teamId}/invite-requests:
+    parameters:
+    - $ref: '#/components/parameters/TeamId'
+    - $ref: '#/components/parameters/SeasonId'
+    - name: X-Longball-Role
+      in: header
+      required: true
+      schema:
+        enum:
+        - manager
+    get:
+      operationId: readTeamInviteRequests
+      summary: Read private pending and decided team invitation requests
+      description: Only current adult Manager context, including inherited club/system manager authority, may read
+        names/contact emails. Other players and spectators are denied. The newest 200 requests are returned.
+      responses:
+        '200':
+          description: Current authorized, private no-store response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InviteRequests'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/Unavailable'
+  /teams/{teamId}/invite-requests/{requestId}/decision:
+    parameters:
+    - $ref: '#/components/parameters/TeamId'
+    - $ref: '#/components/parameters/SeasonId'
+    - name: X-Longball-Role
+      in: header
+      required: true
+      schema:
+        enum:
+        - manager
+    - name: requestId
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/Identifier'
+    post:
+      operationId: decideTeamInviteRequest
+      summary: Mark a pending invitation request handled or declined
+      description: Current adult Manager context only. Pending requests are transitioned once; already decided or
+        different-scope requests are unavailable. Stable mutation headers are required. This records a staff decision;
+        it does not automatically create an invitation or grant membership.
+      parameters:
+      - $ref: '#/components/parameters/ContractVersion'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InviteRequestDecision'
+      responses:
+        '200':
+          description: Current authorized, private no-store response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InviteRequestDecision'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/Unavailable'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /teams/{teamId}/spectator-connections:
+    parameters:
+    - $ref: '#/components/parameters/TeamId'
+    - $ref: '#/components/parameters/SeasonId'
+    - name: X-Longball-Role
+      in: header
+      required: true
+      schema:
+        enum:
+        - spectator
+    get:
+      operationId: readSpectatorConnections
+      summary: Read the current team player-name connection choices
+      description: A current spectator membership and live grant are required. Only current active team player IDs/display
+        names and this account's selected connection are returned; no FA IDs, profiles, availability or statistics.
+      responses:
+        '200':
+          description: Current authorized, private no-store response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpectatorConnections'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/Unavailable'
+    post:
+      operationId: selectSpectatorConnection
+      summary: Choose or clear this spectator account's team player connection
+      description: Requires current spectator access, event-contract headers and a stable key. The selected player
+        must belong to the current team-season; null clears the connection. A connection is a viewing preference and
+        grants no additional data or team authority.
+      parameters:
+      - $ref: '#/components/parameters/ContractVersion'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SpectatorConnectionInput'
+      responses:
+        '200':
+          description: Current authorized, private no-store response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpectatorConnections'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/Unavailable'
+        '409':
+          $ref: '#/components/responses/Conflict'
 components:
   securitySchemes:
-    bearerAuth: {type: http, scheme: bearer, bearerFormat: JWT}
+    bearerAuth: {type: http, scheme: bearer, bearerFormat: JWT or opaque session}
   schemas:
+    AdministrationScope:
+      type: object
+      additionalProperties: false
+      required:
+      - level
+      - clubIds
+      properties:
+        level:
+          enum:
+          - super
+          - club
+        clubIds:
+          type: array
+          items:
+            $ref: '#/components/schemas/Identifier'
+          uniqueItems: true
+    RuntimePrincipal:
+      type: object
+      additionalProperties: false
+      required:
+      - accountId
+      - issuer
+      - subject
+      - identityClassification
+      - adultVerified
+      - strongAuth
+      - authenticatedAt
+      - status
+      properties:
+        accountId:
+          $ref: '#/components/schemas/Identifier'
+        issuer:
+          type: string
+          minLength: 1
+        subject:
+          type: string
+          minLength: 1
+        identityClassification:
+          enum:
+          - child_shared
+          - adult_individual
+          - unclassified
+        adultVerified:
+          type: boolean
+        strongAuth:
+          type: boolean
+        authenticatedAt:
+          type: integer
+          minimum: 0
+          maximum: 9007199254740991
+        status:
+          enum:
+          - active
+          - disabled
+        administration:
+          $ref: '#/components/schemas/AdministrationScope'
+    ClubDirectoryClub:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - name
+      properties:
+        id:
+          $ref: '#/components/schemas/Identifier'
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+    ClubDirectoryTeam:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - clubId
+      - name
+      - ageGroup
+      - seasonId
+      - seasonLabel
+      - leagueName
+      properties:
+        id:
+          $ref: '#/components/schemas/Identifier'
+        clubId:
+          $ref: '#/components/schemas/Identifier'
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        ageGroup:
+          type: string
+        seasonId:
+          $ref: '#/components/schemas/Identifier'
+        seasonLabel:
+          type: string
+        leagueName:
+          type: string
+          maxLength: 120
+    ClubAdministration:
+      type: object
+      additionalProperties: false
+      required:
+      - kind
+      - administration
+      - clubs
+      - teams
+      - administrators
+      - candidates
+      properties:
+        kind:
+          const: club-administration
+        administration:
+          $ref: '#/components/schemas/AdministrationScope'
+        clubs:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClubDirectoryClub'
+        teams:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClubDirectoryTeam'
+        administrators:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required:
+            - accountId
+            - level
+            - clubId
+            properties:
+              accountId:
+                $ref: '#/components/schemas/Identifier'
+              level:
+                enum:
+                - super
+                - club
+              clubId:
+                oneOf:
+                - $ref: '#/components/schemas/Identifier'
+                - type: 'null'
+        candidates:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required:
+            - accountId
+            - label
+            properties:
+              accountId:
+                $ref: '#/components/schemas/Identifier'
+              label:
+                type: string
+    ClubAdministrationCommand:
+      oneOf:
+      - type: object
+        additionalProperties: false
+        required:
+        - type
+        - name
+        properties:
+          type:
+            const: club.create
+          name:
+            type: string
+            minLength: 1
+            maxLength: 100
+            pattern: ^[^\u0000-\u001f\u007f]*\S[^\u0000-\u001f\u007f]*$
+      - type: object
+        additionalProperties: false
+        required:
+        - type
+        - clubId
+        - name
+        - ageGroup
+        - format
+        - seasonStartYear
+        properties:
+          type:
+            const: team.create
+          clubId:
+            $ref: '#/components/schemas/Identifier'
+          name:
+            type: string
+            minLength: 1
+            maxLength: 100
+            pattern: ^[^\u0000-\u001f\u007f]*\S[^\u0000-\u001f\u007f]*$
+          ageGroup:
+            type: string
+            pattern: ^U(?:[5-9]|1[0-9]|2[01])$
+          format:
+            type: integer
+            minimum: 5
+            maximum: 11
+          seasonStartYear:
+            type: integer
+            minimum: 2000
+            maximum: 2100
+      - type: object
+        additionalProperties: false
+        required:
+        - type
+        - accountId
+        - level
+        - clubId
+        properties:
+          type:
+            enum:
+            - administrator.grant
+            - administrator.revoke
+          accountId:
+            $ref: '#/components/schemas/Identifier'
+          level:
+            enum:
+            - super
+            - club
+          clubId:
+            oneOf:
+            - $ref: '#/components/schemas/Identifier'
+            - type: 'null'
+        allOf:
+        - if:
+            properties:
+              level:
+                const: super
+          then:
+            properties:
+              clubId:
+                type: 'null'
+          else:
+            properties:
+              clubId:
+                $ref: '#/components/schemas/Identifier'
+    ClubAdministrationInput:
+      type: object
+      additionalProperties: false
+      required:
+      - command
+      properties:
+        command:
+          $ref: '#/components/schemas/ClubAdministrationCommand'
+    ClubReportRow:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - clubId
+      - name
+      - ageGroup
+      - seasonId
+      - seasonLabel
+      - leagueName
+      - players
+      - completedGames
+      - scoredGames
+      - wins
+      - draws
+      - losses
+      - goalsFor
+      - goalsAgainst
+      properties:
+        id:
+          $ref: '#/components/schemas/Identifier'
+        clubId:
+          $ref: '#/components/schemas/Identifier'
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        ageGroup:
+          type: string
+        seasonId:
+          $ref: '#/components/schemas/Identifier'
+        seasonLabel:
+          type: string
+        leagueName:
+          type: string
+          maxLength: 120
+        players:
+          type: integer
+          minimum: 0
+          maximum: 9007199254740991
+        completedGames:
+          type: integer
+          minimum: 0
+          maximum: 9007199254740991
+        scoredGames:
+          type: integer
+          minimum: 0
+          maximum: 9007199254740991
+        wins:
+          type: integer
+          minimum: 0
+          maximum: 9007199254740991
+        draws:
+          type: integer
+          minimum: 0
+          maximum: 9007199254740991
+        losses:
+          type: integer
+          minimum: 0
+          maximum: 9007199254740991
+        goalsFor:
+          type: integer
+          minimum: 0
+          maximum: 9007199254740991
+        goalsAgainst:
+          type: integer
+          minimum: 0
+          maximum: 9007199254740991
+    ClubReport:
+      type: object
+      additionalProperties: false
+      required:
+      - kind
+      - club
+      - teams
+      properties:
+        kind:
+          const: club-report
+        club:
+          $ref: '#/components/schemas/ClubDirectoryClub'
+        teams:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClubReportRow'
+    TeamSheetMetadata:
+      type: object
+      additionalProperties: false
+      required:
+      - fileName
+      - byteLength
+      - sha256
+      - updatedAtMs
+      properties:
+        fileName:
+          type: string
+          minLength: 5
+          maxLength: 120
+        byteLength:
+          type: integer
+          minimum: 1
+          maximum: 5242880
+        sha256:
+          type: string
+          pattern: ^[a-f0-9]{64}$
+        updatedAtMs:
+          type: integer
+          minimum: 0
+          maximum: 9007199254740991
+    TeamSheet:
+      type: object
+      additionalProperties: false
+      required:
+      - kind
+      - teamId
+      - revision
+      - document
+      properties:
+        kind:
+          const: team-document
+        teamId:
+          $ref: '#/components/schemas/Identifier'
+        revision:
+          type: integer
+          minimum: 0
+          maximum: 9007199254740991
+        document:
+          oneOf:
+          - $ref: '#/components/schemas/TeamSheetMetadata'
+          - type: 'null'
+    TeamSheetDownload:
+      type: object
+      additionalProperties: false
+      required:
+      - kind
+      - teamId
+      - revision
+      - document
+      - base64
+      properties:
+        kind:
+          const: team-document
+        teamId:
+          $ref: '#/components/schemas/Identifier'
+        revision:
+          type: integer
+          minimum: 0
+          maximum: 9007199254740991
+        document:
+          $ref: '#/components/schemas/TeamSheetMetadata'
+        base64:
+          type: string
+          minLength: 12
+          maxLength: 6990508
+          pattern: ^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$
+          description: Private PDF bytes, base64 encoded. No public document URL is returned.
+    TeamSheetCommand:
+      oneOf:
+      - type: object
+        additionalProperties: false
+        required:
+        - id
+        - expectedRevision
+        - type
+        - fileName
+        - base64
+        properties:
+          id:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{8,150}$
+          expectedRevision:
+            type: integer
+            minimum: 0
+            maximum: 9007199254740991
+          type:
+            const: team_sheet.uploaded
+          fileName:
+            type: string
+            minLength: 5
+            maxLength: 120
+            pattern: ^[^\u0000-\u001f/\\]{1,116}\.[pP][dD][fF]$
+          base64:
+            type: string
+            minLength: 12
+            maxLength: 6990508
+            pattern: ^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$
+            writeOnly: true
+      - type: object
+        additionalProperties: false
+        required:
+        - id
+        - expectedRevision
+        - type
+        properties:
+          id:
+            type: string
+            pattern: ^[A-Za-z0-9_-]{8,150}$
+          expectedRevision:
+            type: integer
+            minimum: 0
+            maximum: 9007199254740991
+          type:
+            const: team_sheet.removed
+    TeamSheetInput:
+      type: object
+      additionalProperties: false
+      required:
+      - command
+      properties:
+        command:
+          $ref: '#/components/schemas/TeamSheetCommand'
+    RecordedGameIdentifier:
+      type: string
+      pattern: ^[A-Za-z0-9_.:-]{1,150}$
+    OppositionReviewCommand:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - expectedRevision
+      - type
+      - matchId
+      - rating
+      - note
+      properties:
+        id:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{8,150}$
+        expectedRevision:
+          type: integer
+          minimum: 0
+          maximum: 9007199254740991
+        type:
+          const: opposition.review.saved
+        matchId:
+          $ref: '#/components/schemas/RecordedGameIdentifier'
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+        note:
+          type:
+          - string
+          - 'null'
+          maxLength: 256
+          pattern: ^[^\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]*$
+    OppositionReviewInput:
+      type: object
+      additionalProperties: false
+      required:
+      - command
+      properties:
+        command:
+          $ref: '#/components/schemas/OppositionReviewCommand'
+    OppositionReviewReceipt:
+      type: object
+      additionalProperties: false
+      required:
+      - kind
+      - commandId
+      - teamId
+      - seasonId
+      - matchId
+      - revision
+      properties:
+        kind:
+          const: opposition-review-receipt
+        commandId:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{8,150}$
+        teamId:
+          $ref: '#/components/schemas/Identifier'
+        seasonId:
+          $ref: '#/components/schemas/Identifier'
+        matchId:
+          $ref: '#/components/schemas/RecordedGameIdentifier'
+        revision:
+          type: integer
+          minimum: 1
+          maximum: 9007199254740991
+    OppositionReview:
+      type: object
+      additionalProperties: false
+      required:
+      - rating
+      - note
+      - revision
+      - updatedAtMs
+      properties:
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+        note:
+          type:
+          - string
+          - 'null'
+          maxLength: 256
+          pattern: ^[^\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]*$
+        revision:
+          type: integer
+          minimum: 1
+          maximum: 9007199254740991
+        updatedAtMs:
+          type: integer
+          minimum: 0
+          maximum: 9007199254740991
+    OppositionReviews:
+      type: object
+      additionalProperties: false
+      required:
+      - kind
+      - teamId
+      - seasonId
+      - canEdit
+      - games
+      properties:
+        kind:
+          const: opposition-reviews
+        teamId:
+          $ref: '#/components/schemas/Identifier'
+        seasonId:
+          $ref: '#/components/schemas/Identifier'
+        canEdit:
+          type: boolean
+        games:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required:
+            - matchId
+            - opponent
+            - playedDate
+            - review
+            properties:
+              matchId:
+                $ref: '#/components/schemas/RecordedGameIdentifier'
+              opponent:
+                type: string
+                maxLength: 150
+              playedDate:
+                type: string
+                format: date
+              review:
+                oneOf:
+                - $ref: '#/components/schemas/OppositionReview'
+                - type: 'null'
+    SpectatorAccessPreview:
+      type: object
+      additionalProperties: false
+      required:
+      - invitationId
+      - clubId
+      - teamId
+      - seasonId
+      - expiresAt
+      - context
+      properties:
+        invitationId:
+          $ref: '#/components/schemas/Identifier'
+        clubId:
+          $ref: '#/components/schemas/Identifier'
+        teamId:
+          $ref: '#/components/schemas/Identifier'
+        seasonId:
+          $ref: '#/components/schemas/Identifier'
+        expiresAt:
+          type: string
+          format: date-time
+        context:
+          $ref: '#/components/schemas/InvitationContext'
+    SpectatorPin:
+      type: string
+      minLength: 4
+      maxLength: 4
+      pattern: ^[0-9]{4}$
+      writeOnly: true
+    NewSpectatorPin:
+      allOf:
+      - $ref: '#/components/schemas/SpectatorPin'
+      - not:
+          anyOf:
+          - pattern: ^(\d)\1\1\1$
+          - pattern: ^(\d\d)\1$
+          - pattern: ^(\d)\1(\d)\2$
+          - enum:
+            - '0123'
+            - '0852'
+            - '0987'
+            - '1004'
+            - '1098'
+            - '1234'
+            - '1313'
+            - '2000'
+            - '2001'
+            - '2020'
+            - '2109'
+            - '2345'
+            - '2580'
+            - '3210'
+            - '3456'
+            - '4321'
+            - '4567'
+            - '5432'
+            - '5678'
+            - '6543'
+            - '6789'
+            - '6969'
+            - '7654'
+            - '7890'
+            - '8765'
+            - '8901'
+            - '9012'
+            - '9876'
+      description: Four digits; repeated digits/pairs, ascending/descending wrapping sequences and listed easily guessed
+        patterns are refused. Never grants player, manager or administrative authority.
+    SpectatorUsernameInput:
+      type: string
+      pattern: ^\s*[A-Za-z0-9][A-Za-z0-9._-]{2,39}\s*$
+      description: Trimmed and lowercased by the server; the resulting username has 3 to 40 allowed characters.
+    SpectatorRegistrationInput:
+      type: object
+      additionalProperties: false
+      required:
+      - token
+      - username
+      - passcode
+      - requestId
+      properties:
+        token:
+          $ref: '#/components/schemas/InvitationToken'
+        username:
+          $ref: '#/components/schemas/SpectatorUsernameInput'
+        passcode:
+          $ref: '#/components/schemas/NewSpectatorPin'
+        requestId:
+          $ref: '#/components/schemas/Identifier'
+    SpectatorLoginInput:
+      type: object
+      additionalProperties: false
+      required:
+      - username
+      - passcode
+      properties:
+        username:
+          allOf:
+          - $ref: '#/components/schemas/SpectatorUsernameInput'
+          - maxLength: 128
+        passcode:
+          $ref: '#/components/schemas/SpectatorPin'
+    SpectatorSession:
+      type: object
+      additionalProperties: false
+      required:
+      - accountId
+      - accessToken
+      - expiresAt
+      - role
+      properties:
+        accountId:
+          $ref: '#/components/schemas/Identifier'
+        accessToken:
+          type: string
+          pattern: ^spectator_[A-Za-z0-9_-]{43}$
+          readOnly: true
+          description: Opaque bearer session; keep in memory, never log or include in shared URLs.
+        expiresAt:
+          type: string
+          format: date-time
+        role:
+          const: spectator
+    InviteDirectoryTeam:
+      type: object
+      additionalProperties: false
+      required:
+      - clubId
+      - clubName
+      - teamId
+      - teamName
+      - ageGroup
+      - seasonId
+      - seasonLabel
+      properties:
+        clubId:
+          $ref: '#/components/schemas/Identifier'
+        clubName:
+          type: string
+        teamId:
+          $ref: '#/components/schemas/Identifier'
+        teamName:
+          type: string
+        ageGroup:
+          type: string
+        seasonId:
+          $ref: '#/components/schemas/Identifier'
+        seasonLabel:
+          type: string
+    InviteDirectory:
+      type: array
+      items:
+        $ref: '#/components/schemas/InviteDirectoryTeam'
+    InviteRequestInput:
+      type: object
+      additionalProperties: false
+      required:
+      - requestId
+      - clubId
+      - teamId
+      - seasonId
+      - requestedRole
+      - name
+      - email
+      properties:
+        requestId:
+          $ref: '#/components/schemas/Identifier'
+        clubId:
+          $ref: '#/components/schemas/Identifier'
+        teamId:
+          $ref: '#/components/schemas/Identifier'
+        seasonId:
+          $ref: '#/components/schemas/Identifier'
+        requestedRole:
+          enum:
+          - player
+          - spectator
+        name:
+          type: string
+          minLength: 2
+          maxLength: 80
+          allOf:
+          - pattern: ^\s*\S[\s\S]*\S\s*$
+          - pattern: ^[^\u0000-\u001f\u007f]*$
+        email:
+          type: string
+          maxLength: 254
+          pattern: ^[^\s@]+@[^\s@]+\.[^\s@]+$
+    InviteRequestPending:
+      type: object
+      additionalProperties: false
+      required:
+      - requestId
+      - status
+      properties:
+        requestId:
+          $ref: '#/components/schemas/Identifier'
+        status:
+          const: pending
+    InviteRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - requestId
+      - clubId
+      - teamId
+      - seasonId
+      - requestedRole
+      - name
+      - email
+      - status
+      - createdAt
+      properties:
+        requestId:
+          $ref: '#/components/schemas/Identifier'
+        clubId:
+          $ref: '#/components/schemas/Identifier'
+        teamId:
+          $ref: '#/components/schemas/Identifier'
+        seasonId:
+          $ref: '#/components/schemas/Identifier'
+        requestedRole:
+          enum:
+          - player
+          - spectator
+        name:
+          type: string
+          minLength: 2
+          maxLength: 80
+          allOf:
+          - pattern: ^\s*\S[\s\S]*\S\s*$
+          - pattern: ^[^\u0000-\u001f\u007f]*$
+        email:
+          type: string
+          maxLength: 254
+          pattern: ^[^\s@]+@[^\s@]+\.[^\s@]+$
+        status:
+          enum:
+          - pending
+          - handled
+          - declined
+        createdAt:
+          type: string
+          format: date-time
+    InviteRequests:
+      type: array
+      items:
+        $ref: '#/components/schemas/InviteRequest'
+      maxItems: 200
+    InviteRequestDecision:
+      type: object
+      additionalProperties: false
+      required:
+      - status
+      properties:
+        status:
+          enum:
+          - handled
+          - declined
+    SpectatorConnections:
+      type: object
+      additionalProperties: false
+      required:
+      - players
+      - followedPlayerId
+      properties:
+        players:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required:
+            - id
+            - label
+            properties:
+              id:
+                $ref: '#/components/schemas/Identifier'
+              label:
+                type: string
+        followedPlayerId:
+          oneOf:
+          - $ref: '#/components/schemas/Identifier'
+          - type: 'null'
+    SpectatorConnectionInput:
+      type: object
+      additionalProperties: false
+      required:
+      - playerId
+      properties:
+        playerId:
+          oneOf:
+          - $ref: '#/components/schemas/Identifier'
+          - type: 'null'
+    FaPlayerId:
+      type:
+      - string
+      - 'null'
+      pattern: ^(?:[0-9]{1,20})?$
+      description: Optional private FA identifier preserving leading zeroes; blank input clears it. Never an account or authentication identity.
+    OwnFaIdCommand:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - expectedRevision
+      - type
+      - faPlayerId
+      properties:
+        id:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{8,150}$
+        expectedRevision:
+          type: integer
+          minimum: 0
+          maximum: 9007199254740991
+        type:
+          const: own.fa_id_saved
+        faPlayerId:
+          $ref: '#/components/schemas/FaPlayerId'
+    TeamLeagueCommand:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - expectedRevision
+      - type
+      - league
+      properties:
+        id:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{8,150}$
+        expectedRevision:
+          type: integer
+          minimum: 0
+          maximum: 9007199254740991
+        type:
+          const: team.league_updated
+        league:
+          type: string
+          maxLength: 120
+          pattern: ^[^\u0000-\u001f]*$
+    SubstitutionAlertSettings:
+      type: object
+      additionalProperties: false
+      required:
+      - enabled
+      - leadSeconds
+      - volume
+      properties:
+        enabled:
+          type: boolean
+        leadSeconds:
+          type: integer
+          minimum: 0
+          maximum: 300
+        volume:
+          type: number
+          minimum: 0
+          maximum: 1
+    TeamAlertSettingsCommand:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - expectedRevision
+      - type
+      - substitutionAlerts
+      properties:
+        id:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{8,150}$
+        expectedRevision:
+          type: integer
+          minimum: 0
+          maximum: 9007199254740991
+        type:
+          const: team.alerts_updated
+        substitutionAlerts:
+          $ref: '#/components/schemas/SubstitutionAlertSettings'
     ScheduledGameCommand:
       type: object
       additionalProperties: false
@@ -1257,7 +2752,7 @@ components:
     PlayerStatisticRow:
       type: object
       additionalProperties: false
-      required: [playerId, label, knownPlayingMs, knownAppearances, knownGoals, knownOwnGoals, positions, unknownPositionMs, coverage]
+      required: [playerId, label, knownPlayingMs, knownAppearances, knownGoals, knownOwnGoals, knownCleanSheets, goalkeepingReviewedMatches, goalkeepingUnknownMatches, positions, unknownPositionMs, coverage]
       properties:
         playerId: {$ref: '#/components/schemas/Identifier'}
         label: {type: string}
@@ -1265,6 +2760,9 @@ components:
         knownAppearances: {type: integer, minimum: 0}
         knownGoals: {type: integer, minimum: 0}
         knownOwnGoals: {type: integer, minimum: 0}
+        knownCleanSheets: {type: integer, minimum: 0, description: Completed games without an opposition goal during the player's known active goalkeeper stints}
+        goalkeepingReviewedMatches: {type: integer, minimum: 0}
+        goalkeepingUnknownMatches: {type: integer, minimum: 0, description: Missing or ambiguous goalkeeper/goal-timing evidence remains unknown}
         positions: {type: array, items: {$ref: '#/components/schemas/StatisticPosition'}}
         unknownPositionMs: {type: integer, minimum: 0}
         coverage:
@@ -1400,6 +2898,7 @@ components:
         teamId: {$ref: '#/components/schemas/Identifier'}
         seasonId: {$ref: '#/components/schemas/Identifier'}
         role: {enum: [administrator, manager, player, spectator]}
+        administrativeInheritance: {const: true, description: Server-materialized club/system authority; never a caller role claim}
         playerId: {$ref: '#/components/schemas/Identifier'}
         expiresAt: {type: [integer, 'null'], minimum: 0}
         revokedAt: {type: [integer, 'null'], minimum: 0}

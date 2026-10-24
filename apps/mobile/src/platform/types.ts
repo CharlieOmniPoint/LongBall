@@ -61,4 +61,7 @@ export interface ClockReading {
 export interface NativeCapabilities {
   readClock(): ClockReading;
   storageDirectory(): { directory: string; backupExcluded: boolean; existingJournal: boolean };
+  /** Missing on older clients; adjustable match audio requires a new native build. */
+  playSubstitutionTone?(volume: number): boolean;
+  stopSubstitutionTone?(): void;
 }

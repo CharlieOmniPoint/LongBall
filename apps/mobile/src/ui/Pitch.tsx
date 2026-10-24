@@ -40,6 +40,8 @@ export interface PitchProps {
   formationName?: string;
   /** Formation-template placement only; match allocation behavior remains unchanged. */
   positionEditing?: boolean;
+  /** Tactical diagram with position labels and no player identity or empty-player prompt. */
+  positionsOnly?: boolean;
   onPitchPress?: (point: {
     x: number;
     y: number;
@@ -59,12 +61,17 @@ export function Pitch({
   slots = [...defaultSlots],
   formationName = "2–3–1 formation",
   positionEditing = false,
+  positionsOnly = false,
   onPitchPress,
 }: PitchProps) {
   const { fontScale } = useWindowDimensions();
   const [showList, setShowList] = useState(false);
   const [bounds, setBounds] = useState({ width: 0, height: 0 });
   const list = showList || fontScale >= 1.5;
+  const positionDiagram = positionEditing || positionsOnly;
+  const diagramRows = new Set(slots.filter(slot => slot.label !== 'GK').map(slot => Math.round(slot.y))).size;
+  const widestDiagramRow = Math.max(1, ...slots.map(slot => slots.filter(other => Math.round(other.y) === Math.round(slot.y)).length));
+  const positionDiscSize = Math.max(20, Math.min(44, (bounds.width - 48) / (widestDiagramRow + 1) - 4));
 
   return (
     <View style={styles.wrapper}>
@@ -102,7 +109,7 @@ export function Pitch({
                 disabled={!onSlotPress}
                 accessibilityRole={onSlotPress ? "button" : undefined}
                 accessibilityLabel={
-                  positionEditing
+                  positionsOnly ? slot.name : positionEditing
                     ? `Choose formation slot ${slot.name}`
                     : `${slot.name}, ${player?.displayName ?? "unfilled"}${changed ? ", pending start" : ""}`
                 }
@@ -119,7 +126,7 @@ export function Pitch({
               >
                 <Text style={styles.positionName}>{slot.name}</Text>
                 <Text style={styles.positionPlayer}>
-                  {positionEditing
+                  {positionsOnly ? slot.label : positionEditing
                     ? `${slot.label} · ${Math.round(slot.x)}%, ${Math.round(slot.y)}%`
                     : (player?.displayName ?? "Choose player")}
                   {changed ? " · Pending" : ""}
@@ -132,7 +139,9 @@ export function Pitch({
         <View
           style={[
             styles.pitch,
-            positionEditing
+            positionsOnly
+              ? { height: Math.max(compact ? 306 : 396, 72 + Math.max(0, diagramRows - 1) * 64 / 0.59) }
+              : positionEditing
               ? { aspectRatio: 0.72 }
               : { height: compact ? 306 : 396 },
           ]}
@@ -240,7 +249,7 @@ export function Pitch({
                 disabled={!onSlotPress}
                 accessibilityRole={onSlotPress ? "button" : undefined}
                 accessibilityLabel={
-                  positionEditing
+                  positionsOnly ? slot.name : positionEditing
                     ? `Choose formation slot ${slot.name}`
                     : `${slot.name}, ${player?.displayName ?? "unfilled"}, ${changed ? "pending start" : "current allocation"}`
                 }
@@ -252,15 +261,16 @@ export function Pitch({
                 aria-disabled={!onSlotPress}
                 style={[
                   styles.slot,
-                  (slots.length > 7 || positionEditing) && {
+                  (slots.length > 7 || positionDiagram) && {
                     width: 52,
                     marginLeft: -26,
                   },
+                  positionsOnly && { width: positionDiscSize + 8, marginLeft: -(positionDiscSize + 8) / 2, minHeight: positionDiscSize },
                   {
-                    left: positionEditing
+                    left: positionDiagram
                       ? 24 + (slot.x / 100) * Math.max(0, bounds.width - 48)
                       : `${slot.x}%`,
-                    top: positionEditing
+                    top: positionDiagram
                       ? (slot.y / 100) * Math.max(0, bounds.height - 72)
                       : `${compact && slot.label === "GK" ? 78 : slot.y}%`,
                   },
@@ -270,12 +280,13 @@ export function Pitch({
                   style={[
                     styles.disc,
                     slot.label === "GK" && styles.goalkeeper,
-                    !player && styles.emptyDisc,
+                    !player && !positionsOnly && styles.emptyDisc,
+                    positionsOnly && { width: positionDiscSize, height: positionDiscSize, borderRadius: positionDiscSize / 2 },
                     (selected || changed) && styles.selectedDisc,
                   ]}
                 >
-                  <Text style={styles.discText}>
-                    {positionEditing
+                  <Text style={[styles.discText, positionsOnly && { fontSize: Math.max(12, Math.min(18, positionDiscSize * 0.42)), lineHeight: Math.max(16, Math.min(24, positionDiscSize * 0.6)) }]}>
+                    {positionDiagram
                       ? slot.label
                       : (shirt ??
                         (player
@@ -288,10 +299,10 @@ export function Pitch({
                     </View>
                   )}
                 </View>
-                <Text style={styles.slotText}>
+                {!positionsOnly && <Text style={styles.slotText}>
                   {slot.label}
                   {changed ? " · Pending" : ""}
-                </Text>
+                </Text>}
               </Pressable>
             );
           })}

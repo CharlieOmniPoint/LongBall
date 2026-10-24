@@ -140,8 +140,24 @@ describe("service-verified spectator invitation transitions", () => {
   });
   it("requires current issuer authority, exact scope, unique verifier and explicit bounded expiry", () => {
     const { state, actors } = setup();
-    expect(() => issue(state, actors.spectator)).toThrow(
-      /current player or manager/,
+    const spectatorIssued = issue(state, actors.spectator);
+    expect(spectatorIssued.invitations[0]).toMatchObject({
+      inviterAccountId: actors.spectator.accountId,
+      teamId: actors.spectator.teamId,
+      seasonId: actors.spectator.seasonId,
+    });
+    expect(spectatorIssued.memberships).toEqual(state.memberships);
+    expect(spectatorIssued.grants).toEqual(state.grants);
+    const spectatorRevoked = JSON.parse(
+      JSON.stringify(state),
+    ) as CommunityState;
+    spectatorRevoked.grants
+      .filter((grant) => grant.accountId === actors.spectator.accountId)
+      .forEach((grant) => {
+        grant.revokedAtMs = now;
+      });
+    expect(() => issue(spectatorRevoked, actors.spectator)).toThrow(
+      /access is unavailable/,
     );
     const issued = issue(state, actors.player);
     expect(() => issue(issued, actors.player, "reused-hash")).toThrow(

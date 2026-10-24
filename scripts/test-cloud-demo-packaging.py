@@ -42,6 +42,11 @@ class VerifierPackagingTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 self.parse(value)
 
+    def test_accepts_preexisting_club_admin_without_authority_fields(self):
+        value = fixture()
+        value["accounts"][0]["accountId"] = "synthetic-account-club-admin"
+        self.assertEqual(self.parse(value)["accounts"][0]["accountId"], "synthetic-account-club-admin")
+
     def test_rejects_unknown_duplicate_and_unbounded_accounts(self):
         for mutation in [
             lambda value: value.update(version=True),

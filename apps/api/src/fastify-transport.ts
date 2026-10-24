@@ -81,6 +81,7 @@ export function createFastifyTransport(options: TransportOptions): FastifyInstan
     reply.hijack();
     await options.dispatch(request.raw, reply.raw, request.body, request.id);
   };
+  app.post('/v1/teams/:teamId/team-sheet',{bodyLimit:7*1024*1024,schema:{body:{type:'object',additionalProperties:true}}},dispatch);
   for (const url of ['/', '/*']) {
     app.route({ method: 'POST', url, schema: { body: { type: 'object', additionalProperties: true } }, handler: dispatch });
     app.route({ method: ['GET', 'HEAD', 'PUT', 'DELETE', 'OPTIONS'], url, handler: dispatch });

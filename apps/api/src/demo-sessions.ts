@@ -15,7 +15,7 @@ export interface DemoAccountOptions {
   sessionTtlSeconds?: number;
 }
 export const DEMO_SCRYPT_OPTIONS = { N: 16_384, r: 8, p: 1, maxmem: 32 * 1024 * 1024 } as const;
-const ACCOUNT_ID = /^synthetic-account-(?:manager(?:-[2-5])?|admin|player-(?:0[1-9]|1[0-3])|spectator)$/;
+const ACCOUNT_ID = /^synthetic-account-(?:manager(?:-[2-5])?|admin|club-admin|player-(?:0[1-9]|1[0-3])|spectator)$/;
 const USERNAME = /^[a-z0-9][a-z0-9._-]{2,63}$/;
 const CONFIG_ERROR = 'Configure valid demo account verifiers. No account configuration was loaded.';
 const invalidSession = () => new AccessError('INVALID_SESSION', 401, 'A valid authenticated session is required.');
@@ -103,7 +103,7 @@ export class DemoSessions {
     this.prune();
     const session = /^demo_[A-Za-z0-9_-]{43}$/.test(token) ? this.sessions.get(sha256(token)) : undefined;
     if (!session) throw invalidSession();
-    return { issuer: 'urn:longball:synthetic', subject: session.accountId, authenticatedAt: session.issuedAt, strongAuth: /^synthetic-account-(?:manager(?:-[2-5])?|admin)$/.test(session.accountId) };
+    return { issuer: 'urn:longball:synthetic', subject: session.accountId, authenticatedAt: session.issuedAt, strongAuth: /^synthetic-account-(?:manager(?:-[2-5])?|admin|club-admin)$/.test(session.accountId) };
   }
   revoke(token: string): void {
     this.identity(token);

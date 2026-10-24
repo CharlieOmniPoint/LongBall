@@ -52,6 +52,7 @@ export interface ConnectedLiveEditorProps {
   fillScreen?: boolean;
   header?: ReactNode;
   extraContent?: ReactNode;
+  substitutionCountdown?: ReactNode;
 }
 
 /** Native connected recording, or the explicitly isolated fictional browser review. */
@@ -60,7 +61,7 @@ export function ConnectedLiveEditor(props: ConnectedLiveEditorProps) {
   const tablet = layout.mode === 'tablet' && layout.wide;
   const [editorHeight, setEditorHeight] = useState<number | null>(null);
   const compactHeight = Boolean(props.fillScreen && editorHeight !== null && editorHeight < 520);
-  const summaryHeight = compactHeight ? Math.max(1, Math.floor(editorHeight! * 0.28)) : tablet ? '35%' : undefined;
+  const summaryHeight = compactHeight ? Math.max(1, Math.min(120, Math.floor(editorHeight! * 0.4))) : tablet ? '35%' : undefined;
   const railHeight = compactHeight ? Math.max(1, Math.floor(editorHeight! * 0.25)) : 220;
   const [observedJournal, setObservedJournal] = useState<{
     journal: Journal;
@@ -310,6 +311,29 @@ export function ConnectedLiveEditor(props: ConnectedLiveEditorProps) {
                   )}
                 </View>
               ));
+  const matchClockLabel = terminal ? 'Total active match time' : props.match.status === 'half_time' ? 'Actual first half' : props.match.half === 0 ? 'Planned half length' : props.clock?.remainingMs === 0 ? 'Added active time' : 'Remaining this half';
+  const matchClockText = !props.clock ? '' : terminal ? formatTime(props.clock.matchActiveMs)
+    : props.match.status === 'half_time' ? formatTime(props.match.firstHalfDurationMs ?? props.clock.halfActiveMs)
+    : props.match.half === 0 ? formatTime(props.match.config.plannedHalfDurationMs)
+    : props.clock.remainingMs === 0 ? `+${formatTime(props.clock.addedMs)}` : formatTime(props.clock.remainingMs);
+  const focusedScoreCard = props.clock && <Card style={{ padding: compactHeight ? 6 : 10, gap: compactHeight ? 4 : 6 }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+      <View style={[styles.scoreboard, { flex: 1, minWidth: 0, gap: 6 }]}>
+        <Text numberOfLines={2} style={[typography.label, { flex: 1, fontSize: 12, lineHeight: 16 }]}>{teamLabel}</Text>
+        <Text style={[typography.score, { fontSize: 24, lineHeight: 28 }]}>{props.match.score.for}–{props.match.score.against}</Text>
+        <Text numberOfLines={2} style={[typography.label, { flex: 1, fontSize: 12, lineHeight: 16, textAlign: 'right' }]}>{props.match.config.fixture?.opponent ?? 'Opposition'}</Text>
+      </View>
+      <Text style={[typography.muted, { fontSize: 12, lineHeight: 16, maxWidth: 82 }]}>{statusLabel}</Text>
+    </View>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: compactHeight ? 6 : 10 }} testID="connected-match-timers">
+      <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+        <Text style={typography.label}>{matchClockLabel}</Text>
+        <Text style={[typography.clock, { fontSize: compactHeight ? 28 : 32, lineHeight: compactHeight ? 32 : 38 }]} testID="connected-match-countdown" accessibilityLiveRegion="none">{matchClockText}</Text>
+      </View>
+      {!terminal && props.substitutionCountdown && <View style={{ flex: 1, minWidth: 0 }}>{props.substitutionCountdown}</View>}
+    </View>
+    {props.clock.recoveryRequired && <Text style={[typography.label, { color: colors.warningInk }]}>Time needs checking · review clock recovery.</Text>}
+  </Card>;
   const scoreCard = props.clock && (<Card style={props.fillScreen ? { padding: compactHeight ? 6 : 10, gap: 4 } : undefined}>
               <View style={[{ gap: props.fillScreen ? 4 : 12 }, (tablet || compactHeight) && styles.scoreSummaryWide, compactHeight && styles.scoreSummaryShort]}>
               <View style={[{ gap: props.fillScreen ? 4 : 12 }, (tablet || compactHeight) && styles.scoreSummaryPart]}>
@@ -370,6 +394,7 @@ export function ConnectedLiveEditor(props: ConnectedLiveEditorProps) {
               )}
               </View>
               </View>
+              {!terminal && props.substitutionCountdown}
               {!props.fillScreen && clockActions}
               {!props.fillScreen && props.clockActionReview}
             </Card>);
@@ -390,7 +415,7 @@ export function ConnectedLiveEditor(props: ConnectedLiveEditorProps) {
     }}>
       {props.fillScreen && <ScrollView style={{ flexGrow: 0, maxHeight: summaryHeight ?? (activeMode === "live" ? "45%" : "30%") }} contentContainerStyle={[styles.summary, (tablet || compactHeight) && styles.summaryWide]} testID="connected-match-fixed-summary">
         <View style={[styles.summaryHeader, (tablet || compactHeight) && styles.summaryHeaderWide]}>{props.header}</View>
-        <View style={[styles.summaryClock, (tablet || compactHeight) && styles.summaryClockWide, activeMode !== 'live' && !tablet && !compactHeight && styles.hidden]}>{scoreCard}</View>
+        <View style={[styles.summaryClock, (tablet || compactHeight) && styles.summaryClockWide, activeMode !== 'live' && !tablet && !compactHeight && styles.hidden]}>{focusedScoreCard}</View>
       </ScrollView>}
       <EditorContent fillScreen={props.fillScreen} scrollRef={contentScroll}>
 

@@ -21,6 +21,8 @@ export function requestDatabaseScope(input:{method:string;parts:string[];seasonI
   const command=object(body?.command)?body.command:null;
   if(parts[0]!=='v1')return scope;
   if(parts[1]==='me')scope.operation=parts[2]==='push-registrations'?(method==='GET'?'push.read':method==='POST'?'push.register':method==='DELETE'?'push.revoke':'unavailable'):'account.read';
+  else if(parts[1]==='administration')scope.operation=method==='GET'?'administration.read':'administration.write';
+  else if(parts[1]==='clubs'&&parts[3]==='reports')scope.operation='club_reports.read';
   else if(parts[1]==='identity'&&parts[2]==='devices')scope.operation=method==='GET'?'identity.devices':'identity.enrol';
   else if(parts[1]==='contracts')scope.operation='contracts.read';
   else if(parts[1]==='privacy'&&parts[2]==='requests')scope.operation=method==='GET'?'privacy.read':'privacy.request';
@@ -50,6 +52,10 @@ export function requestDatabaseScope(input:{method:string;parts:string[];seasonI
       case 'team-overview':scope.operation=method==='GET'?'team_overview.read':'unavailable';break;
       case 'scheduled-games':scope.operation=method==='GET'?'scheduled_games.read':method==='POST'?'scheduled_games.write':'unavailable';break;
       case 'player-stats':scope.operation=method==='GET'?'stats.read':'unavailable';break;
+      case 'spectator-connections':scope.operation=method==='GET'?'community.read':'community.write';break;
+      case 'invite-requests':scope.operation=method==='GET'?'invite_requests.read':'invite_requests.write';break;
+      case 'team-sheet':scope.operation=method==='GET'?'team_document.read':'team_document.write';break;
+      case 'opposition-reviews':scope.operation=method==='GET'?'opposition.read':'opposition.write';break;
       case 'match-feedback':scope.operation=method==='GET'?'feedback.read':method==='POST'?'feedback.write':'unavailable';break;
       case 'preparation':scope.operation=`preparation.${parts[4]==='own'?'own.':''}${method==='GET'?'read':'write'}`;break;
       case 'records':scope.operation=method==='GET'?(parts[4]==='export'?'records.export':'records.read'):'records.write';break;

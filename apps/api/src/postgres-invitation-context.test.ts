@@ -92,7 +92,7 @@ describe.skipIf(!configured)('actual restricted PostgreSQL invitation preview co
       expect((await owner.query('SELECT label FROM team_seasons WHERE team_id=$1 AND season_id=$2', [teamId, seasonId])).rows[0].label).toBe('2026/27');
       expect(await preview(actorContext(first.hash), first.hash)).toEqual([{ club_name: 'Richmond Athletic', team_name: 'Roma Academy', age_group: 'U11', season_label: 'Autumn development 2026/27', inviter_label: 'Team manager' }]);
       await owner.query("UPDATE documents SET value_json=jsonb_set(value_json,'{team,id}','\"synthetic-other-team\"'::jsonb) WHERE team_id=$1 AND season_id=$2 AND kind='preparation'", [teamId, seasonId]);
-      expect(await preview(actorContext(first.hash), first.hash)).toEqual([{ club_name: 'Richmond Rovers', team_name: 'Roma U10', age_group: null, season_label: '2026/27', inviter_label: 'Team manager' }]);
+      expect(await preview(actorContext(first.hash), first.hash)).toEqual([{ club_name: 'Richmond Athletic', team_name: 'Roma U10', age_group: null, season_label: '2026/27', inviter_label: 'Team manager' }]);
     } finally {
       await owner.query("UPDATE documents SET value_json=$1,revision=($1::jsonb->>'revision')::bigint WHERE team_id=$2 AND season_id=$3 AND kind='preparation'", [before, teamId, seasonId]);
     }

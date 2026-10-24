@@ -23,7 +23,7 @@ const viewports = [
   { width: 1024, height: 768 }, { width: 1180, height: 820 }, { width: 1366, height: 1024 },
   { width: 844, height: 390 }, { width: 915, height: 412 },
 ];
-const roleLabels = { manager: /Manager/, administrator: /Administrator/, player: /Player/, spectator: /Spectator/ };
+const roleLabels = { manager: /Manager/, administrator: /Super Admin|Club Admin/, player: /Player/, spectator: /Spectator/ };
 const children = [], states = [], secrets = new Set(), tokenAccounts = new Map(), budgets = new Map();
 const report = { scope: 'Staff-only device-local tablet layout, role boundaries, rotation and untouched football command state against an isolated generated-account API and exact built application.', passed: false, viewports, journeys: [], checks: [], failures: [], apiBudgetWaits: [], nativeDeviceEvidence: false, paidServicesProvisioned: false };
 let browser, privateDirectory, base, stage = 'preconditions', diagnostics = '';

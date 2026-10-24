@@ -75,7 +75,12 @@ async function read(response: Response, signal: AbortSignal): Promise<unknown> {
 function authorisedRoles(identity: unknown, accountId: string, nowMs: number): ReviewRole[] {
   if (!record(identity) || identity.syntheticOnly !== true || !record(identity.principal) || identity.principal.accountId !== accountId || identity.principal.status !== 'active' || !Array.isArray(identity.memberships)) throw new DemoSessionAccessDenied();
   const authorised = identity.memberships.filter(item => record(item) && item.accountId === accountId && typeof item.teamId === 'string' && item.teamId.trim().length > 0 && typeof item.seasonId === 'string' && item.seasonId.trim().length > 0 && item.revokedAt == null && (item.expiresAt == null || typeof item.expiresAt === 'number' && Number.isFinite(item.expiresAt) && item.expiresAt > nowMs));
-  return roles.filter(role => authorised.some(item => item.role === role));
+  const principal = identity.principal;
+  const administration = record(principal.administration) ? principal.administration : null;
+  const clubIds = administration && Array.isArray(administration.clubIds) ? administration.clubIds : [];
+  const canAdminister = principal.identityClassification === 'adult_individual' && principal.adultVerified === true && principal.strongAuth === true && administration &&
+    (administration.level === 'super' || administration.level === 'club' && clubIds.length > 0 && clubIds.every(id => typeof id === 'string' && id.trim().length > 0));
+  return roles.filter(role => role === 'administrator' && canAdminister || authorised.some(item => item.role === role));
 }
 /** Recheck the same account and selected role before uncovering a backgrounded workspace. */
 export async function verifyDemoSession(session: DemoLoginSession, signal: AbortSignal, fetchRequest: DemoLoginFetch = globalThis.fetch, now: () => number = Date.now, selectedScope: WorkspaceBinding | null = null): Promise<void> {
@@ -126,6 +131,7 @@ export async function signInDemo(input: {
 export async function signOutDemo(session: DemoLoginSession, signal: AbortSignal, fetchRequest: DemoLoginFetch = globalThis.fetch): Promise<void> {
   const base = fictionalReviewApiUrl(session.apiBaseUrl);
   if (!base) throw new Error('The demo service is unavailable.');
-  const response = await exchange(base, '/v1/demo/sessions/current', { method: 'DELETE', headers: { Authorization: `Bearer ${session.accessToken}` } }, signal, fetchRequest);
+  const path = session.accessToken.startsWith('spectator_') ? '/v1/spectator-access/session' : '/v1/demo/sessions/current';
+  const response = await exchange(base, path, { method: 'DELETE', headers: { Authorization: `Bearer ${session.accessToken}` } }, signal, fetchRequest);
   if (response.status !== 204 && response.status !== 401) throw new Error('The demo service could not confirm sign-out.');
 }
