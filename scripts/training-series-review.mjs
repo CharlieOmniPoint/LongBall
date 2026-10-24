@@ -35,9 +35,22 @@ try {
       await button(`Open training ${reviewDateLabel(date)}`).click();
     };
 
-    const read = async () => mode === 'connected'
-      ? (await (await fetch(`${apiURL}/v1/teams/synthetic-roma-u10/preparation?seasonId=synthetic-season-2026-27`, { headers: { Authorization: 'Bearer synthetic-manager-2' } })).json())
-      : page.evaluate(() => new Promise((resolve, reject) => { const open = indexedDB.open('longball-synthetic-m0'); open.onerror = () => reject(open.error); open.onsuccess = () => { const db = open.result; const tx = db.transaction('journal', 'readonly'); const row = tx.objectStore('journal').get('record'); row.onsuccess = () => resolve(row.result.projections['synthetic-longball-application-v1'].preparation); row.onerror = () => reject(row.error); tx.oncomplete = () => db.close(); }; }));
+    let accountWindowStartedAt = null;
+    const read = async () => {
+      if (mode !== 'connected') return page.evaluate(() => new Promise((resolve, reject) => { const open = indexedDB.open('longball-synthetic-m0'); open.onerror = () => reject(open.error); open.onsuccess = () => { const db = open.result; const tx = db.transaction('journal', 'readonly'); const row = tx.objectStore('journal').get('record'); row.onsuccess = () => resolve(row.result.projections['synthetic-longball-application-v1'].preparation); row.onerror = () => reject(row.error); tx.oncomplete = () => db.close(); }; }));
+      const response = await fetch(`${apiURL}/v1/teams/synthetic-roma-u10/preparation?seasonId=synthetic-season-2026-27`, { headers: { Authorization: 'Bearer synthetic-manager-2' } });
+      assert.equal(response.status, 200, `Independent training read: HTTP${response.status}.`);
+      const value = await response.json();
+      accountWindowStartedAt ??= Date.now();
+      return value;
+    };
+    const freshAccountWindow = async () => {
+      if (mode !== 'connected') return;
+      const until = (accountWindowStartedAt ?? Date.now()) + 60_500, waitMs = Math.max(0, until - Date.now());
+      if (waitMs) console.log(`Respecting unchanged account limits between completed training mutation phases (${waitMs}ms).`);
+      while (Date.now() < until) await new Promise(resolve => setTimeout(resolve, Math.min(1000, until - Date.now())));
+      accountWindowStartedAt = Date.now();
+    };
     const until = async predicate => { const deadline = Date.now() + 12_000; while (true) { const state = await read(); if (predicate(state)) return state; if (Date.now() > deadline) throw new Error('Expected training save did not appear in the independent read.'); await new Promise(resolve => setTimeout(resolve, 50)); } };
     try {
       await page.route(REVIEW_STATUS_REQUEST, route => route.fulfill({ headers: { 'access-control-allow-origin': '*' }, json: { state: 'ready', url: tunnel, startedAt: new Date(Date.now() - 1000).toISOString(), expiresAt: new Date(Date.now() + 3_600_000).toISOString(), sourceRevision: 'a'.repeat(40) } }));
@@ -68,6 +81,7 @@ try {
       await openTraining('2026-11-26');
       await radio('Oliver Bennett training attendance: Present').click();
       await until(value => Object.values(value.training.find(item => item.id === ids[0]).attendance).includes('present'));
+      await freshAccountWindow();
       await openTraining('2026-12-03');
       await radio('Occurrence status: Cancelled').click();
       state = await until(value => value.training.find(item => item.id === ids[1]).status === 'cancelled');

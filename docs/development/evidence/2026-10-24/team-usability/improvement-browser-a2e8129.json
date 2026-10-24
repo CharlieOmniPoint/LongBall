@@ -1,0 +1,164 @@
+{
+  "scope": "Seventeen-feature functional and phone-usability regression against an isolated generated-account API and built application.",
+  "passed": true,
+  "roles": [
+    {
+      "role": "player",
+      "width": 320,
+      "roleLabelVisible": true,
+      "iconSignOut44px": true,
+      "teamOverview": true,
+      "noOverflow": true,
+      "currentTokenRevoked": true
+    },
+    {
+      "role": "administrator",
+      "width": 320,
+      "roleLabelVisible": true,
+      "iconSignOut44px": true,
+      "teamOverview": true,
+      "noOverflow": true,
+      "currentTokenRevoked": true
+    },
+    {
+      "role": "manager",
+      "width": 320,
+      "roleLabelVisible": true,
+      "iconSignOut44px": true,
+      "teamOverview": true,
+      "noOverflow": true,
+      "currentTokenRevoked": true
+    },
+    {
+      "role": "spectator",
+      "width": 320,
+      "roleLabelVisible": true,
+      "iconSignOut44px": true,
+      "teamOverview": true,
+      "noOverflow": true,
+      "currentTokenRevoked": true
+    },
+    {
+      "role": "player",
+      "width": 390,
+      "roleLabelVisible": true,
+      "iconSignOut44px": true,
+      "teamOverview": true,
+      "noOverflow": true,
+      "currentTokenRevoked": true
+    },
+    {
+      "role": "administrator",
+      "width": 390,
+      "roleLabelVisible": true,
+      "iconSignOut44px": true,
+      "teamOverview": true,
+      "noOverflow": true,
+      "currentTokenRevoked": true
+    },
+    {
+      "role": "manager",
+      "width": 390,
+      "roleLabelVisible": true,
+      "iconSignOut44px": true,
+      "teamOverview": true,
+      "noOverflow": true,
+      "currentTokenRevoked": true
+    },
+    {
+      "role": "spectator",
+      "width": 390,
+      "roleLabelVisible": true,
+      "iconSignOut44px": true,
+      "teamOverview": true,
+      "noOverflow": true,
+      "currentTokenRevoked": true
+    }
+  ],
+  "checks": [
+    "Private feedback uses an actual reducer-completed accepted fixture and Node-owned trusted finish; Unicode note limits are respected, review writes nothing, confirmed save persists once, exact replay keeps revision, an own edit advances CAS and closed history has no editor.",
+    "Manager reads player feedback without editing it; paired roster/schedule controls fit; wizard suggestions and previews do not write; explicit template apply copies only the reviewed planning squad/draft; cancellation/deletion preserve replies, actual attendance and immutable snapshots.",
+    "Actual controller auto-fill refuses an unchecked squad, suggests only checked-in available eligible players without writing, and requires a separate staged save; neither suggestion nor staging starts the clock or uploads play, and a fresh sign-in reopens the same unsent staged record.",
+    "Actual HTTP denies private feedback to administrators/spectators and omits it from another player\u2019s own-only projection."
+  ],
+  "failures": [],
+  "nativeDeviceEvidence": false,
+  "paidServicesProvisioned": false,
+  "source": {
+    "gitHead": "a2e8129df58f4eb4f81ca68161813df942d614ee",
+    "workingTreeDirty": true,
+    "harnessSha256": "c6cce69416a6a1fc4dd3864a8a43d41d1afb7766cc36d924f54961bb46e259db",
+    "fixtureSha256": "f84826349647917d9f9754b9309efd9a10700f1f1a0b0c7126d0359f1f28a83e",
+    "webIndexSha256": "c83107955f0a936780dad963eb4e6952b1bf53ad46fb782ac1703cc2cdb0f23b",
+    "webJavaScriptSha256": "8c80c9727410ccaaa1e0c1ebd263b22ef7ba29877a34cce6272bd068e4e140a6",
+    "apiBundleSha256": "ac0aae5d8afda850a1262675dde39434e2d39857adfcbb016fa5c004df3710e4"
+  },
+  "fixture": {
+    "matchId": "qa-feature-feedback-completed",
+    "completedAtMs": 1792843428369,
+    "closesAtMs": 1792882800000,
+    "playedPlayerIds": [
+      "synthetic-player-01",
+      "synthetic-player-02",
+      "synthetic-player-03",
+      "synthetic-player-04",
+      "synthetic-player-05",
+      "synthetic-player-06",
+      "synthetic-player-07",
+      "synthetic-player-08",
+      "synthetic-player-09"
+    ],
+    "method": "Fresh isolated SQLite fixture; full accepted match replay through the actual reducer, with a deliberately trusted Node-owned completion anchor at actual Node time. No browser-clock or production-authority claim."
+  },
+  "apiContractVersion": "longball.events/1.1",
+  "feedback": {
+    "actualPlayedProof": true,
+    "trustedNodeCompletion": true,
+    "unicodeNoteBoundary": true,
+    "reviewHasNoWrite": true,
+    "ratingAndNoteSaved": true,
+    "exactReplayRevisionUnchanged": true,
+    "ownFeedbackUpdate": true,
+    "closedHistoryReadOnly": true
+  },
+  "apiBudgetWaits": [
+    {
+      "phase": "manager setup/cancellation features",
+      "observedAttemptsBefore": 34,
+      "observedMutationsBefore": 2,
+      "waitMs": 40151,
+      "requestRetried": false,
+      "serverLimitChanged": false
+    },
+    {
+      "phase": "actual checked-in lineup suggestion",
+      "observedAttemptsBefore": 97,
+      "observedMutationsBefore": 6,
+      "waitMs": 55369,
+      "requestRetried": false,
+      "serverLimitChanged": false
+    }
+  ],
+  "managerFeatures": {
+    "privateFeedbackReadOnly": true,
+    "pairedRosterActions": true,
+    "setupWizardAutofillDraftOnly": true,
+    "templateSaved": true,
+    "applyRequiresReview": true,
+    "fixtureSelectionCopiedDeliberately": true,
+    "repliesAndAttendanceUnchanged": true,
+    "cancellationReviewedAndRetained": true,
+    "unplayedItemDeleted": true,
+    "immutableSnapshotsRetained": true
+  },
+  "matchAutofill": {
+    "actualCheckInRequired": true,
+    "infeasibleSuggestionHasNoWrite": true,
+    "completeSuggestionHasNoWrite": true,
+    "explicitStagedSaveOnly": true,
+    "savedEligibilityRespected": true,
+    "matchClockNotStarted": true,
+    "acceptedServicePlayUnchanged": true,
+    "unsentDraftRetainedAcrossSignOut": true
+  }
+}

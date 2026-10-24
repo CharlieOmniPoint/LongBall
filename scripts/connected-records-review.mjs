@@ -5,7 +5,7 @@ import { existsSync, createWriteStream } from "node:fs";
 import { mkdir, readFile, writeFile, unlink } from "node:fs/promises";
 import path from "node:path";
 import { chromium } from "playwright";
-import { changeWorkspaceContext, enterFictionalReview, openWorkspaceTab, selectWorkspaceContext } from "./review-entry.mjs";
+import { changeWorkspaceContext, enterFictionalReview, openWorkspaceTab, selectWorkspaceContext, reviewDateLabel } from "./review-entry.mjs";
 
 /** Phone browser + real isolated HTTP API; no application projection is injected.
  * Read-only service/IndexedDB inspection verifies persisted commands and unknown data.
@@ -256,6 +256,13 @@ async function enter(account = "Alex Morgan · Manager", entry = baseURL) {
 }
 async function scenario(name, action) {
   if (scenarioPrefixes.length && !scenarioPrefixes.some(prefix => name.startsWith(prefix))) return;
+  if (checks.length) {
+    const until = (inspectionWindowStartedAt ?? Date.now()) + 60_500;
+    const waitMs = Math.max(0, until - Date.now());
+    if (waitMs) console.log(`Respecting the unchanged account request window before ${name} (${waitMs}ms).`);
+    while (Date.now() < until) await sleep(Math.min(1000, until - Date.now()));
+    inspectionWindowStartedAt = Date.now();
+  }
   const detail = await action();
   checks.push({ name, status: "passed", detail });
   console.log(`PASSED ${name}`);
@@ -319,6 +326,8 @@ try {
       assert.equal(result.participation, null);
       assert.equal(result.actualActiveDurationMs, null);
       assert.equal(result.goals.length, 0);
+      await page.getByTestId("records-match-detail").waitFor();
+      await button("Back to records");
       await page.getByTestId(`records-result-${result.id}`).click();
       await page.getByTestId("records-correct").click();
       await page.getByTestId("records-past-for").fill("4");
@@ -349,7 +358,7 @@ try {
         ),
       );
       const knownTotals = { ...value.results.totals };
-      await tab("reports");
+      await button("Back to records");
       await page.getByTestId("records-add-past").click();
       await page.getByTestId("records-past-date").fill("2026-09-27");
       await page
@@ -373,6 +382,7 @@ try {
           (row) => row.matchesWithParticipationRecorded === 0,
         ),
       );
+      await button("Back to records");
       await page.getByTestId("records-tab-participation").click();
       assert.match(
         await page
@@ -452,7 +462,7 @@ try {
     const offered = value.contexts.find((row) => row.matchId === matchId);
     assert(offered);
     await button(
-      `${offered.opponent} · ${offered.playedDate} · ${offered.status.replaceAll("_", " ")}`,
+      `${offered.opponent} · ${reviewDateLabel(offered.playedDate)} · ${offered.status.replaceAll("_", " ")}`,
     );
     await button("friendly");
     await button("Use this accepted match for reports");
@@ -494,7 +504,7 @@ try {
     assert.match(csv, /"projectionVersion"/);
     assert.match(csv, /"Not recorded"/);
     await button("Match report");
-    await button(`${archived.opponent} · ${archived.playedDate}`);
+    await button(`${archived.opponent} · ${reviewDateLabel(archived.playedDate)}`);
     const matchExport = JSON.parse(await exportFile("records-export-json"));
     assert.equal(matchExport.reportType, "match");
     assert.equal(matchExport.matches.length, 1);
@@ -515,19 +525,6 @@ try {
     "03-administrator-configuration-explicit-rollover-preserves-source",
     async () => {
       const sourceMatch = (await json(`/v1/matches/${matchId}`)).state;
-      // Automated proof reads are additional traffic beyond phone interaction.
-      // Begin this burst in a fresh ordinary120/minute window; never bypass
-      // or change the service's rate policy for this rehearsal.
-      const waitMs = Math.max(
-        0,
-        (inspectionWindowStartedAt ?? Date.now()) + 60_500 - Date.now(),
-      );
-      if (waitMs) {
-        console.log(
-          `Respecting the API request window before rollover (${waitMs}ms).`,
-        );
-        await sleep(Math.min(waitMs, 60_000));
-      }
       await changeWorkspaceContext(page, "administrator");
       await openWorkspaceTab(page, "settings");
       await page.getByTestId("administrator-configuration").waitFor();

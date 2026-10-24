@@ -20,6 +20,18 @@
 | ADR-012 | Use a bounded five-hour demo service, discovered after explicit demo selection. | The current `6078969` application/API source is externally verified; review.md records the observed endpoint and 04:28:27 UTC on 22 October expiry. The older 20:24–01:24 session is historical. Discovery carries no credential or role grant; renewal creates fresh sample data. Preserve active feedback sessions rather than silently resetting them. |
 | ADR-013 | Make production native network/discovery/APNs configuration explicit without changing native IDs or storage. | Historical ff0691c configuration proof and ee7cb613's clean-worktree six-group evaluation are separate source-bound results. Configuration/export is not a compiled/physical Release or push-delivery proof. |
 
+
+## 24 October owner-requested usability decisions
+
+- **Administrator scope:** the owner explicitly requested Administrator cancellation/deletion of scheduled games and aggregate player statistics. New metadata/aggregate endpoints grant those narrow capabilities; private squad preparation, injuries and player feedback remain outside Administrator access.
+- **Scheduled deletion:** removing an unplayed schedule item retains an audit/tombstone and canonical history. Recording authority/history blocks cancellation or deletion. This is separate from privacy erasure and does not decide Q05/Q09/Q10.
+- **Saved player setups:** up to three active named setups per team/season. Applying a setup or automatic placement copies a reviewable draft; it does not record availability/attendance, choose a policy, accept a lineup or start a game.
+- **Positions and history:** active two-letter team codes retain core defaults; goalkeeper stays active. Inactive positions remain interpretable in historic profiles, snapshots and statistics. Future preparation requires active valid positions.
+- **Private enjoyment feedback:** after trusted actual completion, a player with recorded playing time can save 1–5 stars and up to 256 Unicode characters until the next London midnight. Only that author and current team Managers can read it. Unknown or disputed finish/playing evidence does not open or extend the window. This makes no retention/support-authority decision.
+- **UK display:** Europe/London supplies calendar boundaries including DST; displayed dates/seasons use short years. ISO identifiers, input values and canonical storage retain full years. Role labels describe current selected authority without granting it.
+
+Implementation, observed checks and remaining gates are in the [seventeen-item register](2026-10-24-usability-improvements.md) and [dated evidence](evidence/2026-10-24/team-usability/README.md). No paid service or real child-data environment was provisioned.
+
 ## Current testing priority
 
 21 October owner response during the specification recheck: **leave Q05/Q09/Q10 privacy verification, retention and support authority pending for later.** Continue simulated-data functionality testing. This defers those decisions; it does not approve a retention period, appoint a support operator or complete SEC20/SEC21 privacy fulfilment.

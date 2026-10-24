@@ -1,0 +1,72 @@
+{
+  "observedAt": "2026-10-24T12:38:20.032Z",
+  "productSourceCommit": "0265b4880d9808fb393851e3377ac5a34264b2c7",
+  "pagesTransportCommit": "001635cbe5877f89c490c14b2096397a71f97c0e",
+  "runId": 40094455139,
+  "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40094455139",
+  "conclusion": "success",
+  "job": {
+    "id": 120873682336,
+    "status": "completed",
+    "conclusion": "success",
+    "steps": [
+      {
+        "name": "Set up job",
+        "conclusion": "success"
+      },
+      {
+        "name": "Run actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803",
+        "conclusion": "success"
+      },
+      {
+        "name": "Check demo export provenance",
+        "conclusion": "success"
+      },
+      {
+        "name": "Read enabled GitHub Pages configuration",
+        "conclusion": "success"
+      },
+      {
+        "name": "Run actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b",
+        "conclusion": "success"
+      },
+      {
+        "name": "Publish the browser demo",
+        "conclusion": "success"
+      },
+      {
+        "name": "Post Run actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803",
+        "conclusion": "success"
+      },
+      {
+        "name": "Complete job",
+        "conclusion": "success"
+      }
+    ]
+  },
+  "deploymentUrl": "https://charlieomnipoint.github.io/LongBall/",
+  "deploymentCreatedLogAt": "2026-10-24T12:34:14.3105083Z",
+  "deploymentUrlSource": "Successful actual deployment job log.",
+  "buildInfo": {
+    "sourceCommit": "0265b4880d9808fb393851e3377ac5a34264b2c7",
+    "sourceBranch": "dev/longball-m0-journey",
+    "synthetic": true,
+    "nativeTargets": [
+      "iPhone",
+      "Android"
+    ],
+    "production": false,
+    "basePath": "/LongBall",
+    "connectedBackendIncluded": false,
+    "gitBlobSha": "6598bcef72376538cdba74587160471299b36d0d"
+  },
+  "priorSourceEvidence": "pages-a2e8129.json",
+  "limits": {
+    "publicAssetBytesFetchedByObserver": false,
+    "publicRoleSessionsOpenedByObserver": false,
+    "artifactDownloads": false,
+    "sourceOrWorkflowMutations": false,
+    "physicalDeviceEvidence": false
+  },
+  "scope": "Final0265 Pages provenance and successful deployment. Integrating parent separately verifies live bytes/stamps and public role journeys."
+}

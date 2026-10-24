@@ -1,0 +1,208 @@
+{
+  "recordedAt": "2026-10-24T12:13:20.435Z",
+  "source": {
+    "productCommit": "a2e8129df58f4eb4f81ca68161813df942d614ee",
+    "productTree": "8d474fa31117cc1a5e8a7fa4ce11ad85fa6d8702",
+    "checkoutCommit": "bd1a9fcdddfe8b71df1b152f62a7085d42f8d936",
+    "checkoutTree": "8d474fa31117cc1a5e8a7fa4ce11ad85fa6d8702",
+    "checkoutRef": "refs/pull/1/merge",
+    "parents": [
+      "031fdf5fdf4d937a0c638f81f24f9ae34db3579b",
+      "a2e8129df58f4eb4f81ca68161813df942d614ee"
+    ],
+    "exactTreeEqualsProduct": true,
+    "bothJobCheckoutLogsVerified": true
+  },
+  "run": {
+    "id": 40092006482,
+    "url": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40092006482",
+    "event": "pull_request",
+    "status": "completed",
+    "conclusion": "failure",
+    "createdAt": "2026-10-24T11:58:18Z",
+    "updatedAt": "2026-10-24T12:11:29Z",
+    "attempt": 1
+  },
+  "jobs": [
+    {
+      "id": 120867449484,
+      "name": "runtime-image",
+      "status": "completed",
+      "conclusion": "success",
+      "failedSteps": [],
+      "steps": [
+        {
+          "name": "Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+          "conclusion": "success"
+        },
+        {
+          "name": "Build and exercise the isolated production image",
+          "conclusion": "success"
+        },
+        {
+          "name": "Retain safe image acceptance evidence",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "id": 120867449690,
+      "name": "quality",
+      "status": "completed",
+      "conclusion": "failure",
+      "failedSteps": [
+        "Enforce the dependency audit result"
+      ],
+      "steps": [
+        {
+          "name": "Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+          "conclusion": "success"
+        },
+        {
+          "name": "Install the pinned frozen workspace",
+          "conclusion": "success"
+        },
+        {
+          "name": "Retain resolved dependency and licence inventories",
+          "conclusion": "success"
+        },
+        {
+          "name": "Scan current source for secrets",
+          "conclusion": "success"
+        },
+        {
+          "name": "Audit workspace and runtime dependency locks",
+          "conclusion": "success"
+        },
+        {
+          "name": "Lint and check both TypeScript clients",
+          "conclusion": "success"
+        },
+        {
+          "name": "Shared rules, platform adapters and real PostgreSQL API boundaries",
+          "conclusion": "success"
+        },
+        {
+          "name": "Retained-history and actual PostgreSQL migration checks",
+          "conclusion": "success"
+        },
+        {
+          "name": "Validate canonical contracts, source publication and sample fixtures",
+          "conclusion": "success"
+        },
+        {
+          "name": "Check native production configuration and compile JavaScript exports",
+          "conclusion": "success"
+        },
+        {
+          "name": "Exercise the built browser journey",
+          "conclusion": "success"
+        },
+        {
+          "name": "Exercise configured demo accounts and queued report downloads",
+          "conclusion": "success"
+        },
+        {
+          "name": "Enforce the dependency audit result",
+          "conclusion": "failure"
+        },
+        {
+          "name": "Retain safe quality evidence",
+          "conclusion": "success"
+        }
+      ]
+    }
+  ],
+  "results": {
+    "shared": {
+      "passed": 848,
+      "files": 99
+    },
+    "api": {
+      "passed": 421,
+      "skipped": 3,
+      "total": 424,
+      "files": 65,
+      "skipScope": "Actual native HEIC helper conditional cases absent in this generic job; separate successful runtime image acceptance exercises its maintained decoder."
+    },
+    "migration": {
+      "passed": 30,
+      "files": 6,
+      "skipped": 0
+    },
+    "lintAndRootMobileTypes": "passed",
+    "canonicalContractsSourcePublicationFixtures": "passed",
+    "nativeConfigurationAndJavaScriptBuilds": "passed",
+    "normalBuiltBrowser": {
+      "passed": true,
+      "groups": 10
+    },
+    "configuredDemoAccounts": {
+      "passed": true,
+      "roleJourneys": 8,
+      "checks": 24,
+      "failures": [],
+      "report": ".local/quality/demo-account-review/report.json"
+    }
+  },
+  "dependencyGate": {
+    "passed": false,
+    "workspace": "failed or unavailable; high/critical gate, complete report retained",
+    "runtime": "passed",
+    "compiler": "passed",
+    "enforcement": "failure",
+    "exceptionApproved": false,
+    "limitation": "Remote log does not disclose the complete advisory report body; retained artifact metadata is recorded without downloading its contents."
+  },
+  "runtimeImage": {
+    "passed": true,
+    "imageIdFromBuildLog": "sha256:73547e73108c233df3c05cf81bfd2326504914bfcb636d57be65f2cfa764ed10",
+    "scope": "Exact-source production image acceptance: dedicated migration, restricted current-schema API/worker roles, nonroot read-only containers, private network/no published ports, health/unconfigured identity denial and actual maintained ClamAV/JPEG/HEIC controls.",
+    "pairedRestoreExercised": false
+  },
+  "artifacts": [
+    {
+      "id": 12560250075,
+      "name": "longball-quality-bd1a9fcdddfe8b71df1b152f62a7085d42f8d936",
+      "sizeBytes": 936237,
+      "url": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40092006482/artifacts/12560250075",
+      "createdAt": "2026-10-24T12:11:26Z",
+      "expiresAt": "2026-10-27T12:11:25Z",
+      "expired": false,
+      "githubReportedDigest": "sha256:78455b4a811739cacb9afc5ebf4f4202e046a8ebff234d76d17a211a0f16cedb",
+      "archiveDownloaded": false,
+      "contentsIndependentlyInspected": false
+    },
+    {
+      "id": 12559382053,
+      "name": "longball-runtime-image-bd1a9fcdddfe8b71df1b152f62a7085d42f8d936",
+      "sizeBytes": 3502,
+      "url": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40092006482/artifacts/12559382053",
+      "createdAt": "2026-10-24T12:06:25Z",
+      "expiresAt": "2026-10-27T12:06:25Z",
+      "expired": false,
+      "githubReportedDigest": "sha256:6be2cb1f3b355e20daaaeb35eeae82b47413518f48c4dffa550577a180c8fa40",
+      "archiveDownloaded": false,
+      "contentsIndependentlyInspected": false
+    }
+  ],
+  "history": {
+    "earlier65bFailure": "ci-observed.json",
+    "resolvedBrowserIssue": "Old Back-to-team harness selectors now target the intentional team-overview destination; configured demo checks24 all passed.",
+    "localActualPgAndHeic": "api-validation.json",
+    "noDuplicateLocalApiRun": true
+  },
+  "limits": [
+    "Overall development CI remains failed solely because dependency enforcement is failed; functional success does not approve that gate.",
+    "Three CI API HEIC cases are explicitly skipped, distinct from the no-skip local424-case acceptance and successful runtime image codec controls.",
+    "No archive download, workflow mutation/retry, installer, signing, launch, physical-device acceptance or paid provisioning occurred in this observation."
+  ]
+}

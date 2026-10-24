@@ -1,0 +1,93 @@
+{
+  "productSource": "a2e8129df58f4eb4f81ca68161813df942d614ee",
+  "earlierCandidateSource": "65b1a80",
+  "passedGroups": [
+    {
+      "group": "account-entry",
+      "journeys": 8,
+      "source": "65b1a80",
+      "evidence": "account-entry/run.log"
+    },
+    {
+      "group": "connected-matchday",
+      "checks": 6,
+      "source": "65b1a80",
+      "evidence": "connected-matchday-r2/run.log",
+      "firstFailure": "connected-matchday"
+    },
+    {
+      "group": "policy-connected",
+      "checks": 2,
+      "source": "a2e8129",
+      "evidence": "policy-connected"
+    },
+    {
+      "group": "live",
+      "checks": 6,
+      "source": "a2e8129",
+      "evidence": "live"
+    },
+    {
+      "group": "application",
+      "journeys": 9,
+      "source": "a2e8129",
+      "evidence": "application/attempt2/report.json",
+      "firstFailure": "application/attempt1/report.json"
+    },
+    {
+      "group": "preparation-ui",
+      "widths": [
+        320,
+        390
+      ],
+      "checksPerWidth": 7,
+      "source": "a2e8129",
+      "evidence": "preparation-ui-r2/report.json",
+      "firstFailure": "preparation-ui/report.json"
+    },
+    {
+      "group": "match-plans",
+      "widths": [
+        320,
+        390
+      ],
+      "checksPerWidth": 7,
+      "source": "a2e8129",
+      "evidence": "match-plans/report.json"
+    },
+    {
+      "group": "connected",
+      "scenarioGroups": 5,
+      "source": "a2e8129",
+      "evidenceByScenario": {
+        "01": "connected/attempt3/results.json",
+        "02": "connected/attempt3/results.json",
+        "03": "connected/attempt6-passed-group03/results.json",
+        "04": "connected/attempt3/results.json",
+        "05": "connected/attempt3/results.json"
+      },
+      "firstFailure": "connected/attempt1/results.json",
+      "note": "Group02 uses explicit observation-only recovery after durable quarantine; group03 migrated to current dedicated invitation UI with explicit isolated policy. No production policy approval."
+    }
+  ],
+  "delegatedToCommunity": [
+    "connected-records",
+    "training-series",
+    "final-account-entry"
+  ],
+  "harnessChecks": {
+    "nodeSyntax": true,
+    "diffWhitespace": true,
+    "reviewHelperTests": {
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0
+    }
+  },
+  "runtimeScope": "Browser/isolated synthetic HTTP only; no physical device evidence.",
+  "ownedDirtyFiles": [
+    "scripts/application-review.mjs",
+    "scripts/connected-review.mjs",
+    "scripts/preparation-ui-review.mjs"
+  ]
+}

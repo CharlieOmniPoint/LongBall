@@ -1,0 +1,76 @@
+{
+  "observedAt": "2026-10-24T12:33:45.548Z",
+  "transportCommit": "490e2387b70ab5833f68006b24c973d33b481297",
+  "productSourceCommit": "0265b4880d9808fb393851e3377ac5a34264b2c7",
+  "productSourceTree": "1508d216e99da784823f9bcaf9341cfcd2a895d8",
+  "sourceBundleSha256": "54a522308f571078fa618439661ebabdc5313c42166f0d576a803ce8c4bb9687",
+  "runId": 40094143139,
+  "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40094143139",
+  "workflowStatus": "in_progress",
+  "jobId": 120872918120,
+  "readiness": {
+    "state": "ready",
+    "url": "https://termination-operated-delaware-cameras.trycloudflare.com",
+    "sourceRevision": "490e2387b70ab5833f68006b24c973d33b481297",
+    "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40094143139",
+    "startedAt": "2026-10-24T12:33:15Z",
+    "expiresAt": "2026-10-24T17:33:15Z",
+    "audience": "LongBall demo review with simulated Roma U10 teams and matches",
+    "statusGitBlobSha": "ca29a5898e4f05a9b37d8d307f9ceda3db4cd48f",
+    "readyObservedAt": "2026-10-24T12:33:19.936Z"
+  },
+  "steps": [
+    {
+      "name": "Set up job",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Run actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Use the pinned Node runtime",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Install the isolated decoder runtime",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Build the pinned maintained HEIC runtime",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Serve the demo for a bounded five-hour review",
+      "status": "in_progress",
+      "conclusion": null
+    },
+    {
+      "name": "Post Use the pinned Node runtime",
+      "status": "pending",
+      "conclusion": null
+    },
+    {
+      "name": "Post Run actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803",
+      "status": "pending",
+      "conclusion": null
+    }
+  ],
+  "scope": "Final presentation-only source-bound ready marker after the workflow's media/API startup checks. The review job intentionally stays running for five hours.",
+  "priorSourceEvidence": "runtime-a2e8129.json",
+  "limits": {
+    "directPublicHealthProbeByObserver": false,
+    "browserOrAccountSessionByObserver": false,
+    "permanentHosting": false,
+    "physicalDeviceEvidence": false,
+    "paidServicesProvisioned": false,
+    "workflowMutationsOrRetries": false,
+    "artifactDownloads": false,
+    "sourceEdits": false
+  }
+}

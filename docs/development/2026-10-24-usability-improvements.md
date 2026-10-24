@@ -4,23 +4,23 @@ This work implements the owner's seventeen requested improvements on `dev/longba
 
 | Request | Implementation and acceptance check | Status |
 | --- | --- | --- |
-| 1 | Manager and Administrator can review and cancel or remove unplayed scheduled games; recording authority/history blocks destructive schedule changes. Audited reasons and revision checks are required. | In progress |
-| 2 | Current Manager, Administrator, Player or Spectator role is visible in the signed-in header. | In progress |
-| 3 | Compact squad replies and profile actions, paired Edit/Archive, progressive disclosure and usable touch targets at 320/390px. | In progress |
-| 4 | Up to three saved lineup templates; configure, edit, archive, review and copy into a fixture without changing replies or starting a match. | In progress |
-| 5 | Always available, labelled logout control for every role; private views close immediately and the service session is revoked. | In progress |
-| 6 | Team catalogue of two-letter positions; core defaults retained, optional positions activate/deactivate, goalkeeper remains available, historical records remain interpretable. | In progress |
-| 7 | Player My Stats shows only that player's known playing time, positions and scoring with coverage. | In progress |
-| 8 | Select all manager-approved position eligibility. | In progress |
-| 9 | Deterministic global auto-fill respects availability, actual attendance, eligibility, preferences and goalkeeper policy; produces a reviewable draft. | In progress |
-| 10 | Team badge opens a high-level overview and the current/today's game, otherwise the next fixture. | In progress |
-| 11 | Manager and Administrator can inspect per-player season statistics and formation position time/percentages. No unrelated private preparation or feedback is granted to Administrators. | In progress |
-| 12 | Remove visible fictional/synthetic/sample data tags and implementation jargon while retaining useful data-quality and access information. | In progress |
-| 13 | Mixed-child notices use the same application text styling; verify the reported score-publication notice. | In progress |
-| 14 | UK display and calendar boundaries use `Europe/London`, including daylight-saving changes. | In progress |
-| 15 | Display dates use two-digit years; canonical storage and machine inputs keep full ISO years. | In progress |
-| 16 | Players with proved playing time can save 1–5 enjoyment stars and up to 256 Unicode characters after trusted full time until midnight London that day. Only the author and current team Managers can read it. | In progress |
-| 17 | Player and Spectator journeys use clear primary actions, short navigation and optional details. Check all existing capabilities remain reachable. | In progress |
+| 1 | Manager and Administrator can review and cancel or remove unplayed scheduled games; recording authority/history blocks destructive schedule changes. Audited reasons and revision checks are required. | Implemented |
+| 2 | Current Manager, Administrator, Player or Spectator role is visible in the signed-in header. | Implemented |
+| 3 | Compact squad replies and profile actions, paired Edit/Archive, progressive disclosure and usable touch targets at 320/390px. | Implemented |
+| 4 | Up to three saved lineup templates; configure, edit, archive, review and copy into a fixture without changing replies or starting a match. | Implemented |
+| 5 | Always available, labelled logout control for every role; private views close immediately and the service session is revoked. | Implemented |
+| 6 | Team catalogue of two-letter positions; core defaults retained, optional positions activate/deactivate, goalkeeper remains available, historical records remain interpretable. | Implemented |
+| 7 | Player My Stats shows only that player's known playing time, positions and scoring with coverage. | Implemented |
+| 8 | Select all manager-approved position eligibility. | Implemented |
+| 9 | Deterministic global auto-fill respects availability, actual attendance, eligibility, preferences and goalkeeper policy; produces a reviewable draft. | Implemented |
+| 10 | Team badge opens a high-level overview and the current/today's game, otherwise the next fixture. | Implemented |
+| 11 | Manager and Administrator can inspect per-player season statistics and formation position time/percentages. No unrelated private preparation or feedback is granted to Administrators. | Implemented |
+| 12 | Remove visible fictional/synthetic/sample data tags and implementation jargon while retaining useful data-quality and access information. | Implemented |
+| 13 | Mixed-child notices use the same application text styling; verify the reported score-publication notice. | Implemented |
+| 14 | UK display and calendar boundaries use `Europe/London`, including daylight-saving changes. | Implemented |
+| 15 | Display dates use two-digit years; canonical storage and machine inputs keep full ISO years. | Implemented |
+| 16 | Players with proved playing time can save 1–5 enjoyment stars and up to 256 Unicode characters after trusted full time until midnight London that day. Only the author and current team Managers can read it. | Implemented |
+| 17 | Player and Spectator journeys use clear primary actions, short navigation and optional details. Check all existing capabilities remain reachable. | Implemented |
 
 ## Recorded decisions and outstanding gates
 
@@ -33,7 +33,7 @@ This work implements the owner's seventeen requested improvements on `dev/longba
 
 ## Validation
 
-Focused rule, route, database security and mobile checks are running during implementation. Final integrated results, publication source and browser evidence will be recorded here once checked; this document does not assert completion in advance.
+Implementation is complete at product `0265b4880d9808fb393851e3377ac5a34264b2c7`. Source-bound rule, API, migration, browser, publication and native results are recorded in the [dated evidence](evidence/2026-10-24/team-usability/README.md). The current link and review window are in the [review guide](review.md). Pending production/privacy/device gates below remain unapproved.
 
 ## Review journey
 

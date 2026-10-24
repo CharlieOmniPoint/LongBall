@@ -1,0 +1,33 @@
+{
+  "productCommit": "0265b4880d9808fb393851e3377ac5a34264b2c7",
+  "productTree": "1508d216e99da784823f9bcaf9341cfcd2a895d8",
+  "runtimeTransport": "490e2387b70ab5833f68006b24c973d33b481297",
+  "bundleSha256": "54a522308f571078fa618439661ebabdc5313c42166f0d576a803ce8c4bb9687",
+  "nativeRun": 40094143143,
+  "runtimeRun": 40094143139,
+  "pagesPublication": {
+    "transport": "001635cbe5877f89c490c14b2096397a71f97c0e",
+    "runId": 40094455139,
+    "url": "https://charlieomnipoint.github.io/LongBall/",
+    "status": "success"
+  },
+  "sourceChangesFromA2": "Two displayed season labels use the already tested UK short-year formatter; supplemental harness maintenance only. API/worker/application/domain/dependency inputs unchanged.",
+  "apiSha256": "ac0aae5d8afda850a1262675dde39434e2d39857adfcbb016fa5c004df3710e4",
+  "workerSha256": "ae6f3930ad283d9a8d319e28f15ddbd3e984fd33fcdd671be168c079674e537e",
+  "pagesScript": "index-dcf9dba63e51f5f3161b416ca5b4f011.js",
+  "pagesScriptSha256": "49c91d573572397cf145ed36d28977b34d200674b020d75abe7e416540a275f0",
+  "physicalDeviceTesting": "deferred by owner",
+  "privacyQuestions": [
+    "Q05",
+    "Q09",
+    "Q10"
+  ],
+  "paidServicesProvisioned": false,
+  "runtimeWindow": {
+    "startedAt": "2026-10-24T12:33:15Z",
+    "expiresAt": "2026-10-24T17:33:15Z"
+  },
+  "nativeStatus": "Both actual builds succeeded",
+  "publicStatus": "8journeys and36visited views passed",
+  "supplementalStatus": "All planned groups passed"
+}
