@@ -709,12 +709,14 @@ async revokeManager(actor: Principal, teamId: string, seasonId: string, input: {
         bad('Confirm a scoped manager revocation and record its evidence reason.');
     if (expectedRevision !== undefined && (!nonnegative(expectedRevision) || expectedRevision !== (await this.staffRevision(teamId, seasonId))))
         throw new AccessError('STALE_REVISION', 409, 'Refresh the current staff assignments before changing them.');
-    const member = (await this.one("SELECT account_id,revoked_at FROM memberships WHERE account_id=$1 AND team_id=$2 AND season_id=$3 AND role='manager'", [input.accountId, teamId, seasonId])) as {
+    const member = (await this.one("SELECT m.account_id,m.revoked_at,EXISTS(SELECT 1 FROM administrative_memberships am WHERE am.account_id=m.account_id AND am.team_id=m.team_id AND am.season_id=m.season_id AND am.role=m.role) AS inherited FROM memberships m WHERE m.account_id=$1 AND m.team_id=$2 AND m.season_id=$3 AND m.role='manager'", [input.accountId, teamId, seasonId])) as {
         account_id: string;
         revoked_at: number | null;
+        inherited: boolean;
     } | undefined;
-    if (!member)
-        throw new AccessError('NOT_FOUND', 404, 'That manager assignment is outside this scope.');
+    // Inherited administration is removed through its grant, not a coach appointment.
+    if (!member || member.inherited)
+        throw new AccessError('NOT_FOUND', 404, 'That appointed manager assignment is unavailable.');
     if (member.revoked_at === null) {
         (await this.execute("UPDATE memberships SET revoked_at=$1 WHERE account_id=$2 AND team_id=$3 AND season_id=$4 AND role='manager'", [this.now(), input.accountId, teamId, seasonId]));
         (await this.execute("UPDATE controller_grants SET frozen=1 WHERE account_id=$1 AND team_id=$2 AND season_id=$3", [input.accountId, teamId, seasonId]));

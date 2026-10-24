@@ -2,8 +2,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
+import { spawn } from 'node:child_process';
 import { describe, expect, it } from 'vitest';
 import { DevelopmentStore, SYNTHETIC_IDS } from './store';
 import { SqliteBrandRepository } from './brand-repository';
@@ -51,17 +50,37 @@ describe('development SQLite expand migrations', () => {
       expect(()=>new DevelopmentStore(path)).toThrow();const retained=new DatabaseSync(path);expect(retained.prepare('PRAGMA user_version').get()).toEqual({user_version:9});expect(retained.prepare('SELECT * FROM push_registrations').all()).toEqual([{retained:'keep original bytes'}]);retained.close();
     }finally{rmSync(directory,{recursive:true,force:true});}
   });
-  it('serialises actual API/worker process startup against one fresh database', async () => {
-    const directory = mkdtempSync(join(tmpdir(), 'longball-concurrent-migration-')); const path = join(directory, 'service.sqlite');
+  it('serialises synchronized API/worker first-open processes across three fresh databases', async () => {
+    const directory = mkdtempSync(join(tmpdir(), 'longball-concurrent-migration-'));
     try {
-      const source = `import {DevelopmentStore} from ${JSON.stringify(new URL('./store.ts', import.meta.url).href)}; const store=new DevelopmentStore(process.argv[1]); store.seedSynthetic(); console.log(store.integrity()); store.close();`;
-      const results = await Promise.all([1, 2].map(() => promisify(execFile)(process.execPath, ['--import', 'tsx', '--input-type=module', '-e', source, path], { cwd: process.cwd(), timeout: 10_000, maxBuffer: 65_536 })));
-      expect(results.map(result => result.stdout.trim())).toEqual(['ok', 'ok']);
-      const store = new DevelopmentStore(path);
-      expect(store.database.prepare('PRAGMA user_version').get()).toEqual({ user_version: currentVersion });
-      expect(store.database.prepare('SELECT COUNT(*) AS n FROM documents').get()).toEqual({ n: 3 }); store.close();
+      const source = `import {DevelopmentStore} from ${JSON.stringify(new URL('./store.ts', import.meta.url).href)}; const start=new Promise(resolve=>process.once('message',resolve)); process.send('ready'); await start; const store=new DevelopmentStore(process.argv[1]); store.seedSynthetic(); console.log(store.integrity()); store.close();`;
+      for (let round = 0; round < 3; round++) {
+        const path = join(directory, `service-${round}.sqlite`);
+        const children = [1, 2].map(() => spawn(process.execPath, ['--import', 'tsx', '--input-type=module', '-e', source, path], { cwd: process.cwd(), stdio: ['ignore', 'pipe', 'pipe', 'ipc'] }));
+        const ready = children.map(child => new Promise<void>(resolve => { child.once('message', message => { if (message === 'ready') resolve(); }); }));
+        const completed = children.map(child => new Promise<string>((resolve, reject) => {
+          let stdout = '', stderr = '';
+          child.stdout!.on('data', chunk => { stdout += String(chunk); });
+          child.stderr!.on('data', chunk => { stderr += String(chunk); });
+          const timer = setTimeout(() => { child.kill('SIGKILL'); reject(new Error('Concurrent SQLite startup exceeded its process deadline.')); }, 10_000);
+          child.once('error', error => { clearTimeout(timer); reject(error); });
+          child.once('close', code => { clearTimeout(timer); if (code === 0) resolve(stdout.trim()); else reject(new Error(`Concurrent SQLite startup failed (${code}): ${stderr}`)); });
+        }));
+        try {
+          await Promise.race([Promise.all(ready), Promise.all(completed).then(() => { throw new Error('SQLite processes exited before the synchronized launch.'); })]);
+          for (const child of children) child.send('start');
+          expect(await Promise.all(completed)).toEqual(['ok', 'ok']);
+          const store = new DevelopmentStore(path);
+          try {
+            expect(store.database.prepare('PRAGMA user_version').get()).toEqual({ user_version: currentVersion });
+            expect(store.database.prepare('PRAGMA journal_mode').get()).toEqual({ journal_mode: 'wal' });
+            expect(store.database.prepare('SELECT COUNT(*) AS n FROM documents').get()).toEqual({ n: 3 });
+            expect(store.database.prepare('PRAGMA foreign_key_check').all()).toEqual([]);
+          } finally { store.close(); }
+        } finally { for (const child of children) if (child.exitCode === null) child.kill('SIGKILL'); }
+      }
     } finally { rmSync(directory, { recursive: true, force: true }); }
-  }, 15_000);
+  }, 30_000);
   it('rolls back all version steps when a later expansion fails', () => {
     const directory = mkdtempSync(join(tmpdir(), 'longball-migration-rollback-')); const path = join(directory, 'failure.sqlite');
     try {

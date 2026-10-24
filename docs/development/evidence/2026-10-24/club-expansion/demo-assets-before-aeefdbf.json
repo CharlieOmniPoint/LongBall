@@ -1,0 +1,17 @@
+{
+  "stage": "before",
+  "sourceCommit": "aeefdbf5f9bacc3462924af3528f9597f725d4bd",
+  "productDiffFromPinned": "",
+  "sha256": {
+    "siteIndex": "f15b8f1b45500c6a8119f33b51ab6b285f033e07aba4a91ac20b55853014feef",
+    "apiPinned": "72041fadfbd4003d1287fde613955517ebf9ddb80fd99f3c2706a580424064e3",
+    "apiRunner": "72041fadfbd4003d1287fde613955517ebf9ddb80fd99f3c2706a580424064e3",
+    "workerPinned": "a4b395b6715fe518d5d7a8c956e701c860f200de1eb2ca9af89112ae29adaaaa",
+    "workerRunner": "a4b395b6715fe518d5d7a8c956e701c860f200de1eb2ca9af89112ae29adaaaa"
+  },
+  "siteFilesSha256": {
+    "_expo/static/js/web/index-311d2e11675cb4706a9b29aedb66b654.js": "289258d42b21fc155fa24526d0e397f7d4bfc159d85a4e6e7ca7368f8c84ea22",
+    "index.html": "f15b8f1b45500c6a8119f33b51ab6b285f033e07aba4a91ac20b55853014feef",
+    "metadata.json": "aa5f19cc84d41c0f8c70ececb2bc82e863227ea1e121632aca879eb616056991"
+  }
+}

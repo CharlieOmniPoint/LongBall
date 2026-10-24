@@ -85,7 +85,7 @@ describe.skipIf(!configured)('real PostgreSQL privacy expansion and runtime gran
     await fixture.owner.query("INSERT INTO documents(team_id,season_id,kind,revision,value_json) VALUES('fictional-roma','fictional-2026','staff',0,'{\"revision\":0}')");
     await expect(fixture.owner.query("INSERT INTO documents(team_id,season_id,kind,revision,value_json) VALUES('fictional-roma','fictional-2026','unknown',0,'{}')")).rejects.toMatchObject({ code: '23514' });
     await fixture.owner.migrate();
-    expect((await fixture.owner.query('SELECT version FROM schema_migrations ORDER BY version')).rows).toEqual([2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24].map(version=>({version})));
+    expect((await fixture.owner.query('SELECT version FROM schema_migrations ORDER BY version')).rows).toEqual([2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25].map(version=>({version})));
     await fixture.owner.query('INSERT INTO schema_migrations(version) VALUES(99)');
     await expect(reader.migrate()).rejects.toThrow('newer than the application');
     expect((await fixture.owner.query('SELECT version FROM schema_migrations WHERE version=99')).rowCount).toBe(1);

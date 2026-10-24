@@ -51,7 +51,7 @@ export async function verifyRuntimeProofSchema(database: PgDatabase) {
       )
     ).rows[0].value,
   );
-  assert.deepEqual(versions, [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]);
+  assert.deepEqual(versions, [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]);
   assert.deepEqual(mediaVersions, [1, 2, 3, 4]);
   assert.deepEqual(activation, [{ version: 2 }]);
   assert.equal(protectedTables, 45);
@@ -66,6 +66,7 @@ export async function verifyRuntimeProofSchema(database: PgDatabase) {
     "apps/api/migrations/postgresql/022_team_documents.sql",
     "apps/api/migrations/postgresql/023_opposition_reviews.sql",
     "apps/api/migrations/postgresql/024_spectator_access.sql",
+    "apps/api/migrations/postgresql/025_inherited_manager_authority.sql",
     "apps/api/migrations/postgresql/media_004_team_privileges.sql",
     "scripts/runtime-contribution-boundaries.ts",
     "scripts/runtime-heic.ts",

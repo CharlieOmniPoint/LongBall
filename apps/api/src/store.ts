@@ -113,9 +113,28 @@ export class DevelopmentStore {
     this.database = new DatabaseSync(path);
     try {
       if (path !== ':memory:') chmodSync(path, 0o600);
-      this.database.exec('PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000; PRAGMA journal_mode=WAL;');
+      this.database.exec('PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000;');
+      this.enableWal();
       this.migrate();
     } catch (error) { this.database.close(); throw error; }
+  }
+  private enableWal(): void {
+    // Concurrent first-open journal changes can return SQLITE_BUSY without
+    // invoking SQLite's busy handler. Bound this one setup step independently.
+    const deadline = performance.now() + 5000;
+    const pause = new Int32Array(new SharedArrayBuffer(4));
+    this.database.exec('PRAGMA busy_timeout=0;');
+    try {
+      for (;;) {
+        try { this.database.exec('PRAGMA journal_mode=WAL;'); return; }
+        catch (error) {
+          const code = error && typeof error === 'object' && 'errcode' in error ? error.errcode : undefined;
+          const remaining = deadline - performance.now();
+          if (typeof code !== 'number' || !Number.isSafeInteger(code) || ![5, 6].includes(code & 0xff) || remaining <= 0) throw error;
+          Atomics.wait(pause, 0, 0, Math.min(25, remaining));
+        }
+      }
+    } finally { this.database.exec('PRAGMA busy_timeout=5000;'); }
   }
   close(): void { this.database.close(); }
   transaction<T>(work: () => T): T {
@@ -606,8 +625,9 @@ export class DevelopmentStore {
     assertTeamRole(actor,this.memberships(),teamId,seasonId,['administrator'],this.now());assertAdultAuthority(actor,true,this.now());
     if(!input||Object.keys(input).some(key=>!['accountId','reason','confirmRevocation'].includes(key))||!validId(input.accountId)||input.confirmRevocation!==true||typeof input.reason!=='string'||input.reason.trim().length<5||input.reason.length>500)bad('Confirm a scoped manager revocation and record its evidence reason.');
     if(expectedRevision!==undefined&&(!nonnegative(expectedRevision)||expectedRevision!==this.staffRevision(teamId,seasonId)))throw new AccessError('STALE_REVISION',409,'Refresh the current staff assignments before changing them.');
-    const member=this.database.prepare("SELECT account_id,revoked_at FROM memberships WHERE account_id=? AND team_id=? AND season_id=? AND role='manager'").get(input.accountId,teamId,seasonId) as {account_id:string;revoked_at:number|null}|undefined;
-    if(!member)throw new AccessError('NOT_FOUND',404,'That manager assignment is outside this scope.');
+    const member=this.database.prepare("SELECT m.account_id,m.revoked_at,EXISTS(SELECT 1 FROM administrative_memberships am WHERE am.account_id=m.account_id AND am.team_id=m.team_id AND am.season_id=m.season_id AND am.role=m.role) AS inherited FROM memberships m WHERE m.account_id=? AND m.team_id=? AND m.season_id=? AND m.role='manager'").get(input.accountId,teamId,seasonId) as {account_id:string;revoked_at:number|null;inherited:number}|undefined;
+    // A coach appointment cannot revoke rights inherited from club/system administration.
+    if(!member||member.inherited)throw new AccessError('NOT_FOUND',404,'That appointed manager assignment is unavailable.');
     if(member.revoked_at===null){
       this.database.prepare("UPDATE memberships SET revoked_at=? WHERE account_id=? AND team_id=? AND season_id=? AND role='manager'").run(this.now(),input.accountId,teamId,seasonId);
       this.database.prepare('UPDATE controller_grants SET frozen=1 WHERE account_id=? AND match_id IN (SELECT id FROM matches WHERE team_id=? AND season_id=?)').run(input.accountId,teamId,seasonId);

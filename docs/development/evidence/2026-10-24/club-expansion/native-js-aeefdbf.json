@@ -1,0 +1,25 @@
+{
+  "sourceCommit": "aeefdbf5f9bacc3462924af3528f9597f725d4bd",
+  "sourceQualification": "Owned final export ran from the clean pinned product; output bytes independently measured for this report. Documentation/evidence changes are separate.",
+  "passed": true,
+  "outputs": [
+    {
+      "platform": "android",
+      "file": "index-a55a6b60d12f83489abcacd4e0d3e771.hbc",
+      "bytes": 5201068,
+      "sha256": "96854ed14830c4ac64acb77c1d3d742d077074a680671bd710e89504a3846f19",
+      "hermesMagicHex": "c61fbc03c103191f"
+    },
+    {
+      "platform": "ios",
+      "file": "index-ee9bbb7b6dd3136ffbc6e8b5ea484f90.hbc",
+      "bytes": 5186851,
+      "sha256": "6ffed293463b6afdaf35a3d399b72709d578b111e9ebab3978587002d3cd88c9",
+      "hermesMagicHex": "c61fbc03c103191f"
+    }
+  ],
+  "exportLogSha256": "71965bbb67edb5efba53c1ca43288e10853568f8face185413b498f983640b67",
+  "scope": "Hermes JavaScript export only, not native binary compilation, signing, installation, launch or physical audio/device acceptance.",
+  "nativeBinaryCompilationProved": false,
+  "physicalDeviceProof": false
+}
