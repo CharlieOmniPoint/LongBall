@@ -57,7 +57,7 @@ async function role(page, next) {
     await more.click();
     await page.getByTestId(`review-role-${next}`).click();
   } else {
-    await button(page, 'Change demo account');
+    await button(page, 'Change account');
     await page.getByTestId(`review-entry-${next}`).click();
     await page.getByTestId('review-open-local').click();
   }
@@ -112,7 +112,7 @@ try {
     const initial = await application(page);
     const initialProfileId = initial.preparation.profiles.find(item => item.playerId === playerId).id;
     const initialHeld = initial.preparation.training.filter(item => item.status === 'held' && item.seasonId === seasonId && item.expectedProfileIds.includes(initialProfileId)).length;
-    await button(page, 'Schedule'); await radio(page, 'Event type: Training');
+    await button(page, 'Schedule'); await radio(page, 'Event type: Training'); await radio(page, 'Schedule period: Past');
     await button(page, 'Open training 22/10/26');
     await radio(page, 'Oliver Bennett training reply: Available');
     let app = await until(page, value => Object.values(value.preparation.training[0].responses).includes('available'), 'Training RSVP');
@@ -122,7 +122,7 @@ try {
     await until(page, value => value.preparation.training[0].status === 'held', 'Training held');
     await radio(page, 'Oliver Bennett training attendance: Present');
     await until(page, value => value.preparation.training[0].attendance[profile.id] === 'present', 'Training actual attendance');
-    await button(page, 'Back to schedule'); await button(page, 'Open training 29/10/26');
+    await button(page, 'Back to schedule'); await radio(page, 'Schedule period: Upcoming'); await button(page, 'Open training 29/10/26');
     await radio(page, 'Occurrence status: Cancelled');
     app = await until(page, value => value.preparation.training[1].status === 'cancelled', 'Cancel second occurrence');
     assert.equal(app.preparation.training[0].status, 'held', 'Occurrence cancellation cannot cancel whole series');
@@ -179,7 +179,7 @@ try {
   });
 
   await scenario('05-private-role-projections', async page => {
-    await role(page, 'player'); await button(page, 'Schedule'); await button(page, 'Training');
+    await role(page, 'player'); await button(page, 'Schedule'); await button(page, 'Training'); await button(page, 'Past');
     await page.getByRole('button', { name: 'Training: Available', exact: true }).first().click();
     let app = await until(page, value => Object.values(value.preparation.training[0].responses).includes('available'), 'Own training response');
     const profile = app.preparation.profiles.find(item => item.playerId === playerId);
@@ -227,7 +227,7 @@ try {
     let app = await application(page); assert.equal(app.community.matches[0].voteCutoffAtMs, null); assert.equal(app.community.ballots.length, 0);
     await more(page, 'Players’ award');
     assert.equal(await page.getByTestId('community-cast-ballot').count(), 0, 'Managers cannot cast player ballot');
-    await page.getByLabel('Demo ballot cutoff minutes', { exact: true }).fill('25'); await page.getByTestId('community-configure-cutoff').click();
+    await page.getByLabel('Preview ballot cutoff minutes', { exact: true }).fill('25'); await page.getByTestId('community-configure-cutoff').click();
     app = await until(page, value => value.community.matches[0].cutoffSource === 'explicit_fictional_setting', 'Explicit cutoff');
     assert.equal(app.community.matches[0].voteCutoffAtMs - app.community.matches[0].actualFullTimeAtMs, 25 * 60_000);
     await role(page, 'player'); await more(page, 'Players’ award');

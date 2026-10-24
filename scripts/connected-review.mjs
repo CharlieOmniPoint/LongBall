@@ -16,13 +16,14 @@ import { installStartupDiagnostics, captureStartupDiagnostics } from './browser-
 const baseURL = process.env.LONGBALL_REVIEW_BASE_URL ?? 'http://127.0.0.1:4173';
 const primaryAPI = process.env.LONGBALL_REVIEW_API_URL ?? 'http://127.0.0.1:4320';
 const controlAPI = process.env.LONGBALL_REVIEW_CONTROL_API_URL ?? 'http://127.0.0.1:4321';
+const scenarioFilter = process.env.LONGBALL_REVIEW_SCENARIO ?? '';
 const matchId = 'synthetic-roma-maple-2026-10-24';
 const teamId = 'synthetic-roma-u10', seasonId = 'synthetic-season-2026-27';
 const directory = path.resolve('.local/connected-review');
 const runId = new Date().toISOString().replaceAll(/[^0-9]/g, '');
 const checks = [], errors = [], servers = [];
 let artifacts = null;
-let activePage, workspaceOpenSequence = 0;
+let activePage, workspaceOpenSequence = 0, sensitiveInvitationVisible = false;
 await mkdir(directory, { recursive: true });
 const browser = await chromium.launch({ executablePath: process.env.LONGBALL_CHROMIUM_PATH ?? (existsSync('/usr/bin/chromium') ? '/usr/bin/chromium' : undefined), headless: true, args: ['--no-sandbox'] });
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -38,9 +39,19 @@ async function poll(read, predicate, label) {
   assert.fail(`${label}; latest revision ${value?.revision ?? value?.acceptedRevision ?? 'unavailable'}`);
 }
 async function json(api, route, token = 'synthetic-manager-1') {
-  const response = await fetch(`${api}${route}`, { headers: { Authorization: `Bearer ${token}` } });
-  assert.equal(response.ok, true, `${route}: HTTP ${response.status}`);
-  return response.json();
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const response = await fetch(`${api}${route}`, { headers: { Authorization: `Bearer ${token}` } });
+    if (response.status === 429 && attempt === 0) {
+      const seconds = Number(response.headers.get('retry-after'));
+      const delayMs = Math.min(60_000, Math.max(1_000, Number.isFinite(seconds) ? seconds * 1000 : 60_000));
+      await response.text();
+      console.log(`Respecting read-only inspection Retry-After (${delayMs}ms).`);
+      await sleep(delayMs);
+      continue;
+    }
+    assert.equal(response.ok, true, `${route}: HTTP ${response.status}`);
+    return response.json();
+  }
 }
 const download = (api, alias) => json(api, `/v1/matches/${matchId}/download?deviceId=${encodeURIComponent(alias)}`);
 const scoped = section => `/v1/teams/${teamId}/${section}?seasonId=${seasonId}`;
@@ -55,7 +66,7 @@ async function startAPI(api, name) {
   assert(['127.0.0.1', 'localhost'].includes(url.hostname), 'The fictional rehearsal may only start local APIs.');
   const database = path.join(directory, `${runId}-${name}.sqlite`);
   const stream = createWriteStream(path.join(directory, `${name}-api.log`));
-  const child = spawn(process.execPath, [process.env.LONGBALL_REVIEW_API_ENTRY ?? 'apps/api/dist/api.mjs'], { cwd: process.cwd(), env: { ...process.env, NODE_ENV: 'development', LONGBALL_SYNTHETIC_AUTH: '1', LONGBALL_DATABASE_URL: '', LONGBALL_DATABASE_URL_FILE: '', LONGBALL_DATABASE_MIGRATION_MODE: 'apply', LONGBALL_CLAMD_SOCKET: '', LONGBALL_CLAMD_HOST: '', LONGBALL_CLAMD_PORT: '', LONGBALL_FICTIONAL_CLOCK_POLICY: api === controlAPI ? JSON.stringify({ id: 'fictional-connected-review-clock-v1', serverClockUncertaintyMs: 1000, maximumRoundTripMs: 5000, maximumMappingAgeMs: 3600000, maximumUncertaintyMs: 3000, maximumDriftPpm: 100 }) : '', LONGBALL_API_HOST: '127.0.0.1', LONGBALL_API_PORT: url.port, LONGBALL_API_DATABASE: database, LONGBALL_MEDIA_DIRECTORY: path.join(directory, `${runId}-${name}-media`), LONGBALL_API_ORIGINS: `${new URL(baseURL).origin},http://localhost:4173,http://127.0.0.1:4173`, LONGBALL_CLAMSCAN_PATH: '' }, stdio: ['ignore', 'pipe', 'pipe'] });
+  const child = spawn(process.execPath, [process.env.LONGBALL_REVIEW_API_ENTRY ?? 'apps/api/dist/api.mjs'], { cwd: process.cwd(), env: { ...process.env, NODE_ENV: 'development', LONGBALL_SYNTHETIC_AUTH: '1', LONGBALL_DATABASE_URL: '', LONGBALL_DATABASE_URL_FILE: '', LONGBALL_DATABASE_MIGRATION_MODE: 'apply', LONGBALL_CLAMD_SOCKET: '', LONGBALL_CLAMD_HOST: '', LONGBALL_CLAMD_PORT: '', LONGBALL_FICTIONAL_CLOCK_POLICY: api === controlAPI ? JSON.stringify({ id: 'fictional-connected-review-clock-v1', serverClockUncertaintyMs: 1000, maximumRoundTripMs: 5000, maximumMappingAgeMs: 3600000, maximumUncertaintyMs: 3000, maximumDriftPpm: 100 }) : '', LONGBALL_API_HOST: '127.0.0.1', LONGBALL_API_PORT: url.port, LONGBALL_API_DATABASE: database, LONGBALL_MEDIA_DIRECTORY: path.join(directory, `${runId}-${name}-media`), LONGBALL_API_ORIGINS: `${new URL(baseURL).origin},http://localhost:4173,http://127.0.0.1:4173`, LONGBALL_PUBLIC_APP_ENTRY_URL: `http://localhost:${new URL(baseURL).port}/`, LONGBALL_INVITATION_POLICY_VERSION: 'isolated-browser-invitation-v1', LONGBALL_CLAMSCAN_PATH: '' }, stdio: ['ignore', 'pipe', 'pipe'] });
   let startupText = '', childFailure = null;
   child.stdout.on('data', data => { startupText = `${startupText}${data.toString()}`.slice(-2000); });
   child.on('error', error => { childFailure = error; });
@@ -91,10 +102,15 @@ async function workspaceOutbox(page, api, accountId = 'synthetic-account-manager
   return Object.entries((await stored(page))?.projections ?? {}).find(([key, value]) => key.startsWith('workspace-outbox.v1:') && value?.scope?.apiBaseUrl === api && value.scope.accountId === accountId && value.scope.teamId === teamId && value.scope.seasonId === seasonId)?.[1] ?? null;
 }
 const waitConnected = (page, alias, api, predicate, label) => poll(() => connected(page, alias, api), value => value && predicate(value), label);
-async function enterWorkspace(page, api, account) {
+async function enterWorkspace(page, api, account, receivedInvitation = false) {
   await enterFictionalReview(page);
   await page.getByTestId('prepare-match').waitFor();
-  await button(page, 'More'); await button(page, 'Service and controller');
+  if (receivedInvitation) {
+    await page.getByTestId('review-received-service-invitation').click();
+    assert.equal(new URL(page.url()).hash, '', 'The received capability is removed from the browser address.');
+  } else {
+    await button(page, 'More'); await button(page, 'Service and controller');
+  }
   await input(page, 'Workspace API URL', api);
   await button(page, 'Demo API review'); await button(page, account);
   await page.getByTestId('workspace-connect').click();
@@ -102,17 +118,22 @@ async function enterWorkspace(page, api, account) {
   if (account !== 'Casey Bennett · Invite recipient') await selectWorkspaceContext(page, account === 'Oliver Bennett · Player' ? 'player' : 'manager');
   if (account !== 'Casey Bennett · Invite recipient') await page.getByTestId('workspace-context-ready').waitFor();
 }
-async function openWorkspace(api, account = 'Alex Morgan · Manager') {
+async function openWorkspace(api, account = 'Alex Morgan · Manager', entryURL = baseURL) {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' });
   const page = await context.newPage(); activePage = page;
   page.setDefaultTimeout(20_000);
   page.on('pageerror', error => errors.push(error.message));
   const observations = await installStartupDiagnostics(page);
   const opening = ++workspaceOpenSequence;
+  const receivedInvitation = Boolean(new URL(entryURL).hash);
   try {
-    await page.goto(baseURL, { waitUntil: 'networkidle' });
-    await enterWorkspace(page, api, account);
+    await page.goto(entryURL, { waitUntil: 'networkidle' });
+    await enterWorkspace(page, api, account, receivedInvitation);
   } catch (error) {
+    if (receivedInvitation) {
+      await context.close();
+      throw new Error('The invitation recipient entry could not open; one-time capability details and diagnostics were omitted.');
+    }
     const label = `${runId}-workspace-open-${opening}`;
     await page.screenshot({ path: path.join(directory, `${label}.png`) }).catch(() => {});
     await captureStartupDiagnostics(page, label, directory, observations);
@@ -167,8 +188,9 @@ async function accept(page, alias, api, transferId, epoch) {
   return waitConnected(page, alias, api, doc => doc.controllerConfirmed && doc.grant.epoch === epoch && !doc.pendingRequest && !doc.authoritativeDownloadRequired, 'Accept addressed controller transfer with current checkpoint');
 }
 async function scenario(name, work) {
+  if (scenarioFilter && !name.startsWith(scenarioFilter)) return;
   try { const detail = await work(); checks.push({ name, status: 'passed', detail }); }
-  catch (error) { await activePage?.screenshot({ path: path.join(directory, `${name}-failed.png`), animations: 'disabled' }).catch(() => {}); checks.push({ name, status: 'failed', error: error.message, ...(error.startupDiagnostics ? { startupDiagnostics: error.startupDiagnostics } : {}) }); }
+  catch (error) { if (!sensitiveInvitationVisible) await activePage?.screenshot({ path: path.join(directory, `${name}-failed.png`), animations: 'disabled' }).catch(() => {}); checks.push({ name, status: 'failed', error: error.message, ...(error.startupDiagnostics ? { startupDiagnostics: error.startupDiagnostics } : {}) }); }
   console.log(`${checks.at(-1).status.toUpperCase()} ${name}${checks.at(-1).error ? `: ${checks.at(-1).error}` : ''}`);
 }
 
@@ -346,7 +368,11 @@ try {
       await waitConnected(b, aliasB, controlAPI, value => value.grant?.epoch === 4 && value.reconciliationRequired && !value.pendingRequest, 'Explicit recovery requires reconciliation');
       await recordPresent(a, aliasA, controlAPI);
       const oldCandidate = structuredClone((await connected(a, aliasA, controlAPI)).localState);
-      doc = await upload(a, aliasA, controlAPI);
+      await button(a, 'Upload pending canonical events');
+      await waitConnected(a, aliasA, controlAPI, value => !value.pendingRequest && value.outbox.every(entry => entry.disposition !== 'pending') && !value.controllerConfirmed && value.authoritativeDownloadRequired && value.reconciliationRequired, 'Stale-controller receipt is durably saved before explicit viewing recovery');
+      await a.getByText('Service receipt saved. Download the current accepted snapshot to obtain its authoritative audit; original wire records remain retained.', { exact: true }).waitFor();
+      await button(a, 'Download accepted service match');
+      doc = await waitConnected(a, aliasA, controlAPI, value => !value.authoritativeDownloadRequired && value.acceptedState?.revision === value.acceptedRevision, 'Explicit observation-only download restores the authoritative audit without controller authority');
       const quarantined = doc.outbox.filter(entry => entry.disposition === 'quarantined');
       assert.equal(quarantined.length, oldCandidate.config.selectedPlayerIds.length);
       assert(quarantined.every(entry => entry.reason === 'STALE_CONTROLLER'));
@@ -386,7 +412,7 @@ try {
       const refusedApply = await fetch(`${controlAPI}/v1/matches/${matchId}/reconciliation/apply`, { method: 'POST', headers: { Authorization: 'Bearer synthetic-manager-1', 'Content-Type':'application/json', 'X-Api-Contract-Version':'longball.events/1.1', 'Idempotency-Key': `q08-unapproved-${runId}` }, body: JSON.stringify({ proposalId: reviewed.proposals[0].input.proposalId, expectedRevision: accepted.acceptedRevision, events: [] }) });
       assert.equal(refusedApply.status, 503); assert.match((await refusedApply.json()).code, /Q08|POLICY|AUTHORITY/);
       await picture(a, '02-stale-controller-retained');
-      return { acceptedRevision: after.acceptedRevision, epochs: [1, 2, 3, 4], sequenceBeforeHandback: sequence, nextSequenceOnHandback: sequence + 1, finalReservedSequence: doc.allocatedSequence, quarantined: quarantine.items.length, acceptedProjectionUnchanged: true, managerReviewRequired: true, immutableProposalOverHttp: true, exactProposalRetryAfterReload: true, q08Apply503: true, quarantineNotClearedByProposal: true, fictionalClockExchangeOverHttp: true, nativeClockContinuityTested: false };
+      return { acceptedRevision: after.acceptedRevision, epochs: [1, 2, 3, 4], sequenceBeforeHandback: sequence, nextSequenceOnHandback: sequence + 1, finalReservedSequence: doc.allocatedSequence, quarantined: quarantine.items.length, acceptedProjectionUnchanged: true, explicitObservationOnlyRecovery: true, managerReviewRequired: true, immutableProposalOverHttp: true, exactProposalRetryAfterReload: true, q08Apply503: true, quarantineNotClearedByProposal: true, fictionalClockExchangeOverHttp: true, nativeClockContinuityTested: false };
     } finally { await first.context.close(); await second.context.close(); }
   });
 
@@ -405,9 +431,10 @@ try {
       assert.equal(prep.fixtures.filter(item => item.id === fixture.id).length, 1);
       assert.equal(prep.fixtures.find(item => item.id === fixture.id).history[0].playedDate, '2026-11-07');
       await poll(() => workspaceOutbox(page, primaryAPI), value => value && !value.pending && value.lastSettled?.outcome?.kind === 'accepted', 'Reschedule receipt durably saved before navigation');
+      await button(page, 'Back to schedule');
       await page.getByTestId('preparation-create-event').waitFor({ state: 'visible' });
       await poll(async () => page.getByTestId('preparation-create-event').isEnabled(), Boolean, 'Refreshed preparation UI finishes its save before changing tabs');
-      await openWorkspaceTab(page, 'reports'); await button(page, 'Add historical result to service');
+      await openWorkspaceTab(page, 'reports'); await page.getByTestId('records-add-past').click();
       await page.getByTestId('records-past-date').fill('2026-09-20'); await page.getByTestId('records-past-opponent').fill('Connected Willow historical');
       await page.getByTestId('records-past-for').fill('2'); await page.getByTestId('records-past-against').fill('1'); await page.getByRole('radio', { name: 'friendly', exact: true }).click();
       await page.getByTestId('records-past-review-button').click();
@@ -415,28 +442,56 @@ try {
       const records = await poll(() => json(primaryAPI, scoped('records')), value => value.results?.rows?.some(item => item.opponent === 'Connected Willow historical'), 'Historical result persisted via actual service');
       const historical = records.editableState.results.find(item => item.opponent === 'Connected Willow historical');
       assert.equal(historical.participation, null); assert.equal(historical.actualActiveDurationMs, null);
-      await openWorkspaceTab(page, 'community');
-      await button(page, 'Acknowledge sharing a limited season invitation'); await button(page, 'Create service invitation code');
-      const community = await poll(() => json(primaryAPI, scoped('community')), value => value.invitations?.some(item => !item.revokedAtMs), 'Service invitation created');
-      const invitation = community.invitations.find(item => !item.revokedAtMs);
+      await openWorkspaceTab(page, 'invitations');
+      await page.getByTestId('invitation-hours').fill('24');
+      sensitiveInvitationVisible = true;
+      await page.getByTestId('invitation-create').click();
+      const disclosure = page.getByLabel('One-time spectator invitation link', { exact: true });
+      await disclosure.waitFor();
+      const invitationUrl = new URL(await disclosure.innerText());
+      const invitationCode = new URLSearchParams(invitationUrl.hash.slice(1)).get('code');
+      assert(typeof invitationCode === 'string' && /^[A-Za-z0-9_-]{43}$/.test(invitationCode), 'The service issues a canonical one-time invitation capability.');
+      assert.equal(JSON.stringify(await stored(page)).includes(invitationCode), false, 'The one-time disclosure is not persisted in the manager journal.');
+      await page.getByTestId('invitation-close-link').click();
+      await disclosure.waitFor({ state: 'hidden' });
+      sensitiveInvitationVisible = false;
       await picture(page, '03-workspace-manager');
       const own = await openWorkspace(primaryAPI, 'Oliver Bennett · Player');
       try {
+        await openWorkspaceTab(own.page, 'team');
         await own.page.getByTestId('workspace-own-preparation').waitFor();
         const ownView = await own.page.getByTestId('workspace-own-preparation').innerText();
         assert.match(ownView, /Oliver Bennett/); assert.doesNotMatch(ownView, /Noah Patel|George Taylor/);
-        await own.page.getByRole('button', { name: 'Unsure', exact: true }).first().click();
-        const ownData = await poll(() => json(primaryAPI, scoped('preparation/own'), 'synthetic-account-player-01'), value => value.fixtures?.[0]?.response === 'unsure', 'Player own-only RSVP persisted');
+        await openWorkspaceTab(own.page, 'schedule');
+        assert.doesNotMatch(await own.page.getByTestId('workspace-own-preparation').innerText(), /Noah Patel|George Taylor/);
+        const ownFixtureId = 'synthetic-roma-oak-2026-10-31';
+        const ownFixture = own.page.getByTestId(`own-schedule-event-match-${ownFixtureId}`);
+        assert.match(await ownFixture.innerText(), /31\/10\/26/);
+        await ownFixture.getByRole('button', { name: 'Unsure', exact: true }).click();
+        const ownData = await poll(() => json(primaryAPI, scoped('preparation/own'), 'synthetic-account-player-01'), value => value.fixtures?.find(item => item.id === ownFixtureId)?.response === 'unsure', 'Player own-only RSVP persisted for the exact future fixture');
         assert.equal(ownData.profile.playerId, 'synthetic-player-01');
-        assert.equal(ownData.fixtures[0].attendance, 'not_recorded', 'RSVP cannot fabricate attendance.');
+        assert.equal(ownData.fixtures.find(item => item.id === ownFixtureId).attendance, 'not_recorded', 'RSVP cannot fabricate attendance.');
         assert.equal(ownData.profiles, undefined); await picture(own.page, '03-workspace-own-player');
       } finally { await own.context.close(); }
-      const invitee = await openWorkspace(primaryAPI, 'Casey Bennett · Invite recipient');
+      assert.equal((await json(primaryAPI, '/v1/me', 'synthetic-account-invitee')).memberships.length, 0, 'The recipient begins without any club membership.');
+      sensitiveInvitationVisible = true;
+      const invitee = await openWorkspace(primaryAPI, 'Casey Bennett · Invite recipient', invitationUrl.href);
       try {
-        await openWorkspaceTab(invitee.page, 'community'); await input(invitee.page, 'Service invitation code', invitation.reviewCode);
-        await button(invitee.page, 'Accept service invitation');
+        await button(invitee.page, 'Review received season invitation');
+        await invitee.page.getByTestId('connected-invitations').waitFor();
+        sensitiveInvitationVisible = true;
+        await invitee.page.getByTestId('invitation-token').fill(invitationCode);
+        await invitee.page.getByTestId('invitation-inspect').click();
+        await invitee.page.getByTestId('invitation-reviewed-context').waitFor();
+        assert.equal(await invitee.page.getByTestId('invitation-accept').isDisabled(), true, 'Inspecting a link does not accept access.');
+        await invitee.page.getByLabel('Confirm the service-reviewed invitation destination', { exact: true }).check();
+        await invitee.page.getByTestId('invitation-accept').click();
         const member = await poll(() => json(primaryAPI, '/v1/me', 'synthetic-account-invitee'), value => value.memberships?.some(item => item.teamId === teamId && item.seasonId === seasonId && item.role === 'spectator'), 'Invitation grants only addressed season spectator access');
-        assert(member.memberships.every(item => item.role === 'spectator'));
+        assert(member.memberships.every(item => item.role === 'spectator' && item.teamId === teamId && item.seasonId === seasonId));
+        await invitee.page.getByTestId('workspace-context-ready').waitFor();
+        await openWorkspaceTab(invitee.page, 'community');
+        sensitiveInvitationVisible = false;
+        assert.equal(JSON.stringify(await stored(invitee.page)).includes(invitationCode), false, 'Accepted invitation credentials stay out of the recipient journal.');
         const publicMatch = await json(primaryAPI, `/v1/matches/${matchId}`, 'synthetic-account-invitee');
         assert.equal(publicMatch.score, null); assert.equal(publicMatch.state, undefined); assert.equal(publicMatch.intervals, undefined);
         const spectatorReports = await json(primaryAPI, scoped('records'), 'synthetic-account-invitee');
@@ -517,6 +572,7 @@ try {
       const fixtureId = committed.fixtures.find(item => item.opponent === 'Outbox Alder rehearsal').id;
       await page.reload({ waitUntil: 'networkidle' });
       await enterWorkspace(page, primaryAPI, 'Oliver Bennett · Player');
+      await openWorkspaceTab(page, 'schedule');
       await page.getByTestId('workspace-own-preparation').waitFor();
       assert.equal(await page.getByRole('button', { name: 'Retry exact service request', exact: true }).count(), 0, 'Another account cannot replay the manager retained request.');
       assert.equal((await workspaceOutbox(page, primaryAPI)).pending.bodyJson, retained.bodyJson, 'Account change retains the manager branch without exposing its replay control.');
@@ -541,10 +597,11 @@ try {
       return { fixtureId, retainedAcrossReload: true, otherAccountCannotReplay: true, identicalWireKeyAndBody: true, finalServiceRevision: final.revision, noDuplicateFixtureOrHistory: true, acknowledgementDurableAfterSecondReload: true };
     } finally { await context.close(); }
   });
+  assert(checks.length > 0, 'At least one selected connected browser scenario must run.');
   assert.equal(errors.length, 0, `Browser runtime errors: ${errors.join('; ')}`);
 } catch (error) { checks.push({ name: 'harness', status: 'failed', error: error.message }); }
 finally {
-  await writeFile(path.join(directory, 'results.json'), `${JSON.stringify({ baseURL, primaryAPI, controlAPI, runId, artifacts, checks, errors, limitations: ['Fictional development authentication; no real identity provider rehearsal.', 'Browser-controlled monotonic time validates rules and HTTP boundaries, not native clock continuity.', 'Control API clock exchange uses an explicitly fictional trial policy; it approves no Q08 authority or production clock/sharing policy.', 'Phone reboot, SQLCipher, background alerts, lock-screen and physical-device continuity still require native device evidence.', 'Unconfigured antivirus blocks media processing; no publication or malware-scanner claim.'] }, null, 2)}\n`);
+  await writeFile(path.join(directory, 'results.json'), `${JSON.stringify({ baseURL, primaryAPI, controlAPI, runId, scenarioFilter: scenarioFilter || null, artifacts, checks, errors, failureScreenshotOmittedForOneTimeInvitation: sensitiveInvitationVisible, limitations: ['Fictional development authentication; no real identity provider rehearsal.', 'Browser-controlled monotonic time validates rules and HTTP boundaries, not native clock continuity.', 'Control API clock exchange uses an explicitly fictional trial policy; it approves no Q08 authority or production clock/sharing policy.', 'The named isolated browser invitation policy is a test fixture; no production invitation policy is approved.', 'Phone reboot, SQLCipher, background alerts, lock-screen and physical-device continuity still require native device evidence.', 'Unconfigured antivirus blocks media processing; no publication or malware-scanner claim.'] }, null, 2)}\n`);
   await browser.close();
   for (const { child, stream } of servers) {
     child.kill('SIGTERM');

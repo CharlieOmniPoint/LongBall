@@ -2797,10 +2797,10 @@ function WorkspaceSession({
                   )}
                   <Text style={typography.section}>{choice.teamLabel}</Text>
                   <Text style={typography.body}>
-                    {choice.seasonLabel} · {choice.roleLabel}
+                    {formatUkSeasonLabel(choice.seasonLabel)} · {choice.roleLabel}
                   </Text>
                   <Button
-                    label={`Open ${choice.roleLabel} · ${choice.teamLabel} · ${choice.seasonLabel}`}
+                    label={`Open ${choice.roleLabel} · ${choice.teamLabel} · ${formatUkSeasonLabel(choice.seasonLabel)}`}
                     testID={`workspace-context-${choice.role}-${choice.teamId}-${choice.seasonId}-${choice.playerId ?? "none"}`}
                     disabled={disabled}
                     variant={
