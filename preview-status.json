@@ -1,9 +1,9 @@
 {
-  "state": "starting",
-  "url": "",
+  "state": "ready",
+  "url": "https://termination-operated-delaware-cameras.trycloudflare.com",
   "sourceRevision": "490e2387b70ab5833f68006b24c973d33b481297",
   "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40094143139",
-  "startedAt": "2026-10-24T12:32:44Z",
-  "expiresAt": "",
+  "startedAt": "2026-10-24T12:33:15Z",
+  "expiresAt": "2026-10-24T17:33:15Z",
   "audience": "LongBall demo review with simulated Roma U10 teams and matches"
 }
