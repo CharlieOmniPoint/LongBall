@@ -324,7 +324,7 @@ describe('durable preparation, records, community and own privacy requests', () 
     expect((await client.call(`${teamUrl}/preparation`)).status).toBe(404);
   });
   it('lets a player answer only for their server-linked profile without changing attendance or manager fields', async () => {
-    const client = await start();
+    const client = await start({ now: () => Date.parse('2026-10-24T12:00:00Z') });
     const own = await client.call(`${teamUrl}/preparation/own`, { token: 'synthetic-account-player-01' });
     expect(own.status).toBe(200); expect(own.body.kind).toBe('player-preparation');
     expect(JSON.stringify(own.body)).not.toContain('synthetic-player-02'); expect(own.body).not.toHaveProperty('profiles');
