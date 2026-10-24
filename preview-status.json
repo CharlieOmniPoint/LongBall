@@ -1,9 +1,9 @@
 {
-  "state": "starting",
-  "url": "",
+  "state": "ready",
+  "url": "https://wear-deutschland-coins-peter.trycloudflare.com",
   "sourceRevision": "f8bf5eb096b87f9fa549c74149e59e7f36ba2c29",
   "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40092461353",
-  "startedAt": "2026-10-24T12:08:49Z",
-  "expiresAt": "",
+  "startedAt": "2026-10-24T12:09:19Z",
+  "expiresAt": "2026-10-24T17:09:19Z",
   "audience": "LongBall demo review with simulated Roma U10 teams and matches"
 }
