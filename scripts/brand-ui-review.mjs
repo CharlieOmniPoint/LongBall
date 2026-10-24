@@ -18,7 +18,9 @@ const directory = path.resolve(
 );
 const checks = [],
   pageErrors = [],
-  writes = [];
+  writes = [],
+  accountBudgetPauses = [];
+let accountWindowStartedAt = null;
 let browser, page, context;
 await mkdir(directory, { recursive: true });
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -33,6 +35,9 @@ async function poll(read, accepts, label, timeout = 45_000) {
   assert.fail(label);
 }
 async function readService(section, role = "manager") {
+  const started = Date.now();
+  if (accountWindowStartedAt === null || started - accountWindowStartedAt >= 60_000)
+    accountWindowStartedAt = started;
   const response = await fetch(
     `${api}/v1/teams/${teamId}/${section}?seasonId=${seasonId}`,
     {
@@ -51,13 +56,24 @@ async function readService(section, role = "manager") {
   );
   return body;
 }
+async function freshAccountWindow(phase) {
+  const began = Date.now();
+  const until = (accountWindowStartedAt ?? began) + 60_500;
+  const evidence = { phase, plannedWaitMs: Math.max(0, until - began), waitedMs: 0, ordinaryLimit: 120, mutationLimit: 60, pendingCommandRetried: false };
+  accountBudgetPauses.push(evidence);
+  if (evidence.plannedWaitMs) console.log(JSON.stringify({ reviewBudgetPause: phase, waitMs: evidence.plannedWaitMs }));
+  // Only pause after accepted publication and completed reads. Never retry,
+  // rebase or regenerate a mutation to work around the service's request limit.
+  while (Date.now() < until) await delay(Math.min(1000, until - Date.now()));
+  evidence.waitedMs = Date.now() - began;
+  accountWindowStartedAt = Date.now();
+}
 const click = (name) => page.getByRole("button", { name, exact: true }).click();
 async function settled() {
   await poll(
-    () =>
-      page
-        .getByRole("button", { name: "Refresh service views", exact: true })
-        .isEnabled(),
+    // This dual-role context control stays visible outside More and shares the
+    // workspace's busy, retained-capability and current-read admission gate.
+    () => page.getByTestId("workspace-change-context").isEnabled(),
     Boolean,
     "Service receipt/local refresh must settle",
   );
@@ -179,9 +195,7 @@ async function generatedUpload(kind, { gate = false } = {}) {
         "Private upload retains original scope and disables outer reconnect/account/API edits",
       );
     }
-    await page
-      .getByRole("button", { name: "Refresh service views", exact: true })
-      .waitFor();
+    await page.getByTestId("workspace-change-context").waitFor();
     await settled();
     const value = await readService(
       "branding",
@@ -376,6 +390,7 @@ try {
   await click("Alex Morgan · Manager");
   await page.getByTestId("workspace-connect").click();
   await selectWorkspaceContext(page);
+  await openWorkspaceTab(page, "schedule");
   await page.getByTestId("preparation-create-event").waitFor();
   await settled();
   await openWorkspaceTab(page, "settings");
@@ -409,6 +424,7 @@ try {
   checks.push(
     "Selected administrator publishes only seasonless club logo; existing team override remains effective",
   );
+  await freshAccountWindow("after-completed-team-and-club-publication");
   await picture("administrator-club-published-team-kept", 320);
   await page.setViewportSize({ width: 390, height: 844 });
   await settings("manager");
@@ -493,6 +509,7 @@ try {
     apiSnapshotSha256: process.env.LONGBALL_BRAND_REVIEW_API_SHA ?? null,
     checks,
     writes,
+    accountBudgetPauses,
     pageErrors,
     nativeTestingPending: [
       "iPhone/Android image picker including original HEIC selection",
@@ -528,6 +545,7 @@ try {
         message: error.message,
         checks,
         writes,
+        accountBudgetPauses,
         pageErrors,
         visibleText: page
           ? await page
