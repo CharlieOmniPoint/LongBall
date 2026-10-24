@@ -58771,6 +58771,25 @@ function projectOwnPlayerPreparation(state, profile, seasonId) {
   };
 }
 
+// packages/application/src/uk-display.ts
+var UK_TIME_ZONE = "Europe/London";
+function londonDateKey(now) {
+  const parts = new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: UK_TIME_ZONE }).formatToParts(new Date(now));
+  const part = (kind2) => parts.find((item) => item.type === kind2).value;
+  return `${part("year")}-${part("month")}-${part("day")}`;
+}
+
+// packages/application/src/fixture-response-window.ts
+function canPlayerReplyToFixture(fixture, nowMs, context = {}) {
+  if (fixture.status !== "scheduled" || !Number.isSafeInteger(nowMs) || nowMs < 0 || !Number.isFinite(new Date(nowMs).getTime())) return false;
+  if (context.recordedStatus != null && context.recordedStatus !== "preparation") return false;
+  const date = fixture.playedDate;
+  if (typeof date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(date) || date.startsWith("0000-")) return false;
+  const parsed = /* @__PURE__ */ new Date(`${date}T00:00:00Z`);
+  if (!Number.isFinite(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== date) return false;
+  return date >= londonDateKey(nowMs);
+}
+
 // apps/api/src/match-pagination.ts
 import { createHash } from "node:crypto";
 import { Buffer as Buffer2 } from "node:buffer";
@@ -66678,6 +66697,16 @@ var DevelopmentStore = class {
     const profiles = state.profiles.filter((profile2) => profile2.playerId === membership.playerId && profile2.seasonId === seasonId && profile2.active);
     if (profiles.length !== 1) throw new AccessError("NOT_FOUND", 404, "The requested own-player profile is unavailable.");
     const profile = profiles[0];
+    if (command.type === "own.fixture_response_recorded" && !state.appliedCommands[command.id]) {
+      const fixture = state.fixtures.find((item) => item.id === command.fixtureId && item.seasonId === seasonId);
+      if (fixture) {
+        const canonical6 = this.database.prepare("SELECT json_extract(state_json,'$.status') AS status FROM matches WHERE id=? AND team_id=? AND season_id=?").get(fixture.id, teamId, seasonId);
+        const records = this.document(teamId, seasonId, "records");
+        const historical = records.results.find((item) => item.id === fixture.id && item.teamId === teamId && item.seasonId === seasonId && ["completed", "abandoned"].includes(item.status));
+        const recordedStatus = canonical6 && canonical6.status !== "preparation" ? canonical6.status ?? "unknown" : historical?.status ?? canonical6?.status;
+        if (!canPlayerReplyToFixture(fixture, this.now(), { recordedStatus })) throw new AccessError("COMMAND_REJECTED", 422, "Availability replies are closed for this game. Recorded replies and attendance are preserved.");
+      }
+    }
     const base = { id: command.id, expectedRevision: command.expectedRevision };
     const bound = command.type === "own.preferences_saved" ? { ...base, type: "profile.saved", profile: { ...profile, preferences: command.preferences } } : command.type === "own.fixture_response_recorded" ? { ...base, type: "fixture.response_recorded", fixtureId: command.fixtureId, profileId: profile.id, response: command.response } : { ...base, type: "training.response_recorded", trainingId: command.trainingId, profileId: profile.id, response: command.response };
     const updated = reducePreparation(state, bound);
@@ -67957,6 +67986,16 @@ var PostgresStore = class _PostgresStore {
     if (profiles.length !== 1)
       throw new AccessError("NOT_FOUND", 404, "The requested own-player profile is unavailable.");
     const profile = profiles[0];
+    if (command.type === "own.fixture_response_recorded" && !state.appliedCommands[command.id]) {
+      const fixture = state.fixtures.find((item) => item.id === command.fixtureId && item.seasonId === seasonId);
+      if (fixture) {
+        const canonical6 = await this.one("SELECT state_json->>'status' AS status FROM matches WHERE id=$1 AND team_id=$2 AND season_id=$3", [fixture.id, teamId, seasonId]);
+        const records = await this.document(teamId, seasonId, "records");
+        const historical = records.results.find((item) => item.id === fixture.id && item.teamId === teamId && item.seasonId === seasonId && ["completed", "abandoned"].includes(item.status));
+        const recordedStatus = canonical6 && canonical6.status !== "preparation" ? String(canonical6.status ?? "unknown") : historical?.status ?? canonical6?.status;
+        if (!canPlayerReplyToFixture(fixture, this.now(), { recordedStatus })) throw new AccessError("COMMAND_REJECTED", 422, "Availability replies are closed for this game. Recorded replies and attendance are preserved.");
+      }
+    }
     const base = { id: command.id, expectedRevision: command.expectedRevision };
     const bound = command.type === "own.preferences_saved" ? { ...base, type: "profile.saved", profile: { ...profile, preferences: command.preferences } } : command.type === "own.fixture_response_recorded" ? { ...base, type: "fixture.response_recorded", fixtureId: command.fixtureId, profileId: profile.id, response: command.response } : { ...base, type: "training.response_recorded", trainingId: command.trainingId, profileId: profile.id, response: command.response };
     const updated = reducePreparation(state, bound);
