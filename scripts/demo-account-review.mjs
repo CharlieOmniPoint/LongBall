@@ -621,6 +621,13 @@ async function playerSummaryProjection(state) {
   await context.route(pattern, handler);
   try {
     await refresh();
+    await openWorkspaceTab(page, 'home');
+    const nextHomeEvent = page.getByTestId('workspace-player-home').getByRole('heading', { name: /^Next (up|events)$/ }).locator('..');
+    await nextHomeEvent.waitFor();
+    check(await nextHomeEvent.getByText('vs ' + fixture.opponent, { exact: true }).count() === 0, 'Player Home must not offer the game from the same accepted terminal summary.');
+    await openWorkspaceTab(page, 'schedule');
+    await page.getByTestId('own-schedule-kind-match').click();
+    await page.getByTestId('own-schedule-upcoming').click();
     const closed = page.getByTestId('player-fixture-' + fixtureId);
     await closed.waitFor();
     for (const label of ['Available', 'Unavailable', 'Unsure', 'No reply']) check(await closed.getByRole('button', { name: label, exact: true }).count() === 0, 'A controlled same-day terminal summary must hide every reply action even while the canonical match stays in preparation.');
@@ -644,8 +651,8 @@ async function playerSummaryProjection(state) {
   const actualMatches = await currentJson(token, matchRoute, 'player');
   const actualMatch = actualMatches.items.find(item => item.matchId === fixtureId && item.teamId === teamId && item.seasonId === seasonId);
   check(actualMatch && (actualMatch.status ?? actualMatch.state?.status) === 'preparation', 'The controlled projection must never start or complete the actual match.');
-  report.playerTerminalSummaryProjection = { mocked: true, method: 'GET', pathname: recordsPath, mockedReads, scope: { teamId, seasonId, playerId: ownBefore.profile.playerId }, fixtureId, canonicalStatusBeforeAndAfter: 'preparation', terminalSummaryOnlyInClientProjection: true, allReplyActionsHidden: true, recordedReplyAndAttendanceRetained: true, otherUnplayedReplyActionsRetained: true, originalRecordsRestored: true, preparationPosts: 0, actualOwnPreparationUnchanged: true, backendGuardScope: 'Separate real SQLite/PostgreSQL HTTP tests; this case only exercises client projection.' };
-  checks.push('One separately labelled filtered-records GET projection marks a same-day game completed while its actual canonical match remains unstarted; the UI hides all reply actions, preserves recorded details, leaves another unplayed game open, and restores the actual records without any preparation write.');
+  report.playerTerminalSummaryProjection = { mocked: true, method: 'GET', pathname: recordsPath, mockedReads, scope: { teamId, seasonId, playerId: ownBefore.profile.playerId }, fixtureId, canonicalStatusBeforeAndAfter: 'preparation', terminalSummaryOnlyInClientProjection: true, homeNextGameReplyExcluded: true, allReplyActionsHidden: true, recordedReplyAndAttendanceRetained: true, otherUnplayedReplyActionsRetained: true, originalRecordsRestored: true, preparationPosts: 0, actualOwnPreparationUnchanged: true, backendGuardScope: 'Separate real SQLite/PostgreSQL HTTP tests; this case only exercises client projection.' };
+  checks.push('One separately labelled filtered-records GET projection marks a same-day game completed while its actual canonical match remains unstarted; Home omits its reply and Schedule hides all reply actions, preserves recorded details, leaves another unplayed game open, and restores the actual records without any preparation write.');
 }
 
 async function playerReplyRegression(account) {
