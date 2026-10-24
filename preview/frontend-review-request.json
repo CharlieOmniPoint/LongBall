@@ -1,9 +1,0 @@
-{
-  "mode": "compatible-frontend-review-v1",
-  "frontendSourceCommit": "e706fa4c9ba55aaf6d5783f3c74aa68a9415cc39",
-  "backendSourceCommit": "38e08797755fe5ca154786c0ad2130888f8b6d1a",
-  "backendTransportCommit": "18b24b9f9cbeead4e7a9f38e47f25e8c309dbf0e",
-  "apiSha256": "022ec44e6ad09f2423f66d7066b07538783d23c2f0c7c9fb485c567b5c7cf7c7",
-  "workerSha256": "5562a6a844defdd8dda6d48d0af7fc7a8f6b5f3d4480ee341b64dac314b40e93",
-  "testedRunId": 40127475188
-}
