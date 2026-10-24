@@ -1,0 +1,179 @@
+{
+  "source": "e2bf5a6744fbcdebd832d2d4e8795641d9d4488d",
+  "roles": [
+    {
+      "role": "administrator",
+      "width": 390,
+      "loginStatus": 200,
+      "assignedWorkspaceVerified": true,
+      "permittedUiVerified": true,
+      "noOverflow": true,
+      "usernamePasswordAbsentFromWorkspace": true,
+      "allBrowserStoresClean": true,
+      "demoTokenPatternAbsentFromStores": true,
+      "signOutStatus": 204,
+      "privateViewClosed": true,
+      "emptyPasscodeAfterSignOut": true
+    },
+    {
+      "role": "player",
+      "width": 390,
+      "loginStatus": 200,
+      "assignedWorkspaceVerified": true,
+      "permittedUiVerified": true,
+      "noOverflow": true,
+      "usernamePasswordAbsentFromWorkspace": true,
+      "allBrowserStoresClean": true,
+      "demoTokenPatternAbsentFromStores": true,
+      "signOutStatus": 204,
+      "privateViewClosed": true,
+      "emptyPasscodeAfterSignOut": true
+    },
+    {
+      "role": "spectator",
+      "width": 390,
+      "loginStatus": 200,
+      "assignedWorkspaceVerified": true,
+      "permittedUiVerified": true,
+      "noOverflow": true,
+      "usernamePasswordAbsentFromWorkspace": true,
+      "allBrowserStoresClean": true,
+      "demoTokenPatternAbsentFromStores": true,
+      "signOutStatus": 204,
+      "privateViewClosed": true,
+      "emptyPasscodeAfterSignOut": true
+    },
+    {
+      "role": "manager",
+      "width": 320,
+      "loginStatus": 200,
+      "assignedWorkspaceVerified": true,
+      "permittedUiVerified": true,
+      "noOverflow": true,
+      "usernamePasswordAbsentFromWorkspace": true,
+      "allBrowserStoresClean": true,
+      "demoTokenPatternAbsentFromStores": true,
+      "signOutStatus": 204,
+      "privateViewClosed": true,
+      "emptyPasscodeAfterSignOut": true
+    },
+    {
+      "role": "administrator",
+      "width": 320,
+      "loginStatus": 200,
+      "assignedWorkspaceVerified": true,
+      "permittedUiVerified": true,
+      "noOverflow": true,
+      "usernamePasswordAbsentFromWorkspace": true,
+      "allBrowserStoresClean": true,
+      "demoTokenPatternAbsentFromStores": true,
+      "signOutStatus": 204,
+      "privateViewClosed": true,
+      "emptyPasscodeAfterSignOut": true
+    },
+    {
+      "role": "player",
+      "width": 320,
+      "loginStatus": 200,
+      "assignedWorkspaceVerified": true,
+      "permittedUiVerified": true,
+      "noOverflow": true,
+      "usernamePasswordAbsentFromWorkspace": true,
+      "allBrowserStoresClean": true,
+      "demoTokenPatternAbsentFromStores": true,
+      "signOutStatus": 204,
+      "privateViewClosed": true,
+      "emptyPasscodeAfterSignOut": true
+    },
+    {
+      "role": "spectator",
+      "width": 320,
+      "loginStatus": 200,
+      "assignedWorkspaceVerified": true,
+      "permittedUiVerified": true,
+      "noOverflow": true,
+      "usernamePasswordAbsentFromWorkspace": true,
+      "allBrowserStoresClean": true,
+      "demoTokenPatternAbsentFromStores": true,
+      "signOutStatus": 204,
+      "privateViewClosed": true,
+      "emptyPasscodeAfterSignOut": true
+    },
+    {
+      "role": "manager",
+      "width": 390,
+      "loginStatus": 200,
+      "assignedWorkspaceVerified": true,
+      "permittedUiVerified": true,
+      "noOverflow": true,
+      "usernamePasswordAbsentFromWorkspace": true,
+      "allBrowserStoresClean": true,
+      "demoTokenPatternAbsentFromStores": true,
+      "signOutStatus": 204,
+      "privateViewClosed": true,
+      "emptyPasscodeAfterSignOut": true
+    }
+  ],
+  "apiAccounts": [
+    {
+      "role": "manager",
+      "loginStatus": 200,
+      "assignedScopeVerified": true,
+      "permittedDataVerified": true,
+      "privatePreparationDenied": false,
+      "signOutStatus": 204,
+      "sameTokenRefusedAfterSignOut": 401
+    },
+    {
+      "role": "administrator",
+      "loginStatus": 200,
+      "assignedScopeVerified": true,
+      "permittedDataVerified": true,
+      "privatePreparationDenied": true,
+      "signOutStatus": 204,
+      "sameTokenRefusedAfterSignOut": 401
+    },
+    {
+      "role": "player",
+      "loginStatus": 200,
+      "assignedScopeVerified": true,
+      "permittedDataVerified": true,
+      "privatePreparationDenied": true,
+      "signOutStatus": 204,
+      "sameTokenRefusedAfterSignOut": 401
+    },
+    {
+      "role": "spectator",
+      "loginStatus": 200,
+      "assignedScopeVerified": true,
+      "permittedDataVerified": true,
+      "privatePreparationDenied": true,
+      "signOutStatus": 204,
+      "sameTokenRefusedAfterSignOut": 401
+    }
+  ],
+  "pageErrors": [],
+  "mockedRequests": false,
+  "ownerApprovedFirecrawl": true,
+  "uiSessionTokenInspected": false,
+  "responseCapture": "UI status observations and separate direct HTTPS account sessions; no interception or request rewriting.",
+  "sample": {
+    "profiles": 13,
+    "fixtures": 4,
+    "completed": 2,
+    "preparation": 2
+  },
+  "earlierUiAssertion": {
+    "stage": "administrator390px",
+    "cause": "The test expected the combined team label in the separate name field; canonical fields are Roma and U10. The application was not changed."
+  },
+  "passed": true,
+  "completedAt": "2026-10-24T10:43:13Z",
+  "sourceAndAssetsRecheckedAfterRoles": true,
+  "artifactDigests": [
+    {
+      "file": "pagesScriptDigest",
+      "digest": "6c3ecf368f9187b7901c2c23c629d0b278bf8195826d9be3590375d091c45d67"
+    }
+  ]
+}

@@ -26,3 +26,7 @@ Automatic approval review rejected sending the four demo credentials to Firecraw
 Both Android arm64 Debug and unsigned x86_64 iOS Simulator compilation passed for the exact product bundle in [native run 40034161097](https://github.com/CharlieOmniPoint/LongBall/actions/runs/40034161097). Upload is disabled. Signing, distribution, installation and physical iPhone/Android testing remain unproved and owner-deferred.
 
 One unpatched high node-forge advisory remains on the unchanged lock. CI runtime/compiler audits and actual image acceptance pass, but the workspace dependency gate remains failed. No release exception is approved. Q05/Q09/Q10 remain owner-deferred; SEC20/SEC21 privacy fulfilment and UI34 governed support/recovery remain incomplete. No new paired restore, performance margin, operating SLA, physical pass, paid service or real child-data environment is inferred.
+
+## 24 October public-account follow-up
+
+The owner subsequently gave explicit approval for Firecrawl to receive the four dummy demo credentials. The [24 October review](../../2026-10-24/public-account-review/README.md) records eight actual public 320/390px account journeys and four separate HTTPS session checks against the renewed service. The approval limitation, zero authenticated-public counts and original expired session above remain the unchanged 23 October observations; the later follow-up resolves that test-approval gate without changing privacy, hardware or dependency gates.

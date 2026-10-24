@@ -1,6 +1,6 @@
 # Demo accounts and Roma U10 season
 
-Current account-build source: `e2bf5a6744fbcdebd832d2d4e8795641d9d4488d`. Use [the published review entry](https://charlieomnipoint.github.io/LongBall/?v=e2bf5a6) and **Sign in** with the unchanged supplied credentials. [Review status](review.md) records publication, observed checks and API expiry. Eight local assigned-role phone journeys and 24 groups pass, including real saved PDF/CSV downloads. Public source/assets, anonymous entry and strict API flags pass; repeated public account login awaits explicit approval for the remote browser credential destination. Native signing, distribution, installation and physical tests remain separate.
+Current account-build source: `e2bf5a6744fbcdebd832d2d4e8795641d9d4488d`. Use [the published review entry](https://charlieomnipoint.github.io/LongBall/?v=e2bf5a6) and **Sign in** with the unchanged supplied credentials. [Review status](review.md) records publication, observed checks and API expiry. Eight local assigned-role phone journeys and 24 groups pass, including real saved PDF/CSV downloads. Following the owner's explicit Firecrawl approval on 24 October, all 8 actual public role journeys passed at 320/390px: login 200, correct workspace and logout 204/private-view closure, with no overflow or page errors. Inspected browser stores lacked known credentials and the demo-token pattern. Separate HTTPS sessions proved assigned scope, private preparation 404 for non-manager roles, and exact-session token 401 after logout. UI token bodies were unavailable through remote CDP, so the exact-token check applies to those HTTP sessions. See the [dated public account review](evidence/2026-10-24/public-account-review/README.md). Native signing, distribution, installation and physical tests remain separate.
 
 The demo login build opens with **Sign in → username and password/passcode → assigned team workspace**. Four preauthorised sample accounts cover Manager, Administrator, Player/household and Spectator. The service checks the credentials and current membership; the app derives the role from `/v1/me`. The account list and login details are supplied in the conversation, outside the app and repository documentation.
 
@@ -14,8 +14,8 @@ The sample season contains thirteen named players with shirt numbers, preferred 
 | --- | --- | --- |
 | 10 October 2026 | Away to Oak FC | Completed, 2–2; half time 1–1. |
 | 17 October 2026 | Home to Hill FC | Completed, 3–1; half time 1–1. |
-| 24 October 2026 | Home to Maple FC | Scheduled, 10: 00 kickoff; 09: 30 arrival at Rovers Sports Ground. |
-| 31 October 2026 | Away to Oak FC | Scheduled, 10: 30 kickoff; 10: 00 arrival at Oak Meadow. |
+| 24 October 2026 | Home to Maple FC | Scheduled, 10:00 kickoff; 09:30 arrival at Rovers Sports Ground. |
+| 31 October 2026 | Away to Oak FC | Scheduled, 10:30 kickoff; 10:00 arrival at Oak Meadow. |
 
 Both completed games are replayed through the normal match rules: seven pitch places, two manually ended 25-minute halves, nine attending selected players, goals, keeper coverage and substitutions. Their archived scores, attendance and participation derive from those same matches. Across the two games, all thirteen players have participation evidence. Historical albums and sealed awards use those played fixtures. Future matches have selection and availability responses; actual attendance, play and final results remain unrecorded. Training remains a separate schedule category.
 

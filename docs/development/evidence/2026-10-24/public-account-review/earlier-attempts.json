@@ -1,0 +1,31 @@
+{
+  "remoteCaptureAttempts": {
+    "attempts": [
+      {
+        "stage": "manager390px",
+        "errorType": "Error",
+        "cause": "Initial response capture failed after sign-in; no completed-journey or per-token revocation claim is made for that attempt."
+      },
+      {
+        "stage": "manager 390px",
+        "errorType": "Error",
+        "message": "Response.json: Protocol error (Network.getResponseBody): No data found for resource with given identifier\nResponse body is not available for a response that was navigated away from. Read response.body() before triggering any navigation.",
+        "completedRoles": 0
+      },
+      {
+        "stage": "manager 390px login",
+        "errorType": "Error",
+        "message": "Page.evaluate: TypeError: Cannot read properties of undefined (reading 'session')\n    at eval (eval at evaluate (:337:30), <anonymous>:1:30)\n    at eval (<anonymous>)\n    at UtilityScript.evaluate (<anonymous>:337:30)\n    at UtilityScript.<anonymous> (<anonymous>:1:44)",
+        "completedRoles": 0
+      }
+    ],
+    "uiCleanupStatus": 204,
+    "completedJourneys": 0
+  },
+  "administratorExpectation": {
+    "stage": "administrator390px",
+    "cause": "The test expected the combined team label in the separate name field; canonical fields are Roma and U10. The application was not changed."
+  },
+  "scope": "These are test-observer/expectation failures, not evidence of an application defect. Later successful role/width coverage and separate HTTPS revocation evidence are recorded separately.",
+  "cleanupLimit": "Visible sessions were signed out with observed204 where recorded. The earliest discarded browser bearer was not independently inspected or rechecked."
+}
