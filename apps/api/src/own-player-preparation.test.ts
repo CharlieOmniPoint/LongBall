@@ -14,6 +14,7 @@ import { applyRuntimeGrants } from "./runtime-grants";
 import { EVENT_CONTRACT_VERSION, SYNTHETIC_IDS } from "./store";
 import { parseOwnPlayerPreparation } from "../../../packages/application/src/player-preparation";
 import type { RecordsState } from "../../../packages/application/src/records";
+import type { PreparationState } from "../../../packages/application/src/preparation";
 const cleanups: (() => Promise<void>)[] = [];
 afterEach(async () => {
   for (const close of cleanups.splice(0).reverse()) await close();
@@ -25,7 +26,7 @@ const scope = {
   seasonId: SYNTHETIC_IDS.seasonId,
   playerId: "synthetic-player-01",
 };
-async function start(kind: "sqlite" | "postgres") {
+async function start(kind: "sqlite" | "postgres", now = () => Date.parse('2026-10-24T12:00:00Z')) {
   const directory = mkdtempSync(join(tmpdir(), "longball-own-player-ui07-"));
   cleanups.push(async () =>
     rmSync(directory, { recursive: true, force: true }),
@@ -55,7 +56,7 @@ async function start(kind: "sqlite" | "postgres") {
     });
     const ownerUrl = new URL(testUrl!);
     ownerUrl.pathname = `/${database}`;
-    owner = await PostgresStore.open(ownerUrl.href);
+    owner = await PostgresStore.open(ownerUrl.href, now);
     await owner.seedSynthetic();
     cleanups.push(() => owner!.close());
     const media = await PgMediaService.open({
@@ -75,11 +76,13 @@ async function start(kind: "sqlite" | "postgres") {
       migrationMode: "verify",
       syntheticAuth: true,
       seedSynthetic: false,
+      now,
     });
   } else
     api = createApi({
       databasePath: join(directory, "service.sqlite"),
       syntheticAuth: true,
+      now,
     });
   await new Promise<void>((resolve) =>
     api.server.listen(0, "127.0.0.1", resolve),
@@ -122,6 +125,91 @@ for (const kind of ["sqlite", "postgres"] as const)
   describe.skipIf(kind === "postgres" && !testUrl)(
     `UI07 ${kind} authorised own-player HTTP`,
     () => {
+      it('rejects new replies for past still-scheduled games while preserving history and manager corrections', async () => {
+        const { call, api, owner } = await start(kind), store = owner ?? api.store;
+        const before = await store.document<PreparationState>(scope.teamId, scope.seasonId, 'preparation');
+        const past = before.fixtures.find(item => item.playedDate < '2026-10-24' && item.status === 'scheduled')!;
+        expect(past).toBeDefined();
+        const recordsBefore = await store.document<RecordsState>(scope.teamId, scope.seasonId, 'records');
+        const denied = await call(`${teamUrl}/preparation/own`, { body: { command: { id: randomUUID(), expectedRevision: before.revision, type: 'own.fixture_response_recorded', fixtureId: past.id, response: 'unavailable' } } });
+        expect(denied.status, JSON.stringify(denied.body)).toBe(422);
+        expect(denied.body).toMatchObject({ code: 'COMMAND_REJECTED' });
+        expect(await store.document<PreparationState>(scope.teamId, scope.seasonId, 'preparation')).toEqual(before);
+        expect(await store.document<RecordsState>(scope.teamId, scope.seasonId, 'records')).toEqual(recordsBefore);
+        const profile = before.profiles.find(item => item.playerId === scope.playerId)!;
+        const corrected = await call(`${teamUrl}/preparation`, { token: 'synthetic-manager-1', body: { command: { id: randomUUID(), expectedRevision: before.revision, type: 'fixture.response_recorded', fixtureId: past.id, profileId: profile.id, response: 'unsure' } } });
+        expect(corrected.status, JSON.stringify(corrected.body)).toBe(200);
+        const after = await store.document<PreparationState>(scope.teamId, scope.seasonId, 'preparation');
+        expect(after.fixtures.find(item => item.id === past.id)).toMatchObject({ responses: { [profile.id]: 'unsure' }, attendance: past.attendance });
+      });
+      it('accepts today and future unplayed replies, then closes at London midnight without losing accepted receipts', async () => {
+        let now = Date.parse('2026-10-24T18:00:00Z');
+        const { call, api, owner } = await start(kind, () => now), store = owner ?? api.store;
+        const before = await store.document<PreparationState>(scope.teamId, scope.seasonId, 'preparation');
+        const today = before.fixtures.find(item => item.id === SYNTHETIC_IDS.matchId)!;
+        const future = before.fixtures.find(item => item.playedDate > '2026-10-24' && item.status === 'scheduled')!;
+        expect(today.playedDate).toBe('2026-10-24');
+        const records = await store.document<RecordsState>(scope.teamId, scope.seasonId, 'records');
+        // A summary draft is not evidence of played football. Preserve RSVP
+        // for both today and a future unplayed fixture despite incomplete rows.
+        const incompleteRecords: RecordsState = {
+          ...records,
+          results: [...records.results, ...[today, future].map(fixture => ({
+            ...records.results[0], id: fixture.id, playedDate: fixture.playedDate,
+            status: 'incomplete' as const, finalScore: null, halfTimeScore: null,
+            goals: [], actualActiveDurationMs: null, selectedPlayerIds: null,
+            attendance: null, participation: null, sourceMatchRevision: null,
+          }))],
+        };
+        await store.saveDocument(scope.teamId, scope.seasonId, 'records', incompleteRecords);
+        const command = { id: randomUUID(), expectedRevision: before.revision, type: 'own.fixture_response_recorded', fixtureId: today.id, response: 'available' }, key = randomUUID();
+        const accepted = await call(`${teamUrl}/preparation/own`, { body: { command }, key });
+        expect(accepted.status, JSON.stringify(accepted.body)).toBe(200);
+        const next = await call(`${teamUrl}/preparation/own`, { body: { command: { id: randomUUID(), expectedRevision: accepted.body.revision, type: 'own.fixture_response_recorded', fixtureId: future.id, response: 'unsure' } } });
+        expect(next.status, JSON.stringify(next.body)).toBe(200);
+        const saved = await store.document<PreparationState>(scope.teamId, scope.seasonId, 'preparation');
+        expect(saved.fixtures.find(item => item.id === today.id)?.attendance).toEqual(today.attendance);
+        now = Date.parse('2026-10-24T23:00:00Z'); // London midnight while summer time still applies.
+        const late = await call(`${teamUrl}/preparation/own`, { body: { command: { id: randomUUID(), expectedRevision: saved.revision, type: 'own.fixture_response_recorded', fixtureId: today.id, response: 'unavailable' } } });
+        expect(late.status, JSON.stringify(late.body)).toBe(422);
+        expect(late.body).toMatchObject({ code: 'COMMAND_REJECTED' });
+        expect(await store.document<PreparationState>(scope.teamId, scope.seasonId, 'preparation')).toEqual(saved);
+        expect(await call(`${teamUrl}/preparation/own`, { body: { command }, key })).toEqual(accepted);
+        const replay = await call(`${teamUrl}/preparation/own`, { body: { command } });
+        expect(replay.status, JSON.stringify(replay.body)).toBe(200);
+        expect(replay.body.revision).toBe(saved.revision);
+        expect(await store.document<PreparationState>(scope.teamId, scope.seasonId, 'preparation')).toEqual(saved);
+      });
+      it('closes same-day started/completed/abandoned and historical-summary games before any own-player write', async () => {
+        const { call, api, owner } = await start(kind), store = owner ?? api.store;
+        const before = await store.document<PreparationState>(scope.teamId, scope.seasonId, 'preparation');
+        const recordsBefore = await store.document<RecordsState>(scope.teamId, scope.seasonId, 'records');
+        const incompleteRecords: RecordsState = { ...recordsBefore, results: [...recordsBefore.results, { ...recordsBefore.results[0], id: SYNTHETIC_IDS.matchId, playedDate: '2026-10-24', status: 'incomplete' }] };
+        await store.saveDocument(scope.teamId, scope.seasonId, 'records', incompleteRecords);
+        const setCanonicalStatus = async (status: string) => {
+          if (store instanceof PostgresStore) {
+            const row = await store.one('SELECT state_json FROM matches WHERE id=$1 AND team_id=$2 AND season_id=$3', [SYNTHETIC_IDS.matchId, scope.teamId, scope.seasonId]);
+            const state = JSON.parse(String(row!.state_json));
+            await store.execute('UPDATE matches SET state_json=$1 WHERE id=$2 AND team_id=$3 AND season_id=$4', [JSON.stringify({ ...state, status }), SYNTHETIC_IDS.matchId, scope.teamId, scope.seasonId]);
+          } else {
+            const row = store.database.prepare('SELECT state_json FROM matches WHERE id=? AND team_id=? AND season_id=?').get(SYNTHETIC_IDS.matchId, scope.teamId, scope.seasonId) as { state_json: string };
+            store.database.prepare('UPDATE matches SET state_json=? WHERE id=? AND team_id=? AND season_id=?').run(JSON.stringify({ ...JSON.parse(row.state_json), status }), SYNTHETIC_IDS.matchId, scope.teamId, scope.seasonId);
+          }
+        };
+        const denied = async () => {
+          const reply = await call(`${teamUrl}/preparation/own`, { body: { command: { id: randomUUID(), expectedRevision: before.revision, type: 'own.fixture_response_recorded', fixtureId: SYNTHETIC_IDS.matchId, response: 'available' } } });
+          expect(reply.status, JSON.stringify(reply.body)).toBe(422);
+          expect(reply.body).toMatchObject({ code: 'COMMAND_REJECTED' });
+          expect(await store.document<PreparationState>(scope.teamId, scope.seasonId, 'preparation')).toEqual(before);
+        };
+        for (const status of ['first_half_running', 'completed', 'abandoned']) { await setCanonicalStatus(status); await denied(); }
+        await setCanonicalStatus('preparation');
+        const summary = { ...recordsBefore.results[0], id: SYNTHETIC_IDS.matchId, playedDate: '2026-10-24', status: 'completed' as const };
+        const recorded = { ...recordsBefore, results: [...recordsBefore.results, summary] };
+        await store.saveDocument(scope.teamId, scope.seasonId, 'records', recorded);
+        await denied();
+        expect(await store.document<RecordsState>(scope.teamId, scope.seasonId, 'records')).toEqual(recorded);
+      });
       it("persists manager and own RSVP changes into scoped REP02 reports without inventing check-in or permitting client evidence writes", async () => {
         const { call, api, owner } = await start(kind);
         const store = owner ?? api.store;
@@ -129,11 +217,13 @@ for (const kind of ["sqlite", "postgres"] as const)
         const ids = ['synthetic-player-01', 'synthetic-player-02', 'synthetic-player-03'];
         const record = { ...records.results[0], id: SYNTHETIC_IDS.matchId, selectedPlayerIds: ids, attendance: { [ids[0]]: 'not_recorded' as const, [ids[1]]: 'present' as const, [ids[2]]: 'excused' as const } };
         const updatedRecords: RecordsState = { ...records, results: [record] };
-        await store.saveDocument(SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId, 'records', updatedRecords);
         const ownCommand = { id: randomUUID(), expectedRevision: 0, type: 'own.fixture_response_recorded', fixtureId: SYNTHETIC_IDS.matchId, response: 'unsure' };
         const key = randomUUID();
         const accepted = await call(`${teamUrl}/preparation/own`, { body: { command: ownCommand }, key });
         expect(accepted.status, JSON.stringify(accepted.body)).toBe(200);
+        // RSVP precedes the recorded result. Once historical, its saved reply
+        // still contributes separately from actual check-in and participation.
+        await store.saveDocument(SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId, 'records', updatedRecords);
         const immediate = await call(`${teamUrl}/records`);
         expect(immediate.status, JSON.stringify(immediate.body)).toBe(200);
         expect(immediate.body.participation).toMatchObject({ sourcePreparationRevision: accepted.body.revision, rows: [{ playerId: ids[0], gameRecords: [{ availabilityResponse: 'unsure', actualAttendance: 'not_recorded' }] }] });

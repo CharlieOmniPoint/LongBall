@@ -48,8 +48,8 @@ export function Button({ label, accessibilityLabel, accessibilityState, buttonRe
   </Pressable>;
 }
 
-export function Card({ children, style }: { children: ReactNode; style?: StyleProp<ViewStyle> }) {
-  return <View style={[styles.card, style]}>{children}</View>;
+export function Card({ children, style, testID }: { children: ReactNode; style?: StyleProp<ViewStyle>; testID?: string }) {
+  return <View testID={testID} style={[styles.card, style]}>{children}</View>;
 }
 
 export function Notice({ children, tone = 'info', icon = 'info' }: {

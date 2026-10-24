@@ -1,4 +1,5 @@
 import { projectOwnPlayerPreparation } from '../../../packages/application/src/player-preparation';
+import { canPlayerReplyToFixture } from '../../../packages/application/src/fixture-response-window';
 import { matchPageAudience, matchPageCursor, matchPagePosition, type MatchPageQuery } from './match-pagination';
 import { buildOfflineDownload, offlinePublication, type OfflineEventRow, type OfflineTransitionRow } from './offline-bundle';
 import { PgDatabase, type PgApplicationContext } from './pg';
@@ -1019,6 +1020,16 @@ async ownPreparationCommand(principal: Principal, teamId: string, seasonId: stri
     if (profiles.length !== 1)
         throw new AccessError('NOT_FOUND', 404, 'The requested own-player profile is unavailable.');
     const profile = profiles[0];
+    if (command.type === 'own.fixture_response_recorded' && !state.appliedCommands[command.id]) {
+        const fixture = state.fixtures.find(item => item.id === command.fixtureId && item.seasonId === seasonId);
+        if (fixture) {
+            const canonical = await this.one("SELECT state_json->>'status' AS status FROM matches WHERE id=$1 AND team_id=$2 AND season_id=$3", [fixture.id, teamId, seasonId]);
+            const records = await this.document<RecordsState>(teamId, seasonId, 'records');
+            const historical = records.results.find(item => item.id === fixture.id && item.teamId === teamId && item.seasonId === seasonId && ['completed', 'abandoned'].includes(item.status));
+            const recordedStatus = canonical && canonical.status !== 'preparation' ? String(canonical.status ?? 'unknown') : historical?.status ?? (canonical?.status as string | undefined);
+            if (!canPlayerReplyToFixture(fixture, this.now(), { recordedStatus })) throw new AccessError('COMMAND_REJECTED', 422, 'Availability replies are closed for this game. Recorded replies and attendance are preserved.');
+        }
+    }
     const base = { id: command.id, expectedRevision: command.expectedRevision };
     const bound: PreparationCommand = command.type === 'own.preferences_saved' ? { ...base, type: 'profile.saved', profile: { ...profile, preferences: command.preferences } }
         : command.type === 'own.fixture_response_recorded' ? { ...base, type: 'fixture.response_recorded', fixtureId: command.fixtureId, profileId: profile.id, response: command.response }

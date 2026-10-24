@@ -174,7 +174,7 @@ async function retainFailureWorkspace(state) {
 async function makePage(width) {
   const context = await browser.newContext({ viewport: { width, height: 844 }, acceptDownloads: true, reducedMotion: 'reduce' });
   const page = await context.newPage();
-  const state = { context, page, errors: [], routes: [], requestFailures: [], closed: false, currentSession: null, lastLoginStatus: null, meRequests: 0, holdMe: null, meReplyOnce: null, preparationPosts: 0, configurationPosts: 0, scopedReadReplyOnce: null };
+  const state = { context, page, errors: [], routes: [], requestFailures: [], closed: false, currentSession: null, lastLoginStatus: null, meRequests: 0, holdMe: null, meReplyOnce: null, preparationPosts: 0, ownPreparationPosts: 0, configurationPosts: 0, scopedReadReplyOnce: null };
   browserStates.push(state);
   page.on('pageerror', error => state.errors.push(sanitise(error.message)));
   page.on('requestfailed', request => {
@@ -205,6 +205,7 @@ async function makePage(width) {
         check(report.loginAttempts <= 17, 'The complete isolated review must stay within its bounded seventeen-attempt login budget.');
       }
       if (/\/preparation$/.test(address.pathname) && request.method() === 'POST') state.preparationPosts++;
+      if (/\/preparation\/own$/.test(address.pathname) && request.method() === 'POST') state.ownPreparationPosts++;
       if (/\/configuration$/.test(address.pathname) && request.method() === 'POST') state.configurationPosts++;
       if (state.scopedReadReplyOnce && request.method() === 'GET' && address.pathname.endsWith(state.scopedReadReplyOnce.path)) {
         const status = state.scopedReadReplyOnce.status; state.scopedReadReplyOnce = null;
@@ -536,6 +537,37 @@ async function administratorDraftRegression(account) {
     checks.push('Actual concurrent administrator update produces the existing COMMAND_REJECTED422; the editor retains editable drafts with no automatic POST, and explicit refresh exposes the latest value for separate keep-draft review.');
     checks.push('Controlled required configuration503 retains the same disabled draft and explicit retry restores it; configuration403 closes private views even while independently verified /v1/me remains200.');
   } finally { state.closed = true; await state.context.close(); }
+}
+async function playerHistoricSchedule(state, width) {
+  const { page } = state, token = state.currentSession.accessToken;
+  const route = `/v1/teams/${teamId}/preparation/own?seasonId=${seasonId}`;
+  const before = await currentJson(token, route, 'player'), posts = state.ownPreparationPosts;
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/London', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
+  const part = kind => parts.find(item => item.type === kind).value;
+  const today = `${part('year')}-${part('month')}-${part('day')}`;
+  const historic = before.fixtures.filter(item => item.playedDate < today);
+  check(historic.length > 0, 'The historical availability check requires actual past game records.');
+  const labels = { available: 'Available', unavailable: 'Unavailable', unsure: 'Unsure', no_reply: 'No reply' };
+  for (const fixture of historic) {
+    const card = page.getByTestId(`player-fixture-${fixture.id}`);
+    await card.waitFor();
+    for (const label of Object.values(labels)) check(await card.getByRole('button', { name: label, exact: true }).count() === 0, 'Every historical game must omit every availability action, including No reply.');
+    const content = (await card.innerText()).replace(/\s+/g, ' ');
+    check(content.includes(`Recorded reply: ${labels[fixture.response]}`) && content.includes(`actual attendance: ${fixture.attendance.replaceAll('_', ' ')}`), 'Past games must retain the exact recorded reply and actual attendance returned by the current own-player service.');
+  }
+  await page.getByTestId('own-schedule-upcoming').click();
+  const upcoming = before.fixtures.filter(item => item.playedDate >= today && item.status === 'scheduled');
+  check(upcoming.length > 0, 'The historical availability check must also retain an unplayed upcoming game.');
+  for (const fixture of upcoming) {
+    const card = page.getByTestId(`player-fixture-${fixture.id}`);
+    await card.waitFor();
+    for (const label of Object.values(labels)) await card.getByRole('button', { name: label, exact: true }).waitFor();
+  }
+  await page.getByTestId('own-schedule-past').click();
+  await page.getByTestId(`player-fixture-${historic[0].id}`).waitFor();
+  check(state.ownPreparationPosts === posts, 'Opening past and upcoming game records must not submit an availability reply.');
+  assert.deepEqual(await currentJson(token, route, 'player'), before, 'Reviewing historical game records must leave all saved player preparation, replies and attendance unchanged.');
+  (report.playerHistoricSchedule ??= []).push({ width, historicGames: historic.length, upcomingGames: upcoming.length, everyHistoricalReplyActionAbsent: true, recordedReplyAndAttendanceRetained: true, upcomingReplyActionsRetained: true, navigationPosts: 0, servicePreparationUnchanged: true });
 }
 async function playerReplyRegression(account) {
   const state = await makePage(390), { page } = state;
@@ -922,6 +954,7 @@ try {
         await page.getByTestId('own-schedule-kind-match').click();
         await page.getByText(/ · Completed$/).first().waitFor();
         check(await page.getByText(/ · Completed$/).count() === 2 && await page.getByRole('button', { name: 'Available', exact: true }).count() === 0, 'Completed player fixtures must remain read-only rather than accepting RSVP changes.');
+        await playerHistoricSchedule(state, width);
         if (width === 390) await checkServerDenial(state, account, databasePath);
       }
       if (account.role === 'spectator') {
@@ -950,6 +983,7 @@ try {
   }
   checks.push('All four preauthorised roles pass at 320px and 390px; logout revokes each opaque server session.');
   checks.push('Thirteen named profiles, four accepted fixtures and two completed games agree with manager/player screens.');
+  checks.push('Past game cards at both phone widths omit every availability action while retaining exact recorded replies and attendance; upcoming unplayed games keep their reply actions, and period navigation causes no POST or service preparation change.');
   checks.push('Generated passwords and login tokens are absent from built assets, visible workspace text and browser journal/preferences.');
   report.browserCredentialBoundary = { generatedUsernamesPasswordsForbidden: true, demoSessionBearerTokensForbidden: true, serverOnlyExportKeyForbidden: true, allBrowserStoresInspected: true, canonicalControllerGrantIntentionallyRetained: true, allOpaqueHeadersRedactedFromEvidence: true };
   stage = 'administrator retained configuration draft';

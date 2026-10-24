@@ -1,6 +1,6 @@
 import { formatUkDate, formatUkSeasonLabel } from '@longball/application/uk-display';
 import { FixtureScheduleDetails } from "./FixtureScheduleDetails";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import {
   activePositionCodes,
@@ -11,6 +11,7 @@ import {
 import { Button, Card, colors, Notice, Pill } from "../ui";
 import { randomUUID } from "../platform/id";
 import { groupPreparationEvents } from "@longball/application/preparation-presentation";
+import { canPlayerReplyToFixture } from "@longball/application/fixture-response-window";
 
 export function PlayerExperience({
   state,
@@ -20,6 +21,7 @@ export function PlayerExperience({
   onReports,
   onAwards,
   busy,
+  nowMs,
 }: {
   state: PreparationState;
   playerId: string;
@@ -28,7 +30,15 @@ export function PlayerExperience({
   onReports: () => void;
   onAwards: () => void;
   busy: boolean;
+  nowMs?: number;
 }) {
+  const [localNowMs, setLocalNowMs] = useState(() => Date.now());
+  useEffect(() => {
+    if (nowMs !== undefined) return;
+    const timer = setInterval(() => setLocalNowMs(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [nowMs]);
+  const observedNowMs = nowMs ?? localNowMs;
   const [period, setPeriod] = useState<"upcoming" | "past">("upcoming");
   const [eventType, setEventType] = useState<"matches" | "training">("matches");
   const profile = state.profiles.find(
@@ -55,7 +65,7 @@ export function PlayerExperience({
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
-  }).formatToParts(new Date());
+  }).formatToParts(new Date(observedNowMs));
   const today = `${todayParts.find((part) => part.type === "year")?.value}-${todayParts.find((part) => part.type === "month")?.value}-${todayParts.find((part) => part.type === "day")?.value}`;
   const fixtureGroups = groupPreparationEvents(fixtures, {
     date: (event) => event.playedDate,
@@ -143,7 +153,7 @@ export function PlayerExperience({
               </Text>
               {(view === "home" ? group.events.slice(0, 1) : group.events).map(
                 (fixture) => (
-                  <Card key={fixture.id}>
+                  <Card key={fixture.id} testID={`local-player-fixture-${fixture.id}`}>
                     <Pill
                       tone={
                         fixture.status === "scheduled" ? "brand" : "warning"
@@ -169,7 +179,7 @@ export function PlayerExperience({
                         " ",
                       )}
                     </Text>
-                    {fixture.status === "scheduled" && (
+                    {canPlayerReplyToFixture(fixture, observedNowMs) && (
                       <View style={styles.stack}>
                         {choices.map(([response, label]) => (
                           <Button
@@ -195,10 +205,15 @@ export function PlayerExperience({
                         ))}
                       </View>
                     )}
-                    <Text style={styles.muted}>
-                      A reply does not mark attendance or start your playing
-                      time.
-                    </Text>
+                    {canPlayerReplyToFixture(fixture, observedNowMs) ? (
+                      <Text style={styles.muted}>
+                        A reply does not mark attendance or start your playing time.
+                      </Text>
+                    ) : (
+                      <Text style={styles.muted}>
+                        Attendance: {(fixture.attendance[profile.id] ?? "not_recorded").replaceAll("_", " ")}
+                      </Text>
+                    )}
                   </Card>
                 ),
               )}

@@ -18,6 +18,7 @@ import {
 } from "@longball/application/player-preparation";
 import { FixtureScheduleDetails } from "./FixtureScheduleDetails";
 import { acceptedCompletedFixtureIds, fixtureScheduleStatus } from "@longball/application/fixture-schedule-status";
+import { canPlayerReplyToFixture } from "@longball/application/fixture-response-window";
 import { startForegroundRefresh } from "@longball/application/foreground-refresh";
 import { isActiveSharedMatch, mergeSharedMatchViews, refreshSharedHistoryPage, refreshSharedMatchViews, SharedMatchRefreshAuthorityDenied } from "@longball/application/shared-match-refresh";
 import { continueMatchList, parseMatchListPage, MatchListAuthorityDenied, type MatchListPage } from '@longball/application/match-list';
@@ -1198,6 +1199,10 @@ function WorkspaceSession({
   );
   const matches = matchList ? visibleScheduledMatches(mergeSharedMatchViews(matchList.items, refreshedMatches ?? []), teamOverview) : null;
   const completedFixtureIds = acceptedCompletedFixtureIds(matches, { teamId, seasonId });
+  const replyClosedFixtureIds = new Set([...completedFixtureIds, ...(matches ?? []).filter(match => {
+    const status = match.status ?? match.state?.status;
+    return match.teamId === teamId && match.seasonId === seasonId && status && status !== 'preparation';
+  }).map(match => match.matchId)]);
   const acceptedFixtureIds = new Set((matches ?? []).filter(match => match.teamId === teamId && match.seasonId === seasonId).map(match => match.matchId));
   const seasonOptions = readWorkspaceValue(
     seasonCache,
@@ -3360,6 +3365,7 @@ function WorkspaceSession({
           <OwnPreparation
             key={`${absoluteApi}:${identity?.principal.accountId}:${teamId}:${seasonId}:${own.profile.id}`}
             completedFixtureIds={completedFixtureIds}
+            replyClosedFixtureIds={replyClosedFixtureIds}
             value={own}
             onExportCalendar={exportCalendar}
             view={tab === "team" ? "profile" : "schedule"}
@@ -3594,6 +3600,7 @@ function OwnPreparation({
   onChange,
   onExportCalendar,
   completedFixtureIds,
+  replyClosedFixtureIds,
 }: {
   value: OwnPreparationDto;
   view?: "schedule" | "profile";
@@ -3602,6 +3609,7 @@ function OwnPreparation({
   onChange: (command: OwnCommand) => Promise<boolean>;
   onExportCalendar: (selectedKeys: string[]) => Promise<string>;
   completedFixtureIds: ReadonlySet<string>;
+  replyClosedFixtureIds: ReadonlySet<string>;
 }) {
   const [preferenceDraft, setPreferenceDraft] = useState(() => revisionedValueDraft(value.profile.preferences, value.revision));
   const [preferenceAck, setPreferenceAck] = useState<{ submitted: PlayerProfile['preferences']; sourceRevision: number } | null>(null);
@@ -3660,7 +3668,7 @@ function OwnPreparation({
     time: (event) => (event.kind === "match" ? event.kickoff : event.time),
   });
   const fixtureCard = (fixture: OwnPreparationDto["fixtures"][number]) => (
-    <Card key={fixture.id}>
+    <Card key={fixture.id} testID={`player-fixture-${fixture.id}`}>
       <Text style={typography.section}>
         {fixture.homeAway === "away" ? "Away to" : "Home v"} {fixture.opponent}
       </Text>
@@ -3673,7 +3681,7 @@ function OwnPreparation({
         {fixture.selected ? "Selected by manager" : "Not selected"} · actual
         attendance: {fixture.attendance.replaceAll("_", " ")}
       </Text>
-      {fixture.status === "scheduled" && !completedFixtureIds.has(fixture.id) && fixture.playedDate >= today ? (
+      {canPlayerReplyToFixture(fixture, nowMs, { recordedStatus: replyClosedFixtureIds.has(fixture.id) ? 'closed' : null }) ? (
         responseButtons(fixture.response, (response) => {
           void command({
             type: "own.fixture_response_recorded",
@@ -3683,7 +3691,7 @@ function OwnPreparation({
         })
       ) : (
         <Text style={typography.muted}>
-          Reply: {responseLabels[fixture.response]}
+          Recorded reply: {responseLabels[fixture.response]}
         </Text>
       )}
     </Card>
