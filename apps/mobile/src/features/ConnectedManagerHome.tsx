@@ -1,4 +1,4 @@
-import { formatUkDate } from '@longball/application/uk-display';
+import { formatUkDate } from "@longball/application/uk-display";
 import { useEffect, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import type { PreparationState } from "@longball/application/preparation";
@@ -10,6 +10,7 @@ import {
 import type { ConnectedRecordsDto } from "./ConnectedRecordsScreens";
 import { Button, Card, Notice, Pill } from "../ui";
 import { colors, typography } from "../ui/tokens";
+import { useWorkspaceLayout } from "../ui/WorkspaceLayout";
 
 export interface ConnectedManagerHomeProps {
   state: PreparationState;
@@ -88,6 +89,8 @@ export function ConnectedManagerHome({
   onResumeMatch,
   onPrepareMatch,
 }: ConnectedManagerHomeProps) {
+  const { wide } = useWorkspaceLayout();
+  const cardStyle = [s.dashboardCard, wide && s.dashboardCardWide];
   const [observedAt, setObservedAt] = useState(() => Date.now());
   useEffect(() => {
     if (nowMs !== undefined) return;
@@ -128,227 +131,233 @@ export function ConnectedManagerHome({
         </Card>
       )}
 
-      <Card>
-        <Text accessibilityRole="header" style={typography.section}>
-          {home.needsOrdering ? "Next events · confirm order" : "Next event"}
-        </Text>
-        {next ? (
-          <>
-            <EventSummary event={next} />
-            {next.prepared && (
-              <Text style={typography.muted}>
-                Review current replies, check-in and formation before using the
-                saved preparation.
-              </Text>
-            )}
-            <Button
-              label={
-                next.kind === "match" ? "Prepare match" : "Review training"
-              }
-              icon={next.kind === "match" ? "play" : "calendar"}
-              testID="manager-home-prepare"
-              onPress={() =>
-                next.kind === "match" && onPrepareMatch
-                  ? onPrepareMatch(next.id)
-                  : onOpenSchedule()
-              }
-            />
-          </>
-        ) : home.needsOrdering ? (
-          <>
-            <Notice tone="warning">
-              The recorded dates or times do not establish one next event.
-              Confirm the schedule before preparing a match.
-            </Notice>
-            {home.nextCandidates.slice(0, 3).map((event) => (
-              <EventSummary
-                key={`${event.kind}:${event.id}`}
-                event={event}
-                compact
+      <View style={s.dashboardGrid} testID="manager-home-dashboard-grid">
+        <Card style={cardStyle}>
+          <Text accessibilityRole="header" style={typography.section}>
+            {home.needsOrdering ? "Next events · confirm order" : "Next event"}
+          </Text>
+          {next ? (
+            <>
+              <EventSummary event={next} />
+              {next.prepared && (
+                <Text style={typography.muted}>
+                  Review current replies, check-in and formation before using
+                  the saved preparation.
+                </Text>
+              )}
+              <Button
+                label={
+                  next.kind === "match" ? "Prepare match" : "Review training"
+                }
+                icon={next.kind === "match" ? "play" : "calendar"}
+                testID="manager-home-prepare"
+                onPress={() =>
+                  next.kind === "match" && onPrepareMatch
+                    ? onPrepareMatch(next.id)
+                    : onOpenSchedule()
+                }
               />
-            ))}
-            {home.nextCandidates.length > 3 && (
-              <Text style={typography.muted}>
-                {home.nextCandidates.length - 3} more events on this date.
-              </Text>
-            )}
-            <Button
-              label="Review next events"
-              icon="calendar"
-              onPress={onOpenSchedule}
-            />
-          </>
-        ) : (
-          <>
-            <Text style={typography.body}>
-              No upcoming dated event is recorded.
-            </Text>
-            {home.undated.length > 0 && (
+            </>
+          ) : home.needsOrdering ? (
+            <>
               <Notice tone="warning">
-                {plural(home.undated.length, "event")} still need a date. Review
-                them before relying on this schedule.
+                The recorded dates or times do not establish one next event.
+                Confirm the schedule before preparing a match.
               </Notice>
-            )}
-            <Button
-              label={home.undated.length ? "Review schedule" : "Create fixture"}
-              icon="calendar"
-              testID="manager-home-create-fixture"
-              onPress={onOpenSchedule}
-            />
-          </>
-        )}
-      </Card>
-
-      <Card>
-        <Text accessibilityRole="header" style={typography.section}>
-          To follow up
-        </Text>
-        <View style={s.counts}>
-          <View style={s.count}>
-            <Text style={s.number}>{home.repliesDue}</Text>
-            <Text style={typography.muted}>availability replies</Text>
-          </View>
-          <View style={s.count}>
-            <Text style={s.number}>{home.attendanceToRecord}</Text>
-            <Text style={typography.muted}>attendance records</Text>
-          </View>
-        </View>
-        <Text style={typography.muted}>
-          Replies are plans. Attendance is recorded separately for selected
-          players and held training.
-        </Text>
-        {home.olderUnresolved.length > 0 && (
-          <Notice tone="warning">
-            {plural(home.olderUnresolved.length, "older event")} still show
-            scheduled. Check the recorded status.
-          </Notice>
-        )}
-        <Button
-          label="Review replies and attendance"
-          variant="secondary"
-          onPress={onOpenSchedule}
-        />
-        {home.missingPreferences > 0 && (
-          <Notice tone="warning">
-            {plural(home.missingPreferences, "player profile")} need complete
-            position preferences. Review the setup in Squad.
-          </Notice>
-        )}
-        <Button
-          label={
-            home.missingPreferences
-              ? "Complete player preferences"
-              : "Open squad"
-          }
-          variant="quiet"
-          icon="users"
-          onPress={onOpenTeam}
-        />
-      </Card>
-
-      <Card>
-        <Text accessibilityRole="header" style={typography.section}>
-          Team photos and concerns
-        </Text>
-        {home.photoReviews === null || home.concernsToReview === null ? (
-          <Text style={typography.muted}>
-            The current photo-review status is unavailable.
-          </Text>
-        ) : (
-          <>
-            <Text style={typography.body}>
-              {plural(home.photoReviews, "photo")} awaiting manager review
-            </Text>
-            <Text style={typography.body}>
-              {plural(home.concernsToReview, "concern")} to review
-            </Text>
-          </>
-        )}
-        <Button
-          label="Review team photos"
-          variant="secondary"
-          icon="photo"
-          onPress={onOpenCommunity}
-        />
-      </Card>
-
-      <Card>
-        <Text accessibilityRole="header" style={typography.section}>
-          Upcoming schedule
-        </Text>
-        {home.upcoming.length ? (
-          home.upcoming
-            .slice(0, 3)
-            .map((event) => (
-              <EventSummary
-                key={`${event.kind}:${event.id}`}
-                event={event}
-                compact
+              {home.nextCandidates.slice(0, 3).map((event) => (
+                <EventSummary
+                  key={`${event.kind}:${event.id}`}
+                  event={event}
+                  compact
+                />
+              ))}
+              {home.nextCandidates.length > 3 && (
+                <Text style={typography.muted}>
+                  {home.nextCandidates.length - 3} more events on this date.
+                </Text>
+              )}
+              <Button
+                label="Review next events"
+                icon="calendar"
+                onPress={onOpenSchedule}
               />
-            ))
-        ) : (
-          <Text style={typography.muted}>
-            No dated upcoming matches or training.
-          </Text>
-        )}
-        {home.undated.length > 0 && (
-          <Text style={typography.muted}>
-            {plural(home.undated.length, "event")} have a date to confirm.
-          </Text>
-        )}
-        <Button
-          label="Open schedule"
-          variant="quiet"
-          icon="calendar"
-          onPress={onOpenSchedule}
-        />
-      </Card>
+            </>
+          ) : (
+            <>
+              <Text style={typography.body}>
+                No upcoming dated event is recorded.
+              </Text>
+              {home.undated.length > 0 && (
+                <Notice tone="warning">
+                  {plural(home.undated.length, "event")} still need a date.
+                  Review them before relying on this schedule.
+                </Notice>
+              )}
+              <Button
+                label={
+                  home.undated.length ? "Review schedule" : "Create fixture"
+                }
+                icon="calendar"
+                testID="manager-home-create-fixture"
+                onPress={onOpenSchedule}
+              />
+            </>
+          )}
+        </Card>
 
-      <Card>
-        <Text accessibilityRole="header" style={typography.section}>
-          Recent results
-        </Text>
-        {!home.recordsAvailable ? (
-          <Text style={typography.muted}>
-            Current authorised results are unavailable.
+        <Card style={cardStyle}>
+          <Text accessibilityRole="header" style={typography.section}>
+            To follow up
           </Text>
-        ) : !home.recentResults.length ? (
-          <Text style={typography.muted}>No completed result is recorded.</Text>
-        ) : (
-          <>
-            {home.recentOrderUnknown && (
-              <Notice>
-                These results share a played date and their order is not
-                recorded.
-              </Notice>
-            )}
-            {home.recentResults.slice(0, 3).map((result) => (
-              <View key={result.id} style={s.result}>
-                <View style={s.resultLabel}>
-                  <Text style={typography.label}>{result.opponent}</Text>
-                  <Text style={typography.muted}>
-                    {dateLabel(result.playedDate)} ·{" "}
-                    {result.recordMode === "historical_summary"
-                      ? "Historical summary"
-                      : "Recorded match"}
+          <View style={s.counts}>
+            <View style={s.count}>
+              <Text style={s.number}>{home.repliesDue}</Text>
+              <Text style={typography.muted}>availability replies</Text>
+            </View>
+            <View style={s.count}>
+              <Text style={s.number}>{home.attendanceToRecord}</Text>
+              <Text style={typography.muted}>attendance records</Text>
+            </View>
+          </View>
+          <Text style={typography.muted}>
+            Replies are plans. Attendance is recorded separately for selected
+            players and held training.
+          </Text>
+          {home.olderUnresolved.length > 0 && (
+            <Notice tone="warning">
+              {plural(home.olderUnresolved.length, "older event")} still show
+              scheduled. Check the recorded status.
+            </Notice>
+          )}
+          <Button
+            label="Review replies and attendance"
+            variant="secondary"
+            onPress={onOpenSchedule}
+          />
+          {home.missingPreferences > 0 && (
+            <Notice tone="warning">
+              {plural(home.missingPreferences, "player profile")} need complete
+              position preferences. Review the setup in Squad.
+            </Notice>
+          )}
+          <Button
+            label={
+              home.missingPreferences
+                ? "Complete player preferences"
+                : "Open squad"
+            }
+            variant="quiet"
+            icon="users"
+            onPress={onOpenTeam}
+          />
+        </Card>
+
+        <Card style={cardStyle}>
+          <Text accessibilityRole="header" style={typography.section}>
+            Team photos and concerns
+          </Text>
+          {home.photoReviews === null || home.concernsToReview === null ? (
+            <Text style={typography.muted}>
+              The current photo-review status is unavailable.
+            </Text>
+          ) : (
+            <>
+              <Text style={typography.body}>
+                {plural(home.photoReviews, "photo")} awaiting manager review
+              </Text>
+              <Text style={typography.body}>
+                {plural(home.concernsToReview, "concern")} to review
+              </Text>
+            </>
+          )}
+          <Button
+            label="Review team photos"
+            variant="secondary"
+            icon="photo"
+            onPress={onOpenCommunity}
+          />
+        </Card>
+
+        <Card style={cardStyle}>
+          <Text accessibilityRole="header" style={typography.section}>
+            Upcoming schedule
+          </Text>
+          {home.upcoming.length ? (
+            home.upcoming
+              .slice(0, 3)
+              .map((event) => (
+                <EventSummary
+                  key={`${event.kind}:${event.id}`}
+                  event={event}
+                  compact
+                />
+              ))
+          ) : (
+            <Text style={typography.muted}>
+              No dated upcoming matches or training.
+            </Text>
+          )}
+          {home.undated.length > 0 && (
+            <Text style={typography.muted}>
+              {plural(home.undated.length, "event")} have a date to confirm.
+            </Text>
+          )}
+          <Button
+            label="Open schedule"
+            variant="quiet"
+            icon="calendar"
+            onPress={onOpenSchedule}
+          />
+        </Card>
+
+        <Card style={cardStyle}>
+          <Text accessibilityRole="header" style={typography.section}>
+            Recent results
+          </Text>
+          {!home.recordsAvailable ? (
+            <Text style={typography.muted}>
+              Current authorised results are unavailable.
+            </Text>
+          ) : !home.recentResults.length ? (
+            <Text style={typography.muted}>
+              No completed result is recorded.
+            </Text>
+          ) : (
+            <>
+              {home.recentOrderUnknown && (
+                <Notice>
+                  These results share a played date and their order is not
+                  recorded.
+                </Notice>
+              )}
+              {home.recentResults.slice(0, 3).map((result) => (
+                <View key={result.id} style={s.result}>
+                  <View style={s.resultLabel}>
+                    <Text style={typography.label}>{result.opponent}</Text>
+                    <Text style={typography.muted}>
+                      {dateLabel(result.playedDate)} ·{" "}
+                      {result.recordMode === "historical_summary"
+                        ? "Historical summary"
+                        : "Recorded match"}
+                    </Text>
+                  </View>
+                  <Text style={s.resultScore}>
+                    {result.finalScore
+                      ? `${result.finalScore.for}–${result.finalScore.against}`
+                      : "Score not recorded"}
                   </Text>
                 </View>
-                <Text style={s.resultScore}>
-                  {result.finalScore
-                    ? `${result.finalScore.for}–${result.finalScore.against}`
-                    : "Score not recorded"}
-                </Text>
-              </View>
-            ))}
-          </>
-        )}
-        <Button
-          label="Open reports"
-          variant="secondary"
-          icon="chart"
-          onPress={onOpenReports}
-        />
-      </Card>
+              ))}
+            </>
+          )}
+          <Button
+            label="Open reports"
+            variant="secondary"
+            icon="chart"
+            onPress={onOpenReports}
+          />
+        </Card>
+      </View>
       <Text style={s.footnote}>
         Schedule dates and times use Europe/London for the pilot.
       </Text>
@@ -357,6 +366,14 @@ export function ConnectedManagerHome({
 }
 const s = StyleSheet.create({
   stack: { gap: 16 },
+  dashboardGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "flex-start",
+    gap: 16,
+  },
+  dashboardCard: { flexBasis: "100%", flexGrow: 1, minWidth: 0 },
+  dashboardCardWide: { flexBasis: "48%" },
   event: { gap: 6, paddingVertical: 4 },
   counts: { flexDirection: "row", flexWrap: "wrap", gap: 20 },
   count: { minWidth: 120, flex: 1 },

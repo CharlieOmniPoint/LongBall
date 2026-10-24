@@ -8,6 +8,7 @@ import type {
 import { formatUkSeasonLabel } from "@longball/application/uk-display";
 import { Button, Card, Notice } from "../ui";
 import { colors, typography } from "../ui/tokens";
+import { useWorkspaceLayout } from "../ui/WorkspaceLayout";
 import {
   PlayerStatsDetails,
   PositionBreakdown,
@@ -27,6 +28,9 @@ export function TeamStats({
   selectedPlayerId,
   onSelectPlayer,
 }: TeamStatsProps) {
+  const { wide } = useWorkspaceLayout();
+  const [panelWidth, setPanelWidth] = useState(0);
+  const splitDetails = wide && panelWidth >= 800;
   const [localPlayer, setLocalPlayer] = useState<string | null>(null),
     [mapScope, setMapScope] = useState<"team" | "player">("team");
   const player =
@@ -44,71 +48,103 @@ export function TeamStats({
         {teamLabel ? `${teamLabel} · ` : ""}
         {formatUkSeasonLabel(value.scope.seasonLabel)}
       </Text>
-      <Card>
-        <Text style={typography.section}>Choose a player</Text>
-        <ScrollView
-          horizontal
-          accessibilityLabel="Choose a player for recorded stats"
-          contentContainerStyle={s.players}
+      <View
+        style={[s.workspace, wide && s.workspaceWide]}
+        testID="stats-workspace-layout"
+      >
+        <View
+          style={[s.picker, wide && s.pickerWide]}
+          testID="stats-player-picker"
         >
-          {value.players.map((row) => (
-            <Pressable
-              key={row.playerId}
-              accessibilityRole="button"
-              accessibilityState={{
-                selected: player?.playerId === row.playerId,
-              }}
-              aria-pressed={player?.playerId === row.playerId}
-              testID={`stats-choose-${row.playerId}`}
-              onPress={() => select(row.playerId)}
-              style={[
-                s.player,
-                player?.playerId === row.playerId && s.selected,
-              ]}
+          <Card>
+            <Text style={typography.section}>Choose a player</Text>
+            <ScrollView
+              horizontal={!wide}
+              nestedScrollEnabled
+              style={wide ? s.playerScrollWide : undefined}
+              accessibilityLabel="Choose a player for recorded stats"
+              contentContainerStyle={[s.players, wide && s.playersWide]}
             >
-              <Text
-                style={[
-                  typography.label,
-                  player?.playerId === row.playerId && s.selectedText,
-                ]}
-              >
-                {row.label}
-              </Text>
-            </Pressable>
-          ))}
-        </ScrollView>
-        {!player && (
-          <Notice>No players are recorded in this team and season.</Notice>
-        )}
-      </Card>
-      <Card>
-        <Text style={typography.section}>Season position map</Text>
-        <View style={s.actions}>
-          <Button
-            label="Whole team"
-            variant={mapScope === "team" ? "primary" : "secondary"}
-            onPress={() => setMapScope("team")}
-            testID="stats-map-team"
-          />
-          <Button
-            label="Selected player"
-            variant={mapScope === "player" ? "primary" : "secondary"}
-            disabled={!player}
-            onPress={() => setMapScope("player")}
-            testID="stats-map-player"
-          />
+              {value.players.map((row) => (
+                <Pressable
+                  key={row.playerId}
+                  accessibilityRole="button"
+                  accessibilityState={{
+                    selected: player?.playerId === row.playerId,
+                  }}
+                  aria-pressed={player?.playerId === row.playerId}
+                  testID={`stats-choose-${row.playerId}`}
+                  onPress={() => select(row.playerId)}
+                  style={[
+                    s.player,
+                    player?.playerId === row.playerId && s.selected,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      typography.label,
+                      player?.playerId === row.playerId && s.selectedText,
+                    ]}
+                  >
+                    {row.label}
+                  </Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+            {!player && (
+              <Notice>No players are recorded in this team and season.</Notice>
+            )}
+          </Card>
         </View>
-        <Text style={typography.label}>
-          {mapScope === "player" && player
-            ? player.label
-            : "All player playing time"}
-        </Text>
-        <FormationStats
-          formation={value.formation}
-          value={mapScope === "player" && player ? player : value.team}
-        />
-      </Card>
-      {player && <PlayerStatsDetails row={player} scope={value.scope} />}
+        <View
+          style={[
+            s.panels,
+            wide && s.panelsFlexible,
+            splitDetails && s.panelsWide,
+          ]}
+          testID="stats-season-panels"
+          onLayout={(event) => {
+            const width = event.nativeEvent.layout.width;
+            if (width > 0)
+              setPanelWidth((previous) =>
+                Math.abs(previous - width) > 1 ? width : previous,
+              );
+          }}
+        >
+          <View style={[s.mapPanel, splitDetails && s.splitPanel]}>
+            <Card>
+              <Text style={typography.section}>Season position map</Text>
+              <View style={s.actions}>
+                <Button
+                  label="Whole team"
+                  variant={mapScope === "team" ? "primary" : "secondary"}
+                  onPress={() => setMapScope("team")}
+                  testID="stats-map-team"
+                />
+                <Button
+                  label="Selected player"
+                  variant={mapScope === "player" ? "primary" : "secondary"}
+                  disabled={!player}
+                  onPress={() => setMapScope("player")}
+                  testID="stats-map-player"
+                />
+              </View>
+              <Text style={typography.label}>
+                {mapScope === "player" && player
+                  ? player.label
+                  : "All player playing time"}
+              </Text>
+              <FormationStats
+                formation={value.formation}
+                value={mapScope === "player" && player ? player : value.team}
+              />
+            </Card>
+          </View>
+          <View style={[s.detailsPanel, splitDetails && s.splitPanel]}>
+            {player && <PlayerStatsDetails row={player} scope={value.scope} />}
+          </View>
+        </View>
+      </View>
     </View>
   );
 }
@@ -228,6 +264,18 @@ function FormationStats({
 }
 const s = StyleSheet.create({
   section: { gap: 12 },
+  workspace: { gap: 16 },
+  workspaceWide: { flexDirection: "row", alignItems: "flex-start" },
+  picker: { minWidth: 0 },
+  pickerWide: { width: 220, flexShrink: 0 },
+  playerScrollWide: { maxHeight: 640 },
+  playersWide: { gap: 8, paddingBottom: 4 },
+  panels: { minWidth: 0, gap: 16 },
+  panelsFlexible: { flex: 1 },
+  panelsWide: { flexDirection: "row", alignItems: "flex-start" },
+  mapPanel: { minWidth: 0 },
+  detailsPanel: { minWidth: 0 },
+  splitPanel: { flex: 1 },
   players: { gap: 8, paddingBottom: 4 },
   player: {
     minHeight: 48,

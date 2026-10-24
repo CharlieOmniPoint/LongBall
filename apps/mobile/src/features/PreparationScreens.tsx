@@ -51,6 +51,7 @@ import { deliverCalendarExport } from "../platform/calendar-export";
 import { FormationPositionEditor } from "./FormationPositionEditor";
 import { ReusableMatchPlans } from "./ReusableMatchPlans";
 import { SavedLineups } from "./SavedLineups";
+import { useWorkspaceLayout, WorkspaceColumns } from "../ui/WorkspaceLayout";
 import { randomUUID } from "../platform/id";
 import { Button, Card, colors, Icon, Notice, Pill } from "../ui";
 
@@ -179,16 +180,42 @@ function PreparationContent({
   const [selectedEvent, setSelectedEvent] = useState<{
     kind: "match" | "training";
     id: string;
-  } | null>(() => initialFixtureId && state.fixtures.some(fixture => fixture.id === initialFixtureId && fixture.seasonId === state.activeSeasonId) ? {kind:'match',id:initialFixtureId} : null);
-  const routeScope = JSON.stringify([state.team.id,state.activeSeasonId]);
-  const previousRouteScope = useRef(routeScope), handledOverviewRoute = useRef<string|null>(null);
-  const routedFixtureExists = Boolean(initialFixtureId && state.fixtures.some(fixture => fixture.id === initialFixtureId && fixture.seasonId === state.activeSeasonId));
+  } | null>(() =>
+    initialFixtureId &&
+    state.fixtures.some(
+      (fixture) =>
+        fixture.id === initialFixtureId &&
+        fixture.seasonId === state.activeSeasonId,
+    )
+      ? { kind: "match", id: initialFixtureId }
+      : null,
+  );
+  const routeScope = JSON.stringify([state.team.id, state.activeSeasonId]);
+  const previousRouteScope = useRef(routeScope),
+    handledOverviewRoute = useRef<string | null>(null);
+  const routedFixtureExists = Boolean(
+    initialFixtureId &&
+      state.fixtures.some(
+        (fixture) =>
+          fixture.id === initialFixtureId &&
+          fixture.seasonId === state.activeSeasonId,
+      ),
+  );
   useEffect(() => {
-    if (previousRouteScope.current !== routeScope) { previousRouteScope.current=routeScope;setSelectedEvent(null); }
-    if (!initialFixtureId) { handledOverviewRoute.current=null;return; }
-    const route=JSON.stringify([routeScope,initialFixtureId]);
-    if (routedFixtureExists && handledOverviewRoute.current!==route) { handledOverviewRoute.current=route;setSelectedEvent({kind:'match',id:initialFixtureId}); }
-  },[routeScope,initialFixtureId,routedFixtureExists]);
+    if (previousRouteScope.current !== routeScope) {
+      previousRouteScope.current = routeScope;
+      setSelectedEvent(null);
+    }
+    if (!initialFixtureId) {
+      handledOverviewRoute.current = null;
+      return;
+    }
+    const route = JSON.stringify([routeScope, initialFixtureId]);
+    if (routedFixtureExists && handledOverviewRoute.current !== route) {
+      handledOverviewRoute.current = route;
+      setSelectedEvent({ kind: "match", id: initialFixtureId });
+    }
+  }, [routeScope, initialFixtureId, routedFixtureExists]);
   const [tab, setTab] = useState<"matches" | "training">("matches");
   const [period, setPeriod] = useState<"upcoming" | "past">("upcoming");
   const [localError, setLocalError] = useState<string | null>(null);
@@ -279,6 +306,188 @@ function PreparationContent({
     recurrenceGroupId: null,
     expectedProfileIds: players.map((profile) => profile.id),
   });
+  const { wide } = useWorkspaceLayout();
+  const hasScheduleDetail = Boolean(
+    editor || selectedFixture || selectedTraining,
+  );
+  const scheduleList = (
+    <View style={s.stack} testID="preparation-schedule-list">
+      {editor && (
+        <Text style={s.small}>
+          Finish or close this draft before choosing another event.
+        </Text>
+      )}
+      <Text style={s.muted}>
+        Matches and training, with replies and attendance kept separate.
+      </Text>
+      {tab === "training" && (
+        <Button
+          label="Create weekly training series"
+          testID="training-series-create"
+          variant="secondary"
+          disabled={disabled || Boolean(editor)}
+          onPress={() =>
+            setEditor({
+              type: "training_series",
+              value: newTraining(),
+              mode: "create",
+            })
+          }
+        />
+      )}
+
+      <CalendarExportPanel
+        events={calendarEventsFromSchedule(state, season.id, observedAt)}
+        busy={disabled}
+        onExport={
+          onExportCalendar ??
+          ((selectedKeys) =>
+            exportLocalPreparationCalendar(
+              state,
+              season.id,
+              storage,
+              selectedKeys,
+            ))
+        }
+      />
+      <Choice
+        label="Schedule period"
+        value={period}
+        options={[
+          { value: "upcoming", label: "Upcoming" },
+          { value: "past", label: "Past" },
+        ]}
+        onChange={setPeriod}
+      />
+      <Text style={s.small}>
+        Dates use Europe/London. Today stays Upcoming; a missing time is never
+        treated as midnight. Undated events stay separate.
+      </Text>
+      <Choice
+        label="Event type"
+        value={tab}
+        options={[
+          { value: "matches", label: "Matches" },
+          { value: "training", label: "Training" },
+        ]}
+        onChange={setTab}
+      />
+      <Button
+        label={tab === "matches" ? "Create fixture" : "Add training occurrence"}
+        icon="calendar"
+        disabled={disabled || Boolean(editor)}
+        onPress={() =>
+          setEditor(
+            tab === "matches"
+              ? { type: "fixture", value: newFixture() }
+              : { type: "training", value: newTraining() },
+          )
+        }
+        testID="preparation-create-event"
+      />
+      {scheduleGroups.map((group) => (
+        <View key={group.date ?? "undated"} style={s.stack}>
+          <Text accessibilityRole="header" style={s.section}>
+            {group.date ? dateLabel(group.date) : "Date not recorded"}
+          </Text>
+          {group.events.map((event) =>
+            "opponent" in event ? (
+              <Pressable
+                key={event.id}
+                accessibilityRole="button"
+                accessibilityState={{ disabled: disabled || Boolean(editor) }}
+                disabled={disabled || Boolean(editor)}
+                accessibilityLabel={`Open fixture ${event.opponent}, ${dateLabel(event.playedDate)}`}
+                onPress={() =>
+                  setSelectedEvent({ kind: "match", id: event.id })
+                }
+              >
+                <Card>
+                  <View style={s.between}>
+                    <Text style={s.label}>
+                      {event.kickoff || "Time not recorded"}
+                    </Text>
+                    <Pill
+                      tone={event.status === "scheduled" ? "brand" : "warning"}
+                    >
+                      {fixtureScheduleStatus(
+                        event,
+                        completedFixtureIds,
+                        todayInLondon(),
+                      )}
+                    </Pill>
+                  </View>
+                  <Text style={s.section}>
+                    {state.team.name} vs {event.opponent}
+                  </Text>
+                  <Text style={s.muted}>
+                    {event.homeAway === "home" ? "Home" : "Away"} ·{" "}
+                    {event.format}-a-side · 2 ×{" "}
+                    {event.plannedHalfDurationMs / 60_000} min
+                  </Text>
+                  <View style={s.between}>
+                    <Text style={s.small}>
+                      {event.selectedProfileIds.length} selected ·{" "}
+                      {
+                        Object.values(event.responses).filter(
+                          (response) => response === "available",
+                        ).length
+                      }{" "}
+                      available replies
+                    </Text>
+                    <Icon name="chevron" size={20} />
+                  </View>
+                </Card>
+              </Pressable>
+            ) : (
+              <Pressable
+                key={event.id}
+                accessibilityRole="button"
+                accessibilityState={{ disabled: disabled || Boolean(editor) }}
+                disabled={disabled || Boolean(editor)}
+                accessibilityLabel={`Open training ${dateLabel(event.date)}`}
+                onPress={() =>
+                  setSelectedEvent({ kind: "training", id: event.id })
+                }
+              >
+                <Card>
+                  <View style={s.between}>
+                    <Text style={s.label}>
+                      {event.time || "Time not recorded"}
+                    </Text>
+                    <Pill
+                      tone={event.status === "cancelled" ? "warning" : "brand"}
+                    >
+                      {event.status}
+                    </Pill>
+                  </View>
+                  <Text style={s.section}>Team training</Text>
+                  <Text style={s.muted}>
+                    {event.venue || "Location not recorded"}
+                  </Text>
+                  <Text style={s.small}>
+                    {event.expectedProfileIds.length} expected ·{" "}
+                    {
+                      Object.values(event.attendance).filter(
+                        (attendance) => attendance === "present",
+                      ).length
+                    }{" "}
+                    recorded present
+                  </Text>
+                </Card>
+              </Pressable>
+            ),
+          )}
+        </View>
+      ))}
+      {scheduleGroups.length === 0 && (
+        <Notice tone="info">
+          No {period} {tab === "matches" ? "fixtures" : "training occurrences"}{" "}
+          in this season. Choose the other period or add an event above.
+        </Notice>
+      )}
+    </View>
+  );
   const heading = editor
     ? "Edit preparation"
     : selectedEvent
@@ -304,655 +513,539 @@ function PreparationContent({
       {(localError || error) && (
         <Notice tone="error">{localError || error}</Notice>
       )}
-      {editor ? (
-        <>
-          {editorSourceChanged && (
+      <WorkspaceColumns ratio={0.65} testID="preparation-workspace-panels">
+        {view === "schedule" && (
+          <View
+            style={[
+              s.scheduleRail,
+              !wide && hasScheduleDetail && s.hiddenPanel,
+            ]}
+          >
+            {scheduleList}
+          </View>
+        )}
+        <View
+          style={[
+            s.stack,
+            s.detailPanel,
+            view === "schedule" && !wide && !hasScheduleDetail && s.hiddenPanel,
+          ]}
+        >
+          {editor ? (
             <>
-              <Notice tone="warning">
-                Saved preparation changed while this form was open. Your draft
-                is still here, but saving is blocked to protect newer changes.
-                Copy any values you want to keep, then discard this draft and
-                reopen the form to edit the latest saved values.
-              </Notice>
+              {editorSourceChanged && (
+                <>
+                  <Notice tone="warning">
+                    Saved preparation changed while this form was open. Your
+                    draft is still here, but saving is blocked to protect newer
+                    changes. Copy any values you want to keep, then discard this
+                    draft and reopen the form to edit the latest saved values.
+                  </Notice>
+                  <Button
+                    label="Discard draft and close"
+                    variant="secondary"
+                    onPress={close}
+                    testID="preparation-discard-stale-draft"
+                  />
+                </>
+              )}
+              {editor.type === "profile" && (
+                <ProfileForm
+                  state={state}
+                  profile={editor.value}
+                  disabled={formDisabled}
+                  onSubmit={(profile) =>
+                    commit({ type: "profile.saved", profile }, true)
+                  }
+                  onClose={close}
+                />
+              )}
+              {editor.type === "fixture" && (
+                <FixtureForm
+                  fixture={editor.value}
+                  disabled={formDisabled}
+                  onSubmit={(fixture) =>
+                    commit({ type: "fixture.saved", fixture }, true)
+                  }
+                  onClose={close}
+                />
+              )}
+              {editor.type === "training" && (
+                <TrainingForm
+                  training={editor.value}
+                  players={retainedPreparationPlayers(
+                    state,
+                    editor.value.seasonId,
+                    editor.value.expectedProfileIds,
+                  )}
+                  disabled={formDisabled}
+                  onSubmit={(training) =>
+                    commit({ type: "training.saved", training }, true)
+                  }
+                  onClose={close}
+                />
+              )}
+              {editor.type === "training_series" && (
+                <TrainingSeriesEditor
+                  state={state}
+                  training={editor.value}
+                  mode={editor.mode}
+                  disabled={disabled}
+                  sourceChanged={editorSourceChanged}
+                  onSubmit={(command) => commit(command, true, command)}
+                  onClose={close}
+                />
+              )}
+              {editor.type === "formation" && (
+                <FormationForm
+                  state={state}
+                  formation={editor.value}
+                  disabled={formDisabled}
+                  onSubmit={(formation) =>
+                    commit({ type: "formation.saved", formation }, true)
+                  }
+                  onClose={close}
+                />
+              )}
+              {editor.type === "positions" && (
+                <PositionCatalogueForm
+                  state={state}
+                  disabled={formDisabled}
+                  onSave={(position) =>
+                    commit({ type: "position.saved", position }, true)
+                  }
+                  onArchive={(code) =>
+                    commit({ type: "position.archived", code }, true)
+                  }
+                  onClose={close}
+                />
+              )}
+              {editor.type === "club" && (
+                <ClubForm
+                  state={state}
+                  disabled={formDisabled}
+                  onSubmit={(name, logo) =>
+                    commit({ type: "club.updated", name, logo }, true)
+                  }
+                  onClose={close}
+                />
+              )}
+              {editor.type === "team" && (
+                <TeamForm
+                  state={state}
+                  disabled={formDisabled}
+                  allowPresetLogo={storage !== "service"}
+                  onSubmit={(payload) => commit(payload, true)}
+                  onClose={close}
+                />
+              )}
+              {editor.type === "rollover" && (
+                <RolloverForm
+                  state={state}
+                  disabled={formDisabled}
+                  onSubmit={(payload) => commit(payload, true)}
+                  onClose={close}
+                />
+              )}
+            </>
+          ) : selectedFixture ? (
+            <>
               <Button
-                label="Discard draft and close"
-                variant="secondary"
-                onPress={close}
-                testID="preparation-discard-stale-draft"
+                label="Back to schedule"
+                icon="left"
+                variant="quiet"
+                onPress={() => setSelectedEvent(null)}
+              />
+              <FixtureDetail
+                scheduledGameManagement={renderScheduledGameManagement?.(
+                  selectedFixture.id,
+                )}
+                fixture={selectedFixture}
+                state={state}
+                disabled={disabled}
+                completed={completedFixtureIds.has(selectedFixture.id)}
+                accepted={acceptedFixtureIds.has(selectedFixture.id)}
+                canLookUpSavedMatch={storage === "service"}
+                statusLabel={fixtureScheduleStatus(
+                  selectedFixture,
+                  completedFixtureIds,
+                  todayInLondon(),
+                )}
+                onCommand={commit}
+                onEdit={() =>
+                  setEditor({ type: "fixture", value: selectedFixture })
+                }
+                onOpenMatch={onOpenMatch}
+                onOpenReport={onOpenReport}
               />
             </>
-          )}
-          {editor.type === "profile" && (
-            <ProfileForm
-              state={state}
-              profile={editor.value}
-              disabled={formDisabled}
-              onSubmit={(profile) =>
-                commit({ type: "profile.saved", profile }, true)
-              }
-              onClose={close}
-            />
-          )}
-          {editor.type === "fixture" && (
-            <FixtureForm
-              fixture={editor.value}
-              disabled={formDisabled}
-              onSubmit={(fixture) =>
-                commit({ type: "fixture.saved", fixture }, true)
-              }
-              onClose={close}
-            />
-          )}
-          {editor.type === "training" && (
-            <TrainingForm
-              training={editor.value}
-              players={retainedPreparationPlayers(
-                state,
-                editor.value.seasonId,
-                editor.value.expectedProfileIds,
-              )}
-              disabled={formDisabled}
-              onSubmit={(training) =>
-                commit({ type: "training.saved", training }, true)
-              }
-              onClose={close}
-            />
-          )}
-          {editor.type === "training_series" && (
-            <TrainingSeriesEditor
-              state={state}
-              training={editor.value}
-              mode={editor.mode}
-              disabled={disabled}
-              sourceChanged={editorSourceChanged}
-              onSubmit={(command) => commit(command, true, command)}
-              onClose={close}
-            />
-          )}
-          {editor.type === "formation" && (
-            <FormationForm
-              state={state}
-              formation={editor.value}
-              disabled={formDisabled}
-              onSubmit={(formation) =>
-                commit({ type: "formation.saved", formation }, true)
-              }
-              onClose={close}
-            />
-          )}
-          {editor.type === "positions" && (
-            <PositionCatalogueForm
-              state={state}
-              disabled={formDisabled}
-              onSave={(position) =>
-                commit({ type: "position.saved", position }, true)
-              }
-              onArchive={(code) =>
-                commit({ type: "position.archived", code }, true)
-              }
-              onClose={close}
-            />
-          )}
-          {editor.type === "club" && (
-            <ClubForm
-              state={state}
-              disabled={formDisabled}
-              onSubmit={(name, logo) =>
-                commit({ type: "club.updated", name, logo }, true)
-              }
-              onClose={close}
-            />
-          )}
-          {editor.type === "team" && (
-            <TeamForm
-              state={state}
-              disabled={formDisabled}
-              allowPresetLogo={storage !== "service"}
-              onSubmit={(payload) => commit(payload, true)}
-              onClose={close}
-            />
-          )}
-          {editor.type === "rollover" && (
-            <RolloverForm
-              state={state}
-              disabled={formDisabled}
-              onSubmit={(payload) => commit(payload, true)}
-              onClose={close}
-            />
-          )}
-        </>
-      ) : selectedFixture ? (
-        <>
-          <Button
-            label="Back to schedule"
-            icon="left"
-            variant="quiet"
-            onPress={() => setSelectedEvent(null)}
-          />
-          <FixtureDetail
-            scheduledGameManagement={renderScheduledGameManagement?.(
-              selectedFixture.id,
-            )}
-            fixture={selectedFixture}
-            state={state}
-            disabled={disabled}
-            completed={completedFixtureIds.has(selectedFixture.id)}
-            accepted={acceptedFixtureIds.has(selectedFixture.id)}
-            canLookUpSavedMatch={storage === "service"}
-            statusLabel={fixtureScheduleStatus(
-              selectedFixture,
-              completedFixtureIds,
-              todayInLondon(),
-            )}
-            onCommand={commit}
-            onEdit={() =>
-              setEditor({ type: "fixture", value: selectedFixture })
-            }
-            onOpenMatch={onOpenMatch}
-            onOpenReport={onOpenReport}
-          />
-        </>
-      ) : selectedTraining ? (
-        <>
-          <Button
-            label="Back to schedule"
-            icon="left"
-            variant="quiet"
-            onPress={() => setSelectedEvent(null)}
-          />
-          <TrainingDetail
-            training={selectedTraining}
-            players={retainedPreparationPlayers(
-              state,
-              selectedTraining.seasonId,
-              selectedTraining.expectedProfileIds,
-            )}
-            disabled={disabled}
-            onCommand={commit}
-            onEditSeries={
-              selectedTraining.recurrenceGroupId
-                ? () =>
-                    setEditor({
-                      type: "training_series",
-                      value: selectedTraining,
-                      mode: "manage",
-                    })
-                : undefined
-            }
-            onEdit={() =>
-              setEditor({ type: "training", value: selectedTraining })
-            }
-          />
-        </>
-      ) : view === "schedule" ? (
-        <>
-          <Text style={s.muted}>
-            Matches and training, with replies and attendance kept separate.
-          </Text>
-          {tab === "training" && (
-            <Button
-              label="Create weekly training series"
-              testID="training-series-create"
-              variant="secondary"
-              disabled={disabled}
-              onPress={() =>
-                setEditor({
-                  type: "training_series",
-                  value: newTraining(),
-                  mode: "create",
-                })
-              }
-            />
-          )}
-
-          <CalendarExportPanel
-            events={calendarEventsFromSchedule(state, season.id, observedAt)}
-            busy={disabled}
-            onExport={
-              onExportCalendar ??
-              ((selectedKeys) =>
-                exportLocalPreparationCalendar(
-                  state,
-                  season.id,
-                  storage,
-                  selectedKeys,
-                ))
-            }
-          />
-          <Choice
-            label="Schedule period"
-            value={period}
-            options={[
-              { value: "upcoming", label: "Upcoming" },
-              { value: "past", label: "Past" },
-            ]}
-            onChange={setPeriod}
-          />
-          <Text style={s.small}>
-            Dates use Europe/London. Today stays Upcoming; a missing time is
-            never treated as midnight. Undated events stay separate.
-          </Text>
-          <Choice
-            label="Event type"
-            value={tab}
-            options={[
-              { value: "matches", label: "Matches" },
-              { value: "training", label: "Training" },
-            ]}
-            onChange={setTab}
-          />
-          <Button
-            label={
-              tab === "matches" ? "Create fixture" : "Add training occurrence"
-            }
-            icon="calendar"
-            disabled={disabled}
-            onPress={() =>
-              setEditor(
-                tab === "matches"
-                  ? { type: "fixture", value: newFixture() }
-                  : { type: "training", value: newTraining() },
-              )
-            }
-            testID="preparation-create-event"
-          />
-          {scheduleGroups.map((group) => (
-            <View key={group.date ?? "undated"} style={s.stack}>
-              <Text accessibilityRole="header" style={s.section}>
-                {group.date ? dateLabel(group.date) : "Date not recorded"}
-              </Text>
-              {group.events.map((event) =>
-                "opponent" in event ? (
-                  <Pressable
-                    key={event.id}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Open fixture ${event.opponent}, ${dateLabel(event.playedDate)}`}
-                    onPress={() =>
-                      setSelectedEvent({ kind: "match", id: event.id })
-                    }
-                  >
-                    <Card>
-                      <View style={s.between}>
-                        <Text style={s.label}>
-                          {event.kickoff || "Time not recorded"}
-                        </Text>
-                        <Pill
-                          tone={
-                            event.status === "scheduled" ? "brand" : "warning"
-                          }
-                        >
-                          {fixtureScheduleStatus(
-                            event,
-                            completedFixtureIds,
-                            todayInLondon(),
-                          )}
-                        </Pill>
-                      </View>
-                      <Text style={s.section}>
-                        {state.team.name} vs {event.opponent}
-                      </Text>
-                      <Text style={s.muted}>
-                        {event.homeAway === "home" ? "Home" : "Away"} ·{" "}
-                        {event.format}-a-side · 2 ×{" "}
-                        {event.plannedHalfDurationMs / 60_000} min
-                      </Text>
-                      <View style={s.between}>
-                        <Text style={s.small}>
-                          {event.selectedProfileIds.length} selected ·{" "}
-                          {
-                            Object.values(event.responses).filter(
-                              (response) => response === "available",
-                            ).length
-                          }{" "}
-                          available replies
-                        </Text>
-                        <Icon name="chevron" size={20} />
-                      </View>
-                    </Card>
-                  </Pressable>
-                ) : (
-                  <Pressable
-                    key={event.id}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Open training ${dateLabel(event.date)}`}
-                    onPress={() =>
-                      setSelectedEvent({ kind: "training", id: event.id })
-                    }
-                  >
-                    <Card>
-                      <View style={s.between}>
-                        <Text style={s.label}>
-                          {event.time || "Time not recorded"}
-                        </Text>
-                        <Pill
-                          tone={
-                            event.status === "cancelled" ? "warning" : "brand"
-                          }
-                        >
-                          {event.status}
-                        </Pill>
-                      </View>
-                      <Text style={s.section}>Team training</Text>
-                      <Text style={s.muted}>
-                        {event.venue || "Location not recorded"}
-                      </Text>
-                      <Text style={s.small}>
-                        {event.expectedProfileIds.length} expected ·{" "}
-                        {
-                          Object.values(event.attendance).filter(
-                            (attendance) => attendance === "present",
-                          ).length
-                        }{" "}
-                        recorded present
-                      </Text>
-                    </Card>
-                  </Pressable>
-                ),
-              )}
-            </View>
-          ))}
-          {scheduleGroups.length === 0 && (
-            <Notice tone="info">
-              No {period}{" "}
-              {tab === "matches" ? "fixtures" : "training occurrences"} in this
-              season. Choose the other period or add an event above.
-            </Notice>
-          )}
-        </>
-      ) : view === "team" ? (
-        <>
-          <View style={s.between}>
-            <Text style={s.muted}>{players.length} active players</Text>
-            <Pill tone="muted">Season profiles</Pill>
-          </View>
-          <Text style={s.small}>
-            Preferences guide future plans. Saved match profiles stay unchanged.
-          </Text>
-          <SavedLineups
-            state={state}
-            busy={disabled}
-            onCommand={(command) => commit(command, false, command)}
-          />
-          <Button
-            label={
-              squadTools ? "Hide squad tools" : "Squad tools and CSV import"
-            }
-            variant="quiet"
-            onPress={() => setSquadTools((value) => !value)}
-            testID="squad-tools-toggle"
-          />
-          {squadTools && (
-            <RosterImportPanel
-              state={state}
-              busy={disabled}
-              onImport={(profiles) =>
-                commit({
-                  type: "roster.imported",
-                  profiles,
-                  confirmNewPlayers: true,
-                })
-              }
-            />
-          )}
-          <Button
-            label={
-              storage === "service"
-                ? "Add player profile"
-                : "Add player profile"
-            }
-            icon="users"
-            disabled={disabled}
-            onPress={() => {
-              const playerId = randomUUID();
-              setEditor({
-                type: "profile",
-                value: {
-                  id: `${playerId}:${season.id}`,
-                  playerId,
-                  seasonId: season.id,
-                  displayName: `Player ${players.length + 1}`,
-                  initials: "NP",
-                  shirtNumber: null,
-                  foot: "not_recorded",
-                  preferences: [
-                    ...new Set(
-                      ["CM", "CB", "ST", ...activePositionCodes(state)].filter(
-                        (code) => activePositionCodes(state).includes(code),
-                      ),
-                    ),
-                  ].slice(0, 3),
-                  eligiblePositions: [
-                    ...new Set(
-                      ["CM", "CB", "ST", ...activePositionCodes(state)].filter(
-                        (code) => activePositionCodes(state).includes(code),
-                      ),
-                    ),
-                  ].slice(0, 3),
-                  active: true,
-                },
-              });
-            }}
-          />
-          {players.map((profile) => (
-            <Card key={profile.id} style={s.compactCard}>
-              <View style={s.row}>
-                <View
-                  style={[s.shirt, goalkeeperChoice(profile) > 0 && s.keeper]}
-                >
-                  <Text style={s.shirtText}>
-                    {profile.shirtNumber ?? profile.initials}
-                  </Text>
-                </View>
-                <View style={s.flex}>
-                  <Text style={s.label}>{profile.displayName}</Text>
-                  <Text style={s.small}>
-                    {profile.preferences.join(" → ")}
-                    {goalkeeperChoice(profile) > 0 ? " · Eligible keeper" : ""}
-                  </Text>
-                </View>
-              </View>
-              <View style={s.actionPair}>
-                <Button
-                  label="Edit"
-                  accessibilityLabel={`Edit ${profile.displayName}`}
-                  icon="settings"
-                  variant="secondary"
-                  style={s.pairedAction}
-                  disabled={disabled}
-                  onPress={() => setEditor({ type: "profile", value: profile })}
-                />
-                <Button
-                  label="Archive"
-                  accessibilityLabel={`Archive ${profile.displayName}`}
-                  variant="quiet"
-                  style={s.pairedAction}
-                  disabled={disabled}
-                  onPress={() => {
-                    void commit({
-                      type: "profile.archived",
-                      profileId: profile.id,
-                    });
-                  }}
-                />
-              </View>
-              {squadTools && onPrepareChildActivation && (
-                <Button
-                  label={`Prepare sign-in activation for ${profile.displayName}`}
-                  variant="secondary"
-                  disabled={disabled}
-                  onPress={() => onPrepareChildActivation(profile.playerId)}
-                />
-              )}
-            </Card>
-          ))}
-          <Text style={s.small}>
-            A player profile does not create a sign-in account. Account
-            activation is managed separately.
-          </Text>
-          {state.profiles.some(
-            (profile) => profile.seasonId === season.id && !profile.active,
-          ) && (
-            <Card>
-              <Text style={s.section}>Archived this season</Text>
-              {state.profiles
-                .filter(
-                  (profile) =>
-                    profile.seasonId === season.id && !profile.active,
-                )
-                .map((profile) => (
-                  <View key={profile.id} style={s.stack}>
-                    <Text style={s.muted}>
-                      {profile.displayName} · retained in saved history
-                    </Text>
-                    <Button
-                      label={`Restore ${profile.displayName}`}
-                      variant="secondary"
-                      disabled={disabled}
-                      onPress={() => {
-                        void commit({
-                          type: "profile.saved",
-                          profile: { ...profile, active: true },
-                        });
-                      }}
-                    />
-                  </View>
-                ))}
-            </Card>
-          )}
-        </>
-      ) : (
-        <>
-          {storage === "service" && brandingPanel}
-          <Card>
-            <View style={s.between}>
-              <View style={s.flex}>
-                <Text style={s.section}>{state.club.name}</Text>
-                <Text style={s.small}>Club identity</Text>
-              </View>
-              {storage !== "service" && (
-                <Badge choice={state.club.logo ?? "roundel"} label="Club" />
-              )}
-            </View>
-            {storage !== "service" && (
+          ) : selectedTraining ? (
+            <>
               <Button
-                label="Edit club and badge"
-                icon="settings"
-                variant="secondary"
-                disabled={disabled}
-                onPress={() => setEditor({ type: "club" })}
+                label="Back to schedule"
+                icon="left"
+                variant="quiet"
+                onPress={() => setSelectedEvent(null)}
               />
-            )}
-          </Card>
-          <Card>
-            <View style={s.between}>
-              <View style={s.flex}>
-                <Text style={s.section}>
-                  {state.team.name} {state.team.ageGroup}
-                </Text>
-                <Text style={s.small}>
-                  {storage === "service"
-                    ? "Uploaded logos are managed above"
-                    : state.team.logo
-                      ? "Team badge override"
-                      : "Inherits the club badge"}
-                </Text>
-              </View>
-              {storage !== "service" && (
-                <Badge choice={effectiveLogo(state)} label="Team" />
-              )}
-            </View>
-            <Text style={s.muted}>
-              {state.team.defaultPitchPlaces}-a-side · 2 ×{" "}
-              {state.team.defaultHalfDurationMs / 60_000} minutes by default
-            </Text>
-            <Button
-              label="Edit team defaults"
-              icon="settings"
-              variant="secondary"
-              disabled={disabled}
-              onPress={() => setEditor({ type: "team" })}
-            />
-          </Card>
-          <Card>
-            <Text style={s.section}>Team positions</Text>
-            <Text style={s.small}>
-              {activePositionCodes(state).join(" · ")}
-            </Text>
-            <Button
-              label="Manage team positions"
-              variant="secondary"
-              disabled={disabled}
-              onPress={() => setEditor({ type: "positions" })}
-              testID="team-positions-manage"
-            />
-          </Card>
-          <Text style={s.section}>Reusable formations</Text>
-          {[...state.formations]
-            .sort((a, b) => a.format - b.format)
-            .map((formation) => (
-              <Card key={formation.id}>
-                <View style={s.between}>
-                  <Text style={s.section}>{formation.name}</Text>
-                  <Pill tone="muted">v{formation.version}</Pill>
-                </View>
-                <Text style={s.small}>
-                  {formation.slots.map((slot) => slot.label).join(" · ")}
-                </Text>
-                <Button
-                  label={`Edit ${formation.name}`}
-                  variant="secondary"
-                  onPress={() =>
-                    setEditor({ type: "formation", value: formation })
-                  }
-                />
-              </Card>
-            ))}
-          <Button
-            label="Create formation template"
-            icon="shield"
-            onPress={() => {
-              const template = defaultFormation(state.team.defaultPitchPlaces);
-              setEditor({
-                type: "formation",
-                value: {
-                  ...template,
-                  id: randomUUID(),
-                  name: "Custom formation",
-                },
-              });
-            }}
-          />
-          <Text style={s.section}>Seasons</Text>
-          {state.seasons.map((item) => (
-            <Card key={item.id}>
+              <TrainingDetail
+                training={selectedTraining}
+                players={retainedPreparationPlayers(
+                  state,
+                  selectedTraining.seasonId,
+                  selectedTraining.expectedProfileIds,
+                )}
+                disabled={disabled}
+                onCommand={commit}
+                onEditSeries={
+                  selectedTraining.recurrenceGroupId
+                    ? () =>
+                        setEditor({
+                          type: "training_series",
+                          value: selectedTraining,
+                          mode: "manage",
+                        })
+                    : undefined
+                }
+                onEdit={() =>
+                  setEditor({ type: "training", value: selectedTraining })
+                }
+              />
+            </>
+          ) : view === "schedule" ? (
+            <Notice>
+              Choose a match or training session to see its details.
+            </Notice>
+          ) : view === "team" ? (
+            <>
               <View style={s.between}>
-                <Text style={s.section}>{formatUkSeasonLabel(item.label)}</Text>
-                <Pill tone={item.id === season.id ? "brand" : "muted"}>
-                  {item.id === season.id ? "Current" : "Retained"}
-                </Pill>
+                <Text style={s.muted}>{players.length} active players</Text>
+                <Pill tone="muted">Season profiles</Pill>
               </View>
               <Text style={s.small}>
-                {dateLabel(item.startDate)} – {dateLabel(item.endDate)}
+                Preferences guide future plans. Saved match profiles stay
+                unchanged.
               </Text>
-            </Card>
-          ))}
-          <Button
-            label="Prepare the next season"
-            icon="calendar"
-            variant="secondary"
-            disabled={disabled}
-            onPress={() =>
-              onPrepareRollover
-                ? onPrepareRollover()
-                : setEditor({ type: "rollover" })
-            }
-          />
-          <Notice tone="warning">
-            Rollover preserves past team-season records. Spectator access needs
-            a new explicit season grant.
-          </Notice>
-        </>
-      )}
+              <SavedLineups
+                state={state}
+                busy={disabled}
+                onCommand={(command) => commit(command, false, command)}
+              />
+              <Button
+                label={
+                  squadTools ? "Hide squad tools" : "Squad tools and CSV import"
+                }
+                variant="quiet"
+                onPress={() => setSquadTools((value) => !value)}
+                testID="squad-tools-toggle"
+              />
+              {squadTools && (
+                <RosterImportPanel
+                  state={state}
+                  busy={disabled}
+                  onImport={(profiles) =>
+                    commit({
+                      type: "roster.imported",
+                      profiles,
+                      confirmNewPlayers: true,
+                    })
+                  }
+                />
+              )}
+              <Button
+                label={
+                  storage === "service"
+                    ? "Add player profile"
+                    : "Add player profile"
+                }
+                icon="users"
+                disabled={disabled}
+                onPress={() => {
+                  const playerId = randomUUID();
+                  setEditor({
+                    type: "profile",
+                    value: {
+                      id: `${playerId}:${season.id}`,
+                      playerId,
+                      seasonId: season.id,
+                      displayName: `Player ${players.length + 1}`,
+                      initials: "NP",
+                      shirtNumber: null,
+                      foot: "not_recorded",
+                      preferences: [
+                        ...new Set(
+                          [
+                            "CM",
+                            "CB",
+                            "ST",
+                            ...activePositionCodes(state),
+                          ].filter((code) =>
+                            activePositionCodes(state).includes(code),
+                          ),
+                        ),
+                      ].slice(0, 3),
+                      eligiblePositions: [
+                        ...new Set(
+                          [
+                            "CM",
+                            "CB",
+                            "ST",
+                            ...activePositionCodes(state),
+                          ].filter((code) =>
+                            activePositionCodes(state).includes(code),
+                          ),
+                        ),
+                      ].slice(0, 3),
+                      active: true,
+                    },
+                  });
+                }}
+              />
+              <View
+                style={[s.rosterGrid, wide && s.rosterGridWide]}
+                testID="preparation-roster-grid"
+              >
+                {players.map((profile) => (
+                  <Card
+                    key={profile.id}
+                    style={[
+                      s.compactCard,
+                      wide ? s.rosterCardWide : s.rosterCardPhone,
+                    ]}
+                  >
+                    <View style={s.row}>
+                      <View
+                        style={[
+                          s.shirt,
+                          goalkeeperChoice(profile) > 0 && s.keeper,
+                        ]}
+                      >
+                        <Text style={s.shirtText}>
+                          {profile.shirtNumber ?? profile.initials}
+                        </Text>
+                      </View>
+                      <View style={s.flex}>
+                        <Text style={s.label}>{profile.displayName}</Text>
+                        <Text style={s.small}>
+                          {profile.preferences.join(" → ")}
+                          {goalkeeperChoice(profile) > 0
+                            ? " · Eligible keeper"
+                            : ""}
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={s.actionPair}>
+                      <Button
+                        label="Edit"
+                        accessibilityLabel={`Edit ${profile.displayName}`}
+                        icon="settings"
+                        variant="secondary"
+                        style={s.pairedAction}
+                        disabled={disabled}
+                        onPress={() =>
+                          setEditor({ type: "profile", value: profile })
+                        }
+                      />
+                      <Button
+                        label="Archive"
+                        accessibilityLabel={`Archive ${profile.displayName}`}
+                        variant="quiet"
+                        style={s.pairedAction}
+                        disabled={disabled}
+                        onPress={() => {
+                          void commit({
+                            type: "profile.archived",
+                            profileId: profile.id,
+                          });
+                        }}
+                      />
+                    </View>
+                    {squadTools && onPrepareChildActivation && (
+                      <Button
+                        label={`Prepare sign-in activation for ${profile.displayName}`}
+                        variant="secondary"
+                        disabled={disabled}
+                        onPress={() =>
+                          onPrepareChildActivation(profile.playerId)
+                        }
+                      />
+                    )}
+                  </Card>
+                ))}
+              </View>
+              <Text style={s.small}>
+                A player profile does not create a sign-in account. Account
+                activation is managed separately.
+              </Text>
+              {state.profiles.some(
+                (profile) => profile.seasonId === season.id && !profile.active,
+              ) && (
+                <Card>
+                  <Text style={s.section}>Archived this season</Text>
+                  {state.profiles
+                    .filter(
+                      (profile) =>
+                        profile.seasonId === season.id && !profile.active,
+                    )
+                    .map((profile) => (
+                      <View key={profile.id} style={s.stack}>
+                        <Text style={s.muted}>
+                          {profile.displayName} · retained in saved history
+                        </Text>
+                        <Button
+                          label={`Restore ${profile.displayName}`}
+                          variant="secondary"
+                          disabled={disabled}
+                          onPress={() => {
+                            void commit({
+                              type: "profile.saved",
+                              profile: { ...profile, active: true },
+                            });
+                          }}
+                        />
+                      </View>
+                    ))}
+                </Card>
+              )}
+            </>
+          ) : (
+            <>
+              {storage === "service" && brandingPanel}
+              <Card>
+                <View style={s.between}>
+                  <View style={s.flex}>
+                    <Text style={s.section}>{state.club.name}</Text>
+                    <Text style={s.small}>Club identity</Text>
+                  </View>
+                  {storage !== "service" && (
+                    <Badge choice={state.club.logo ?? "roundel"} label="Club" />
+                  )}
+                </View>
+                {storage !== "service" && (
+                  <Button
+                    label="Edit club and badge"
+                    icon="settings"
+                    variant="secondary"
+                    disabled={disabled}
+                    onPress={() => setEditor({ type: "club" })}
+                  />
+                )}
+              </Card>
+              <Card>
+                <View style={s.between}>
+                  <View style={s.flex}>
+                    <Text style={s.section}>
+                      {state.team.name} {state.team.ageGroup}
+                    </Text>
+                    <Text style={s.small}>
+                      {storage === "service"
+                        ? "Uploaded logos are managed above"
+                        : state.team.logo
+                          ? "Team badge override"
+                          : "Inherits the club badge"}
+                    </Text>
+                  </View>
+                  {storage !== "service" && (
+                    <Badge choice={effectiveLogo(state)} label="Team" />
+                  )}
+                </View>
+                <Text style={s.muted}>
+                  {state.team.defaultPitchPlaces}-a-side · 2 ×{" "}
+                  {state.team.defaultHalfDurationMs / 60_000} minutes by default
+                </Text>
+                <Button
+                  label="Edit team defaults"
+                  icon="settings"
+                  variant="secondary"
+                  disabled={disabled}
+                  onPress={() => setEditor({ type: "team" })}
+                />
+              </Card>
+              <Card>
+                <Text style={s.section}>Team positions</Text>
+                <Text style={s.small}>
+                  {activePositionCodes(state).join(" · ")}
+                </Text>
+                <Button
+                  label="Manage team positions"
+                  variant="secondary"
+                  disabled={disabled}
+                  onPress={() => setEditor({ type: "positions" })}
+                  testID="team-positions-manage"
+                />
+              </Card>
+              <Text style={s.section}>Reusable formations</Text>
+              {[...state.formations]
+                .sort((a, b) => a.format - b.format)
+                .map((formation) => (
+                  <Card key={formation.id}>
+                    <View style={s.between}>
+                      <Text style={s.section}>{formation.name}</Text>
+                      <Pill tone="muted">v{formation.version}</Pill>
+                    </View>
+                    <Text style={s.small}>
+                      {formation.slots.map((slot) => slot.label).join(" · ")}
+                    </Text>
+                    <Button
+                      label={`Edit ${formation.name}`}
+                      variant="secondary"
+                      onPress={() =>
+                        setEditor({ type: "formation", value: formation })
+                      }
+                    />
+                  </Card>
+                ))}
+              <Button
+                label="Create formation template"
+                icon="shield"
+                onPress={() => {
+                  const template = defaultFormation(
+                    state.team.defaultPitchPlaces,
+                  );
+                  setEditor({
+                    type: "formation",
+                    value: {
+                      ...template,
+                      id: randomUUID(),
+                      name: "Custom formation",
+                    },
+                  });
+                }}
+              />
+              <Text style={s.section}>Seasons</Text>
+              {state.seasons.map((item) => (
+                <Card key={item.id}>
+                  <View style={s.between}>
+                    <Text style={s.section}>
+                      {formatUkSeasonLabel(item.label)}
+                    </Text>
+                    <Pill tone={item.id === season.id ? "brand" : "muted"}>
+                      {item.id === season.id ? "Current" : "Retained"}
+                    </Pill>
+                  </View>
+                  <Text style={s.small}>
+                    {dateLabel(item.startDate)} – {dateLabel(item.endDate)}
+                  </Text>
+                </Card>
+              ))}
+              <Button
+                label="Prepare the next season"
+                icon="calendar"
+                variant="secondary"
+                disabled={disabled}
+                onPress={() =>
+                  onPrepareRollover
+                    ? onPrepareRollover()
+                    : setEditor({ type: "rollover" })
+                }
+              />
+              <Notice tone="warning">
+                Rollover preserves past team-season records. Spectator access
+                needs a new explicit season grant.
+              </Notice>
+            </>
+          )}
+        </View>
+      </WorkspaceColumns>
       <Text style={s.footnote}>
         {storage === "service"
           ? "Service preparation · Europe/London · saved by the connected service."
@@ -1048,8 +1141,9 @@ function Toggle({
   disabled?: boolean;
 }) {
   return (
-    <View style={s.row}>
+    <View style={[s.row, { minHeight: 48 }]}>
       <Switch
+        hitSlop={8}
         accessibilityLabel={label}
         value={value}
         onValueChange={onChange}
@@ -1116,8 +1210,9 @@ function FormActions({
   onSave: () => void;
   onClose: () => void;
 }) {
+  const { wide } = useWorkspaceLayout();
   return (
-    <>
+    <View style={[s.compactStack, wide && s.formActionsWide]}>
       <Button
         label={label}
         icon="check"
@@ -1126,7 +1221,7 @@ function FormActions({
         testID="preparation-save"
       />
       <Button label="Keep previous values" variant="quiet" onPress={onClose} />
-    </>
+    </View>
   );
 }
 function ClubForm({
@@ -1183,26 +1278,32 @@ function TeamForm({
   );
   return (
     <>
-      <Field label="Team name" value={name} onChange={setName} />
-      <Field label="Age group" value={ageGroup} onChange={setAgeGroup} />
-      {allowPresetLogo && (
-        <LogoPicker value={logo} onChange={setLogo} inherit />
-      )}
-      <Choice
-        label="Default pitch places"
-        value={format}
-        options={Array.from({ length: 7 }, (_, i) => ({
-          value: String(i + 5),
-          label: String(i + 5),
-        }))}
-        onChange={setFormat}
-      />
-      <Field
-        label="Default minutes per half"
-        numeric
-        value={minutes}
-        onChange={setMinutes}
-      />
+      <WorkspaceColumns testID="team-default-editor-columns">
+        <View style={s.stack}>
+          <Field label="Team name" value={name} onChange={setName} />
+          <Field label="Age group" value={ageGroup} onChange={setAgeGroup} />
+          {allowPresetLogo && (
+            <LogoPicker value={logo} onChange={setLogo} inherit />
+          )}
+        </View>
+        <View style={s.stack}>
+          <Choice
+            label="Default pitch places"
+            value={format}
+            options={Array.from({ length: 7 }, (_, i) => ({
+              value: String(i + 5),
+              label: String(i + 5),
+            }))}
+            onChange={setFormat}
+          />
+          <Field
+            label="Default minutes per half"
+            numeric
+            value={minutes}
+            onChange={setMinutes}
+          />
+        </View>
+      </WorkspaceColumns>
       <Notice tone="info">
         Defaults apply to new fixtures. Existing match durations and saved
         formations stay unchanged.
@@ -1398,6 +1499,7 @@ function ProfileForm({
   onSubmit: (profile: PlayerProfile) => Promise<boolean>;
   onClose: () => void;
 }) {
+  const { wide } = useWorkspaceLayout();
   const [draft, setDraft] = useState({
     ...profile,
     preferences: [...profile.preferences],
@@ -1413,21 +1515,38 @@ function ProfileForm({
   const change = <Key extends keyof PlayerProfile>(
     key: Key,
     value: PlayerProfile[Key],
-  ) => setDraft((previous) => ({ ...previous, [key]: value }));
+  ) => {
+    setSection(
+      key === "preferences" || key === "eligiblePositions"
+        ? "positions"
+        : "details",
+    );
+    setDraft((previous) => ({ ...previous, [key]: value }));
+  };
   return (
     <View style={s.compactStack} testID="player-profile-editor">
-      <Choice
-        label="Player editor section"
-        value={section}
-        options={[
-          { value: "details", label: "Details" },
-          { value: "positions", label: "Positions" },
-        ]}
-        onChange={setSection}
-        disabled={disabled}
-      />
-      {section === "details" ? (
-        <>
+      <View style={wide ? s.hiddenPanel : undefined}>
+        <Choice
+          label="Player editor section"
+          value={section}
+          options={[
+            { value: "details", label: "Details" },
+            { value: "positions", label: "Positions" },
+          ]}
+          onChange={setSection}
+          disabled={disabled}
+        />
+      </View>
+      <WorkspaceColumns testID="player-editor-columns">
+        <View
+          style={[
+            s.compactStack,
+            !wide && section !== "details" && s.hiddenPanel,
+          ]}
+        >
+          <Text style={[s.section, !wide && s.hiddenPanel]}>
+            Player details
+          </Text>
           <Field
             label="Player display name"
             value={draft.displayName}
@@ -1449,7 +1568,10 @@ function ProfileForm({
                 numeric
                 value={shirt}
                 disabled={disabled}
-                onChange={setShirt}
+                onChange={(value) => {
+                  setSection("details");
+                  setShirt(value);
+                }}
               />
             </View>
           </View>
@@ -1465,9 +1587,16 @@ function ProfileForm({
             onChange={(value) => change("foot", value)}
             disabled={disabled}
           />
-        </>
-      ) : (
-        <>
+        </View>
+        <View
+          style={[
+            s.compactStack,
+            !wide && section !== "positions" && s.hiddenPanel,
+          ]}
+        >
+          <Text style={[s.section, !wide && s.hiddenPanel]}>
+            Positions and eligibility
+          </Text>
           <Choice
             label="Editing ranked preference"
             value={rank}
@@ -1475,7 +1604,10 @@ function ProfileForm({
               value: String(index),
               label: `${index + 1} · ${position}`,
             }))}
-            onChange={setRank}
+            onChange={(value) => {
+              setSection("positions");
+              setRank(value);
+            }}
             disabled={disabled}
           />
           <Choice
@@ -1566,8 +1698,8 @@ function ProfileForm({
                 </Pressable>
               ))}
           </View>
-        </>
-      )}
+        </View>
+      </WorkspaceColumns>
       <Text style={s.small}>
         Changes apply to future preparation. Saved match profiles keep their
         original values.
@@ -1606,55 +1738,61 @@ function FixtureForm({
   ) => setDraft((previous) => ({ ...previous, [key]: value }));
   return (
     <>
-      <Field
-        label="Opposition"
-        value={draft.opponent}
-        onChange={(value) => change("opponent", value)}
-      />
-      <Field
-        label="Match date (YYYY-MM-DD)"
-        value={draft.playedDate}
-        onChange={(value) => change("playedDate", value)}
-      />
-      <Field
-        label="Kick-off (HH:MM, blank if not recorded)"
-        value={draft.kickoff ?? ""}
-        onChange={(value) => change("kickoff", value.trim() || null)}
-      />
-      <Field
-        label="Arrival (HH:MM, blank if not recorded)"
-        value={draft.arrival ?? ""}
-        onChange={(value) => change("arrival", value.trim() || null)}
-      />
-      <Field
-        label="Venue"
-        value={draft.venue}
-        onChange={(value) => change("venue", value)}
-      />
-      <Choice
-        label="Home or away"
-        value={draft.homeAway}
-        options={[
-          { value: "home", label: "Home" },
-          { value: "away", label: "Away" },
-        ]}
-        onChange={(value) => change("homeAway", value)}
-      />
-      <Choice
-        label="Pitch places"
-        value={String(draft.format)}
-        options={Array.from({ length: 7 }, (_, i) => ({
-          value: String(i + 5),
-          label: String(i + 5),
-        }))}
-        onChange={(value) => change("format", Number(value))}
-      />
-      <Field
-        label="Minutes per half for this match"
-        numeric
-        value={minutes}
-        onChange={setMinutes}
-      />
+      <WorkspaceColumns testID="fixture-editor-columns">
+        <View style={s.stack}>
+          <Field
+            label="Opposition"
+            value={draft.opponent}
+            onChange={(value) => change("opponent", value)}
+          />
+          <Field
+            label="Match date (YYYY-MM-DD)"
+            value={draft.playedDate}
+            onChange={(value) => change("playedDate", value)}
+          />
+          <Field
+            label="Kick-off (HH:MM, blank if not recorded)"
+            value={draft.kickoff ?? ""}
+            onChange={(value) => change("kickoff", value.trim() || null)}
+          />
+          <Field
+            label="Arrival (HH:MM, blank if not recorded)"
+            value={draft.arrival ?? ""}
+            onChange={(value) => change("arrival", value.trim() || null)}
+          />
+        </View>
+        <View style={s.stack}>
+          <Field
+            label="Venue"
+            value={draft.venue}
+            onChange={(value) => change("venue", value)}
+          />
+          <Choice
+            label="Home or away"
+            value={draft.homeAway}
+            options={[
+              { value: "home", label: "Home" },
+              { value: "away", label: "Away" },
+            ]}
+            onChange={(value) => change("homeAway", value)}
+          />
+          <Choice
+            label="Pitch places"
+            value={String(draft.format)}
+            options={Array.from({ length: 7 }, (_, i) => ({
+              value: String(i + 5),
+              label: String(i + 5),
+            }))}
+            onChange={(value) => change("format", Number(value))}
+          />
+          <Field
+            label="Minutes per half for this match"
+            numeric
+            value={minutes}
+            onChange={setMinutes}
+          />
+        </View>
+      </WorkspaceColumns>
       <Notice tone="info">
         Times use Europe/London. Duration changes apply to this fixture only.
         Rescheduling preserves its identity, replies and history.
@@ -1692,78 +1830,88 @@ function TrainingForm({
   });
   return (
     <>
-      <Field
-        label="Training date (YYYY-MM-DD)"
-        value={draft.date}
-        onChange={(date) => setDraft((previous) => ({ ...previous, date }))}
-      />
-      <Field
-        label="Training time (HH:MM)"
-        value={draft.time}
-        onChange={(time) => setDraft((previous) => ({ ...previous, time }))}
-      />
-      <Field
-        label="Training venue"
-        value={draft.venue}
-        onChange={(venue) => setDraft((previous) => ({ ...previous, venue }))}
-      />
-      <Text style={s.section}>Expected players</Text>
-      {players.map((profile) =>
-        profile.active ? (
-          <Toggle
-            key={profile.id}
-            label={profile.displayName}
-            value={draft.expectedProfileIds.includes(profile.id)}
-            disabled={disabled}
-            onChange={(selected) =>
-              setDraft((previous) => ({
-                ...previous,
-                expectedProfileIds: selected
-                  ? [...previous.expectedProfileIds, profile.id]
-                  : previous.expectedProfileIds.filter(
-                      (id) => id !== profile.id,
-                    ),
-              }))
+      <WorkspaceColumns testID="training-editor-columns">
+        <View style={s.stack}>
+          <Field
+            label="Training date (YYYY-MM-DD)"
+            value={draft.date}
+            onChange={(date) => setDraft((previous) => ({ ...previous, date }))}
+          />
+          <Field
+            label="Training time (HH:MM)"
+            value={draft.time}
+            onChange={(time) => setDraft((previous) => ({ ...previous, time }))}
+          />
+          <Field
+            label="Training venue"
+            value={draft.venue}
+            onChange={(venue) =>
+              setDraft((previous) => ({ ...previous, venue }))
             }
           />
-        ) : (
-          <Card key={profile.id}>
-            <View style={s.between}>
-              <Text style={s.body}>{profile.displayName}</Text>
-              <Pill>Archived</Pill>
-            </View>
-            {draft.expectedProfileIds.includes(profile.id) ? (
-              <>
-                <Text style={s.small}>
-                  Still expected in this saved occurrence. Remove this archived
-                  player before saving future training changes.
-                </Text>
-                <Button
-                  label={`Remove ${profile.displayName} from expected players`}
-                  variant="secondary"
-                  disabled={disabled}
-                  onPress={() =>
-                    setDraft((previous) => ({
-                      ...previous,
-                      expectedProfileIds: previous.expectedProfileIds.filter(
-                        (id) => id !== profile.id,
-                      ),
-                    }))
-                  }
-                />
-              </>
+        </View>
+        <View style={s.stack}>
+          <Text style={s.section}>Expected players</Text>
+          {players.map((profile) =>
+            profile.active ? (
+              <Toggle
+                key={profile.id}
+                label={profile.displayName}
+                value={draft.expectedProfileIds.includes(profile.id)}
+                disabled={disabled}
+                onChange={(selected) =>
+                  setDraft((previous) => ({
+                    ...previous,
+                    expectedProfileIds: selected
+                      ? [...previous.expectedProfileIds, profile.id]
+                      : previous.expectedProfileIds.filter(
+                          (id) => id !== profile.id,
+                        ),
+                  }))
+                }
+              />
             ) : (
-              <Text style={s.small}>
-                Removed from the draft for this occurrence. Past attendance
-                stays unchanged.
-              </Text>
-            )}
-          </Card>
-        ),
-      )}
-      <Notice tone="info">
-        This edits one occurrence. Other dates in the series remain unchanged.
-      </Notice>
+              <Card key={profile.id}>
+                <View style={s.between}>
+                  <Text style={s.body}>{profile.displayName}</Text>
+                  <Pill>Archived</Pill>
+                </View>
+                {draft.expectedProfileIds.includes(profile.id) ? (
+                  <>
+                    <Text style={s.small}>
+                      Still expected in this saved occurrence. Remove this
+                      archived player before saving future training changes.
+                    </Text>
+                    <Button
+                      label={`Remove ${profile.displayName} from expected players`}
+                      variant="secondary"
+                      disabled={disabled}
+                      onPress={() =>
+                        setDraft((previous) => ({
+                          ...previous,
+                          expectedProfileIds:
+                            previous.expectedProfileIds.filter(
+                              (id) => id !== profile.id,
+                            ),
+                        }))
+                      }
+                    />
+                  </>
+                ) : (
+                  <Text style={s.small}>
+                    Removed from the draft for this occurrence. Past attendance
+                    stays unchanged.
+                  </Text>
+                )}
+              </Card>
+            ),
+          )}
+          <Notice tone="info">
+            This edits one occurrence. Other dates in the series remain
+            unchanged.
+          </Notice>
+        </View>
+      </WorkspaceColumns>
       <FormActions
         label="Save training occurrence"
         disabled={disabled}
@@ -1790,6 +1938,7 @@ function FormationForm({
   ) => Promise<boolean>;
   onClose: () => void;
 }) {
+  const { wide } = useWorkspaceLayout();
   const [draft, setDraft] = useState({
     ...formation,
     slots: formation.slots.map((slot) => ({ ...slot })),
@@ -1859,55 +2008,63 @@ function FormationForm({
         Each place has its own stable slot. Two CB places remain distinct while
         sharing the CB reporting type. Coordinates run from 0 to 1.
       </Notice>
-      {draft.slots.map((slot) => (
-        <Card key={slot.id}>
-          <Text style={s.small}>Slot {slot.id}</Text>
-          <Field
-            label={`Label for ${slot.id}`}
-            value={slot.label}
-            onChange={(label) => changeSlot(slot.id, { label })}
-          />
-          <Choice
-            label={`Position for ${slot.id}`}
-            value={slot.position}
-            options={positionCatalogueFor(state)
-              .filter(
-                (position) =>
-                  position.active || position.code === slot.position,
-              )
-              .map((position) => ({
-                value: position.code,
-                label: `${position.code}${position.active ? "" : " · inactive"}`,
-              }))}
-            disabled={disabled}
-            onChange={(position) => changeSlot(slot.id, { position })}
-          />
-          {advanced && (
-            <View style={s.row}>
-              <View style={s.flex}>
-                <Field
-                  label={`X for ${slot.id}`}
-                  numeric
-                  value={String(slot.x)}
-                  onChange={(value) =>
-                    changeSlot(slot.id, { x: Number(value) })
-                  }
-                />
+      <View
+        style={[s.rosterGrid, wide && s.rosterGridWide]}
+        testID="formation-slot-editor-grid"
+      >
+        {draft.slots.map((slot) => (
+          <Card
+            key={slot.id}
+            style={wide ? s.rosterCardWide : s.rosterCardPhone}
+          >
+            <Text style={s.small}>Slot {slot.id}</Text>
+            <Field
+              label={`Label for ${slot.id}`}
+              value={slot.label}
+              onChange={(label) => changeSlot(slot.id, { label })}
+            />
+            <Choice
+              label={`Position for ${slot.id}`}
+              value={slot.position}
+              options={positionCatalogueFor(state)
+                .filter(
+                  (position) =>
+                    position.active || position.code === slot.position,
+                )
+                .map((position) => ({
+                  value: position.code,
+                  label: `${position.code}${position.active ? "" : " · inactive"}`,
+                }))}
+              disabled={disabled}
+              onChange={(position) => changeSlot(slot.id, { position })}
+            />
+            {advanced && (
+              <View style={s.row}>
+                <View style={s.flex}>
+                  <Field
+                    label={`X for ${slot.id}`}
+                    numeric
+                    value={String(slot.x)}
+                    onChange={(value) =>
+                      changeSlot(slot.id, { x: Number(value) })
+                    }
+                  />
+                </View>
+                <View style={s.flex}>
+                  <Field
+                    label={`Y for ${slot.id}`}
+                    numeric
+                    value={String(slot.y)}
+                    onChange={(value) =>
+                      changeSlot(slot.id, { y: Number(value) })
+                    }
+                  />
+                </View>
               </View>
-              <View style={s.flex}>
-                <Field
-                  label={`Y for ${slot.id}`}
-                  numeric
-                  value={String(slot.y)}
-                  onChange={(value) =>
-                    changeSlot(slot.id, { y: Number(value) })
-                  }
-                />
-              </View>
-            </View>
-          )}
-        </Card>
-      ))}
+            )}
+          </Card>
+        ))}
+      </View>
       <FormActions
         label="Save formation version"
         disabled={disabled}
@@ -2400,6 +2557,19 @@ function TrainingDetail({
 }
 
 const s = StyleSheet.create({
+  hiddenPanel: { display: "none" },
+  scheduleRail: { gap: 16, minWidth: 0 },
+  detailPanel: { minWidth: 0 },
+  formActionsWide: { maxWidth: 520, width: "100%", alignSelf: "flex-end" },
+  rosterGrid: { gap: 12 },
+  rosterGridWide: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    alignItems: "stretch",
+  },
+  rosterCardWide: { width: "48%", minWidth: 0 },
+  rosterCardPhone: { width: "100%" },
   compactStack: { gap: 12 },
   compactCard: { padding: 12, gap: 8 },
   actionPair: { flexDirection: "row", gap: 8 },

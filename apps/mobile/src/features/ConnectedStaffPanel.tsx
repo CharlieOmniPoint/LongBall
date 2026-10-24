@@ -1,10 +1,11 @@
-import { formatUkDateTime } from '@longball/application/uk-display';
+import { formatUkDateTime } from "@longball/application/uk-display";
 import { useState } from "react";
 import type { ManagerRosterDto } from "@longball/application/staff";
 import { Text, TextInput, View } from "react-native";
 import { Button, Card, Notice, Pill } from "../ui";
 import { colors, typography } from "../ui/tokens";
 import { randomUUID } from "../platform/id";
+import { useWorkspaceLayout } from "../ui/WorkspaceLayout";
 
 export type ConnectedStaffDto = ManagerRosterDto;
 export type ConnectedStaffCommand = { id: string; expectedRevision: number } & (
@@ -17,9 +18,7 @@ export type ConnectedStaffCommand = { id: string; expectedRevision: number } & (
     }
 );
 const date = (value: number | null) =>
-  value === null
-    ? "No recorded expiry"
-    : formatUkDateTime(value);
+  value === null ? "No recorded expiry" : formatUkDateTime(value);
 export function ConnectedStaffPanel({
   value,
   disabled,
@@ -29,6 +28,7 @@ export function ConnectedStaffPanel({
   disabled: boolean;
   onChange: (command: ConnectedStaffCommand) => Promise<boolean>;
 }) {
+  const { wide } = useWorkspaceLayout();
   const [accountId, setAccountId] = useState("");
   const [review, setReview] = useState<ConnectedStaffCommand | null>(null);
   const [revoke, setRevoke] = useState<
@@ -111,168 +111,187 @@ export function ConnectedStaffPanel({
       </Card>
     );
   return (
-    <View style={{ gap: 12 }} testID="connected-staff">
-      <Card>
-        <Text style={typography.section}>Season managers</Text>
-        <Pill>
-          {value.activeTeamManagerCount} of {value.maximumManagers} distinct
-          active team manager accounts
-        </Pill>
-        <Text style={typography.body}>
-          The limit includes every active season for this team. An administrator
-          assignment is separate from a manager assignment.
-        </Text>
-        <Text style={typography.muted}>
-          Current authorised roster ·{" "}
-          {formatUkDateTime(value.asOf)}{" "}
-          · revision {value.revision}
-        </Text>
-        {!value.canMutate && (
-          <Notice tone="warning">
-            A current team administrator with recent stronger sign-in must
-            confirm staff changes. Sign in again before assigning or revoking
-            access.
-          </Notice>
-        )}
-        {!value.managers.length && (
-          <Text style={typography.body}>
-            No manager assignments are recorded in this season.
-          </Text>
-        )}
-        {value.managers.map((person) => (
-          <View
-            key={person.accountId}
-            style={{
-              gap: 8,
-              borderTopWidth: 1,
-              borderTopColor: colors.border,
-              paddingTop: 12,
-            }}
-          >
-            <Text style={typography.label}>{person.label}</Text>
-            <Pill tone={person.status === "active" ? "brand" : "muted"}>
-              {person.status}
-            </Pill>
-            <Text selectable style={typography.muted}>
-              Account reference: {person.accountId}
-            </Text>
-            <Text style={typography.muted}>{date(person.expiresAt)}</Text>
-            {person.otherActiveSeasonIds.length > 0 && (
-              <Text style={typography.muted}>
-                Also active in {person.otherActiveSeasonIds.length} other season
-                {person.otherActiveSeasonIds.length === 1 ? "" : "s"}. Revoking
-                this assignment alone may leave the team-wide account count
-                unchanged.
-              </Text>
-            )}
-            {person.revokedAt === null && person.status !== "revoked" && (
-              <Button
-                label={`Review revoking ${person.label} manager access`}
-                variant="secondary"
-                disabled={locked}
-                onPress={() => {
-                  setRevoke(person);
-                  setReason("");
-                }}
-              />
-            )}
-          </View>
-        ))}
-      </Card>
-      {revoke ? (
+    <View
+      style={{
+        gap: 16,
+        flexDirection: wide ? "row" : "column",
+        alignItems: "flex-start",
+      }}
+      testID="connected-staff"
+    >
+      <View
+        style={{ minWidth: 0, ...(wide ? { flex: 1 } : { width: "100%" }) }}
+        testID="staff-roster-panel"
+      >
         <Card>
-          <Text style={typography.section}>
-            Reason for revoking {revoke.label}
-          </Text>
+          <Text style={typography.section}>Season managers</Text>
+          <Pill>
+            {value.activeTeamManagerCount} of {value.maximumManagers} distinct
+            active team manager accounts
+          </Pill>
           <Text style={typography.body}>
-            Review the account reference and this season before confirming. The
-            service retains an audit entry.
+            The limit includes every active season for this team. An
+            administrator assignment is separate from a manager assignment.
           </Text>
-          <TextInput
-            accessibilityLabel="Manager revocation reason"
-            value={reason}
-            onChangeText={setReason}
-            multiline
-            editable={!locked}
-            style={inputStyle}
-          />
-          <Button
-            label="Review this-season manager revocation"
-            testID="staff-review-revoke"
-            disabled={locked || !reason.trim() || reason.trim().length > 500}
-            onPress={() =>
-              setReview({
-                id: randomUUID(),
-                expectedRevision: value.revision,
-                type: "manager.revoked",
-                accountId: revoke.accountId,
-                reason: reason.trim(),
-                confirmRevocation: true,
-              })
-            }
-          />
-          <Button
-            label="Keep manager assignment"
-            variant="quiet"
-            disabled={disabled}
-            onPress={() => setRevoke(null)}
-          />
-        </Card>
-      ) : (
-        <Card>
-          <Text style={typography.section}>
-            Assign an existing adult account
+          <Text style={typography.muted}>
+            Current authorised roster · {formatUkDateTime(value.asOf)} ·
+            revision {value.revision}
           </Text>
-          <Text style={typography.body}>
-            Select an associated verified adult or enter an existing opaque
-            account reference supplied through the account service. A player
-            profile or typed age does not establish adult authority.
-          </Text>
-          {value.candidates
-            .filter((person) => !person.currentManager)
-            .map((person) => (
-              <Button
-                key={person.accountId}
-                label={`Select ${person.label} for manager review`}
-                variant={
-                  accountId === person.accountId ? "primary" : "secondary"
-                }
-                disabled={locked}
-                onPress={() => setAccountId(person.accountId)}
-              />
-            ))}
-          <TextInput
-            accessibilityLabel="Existing adult account reference"
-            value={accountId}
-            onChangeText={setAccountId}
-            autoCapitalize="none"
-            autoCorrect={false}
-            editable={!locked}
-            style={inputStyle}
-          />
-          {value.activeTeamManagerCount >= value.maximumManagers && (
+          {!value.canMutate && (
             <Notice tone="warning">
-              The team has reached its distinct active-manager limit. Adding
-              another distinct account requires an explicit eligible revocation
-              first. Renewing an account already active in another season
-              remains a service decision.
+              A current team administrator with recent stronger sign-in must
+              confirm staff changes. Sign in again before assigning or revoking
+              access.
             </Notice>
           )}
-          <Button
-            label="Review this-season manager assignment"
-            testID="staff-review-assign"
-            disabled={locked || !/^[A-Za-z0-9_-]{1,80}$/.test(accountId.trim())}
-            onPress={() =>
-              setReview({
-                id: randomUUID(),
-                expectedRevision: value.revision,
-                type: "manager.assigned",
-                accountId: accountId.trim(),
-              })
-            }
-          />
+          {!value.managers.length && (
+            <Text style={typography.body}>
+              No manager assignments are recorded in this season.
+            </Text>
+          )}
+          {value.managers.map((person) => (
+            <View
+              key={person.accountId}
+              style={{
+                gap: 8,
+                borderTopWidth: 1,
+                borderTopColor: colors.border,
+                paddingTop: 12,
+              }}
+            >
+              <Text style={typography.label}>{person.label}</Text>
+              <Pill tone={person.status === "active" ? "brand" : "muted"}>
+                {person.status}
+              </Pill>
+              <Text selectable style={typography.muted}>
+                Account reference: {person.accountId}
+              </Text>
+              <Text style={typography.muted}>{date(person.expiresAt)}</Text>
+              {person.otherActiveSeasonIds.length > 0 && (
+                <Text style={typography.muted}>
+                  Also active in {person.otherActiveSeasonIds.length} other
+                  season
+                  {person.otherActiveSeasonIds.length === 1 ? "" : "s"}.
+                  Revoking this assignment alone may leave the team-wide account
+                  count unchanged.
+                </Text>
+              )}
+              {person.revokedAt === null && person.status !== "revoked" && (
+                <Button
+                  label={`Review revoking ${person.label} manager access`}
+                  variant="secondary"
+                  disabled={locked}
+                  onPress={() => {
+                    setRevoke(person);
+                    setReason("");
+                  }}
+                />
+              )}
+            </View>
+          ))}
         </Card>
-      )}
+      </View>
+      <View
+        style={{ minWidth: 0, ...(wide ? { flex: 1 } : { width: "100%" }) }}
+        testID="staff-edit-panel"
+      >
+        {revoke ? (
+          <Card>
+            <Text style={typography.section}>
+              Reason for revoking {revoke.label}
+            </Text>
+            <Text style={typography.body}>
+              Review the account reference and this season before confirming.
+              The service retains an audit entry.
+            </Text>
+            <TextInput
+              accessibilityLabel="Manager revocation reason"
+              value={reason}
+              onChangeText={setReason}
+              multiline
+              editable={!locked}
+              style={inputStyle}
+            />
+            <Button
+              label="Review this-season manager revocation"
+              testID="staff-review-revoke"
+              disabled={locked || !reason.trim() || reason.trim().length > 500}
+              onPress={() =>
+                setReview({
+                  id: randomUUID(),
+                  expectedRevision: value.revision,
+                  type: "manager.revoked",
+                  accountId: revoke.accountId,
+                  reason: reason.trim(),
+                  confirmRevocation: true,
+                })
+              }
+            />
+            <Button
+              label="Keep manager assignment"
+              variant="quiet"
+              disabled={disabled}
+              onPress={() => setRevoke(null)}
+            />
+          </Card>
+        ) : (
+          <Card>
+            <Text style={typography.section}>
+              Assign an existing adult account
+            </Text>
+            <Text style={typography.body}>
+              Select an associated verified adult or enter an existing opaque
+              account reference supplied through the account service. A player
+              profile or typed age does not establish adult authority.
+            </Text>
+            {value.candidates
+              .filter((person) => !person.currentManager)
+              .map((person) => (
+                <Button
+                  key={person.accountId}
+                  label={`Select ${person.label} for manager review`}
+                  variant={
+                    accountId === person.accountId ? "primary" : "secondary"
+                  }
+                  disabled={locked}
+                  onPress={() => setAccountId(person.accountId)}
+                />
+              ))}
+            <TextInput
+              accessibilityLabel="Existing adult account reference"
+              value={accountId}
+              onChangeText={setAccountId}
+              autoCapitalize="none"
+              autoCorrect={false}
+              editable={!locked}
+              style={inputStyle}
+            />
+            {value.activeTeamManagerCount >= value.maximumManagers && (
+              <Notice tone="warning">
+                The team has reached its distinct active-manager limit. Adding
+                another distinct account requires an explicit eligible
+                revocation first. Renewing an account already active in another
+                season remains a service decision.
+              </Notice>
+            )}
+            <Button
+              label="Review this-season manager assignment"
+              testID="staff-review-assign"
+              disabled={
+                locked || !/^[A-Za-z0-9_-]{1,80}$/.test(accountId.trim())
+              }
+              onPress={() =>
+                setReview({
+                  id: randomUUID(),
+                  expectedRevision: value.revision,
+                  type: "manager.assigned",
+                  accountId: accountId.trim(),
+                })
+              }
+            />
+          </Card>
+        )}
+      </View>
     </View>
   );
 }

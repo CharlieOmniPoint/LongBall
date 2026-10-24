@@ -25,6 +25,8 @@ const bytes = readFileSync(join(mobile, "app.json"));
 const base = JSON.parse(bytes).expo;
 const hash = (value) => createHash("sha256").update(value).digest("hex");
 const require = createRequire(import.meta.url);
+const mobileRequire = createRequire(join(mobile, "package.json"));
+const { IOSConfig } = mobileRequire("expo/config-plugins");
 const profile = require(join(mobile, "app.config.js"));
 const configuration = (environment, projectRoot) => {
   const env = { ...process.env };
@@ -176,6 +178,16 @@ checks.push(
   "Explicit fictional/development trial keeps its recorded dev-client behavior",
 );
 for (const config of [development, production]) {
+  assert.equal(config.orientation, "default");
+  assert.equal(config.ios.supportsTablet, true);
+  assert.equal(config.ios.requireFullScreen, false);
+  assert.deepEqual(IOSConfig.DeviceFamily.getDeviceFamilies(config), [1, 2]);
+  assert.equal(plist(config).UIRequiresFullScreen, false);
+  for (const orientation of ["UIInterfaceOrientationPortrait", "UIInterfaceOrientationLandscapeLeft", "UIInterfaceOrientationLandscapeRight"]) assert(plist(config).UISupportedInterfaceOrientations.includes(orientation));
+  assert.deepEqual([...plist(config)["UISupportedInterfaceOrientations~ipad"]].sort(), ["UIInterfaceOrientationPortrait", "UIInterfaceOrientationPortraitUpsideDown", "UIInterfaceOrientationLandscapeLeft", "UIInterfaceOrientationLandscapeRight"].sort());
+  const activity = android(config).activity.find(item => item.$["android:name"] === ".MainActivity");
+  assert.equal(activity.$["android:screenOrientation"], "unspecified");
+  for (const change of ["orientation", "screenSize", "screenLayout", "keyboard", "keyboardHidden"]) assert(activity.$["android:configChanges"].split("|").includes(change));
   assert.equal(config.experiments.baseUrl, "/LongBall");
   assert.equal(config.ios.bundleIdentifier, base.ios.bundleIdentifier);
   assert.equal(config.android.package, base.android.package);
@@ -209,7 +221,7 @@ for (const config of [development, production]) {
   assert(schemes(config).includes("longball"));
 }
 checks.push(
-  "Both profiles retain app identity, SQLCipher, backup protections, biometrics, local module and notifications",
+  "Both profiles support iPhone/iPad, all tablet orientations and resizable Android windows without activity recreation, while retaining app identity, SQLCipher, backups, biometrics and notifications",
 );
 const originalEnv = process.env.EXPO_PUBLIC_ENVIRONMENT;
 const originalBasePath = process.env.LONGBALL_WEB_BASE_PATH;

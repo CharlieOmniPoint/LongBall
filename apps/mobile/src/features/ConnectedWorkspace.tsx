@@ -1,3 +1,4 @@
+import { WorkspaceLayoutProvider, WorkspaceLayoutScope, WorkspaceLayoutMenuButton, WorkspaceLayoutControls, useWorkspaceLayout } from '../ui/WorkspaceLayout';
 import { visibleScheduledMatches } from '@longball/application/scheduled-match-visibility';
 import { assertTeamOverviewDto, type TeamOverviewDto } from '@longball/application/team-overview-service';
 import { formatUkDate, formatUkDateTime, formatUkSeasonLabel } from '@longball/application/uk-display';
@@ -195,32 +196,24 @@ import {
 
 /** Keeps the primary role navigation reachable while only the task content scrolls. */
 function WorkspaceFrame({ fullScreen, fixedMatch, resetKey, footer, children }: {
-  fullScreen: boolean;
-  fixedMatch?: boolean;
-  resetKey: string;
-  footer: ReactNode;
-  children: ReactNode;
+  fullScreen: boolean; fixedMatch?: boolean; resetKey: string; footer: ReactNode; children: ReactNode;
 }) {
-  const insets = useSafeAreaInsets();
-  const scroll = useRef<ScrollViewInstance | null>(null);
-  useEffect(() => { if (fullScreen) scroll.current?.scrollTo({ y: 0, animated: false }); }, [fullScreen, resetKey]);
-  if (!fullScreen) return <View style={s.stack} testID="workspace-session">{footer}{children}</View>;
-  if (fixedMatch) return <View style={{ flex: 1, alignItems: "center", paddingHorizontal: 12, paddingTop: insets.top + 4, paddingBottom: Math.max(8, insets.bottom), backgroundColor: colors.canvas }} testID="workspace-session">
-    <View style={{ flex: 1, minHeight: 0, width: "100%", maxWidth: 600, gap: 8 }}>{children}</View>
-  </View>;
-  return <View style={{ flex: 1, backgroundColor: colors.canvas }} testID="workspace-session">
-    <ScrollView
-      ref={scroll}
-      style={{ flex: 1 }}
-      contentContainerStyle={{ flexGrow: 1, alignItems: "center", paddingTop: insets.top + 12, paddingHorizontal: 16, paddingBottom: 16 }}
-      keyboardShouldPersistTaps="handled"
-      testID="workspace-content-scroll"
-    >
-      <View style={{ width: "100%", maxWidth: 600, gap: 12 }}>{children}</View>
-    </ScrollView>
-    {footer && <View style={{ alignItems: "center", paddingHorizontal: 12, paddingTop: 8, paddingBottom: Math.max(8, insets.bottom), backgroundColor: colors.surface, borderTopWidth: 1, borderColor: colors.border }} testID="workspace-bottom-navigation">
-      <View style={{ width: "100%", maxWidth: 600 }}>{footer}</View>
-    </View>}
+  const insets=useSafeAreaInsets(),layout=useWorkspaceLayout();
+  const scroll=useRef<ScrollViewInstance|null>(null);
+  useEffect(()=>{if(fullScreen)scroll.current?.scrollTo({y:0,animated:false});},[fullScreen,resetKey]);
+  if(!fullScreen)return <WorkspaceLayoutScope style={{width:'100%',gap:12}} testID="workspace-session"><View style={s.stack} testID={`workspace-layout-${layout.mode}`}>{footer}{children}</View></WorkspaceLayoutScope>;
+  const rail=layout.rail&&!fixedMatch;
+  return <View style={{flex:1,minHeight:0,backgroundColor:colors.canvas,alignItems:'center',paddingLeft:insets.left,paddingRight:insets.right}} testID="workspace-session">
+    <View style={{flex:1,minHeight:0,width:'100%',maxWidth:layout.shellWidth,flexDirection:rail?'row':'column-reverse'}} testID={`workspace-layout-${layout.mode}`}>
+      <View style={{display:footer&&!fixedMatch?'flex':'none',width:rail?152:'100%',paddingHorizontal:rail?8:12,paddingTop:rail?insets.top+16:8,paddingBottom:Math.max(8,insets.bottom),backgroundColor:colors.surface,borderTopWidth:rail?0:1,borderRightWidth:rail?1:0,borderColor:colors.border}} testID={rail?'workspace-side-navigation':'workspace-bottom-navigation'}>{footer}</View>
+      <View style={{flex:1,minHeight:0,minWidth:0}}>
+        <ScrollView ref={scroll} style={{flex:1}} scrollEnabled={!fixedMatch} contentContainerStyle={{...(fixedMatch?{flex:1}:{flexGrow:1}),alignItems:'center',paddingTop:insets.top+(fixedMatch?4:12),paddingHorizontal:16,paddingBottom:fixedMatch?Math.max(8,insets.bottom):16}} keyboardShouldPersistTaps="handled" testID="workspace-content-scroll">
+          <WorkspaceLayoutScope estimatedWidth={layout.contentWidth} style={{width:'100%',minWidth:0,...(fixedMatch?{flex:1,minHeight:0}:{})}}>
+            <View style={{width:'100%',minWidth:0,gap:fixedMatch?8:layout.mode==='tablet'?16:12,...(fixedMatch?{flex:1,minHeight:0}:{})}}>{children}</View>
+          </WorkspaceLayoutScope>
+        </ScrollView>
+      </View>
+    </View>
   </View>;
 }
 
@@ -2672,6 +2665,7 @@ function WorkspaceSession({
   });
   const focusedMatch = Boolean(props.initialConnection && manager && tab === "controller" && matchFocused);
   return (
+    <WorkspaceLayoutProvider role={expectedBinding&&membership?membership.role:null}>
     <WorkspaceFrame fullScreen={Boolean(props.initialConnection)} fixedMatch={focusedMatch} resetKey={tab} footer={
       expectedBinding && membership && !focusedMatch && (
         <View testID="workspace-context-ready">
@@ -2703,8 +2697,9 @@ function WorkspaceSession({
         {focusedMatch && (
           <View style={s.row} testID="workspace-match-header">
             <Text testID="workspace-current-role" style={[typography.muted,{fontWeight:"700",color:colors.brand}]}>Manager</Text>
-            <Button label="Back to team" accessibilityLabel="Back to team; clock continues" testID="workspace-back-to-team" variant="quiet" compact style={{ flex: 1, paddingHorizontal: 4 }} disabled={disabled} onPress={() => setTab("overview")} />
+            <Button label="Team" accessibilityLabel="Back to team; clock continues" testID="workspace-back-to-team" variant="quiet" compact style={{ flex: 1, paddingHorizontal: 4 }} disabled={disabled} onPress={() => setTab("overview")} />
             <Button label="Account" accessibilityLabel="Account and security" testID="workspace-match-account" variant="quiet" icon="lock" iconOnly compact style={{ paddingHorizontal: 4 }} onPress={() => guardNavigation(props.onOpenAccount ?? (() => setTab("account")))} />
+            <WorkspaceLayoutMenuButton />
             {props.onSignOut && <Button label="Sign out" compact icon="logout" iconOnly variant="quiet" testID={props.signOutTestID ?? "workspace-sign-out"} onPress={props.onSignOut} />}
           </View>
         )}
@@ -2745,8 +2740,10 @@ function WorkspaceSession({
             )}
 
           </View>
+          <WorkspaceLayoutMenuButton />
           {props.onSignOut && <Button label="Sign out" icon="logout" iconOnly compact testID={props.signOutTestID ?? "workspace-sign-out"} variant="quiet" onPress={props.onSignOut} />}
         </View>}
+        <WorkspaceLayoutControls />
         {!focusedMatch && selectedContext && contextChoices.length > 1 && (
           <Button
             label="Change space"
@@ -3585,6 +3582,7 @@ function WorkspaceSession({
         </View>
       )}
     </WorkspaceFrame>
+    </WorkspaceLayoutProvider>
   );
 }
 

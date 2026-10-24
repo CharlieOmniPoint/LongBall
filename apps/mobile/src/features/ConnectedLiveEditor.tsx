@@ -29,6 +29,7 @@ import { formatTime } from "../useMatch";
 import { LiveEventsPanel } from "./LiveEventsPanel";
 import { reviewPreparedMatchPlanLineup } from '@longball/application/match-plans';
 import { autoFillMatchLineup } from '@longball/application/lineup-autofill';
+import { useWorkspaceLayout } from '../ui/WorkspaceLayout';
 
 export interface ConnectedLiveEditorProps {
   match: MatchState;
@@ -55,6 +56,12 @@ export interface ConnectedLiveEditorProps {
 
 /** Native connected recording, or the explicitly isolated fictional browser review. */
 export function ConnectedLiveEditor(props: ConnectedLiveEditorProps) {
+  const layout = useWorkspaceLayout();
+  const tablet = layout.mode === 'tablet' && layout.wide;
+  const [editorHeight, setEditorHeight] = useState<number | null>(null);
+  const compactHeight = Boolean(props.fillScreen && editorHeight !== null && editorHeight < 520);
+  const summaryHeight = compactHeight ? Math.max(1, Math.floor(editorHeight! * 0.28)) : tablet ? '35%' : undefined;
+  const railHeight = compactHeight ? Math.max(1, Math.floor(editorHeight! * 0.25)) : 220;
   const [observedJournal, setObservedJournal] = useState<{
     journal: Journal;
     diagnostics: JournalDiagnostics;
@@ -249,6 +256,11 @@ export function ConnectedLiveEditor(props: ConnectedLiveEditorProps) {
     .map((saved) => saved.slotId);
   const running = props.match.status.endsWith("_running");
   const paused = props.match.status.endsWith("_paused");
+  const statusLabel = props.match.status === 'preparation' ? 'Before kickoff'
+    : props.match.status === 'half_time' ? 'Half-time'
+    : props.match.status === 'completed' ? 'Full-time'
+    : props.match.status === 'abandoned' ? 'Match abandoned'
+    : `${props.match.half === 1 ? 'First' : 'Second'} half · ${paused ? 'referee clock paused' : 'in play'}`;
   const resetDraft = () => {
     setLineupDraft(null);
     setSelectedSlot(null);
@@ -298,48 +310,47 @@ export function ConnectedLiveEditor(props: ConnectedLiveEditorProps) {
                   )}
                 </View>
               ));
-  const scoreCard = props.clock && (<Card style={props.fillScreen ? { padding: 10, gap: 4 } : undefined}>
+  const scoreCard = props.clock && (<Card style={props.fillScreen ? { padding: compactHeight ? 6 : 10, gap: 4 } : undefined}>
+              <View style={[{ gap: props.fillScreen ? 4 : 12 }, (tablet || compactHeight) && styles.scoreSummaryWide, compactHeight && styles.scoreSummaryShort]}>
+              <View style={[{ gap: props.fillScreen ? 4 : 12 }, (tablet || compactHeight) && styles.scoreSummaryPart]}>
               <View style={styles.scoreboard}>
-                <Text style={[typography.label, styles.teamName]}>
+                <Text style={[typography.label, styles.teamName, compactHeight && styles.hidden]}>
                   {teamLabel}
                 </Text>
-                <Text style={typography.score}>
+                <Text style={[typography.score, compactHeight && styles.scoreShort]}>
                   {props.match.score.for}–{props.match.score.against}
                 </Text>
-                <Text style={[typography.label, styles.teamName]}>
+                <Text style={[typography.label, styles.teamName, compactHeight && styles.hidden]}>
                   {props.match.config.fixture?.opponent ?? "Opposition"}
                 </Text>
               </View>
+              <View style={compactHeight && styles.hidden}>
               <Pill
                 tone={
                   paused || props.clock.recoveryRequired ? "warning" : "brand"
                 }
               >
-                {props.match.status === "preparation"
-                  ? "Before kickoff"
-                  : props.match.status === "half_time"
-                    ? "Half-time"
-                    : props.match.status === "completed"
-                      ? "Full-time"
-                      : props.match.status === "abandoned"
-                        ? "Match abandoned"
-                        : `${props.match.half === 1 ? "First" : "Second"} half · ${paused ? "referee clock paused" : "in play"}`}
+                {statusLabel}
               </Pill>
-              <Text style={typography.muted}>
+              </View>
+              <Text style={[typography.muted, !compactHeight && styles.hidden]}>{statusLabel}</Text>
+              </View>
+              <View style={[{ gap: props.fillScreen ? 4 : 12 }, (tablet || compactHeight) && styles.scoreSummaryPart]}>
+              <Text style={[typography.muted, compactHeight && styles.hidden]}>
                 {terminal ? "Total active match time"
                   : props.match.status === "half_time" ? "Actual first half"
                   : props.match.half === 0 ? "Planned half length"
                   : props.clock.remainingMs === 0 ? "Time elapsed · added active time"
                   : "Remaining this half"}
               </Text>
-              <Text style={typography.clock} testID="connected-match-countdown" accessibilityLiveRegion="none">
+              <Text style={[typography.clock, compactHeight && styles.clockShort]} testID="connected-match-countdown" accessibilityLiveRegion="none">
                 {terminal ? formatTime(props.clock.matchActiveMs)
                   : props.match.status === "half_time" ? formatTime(props.match.firstHalfDurationMs ?? props.clock.halfActiveMs)
                   : props.match.half === 0 ? formatTime(props.match.config.plannedHalfDurationMs)
                   : props.clock.remainingMs === 0 ? `+${formatTime(props.clock.addedMs)}`
                   : formatTime(props.clock.remainingMs)}
               </Text>
-              <Text style={typography.body}>
+              <Text style={[typography.body, compactHeight && styles.hidden]}>
                 {terminal ? "Recorded duration"
                   : props.match.status === "half_time" ? "Changes take effect when you start the second half."
                   : props.match.half === 0 ? "The clock starts when you confirm kickoff."
@@ -357,6 +368,8 @@ export function ConnectedLiveEditor(props: ConnectedLiveEditorProps) {
                   clock recovery above before recording another event.
                 </Notice>
               )}
+              </View>
+              </View>
               {!props.fillScreen && clockActions}
               {!props.fillScreen && props.clockActionReview}
             </Card>);
@@ -371,10 +384,13 @@ export function ConnectedLiveEditor(props: ConnectedLiveEditorProps) {
     contentScroll.current?.scrollTo({ y: 0, animated: false });
   };
   return (
-    <View style={[styles.stack, props.fillScreen && styles.fullScreen]}>
-      {props.fillScreen && <ScrollView style={{ flexGrow: 0, maxHeight: activeMode === "live" ? "45%" : "30%" }} contentContainerStyle={{ gap: 8 }} testID="connected-match-fixed-summary">
-        {props.header}
-        {activeMode === "live" && scoreCard}
+    <View style={[styles.stack, props.fillScreen && styles.fullScreen]} testID="connected-live-editor" onLayout={event => {
+      const height = event.nativeEvent.layout.height;
+      if (height > 0) setEditorHeight(previous => previous !== null && Math.abs(previous - height) < 1 ? previous : height);
+    }}>
+      {props.fillScreen && <ScrollView style={{ flexGrow: 0, maxHeight: summaryHeight ?? (activeMode === "live" ? "45%" : "30%") }} contentContainerStyle={[styles.summary, (tablet || compactHeight) && styles.summaryWide]} testID="connected-match-fixed-summary">
+        <View style={[styles.summaryHeader, (tablet || compactHeight) && styles.summaryHeaderWide]}>{props.header}</View>
+        <View style={[styles.summaryClock, (tablet || compactHeight) && styles.summaryClockWide, activeMode !== 'live' && !tablet && !compactHeight && styles.hidden]}>{scoreCard}</View>
       </ScrollView>}
       <EditorContent fillScreen={props.fillScreen} scrollRef={contentScroll}>
 
@@ -452,8 +468,9 @@ export function ConnectedLiveEditor(props: ConnectedLiveEditorProps) {
                   ? " During play, this records attendance at the current confirmed active time. Earlier arrival time is not guessed, and a present player stays off the pitch until you confirm a lineup change."
                   : ""}
               </Text>
+              <View style={[styles.stack, tablet && styles.checkInGrid]} testID="connected-match-check-in-grid">
               {squad.map((player) => (
-                <View key={player.id} style={styles.player}>
+                <View key={player.id} style={[styles.player, tablet && styles.playerWide]}>
                   <Text style={typography.label}>
                     {player.displayName} ·{" "}
                     {props.match.attendance[player.id].replaceAll("_", " ")}
@@ -496,6 +513,7 @@ export function ConnectedLiveEditor(props: ConnectedLiveEditorProps) {
                   </View>
                 </View>
               ))}
+              </View>
             </Card>
           )}
           {!terminal && (
@@ -579,6 +597,8 @@ export function ConnectedLiveEditor(props: ConnectedLiveEditorProps) {
                   />
                 </View>
               )}
+              <View style={[styles.stack, tablet && styles.columns]} testID="connected-match-lineup-layout">
+              <View style={[styles.stack, tablet && styles.pitchColumn]}>
               <Pitch
                 lineup={draft}
                 players={props.match.config.players}
@@ -594,6 +614,8 @@ export function ConnectedLiveEditor(props: ConnectedLiveEditorProps) {
                 occupy one place at a time; review the whole batch before
                 confirming.
               </Text>
+              </View>
+              <View style={[styles.stack, tablet && styles.controlsColumn]}>
               {slot && (
                 <View style={styles.stack}>
                   <Text style={typography.label}>
@@ -692,10 +714,14 @@ export function ConnectedLiveEditor(props: ConnectedLiveEditorProps) {
                 disabled={saving}
                 onPress={resetDraft}
               />
+              </View>
+              </View>
             </Card>
           )}
           <View style={[styles.stack, activeMode !== "live" && styles.hidden]}>
             {!props.fillScreen && scoreCard}
+            <View style={[styles.stack, tablet && styles.liveColumns]} testID="connected-match-live-layout">
+            <View style={[styles.stack, tablet && styles.controlsColumn]}>
             <LiveEventsPanel
               match={props.match}
               clock={props.clock}
@@ -705,13 +731,15 @@ export function ConnectedLiveEditor(props: ConnectedLiveEditorProps) {
               hideActions={props.fillScreen}
               actionRequest={eventAction}
             />
+            </View>
+            <View style={[styles.stack, tablet && styles.pitchColumn]}>
             <Pitch
               lineup={savedLineup}
               players={props.match.config.players}
               initialsByPlayerId={initialsByPlayerId}
               slots={pitchSlots}
               formationName={`${props.match.config.pitchPlaces} places · ${preparation ? "staged for next start" : "confirmed on pitch"}`}
-              compact
+              compact={!tablet}
             />
             {!terminal && (
               <Card>
@@ -756,14 +784,15 @@ export function ConnectedLiveEditor(props: ConnectedLiveEditorProps) {
                 </Text>
               </Card>
             )}
-
+            </View>
+            </View>
           </View>
         </>
       )}
       {props.extraContent}
       </EditorContent>
       {props.fillScreen && props.clock && !terminal && <View style={styles.fixedRail} testID="connected-match-action-rail">
-        <ScrollView style={{ maxHeight: 220 }} contentContainerStyle={styles.stack} keyboardShouldPersistTaps="handled">
+        <ScrollView style={{ maxHeight: railHeight }} contentContainerStyle={styles.stack} keyboardShouldPersistTaps="handled">
           {props.clockActionReview}
           {clockActions}
           {!preparation && !terminal && <View style={styles.wrap}>
@@ -777,10 +806,27 @@ export function ConnectedLiveEditor(props: ConnectedLiveEditorProps) {
   );
 }
 function EditorContent({ fillScreen, scrollRef, children }: { fillScreen?: boolean; scrollRef: RefObject<ScrollViewInstance | null>; children: ReactNode }) {
-  return fillScreen ? <ScrollView ref={scrollRef} style={{ flex: 1 }} contentContainerStyle={{ gap: 12, paddingBottom: 12 }} keyboardShouldPersistTaps="handled" testID="connected-match-content-scroll">{children}</ScrollView> : <View style={{ gap: 12 }}>{children}</View>;
+  return fillScreen ? <ScrollView ref={scrollRef} style={{ flex: 1, minHeight: 0 }} contentContainerStyle={{ gap: 12, paddingBottom: 12 }} keyboardShouldPersistTaps="handled" testID="connected-match-content-scroll">{children}</ScrollView> : <View style={{ gap: 12 }}>{children}</View>;
 }
 const styles = StyleSheet.create({
   stack: { gap: 12 },
+  summary: { gap: 8 },
+  summaryWide: { flexDirection: 'row', alignItems: 'flex-start' },
+  summaryHeader: { minWidth: 0 },
+  summaryHeaderWide: { flex: 0.7 },
+  summaryClock: { minWidth: 0 },
+  summaryClockWide: { flex: 1.6 },
+  scoreSummaryWide: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  scoreSummaryShort: { alignItems: 'flex-start', gap: 8 },
+  scoreSummaryPart: { flex: 1, minWidth: 0 },
+  scoreShort: { fontSize: 26, lineHeight: 30 },
+  clockShort: { fontSize: 28, lineHeight: 32 },
+  columns: { flexDirection: 'row', alignItems: 'flex-start' },
+  liveColumns: { flexDirection: 'row-reverse', alignItems: 'flex-start' },
+  pitchColumn: { flex: 1.1, minWidth: 0 },
+  controlsColumn: { flex: 1, minWidth: 0 },
+  checkInGrid: { flexDirection: 'row', flexWrap: 'wrap' },
+  playerWide: { flexBasis: '48%', flexGrow: 1, minWidth: 0 },
   fullScreen: { flex: 1, minHeight: 0, gap: 8 },
   fixedRail: { borderTopWidth: 1, borderColor: colors.border, paddingTop: 8, backgroundColor: colors.canvas },
   railButton: { minHeight: 48, paddingVertical: 6, paddingHorizontal: 8 },

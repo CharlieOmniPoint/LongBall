@@ -1,3 +1,4 @@
+import { useWorkspaceLayout } from '../ui/WorkspaceLayout';
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import type { Role } from "@longball/application/access";
 import { Icon, type IconName } from "../ui";
@@ -66,11 +67,13 @@ export function WorkspaceNavigation({
   disabled: boolean;
   onSelect: (tab: WorkspaceTab) => void;
 }) {
+  const layout=useWorkspaceLayout();
+  const rail=layout.rail&&(role==='manager'||role==='administrator');
   const items = primary[role];
   const selected = items.some((item) => item.tab === active) ? active : "more";
   return (
     <View
-      style={s.bar}
+      style={[s.bar,rail&&{flexDirection:"column",gap:8,borderWidth:0}]}
       accessibilityRole="tablist"
       testID="workspace-primary-navigation"
     >
@@ -87,6 +90,7 @@ export function WorkspaceNavigation({
           onPress={() => onSelect(item.tab)}
           style={({ pressed }) => [
             s.tab,
+            rail&&{flex:0,flexDirection:"row",justifyContent:"flex-start",paddingHorizontal:12,gap:10,minHeight:52},
             selected === item.tab && s.active,
             disabled && s.disabled,
             pressed && s.pressed,

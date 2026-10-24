@@ -22,7 +22,8 @@ export type IconName =
   | "photo"
   | "trophy"
   | "lock"
-  | "logout";
+  | "logout"
+  | "layout";
 
 /** Small original line drawings; visible control labels carry their meaning. */
 export function Icon({
@@ -37,6 +38,7 @@ export function Icon({
   strokeWidth?: number;
 }) {
   const artwork = {
+    layout: <><Rect x="3" y="4" width="18" height="16" rx="2" /><Path d="M9 4v16M9 10h12" /></>,
     logout: <><Path d="M10 4H4v16h6M13 7l5 5-5 5m-5-5h10" /></>,
     ball: (
       <>

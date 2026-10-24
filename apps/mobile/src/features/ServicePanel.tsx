@@ -20,6 +20,7 @@ import { AcceptedMatchView } from './AcceptedMatchView';
 import { ConnectedLiveEditor } from './ConnectedLiveEditor';
 import { PlannerPanel, usePlannerModel, type PlannerPersistence, type PlannerPolicyPort } from './PlannerPanel';
 import { HistoryReviewPanel } from './HistoryReviewPanel';
+import { useWorkspaceLayout } from '../ui/WorkspaceLayout';
 
 export interface ConnectedControllerState {
   scope: 'connected-rehearsal'; matchId: string; deviceId: string; epoch: number | null;
@@ -145,7 +146,9 @@ export function ServicePanel(props: ServicePanelProps) {
 }
 
 function ConnectionSettings({ constrained, children }: { constrained?: boolean; children: ReactNode }) {
-  return constrained ? <ScrollView style={{ flexGrow: 0, maxHeight: "45%" }} keyboardShouldPersistTaps="handled">{children}</ScrollView> : <View>{children}</View>;
+  const layout = useWorkspaceLayout();
+  const tablet = layout.mode === 'tablet' && layout.wide;
+  return constrained ? <ScrollView style={[{ flexGrow: 0, maxHeight: "45%" }, tablet && styles.settingsWide]} keyboardShouldPersistTaps="handled">{children}</ScrollView> : <View style={tablet && styles.settingsWide}>{children}</View>;
 }
 
 interface RehearsalProps { connection: ConnectionConfig; journal: Journal | null; physicalDeviceId: string | null; matchId: string; controlled: boolean; fillScreen?: boolean; allowFictionalReview: boolean; onControllerState?: ServicePanelProps['onControllerState'] }
@@ -174,6 +177,8 @@ function AuthorizedRehearsal(props: RehearsalProps) {
 }
 
 function ConnectedRehearsal({ connection, journal, physicalDeviceId, matchId, controlled, fillScreen, allowFictionalReview, onControllerState }: RehearsalProps) {
+  const layout = useWorkspaceLayout();
+  const tablet = layout.mode === 'tablet' && layout.wide;
   const documentId = controllerCacheDocumentId(connection.scope);
   const document = useDocument<ConnectedMatchDocument>(journal, physicalDeviceId, documentId,
     () => createConnectedDocument(connection.wireDeviceId, matchId, connection.baseUrl),
@@ -376,8 +381,8 @@ function ConnectedRehearsal({ connection, journal, physicalDeviceId, matchId, co
   }
   if (authorityDenied) return <Notice tone="error">Controller cache closed because the service or current account denied access. Private match details and recording controls are hidden. Saved events and uncertain requests remain retained; reopen this connection with an authorised manager sign-in.</Notice>;
   const recordingStatus = (controlled && <Card style={{ padding: 10, gap: 6 }}>
-      <Text style={typography.label}>{current?.controllerConfirmed ? 'Recording on this phone' : 'Viewing the accepted match'}</Text>
-      {current?.controllerConfirmed && <Text style={typography.muted}>{pendingCount ? `Saved on this phone · ${pendingCount} waiting to sync` : current.authoritativeDownloadRequired ? 'Receipt saved · accepted checkpoint needs refreshing' : rejected.length ? 'Saved history needs review' : 'Up to date with the service'}</Text>}
+      <Text style={typography.label} testID="connected-recording-status">{current?.controllerConfirmed ? layout.mode === 'tablet' ? 'Recording on this device' : 'Recording on this phone' : 'Viewing the accepted match'}</Text>
+      {current?.controllerConfirmed && <Text style={typography.muted}>{pendingCount ? `Saved on this ${layout.mode === 'tablet' ? 'device' : 'phone'} · ${pendingCount} waiting to sync` : current.authoritativeDownloadRequired ? 'Receipt saved · accepted checkpoint needs refreshing' : rejected.length ? 'Saved history needs review' : 'Up to date with the service'}</Text>}
       {(networkError || document.error) && <Notice tone="error">{networkError || document.error}</Notice>}
       {notice && (!current?.controllerConfirmed || showRecordingDetails || current.authoritativeDownloadRequired || current.reconciliationRequired) && <Notice>{notice}</Notice>}
       {preparationRequired && <Notice tone="warning">Open this fixture in Schedule and choose Open match preparation to save its formation and player snapshots before taking control.</Notice>}
@@ -393,8 +398,8 @@ function ConnectedRehearsal({ connection, journal, physicalDeviceId, matchId, co
     </Card>);
   const acceptedView = (current && !current.controllerConfirmed && <AcceptedMatchView view={acceptedMatchView(current, sample.wallTimeMs)} accountId={connection.scope.accountId} deviceId={connection.wireDeviceId} busy={busy || productionBrowserReadOnly || document.retryPending || Boolean(document.conflict)} pending={Boolean(current.pendingRequest)} onRefresh={() => { void run(download); }} onOpenDetails={() => setShowRecordingDetails(true)} onAccept={(reference) => { void run(() => request('accept', { transferId: reference })); }} />);
   const recordingDetails = <>
-    {(!controlled || showRecordingDetails) && <>
-    <Card>
+    {(!controlled || showRecordingDetails) && <View style={[styles.stack, tablet && styles.detailsGrid]} testID="controller-recording-details-layout">
+    <Card style={tablet && styles.detailsColumn}>
       <Text style={typography.section}>Canonical connection</Text>
       {productionBrowserReadOnly && <Notice>Connected browser sign-in provides read-only review. Use a native development build for the encrypted controller journal, or choose the demo identity mode for the complete browser rehearsal.</Notice>}
       <Text style={typography.muted}>Device {connection.wireDeviceId} · {identity ?? 'identity not checked'} · {connection.mode === 'synthetic' ? 'demo development identity' : 'configured connected sign-in'}</Text>
@@ -426,7 +431,7 @@ function ConnectedRehearsal({ connection, journal, physicalDeviceId, matchId, co
       {quarantineCount !== null && <Text style={typography.muted}>{quarantineCount} retained service quarantine records. Review requires an authorised manager; no branch is discarded.</Text>}
       {rejected.map(entry => <Notice key={entry.envelope.eventId} tone="warning">Sequence {entry.envelope.clientSequence}: {entry.reason ?? 'requires review'}</Notice>)}
     </Card>
-    {localMatch && current?.controllerConfirmed && <Card>
+    {localMatch && current?.controllerConfirmed && <Card style={tablet && styles.detailsColumn}>
       <Text style={typography.section}>{connection.mode === 'synthetic' ? 'Connected match rehearsal' : 'Connected match'}</Text>
       <Text style={typography.body}>{localMatch.status.replaceAll('_', ' ')} · {localMatch.score.for}–{localMatch.score.against} · active {formatMs(clock?.matchActiveMs ?? localMatch.matchActiveMs)}</Text>
       <Notice tone="info">These controls write canonical events into this connected document. They do not turn the earlier local match into a synchronised match.</Notice>
@@ -467,14 +472,14 @@ function ConnectedRehearsal({ connection, journal, physicalDeviceId, matchId, co
       {clockActionReview}
       </>}
     </Card>}
-    {localMatch && current && <HistoryReviewPanel match={localMatch} accepted={current.acceptedState} eligible={editable} busy={Boolean(captureBusy)} onCommand={record}
+    {localMatch && current && <View style={[styles.stack, tablet && styles.detailsColumn]}><HistoryReviewPanel match={localMatch} accepted={current.acceptedState} eligible={editable} busy={Boolean(captureBusy)} onCommand={record}
       client={client} journal={journal} physicalDeviceId={physicalDeviceId} documentId={documentId}
       verifyAuthority={async () => {
         const actor = await client.me<ControllerIdentity>();
         const scope = controllerCacheScope(actor, connection.scope, Date.now());
         if (controllerCacheDocumentId(scope) !== controllerCacheDocumentId(connection.scope)) throw Object.assign(new Error('Authenticated review scope changed. Reopen the connection.'), { code: 'CONTROLLER_SCOPE_DENIED' });
-      }} onAuthorityFailure={closeDeniedCache} />}
-    {current && <Card>
+      }} onAuthorityFailure={closeDeniedCache} /></View>}
+    {current && <Card style={tablet && styles.detailsColumn}>
       <Text style={typography.section}>Controller handover and recovery</Text>
       <Text style={typography.muted}>The development service supports handover before kickoff, while already genuinely paused, or at half-time. Running transfer requires a verified cross-device clock exchange and is explicitly refused.</Text>
       <TextInput accessibilityLabel="Handover target account" value={targetAccount} onChangeText={setTargetAccount} autoCapitalize="none" style={styles.input} />
@@ -489,7 +494,7 @@ function ConnectedRehearsal({ connection, journal, physicalDeviceId, matchId, co
       <Button label="Recover control; retain old branch for reconciliation" variant="danger" disabled={busy || productionBrowserReadOnly || !recoveryConfirmed || !recoveryReason.trim() || Boolean(current.pendingRequest)} onPress={() => { void run(() => request('recover', { reason: recoveryReason.trim(), confirmUnsynchronisedRisk: true })); }} />
       <Text style={typography.muted}>Recovery is not a silent history merge. Reboot, clock mapping, ordinary running handover and old-phone reconciliation still require the recorded device/operating evidence.</Text>
     </Card>}
-    </>}
+    </View>}
   </>;
   const planner = localMatch && current && (<ConnectedPlanner policy={{ commit: record, busy: document.busy, retryPending: document.retryPending, conflict: Boolean(document.conflict), retry: document.retry, reload: document.reload, acceptedRevision: current.acceptedRevision }} match={localMatch} sample={sample} clock={clock} eligible={editable} persistence={{ journal, deviceId: physicalDeviceId, binding: { kind: 'connected', mode: connection.mode, controllerScope: connection.scope } }} onRetainedChange={setPlannerRetained} onReviewLineup={(lineup, sourceRevision) => {
       if (!editable || sourceRevision !== localMatch.revision) { setNetworkError('The match or controller changed. Replan before opening this suggested lineup.'); return; }
@@ -509,4 +514,4 @@ function ConnectedPlanner({ match, sample, clock, eligible, persistence, policy,
     <PlannerPanel model={model} onReviewLineup={onReviewLineup} />
   </View>;
 }
-const styles = StyleSheet.create({ stack: { gap: 12 }, row: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 }, input: { minHeight: 52, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 8, borderWidth: 1, borderColor: colors.controlBorder, color: colors.ink, backgroundColor: colors.surface, fontSize: 16 } });
+const styles = StyleSheet.create({ stack: { gap: 12 }, row: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 }, settingsWide: { width: '100%', maxWidth: 900, alignSelf: 'center' }, detailsGrid: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start' }, detailsColumn: { flexBasis: '48%', flexGrow: 1, minWidth: 0 }, input: { minHeight: 52, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 8, borderWidth: 1, borderColor: colors.controlBorder, color: colors.ink, backgroundColor: colors.surface, fontSize: 16 } });
