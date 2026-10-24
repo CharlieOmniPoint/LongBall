@@ -1,9 +1,9 @@
 {
-  "state": "starting",
-  "url": "",
+  "state": "ready",
+  "url": "https://drinks-motel-reply-washington.trycloudflare.com",
   "sourceRevision": "970ccd344026a11c1dc0218b144feae4bdd86775",
   "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40119447887",
-  "startedAt": "2026-10-24T18:13:02Z",
-  "expiresAt": "",
+  "startedAt": "2026-10-24T18:13:31Z",
+  "expiresAt": "2026-10-24T23:13:31Z",
   "audience": "LongBall demo review with simulated Roma U10 teams and matches"
 }
