@@ -1,0 +1,32 @@
+{
+  "passed": true,
+  "baseURL": "http://127.0.0.1:4388",
+  "results": [
+    {
+      "width": 320,
+      "passed": true,
+      "checks": [
+        "Explicit source snapshot and saved seven-place plan",
+        "Preview has no write",
+        "Confirmed copy preserves selection, replies, check-in and source snapshots",
+        "Prepared config contains inactive policy/lineup proposals",
+        "Actual check-in precedes explicit staging, clock stays stopped",
+        "Reload preserves template/source snapshot",
+        "No overflow/page errors"
+      ]
+    },
+    {
+      "width": 390,
+      "passed": true,
+      "checks": [
+        "Explicit source snapshot and saved seven-place plan",
+        "Preview has no write",
+        "Confirmed copy preserves selection, replies, check-in and source snapshots",
+        "Prepared config contains inactive policy/lineup proposals",
+        "Actual check-in precedes explicit staging, clock stays stopped",
+        "Reload preserves template/source snapshot",
+        "No overflow/page errors"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,54 @@
+{
+  "sourceCommit": "c71f19dcea05f76adb0f7b5a4e2afb621d49bd40",
+  "transportCommit": "423a434f15c864e8bc61cae5b7adfaa47f3578d5",
+  "bundleSha256": "438742d45601956f0dc9ab4230ed33c494533ada74c5115ed76c0cde56909660",
+  "lastingPages": {
+    "status": "passed",
+    "checkedAt": "2026-10-21T13:14:27.434Z",
+    "sourceCommit": "c71f19dcea05f76adb0f7b5a4e2afb621d49bd40",
+    "bundle": "/LongBall/_expo/static/js/web/index-0cebb55aaf52d59b72ca8272aed1e583.js",
+    "viewport": "390x844",
+    "checks": [
+      "Exact published source and subpath load",
+      "Attendance to lineup to clock start and pause",
+      "Blank/relative/static-host API guards",
+      "No overflow, exceptions or failed responses"
+    ],
+    "nativeDeviceEvidence": false
+  },
+  "connectedPublicMedia": {
+    "status": "passed",
+    "checkedAt": "2026-10-21T13:24:37.296Z",
+    "sourceCommit": "c71f19dcea05f76adb0f7b5a4e2afb621d49bd40",
+    "pages": "https://charlieomnipoint.github.io/LongBall/",
+    "api": "https://dennis-klein-initiatives-recipient.trycloudflare.com",
+    "viewport": "390x844",
+    "checks": [
+      "Pages connects to separately hosted exact-source API",
+      "Real private generated-PNG upload and processing",
+      "Exact processed-image/rights review before UI publication",
+      "Authoritative GET confirms seasonless team pointer revision1",
+      "No browser exceptions or overflow"
+    ],
+    "effectiveSource": "team",
+    "assetId": "logo-0374fc8e-3098-409c-9ac5-b24b1286f644",
+    "revision": 1,
+    "fictionalOnly": true
+  },
+  "temporaryApi": {
+    "state": "ready",
+    "url": "https://dennis-klein-initiatives-recipient.trycloudflare.com",
+    "sourceRevision": "423a434f15c864e8bc61cae5b7adfaa47f3578d5",
+    "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/39605988102",
+    "startedAt": "2026-10-21T13:16:03Z",
+    "expiresAt": "2026-10-21T14:16:03Z",
+    "audience": "Adult review of fictional Roma U10 data only",
+    "backend": "fictional SQLite; disposable public runner"
+  },
+  "nativeCompilationEvidence": "native-ci.json",
+  "limits": [
+    "Physical hardware execution remains unproved",
+    "Real-account production identity and operating policies are separate",
+    "Temporary API expires; lasting Pages review remains available"
+  ]
+}

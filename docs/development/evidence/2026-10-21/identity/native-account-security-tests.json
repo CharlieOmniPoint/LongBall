@@ -1,0 +1,18 @@
+{
+  "verifiedAt": "2026-10-21T12:37:39Z",
+  "checks": {
+    "nativeAuthClient": 13,
+    "osAuthenticationAdapter": 8,
+    "accountDevicesClient": 4
+  },
+  "passed": 25,
+  "mobileTypecheck": "passed",
+  "scopedEslint": "passed",
+  "regressions": [
+    "Explicit lock while the initial PIN read is pending prevents the old request from starting an OS prompt.",
+    "Explicit lock while the final PIN read is pending prevents an already successful OS prompt from unlocking."
+  ],
+  "physicalDeviceTested": false,
+  "nativeCompileProofInThisEvidence": false,
+  "secureStorageOnPhysicalDeviceProved": false
+}

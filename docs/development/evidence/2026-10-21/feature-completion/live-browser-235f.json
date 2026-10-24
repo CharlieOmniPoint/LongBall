@@ -1,0 +1,20 @@
+{
+  "status": "passed",
+  "synthetic": true,
+  "baseURL": "http://127.0.0.1:4173",
+  "viewport": "390\u00d7844",
+  "browser": "154.0.8037.57",
+  "checks": [
+    "A goal retains its captured active time and scorer while the clock advances through entry.",
+    "Both own-goal directions change the correct score and preserve truthful team attribution.",
+    "Correction and compensating void retain original evidence and reasons without changing paused actual minutes or targets.",
+    "Injury preserves a 40-second vacancy; confirmed return stays on the bench until a reviewed replacement, and every player partition conserves actual active time.",
+    "5-a-side fixture creation, selection, saved profile/formation snapshot and valid 5-place draft preserve the original fixture and team duration.",
+    "11-a-side fixture creation, selection, saved profile/formation snapshot and valid 11-place draft preserve the original fixture and team duration."
+  ],
+  "nativeDeviceEvidence": false,
+  "artifact": {
+    "webBundle": "235f9a3719cf34be53467fb946ee21c0",
+    "sha256": "096ba32215de264e0bec87288347bda2778f34a262aeebe6b5b67d234e0cd2f5"
+  }
+}

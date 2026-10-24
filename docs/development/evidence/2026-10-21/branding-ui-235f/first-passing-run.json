@@ -1,0 +1,88 @@
+{
+  "runId": "20261021122606900",
+  "completedAt": "2026-10-21T12:27:46.910Z",
+  "status": "passed",
+  "scope": "Uncommitted development candidate browser evidence; no physical device or release-readiness claim",
+  "baseURL": "http://127.0.0.1:4173",
+  "api": "http://127.0.0.1:4349",
+  "health": {
+    "status": "ok",
+    "service": "longball-api",
+    "contractVersion": "longball.events/1.1",
+    "backend": "fictional-sqlite",
+    "syntheticOnly": true
+  },
+  "viewportWidths": [
+    390,
+    320
+  ],
+  "webBundle": "/_expo/static/js/web/index-235f9a3719cf34be53467fb946ee21c0.js",
+  "webSha256": "096ba32215de264e0bec87288347bda2778f34a262aeebe6b5b67d234e0cd2f5",
+  "apiSnapshotSha256": "517a3e6c6a52918aea1f732cac68fb214ab000d041dbc99882fc60a018d6e411",
+  "checks": [
+    "Private upload retains original scope and disables outer reconnect/account/API edits",
+    "Manager-only team logo: real private upload + scanner + derivative; no pointer change until exact image load, rights and explicit publication",
+    "Selected administrator publishes only seasonless club logo; existing team override remains effective",
+    "Explicit team override removal restores the current club asset without deleting either retained asset",
+    "Club reference removal returns neutral badge; all prior assets retained and preparation/players unchanged"
+  ],
+  "writes": [
+    {
+      "endpoint": "/v1/teams/synthetic-roma-u10/branding/team_logo/uploads/prepare",
+      "kind": "team_logo",
+      "clubId": null,
+      "teamId": "synthetic-roma-u10",
+      "mimeType": "image/png",
+      "byteSize": 175
+    },
+    {
+      "endpoint": "/v1/teams/synthetic-roma-u10/branding/team_logo/publish",
+      "type": "logo.published",
+      "kind": "team_logo",
+      "commandId": "d2769818-30ed-4782-b951-cfbd4a37e558",
+      "expectedSlotVersion": 0,
+      "assetId": "logo-447179c9-5d1f-45a0-903d-ea762f9c5e2d",
+      "reviewedRevision": 1
+    },
+    {
+      "endpoint": "/v1/teams/synthetic-roma-u10/branding/club_logo/uploads/prepare",
+      "kind": "club_logo",
+      "clubId": "synthetic-richmond-rovers",
+      "teamId": null,
+      "mimeType": "image/png",
+      "byteSize": 175
+    },
+    {
+      "endpoint": "/v1/teams/synthetic-roma-u10/branding/club_logo/publish",
+      "type": "logo.published",
+      "kind": "club_logo",
+      "commandId": "43aa0b18-ad19-4450-ab61-8fd8ab7dc716",
+      "expectedSlotVersion": 0,
+      "assetId": "logo-1864527a-103e-49bf-9601-90198a2754d2",
+      "reviewedRevision": 1
+    },
+    {
+      "endpoint": "/v1/teams/synthetic-roma-u10/branding/team_logo/remove",
+      "type": "logo.removed",
+      "kind": "team_logo",
+      "commandId": "a629ae7a-6a8f-4ae3-bf0c-40528e6df135",
+      "expectedSlotVersion": 1,
+      "assetId": null,
+      "reviewedRevision": null
+    },
+    {
+      "endpoint": "/v1/teams/synthetic-roma-u10/branding/club_logo/remove",
+      "type": "logo.removed",
+      "kind": "club_logo",
+      "commandId": "03b976d8-147d-438c-a11e-214e5d39e499",
+      "expectedSlotVersion": 1,
+      "assetId": null,
+      "reviewedRevision": null
+    }
+  ],
+  "pageErrors": [],
+  "nativeTestingPending": [
+    "iPhone/Android image picker including original HEIC selection",
+    "Native image decode and foreground recovery on physical phones"
+  ]
+}

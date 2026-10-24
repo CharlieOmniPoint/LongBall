@@ -1,0 +1,93 @@
+{
+  "baseURL": "http://127.0.0.1:4173",
+  "primaryAPI": "http://127.0.0.1:4310",
+  "controlAPI": "http://127.0.0.1:4311",
+  "runId": "20261021071420513",
+  "checks": [
+    {
+      "name": "01-canonical-match-and-lost-response",
+      "status": "passed",
+      "detail": {
+        "acceptedRevision": 21,
+        "clientSequence": 21,
+        "firstHalfMs": 1503000,
+        "secondHalfMs": 1500000,
+        "pauseExcludedMs": 300000,
+        "score": {
+          "for": 3,
+          "against": 0
+        },
+        "identicalRetry": true,
+        "offlineSuffixEvents": 3,
+        "offlineSuffixReplayedOverAuthoritativePrefix": true,
+        "authoritativeActorAudit": true,
+        "legacyM0Unchanged": true,
+        "trustedUtc": false,
+        "cacheClosureAfterHttp403Fixture": true,
+        "realMembershipRevocationTested": false
+      }
+    },
+    {
+      "name": "02-handover-sequence-and-stale-quarantine",
+      "status": "passed",
+      "detail": {
+        "acceptedRevision": 27,
+        "epochs": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "sequenceBeforeHandback": 9,
+        "nextSequenceOnHandback": 10,
+        "finalReservedSequence": 27,
+        "quarantined": 9,
+        "acceptedProjectionUnchanged": true,
+        "managerReviewRequired": true
+      }
+    },
+    {
+      "name": "03-workspace-service-preparation-results-and-privacy",
+      "status": "passed",
+      "detail": {
+        "fixtureId": "9a802f96-3fdc-495a-90b5-7e789f50b59a",
+        "sameIdentityAfterReschedule": true,
+        "historicalSummaryUnknownMinutes": true,
+        "ownPlayerDataOnly": true,
+        "rsvpDistinctFromAttendance": true,
+        "invitationAcceptedOverHttp": true,
+        "q21SharingWithheld": true
+      }
+    },
+    {
+      "name": "04-private-media-fails-closed-without-scanner",
+      "status": "passed",
+      "detail": {
+        "uploadStatus": "uploaded",
+        "failureCode": "SCANNER_REQUIRED",
+        "published": false,
+        "actualAntivirusDatabaseValidated": false
+      }
+    },
+    {
+      "name": "05-workspace-durable-outbox-reload-and-exact-retry",
+      "status": "passed",
+      "detail": {
+        "fixtureId": "5349fae6-6f6d-4447-ae32-68e45325b0a7",
+        "retainedAcrossReload": true,
+        "otherAccountCannotReplay": true,
+        "identicalWireKeyAndBody": true,
+        "finalServiceRevision": 4,
+        "noDuplicateFixtureOrHistory": true,
+        "acknowledgementDurableAfterSecondReload": true
+      }
+    }
+  ],
+  "errors": [],
+  "limitations": [
+    "Fictional development authentication; no real identity provider rehearsal.",
+    "Browser-controlled monotonic time validates rules and HTTP boundaries, not native clock continuity.",
+    "Phone reboot, SQLCipher, background alerts, lock-screen and physical-device continuity still require native device evidence.",
+    "Unconfigured antivirus blocks media processing; no publication or malware-scanner claim."
+  ]
+}

@@ -1,0 +1,141 @@
+{
+  "status": "passed",
+  "observedAt": "2026-10-21T12:56:17.887Z",
+  "syntheticOnly": true,
+  "versions": [
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12
+  ],
+  "featureVersions": {
+    "media": 3,
+    "activation": 2
+  },
+  "checks": [
+    {
+      "name": "actual-maintained-clamav-clean-and-eicar",
+      "detail": {
+        "engine": "clamav:1.5.4/db:28157",
+        "clean": "clean",
+        "standardHarmlessAntivirusPattern": "rejected"
+      }
+    },
+    {
+      "name": "actual-restricted-pg-scanned-heic-logo-journey",
+      "detail": {
+        "originalSha256": "dad24840cd53fce49f3cda0461cea8356860587dd45745d1e8afab23b885214e",
+        "clubDerivativeSha256": "1d7bdf928333f278ccc95a84d7af8db96a2d6e9a5f7f41e188932bba6f4f66c0",
+        "teamDerivativeSha256": "1d7bdf928333f278ccc95a84d7af8db96a2d6e9a5f7f41e188932bba6f4f66c0",
+        "dimensions": [
+          32,
+          64
+        ],
+        "metadataStripped": true,
+        "pendingPrivate": true,
+        "explicitReviewedPublication": true,
+        "staleVersionDenied": true,
+        "teamClubNeutralInheritance": true,
+        "removedRevisionPrivate": true
+      }
+    },
+    {
+      "name": "actual-original-heic-scan-photo-decode-and-reject-controls",
+      "detail": {
+        "jpegSha256": "f2761078ac017be369776fb63c9dd61c48db2797ee0d0121b4c5c124cbcf2ea7",
+        "dimensions": [
+          32,
+          64
+        ],
+        "orientationAppliedOnce": true,
+        "exifGpsStripped": true,
+        "multiplePrimaryRejected": true,
+        "oversizeHiddenThumbnailRejected": true,
+        "noRejectedDerivative": true
+      }
+    },
+    {
+      "name": "actual-scanner-unavailable-fail-closed",
+      "detail": {
+        "originalRetainedPrivate": true,
+        "noProcessedPointer": true
+      }
+    },
+    {
+      "name": "actual-schema12-paired-archive-object-restore",
+      "detail": {
+        "archiveSha256": "a014e50c64468a27f3eca7dd6a74e5d752bc454f6d9b8459c1ad7dc1e7b6ad91",
+        "exactPhotoDerivativeSha256": "f2761078ac017be369776fb63c9dd61c48db2797ee0d0121b4c5c124cbcf2ea7",
+        "exactCurrentLogoDerivativeSha256": "1d7bdf928333f278ccc95a84d7af8db96a2d6e9a5f7f41e188932bba6f4f66c0",
+        "protectedTables": 34,
+        "apiWorkerNonOwnerNonBypass": true,
+        "verifyOnlyStartup": true,
+        "currentReviewedPointerPreserved": true,
+        "contextFreeAndForeignTeamDenied": true,
+        "workerForgedActorDenied": true,
+        "temporaryCreateGrantRevoked": true
+      }
+    }
+  ],
+  "limitations": [
+    "Generated flat-color fictional HEIC fixtures with deliberate fictional EXIF/GPS, and standard harmless EICAR scanner probe; no people.",
+    "Actual PostgreSQL uses isolated non-owner API/worker roles and disposable loopback trust authentication.",
+    "Scanner verdict/version is an observation, not an operating signature-update SLA.",
+    "Paired private object copy and database archive; no offsite encryption, retention, RPO or RTO claim.",
+    "Physical iPhone/Android picker behavior remains separate native device testing."
+  ],
+  "sourceSha256": {
+    "infra/runtime/heic/decode.c": "608817f62e64b880c812c674e78682dbdd182a5faba9eacb80b4bef0564e05da",
+    "infra/runtime/heic/build.sh": "fff9680f815d6fc820f81979c23a5c2eacb3c7800d730fe6b89f4e308463f47b",
+    "infra/runtime/heic/NOTICE.md": "558bf71971ce9a15e35213317f023b54daf8c7fa0645c56ccfe9da649eece91b",
+    "infra/runtime/Dockerfile": "093ad3baef691a8dac3bdb953ba5f5b78d3bbb81d557c1ce396947057d81f158",
+    "apps/api/src/heic-worker.mjs": "af403995a2780164fdddbce814fbf6f4c5789fcc00dcb49c9235dfb76a0e751d",
+    "apps/api/src/media-worker.mjs": "db982ffae7d4e9162d8bd5c76fa79f6109ca2380ed6ba9c002a49fac029b3d73",
+    "apps/api/src/image-bytes.ts": "db1a6950f4cbb8266596443daf2c19556e1aeaf0c1d7f899bf9bdf173cd9121f",
+    "apps/api/src/postgres-media.ts": "932eb3977e99b185beddb6488d2862c3b3c25e584437a0b804dbf7276de382e4",
+    "apps/api/src/runtime-grants.ts": "e6240333d60c8a7bae7c74b7b7409e08eb630085cb32c751e700c10b018fe726",
+    "apps/api/src/brand-repository.ts": "668e13d8558e480cc2d5374b0f3c6e52baa4e9ddb77b87f097736b5ad18cd258",
+    "apps/api/src/postgres-security.test.ts": "e6969ba397e630d5f9845e50476fb08e8ae78ff246bc8d503fdf59ef48bf692f",
+    "apps/api/migrations/postgresql/012_heic_support.sql": "df04442909c8fecbee0382862e95cf36fcdcf00f3b347248a81c43a603731e2c",
+    "apps/api/migrations/postgresql/media_003_heic.sql": "506a67ac51f0d5cf1045fc3b22c31164d4be37721625dae7056e9f56881683f6",
+    "scripts/runtime-heic.ts": "e01e5d0fda57ab5a2273107a5b4ea0466caf067f168bf79033c5900f362660fb",
+    "infra/cloud-preview/run.sh": "26cfbbbef612a35f0d4992f02adffafadb9fa241146b8ed77d2597a8d0747f42",
+    "infra/cloud-preview/workflow.yml": "fa056730d82836accb9c8484e1879ef46217edc61c39fae084dca99a45146f62",
+    "infra/cloud-preview/check-media.mjs": "7e4e35e9d69402461fc09545701e92fecd85b6a14d11fab0d59da992c94edafe",
+    "scripts/package-cloud-preview.py": "33e196c4d48a9f6f3d4413c6bb042dbbfbfe73a6a1ce5d3405146d8706aab874"
+  },
+  "nativeHelper": {
+    "path": ".local/heic/install/bin/longball-heic",
+    "sha256": "5ec9807e2a45b04fc2aaa272ab97372266f5d35543414d9c73ceca0a546e29f0",
+    "libheif": "1.23.6",
+    "libde265": "1.1.3",
+    "bothBundledLibrariesResolvedByRelativeRpath": true,
+    "upstreamSourcesAndLicensesRetained": true
+  },
+  "focusedChecks": {
+    "nativeDecoderAndSqliteUpgrade": {
+      "passed": 6,
+      "skipped": 0
+    },
+    "postgresLinkAtomicityAndWorkerPurpose": {
+      "passed": 2,
+      "unrelatedSkipped": 8
+    },
+    "cloudMediaReadiness": {
+      "passed": true,
+      "signatureDatabaseAt": "2026-10-18T06:24:14.000Z",
+      "maxSignatureAgeDays": 7
+    },
+    "cloudSourcePublicationRegression": {
+      "passed": 1
+    }
+  },
+  "containerProof": "Separate container-runtime-schema12-proof.json records final image/startup; this file records actual source-built codec, restricted PostgreSQL and paired-byte recovery."
+}

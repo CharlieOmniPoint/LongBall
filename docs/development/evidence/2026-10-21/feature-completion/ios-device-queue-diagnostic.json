@@ -1,0 +1,48 @@
+{
+  "status": "runner_unassigned_job_cancelled",
+  "observedAt": "2026-10-21T14:07:25.819Z",
+  "runId": 39612410823,
+  "jobId": 119264421188,
+  "requestedLabels": [
+    "macos-15"
+  ],
+  "runnerId": 0,
+  "runnerName": "",
+  "runnerGroup": null,
+  "queuedSince": "2026-10-21T13:56:31Z",
+  "previousRun": {
+    "id": 39611341666,
+    "status": "completed",
+    "conclusion": "failure",
+    "updatedAt": "2026-10-21T13:52:17Z"
+  },
+  "repositoryActiveRuns": [
+    {
+      "id": 39605988102,
+      "name": "LongBall temporary cloud review",
+      "branch": "preview/longball-m0",
+      "runnerFamily": "Linux"
+    }
+  ],
+  "repositoryQueuedRuns": [
+    39612410823
+  ],
+  "visibleOwnConcurrencyBlocker": false,
+  "queueReasonBeyondAssignment": "GitHub repository APIs do not expose a more specific reason; account-wide other-repository runner usage was not inspected.",
+  "mutations": false,
+  "workflowConclusion": "failure",
+  "jobConclusion": "cancelled",
+  "completedAt": "2026-10-21T14:11:32Z",
+  "workflowUpdatedAt": "2026-10-21T14:11:33Z",
+  "stepsExecuted": 0,
+  "cancellationCause": "Public GitHub annotations report hosted-runner acquisition failure, macOS arm64 capacity constraints and an internal server error. No compiler was invoked; no owner or administrator action is attributed.",
+  "retainedArtifacts": [],
+  "publicAnnotationObservedAt": "2026-10-21T14:19:21.437000+00:00",
+  "publicAnnotationSource": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/39612410823/job/119264421188",
+  "publicSchedulerAnnotations": [
+    "Internal server error. Correlation ID: 3bbe4604-d504-407c-ba32-80a07fab1914",
+    "The job was not acquired by Runner of type hosted even after multiple attempts",
+    "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times."
+  ],
+  "capacityNoticeOccurrences": 3
+}

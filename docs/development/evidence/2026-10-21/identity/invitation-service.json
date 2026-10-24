@@ -1,0 +1,46 @@
+{
+  "kind": "scoped-invitation-service-acceptance",
+  "observedAt": "2026-10-21T11:55:17Z",
+  "result": "passed",
+  "tests": {
+    "fictionalSQLite": 10,
+    "actualRestrictedPostgreSQL": 5,
+    "total": 15
+  },
+  "database": {
+    "actualPostgreSQL": true,
+    "apiRole": {
+      "schemaOwner": false,
+      "superuser": false,
+      "bypassRls": false
+    },
+    "workerCannotReadInvitations": true
+  },
+  "covered": [
+    "CSPRNG token issued only in first response; only domain-separated verifier and redacted retry receipt retained",
+    "Current player issues without a manager approval step; other player cannot list or reissue that link",
+    "Authenticated exact-token inspect makes no membership mutation",
+    "Single-use acceptance with exact retry and season-bound grant; unrelated roles and grant union preserved",
+    "Explicit pending reissue invalidates source; accepted grant cannot be rotated",
+    "Receipt-storage failure rolls back document, verifier mirror and audit",
+    "Normalized/projected revocation or verifier drift refused without silent repair",
+    "Legacy plaintext retired; replacement preserves original retirement time"
+  ],
+  "providers": {
+    "externalIdentityProviderExercised": false,
+    "pushProviderExercised": false
+  },
+  "notProved": [
+    "First-time spectator system-browser/native credential setup",
+    "Physical-device authentication, storage or process-death behaviour",
+    "Production activation policy, delivery or deployment"
+  ],
+  "sourceSha256": {
+    "apps/api/src/invitation-service.ts": "0c1c51798ec17b3d67886ed607f51664b39a0c1fe97a14d58141e2a8684cab71",
+    "apps/api/src/invitation-repository.ts": "4eda7e95b89ec17d932d72db5f965eed6a8867cc7ef4434c32c7fc00f4dc41e3",
+    "apps/api/src/postgres-invitation-repository.ts": "3ac8148fb5b2c165b7970a86a81fc7dc863b97e77b4bf1adc379abac68d5a553",
+    "apps/api/src/invitation-service.test.ts": "a1cad36969f8844139d55d543be4b5052013e44c2683c8b21517a91925f0b1da",
+    "apps/api/src/postgres-invitation-service.test.ts": "0dfe4b7a43016d395b917226e82670820973939a2bbed4c5aae6a858bcd751e5",
+    "apps/api/migrations/postgresql/011_spectator_capabilities.sql": "137ec5a543a9acffce491626928a01842e0597a992ab7db07baf881aacfc9e7e"
+  }
+}

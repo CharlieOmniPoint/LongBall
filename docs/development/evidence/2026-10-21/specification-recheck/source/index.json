@@ -1,0 +1,45 @@
+{
+  "scope": "Source-qualified summaries only. Original logs, databases, archives, keys and capabilities remain excluded.",
+  "files": [
+    {
+      "file": "verification-6078969.json",
+      "originalSha256": "f0eda82651dce52574bfb7ff14efac68642412ee37e2e238456be1dd07b1804e",
+      "publishedSha256": "f0eda82651dce52574bfb7ff14efac68642412ee37e2e238456be1dd07b1804e"
+    },
+    {
+      "file": "host-paired-restore-6078969.json",
+      "originalSha256": "f9357c59b25bdedbd3690b1063b0eeb61d79271a2406fc9e864b5139b7f31f83",
+      "publishedSha256": "d7a98a5bfaede12e4536912b8c09c0c7e18f41678dd5125621902afeadc2157c"
+    },
+    {
+      "file": "local-browser-ee7cb61.json",
+      "originalSha256": "ee6659411d42d7048524b140dbee767106ad69cbf112a522358e4774cb61512f",
+      "publishedSha256": "ee6659411d42d7048524b140dbee767106ad69cbf112a522358e4774cb61512f"
+    },
+    {
+      "file": "clean-production-entry-ee7cb61.json",
+      "originalSha256": "db61277a022ed9a7f080c9920b1e7335d19b5d8d488e33d207c3d95b82110771",
+      "publishedSha256": "db61277a022ed9a7f080c9920b1e7335d19b5d8d488e33d207c3d95b82110771"
+    },
+    {
+      "file": "clean-production-source-ee7cb61.json",
+      "originalSha256": "93b6fc4b4cf8bd11a821d3b84be07ba941f29d271ed168ae316e72c035788cf4",
+      "publishedSha256": "93b6fc4b4cf8bd11a821d3b84be07ba941f29d271ed168ae316e72c035788cf4"
+    },
+    {
+      "file": "publication-preflight.json",
+      "originalSha256": "1d0771b7a169c098b091a24d32124f01e59c3d0a1d01ac6fa79ca624c68006d9",
+      "publishedSha256": "1d0771b7a169c098b091a24d32124f01e59c3d0a1d01ac6fa79ca624c68006d9"
+    },
+    {
+      "file": "publication-6078969.json",
+      "originalSha256": "abecdaee6aa4bc0b6d04fad4e0a6279de89bb03d2f054ce45b748d42ca1d4cef",
+      "publishedSha256": "abecdaee6aa4bc0b6d04fad4e0a6279de89bb03d2f054ce45b748d42ca1d4cef"
+    }
+  ],
+  "limits": [
+    "EE browser and production-entry reports retain their own artifact binding; current607 source checks do not retroactively relabel them.",
+    "Host restore is not production-image or offsite recovery evidence.",
+    "Pipeline continued during exec-server reconnection; earlier failed harness and first entry timeout remain qualified in the report."
+  ]
+}

@@ -1,0 +1,226 @@
+{
+  "recordedAt": "2026-10-21T22:41:02.441Z",
+  "scope": "Instrumented diagnostic only; all HTTP including bootstrap/warmup. Wrapper timing overhead and warmup distinguish this from capacity evidence.",
+  "metrics": {
+    "peakPoolQueued": 40,
+    "peakPoolConnections": 10,
+    "peakAdvisoryLockQueries": 9,
+    "runtimeConnectionsObserved": 4100
+  },
+  "groups": {
+    "bootstrap:begin": {
+      "count": 30,
+      "totalMs": 42.68,
+      "medianMs": 0.779,
+      "p95Ms": 2.947,
+      "maxMs": 9.828
+    },
+    "bootstrap:commit": {
+      "count": 30,
+      "totalMs": 46.087,
+      "medianMs": 1.165,
+      "p95Ms": 3.833,
+      "maxMs": 5.598
+    },
+    "bootstrap:documents": {
+      "count": 10,
+      "totalMs": 19.94,
+      "medianMs": 1.612,
+      "p95Ms": 4.898,
+      "maxMs": 4.898
+    },
+    "bootstrap:global-advisory-lock": {
+      "count": 10,
+      "totalMs": 11.103,
+      "medianMs": 0.514,
+      "p95Ms": 2.681,
+      "maxMs": 2.681
+    },
+    "bootstrap:match-scope": {
+      "count": 10,
+      "totalMs": 26.881,
+      "medianMs": 1.891,
+      "p95Ms": 7.851,
+      "maxMs": 7.851
+    },
+    "bootstrap:match-state": {
+      "count": 30,
+      "totalMs": 73.734,
+      "medianMs": 1.96,
+      "p95Ms": 5.958,
+      "maxMs": 5.986
+    },
+    "bootstrap:memberships-own": {
+      "count": 30,
+      "totalMs": 59.176,
+      "medianMs": 1.563,
+      "p95Ms": 3.849,
+      "maxMs": 8.099
+    },
+    "bootstrap:other": {
+      "count": 110,
+      "totalMs": 223.663,
+      "medianMs": 1.641,
+      "p95Ms": 4.776,
+      "maxMs": 6.9
+    },
+    "bootstrap:pool-acquisition": {
+      "count": 30,
+      "totalMs": 9.083,
+      "medianMs": 0.056,
+      "p95Ms": 0.828,
+      "maxMs": 4.269
+    },
+    "bootstrap:principal": {
+      "count": 20,
+      "totalMs": 44.377,
+      "medianMs": 1.679,
+      "p95Ms": 4.571,
+      "maxMs": 5.346
+    },
+    "bootstrap:set-context": {
+      "count": 30,
+      "totalMs": 38.828,
+      "medianMs": 1.062,
+      "p95Ms": 2.801,
+      "maxMs": 3.941
+    },
+    "command:begin": {
+      "count": 630,
+      "totalMs": 1220.936,
+      "medianMs": 1.423,
+      "p95Ms": 5.042,
+      "maxMs": 28.047
+    },
+    "command:commit": {
+      "count": 630,
+      "totalMs": 1527.471,
+      "medianMs": 1.95,
+      "p95Ms": 5.458,
+      "maxMs": 42.502
+    },
+    "command:global-advisory-lock": {
+      "count": 210,
+      "totalMs": 84167.632,
+      "medianMs": 379.541,
+      "p95Ms": 903.79,
+      "maxMs": 1506.189
+    },
+    "command:match-scope": {
+      "count": 210,
+      "totalMs": 911.207,
+      "medianMs": 3.642,
+      "p95Ms": 8.898,
+      "maxMs": 15.202
+    },
+    "command:match-state": {
+      "count": 630,
+      "totalMs": 2184.426,
+      "medianMs": 2.408,
+      "p95Ms": 6.047,
+      "maxMs": 396.981
+    },
+    "command:memberships-own": {
+      "count": 630,
+      "totalMs": 1219.096,
+      "medianMs": 1.452,
+      "p95Ms": 4.084,
+      "maxMs": 64.482
+    },
+    "command:memberships-unbounded": {
+      "count": 210,
+      "totalMs": 3357.284,
+      "medianMs": 14.357,
+      "p95Ms": 29.252,
+      "maxMs": 71.806
+    },
+    "command:other": {
+      "count": 3650,
+      "totalMs": 12467.853,
+      "medianMs": 2.521,
+      "p95Ms": 8.36,
+      "maxMs": 170.378
+    },
+    "command:pool-acquisition": {
+      "count": 630,
+      "totalMs": 28136.652,
+      "medianMs": 43.087,
+      "p95Ms": 76.967,
+      "maxMs": 129.327
+    },
+    "command:principal": {
+      "count": 420,
+      "totalMs": 1368.239,
+      "medianMs": 2.532,
+      "p95Ms": 7.492,
+      "maxMs": 32.948
+    },
+    "command:set-context": {
+      "count": 630,
+      "totalMs": 1217.813,
+      "medianMs": 1.582,
+      "p95Ms": 4.806,
+      "maxMs": 12.368
+    },
+    "read:begin": {
+      "count": 3440,
+      "totalMs": 8699.916,
+      "medianMs": 1.41,
+      "p95Ms": 7.799,
+      "maxMs": 86.737
+    },
+    "read:commit": {
+      "count": 3440,
+      "totalMs": 7158.338,
+      "medianMs": 1.473,
+      "p95Ms": 5.571,
+      "maxMs": 35.503
+    },
+    "read:match-scope": {
+      "count": 860,
+      "totalMs": 4155.533,
+      "medianMs": 3.868,
+      "p95Ms": 10.744,
+      "maxMs": 40.724
+    },
+    "read:match-state": {
+      "count": 860,
+      "totalMs": 5006.376,
+      "medianMs": 4.925,
+      "p95Ms": 12.542,
+      "maxMs": 45.935
+    },
+    "read:memberships-own": {
+      "count": 860,
+      "totalMs": 2297.156,
+      "medianMs": 1.906,
+      "p95Ms": 6.318,
+      "maxMs": 64.778
+    },
+    "read:pool-acquisition": {
+      "count": 3440,
+      "totalMs": 244370.474,
+      "medianMs": 44.037,
+      "p95Ms": 230.555,
+      "maxMs": 406.248
+    },
+    "read:principal": {
+      "count": 860,
+      "totalMs": 3153.332,
+      "medianMs": 2.866,
+      "p95Ms": 8.554,
+      "maxMs": 51.721
+    },
+    "read:set-context": {
+      "count": 3440,
+      "totalMs": 8431.386,
+      "medianMs": 1.619,
+      "p95Ms": 6.746,
+      "maxMs": 50.446
+    }
+  },
+  "sqlRecorded": false,
+  "parametersRecorded": false,
+  "rowsRecorded": false,
+  "credentialsRecorded": false
+}

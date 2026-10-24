@@ -1,0 +1,161 @@
+{
+  "recordedAt": "2026-10-21T23:06:23.872616+00:00",
+  "status": "prepared-pending-final-source-package-and-external-verification",
+  "committedSourceInspected": "bb509f71425f428d04f3b608d90a1bb8fa68521d",
+  "sourceWorktreeClean": false,
+  "scope": "Read-only publication preflight plus one root-authorized public-repository guard in source workflow template. No package build, deployment, shared build, branch/index mutation or paid service provisioning.",
+  "repo": {
+    "fullName": "CharlieOmniPoint/LongBall",
+    "private": false,
+    "visibility": "public",
+    "defaultBranch": "main",
+    "hasPages": true,
+    "source": "Connected GitHub repository GET"
+  },
+  "previewWorktree": {
+    "path": "/workspace/LongBall-spec-preview",
+    "clean": true,
+    "head": "2b2e24e68b934dc7a601e2b4dbafcef3440d6c4f",
+    "remoteHeads": {
+      "refs/heads/dev/longball-m0-journey": "bb509f71425f428d04f3b608d90a1bb8fa68521d",
+      "refs/heads/main": "031fdf5fdf4d937a0c638f81f24f9ae34db3579b",
+      "refs/heads/preview/longball-m0": "2b2e24e68b934dc7a601e2b4dbafcef3440d6c4f"
+    }
+  },
+  "existingPayload": {
+    "developmentSource": "c53841966c822f7a5172584370b6a557833398b4",
+    "isNewCandidate": false,
+    "bytes": 12267741
+  },
+  "checks": [
+    {
+      "name": "clean-development-packaging",
+      "passed": true,
+      "detail": "Packager rejects dirty/non-dev source and source changes during export; separate source-specific site/backend/Pages output directories; generated Git bundle records exact source."
+    },
+    {
+      "name": "licensed-font-transport",
+      "passed": true,
+      "detail": "Pinned759720-byte DejaVuSans.ttf SHA25657f73e11f51999432bf7ab22ce55b6f945d5eca1bf824404cfa9ec2e3718c84e; build copies font+licence; payload carries base64; cloud decodes and verifies pin before API/worker startup."
+    },
+    {
+      "name": "encrypted-export-worker-configuration",
+      "passed": true,
+      "detail": "API/worker inherit same mode0600 fresh session key,3600000ms explicit TTL and same private SQLite path; parser validates absolute non-symlink private key file and bounds; worker cycles every5seconds."
+    },
+    {
+      "name": "download-cors",
+      "passed": true,
+      "detail": "Exact Pages origin is allowed; explicit auth/role/contract/If-Match headers allowed; Content-Disposition/Length/Type/Cache-Control exposed; private download uses no-store and authenticated route."
+    },
+    {
+      "name": "safe-two-phase-transport",
+      "passed": true,
+      "detail": "Runtime excludes Pages files/workflow; Pages-only change does not match cloud/native restart paths; pages writer requires matching existing runtime development source; guarded helper refuses dirty target, malformed paths, duplicates, unexpected workflows, symlink paths and wrong local bundle digest; deletes only stale tracked generated files."
+    },
+    {
+      "name": "no-force-source-publication",
+      "passed": true,
+      "detail": "Publisher verifies bundle/head and preserves newer or diverged development history; only normal fast-forward push is used."
+    },
+    {
+      "name": "bounded-free-standard-runners",
+      "passed": true,
+      "detail": "Native template uses public exact-repository/ref guard, standard Ubuntu and Intel macOS, both platforms on push, unsigned iOS Simulator, default upload_artifacts=false. Cloud template now also guards exact public repository; it remains standard Ubuntu and bounded five hours."
+    }
+  ],
+  "authorizedSourceChange": {
+    "path": "infra/cloud-preview/workflow.yml",
+    "detail": "Added exact public-repository job guard only. Lightweight PyYAML parse, exact guard/standard-runner assertions and scoped git diff --check passed. No generated target workflow changed."
+  },
+  "publicationOrder": [
+    "Commit/freeze final development source, finish required checks and package --with-pages once from clean dev branch.",
+    "Confirm preview target clean and normally update detached checkout to current remote preview branch. Apply runtime payload; inspect diff and exact source/font/JS/API manifests; commit and normal fast-forward push.",
+    "Wait for runtime workflow actual ready status and verify live health, source build-info, CORS, original seeded-media processing and actual report worker download.",
+    "Fetch latest preview bot ready commit and update clean target checkout. Require preview/source-head.txt equals packaged development source; apply Pages part only and normal fast-forward push.",
+    "Wait for Pages environment deployment and externally verify new /LongBall/ entry, all four roles, exact served artifact/source and export behavior. Record source/run/expiry and native build outcomes without hardware claims."
+  ],
+  "requiredExternalChecks": [
+    "preview-status.json state ready, sourceRevision equals runtime transport trigger SHA, future expiresAt and expected run URL. sourceRevision is not the development source SHA.",
+    "API /health verifies status/service/contract/syntheticOnly/demoScenario; health does not expose source SHA. Verify development source with API /build-info.json and preview/source-head.txt.",
+    "Pages /LongBall/build-info.json and real served JS must match the new Pages package. Combined and Pages JS are separately generated and need separate digests.",
+    "Observe real worker CSV/PDF attachment with permitted role and correct CORS/download headers; no capability in URL or public object store.",
+    "Confirm both actual native compile jobs and preserve unsigned Simulator/device-testing limitation."
+  ],
+  "operationalCaveats": [
+    "Five-hour service is temporary; lasting Pages static entry is separate. No permanent hosting, real account/service or paid provisioning is established.",
+    "Pages-only commit advances preview branch after running cloud checkout; later normal cleanup status push may be rejected as non-fast-forward. Current discovery rejects expired expiresAt even if old state remains ready. Do not force-push stale status.",
+    "Existing payload/source is historical and must not be published as the new candidate. The report validates preparation/source templates, not a future generated payload or live deployment.",
+    "Unresolved privacy/support/device/performance/dependency release gates remain owned by root evidence; this preflight does not approve them."
+  ],
+  "inputFiles": [
+    {
+      "path": "scripts/package-cloud-preview.py",
+      "bytes": 5994,
+      "sha256": "0affd3c447264f7b1b32116ebb216778517df36c0af3fda30f13d36449ee8600"
+    },
+    {
+      "path": "infra/cloud-preview/run.sh",
+      "bytes": 8467,
+      "sha256": "89653c8de688db2297d153f9e74cbbfd47fdadaf66526d447bfbf5ff33ffee53"
+    },
+    {
+      "path": "infra/cloud-preview/workflow.yml",
+      "bytes": 1372,
+      "sha256": "25eda9555492837868682c3c6f753c94138ade7c5fae599dd97019bbe6818432"
+    },
+    {
+      "path": "infra/cloud-preview/pages-workflow.yml",
+      "bytes": 1866,
+      "sha256": "a865bf96604b09301e8e0692d016e54fe711af7a6f2e969180ef1703c1349a8f"
+    },
+    {
+      "path": "infra/cloud-preview/publish-source.sh",
+      "bytes": 1377,
+      "sha256": "25a21bfa291f04c5c5dd21208d3c01f62599984c942d8e051fe0a7443cc28399"
+    },
+    {
+      "path": "infra/ci/native-feasibility.yml",
+      "bytes": 20498,
+      "sha256": "7904f8cedcf6f6bffd2f6ea2faee6b9105e5a219fa4b1aa5bc859f292621d13e"
+    },
+    {
+      "path": "scripts/build-api.mjs",
+      "bytes": 1437,
+      "sha256": "6b113105d478b2ecdaf6aa98f64c59019ab7d27b099efa3077cc0232ebdf2cbe"
+    },
+    {
+      "path": "apps/api/src/report-export-config.ts",
+      "bytes": 1359,
+      "sha256": "fb171c2c30d1da728e0251960d3f896c67e93fc3d120a274f51d2fc48179f52b"
+    },
+    {
+      "path": "apps/api/src/server.ts",
+      "bytes": 56692,
+      "sha256": "aea394c01517af335b2927f8b47090ca960e0340ea568cf6a8e7f6760da4b66b"
+    },
+    {
+      "path": "apps/api/src/main.ts",
+      "bytes": 4431,
+      "sha256": "08a76dfb588cf2b258ed169a39036b698eafd85cfd5561f3e2af4b5f72c73d06"
+    },
+    {
+      "path": "apps/worker/src/main.ts",
+      "bytes": 2372,
+      "sha256": "1dd1cecbe093c010ece161f0bd9b61f6426550cabfcb26fdeab5a43821f6b47c"
+    },
+    {
+      "path": ".local/apply-preview-payload.py",
+      "bytes": 3213,
+      "sha256": "c16ac2c1a5d61fe45f9fd02e88fa3418c50b58473b8dc7252950ddb0bdbedbb1"
+    }
+  ],
+  "paidServicesProvisioned": false,
+  "deployed": false,
+  "sharedBuildsChanged": false,
+  "gitIndexChangedByAgent": false,
+  "concurrentOtherOwnerObservation": {
+    "path": "docs/development/decisions.md:77",
+    "detail": "Global diff check saw trailing whitespace while docs owner was actively editing; notified owner, no out-of-scope edit."
+  }
+}

@@ -1,0 +1,64 @@
+{
+  "observedAt": "2026-10-24T10:43:13Z",
+  "productSource": "e2bf5a6744fbcdebd832d2d4e8795641d9d4488d",
+  "productTree": "dc02bb704d522a1916573bccc09312a7755a7176",
+  "consent": {
+    "approvedOn": "2026-10-24",
+    "destination": "Firecrawl",
+    "scope": "Use the four existing dummy demo credentials to test live LongBall accounts.",
+    "state": "explicitly approved"
+  },
+  "pages": {
+    "url": "https://charlieomnipoint.github.io/LongBall/?v=e2bf5a6",
+    "transportCommit": "97d2bf832a992e968e814811af398a5926e823f1",
+    "buildInfoSourceMatches": true,
+    "artifactDigests": [
+      {
+        "file": "pages-site/_expo/static/js/web/index-0e3db20732c468e36b9d973fb3af771a.js",
+        "artifactDigests": [
+          {
+            "file": "digest",
+            "digest": "6c3ecf368f9187b7901c2c23c629d0b278bf8195826d9be3590375d091c45d67"
+          }
+        ]
+      }
+    ]
+  },
+  "api": {
+    "url": "https://secrets-proposals-cup-horse.trycloudflare.com",
+    "transportCommit": "c8400d2db240770c5f93669322fe33b6ce0ffeb7",
+    "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40085713495",
+    "startedAt": "2026-10-24T10:26:31Z",
+    "expiresAt": "2026-10-24T15:26:31Z",
+    "expiresAtLondon": "24 October 2026 16:26:31 BST",
+    "demoAccountLogin": true,
+    "buildInfoSourceMatches": true,
+    "temporaryFiveHourReview": true
+  },
+  "outcome": {
+    "passed": true,
+    "uiRoleWidthCombinations": 8,
+    "phoneWidths": [
+      320,
+      390
+    ],
+    "independentHttpsAccounts": 4,
+    "correctRoleViews": true,
+    "allUiSignOuts": 204,
+    "allIndependentHttpsRevokedTokens": 401,
+    "pageErrors": 0,
+    "horizontalOverflow": false
+  },
+  "boundaries": {
+    "uiTokenBodyInspected": false,
+    "uiRevocationEvidence": "Each browser journey observed the real UI DELETE /v1/demo/sessions/current response204 and private-view closure. It did not independently read back that exact UI bearer token.",
+    "httpsRevocationEvidence": "Four separate real HTTPS account sessions each verified its own bearer token returns401 after its own DELETE204.",
+    "storage": "Every covered role/width scans localStorage, sessionStorage and IndexedDB for known usernames/passwords, known HTTPS tokens and the opaque demo-session token wire pattern; no matches.",
+    "mockedRequests": false,
+    "fixtureAndPlayerRecordsMutated": false,
+    "credentialValuesRetainedInEvidence": false,
+    "browserStopped": true
+  },
+  "previousObservation": "The23October zero-public-authentication/rejected-approval evidence remains unchanged. This dated owner-approved follow-up resolves that review gate.",
+  "remaining": "Owner-deferred privacy/support and physical-device gates, production operation/distribution and the recorded dependency finding remain unchanged."
+}

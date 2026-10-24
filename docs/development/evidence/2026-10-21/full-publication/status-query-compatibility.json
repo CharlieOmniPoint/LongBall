@@ -1,0 +1,34 @@
+{
+  "checkedAt": "2026-10-21T19:56:18.932Z",
+  "proof": [
+    {
+      "requestedUrl": "https://raw.githubusercontent.com/CharlieOmniPoint/LongBall/preview/longball-m0/preview-status.json",
+      "httpStatus": 200,
+      "responseUrl": "https://raw.githubusercontent.com/CharlieOmniPoint/LongBall/preview/longball-m0/preview-status.json",
+      "status": {
+        "state": "ready",
+        "url": "https://conditional-runner-belief-delivery.trycloudflare.com",
+        "sourceRevision": "bb3965bd478934dcede62b1cbcc30d647bed2d70",
+        "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/39664214764",
+        "startedAt": "2026-10-21T19:48:46Z",
+        "expiresAt": "2026-10-22T00:48:46Z",
+        "audience": "Adult review of fictional Roma U10 data only"
+      }
+    },
+    {
+      "requestedUrl": "https://raw.githubusercontent.com/CharlieOmniPoint/LongBall/preview/longball-m0/preview-status.json?reviewCheck=1792612578804",
+      "httpStatus": 200,
+      "responseUrl": "https://raw.githubusercontent.com/CharlieOmniPoint/LongBall/preview/longball-m0/preview-status.json?reviewCheck=1792612578804",
+      "status": {
+        "state": "ready",
+        "url": "https://conditional-runner-belief-delivery.trycloudflare.com",
+        "sourceRevision": "bb3965bd478934dcede62b1cbcc30d647bed2d70",
+        "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/39664214764",
+        "startedAt": "2026-10-21T19:48:46Z",
+        "expiresAt": "2026-10-22T00:48:46Z",
+        "audience": "Adult review of fictional Roma U10 data only"
+      }
+    }
+  ],
+  "scope": "Both ordinary and query-bearing requests returned the current status at this later observation. Earlier stale-cache failure is recorded separately; this proves compatibility of anonymous exact-endpoint query requests, not a simultaneous stale/fresh comparison."
+}

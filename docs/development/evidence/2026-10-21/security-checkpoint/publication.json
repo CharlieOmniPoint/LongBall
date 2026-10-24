@@ -1,0 +1,73 @@
+{
+  "sourceCommit": "298985d665265ad2fd8209ebc6403a5feb842d81",
+  "sourceBranch": "dev/longball-m0-journey",
+  "transportCommit": "e7f9d36d316e1d3c08fa22c9a998db759daaeff0",
+  "sourceBundleSha256": "b311ae30990d0ccbceb20d07a7e35573e7e651217fb8370561db41145dfd4f3b",
+  "developmentBranchPublished": true,
+  "pages": {
+    "run": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/39591436432",
+    "job": 119193096741,
+    "proof": {
+      "status": "passed",
+      "checkedAt": "2026-10-21T11:23:32.368Z",
+      "url": "https://charlieomnipoint.github.io/LongBall/",
+      "source": "298985d665265ad2fd8209ebc6403a5feb842d81",
+      "script": "/LongBall/_expo/static/js/web/index-55dd0c212e180efcd21fb1a35cebbc40.js",
+      "viewport": "390x844",
+      "clock": "Resume clock",
+      "defaultApi": "",
+      "guards": [
+        {
+          "address": "",
+          "refused": true,
+          "workspaceSessions": 0
+        },
+        {
+          "address": "/",
+          "refused": true,
+          "workspaceSessions": 0
+        },
+        {
+          "address": "https://charlieomnipoint.github.io",
+          "refused": true,
+          "workspaceSessions": 0
+        }
+      ],
+      "errors": [],
+      "failed": [],
+      "overflow": false,
+      "staticOnly": true,
+      "nativeDeviceEvidence": false
+    }
+  },
+  "connectedApi": {
+    "run": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/39591436502",
+    "url": "https://cookbook-birmingham-pam-pulling.trycloudflare.com",
+    "readyAt": "2026-10-21T11:22:45Z",
+    "expiresAt": "2026-10-21T12:22:45Z",
+    "adapter": "Fictional SQLite runner; the real PostgreSQL proof is a separate restricted local rehearsal.",
+    "proof": {
+      "status": "passed",
+      "checkedAt": "2026-10-21T11:26:25.314Z",
+      "staticUrl": "https://charlieomnipoint.github.io/LongBall/",
+      "serviceUrl": "https://cookbook-birmingham-pam-pulling.trycloudflare.com",
+      "source": "298985d665265ad2fd8209ebc6403a5feb842d81",
+      "viewport": "390x844",
+      "crossOriginReadAndWrite": true,
+      "savedFixtureId": "5082986f-67f8-44c8-9938-550dd27ce8b2",
+      "opponent": "Fictional Pages connection check",
+      "authoritativeGetStatus": 200,
+      "errors": [],
+      "bad": [],
+      "overflow": false,
+      "syntheticOnly": true,
+      "nativeDeviceEvidence": false
+    }
+  },
+  "nativeCompilation": {
+    "run": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/39591436565",
+    "statusAtPublicationProof": "in progress; no successful native compilation claim for this exact source yet"
+  },
+  "physicalNativeM0": false,
+  "production": false
+}

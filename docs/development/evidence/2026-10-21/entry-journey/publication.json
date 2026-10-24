@@ -1,0 +1,53 @@
+{
+  "checkedAt": "2026-10-21 17:36:47 UTC",
+  "sourceCommit": "f4fbffe99ae977d89172afb86f78bbf262b275e1",
+  "transportCommit": "b73fbc9aefc2f0858c9c959dfe306012f3817193",
+  "pages": {
+    "url": "https://charlieomnipoint.github.io/LongBall/",
+    "run": 39643618841,
+    "conclusion": "success",
+    "asset": "index-53e824b937795d45748e6b6bb1414861.js",
+    "sha256": "0189663dc1594b43ccb67fc7d1693f5d960917e71b8157c3ffa2d9bc4afd6f2d"
+  },
+  "api": {
+    "state": "ready",
+    "url": "https://prophet-hearing-processed-eugene.trycloudflare.com",
+    "sourceRevision": "b73fbc9aefc2f0858c9c959dfe306012f3817193",
+    "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/39643618870",
+    "startedAt": "2026-10-21T17:28:28Z",
+    "expiresAt": "2026-10-21T22:28:28Z",
+    "audience": "Adult review of fictional Roma U10 data only",
+    "run": 39643618870,
+    "health": {
+      "status": "ok",
+      "contractVersion": "longball.events/1.1",
+      "syntheticOnly": true
+    }
+  },
+  "checks": {
+    "initialWelcome": true,
+    "fourExplicitFictionalRoles": true,
+    "managerHome": true,
+    "administratorClubs": true,
+    "loadedPlayerHome": true,
+    "loadedSpectatorMatchCentre": true,
+    "consumerSignIn": true,
+    "horizontalOverflow": false,
+    "runtimeErrors": [],
+    "independentAcceptedMatch": {
+      "revision": 12,
+      "status": "first_half_paused",
+      "attendance": 9,
+      "lineup": 7,
+      "activeMs": 417
+    }
+  },
+  "method": "External live Chromium browser through Firecrawl; no discovery mocks, real public HTTPS and CORS. Fictional role controls and explicit UI preparation/claim/attendance/lineup/clock/upload only. Separate HTTP reads verified accepted history.",
+  "limitations": [
+    "Fictional review only; no real user credentials/provider configured",
+    "390x844 external viewport; 320/390 local browser proofs separate",
+    "Connected API is bounded to recorded expiry; static Pages remains",
+    "No physical native storage, OS timing, notification or picker proof",
+    "Full development has separately tracked remaining Must and Should work"
+  ]
+}

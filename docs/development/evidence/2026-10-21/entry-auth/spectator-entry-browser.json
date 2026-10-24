@@ -1,0 +1,50 @@
+{
+  "verifiedAt": "2026-10-21T16:36:08.591Z",
+  "actualBrowser": "155.0.8059.79",
+  "width": 320,
+  "checks": [
+    "Trusted 320px production-entry browser receives the invitation in memory, strips its address fragment and uses explicit configured issuer/API fields",
+    "Actual preaccount UI opens the configured provider and enters password/recovery setup there; the provider receives no original invitation capability",
+    "Real provider return is pasted through the shipped fallback UI and verified with its retained original token; completion alone creates no application session or grant",
+    "A separate real PKCE browser sign-in produces the API-verified unclassified account with no membership or adult authority before acceptance",
+    "Read-only inspection finds none of the original invitation, provider proof, password or current bearer in this app origin's local/session storage or IndexedDB records",
+    "The unassigned account can inspect the actual destination and must explicitly confirm before the UI accepts only that team-season spectator grant at 320px"
+  ],
+  "actualOidcPkce": true,
+  "actualProviderCredentialUi": true,
+  "providerReturnMode": "explicit shipped paste fallback for isolated provider callback",
+  "certificateValidationDisabled": false,
+  "privateVaultInjected": false,
+  "rawSecretWrittenByHarness": false,
+  "appStorageContainedTestSecrets": false,
+  "physicalDeviceTested": false,
+  "systemBrowserTested": false,
+  "adultAuthorityCreated": false,
+  "liveOnboardingApproved": false,
+  "productionProviderSelected": false,
+  "build": {
+    "appUrl": "http://localhost:4175",
+    "environment": "production",
+    "fictionalIdentityTrialEnabled": true,
+    "bundle": "index-4066b938dbae32d64fa843ccd071b785.js",
+    "bundleSha256": "303f33dcbd1d2dbe17ea4e44d90a180a6a1d82a6ecb196d8f14269d2d3e7aef7",
+    "sourceHead": "575a010bc768a083026eefd28cf75f14649e480f",
+    "includesUncommittedWorkingSource": true,
+    "frontendSourceFingerprint": "5e0037da949efd0ba4e8fa22a9fc86b2b332011094960fc0d06db2d577ded15b",
+    "fingerprintAlgorithm": "SHA256(sorted UTF8 path + NUL + raw SHA256 file bytes)",
+    "sourceFiles": 190,
+    "manifestCapturedAt": "2026-10-21T16:24:17.093607+00:00",
+    "sourceFilesUnchangedThroughExport": true
+  },
+  "database": {
+    "name": "longball_identity_trial",
+    "coreSchema": 12,
+    "activationSchema": 2,
+    "servingRole": "longball_identity_trial_api",
+    "migrationMode": "verify",
+    "priorRowsPreserved": true
+  },
+  "screenshotsPublished": false,
+  "screenshotOmissionReason": "The automatic final image captured the subsequent service refresh in progress; this proof ends at explicit acceptance, refreshed identity grant and selected workspace availability.",
+  "scopeLimit": "The served frozen export precedes the later fictional-only editor mode helper. Native physical testing and subsequent team-private-view rendering are not certified by this account-entry proof."
+}

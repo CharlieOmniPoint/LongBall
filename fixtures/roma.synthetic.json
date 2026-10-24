@@ -1,0 +1,558 @@
+{
+  "synthetic": true,
+  "teamId": "synthetic-roma-u10",
+  "season": "2026/27",
+  "timeZone": "Europe/London",
+  "pitchPlaces": 7,
+  "plannedHalfDurationMs": 1500000,
+  "players": [
+    {
+      "id": "synthetic-player-01",
+      "displayName": "Oliver Bennett",
+      "available": true,
+      "goalkeeperChoice": 1
+    },
+    {
+      "id": "synthetic-player-02",
+      "displayName": "Noah Patel",
+      "available": true,
+      "goalkeeperChoice": 0
+    },
+    {
+      "id": "synthetic-player-03",
+      "displayName": "Leo Martin",
+      "available": true,
+      "goalkeeperChoice": 0
+    },
+    {
+      "id": "synthetic-player-04",
+      "displayName": "Theo Clarke",
+      "available": true,
+      "goalkeeperChoice": 0
+    },
+    {
+      "id": "synthetic-player-05",
+      "displayName": "Oscar Evans",
+      "available": true,
+      "goalkeeperChoice": 0
+    },
+    {
+      "id": "synthetic-player-06",
+      "displayName": "Ethan Brooks",
+      "available": true,
+      "goalkeeperChoice": 0
+    },
+    {
+      "id": "synthetic-player-07",
+      "displayName": "Jack Turner",
+      "available": true,
+      "goalkeeperChoice": 0
+    },
+    {
+      "id": "synthetic-player-08",
+      "displayName": "Freddie Lewis",
+      "available": true,
+      "goalkeeperChoice": 0
+    },
+    {
+      "id": "synthetic-player-09",
+      "displayName": "Arthur James",
+      "available": true,
+      "goalkeeperChoice": 0
+    },
+    {
+      "id": "synthetic-player-10",
+      "displayName": "Lucas Wilson",
+      "available": false,
+      "goalkeeperChoice": 0
+    },
+    {
+      "id": "synthetic-player-11",
+      "displayName": "Muhammad Khan",
+      "available": false,
+      "goalkeeperChoice": 0
+    },
+    {
+      "id": "synthetic-player-12",
+      "displayName": "Archie Green",
+      "available": false,
+      "goalkeeperChoice": 0
+    },
+    {
+      "id": "synthetic-player-13",
+      "displayName": "George Taylor",
+      "available": false,
+      "goalkeeperChoice": 0
+    }
+  ],
+  "demo": {
+    "name": "Roma autumn matchdays",
+    "generated": true,
+    "description": "Simulated club, players and matchdays for testing. No real people, photographs or contact details.",
+    "referenceDate": "2026-10-22"
+  },
+  "club": {
+    "id": "synthetic-richmond-rovers",
+    "name": "Richmond Rovers"
+  },
+  "team": {
+    "name": "Roma",
+    "ageGroup": "U10"
+  },
+  "opponents": [
+    {
+      "id": "demo-maple",
+      "name": "Maple FC",
+      "venue": "Maple Sports Ground · Pitch 1"
+    },
+    {
+      "id": "demo-oak",
+      "name": "Oak FC",
+      "venue": "Oak Meadow · Junior pitch"
+    },
+    {
+      "id": "demo-hill",
+      "name": "Hill FC",
+      "venue": "Hill Park · Pitch 3"
+    },
+    {
+      "id": "demo-willow",
+      "name": "Willow FC",
+      "venue": "Willow Playing Fields · Pitch 2"
+    },
+    {
+      "id": "demo-cedar",
+      "name": "Cedar Athletic",
+      "venue": "Cedar Lane Sports Ground"
+    }
+  ],
+  "fixtures": [
+    {
+      "id": "synthetic-roma-maple-2026-10-24",
+      "opponent": "Maple FC",
+      "playedDate": "2026-10-24",
+      "kickoff": "10:00",
+      "arrival": "09:30",
+      "venue": "Rovers Sports Ground · Pitch 2",
+      "homeAway": "home",
+      "status": "scheduled",
+      "selectedCount": 9,
+      "selectedPlayerIds": [
+        "synthetic-player-01",
+        "synthetic-player-02",
+        "synthetic-player-03",
+        "synthetic-player-04",
+        "synthetic-player-05",
+        "synthetic-player-06",
+        "synthetic-player-07",
+        "synthetic-player-08",
+        "synthetic-player-09"
+      ],
+      "demoPhase": "scheduled",
+      "fixtureClass": "development"
+    },
+    {
+      "id": "synthetic-roma-oak-2026-10-31",
+      "opponent": "Oak FC",
+      "playedDate": "2026-10-31",
+      "kickoff": "10:30",
+      "arrival": "10:00",
+      "venue": "Oak Meadow · Junior pitch",
+      "homeAway": "away",
+      "status": "scheduled",
+      "selectedCount": 9,
+      "selectedPlayerIds": [
+        "synthetic-player-01",
+        "synthetic-player-02",
+        "synthetic-player-03",
+        "synthetic-player-04",
+        "synthetic-player-05",
+        "synthetic-player-06",
+        "synthetic-player-07",
+        "synthetic-player-08",
+        "synthetic-player-09"
+      ],
+      "demoPhase": "scheduled",
+      "fixtureClass": "development"
+    },
+    {
+      "id": "synthetic-history-oak",
+      "opponent": "Oak FC",
+      "playedDate": "2026-10-10",
+      "kickoff": "10:30",
+      "arrival": "10:00",
+      "venue": "Oak Meadow · Junior pitch",
+      "homeAway": "away",
+      "status": "scheduled",
+      "selectedCount": 9,
+      "selectedPlayerIds": [
+        "synthetic-player-01",
+        "synthetic-player-02",
+        "synthetic-player-03",
+        "synthetic-player-04",
+        "synthetic-player-05",
+        "synthetic-player-06",
+        "synthetic-player-07",
+        "synthetic-player-08",
+        "synthetic-player-09"
+      ],
+      "demoPhase": "completed",
+      "fixtureClass": "friendly",
+      "result": {
+        "halfTime": {
+          "for": 1,
+          "against": 1
+        },
+        "final": {
+          "for": 2,
+          "against": 2
+        },
+        "halfMinutes": 25
+      }
+    },
+    {
+      "id": "synthetic-history-hill",
+      "opponent": "Hill FC",
+      "playedDate": "2026-10-17",
+      "kickoff": "09:30",
+      "arrival": "09:00",
+      "venue": "Rovers Sports Ground · Pitch 2",
+      "homeAway": "home",
+      "status": "scheduled",
+      "selectedCount": 9,
+      "selectedPlayerIds": [
+        "synthetic-player-01",
+        "synthetic-player-02",
+        "synthetic-player-03",
+        "synthetic-player-04",
+        "synthetic-player-05",
+        "synthetic-player-10",
+        "synthetic-player-11",
+        "synthetic-player-12",
+        "synthetic-player-13"
+      ],
+      "demoPhase": "completed",
+      "fixtureClass": "development",
+      "result": {
+        "halfTime": {
+          "for": 1,
+          "against": 1
+        },
+        "final": {
+          "for": 3,
+          "against": 1
+        },
+        "halfMinutes": 25
+      }
+    }
+  ],
+  "training": [
+    {
+      "id": "synthetic-training-1",
+      "date": "2026-10-22",
+      "time": "18:00",
+      "venue": "Rovers Sports Ground · Training area",
+      "status": "scheduled"
+    },
+    {
+      "id": "synthetic-training-2",
+      "date": "2026-10-29",
+      "time": "18:00",
+      "venue": "Rovers Sports Ground · Training area",
+      "status": "scheduled"
+    },
+    {
+      "id": "synthetic-training-2026-11-05",
+      "date": "2026-11-05",
+      "time": "18:00",
+      "venue": "Rovers Sports Ground · Training area",
+      "status": "scheduled"
+    },
+    {
+      "id": "synthetic-training-2026-10-01",
+      "date": "2026-10-01",
+      "time": "18:00",
+      "venue": "Rovers Sports Ground · Training area",
+      "status": "held"
+    },
+    {
+      "id": "synthetic-training-2026-10-08",
+      "date": "2026-10-08",
+      "time": "18:00",
+      "venue": "Rovers Sports Ground · Training area",
+      "status": "held"
+    },
+    {
+      "id": "synthetic-training-2026-10-15",
+      "date": "2026-10-15",
+      "time": "18:00",
+      "venue": "Rovers Sports Ground · Training area",
+      "status": "held"
+    },
+    {
+      "id": "synthetic-training-2026-09-24",
+      "date": "2026-09-24",
+      "time": "18:00",
+      "venue": "Rovers Sports Ground · Training area",
+      "status": "cancelled"
+    }
+  ],
+  "profiles": [
+    {
+      "playerId": "synthetic-player-01",
+      "initials": "OB",
+      "shirtNumber": 1,
+      "foot": "right",
+      "preferences": [
+        "GK",
+        "CM",
+        "CB"
+      ],
+      "eligiblePositions": [
+        "GK",
+        "CB",
+        "ST"
+      ]
+    },
+    {
+      "playerId": "synthetic-player-02",
+      "initials": "NP",
+      "shirtNumber": 2,
+      "foot": "right",
+      "preferences": [
+        "CB",
+        "CM",
+        "ST"
+      ],
+      "eligiblePositions": [
+        "CB",
+        "LB",
+        "RB",
+        "CM",
+        "LW",
+        "RW",
+        "ST"
+      ]
+    },
+    {
+      "playerId": "synthetic-player-03",
+      "initials": "LM",
+      "shirtNumber": 3,
+      "foot": "left",
+      "preferences": [
+        "CB",
+        "CM",
+        "ST"
+      ],
+      "eligiblePositions": [
+        "CB",
+        "LB",
+        "RB",
+        "CM",
+        "LW",
+        "RW",
+        "ST"
+      ]
+    },
+    {
+      "playerId": "synthetic-player-04",
+      "initials": "TC",
+      "shirtNumber": 4,
+      "foot": "both",
+      "preferences": [
+        "CM",
+        "CB",
+        "ST"
+      ],
+      "eligiblePositions": [
+        "CB",
+        "LB",
+        "RB",
+        "CM",
+        "LW",
+        "RW",
+        "ST"
+      ]
+    },
+    {
+      "playerId": "synthetic-player-05",
+      "initials": "OE",
+      "shirtNumber": 5,
+      "foot": "left",
+      "preferences": [
+        "LW",
+        "CM",
+        "CB"
+      ],
+      "eligiblePositions": [
+        "CB",
+        "LB",
+        "RB",
+        "CM",
+        "LW",
+        "RW",
+        "ST"
+      ]
+    },
+    {
+      "playerId": "synthetic-player-06",
+      "initials": "EB",
+      "shirtNumber": 6,
+      "foot": "right",
+      "preferences": [
+        "RW",
+        "CM",
+        "CB"
+      ],
+      "eligiblePositions": [
+        "CB",
+        "LB",
+        "RB",
+        "CM",
+        "LW",
+        "RW",
+        "ST"
+      ]
+    },
+    {
+      "playerId": "synthetic-player-07",
+      "initials": "JT",
+      "shirtNumber": 7,
+      "foot": "right",
+      "preferences": [
+        "ST",
+        "CM",
+        "CB"
+      ],
+      "eligiblePositions": [
+        "CB",
+        "LB",
+        "RB",
+        "CM",
+        "LW",
+        "RW",
+        "ST"
+      ]
+    },
+    {
+      "playerId": "synthetic-player-08",
+      "initials": "FL",
+      "shirtNumber": 8,
+      "foot": "left",
+      "preferences": [
+        "LW",
+        "CM",
+        "CB"
+      ],
+      "eligiblePositions": [
+        "CB",
+        "LB",
+        "RB",
+        "CM",
+        "LW",
+        "RW",
+        "ST"
+      ]
+    },
+    {
+      "playerId": "synthetic-player-09",
+      "initials": "AJ",
+      "shirtNumber": 9,
+      "foot": "right",
+      "preferences": [
+        "RW",
+        "CM",
+        "CB"
+      ],
+      "eligiblePositions": [
+        "CB",
+        "LB",
+        "RB",
+        "CM",
+        "LW",
+        "RW",
+        "ST"
+      ]
+    },
+    {
+      "playerId": "synthetic-player-10",
+      "initials": "LW",
+      "shirtNumber": 10,
+      "foot": "both",
+      "preferences": [
+        "CM",
+        "CB",
+        "ST"
+      ],
+      "eligiblePositions": [
+        "CB",
+        "LB",
+        "RB",
+        "CM",
+        "LW",
+        "RW",
+        "ST"
+      ]
+    },
+    {
+      "playerId": "synthetic-player-11",
+      "initials": "MK",
+      "shirtNumber": 11,
+      "foot": "right",
+      "preferences": [
+        "CB",
+        "CM",
+        "ST"
+      ],
+      "eligiblePositions": [
+        "CB",
+        "LB",
+        "RB",
+        "CM",
+        "LW",
+        "RW",
+        "ST"
+      ]
+    },
+    {
+      "playerId": "synthetic-player-12",
+      "initials": "AG",
+      "shirtNumber": 12,
+      "foot": "left",
+      "preferences": [
+        "ST",
+        "CM",
+        "CB"
+      ],
+      "eligiblePositions": [
+        "CB",
+        "LB",
+        "RB",
+        "CM",
+        "LW",
+        "RW",
+        "ST"
+      ]
+    },
+    {
+      "playerId": "synthetic-player-13",
+      "initials": "GT",
+      "shirtNumber": 13,
+      "foot": "right",
+      "preferences": [
+        "CM",
+        "CB",
+        "ST"
+      ],
+      "eligiblePositions": [
+        "CB",
+        "LB",
+        "RB",
+        "CM",
+        "LW",
+        "RW",
+        "ST"
+      ]
+    }
+  ]
+}

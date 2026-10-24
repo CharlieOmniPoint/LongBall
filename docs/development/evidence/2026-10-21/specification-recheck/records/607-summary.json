@@ -1,0 +1,58 @@
+{
+  "compiledSource": "60789694c89dd4bc8aa5902ddb984dc84f6cba45",
+  "artifactManifest": "607-artifacts.json",
+  "browserReport": "607-records02-report.json",
+  "browserReportSha256": "e42c799ba8b8efe16fb7366c3f3e0b2674698d7fb947652d9c4e077c4b216875",
+  "actualWorkerExports": "One encrypted CSV and one encrypted PDF job completed, explicit browser downloads",
+  "pdfChecks": [
+    "Actual%PDF binary",
+    "pdftotext readability",
+    "Roma/Richmond Rovers/2026/27/Maple FC present",
+    "Foreign team/account fixture values absent"
+  ],
+  "downloads": [
+    {
+      "format": "csv",
+      "bytes": 9933,
+      "sha256": "0b8867d3fd26088cf2ca38be13e0826dd11578395146184be3a9e054a3307c19",
+      "fileIncluded": false
+    },
+    {
+      "format": "json",
+      "bytes": 71804,
+      "sha256": "f2d2d32ff48237be70576fa2fd63846bcd29d252ffb0487ce2f7313a0a280302",
+      "fileIncluded": false
+    },
+    {
+      "format": "json",
+      "bytes": 12814,
+      "sha256": "fcb7ceeb8d420e0ff26b5a6ae315f340a4e8e0a412864210c731f24b5bafdbcf",
+      "fileIncluded": false
+    },
+    {
+      "format": "pdf",
+      "bytes": 33894,
+      "sha256": "48053b4a8f434a1b62feb82693f7ebe4ca80cd4a0a1f755fa10e08fd1f6f1a2b",
+      "fileIncluded": false
+    }
+  ],
+  "screenshots": [
+    {
+      "description": "00-readable-own-workspace-choice",
+      "sha256": "e26c1d68857bd056108d4a918f5b83e8b7b884a84b400462b127962a2efc9865",
+      "fileIncluded": false
+    },
+    {
+      "description": "02-accepted-archive-and-exports",
+      "sha256": "dcf20a5135501a9be99ef5c6448e2a670381e1eedcb448ff5ae620dcc66a72e7",
+      "fileIncluded": false
+    }
+  ],
+  "browserErrors": [],
+  "limitations": [
+    "No native sharing or physical device evidence.",
+    "This focused phase02 success complements earlier ee7 other-scope proof; no uninterrupted five-scenario run at 607 is claimed."
+  ],
+  "originalPrivateSummarySha256": "4ff5e30fcad2b1a791069a4dc69612dea8b16fcc2490c9f925af17ffd225ce1f",
+  "handling": "Download and screenshot digests only. Raw files, logs, database stores and temporary key material are excluded."
+}

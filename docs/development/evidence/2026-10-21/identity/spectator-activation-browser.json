@@ -1,0 +1,38 @@
+{
+  "verifiedAt": "2026-10-21T12:43:05.428Z",
+  "actualBrowser": "155.0.8059.79",
+  "width": 320,
+  "checks": [
+    "Trusted 320px production-entry browser receives the invitation in memory, strips its address fragment and uses explicit configured issuer/API fields",
+    "Actual preaccount UI opens the configured provider and enters password/recovery setup there; the provider receives no original invitation capability",
+    "Real provider return is pasted through the shipped fallback UI and verified with its retained original token; completion alone creates no application session or grant",
+    "A separate real PKCE browser sign-in produces the API-verified unclassified account with no membership or adult authority before acceptance",
+    "Read-only inspection finds none of the original invitation, provider proof, password or current bearer in this app origin's local/session storage or IndexedDB records",
+    "The unassigned account can inspect the actual destination and must explicitly confirm before the UI accepts only that team-season spectator grant at 320px"
+  ],
+  "actualOidcPkce": true,
+  "actualProviderCredentialUi": true,
+  "providerReturnMode": "explicit shipped paste fallback for isolated provider callback",
+  "certificateValidationDisabled": false,
+  "privateVaultInjected": false,
+  "rawSecretWrittenByHarness": false,
+  "appStorageContainedTestSecrets": false,
+  "physicalDeviceTested": false,
+  "systemBrowserTested": false,
+  "adultAuthorityCreated": false,
+  "liveOnboardingApproved": false,
+  "productionProviderSelected": false,
+  "reviewBuild": {
+    "entry": "http://localhost:4174/",
+    "mode": "production entry with explicit fictional identity trial flag",
+    "bundle": "index-7efb97c855d3aa2d68434d78f638cd6f.js",
+    "sha256": "614e8b8f983e0db61d4eccc73a98718bf763a4a03023202da738a54245cf768f"
+  },
+  "verifiedRuntimeSchema": {
+    "core": 11,
+    "activation": 2
+  },
+  "settledPostAcceptanceWorkspaceLoadProved": false,
+  "screenshotRetainedInPublishedEvidence": false,
+  "screenshotNote": "The local capture showed an interim workspace refresh after acceptance; it is not presented as settled-state visual proof."
+}

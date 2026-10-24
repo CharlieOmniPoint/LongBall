@@ -1,0 +1,72 @@
+{
+  "productSource": "e2bf5a6744fbcdebd832d2d4e8795641d9d4488d",
+  "productTree": "dc02bb704d522a1916573bccc09312a7755a7176",
+  "pages": {
+    "url": "https://charlieomnipoint.github.io/LongBall/?v=e2bf5a6",
+    "runId": 40034700726,
+    "conclusion": "success",
+    "transportCommit": "97d2bf832a992e968e814811af398a5926e823f1",
+    "assetMatchesPackage": true,
+    "artifactDigests": [
+      {
+        "file": "pages-site/_expo/static/js/web/index-0e3db20732c468e36b9d973fb3af771a.js",
+        "digest": "6c3ecf368f9187b7901c2c23c629d0b278bf8195826d9be3590375d091c45d67"
+      }
+    ]
+  },
+  "api": {
+    "url": "https://nose-tale-office-holly.trycloudflare.com",
+    "runId": 40034161171,
+    "transportCommit": "2fd2fe8ee8107b589ff462b0351c50db4a4e533e",
+    "readyCommit": "128b87a3dcec39893723c47919e274cb42eae192",
+    "startedAt": "2026-10-23T22:35:29Z",
+    "expiresAt": "2026-10-24T03:35:29Z",
+    "expiresAtLondon": "24 October 2026 04:35:29 BST",
+    "healthStatus": 200,
+    "demoAccountLogin": true,
+    "buildInfoSourceMatches": true,
+    "legacyAliasesRefused": 4,
+    "boundedReview": true
+  },
+  "publicChecks": {
+    "passed": true,
+    "source": "e2bf5a6744fbcdebd832d2d4e8795641d9d4488d",
+    "pagesScriptDigest": "6c3ecf368f9187b7901c2c23c629d0b278bf8195826d9be3590375d091c45d67",
+    "anonymousEntry": [
+      {
+        "width": 390,
+        "signInVisible": true,
+        "emptyCredentials": true,
+        "submitDisabled": true,
+        "maskedPassword": true,
+        "usernameEnterFocusesPassword": true,
+        "noOverflow": true,
+        "privateWorkspaceAbsent": true
+      },
+      {
+        "width": 320,
+        "signInVisible": true,
+        "emptyCredentials": true,
+        "submitDisabled": true,
+        "maskedPassword": true,
+        "usernameEnterFocusesPassword": true,
+        "noOverflow": true,
+        "privateWorkspaceAbsent": true
+      }
+    ],
+    "pageErrors": [],
+    "authenticatedPublicJourneys": 0
+  },
+  "accountChecks": {
+    "localRoleJourneys": 8,
+    "localGroups": 24,
+    "localChecksPassed": true,
+    "authenticatedPublicJourneysRepeated": 0,
+    "publicAuthenticationApproval": "pending",
+    "reason": "Automatic approval review rejected sending the four demo credentials through Firecrawl because this external destination lacked explicit approval. Direct workspace HTTPS to the live API returned403 under the managed network policy. Owner approval was requested; credentials were not submitted to the application by the rejected remote actions.",
+    "credentialsUnchanged": true
+  },
+  "nativeDeviceEvidence": false,
+  "paidServicesProvisioned": false,
+  "mockedPublicRequests": false
+}

@@ -1,0 +1,54 @@
+{
+  "feature": "UI07 authorised player fixture details",
+  "recordedAt": "2026-10-21T18:33:17.146184+00:00",
+  "baseSource": "1d119878361f28224f38739ed34637cd527aaf19",
+  "branch": "dev/longball-player-fixture-details",
+  "canonicalAnchor": "docs/longball/LongBall_Mobile_Build_Pack_v0_1.md UI07 fixture detail and availability",
+  "changes": [
+    "Shared allowlisted own-player projection adds saved arrival, format and plannedHalfDurationMs",
+    "Fresh connected DTO parsing binds current team, season and own player and rejects private extras",
+    "Shared connected/fictional fixture presentation shows recorded arrival/kickoff, explicit home/away, format and planned half duration",
+    "Missing legacy fields stay null/unrecorded and never borrow current team defaults"
+  ],
+  "checks": [
+    {
+      "files": ["packages/application/src/player-preparation.test.ts"],
+      "passed": 5,
+      "failed": 0,
+      "type": "pure projection/privacy/parser/presentation"
+    },
+    {
+      "files": ["apps/api/src/own-player-preparation.test.ts"],
+      "passed": 4,
+      "failed": 0,
+      "type": "actual HTTP with SQLite and non-superuser non-bypass PostgreSQL serving roles",
+      "runStartedAt": "2026-10-21T18:31:30Z",
+      "postgresSchemaAtTest": 14
+    }
+  ],
+  "totalUniqueTestsPassed": 9,
+  "staticChecks": {
+    "rootTypeScript": "passed",
+    "mobileTypeScript": "passed",
+    "scopedEslintMaxWarnings0": "passed",
+    "gitDiffCheck": "passed"
+  },
+  "accessEvidence": [
+    "Only current season fixtures/training and current own profile response/attendance projected",
+    "No other player IDs, roster arrays, selection maps, response maps, manager plans, snapshots or private extra fields returned",
+    "Wrong team/season/player DTOs rejected before attaching to UI",
+    "Wrong-role, wrong-team/season and revoked-player actual HTTP reads refused",
+    "Own availability reply preserves fixture details and actual attendance separation",
+    "Changing team format/duration defaults leaves the saved fixture plan unchanged"
+  ],
+  "schemaChange": false,
+  "authenticationOrAuthorityPolicyChange": false,
+  "nativeDeviceProof": false,
+  "newBrowserBundleProof": false,
+  "limitations": [
+    "Source follow-up awaits parent integration/build/publication",
+    "HTTP uses fictional identities and data, not a new provider/session proof",
+    "PostgreSQL14 fixture used before parent additive015 integration; parent final combined checks remain separate",
+    "Planned duration is displayed as two planned halves; actual manual half endings and match history are unchanged"
+  ]
+}

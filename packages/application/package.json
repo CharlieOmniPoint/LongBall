@@ -1,0 +1,14 @@
+{
+  "name": "@longball/application",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./*": "./src/*.ts"
+  },
+  "dependencies": {
+    "@longball/domain": "workspace:*",
+    "@longball/testing": "workspace:*",
+    "@noble/hashes": "2.4.0"
+  }
+}

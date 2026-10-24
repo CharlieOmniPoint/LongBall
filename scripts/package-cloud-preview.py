@@ -1,0 +1,116 @@
+"""Package a clean, committed fictional review for the connected GitHub tools.
+
+This prepares files only. It never creates hosting, credentials or paid resources.
+"""
+import base64
+import argparse
+import hashlib
+import json
+import os
+import subprocess
+from pathlib import Path
+from demo_account_verifiers import load_demo_account_verifiers
+
+root = Path(__file__).resolve().parents[1]
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--with-pages', action='store_true', help='Include the lasting static review after the owner enables GitHub Pages Actions publishing.')
+parser.add_argument('--demo-accounts-file', type=Path, help='Read only precomputed password verifiers from an ignored .local JSON file; plaintext credentials are never packaged.')
+arguments = parser.parse_args()
+demo_accounts = load_demo_account_verifiers(arguments.demo_accounts_file, root) if arguments.demo_accounts_file else None
+if demo_accounts and os.environ.get('EXPO_PUBLIC_ENVIRONMENT') == 'production':
+    raise SystemExit('Demo account login is available only in a nonproduction review build.')
+web_build_environment = {**os.environ, 'EXPO_PUBLIC_DEMO_ACCOUNT_LOGIN': '1' if demo_accounts else '0'}
+
+
+def git(*args):
+    return subprocess.check_output(["git", *args], cwd=root, text=True).strip()
+
+
+if git("status", "--porcelain"):
+    raise SystemExit("Commit the review candidate before packaging; uncommitted work was retained.")
+branch = git("branch", "--show-current")
+if not branch.startswith("dev/"):
+    raise SystemExit("Package from a development branch.")
+head = git("rev-parse", "HEAD")
+# Build from the checked, committed tree instead of relabelling an older export.
+build_directory = root / '.local/cloud-preview-build' / head
+web_directory = build_directory / 'site'
+api_directory = build_directory / 'backend'
+pages_directory = build_directory / 'pages-site'
+# Keep the currently reviewed exports untouched while preparing publication.
+# A source-specific directory also avoids mixing two candidates' generated files.
+subprocess.run(["pnpm", "--filter", "mobile", "exec", "expo", "export", "--platform", "web", "--output-dir", str(web_directory)], cwd=root, check=True, env=web_build_environment)
+subprocess.run(["pnpm", "build:api"], cwd=root, check=True, env={**os.environ, 'LONGBALL_API_BUILD_DIRECTORY': str(api_directory)})
+if arguments.with_pages:
+    subprocess.run(["pnpm", "--filter", "mobile", "exec", "expo", "export", "--platform", "web", "--output-dir", str(pages_directory)],
+                   cwd=root, check=True, env={**web_build_environment, 'LONGBALL_WEB_BASE_PATH': '/LongBall', 'EXPO_PUBLIC_REVIEW_STATIC': '1'})
+if git("rev-parse", "HEAD") != head or git("status", "--porcelain"):
+    raise SystemExit("Source changed during the build; retain outputs and package again after committing.")
+bundle = root / ".local/longball-source.bundle"
+bundle.parent.mkdir(parents=True, exist_ok=True)
+subprocess.run(["git", "bundle", "create", str(bundle), branch, "^origin/main"], cwd=root, check=True)
+entries = []
+
+
+def include(path, content):
+    entries.append({"path": path, "mode": "100644", "type": "blob", "content": content})
+
+
+exports = [
+    (web_directory, "site"),
+    (api_directory, "backend"),
+]
+if arguments.with_pages:
+    exports.append((pages_directory, "pages-site"))
+for local, destination in exports:
+    directory = Path(local)
+    if not directory.exists():
+        raise SystemExit(f"Build {local} first.")
+    for path in sorted(directory.rglob("*")):
+        if path.is_symlink():
+            raise SystemExit(f"Refusing a symbolic link in the review export: {path}")
+        if destination == "backend" and path.is_file() and path.relative_to(directory).as_posix() == "assets/fonts/DejaVuSans.ttf":
+            include("backend/assets/fonts/DejaVuSans.ttf.base64", base64.b64encode(path.read_bytes()).decode() + "\n")
+        if path.is_file() and (destination != "backend" or path.suffix == ".mjs" or path.relative_to(directory).as_posix() == "assets/fonts/LICENSE"):
+            include(f"{destination}/{path.relative_to(directory)}", path.read_text())
+
+for source, destination in [
+    ("infra/cloud-preview/run.sh", "preview/run.sh"),
+    ("infra/cloud-preview/publish-source.sh", "preview/publish-source.sh"),
+    ("infra/cloud-preview/workflow.yml", ".github/workflows/cloud-preview.yml"),
+    ("infra/cloud-preview/backend/package.json", "backend/package.json"),
+    ("infra/cloud-preview/backend/package-lock.json", "backend/package-lock.json"),
+    ("infra/cloud-preview/check-media.mjs", "preview/check-media.mjs"),
+    ("infra/cloud-preview/seed-demo-media.mjs", "preview/seed-demo-media.mjs"),
+    ("infra/runtime/clamd.conf", "preview/clamd.conf"),
+    ("infra/runtime/Dockerfile", "infra/runtime/Dockerfile"),
+    ("infra/runtime/Dockerfile.dockerignore", "infra/runtime/Dockerfile.dockerignore"),
+    ("infra/runtime/heic/build.sh", "infra/runtime/heic/build.sh"),
+    ("infra/runtime/heic/decode.c", "infra/runtime/heic/decode.c"),
+    ("infra/runtime/heic/NOTICE.md", "infra/runtime/heic/NOTICE.md"),
+    ("infra/ci/native-feasibility.yml", ".github/workflows/native-feasibility.yml"),
+]:
+    include(destination, (root / source).read_text())
+if arguments.with_pages:
+    include('.github/workflows/pages-review.yml', (root / 'infra/cloud-preview/pages-workflow.yml').read_text())
+
+for path in sorted((root / "apps/api/migrations/postgresql").glob("*.sql")):
+    include(f"migrations/postgresql/{path.name}", path.read_text())
+
+raw = bundle.read_bytes()
+include("preview/source.bundle.base64", base64.b64encode(raw).decode() + "\n")
+include("preview/source.bundle.sha256", hashlib.sha256(raw).hexdigest() + "\n")
+include("preview/source-head.txt", head + "\n")
+include("preview/source-branch.txt", branch + "\n")
+include("preview/native-build-request.txt", json.dumps({"source": head, "upload_artifacts": False, "demo_account_login": bool(demo_accounts)}) + "\n")
+if demo_accounts:
+    verifier_content = json.dumps(demo_accounts, sort_keys=True, indent=2) + '\n'
+    include('preview/demo-accounts.json', verifier_content)
+    include('preview/demo-accounts.sha256', hashlib.sha256(verifier_content.encode()).hexdigest() + '\n')
+include("site/build-info.json", json.dumps({"sourceCommit": head, "sourceBranch": branch, "synthetic": True, "nativeTargets": ["iPhone", "Android"], "production": False}, indent=2) + "\n")
+if arguments.with_pages:
+    include("pages-site/build-info.json", json.dumps({"sourceCommit": head, "sourceBranch": branch, "synthetic": True, "nativeTargets": ["iPhone", "Android"], "production": False, "basePath": "/LongBall", "connectedBackendIncluded": False}, indent=2) + "\n")
+    include("pages-site/.nojekyll", "")
+output = root / ".local/cloud-preview-payload.json"
+output.write_text(json.dumps(entries, ensure_ascii=True))
+print(json.dumps({"payload": str(output), "characters": len(output.read_text()), "sourceCommit": head, "bundleBytes": len(raw), "files": len(entries)}))

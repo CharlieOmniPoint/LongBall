@@ -1,0 +1,17 @@
+{
+  "status": "failed",
+  "observedAt": "2026-10-21T18:22:58.478798+00:00",
+  "sourceCheckpoint": "65b38c2",
+  "stage": "restricted-audited-team-privilege-command-before-archive",
+  "code": "42501",
+  "table": "team_privilege_decisions",
+  "reason": "Request-context audit timestamp cannot equal later volatile database clock during the insert policy check.",
+  "archiveCreated": false,
+  "newPassClaim": false,
+  "sourceSha256": {
+    "scripts/runtime-contribution-boundaries.ts": "bca1e5c4e09eae92a9e518facf8cafed6d11b4af6abc98df4e923b5def725761",
+    "scripts/runtime-heic.ts": "48aac0b4aac77c4ad78c5dcecc75d79d1cfaf4f4f511b3c0bde282691f602c29",
+    "apps/api/src/postgres-team-privileges.ts": "6f784fa70df41c5ff8abbdc7833bab3f3456d792f9b09a0cf5c392ca2d790849",
+    "apps/api/migrations/postgresql/013_team_privileges.sql": "5fb3ea71eec74ec2f23370d102cab117f5f03918ff53023f0dad7dc4c580205d"
+  }
+}

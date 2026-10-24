@@ -1,0 +1,18 @@
+{
+  "passed": true,
+  "checks": [
+    "Anonymous production entry requires connected sign-in",
+    "Fictional accounts/seed absent",
+    "Recording journal not opened before sign-in",
+    "390px layout and no runtime errors"
+  ],
+  "layout": {
+    "width": 390,
+    "documentWidth": 390
+  },
+  "artifact": {
+    "name": "eaed07282668d31051349ec4cf147b6c",
+    "sha256": "673f1ee64daf4f935a161688ad99930e80d8f785489b82c8de959d22c7eafe86",
+    "fictionalIdentityTrialFlag": false
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "recordedAt": "2026-10-21T07:17:57.070944+00:00",
+  "branch": "dev/longball-m0-journey",
+  "webBundle": "f8f0a16481bae90ff4ebe5a3a137543c",
+  "productionEntryBundle": "c343f02ba0ffe790b8bfdfe21c6c1995",
+  "pnpmCheck": "passed",
+  "unitTests": 219,
+  "apiAccessWorkerTests": 79,
+  "localBrowserChecks": 25,
+  "connectedHttpJourneys": 5,
+  "productionEntryChecks": 4,
+  "preservedArchiveMembers": 15,
+  "archivedChecksums": 14,
+  "openApi31Validation": "passed",
+  "androidAndIosJavaScriptExport": "passed",
+  "nativeCompilation": {
+    "sourceCommit": "36223f726d69a51408d40a443376341b9b52f163",
+    "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/39561530615",
+    "androidDebug": "passed",
+    "unsignedIosSimulator": "passed",
+    "retainedArtifacts": 0
+  },
+  "physicalDeviceEvidence": false,
+  "realProviderOrScannerConfigured": false,
+  "productionRelease": false
+}

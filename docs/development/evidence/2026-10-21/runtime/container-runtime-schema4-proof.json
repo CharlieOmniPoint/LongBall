@@ -1,0 +1,161 @@
+{
+  "status": "passed",
+  "observedAt": "2026-10-21T09:41:37.276236+00:00",
+  "syntheticOnly": true,
+  "image": "sha256:889f219c6bb71c65c5c800ab5359a57d29ec2eb54d3b0bde64f7e7bbf68896fa",
+  "before": {
+    "versions": [
+      2,
+      3
+    ],
+    "requests": 0
+  },
+  "after": {
+    "versions": [
+      2,
+      3,
+      4
+    ],
+    "requests": 0,
+    "pendingKeyRows": 0,
+    "owner": {
+      "rolname": "longball_migrator",
+      "rolsuper": false,
+      "rolcreatedb": false,
+      "rolcreaterole": false,
+      "rolreplication": false,
+      "rolbypassrls": false
+    },
+    "schemaOwner": "longball_migrator",
+    "hashes": {
+      "/app/backend/api.mjs": "dfe149ed546547698cfa8376169622fd37c1a20147bd0b2e06ce7e956305feec",
+      "/app/backend/worker.mjs": "0515fb4ce68e78fa2b2b721ad4dceb3c376e14c2d8e853bf73791c9697562896",
+      "/app/backend/migrate.mjs": "d4001929789bf65e1f483644c890538811e20867f50ddf9d2db1dcacd0eac4d6",
+      "/app/migrations/postgresql/004_account_requests.sql": "9b6c78aa430fce94977ac3ceebfc03e3b37623fe15db9b70cb680ce5f7f40ca7"
+    }
+  },
+  "migration": {
+    "command": "node backend/migrate.mjs",
+    "credential": "dedicated migrator URL file only",
+    "role": "longball_migrator",
+    "output": "LongBall PostgreSQL schema and restricted runtime grants are ready. No production policy approvals were created.",
+    "privacyFulfillmentPerformed": false
+  },
+  "api": {
+    "health": {
+      "status": "ok",
+      "service": "longball-api",
+      "contractVersion": "longball.events/1.1",
+      "backend": "postgresql",
+      "syntheticOnly": false
+    },
+    "startupMode": "verify-only",
+    "credentials": "API URL file only",
+    "permissions": {
+      "role": "longball_api",
+      "versions": [
+        2,
+        3,
+        4
+      ],
+      "passed": [
+        "restricted_role_attributes",
+        "cannot_create_schema_objects",
+        "cannot_create_public_objects",
+        "cannot_alter_schema",
+        "cannot_change_migration_version",
+        "schema4_verified",
+        "api_cannot_delete_domain_rows",
+        "api_cannot_rewrite_audit",
+        "api_scoped_request_schema_and_key_access",
+        "api_insert_update_and_feature_verification"
+      ]
+    },
+    "privateWithoutProvider": {
+      "status": 503,
+      "code": "IDENTITY_NOT_CONFIGURED"
+    }
+  },
+  "worker": {
+    "startupMode": "verify-only",
+    "credentials": "worker URL file only",
+    "permissions": {
+      "role": "longball_worker",
+      "versions": [
+        2,
+        3,
+        4
+      ],
+      "passed": [
+        "restricted_role_attributes",
+        "cannot_create_schema_objects",
+        "cannot_create_public_objects",
+        "cannot_alter_schema",
+        "cannot_change_migration_version",
+        "schema4_verified",
+        "worker_cannot_change_accounts",
+        "worker_cannot_read_private_media_manifests",
+        "worker_cannot_read_privacy_requests",
+        "worker_cannot_read_privacy_pending_keys",
+        "worker_cannot_delete_jobs",
+        "worker_job_and_document_operations"
+      ]
+    }
+  },
+  "containers": [
+    {
+      "name": "longball-runtime-api-1",
+      "image": "sha256:889f219c6bb71c65c5c800ab5359a57d29ec2eb54d3b0bde64f7e7bbf68896fa",
+      "user": "node",
+      "readOnlyRoot": true,
+      "state": "running",
+      "ports": {
+        "4310/tcp": [
+          {
+            "HostIp": "127.0.0.1",
+            "HostPort": "4310"
+          }
+        ]
+      }
+    },
+    {
+      "name": "longball-runtime-worker-1",
+      "image": "sha256:889f219c6bb71c65c5c800ab5359a57d29ec2eb54d3b0bde64f7e7bbf68896fa",
+      "user": "node",
+      "readOnlyRoot": true,
+      "state": "running",
+      "ports": {}
+    },
+    {
+      "name": "longball-runtime-database-1",
+      "image": "sha256:79061104669bb30919d015b549c764e2d8021a18ee39cb175581a2588fe90dbe",
+      "user": "",
+      "readOnlyRoot": false,
+      "state": "running",
+      "ports": {}
+    },
+    {
+      "name": "longball-runtime-scanner-1",
+      "image": "sha256:ac90e771724d0ce8fdd955ad8d23fad36ca9fd8c1c30cf0ecf8014de43fa9ec4",
+      "user": "",
+      "readOnlyRoot": true,
+      "state": "running",
+      "ports": {}
+    }
+  ],
+  "validation": [
+    "Clean current-source container build passed",
+    "Dedicated non-superuser migration applied004 from existing schema3",
+    "API and worker restarted successfully with readonly roots and restricted roles",
+    "Current migration SQL hash matched built image",
+    "Runtime permission checks passed including both worker privacy-table denials",
+    "Scoped operational-check ESLint passed"
+  ],
+  "limits": [
+    "No hosted or paid resource provisioned",
+    "No privacy fulfillment, deletion, account revocation or policy approval performed",
+    "No OIDC provider configured for this deployment rehearsal; private endpoints remain blocked",
+    "Comprehensive scanner/media/paired-restore evidence remains the earlier historical checkpoint and was not rerun for this scope-only schema change",
+    "No physical-device, public production capacity or recovery SLA claim"
+  ]
+}

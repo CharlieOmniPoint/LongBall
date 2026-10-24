@@ -1,0 +1,48 @@
+{
+  "sourceCommit": "ee7cb613695b8d96388e742a60dc248277b24091",
+  "recordedAt": "2026-10-21T22:50:12.882054+00:00",
+  "status": "passed-after-recorded-unexplained-timeout",
+  "artifacts": {
+    "sourceRevision": "ee7cb613695b8d96388e742a60dc248277b24091",
+    "web": {
+      "entry": "/_expo/static/js/web/index-9ddd154bdda7116598b3c07d353833e3.js",
+      "sha256": "b2fc5a1438ac398d43cf59f52ad6691f812e398232698fb2171a8748b2417158"
+    },
+    "api": {
+      "entry": "apps/api/dist/api.mjs",
+      "sha256": "6217c496603d372a6fc80c82e9907b68dc5a5501642d1594fe630eb69df16873"
+    }
+  },
+  "localLive": {
+    "passed": 6
+  },
+  "application": {
+    "firstAttemptPassed": 8,
+    "firstAttemptFailed": 1,
+    "failedScenario": "09-durability-stale-tab",
+    "failure": "Playwright12sentrybuttonclicktimeout;buttonvisibleandenabled;noobservedbrowserruntimeerrors",
+    "causeEstablished": false,
+    "unchangedFocusedRepeatPassed": 1,
+    "scenariosCovered": 9
+  },
+  "policy": {
+    "passed": 2,
+    "report": "../policy-browser/report.json"
+  },
+  "acceptedView": {
+    "passed": 4,
+    "report": "../accepted-browser/report.json"
+  },
+  "limits": [
+    "Local browser data is sample review storage, not native encryption/device proof.",
+    "Initial application09failure preserved; this is not a first-attempt all-green claim.",
+    "Source artifacts unchanged throughout the run."
+  ],
+  "evidenceDigests": {
+    "live.json": "12bf9cee6be3e7c4d3e0e8bfae015d5d0ce246ffded45feb80d07435bc037d83",
+    "application-first.json": "f4464d2a4b318bc896999151dc1d1482cd99135e1101237a4c01be79576c282e",
+    "application-09-repeat.json": "f28c676c93b1438575407f850b07e2873eae4d74c499c3d613ba26942c87e46b",
+    "artifacts-after.json": "4ef0950025c2d24a186efca0fbf5fb3e550949bffb2cea5fb7d43eaefdb7f9b0",
+    "artifacts-before.json": "4ef0950025c2d24a186efca0fbf5fb3e550949bffb2cea5fb7d43eaefdb7f9b0"
+  }
+}

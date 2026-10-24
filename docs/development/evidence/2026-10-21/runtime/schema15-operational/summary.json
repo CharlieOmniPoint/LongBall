@@ -1,0 +1,94 @@
+{
+  "productSourceCommit": "7ede8d1ef944823cfd6a5f6965ab51d4c37d286e",
+  "operationalRunCommit": "5185f0022770c9acc98ffb2cf569800fcb949277",
+  "operationalSourceCommit": "5bf390bba7239af90bc66aa47dbacf4de8a8663c",
+  "operationalHarnessFixCommit": "5185f0022770c9acc98ffb2cf569800fcb949277",
+  "recordedAt": "2026-10-21T19:37:49.153592+00:00",
+  "execution": "Host-bundled proofs against existing owned PostgreSQL18.6 and ClamAV containers. Product source is unchanged by the operational-only harness fix.",
+  "exitCodes": {
+    "heic": 0,
+    "retainedRestore": 0
+  },
+  "observedAt": {
+    "heic": "2026-10-21T19:34:32.626Z",
+    "retainedRestore": "2026-10-21T19:35:21.222Z"
+  },
+  "versions": [
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15
+  ],
+  "featureVersions": {
+    "media": 4,
+    "mediaVersions": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "activation": 2
+  },
+  "protectedTables": 37,
+  "compositeForeignKeysInRetainedRestore": 30,
+  "filesSha256": {
+    "heic.json": "6e4fd3d36d74761ed69020a6198cb694032b544818b3b58fcc6c4f2df1955a5f",
+    "retained-restore.json": "5a9ebd2af6fadd3dac6fe58017ee5214ebc7e2e0518415d53d53997c512e125b",
+    "schema14-clock-failure.json": "6b1c7f719ea2660b30d6783433178764ac0231eec7d0c438224ad9e5ac7f8a17"
+  },
+  "actualProofBundles": [
+    {
+      "file": "heic-proof.mjs",
+      "sha256": "7370e2339cc77476fd8f4235c62d6aed56f2863a1eb0d1dff30356979e94b335"
+    },
+    {
+      "file": "rls-restore-proof.mjs",
+      "sha256": "ad0b475dd62a88e38735d95ea32adeaf090625e90fdf65b570e71f5b9b7c7689"
+    }
+  ],
+  "stderrObservations": {
+    "heic": [],
+    "retainedRestore": []
+  },
+  "priorHarnessDiagnostic": {
+    "originalFileSha256": "d93482a33be750bd1a086a8109b04a4a07823fa029bf35cfa5c3066728c47f49",
+    "record": {
+      "status": "failed",
+      "observedAt": "2026-10-21T19:32:44.013038+00:00",
+      "productSourceCommit": "7ede8d1ef944823cfd6a5f6965ab51d4c37d286e",
+      "stage": "restored-restricted-worker-claim",
+      "code": "42501",
+      "message": "Job claim unavailable",
+      "diagnostic": "Operational helper sampled Date.now() separately for context.nowMs and p_now although SQL009 requires exact equality. No SQL or product guard is weakened.",
+      "archiveCreated": true,
+      "newPassClaim": false,
+      "proofBundle": {
+        "file": "rls-restore-proof.mjs",
+        "sha256": "2414acdbd4f49d52f1c7aa9bf1b540d43dd9b6dc9cf67599bfbc401f24a7c610"
+      },
+      "sourceSha256": {
+        "scripts/runtime-contribution-boundaries.ts": "1929b1ee46d961513040e14797d39b9ea706178a797f489513825c35283e17e0"
+      }
+    },
+    "resolution": "Operational-only commit5185f00 captures one claimNow for both context.nowMs and SQL p_now; no SQL/product guard was changed."
+  },
+  "supersededPassedCheckpointsRetainedIgnored": [
+    ".local/runtime/operational-checkpoints/55465b04b00bb97df1c87ae1a82d67a589159471",
+    ".local/runtime/operational-checkpoints/7ede8d1-pre-claim-clock-fix"
+  ],
+  "productionImageExercised": false,
+  "physicalDeviceEvidence": false,
+  "actualPushDelivered": false,
+  "paidServicesProvisioned": false,
+  "historicalEvidenceUnchanged": true
+}

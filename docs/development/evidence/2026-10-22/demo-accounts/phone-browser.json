@@ -1,0 +1,80 @@
+{
+  "sourceCommit": "214844e65310ccd4bb070b2f5a35395837fed19c",
+  "mode": "Exact packaged Pages bytes and real configured API; loopback transport/discovery routing only",
+  "roles": [
+    {
+      "role": "manager",
+      "width": 390,
+      "openedAssignedWorkspace": true,
+      "signedOut": true,
+      "noOverflow": true,
+      "pageErrors": []
+    },
+    {
+      "role": "administrator",
+      "width": 390,
+      "openedAssignedWorkspace": true,
+      "signedOut": true,
+      "noOverflow": true,
+      "pageErrors": []
+    },
+    {
+      "role": "player",
+      "width": 390,
+      "openedAssignedWorkspace": true,
+      "signedOut": true,
+      "noOverflow": true,
+      "pageErrors": []
+    },
+    {
+      "role": "spectator",
+      "width": 390,
+      "openedAssignedWorkspace": true,
+      "signedOut": true,
+      "noOverflow": true,
+      "pageErrors": []
+    },
+    {
+      "role": "manager",
+      "width": 320,
+      "openedAssignedWorkspace": true,
+      "signedOut": true,
+      "noOverflow": true,
+      "pageErrors": []
+    },
+    {
+      "role": "administrator",
+      "width": 320,
+      "openedAssignedWorkspace": true,
+      "signedOut": true,
+      "noOverflow": true,
+      "pageErrors": []
+    },
+    {
+      "role": "player",
+      "width": 320,
+      "openedAssignedWorkspace": true,
+      "signedOut": true,
+      "noOverflow": true,
+      "pageErrors": []
+    },
+    {
+      "role": "spectator",
+      "width": 320,
+      "openedAssignedWorkspace": true,
+      "signedOut": true,
+      "noOverflow": true,
+      "pageErrors": []
+    }
+  ],
+  "checks": [
+    "wrong-password-generic-error-and-input-cleared"
+  ],
+  "failures": [],
+  "asset": {
+    "path": "/LongBall/_expo/static/js/web/index-0ab4b3c94ebea1e4af15c1209a90197c.js",
+    "sha256": "e433e41cbb518a986a734d4e74265206a9ff7de7566884d5b3b81b2d82a0de75",
+    "noConfiguredPasswords": true
+  },
+  "passed": true
+}

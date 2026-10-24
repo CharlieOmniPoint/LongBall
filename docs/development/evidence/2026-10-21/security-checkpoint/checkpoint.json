@@ -1,0 +1,100 @@
+{
+  "status": "Security and retained-storage review checkpoint; feature implementation continues",
+  "parentCommit": "79cbc724d5cc63a8331b5f10eeabe6f5d2c3fc4e",
+  "sourceCommit": "Assigned by the subsequent publication build-info.json; these files form the candidate.",
+  "developmentBranch": "dev/longball-m0-journey",
+  "unit": {
+    "passed": 355,
+    "files": 38
+  },
+  "api": {
+    "passed": 169,
+    "files": 20,
+    "startUtc": "2026-10-21 11:11:21",
+    "durationSeconds": 99.99,
+    "actualPostgresql": true
+  },
+  "lint": "Full pass plus affected-worker scoped checks passed",
+  "rootAndMobileTypeScript": "passed",
+  "contracts": {
+    "suppliedArchiveMembers": 15,
+    "archivedChecksums": 14,
+    "fairnessVectors": 6,
+    "canonicalOpenApi": "3.1 full validation passed",
+    "runtimeExtension": "1.2.0 full validation passed",
+    "canonicalFilesModified": false
+  },
+  "browser": {
+    "viewport": "390x844",
+    "normalBundle": "75a10e90d5fc1f821ab8fc53e5297c93",
+    "match": 10,
+    "live": 6,
+    "application": 9,
+    "productionAnonymous": 4,
+    "corruptedJournalReopenAndRetry": 3,
+    "publicPages": "../connected-foundation/pages-hosted-79.json"
+  },
+  "sha256": {
+    "apps/mobile/dist-web/_expo/static/js/web/index-75a10e90d5fc1f821ab8fc53e5297c93.js": "7d932f5c04b06a6f35d61e2381ee33ed3406fcb4b61e9e9b33a9b3b997f975b4",
+    "apps/mobile/dist-production-review/_expo/static/js/web/index-958b34f7798e83afa33267fbcc97d832.js": "c16178812b3b7658d40c4a703dfc36bfac0d499bfcfe4c03d6a21a4134d09252",
+    "apps/api/dist/api.mjs": "e4bea9b6476dbdcda6eb7ff6a1008ec6ba9d46ffd8ad661e3a9bba749542d413",
+    "apps/api/dist/worker.mjs": "10740134547cfbb4495fe7dcaed9626e9c34e77cd84013fe9092171ab3d656d5"
+  },
+  "nativeJavaScript": {
+    "android": "9e095324e835261f3b293258ac540e7e",
+    "ios": "64eaf1e7ef1864e1875f2d97672cb042",
+    "physicalDeviceEvidence": false
+  },
+  "nativeCompilation": "../connected-foundation/native-ci-79.json",
+  "database": {
+    "coreVersions": [
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+    ],
+    "featureVersions": {
+      "media": 2,
+      "activation": 2
+    },
+    "rowSecuredTables": 28,
+    "compositeForeignKeys": 23,
+    "coreSecurityAndPrivacyTests": 12,
+    "notificationTests": 19,
+    "notificationActualRestrictedPostgresqlTests": 12,
+    "pairedRestore": "../runtime/postgres-rls-restore.json",
+    "security": "../runtime/postgres-rls-security.json",
+    "identityPreservationUpgrade": "../identity/schema009-upgrade.json",
+    "workerClock": "Independent database time for eligibility, leases, sealing, fanout and settlement; pre-009 future capabilities are refused.",
+    "atomicity": "Expired/superseded completion authority cannot commit a partial award/fanout or report a persisted notification receipt.",
+    "restrictedRuntime": {
+      "image": "sha256:f977a920dc6b21503fd652849a679781960f0bbe60f0fbd538694a003ca07e07",
+      "separateMigrator": "passed",
+      "verifyOnlyApiAndWorkerStartup": "passed",
+      "apiPermissionChecks": 12,
+      "workerPermissionChecks": 15,
+      "evidence": "../runtime/container-runtime-schema9-proof.json"
+    }
+  },
+  "remainingEngineering": [
+    "F01 supplied club/team logo upload, review, publication, removal and authoritative inheritance.",
+    "SEC12 first-time spectator activation, canonical server-issued hash-only invitation tokens and retained redacted retries.",
+    "SEC05 available OS biometric/device authentication alongside PIN.",
+    "UI33 actual own native-device enrollment and truthful inventory."
+  ],
+  "unresolvedIncident": {
+    "causeProved": false,
+    "description": "Earlier fresh-context opening and click timeouts are preserved; 20 instrumented cold starts and subsequent quiet journeys passed. Corrupt-state guards do not establish the original cause."
+  },
+  "releaseAcceptance": {
+    "physicalNativeM0": false,
+    "production": false,
+    "realChildData": false,
+    "ownerPoliciesApproved": false,
+    "paidServicesProvisioned": false
+  }
+}

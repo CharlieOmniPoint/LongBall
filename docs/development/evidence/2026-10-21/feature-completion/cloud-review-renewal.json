@@ -1,0 +1,83 @@
+{
+  "status": "passed",
+  "checkedAt": "2026-10-21T14:24:39Z",
+  "sourceCommit": "c71f19dcea05f76adb0f7b5a4e2afb621d49bd40",
+  "transportCommit": "9141b8a0a96c30ed53ab1cfebd284651e5fa2bc1",
+  "bundleSha256": "438742d45601956f0dc9ab4230ed33c494533ada74c5115ed76c0cde56909660",
+  "transportChange": {
+    "path": "preview/cloud-renewal-request.json",
+    "onlyChangedFile": true,
+    "applicationSiteAndBackendUnchanged": true
+  },
+  "temporaryApi": {
+    "state": "ready",
+    "url": "https://circular-quizzes-trunk-pct.trycloudflare.com",
+    "sourceRevision": "9141b8a0a96c30ed53ab1cfebd284651e5fa2bc1",
+    "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/39615563105",
+    "startedAt": "2026-10-21T14:20:04Z",
+    "expiresAt": "2026-10-21T15:20:04Z",
+    "audience": "Adult review of fictional Roma U10 data only",
+    "backend": "fictional-sqlite; disposable public runner"
+  },
+  "publicEndpointChecks": {
+    "method": "Live external Firecrawl requests; maxAge0",
+    "buildInfo": {
+      "path": "/build-info.json",
+      "httpStatus": 200,
+      "sourceCommit": "c71f19dcea05f76adb0f7b5a4e2afb621d49bd40",
+      "synthetic": true,
+      "nativeTargets": [
+        "iPhone",
+        "Android"
+      ],
+      "production": false
+    },
+    "health": {
+      "path": "/health",
+      "httpStatus": 200,
+      "status": "ok",
+      "service": "longball-api",
+      "contractVersion": "longball.events/1.1",
+      "backend": "fictional-sqlite",
+      "syntheticOnly": true
+    }
+  },
+  "pagesConnection": {
+    "status": "passed",
+    "pages": "https://charlieomnipoint.github.io/LongBall/",
+    "api": "https://circular-quizzes-trunk-pct.trycloudflare.com",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "freshBrowserContext": true,
+    "horizontalOverflow": false,
+    "checks": [
+      "Pages rendered at measured390x844",
+      "Entered renewed API address through Workspace API URL",
+      "Selected explicit Fictional API review and Open service workspace",
+      "Service returned fictional manager identity and exact team-season scope",
+      "Connected workspace mounted with no unresolved request or visible alert"
+    ],
+    "observedScope": {
+      "role": "manager",
+      "accountId": "synthetic-account-manager",
+      "teamId": "synthetic-roma-u10",
+      "seasonId": "synthetic-season-2026-27"
+    },
+    "visibleAlertCount": 0,
+    "mutationsPerformed": false
+  },
+  "earlierMediaEvidence": {
+    "path": "docs/development/evidence/2026-10-21/feature-completion/publication.json",
+    "checkedAt": "2026-10-21T13:24:37.296Z",
+    "sameApplicationSource": true,
+    "mediaJourneyRepeatedForRenewal": false
+  },
+  "limits": [
+    "The API expires at the recorded time and provides no uptime or durable-storage guarantee",
+    "The new endpoint uses a fresh disposable fictional SQLite database; old API records were not migrated",
+    "This renewal proves endpoint readiness and a phone-width browser connection, not native hardware, real child-account onboarding or operating-policy approval",
+    "The earlier exact-source media UI proof remains separate; no new media-publication proof is claimed"
+  ]
+}

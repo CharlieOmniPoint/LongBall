@@ -1,0 +1,4916 @@
+import { visibleScheduledMatches } from '@longball/application/scheduled-match-visibility';
+import { assertTeamOverviewDto, type TeamOverviewDto } from '@longball/application/team-overview-service';
+import { formatUkDate, formatUkDateTime, formatUkSeasonLabel } from '@longball/application/uk-display';
+import { assertPlayerStatsDto, type PlayerStatsDto } from '@longball/application/player-stats';
+import { assertMatchFeedbackView, type MatchFeedbackView, type MatchFeedbackCommand } from '@longball/application/match-feedback';
+import { assertScheduledGameManagementDto, type ScheduledGameManagementDto, type ScheduledGameCommand } from '@longball/application/fixture-management';
+import { PlayerStats } from './PlayerStats';
+import { TeamStats } from './TeamStats';
+import { MatchFeedback } from './MatchFeedback';
+import { ScheduledGameManagement } from './ScheduledGameManagement';
+import { TeamOverview } from './TeamOverview';
+import { selectTeamOverviewGame, teamOverviewLondonDate, type TeamOverviewGame } from '@longball/application/team-overview';
+import { demoAccountLabels } from '@longball/testing';
+import {
+  parseOwnPlayerPreparation,
+  type OwnPlayerPreparation as OwnPreparationDto,
+} from "@longball/application/player-preparation";
+import { FixtureScheduleDetails } from "./FixtureScheduleDetails";
+import { acceptedCompletedFixtureIds, fixtureScheduleStatus } from "@longball/application/fixture-schedule-status";
+import { startForegroundRefresh } from "@longball/application/foreground-refresh";
+import { isActiveSharedMatch, mergeSharedMatchViews, refreshSharedHistoryPage, refreshSharedMatchViews, SharedMatchRefreshAuthorityDenied } from "@longball/application/shared-match-refresh";
+import { continueMatchList, parseMatchListPage, MatchListAuthorityDenied, type MatchListPage } from '@longball/application/match-list';
+import { TeamPrivilegesPanel } from "./TeamPrivilegesPanel";
+import {
+  assertOwnTeamPrivileges,
+  assertTeamPrivilegesView,
+  type OwnTeamPrivileges,
+  type TeamPrivilegesView,
+  type TeamPrivilegeCommand,
+} from "@longball/application/team-privileges";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
+import {
+  AppState,
+  Pressable,
+  Image,
+  Platform,
+  ScrollView,
+  type ScrollViewInstance,
+  Switch,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import * as Crypto from "expo-crypto";
+import * as SecureStore from "expo-secure-store";
+import {
+  currentMemberships,
+  type Membership,
+  type Principal,
+  type Role,
+} from "@longball/application/access";
+import {
+  createWorkspaceContextPreference,
+  resolveWorkspaceContext,
+  workspaceContextChoices,
+  workspaceContextKey,
+  workspaceContextPreferenceKey,
+  type WorkspaceContextSelection,
+} from "@longball/application/workspace-context";
+import {
+  mergeWorkspaceControllerStatus,
+  workspaceNavigationDecision,
+} from "@longball/application/workspace-navigation";
+import type {
+  CommunityActor,
+  CommunityCommand,
+  getCommunityView,
+} from "@longball/application/community";
+import {
+  activePositionCodes,
+  type AvailabilityResponse,
+  type PlayerProfile,
+  type PreparationCommand,
+  type PreparationState,
+} from "@longball/application/preparation";
+import type {
+  BrandingDto,
+  BrandingCommand,
+} from "@longball/application/branding";
+import {
+  BrandMediaClient,
+  assertBrandingResponse,
+} from "../platform/brand-media-client";
+import { ScopedWorkspaceInvitations } from "./ScopedWorkspaceInvitations";
+import { BrandLogos } from "./BrandLogos";
+import { AuthenticatedBrandBadge } from "./BrandBadge";
+import type { RecordsCommand } from "@longball/application/records";
+import {
+  LongBallServiceClient,
+  ServiceError,
+} from "@longball/application/sync";
+import type { MatchState } from "@longball/domain";
+import {
+  connectedFetch,
+  getConnectedSessionSummary,
+  subscribeConnectedSessionChanges,
+  type ConnectedSessionSummary,
+} from "../platform/auth/client";
+import {
+  attachWorkspaceValue,
+  readWorkspaceValue,
+  sameWorkspaceBinding,
+  workspaceBindingIsCurrent,
+  workspaceNeedsProtectedOutbox,
+  workspaceSessionAllows,
+  type BoundWorkspaceValue,
+  type WorkspaceBinding,
+} from "@longball/application/workspace-boundary";
+import {
+  albumScopeKey,
+  resolveAlbumSelection,
+  selectAlbum,
+  type AlbumScope,
+  type AlbumSelection,
+} from "@longball/application/album-selection";
+import { assertStaticReviewApiAddress } from "@longball/application/static-review";
+import { base64Url } from "@longball/application/security";
+import { MediaUploadClient } from "../platform/media-client";
+import { selectedRoleHeaders } from "../platform/request-headers";
+import { randomUUID } from "../platform/id";
+import { rebindWorkspaceRefresh } from "../platform/workspace-refresh";
+import { acknowledgeRevisionedValueDraft, refreshRevisionedValueDraft, reviewRevisionedValueDraft, revisionedValueDraft, revisionedValueNeedsReview } from "../platform/revisioned-value-draft";
+import type { Journal, JournalDiagnostics } from "../platform/types";
+import {
+  authorizeWorkspaceReplay,
+  workspaceOutboxDocumentId,
+  workspaceOutboxStorageAllowed,
+  type WorkspaceOutboxState,
+  type WorkspaceRequestOutcome,
+} from "@longball/application/workspace-outbox";
+import { Button, Card, Notice, Pill } from "../ui";
+import { colors, typography } from "../ui/tokens";
+import { CalendarExportPanel } from "./CalendarExportPanel";
+import { calendarEventsFromSchedule } from "@longball/application/calendar-export";
+import {
+  CalendarAccessDeniedError,
+  exportScopedCalendar,
+} from "../platform/calendar-service";
+import { deliverCalendarExport } from "../platform/calendar-export";
+import { PreparationScreens } from "./PreparationScreens";
+import {
+  ServicePanel,
+  type ConnectedControllerState,
+  type ServicePanelProps,
+} from "./ServicePanel";
+import { MediaUpload } from "./MediaUpload";
+import { ConnectedAlbums } from "./ConnectedAlbums";
+import {
+  ConnectedMatchCentre,
+  type ConnectedMatchCentreDto,
+} from "./ConnectedMatchCentre";
+import { ConnectedManagerHome } from "./ConnectedManagerHome";
+import { groupPreparationEvents } from "@longball/application/preparation-presentation";
+import { ConnectedPlayerHome } from "./ConnectedPlayerHome";
+import { WorkspaceNavigation, type WorkspaceTab } from "./WorkspaceNavigation";
+import {
+  ConnectedRecordsScreens,
+  type ConnectedRecordsDto,
+  type ConnectedRecordsCommand,
+  type ConnectedExportRequest,
+} from "./ConnectedRecordsScreens";
+import {
+  ConnectedSeasonRollover,
+  type ConnectedSeasonOptions,
+} from "./ConnectedSeasonRollover";
+import {
+  ConnectedClubConfiguration,
+  type ConnectedConfigurationDto,
+} from "./ConnectedClubConfiguration";
+import {
+  ConnectedStaffPanel,
+  type ConnectedStaffDto,
+  type ConnectedStaffCommand,
+} from "./ConnectedStaffPanel";
+import type { SeasonRolloverCommand } from "@longball/application/season-service";
+import { deliverReportExport } from "../platform/report-export";
+import { ReportExportJobsClient, type ReportExportJobPort } from "../platform/report-export-jobs";
+import { assertReportExportAccess } from "../platform/report-export-access";
+import {
+  WorkspaceOutboxBridge,
+  type WorkspaceOutboxPort,
+  type WorkspaceOutboxStatus,
+} from "./WorkspaceOutboxBridge";
+
+
+/** Keeps the primary role navigation reachable while only the task content scrolls. */
+function WorkspaceFrame({ fullScreen, fixedMatch, resetKey, footer, children }: {
+  fullScreen: boolean;
+  fixedMatch?: boolean;
+  resetKey: string;
+  footer: ReactNode;
+  children: ReactNode;
+}) {
+  const insets = useSafeAreaInsets();
+  const scroll = useRef<ScrollViewInstance | null>(null);
+  useEffect(() => { if (fullScreen) scroll.current?.scrollTo({ y: 0, animated: false }); }, [fullScreen, resetKey]);
+  if (!fullScreen) return <View style={s.stack} testID="workspace-session">{footer}{children}</View>;
+  if (fixedMatch) return <View style={{ flex: 1, alignItems: "center", paddingHorizontal: 12, paddingTop: insets.top + 4, paddingBottom: Math.max(8, insets.bottom), backgroundColor: colors.canvas }} testID="workspace-session">
+    <View style={{ flex: 1, minHeight: 0, width: "100%", maxWidth: 600, gap: 8 }}>{children}</View>
+  </View>;
+  return <View style={{ flex: 1, backgroundColor: colors.canvas }} testID="workspace-session">
+    <ScrollView
+      ref={scroll}
+      style={{ flex: 1 }}
+      contentContainerStyle={{ flexGrow: 1, alignItems: "center", paddingTop: insets.top + 12, paddingHorizontal: 16, paddingBottom: 16 }}
+      keyboardShouldPersistTaps="handled"
+      testID="workspace-content-scroll"
+    >
+      <View style={{ width: "100%", maxWidth: 600, gap: 12 }}>{children}</View>
+    </ScrollView>
+    {footer && <View style={{ alignItems: "center", paddingHorizontal: 12, paddingTop: 8, paddingBottom: Math.max(8, insets.bottom), backgroundColor: colors.surface, borderTopWidth: 1, borderColor: colors.border }} testID="workspace-bottom-navigation">
+      <View style={{ width: "100%", maxWidth: 600 }}>{footer}</View>
+    </View>}
+  </View>;
+}
+
+export interface ConnectedWorkspaceProps {
+  /** A retained hidden workspace preserves its journal without polling protected views. */
+  active?: boolean;
+  /** Current view identity only; never a controller capability or a persisted grant. */
+  onAuthorityScopeChange?: (scope: WorkspaceBinding | null) => void;
+  initialConnection?: {
+    baseUrl: string;
+    mode: "synthetic" | "oidc";
+    account: string;
+  };
+  initialRole?: Role;
+  onLeaveWorkspace?: () => void;
+  /** Immediate account sign-out remains available while ordinary navigation is guarded. */
+  onSignOut?: () => void;
+  signOutTestID?: string;
+  onOpenAccount?: () => void;
+  /** Keeps the workspace mounted while an exit warning or a retained capability is reviewed. */
+  onNavigationGuardChange?: (
+    guard: ((leave: () => void) => void) | null,
+  ) => void;
+  allowSynthetic?: boolean;
+  journal?: Journal | null;
+  deviceId?: string | null;
+  match?: MatchState | null;
+  teamId?: string;
+  seasonId?: string;
+  onControllerState?: ServicePanelProps["onControllerState"];
+  invitationDestination?: { teamId: string; seasonId: string; code: string };
+  /** Internal retention signal; local locking and sign-out always remain available. */
+  onEphemeralRetainedChange?: (retained: boolean, owner: string) => void;
+  onPrepareChildActivation?: (scope: {
+    teamId: string;
+    seasonId: string;
+    playerId: string;
+  }) => void;
+}
+type Connection = {
+  baseUrl: string;
+  mode: "oidc" | "synthetic";
+  account: string;
+};
+type Identity = {
+  principal: Principal;
+  memberships: Membership[];
+  serverTime: string;
+};
+type CommunityDto = ReturnType<typeof getCommunityView> & { revision: number };
+type RecordsDto = ConnectedRecordsDto;
+type OwnCommand = { id: string; expectedRevision: number } & (
+  | { type: "own.preferences_saved"; preferences: PlayerProfile["preferences"] }
+  | {
+      type: "own.fixture_response_recorded";
+      fixtureId: string;
+      response: AvailabilityResponse;
+    }
+  | {
+      type: "own.training_response_recorded";
+      trainingId: string;
+      response: AvailabilityResponse;
+    }
+);
+type OwnPayload = OwnCommand extends infer C
+  ? C extends OwnCommand
+    ? Omit<C, "id" | "expectedRevision">
+    : never
+  : never;
+type CommunityPayload = CommunityCommand extends infer C
+  ? C extends CommunityCommand
+    ? Omit<C, "id" | "expectedRevision">
+    : never
+  : never;
+type Tab = WorkspaceTab;
+interface PendingRequest {
+  path: string;
+  key: string;
+  body: unknown;
+  label: string;
+  bodyJson?: string;
+  protected?: boolean;
+}
+const responseLabels: Record<AvailabilityResponse, string> = {
+  available: "Available",
+  unavailable: "Unavailable",
+  unsure: "Unsure",
+  no_reply: "No reply",
+};
+const failureText = (error: unknown) =>
+  error instanceof Error
+    ? error.message
+    : "The service request could not complete.";
+// Service handlers read fresh authority time after awaited network/vault work.
+const serviceActionTime = () => Date.now();
+const dateTime = (ms: number | null) =>
+  ms === null ? "Not established" : formatUkDateTime(ms);
+
+async function contextPreferenceStorageKey(api: string, principal: Principal) {
+  const namespace = workspaceContextPreferenceKey(api, principal);
+  if (Platform.OS === "web") return namespace;
+  return `longball.context.${await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, namespace)}`;
+}
+async function readContextPreference(
+  api: string,
+  principal: Principal,
+): Promise<unknown> {
+  try {
+    const key = await contextPreferenceStorageKey(api, principal);
+    const raw =
+      Platform.OS === "web"
+        ? globalThis.localStorage.getItem(key)
+        : await SecureStore.getItemAsync(key);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+async function saveContextPreference(
+  api: string,
+  principal: Principal,
+  selection: WorkspaceContextSelection,
+): Promise<void> {
+  const key = await contextPreferenceStorageKey(api, principal);
+  const encoded = JSON.stringify(
+    createWorkspaceContextPreference(api, principal, selection),
+  );
+  if (Platform.OS === "web") globalThis.localStorage.setItem(key, encoded);
+  else
+    await SecureStore.setItemAsync(key, encoded, {
+      keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+    });
+}
+
+/** Reads and commands go to the service; this screen does not grant roles or seed its own remote records. */
+export function ConnectedWorkspace(props: ConnectedWorkspaceProps) {
+  const allowSynthetic =
+    props.allowSynthetic ??
+    process.env.EXPO_PUBLIC_ENVIRONMENT !== "production";
+  const staticBrowser =
+    Platform.OS === "web" && process.env.EXPO_PUBLIC_REVIEW_STATIC === "1";
+  const [baseUrl, setBaseUrl] = useState(
+    process.env.EXPO_PUBLIC_API_BASE_URL ||
+      (staticBrowser
+        ? ""
+        : Platform.OS === "web"
+          ? "/"
+          : "http://127.0.0.1:4310"),
+  );
+  const [mode, setMode] = useState<Connection["mode"]>("oidc");
+  const [account, setAccount] = useState("synthetic-manager-1");
+  const [connection, setConnection] = useState<Connection | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [retained, setRetained] = useState<{
+    owner: string;
+    active: boolean;
+  } | null>(null);
+  const externalRetainedChange = useRef(props.onEphemeralRetainedChange);
+  useLayoutEffect(() => {
+    externalRetainedChange.current = props.onEphemeralRetainedChange;
+  }, [props.onEphemeralRetainedChange]);
+  const retainedRef = useRef<{ owner: string; active: boolean } | null>(null);
+  const onEphemeralRetainedChange = useCallback(
+    (active: boolean, owner: string) => {
+      if (!active && retainedRef.current?.owner !== owner) return;
+      const value = active ? { owner, active } : null;
+      retainedRef.current = value;
+      setRetained(value);
+      externalRetainedChange.current?.(active, owner);
+    },
+    [],
+  );
+  const connectionHeld = retained?.active === true;
+  const initialBaseUrl = props.initialConnection?.baseUrl;
+  const initialMode = props.initialConnection?.mode;
+  const initialAccount = props.initialConnection?.account;
+  const supplied = useMemo(() => {
+    if (
+      !initialMode ||
+      initialBaseUrl === undefined ||
+      initialAccount === undefined
+    )
+      return { connection: null, error: null };
+    try {
+      const value = {
+        baseUrl: initialBaseUrl,
+        mode: initialMode,
+        account: initialAccount,
+      };
+      if (value.mode === "synthetic" && !allowSynthetic)
+        throw new Error(
+          "Demo identities are disabled in this application.",
+        );
+      assertStaticReviewApiAddress(
+        value.baseUrl,
+        staticBrowser,
+        Platform.OS === "web" ? globalThis.location.origin : undefined,
+      );
+      const validated = new LongBallServiceClient(value.baseUrl, async () => {
+        throw new Error("Not connected.");
+      });
+      return {
+        connection: { ...value, baseUrl: validated.baseUrl },
+        error: null,
+      };
+    } catch (cause) {
+      return { connection: null, error: failureText(cause) };
+    }
+  }, [
+    initialBaseUrl,
+    initialMode,
+    initialAccount,
+    allowSynthetic,
+    staticBrowser,
+  ]);
+  const activeConnection = props.initialConnection
+    ? supplied.connection
+    : connection;
+  return (
+    <View style={[s.stack, props.initialConnection && { flex: 1, minHeight: 0 }]} testID="connected-workspace">
+      {!props.initialConnection && (
+        <Card>
+          <Text style={typography.section}>Service workspace</Text>
+          <Text style={typography.body}>
+            Open the team held by the service. Saved changes can be read on
+            another connected device.
+          </Text>
+          {staticBrowser && (
+            <Notice>
+              This lasting review link runs demo journeys stored in this
+              browser. Connected service features need an explicit API address
+              or the separate temporary full-service link supplied for review.
+              This static site does not host the API.
+            </Notice>
+          )}
+          <Text style={typography.label}>API URL</Text>
+          <TextInput
+            accessibilityLabel="Workspace API URL"
+            value={baseUrl}
+            editable={!connectionHeld}
+            onChangeText={(value) => {
+              if (!retainedRef.current?.active) setBaseUrl(value);
+            }}
+            autoCapitalize="none"
+            autoCorrect={false}
+            style={s.input}
+          />
+          <View style={s.row}>
+            <Button
+              label="Connected sign-in"
+              variant={mode === "oidc" ? "primary" : "secondary"}
+              disabled={connectionHeld}
+              onPress={() => {
+                if (!retainedRef.current?.active) setMode("oidc");
+              }}
+            />
+            {allowSynthetic && (
+              <Button
+                label="Demo API review"
+                variant={mode === "synthetic" ? "primary" : "secondary"}
+                disabled={connectionHeld}
+                onPress={() => {
+                  if (!retainedRef.current?.active) setMode("synthetic");
+                }}
+              />
+            )}
+          </View>
+          {mode === "oidc" ? (
+            <Notice>
+              Sign in under Account security first. Its unlocked credential is
+              sent only to its configured API. Roles and adult authority come
+              from that service.
+            </Notice>
+          ) : allowSynthetic ? (
+            <>
+              <Pill tone="muted">REVIEW ACCOUNTS</Pill>
+              <Text style={typography.muted}>
+                These selectors work only on an API explicitly running demo
+                authentication. They do not authenticate a person or provide
+                real-account security.
+              </Text>
+              <View style={s.row}>
+                {[
+                  ["synthetic-manager-1", `${demoAccountLabels["synthetic-account-manager"]} · Manager`],
+                  ["synthetic-admin", `${demoAccountLabels["synthetic-account-admin"]} · Administrator`],
+                  ["synthetic-manager-2", `${demoAccountLabels["synthetic-account-manager-2"]} · Manager`],
+                  ["synthetic-account-player-01", `${demoAccountLabels["synthetic-account-player-01"]} · Player`],
+                  ["synthetic-spectator", `${demoAccountLabels["synthetic-account-spectator"]} · Spectator`],
+                  ["synthetic-account-invitee", `${demoAccountLabels["synthetic-account-invitee"]} · Invite recipient`],
+                ].map(([value, label]) => (
+                  <Button
+                    key={value}
+                    label={label}
+                    variant={account === value ? "primary" : "secondary"}
+                    disabled={connectionHeld}
+                    onPress={() => {
+                      if (!retainedRef.current?.active) setAccount(value);
+                    }}
+                  />
+                ))}
+              </View>
+            </>
+          ) : (
+            <Notice tone="error">
+              Demo API identities are disabled in this build.
+            </Notice>
+          )}
+          <Text style={typography.muted}>
+            {staticBrowser
+              ? "Paste the separately supplied full API address. The static review site address and / cannot be used as an API."
+              : "Browser review: use / with the combined app/API server. The standalone API uses port 4310. A physical phone needs the development host address or a USB port mapping."}
+          </Text>
+          {error && <Notice tone="error">{error}</Notice>}
+          <Button
+            label="Open service workspace"
+            testID="workspace-connect"
+            disabled={connectionHeld}
+            onPress={() => {
+              if (retainedRef.current?.active) return;
+              try {
+                if (mode === "synthetic" && !allowSynthetic)
+                  throw new Error(
+                    "Demo API identities are disabled in this build.",
+                  );
+                assertStaticReviewApiAddress(
+                  baseUrl,
+                  staticBrowser,
+                  Platform.OS === "web"
+                    ? globalThis.location.origin
+                    : undefined,
+                );
+                const validated = new LongBallServiceClient(
+                  baseUrl,
+                  async () => {
+                    throw new Error("Not connected.");
+                  },
+                );
+                setConnection({ baseUrl: validated.baseUrl, mode, account });
+                setError(null);
+              } catch (cause) {
+                setError(failureText(cause));
+              }
+            }}
+          />
+        </Card>
+      )}
+      {supplied.error && (
+        <Card>
+          <Notice tone="error">{supplied.error}</Notice>
+          {props.onLeaveWorkspace && (
+            <Button
+              label="Return to welcome"
+              onPress={props.onLeaveWorkspace}
+            />
+          )}
+        </Card>
+      )}
+      {activeConnection &&
+        (activeConnection.mode !== "synthetic" || allowSynthetic) && (
+          <WorkspaceEntry
+            key={`${activeConnection.baseUrl}|${activeConnection.mode}|${activeConnection.account}|${props.teamId}|${props.seasonId}`}
+            connection={activeConnection}
+            {...props}
+            allowSynthetic={allowSynthetic}
+            onEphemeralRetainedChange={onEphemeralRetainedChange}
+          />
+        )}
+    </View>
+  );
+}
+
+function WorkspaceEntry(
+  props: ConnectedWorkspaceProps & { connection: Connection },
+) {
+  return props.connection.mode === "oidc" ? (
+    <OidcWorkspace {...props} />
+  ) : (
+    <WorkspaceSession {...props} />
+  );
+}
+function OidcWorkspace(
+  props: ConnectedWorkspaceProps & { connection: Connection },
+) {
+  const [session, setSession] = useState<ConnectedSessionSummary | null>(null);
+  const [now, setNow] = useState(Date.now);
+  const [retry, setRetry] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const absoluteApi =
+    Platform.OS === "web"
+      ? new URL(
+          props.connection.baseUrl || "/",
+          globalThis.location.origin,
+        ).toString()
+      : props.connection.baseUrl;
+  useEffect(() => {
+    let alive = true,
+      active = true,
+      sequence = 0;
+    const check = async (hide = false) => {
+      const request = ++sequence;
+      if (hide) setSession(null);
+      try {
+        const next = await getConnectedSessionSummary();
+        if (!alive || !active || request !== sequence) return;
+        setNow(Date.now());
+        setSession(next);
+        setError(null);
+      } catch (cause) {
+        if (alive && request === sequence) {
+          setSession(null);
+          setError(failureText(cause));
+        }
+      }
+    };
+    const onChange = () => {
+      if (alive) {
+        setSession(null);
+        void check();
+      }
+    };
+    const unsubscribe = subscribeConnectedSessionChanges(onChange);
+    void check();
+    const timer = setInterval(() => {
+      if (active) void check();
+    }, 1_000);
+    const foreground = (visible: boolean) => {
+      active = visible;
+      ++sequence;
+      setSession(null);
+      if (active) void check();
+    };
+    const listener = AppState.addEventListener("change", (state) =>
+      foreground(state === "active"),
+    );
+    const visibility = () =>
+      foreground(globalThis.document.visibilityState === "visible");
+    if (Platform.OS === "web")
+      globalThis.document.addEventListener("visibilitychange", visibility);
+    return () => {
+      alive = false;
+      ++sequence;
+      clearInterval(timer);
+      unsubscribe();
+      listener.remove();
+      if (Platform.OS === "web")
+        globalThis.document.removeEventListener("visibilitychange", visibility);
+    };
+  }, [retry]);
+  useEffect(() => {
+    if (!session) return;
+    const timer = setTimeout(
+      () => {
+        setSession(null);
+        setNow(Date.now());
+      },
+      Math.min(2_147_000_000, Math.max(0, session.expiresAtMs - Date.now())),
+    );
+    return () => clearTimeout(timer);
+  }, [session]);
+  if (!workspaceSessionAllows(session, absoluteApi, now))
+    return (
+      <Card>
+        <Text style={typography.section}>Connected workspace locked</Text>
+        <Notice>
+          {error ??
+            "An active, unlocked sign-in for this API is required. Private workspace views are closed when the session locks, expires or changes."}
+        </Notice>
+        <Button
+          label="Recheck connected identity"
+          variant="secondary"
+          onPress={() => setRetry((value) => value + 1)}
+        />
+      </Card>
+    );
+  return (
+    <WorkspaceSession
+      key={`${session!.sessionId}|${session!.accountId}|${session!.issuer}|${session!.subject}|${session!.config.apiBaseUrl}|${session!.expiresAtMs}|${JSON.stringify(session!.memberships)}`}
+      {...props}
+      oidcSession={session!}
+    />
+  );
+}
+
+function WorkspaceSession({
+  connection,
+  teamId: requestedTeamId,
+  seasonId: requestedSeasonId,
+  oidcSession,
+  onEphemeralRetainedChange,
+  ...props
+}: ConnectedWorkspaceProps & {
+  connection: Connection;
+  oidcSession?: ConnectedSessionSummary;
+}) {
+  const [identity, setIdentity] = useState<Identity | null>(null);
+  const lock = useRef(false);
+  const [errors, setErrors] = useState<string[]>([]);
+  const [retainedOwner] = useState(randomUUID);
+  const brandRetainedRef = useRef(false),
+    brandScopeRef = useRef<string | null>(null);
+  const uploadRetainedRef = useRef(false);
+  const albumKeyRef = useRef<string | null>(null);
+  const invitationAuthority = useRef<string | null>(null);
+  const invitationHeldRef = useRef<{
+    scopeKey: string;
+    active: boolean;
+  } | null>(null);
+
+  const [membershipTime, setMembershipTime] = useState(Date.now);
+  const [scopeChoice, setScopeChoice] = useState<{
+    teamId: string;
+    seasonId: string;
+    playerId?: string | null;
+  } | null>(null);
+  const [roleChoice, setRoleChoice] = useState<WorkspaceBinding["role"] | null>(
+    null,
+  );
+  const [contextPickerOpen, setContextPickerOpen] = useState(false);
+  const [navigationReview, setNavigationReview] = useState<(() => void) | null>(
+    null,
+  );
+  const [controllerStatus, setControllerStatus] = useState<{
+    source: string;
+    state: ConnectedControllerState;
+  } | null>(null);
+  const controllerStatusRef = useRef<{
+    source: string;
+    state: ConnectedControllerState;
+  } | null>(null);
+  const controllerStateSink = useRef(props.onControllerState);
+  useLayoutEffect(() => {
+    controllerStateSink.current = props.onControllerState;
+  }, [props.onControllerState]);
+  const navigationStateRef = useRef<{
+    memoryPending: boolean;
+    savedPending: boolean;
+    controllerPending: boolean;
+    controllerUnsent: boolean;
+  }>({
+    memoryPending: false,
+    savedPending: false,
+    controllerPending: false,
+    controllerUnsent: false,
+  });
+  const onNavigationGuardChange = props.onNavigationGuardChange;
+  const guardNavigation = useCallback((leave: () => void) => {
+    const current = navigationStateRef.current;
+    const decision = workspaceNavigationDecision({
+      ...current,
+      privateCapability:
+        brandRetainedRef.current ||
+        uploadRetainedRef.current ||
+        Boolean(invitationHeldRef.current?.active),
+      busy: lock.current,
+    });
+    if (decision === "blocked") {
+      setErrors([
+        "Retry or explicitly close the retained private request before changing workspace. Its current capability stays on this screen. Account locking and sign-out remain available.",
+      ]);
+      return;
+    }
+    if (decision === "review_saved") {
+      setNavigationReview(() => leave);
+      return;
+    }
+    leave();
+  }, []);
+  useLayoutEffect(() => {
+    onNavigationGuardChange?.(guardNavigation);
+    return () => onNavigationGuardChange?.(null);
+  }, [guardNavigation, onNavigationGuardChange]);
+  const [preparationCache, setPreparation] =
+    useState<BoundWorkspaceValue<PreparationState> | null>(null);
+  const [ownCache, setOwn] =
+    useState<BoundWorkspaceValue<OwnPreparationDto> | null>(null);
+  const [recordsCache, setRecords] =
+    useState<BoundWorkspaceValue<RecordsDto> | null>(null);
+  const [communityCache, setCommunity] =
+    useState<BoundWorkspaceValue<CommunityDto> | null>(null);
+  const [ownPrivilegesCache, setOwnPrivileges] =
+    useState<BoundWorkspaceValue<OwnTeamPrivileges> | null>(null);
+  const [teamPrivilegesCache, setTeamPrivileges] =
+    useState<BoundWorkspaceValue<TeamPrivilegesView> | null>(null);
+  const [teamOverviewCache, setTeamOverview] = useState<BoundWorkspaceValue<TeamOverviewDto> | null>(null);
+  const [statsCache, setStats] = useState<BoundWorkspaceValue<PlayerStatsDto> | null>(null);
+  const [feedbackCache, setFeedback] = useState<BoundWorkspaceValue<MatchFeedbackView> | null>(null);
+  const [scheduledGamesCache, setScheduledGames] = useState<BoundWorkspaceValue<ScheduledGameManagementDto> | null>(null);
+  const [selectedOverviewGameId, setSelectedOverviewGameId] = useState<string | null>(null);
+  const [selectedStatsPlayerId, setSelectedStatsPlayerId] = useState<string | undefined>();
+  const [matchesCache, setMatches] = useState<BoundWorkspaceValue<
+    MatchListPage<ConnectedMatchCentreDto>
+  > | null>(null);
+  const [loadingMoreMatches, setLoadingMoreMatches] = useState(false);
+  const [sharedRefreshCache, setSharedRefreshCache] = useState<BoundWorkspaceValue<ConnectedMatchCentreDto[]> | null>(null);
+  const sharedRefreshRef = useRef<BoundWorkspaceValue<ConnectedMatchCentreDto[]> | null>(null);
+  const [sharedRefreshDelayed, setSharedRefreshDelayed] = useState(false);
+  const sharedHistoryCursor = useRef<{ binding: WorkspaceBinding; cursor: string | null } | null>(null);
+  const [seasonCache, setSeasons] =
+    useState<BoundWorkspaceValue<ConnectedSeasonOptions> | null>(null);
+  const [configurationCache, setConfiguration] =
+    useState<BoundWorkspaceValue<ConnectedConfigurationDto> | null>(null);
+  const [staffCache, setStaff] =
+    useState<BoundWorkspaceValue<ConnectedStaffDto> | null>(null);
+  const [brandingCache, setBranding] =
+    useState<BoundWorkspaceValue<BrandingDto> | null>(null);
+  const [brandRetained, setBrandRetained] = useState(false);
+  const onBrandRetained = useCallback(
+    (active: boolean, scopeKey: string) => {
+      if (brandScopeRef.current !== scopeKey) return;
+      brandRetainedRef.current = active;
+      setBrandRetained(active);
+      onEphemeralRetainedChange?.(
+        active ||
+          uploadRetainedRef.current ||
+          Boolean(
+            invitationHeldRef.current?.active &&
+              invitationHeldRef.current.scopeKey ===
+                invitationAuthority.current,
+          ),
+        retainedOwner,
+      );
+    },
+    [onEphemeralRetainedChange, retainedOwner],
+  );
+  const [albumSelection, setAlbumSelection] = useState<AlbumSelection | null>(
+    null,
+  );
+  const [uploadRetained, setUploadRetained] = useState(false);
+  const onUploadRetained = useCallback(
+    (active: boolean, scopeKey: string) => {
+      if (albumKeyRef.current !== scopeKey) return;
+      uploadRetainedRef.current = active;
+      setUploadRetained(active);
+      onEphemeralRetainedChange?.(
+        active ||
+          brandRetainedRef.current ||
+          Boolean(
+            invitationHeldRef.current?.active &&
+              invitationHeldRef.current.scopeKey ===
+                invitationAuthority.current,
+          ),
+        retainedOwner,
+      );
+    },
+    [onEphemeralRetainedChange, retainedOwner],
+  );
+  const [binding, setBinding] = useState<WorkspaceBinding | null>(null);
+  const generation = useRef(0);
+  const liveBinding = useRef<WorkspaceBinding | null>(null);
+  const refreshingBinding = useRef<WorkspaceBinding | null>(null);
+  const activeRef = useRef(props.active !== false);
+  useLayoutEffect(() => { activeRef.current = props.active !== false; }, [props.active]);
+  const [refreshRequired, setRefreshRequired] = useState(false);
+  const [refreshSuggested, setRefreshSuggested] = useState(false);
+  const invalidateRequests = useCallback(() => {
+    ++generation.current;
+    liveBinding.current = null;
+    refreshingBinding.current = null;
+  }, []);
+  const suspendRequests = useCallback(() => {
+    const previous = liveBinding.current ?? refreshingBinding.current;
+    ++generation.current;
+    liveBinding.current = null;
+    // A suspended form keeps view metadata so a fresh authorised generation can
+    // rebind it on resume. This metadata cannot authorise a command or late read.
+    refreshingBinding.current = previous;
+  }, []);
+  const closeDeniedScope = useCallback((source: WorkspaceBinding | null) => {
+    // A late response from a previous request must never close a newer account
+    // or workspace. Keep retained commands and their journal/outbox intact.
+    if (!source || !sameWorkspaceBinding(source, liveBinding.current) && !sameWorkspaceBinding(source, refreshingBinding.current)) return false;
+    invalidateRequests();
+    setIdentity(null);
+    setBinding(null);
+    setTeamOverview(null); setStats(null); setFeedback(null); setScheduledGames(null); setSelectedStatsPlayerId(undefined); setSelectedOverviewGameId(null);
+    setPreparation(null);
+    setOwn(null);
+    setRecords(null);
+    setCommunity(null);
+    setOwnPrivileges(null);
+    setTeamPrivileges(null);
+    setMatches(null);
+    setSharedRefreshCache(null);
+    sharedRefreshRef.current = null;
+    sharedHistoryCursor.current = null;
+    setSeasons(null);
+    setConfiguration(null);
+    setStaff(null);
+    setBranding(null);
+    setRefreshRequired(false);
+    setRefreshSuggested(false);
+    return true;
+  }, [invalidateRequests]);
+  const [tab, setTab] = useState<Tab>("home");
+  const [communityInitialSection, setCommunityInitialSection] = useState<
+    "photos" | "awards"
+  >("photos");
+  const [selectedReportMatchId, setSelectedReportMatchId] = useState<
+    string | null
+  >(null);
+  const initialRoute = useRef(false);
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [memoryPending, setPending] = useState<PendingRequest | null>(null);
+  const [legacyReviewKey, setLegacyReviewKey] = useState<string | null>(null);
+  const [outboxStatus, setOutboxStatus] =
+    useState<WorkspaceOutboxStatus | null>(null);
+  const outboxPort = useRef<WorkspaceOutboxPort | null>(null);
+  const [storage, setStorage] = useState<{
+    journal: Journal;
+    diagnostics: JournalDiagnostics;
+  } | null>(null);
+  const [invitationHeld, setInvitationHeld] = useState<{
+    scopeKey: string;
+    active: boolean;
+  } | null>(null);
+  const onInvitationRetained = useCallback(
+    (active: boolean, scopeKey: string) => {
+      if (invitationAuthority.current !== scopeKey) return;
+      const next = { scopeKey, active };
+      invitationHeldRef.current = next;
+      setInvitationHeld(next);
+      onEphemeralRetainedChange?.(
+        active || brandRetainedRef.current || uploadRetainedRef.current,
+        retainedOwner,
+      );
+    },
+    [onEphemeralRetainedChange, retainedOwner],
+  );
+  const [serviceMatchId, setServiceMatchId] = useState(
+    props.match?.config.matchId ?? "",
+  );
+  const [matchFocused, setMatchFocused] = useState(false);
+  const oidcSessionId = oidcSession?.sessionId;
+  const oidcAccountId = oidcSession?.accountId;
+  const oidcIssuer = oidcSession?.issuer;
+  const oidcSubject = oidcSession?.subject;
+  const contextChoices = identity
+    ? workspaceContextChoices(
+        identity.principal,
+        identity.memberships,
+        membershipTime,
+      )
+    : [];
+  const selectedContext =
+    scopeChoice && roleChoice
+      ? (contextChoices.find(
+          (item) =>
+            item.teamId === scopeChoice.teamId &&
+            item.seasonId === scopeChoice.seasonId &&
+            item.role === roleChoice &&
+            (item.role !== "player" || item.playerId === scopeChoice.playerId),
+        ) ?? null)
+      : null;
+  const teamId = selectedContext?.teamId;
+  const seasonId = selectedContext?.seasonId;
+  const path = (section: string) => {
+    if (!teamId || !seasonId)
+      throw new Error("The service has not granted a team and season scope.");
+    return `/v1/teams/${encodeURIComponent(teamId)}/${section}?seasonId=${encodeURIComponent(seasonId)}`;
+  };
+  const authenticatedFetch = useMemo<
+    (url: string, options: RequestInit) => Promise<Response>
+  >(
+    () => async (url, options) => {
+      const requestOptions = {
+        ...options,
+        headers: selectedRoleHeaders(options.headers, roleChoice),
+      };
+      if (connection.mode === "oidc") {
+        const absolute =
+          url.startsWith("/") && Platform.OS === "web"
+            ? new URL(url, globalThis.location.origin).toString()
+            : url;
+        return connectedFetch(absolute, requestOptions);
+      }
+      return fetch(url, {
+        ...requestOptions,
+        redirect: "error",
+        headers: {
+          ...requestOptions.headers,
+          Authorization: `Bearer ${connection.account}`,
+        },
+      });
+    },
+    [connection, roleChoice],
+  );
+  const client = useMemo(
+    () => new LongBallServiceClient(connection.baseUrl, authenticatedFetch),
+    [connection.baseUrl, authenticatedFetch],
+  );
+  const absoluteApi =
+    Platform.OS === "web"
+      ? new URL(client.baseUrl || "/", globalThis.location.origin)
+          .toString()
+          .replace(/\/$/, "")
+      : client.baseUrl.replace(/\/$/, "");
+  const controllerSource = `${absoluteApi}\u0000${identity?.principal.accountId}\u0000${identity?.principal.issuer}\u0000${identity?.principal.subject}\u0000${teamId}\u0000${seasonId}\u0000${roleChoice}\u0000${serviceMatchId}`;
+  const currentControllerSource = useRef(controllerSource);
+  useLayoutEffect(() => {
+    currentControllerSource.current = controllerSource;
+  }, [controllerSource]);
+  const handleControllerState = useCallback(
+    (state: ConnectedControllerState) => {
+      const previous = controllerStatusRef.current;
+      const next = mergeWorkspaceControllerStatus(
+        currentControllerSource.current,
+        previous,
+        controllerSource,
+        state,
+      );
+      if (!next || next === previous) return;
+      if (
+        previous?.source === next.source &&
+        JSON.stringify(previous.state) === JSON.stringify(next.state)
+      )
+        return;
+      controllerStatusRef.current = next;
+      setControllerStatus(next);
+      controllerStateSink.current?.(next.state);
+    },
+    [controllerSource],
+  );
+  const storageChecked = !props.journal || storage?.journal === props.journal;
+  const protectedOutbox = Boolean(
+    props.journal &&
+      props.deviceId &&
+      storage?.journal === props.journal &&
+      workspaceOutboxStorageAllowed({
+        platform: Platform.OS === "web" ? "web" : "native",
+        synthetic: connection.mode === "synthetic",
+        diagnostics: storage.diagnostics,
+      }),
+  );
+  const currentOutboxId =
+    protectedOutbox && binding ? workspaceOutboxDocumentId(binding) : null;
+  const currentOutbox =
+    outboxStatus?.state &&
+    currentOutboxId === workspaceOutboxDocumentId(outboxStatus.state.scope)
+      ? outboxStatus
+      : null;
+  const restored = protectedOutbox ? currentOutbox?.state?.pending : null;
+  const pending = useMemo<PendingRequest | null>(
+    () =>
+      memoryPending ??
+      (restored
+        ? {
+            path: restored.path,
+            key: restored.key,
+            body: JSON.parse(restored.bodyJson) as unknown,
+            bodyJson: restored.bodyJson,
+            label: restored.label,
+            protected: true,
+          }
+        : null),
+    [memoryPending, restored],
+  );
+  useEffect(() => {
+    const journal = props.journal;
+    if (!journal) return;
+    let alive = true;
+    void (async () => {
+      try {
+        let diagnostics = await journal.getDiagnostics();
+        if (
+          diagnostics.mode === "encrypted-native" &&
+          diagnostics.wrongKeyProbe === "not-run"
+        ) {
+          await journal.runCipherProbe();
+          diagnostics = await journal.getDiagnostics();
+        }
+        if (alive) setStorage({ journal, diagnostics });
+      } catch (cause) {
+        if (alive)
+          setErrors([
+            `Protected request storage could not be verified: ${failureText(cause)}`,
+          ]);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [props.journal]);
+  const actor = identity
+    ? currentMemberships(
+        identity.principal,
+        identity.memberships,
+        membershipTime,
+      ).filter((item) => item.teamId === teamId && item.seasonId === seasonId)
+    : [];
+  const membership = selectedContext
+    ? actor.find(
+        (item) =>
+          item.role === selectedContext.role &&
+          (item.role !== "player" ||
+            item.playerId === selectedContext.playerId),
+      )
+    : undefined;
+  const manager =
+    membership?.role === "manager" &&
+    binding?.teamId === teamId &&
+    binding?.seasonId === seasonId &&
+    workspaceBindingIsCurrent(
+      binding,
+      identity?.principal ?? null,
+      identity?.memberships ?? [],
+      membershipTime,
+    );
+  const expectedBinding =
+    binding?.teamId === teamId &&
+    binding?.seasonId === seasonId &&
+    binding?.role === membership?.role
+      ? binding
+      : null;
+  const authorityScope = workspaceBindingIsCurrent(expectedBinding, identity?.principal ?? null, identity?.memberships ?? [], membershipTime) ? expectedBinding : null;
+  const authorityScopeChanged = props.onAuthorityScopeChange;
+  useLayoutEffect(() => {
+    authorityScopeChanged?.(authorityScope);
+    return () => authorityScopeChanged?.(null);
+  }, [authorityScope, authorityScopeChanged]);
+  const teamOverview = readWorkspaceValue(teamOverviewCache, expectedBinding, identity?.principal ?? null, identity?.memberships ?? [], membershipTime);
+  const stats = readWorkspaceValue(statsCache, expectedBinding, identity?.principal ?? null, identity?.memberships ?? [], membershipTime);
+  const feedback = readWorkspaceValue(feedbackCache, expectedBinding, identity?.principal ?? null, identity?.memberships ?? [], membershipTime);
+  const scheduledGames = readWorkspaceValue(scheduledGamesCache, expectedBinding, identity?.principal ?? null, identity?.memberships ?? [], membershipTime);
+  const preparation = readWorkspaceValue(
+    preparationCache,
+    expectedBinding,
+    identity?.principal ?? null,
+    identity?.memberships ?? [],
+    membershipTime,
+  );
+  const own =
+    membership?.role === "player"
+      ? readWorkspaceValue(
+          ownCache,
+          expectedBinding,
+          identity?.principal ?? null,
+          identity?.memberships ?? [],
+          membershipTime,
+        )
+      : null;
+  const records = readWorkspaceValue(
+    recordsCache,
+    expectedBinding,
+    identity?.principal ?? null,
+    identity?.memberships ?? [],
+    membershipTime,
+  );
+  const community = readWorkspaceValue(
+    communityCache,
+    expectedBinding,
+    identity?.principal ?? null,
+    identity?.memberships ?? [],
+    membershipTime,
+  );
+  const ownPrivileges = readWorkspaceValue(
+    ownPrivilegesCache,
+    expectedBinding,
+    identity?.principal ?? null,
+    identity?.memberships ?? [],
+    membershipTime,
+  );
+  const teamPrivileges = manager
+    ? readWorkspaceValue(
+        teamPrivilegesCache,
+        expectedBinding,
+        identity?.principal ?? null,
+        identity?.memberships ?? [],
+        membershipTime,
+      )
+    : null;
+  const matchList = readWorkspaceValue(
+    matchesCache,
+    expectedBinding,
+    identity?.principal ?? null,
+    identity?.memberships ?? [],
+    membershipTime,
+  );
+  const refreshedMatches = readWorkspaceValue(
+    sharedRefreshCache, expectedBinding, identity?.principal ?? null,
+    identity?.memberships ?? [], membershipTime,
+  );
+  const matches = matchList ? visibleScheduledMatches(mergeSharedMatchViews(matchList.items, refreshedMatches ?? []), teamOverview) : null;
+  const completedFixtureIds = acceptedCompletedFixtureIds(matches, { teamId, seasonId });
+  const acceptedFixtureIds = new Set((matches ?? []).filter(match => match.teamId === teamId && match.seasonId === seasonId).map(match => match.matchId));
+  const seasonOptions = readWorkspaceValue(
+    seasonCache,
+    expectedBinding,
+    identity?.principal ?? null,
+    identity?.memberships ?? [],
+    membershipTime,
+  );
+  const configuration = readWorkspaceValue(
+    configurationCache,
+    expectedBinding,
+    identity?.principal ?? null,
+    identity?.memberships ?? [],
+    membershipTime,
+  );
+  const staff = readWorkspaceValue(
+    staffCache,
+    expectedBinding,
+    identity?.principal ?? null,
+    identity?.memberships ?? [],
+    membershipTime,
+  );
+  const branding = readWorkspaceValue(
+    brandingCache,
+    expectedBinding,
+    identity?.principal ?? null,
+    identity?.memberships ?? [],
+    membershipTime,
+  );
+  const brandRole = membership?.role,
+    brandClubId = branding?.clubId;
+  const brandClient =
+    teamId && seasonId && brandRole
+      ? new BrandMediaClient(
+          connection.baseUrl || "/",
+          {
+            teamId,
+            authoritySeasonId: seasonId,
+            role: brandRole,
+            clubId: brandClubId,
+          },
+          authenticatedFetch,
+        )
+      : null;
+  const brandScopeKey = expectedBinding
+    ? JSON.stringify([
+        `${absoluteApi}`,
+        expectedBinding.accountId,
+        expectedBinding.issuer,
+        expectedBinding.subject,
+        expectedBinding.teamId,
+        expectedBinding.seasonId,
+        expectedBinding.role,
+        expectedBinding.playerId,
+      ])
+    : null;
+  useLayoutEffect(() => {
+    if (brandScopeKey) brandScopeRef.current = brandScopeKey;
+  }, [brandScopeKey]);
+  const assertBrandAccess = async () => {
+    if (!expectedBinding)
+      throw new Error("Open a current authorised logo scope first.");
+    await assertReportExportAccess({
+      source: expectedBinding,
+      currentBinding: () => liveBinding.current,
+      principal: identity?.principal ?? null,
+      memberships: identity?.memberships ?? [],
+      nowMs: Date.now,
+      session:
+        connection.mode === "oidc"
+          ? {
+              requiredSessionId: oidcSessionId ?? "",
+              read: getConnectedSessionSummary,
+            }
+          : null,
+    });
+  };
+  const administrator =
+    membership?.role === "administrator" &&
+    workspaceBindingIsCurrent(
+      expectedBinding,
+      identity?.principal ?? null,
+      identity?.memberships ?? [],
+      membershipTime,
+    );
+  const invitationRole =
+    membership &&
+    workspaceBindingIsCurrent(
+      expectedBinding,
+      identity?.principal ?? null,
+      identity?.memberships ?? [],
+      membershipTime,
+    )
+      ? membership.role
+      : null;
+  const invitationScopeKey = identity
+    ? JSON.stringify([
+        `${absoluteApi}`,
+        identity.principal.accountId,
+        identity.principal.issuer,
+        identity.principal.subject,
+        oidcSessionId ?? "synthetic-review",
+        teamId ?? null,
+        seasonId ?? null,
+        invitationRole,
+      ])
+    : null;
+  const invitationRetained = Boolean(
+    invitationScopeKey &&
+      invitationHeld?.scopeKey === invitationScopeKey &&
+      invitationHeld.active,
+  );
+  useEffect(() => {
+    onEphemeralRetainedChange?.(
+      uploadRetained || brandRetained || invitationRetained,
+      retainedOwner,
+    );
+  }, [
+    uploadRetained,
+    brandRetained,
+    invitationRetained,
+    onEphemeralRetainedChange,
+    retainedOwner,
+  ]);
+  useEffect(
+    () => () => onEphemeralRetainedChange?.(false, retainedOwner),
+    [onEphemeralRetainedChange, retainedOwner],
+  );
+  useLayoutEffect(() => {
+    invitationAuthority.current = invitationScopeKey;
+    return () => {
+      invitationAuthority.current = null;
+    };
+  }, [invitationScopeKey]);
+  const invitationIsRetained = () =>
+    Boolean(
+      invitationAuthority.current &&
+        invitationHeldRef.current?.scopeKey === invitationAuthority.current &&
+        invitationHeldRef.current.active,
+    );
+  const assertInvitationCurrent = () => {
+    if (
+      !identity ||
+      identity.principal.status !== "active" ||
+      !invitationScopeKey ||
+      invitationAuthority.current !== invitationScopeKey ||
+      (connection.mode === "oidc" &&
+        (!oidcSession ||
+          !workspaceSessionAllows(
+            oidcSession,
+            absoluteApi,
+            serviceActionTime(),
+          ) ||
+          oidcSession.sessionId !== oidcSessionId ||
+          oidcSession.accountId !== identity.principal.accountId ||
+          oidcSession.issuer !== identity.principal.issuer ||
+          oidcSession.subject !== identity.principal.subject))
+    )
+      throw new Error(
+        "The verified invitation identity or scope changed. Reopen the current account; no credential was retained.",
+      );
+    if (
+      invitationRole &&
+      !workspaceBindingIsCurrent(
+        expectedBinding,
+        identity.principal,
+        identity.memberships,
+        serviceActionTime(),
+      )
+    )
+      throw new Error(
+        "Current team access changed. Refresh before managing invitations.",
+      );
+  };
+  const communityActor: CommunityActor | null =
+    identity &&
+    membership &&
+    membership.role !== "administrator" &&
+    teamId &&
+    seasonId
+      ? {
+          accountId: identity.principal.accountId,
+          teamId,
+          seasonId,
+          role: membership.role as CommunityActor["role"],
+          playerId: membership.playerId,
+        }
+      : null;
+
+  const albumScope: AlbumScope | null =
+    communityActor && identity
+      ? {
+          apiBaseUrl: `${absoluteApi}`,
+          accountId: identity.principal.accountId,
+          issuer: identity.principal.issuer,
+          subject: identity.principal.subject,
+          teamId: communityActor.teamId,
+          seasonId: communityActor.seasonId,
+          role: communityActor.role,
+          playerId: communityActor.playerId,
+        }
+      : null;
+  const albumKey = albumScope ? albumScopeKey(albumScope) : null;
+  // Keep the stable choice above refreshable DTO children; permission is resolved on every render.
+  useLayoutEffect(() => {
+    if (albumKey) albumKeyRef.current = albumKey;
+  }, [albumKey]);
+  const selectedAlbum =
+    albumScope && community
+      ? resolveAlbumSelection(
+          albumScope,
+          community.matches,
+          albumSelection,
+          community.allowed,
+        )
+      : null;
+  const openAlbum = (matchId: string) => {
+    try {
+      if (!albumScope || !community)
+        throw new Error("Refresh the current permitted game albums first.");
+      setAlbumSelection(
+        selectAlbum(albumScope, community.matches, matchId, community.allowed),
+      );
+      setCommunityInitialSection("photos");
+      setTab("community");
+    } catch (cause) {
+      setErrors([failureText(cause)]);
+    }
+  };
+
+  useEffect(() => {
+    const timer = setInterval(() => setMembershipTime(Date.now()), 1_000);
+    return () => clearInterval(timer);
+  }, []);
+  useEffect(() => {
+    const now = Date.now();
+    const expiresAt = Math.min(
+      ...(identity?.memberships ?? []).flatMap((item) =>
+        item.expiresAt != null && item.expiresAt > now ? [item.expiresAt] : [],
+      ),
+    );
+    if (!Number.isFinite(expiresAt)) return;
+    const timer = setTimeout(
+      () => setMembershipTime(Date.now()),
+      Math.min(2_147_000_000, Math.max(0, expiresAt - now)),
+    );
+    return () => clearTimeout(timer);
+  }, [identity, membershipTime]);
+
+  const load = useCallback(async () => {
+    if (!activeRef.current) return;
+    const requestGeneration = ++generation.current;
+    const previousBinding = liveBinding.current ?? refreshingBinding.current;
+    refreshingBinding.current = previousBinding;
+    liveBinding.current = null;
+    // Keep the last authorised form mounted while its controls are disabled.
+    // No previous request may attach; fresh authority must rebind every retained DTO.
+    setRefreshRequired(true);
+    let nextIdentity: Identity;
+    try { nextIdentity = await client.me<Identity>(); }
+    catch (cause) {
+      if (generation.current === requestGeneration && cause instanceof ServiceError && [401, 403, 404].includes(cause.status)) closeDeniedScope(previousBinding);
+      throw cause;
+    }
+    if (generation.current !== requestGeneration) return;
+    if (!nextIdentity?.principal || !Array.isArray(nextIdentity.memberships)) {
+      closeDeniedScope(previousBinding);
+      throw new Error("The current service identity could not be verified. Private workspace views were closed.");
+    }
+    if (
+      oidcSessionId &&
+      (nextIdentity.principal.accountId !== oidcAccountId ||
+        nextIdentity.principal.issuer !== oidcIssuer ||
+        nextIdentity.principal.subject !== oidcSubject)
+    ) {
+      closeDeniedScope(previousBinding);
+      throw new Error(
+        "The service identity differs from the current sign-in. Reconnect before opening private workspace data.",
+      );
+    }
+    setIdentity(nextIdentity);
+    const preference = await readContextPreference(
+      absoluteApi,
+      nextIdentity.principal,
+    );
+    if (generation.current !== requestGeneration) return;
+    const resolution = resolveWorkspaceContext({
+      apiBaseUrl: absoluteApi,
+      principal: nextIdentity.principal,
+      memberships: nextIdentity.memberships,
+      nowMs: serviceActionTime(),
+      preference,
+      selected:
+        scopeChoice && roleChoice
+          ? {
+              teamId: scopeChoice.teamId,
+              seasonId: scopeChoice.seasonId,
+              role: roleChoice,
+              playerId:
+                roleChoice === "player" ? (scopeChoice.playerId ?? null) : null,
+            }
+          : null,
+      initialRole: props.initialRole,
+      teamId: requestedTeamId,
+      seasonId: requestedSeasonId,
+    });
+    const chosen = resolution.selected;
+    if (!chosen) {
+      closeDeniedScope(previousBinding);
+      setIdentity(nextIdentity);
+      setRefreshRequired(false);
+      setRefreshSuggested(false);
+      setErrors(
+        resolution.choices.length
+          ? []
+          : [
+              "This account has no current team, season and role assignment. A received invitation can still be reviewed below.",
+            ],
+      );
+      return;
+    }
+    // Establish an explicit header-bound selection before any scoped private read.
+    // State changes repeat /me; neither a stored preference nor a UI role grants access.
+    if (
+      scopeChoice?.teamId !== chosen.teamId ||
+      scopeChoice?.seasonId !== chosen.seasonId ||
+      roleChoice !== chosen.role ||
+      (chosen.role === "player" && scopeChoice?.playerId !== chosen.playerId)
+    ) {
+      setScopeChoice({
+        teamId: chosen.teamId,
+        seasonId: chosen.seasonId,
+        playerId: chosen.playerId,
+      });
+      setRoleChoice(chosen.role);
+      return;
+    }
+    const resolvedTeamId = chosen.teamId;
+    const resolvedSeasonId = chosen.seasonId;
+    const scopedPath = (section: string) =>
+      `/v1/teams/${encodeURIComponent(resolvedTeamId)}/${section}?seasonId=${encodeURIComponent(resolvedSeasonId)}`;
+    const isManager = chosen?.role === "manager",
+      isPlayer = chosen?.role === "player",
+      isAdministrator = chosen?.role === "administrator";
+    if (!initialRoute.current && chosen) {
+      setTab(
+        isAdministrator
+          ? "clubs"
+          : chosen.role === "spectator"
+            ? "overview"
+            : "home",
+      );
+      initialRoute.current = true;
+    }
+    const ticket: WorkspaceBinding = {
+      generation: requestGeneration,
+      apiBaseUrl: absoluteApi,
+      accountId: nextIdentity.principal.accountId,
+      issuer: nextIdentity.principal.issuer,
+      subject: nextIdentity.principal.subject,
+      teamId: resolvedTeamId,
+      seasonId: resolvedSeasonId,
+      role: chosen.role,
+      playerId: chosen?.playerId ?? null,
+    };
+    liveBinding.current = ticket;
+    refreshingBinding.current = null;
+    setBinding(ticket);
+    const retain = <T,>(cached: BoundWorkspaceValue<T> | null) => rebindWorkspaceRefresh(cached, previousBinding, ticket, nextIdentity.principal, nextIdentity.memberships, serviceActionTime());
+    setTeamOverview(retain); setStats(retain); setFeedback(retain); setScheduledGames(retain);
+    setPreparation(retain); setOwn(retain); setRecords(retain); setCommunity(retain);
+    setOwnPrivileges(retain); setTeamPrivileges(retain); setMatches(retain);
+    setSeasons(retain); setConfiguration(retain); setStaff(retain); setBranding(retain);
+    setSharedRefreshCache(retain);
+    sharedRefreshRef.current = retain(sharedRefreshRef.current);
+    sharedHistoryCursor.current = sameWorkspaceBinding(previousBinding, sharedHistoryCursor.current?.binding ?? null)
+      ? { binding: ticket, cursor: sharedHistoryCursor.current!.cursor } : null;
+    void saveContextPreference(
+      absoluteApi,
+      nextIdentity.principal,
+      chosen,
+    ).catch(() => {
+      if (generation.current === requestGeneration)
+        setNotice(
+          "Your workspace is open, but this device could not remember the preference. Current service permissions are unchanged.",
+        );
+    });
+    const stillCurrent = async () => {
+      if (
+        generation.current !== requestGeneration ||
+        !sameWorkspaceBinding(ticket, liveBinding.current)
+      )
+        return false;
+      if (oidcSessionId) {
+        const latest = await getConnectedSessionSummary();
+        const api =
+          Platform.OS === "web"
+            ? new URL(
+                client.baseUrl || "/",
+                globalThis.location.origin,
+              ).toString()
+            : client.baseUrl;
+        if (
+          !workspaceSessionAllows(latest, api, Date.now()) ||
+          latest?.sessionId !== oidcSessionId ||
+          latest.accountId !== ticket.accountId ||
+          latest.issuer !== ticket.issuer ||
+          latest.subject !== ticket.subject
+        )
+          return false;
+      }
+      return (
+        generation.current === requestGeneration &&
+        sameWorkspaceBinding(ticket, liveBinding.current)
+      );
+    };
+    const attach = async <T,>(value: T) =>
+      (await stillCurrent())
+        ? attachWorkspaceValue(
+            ticket,
+            liveBinding.current,
+            nextIdentity.principal,
+            nextIdentity.memberships,
+            Date.now(),
+            value,
+          )
+        : null;
+    const faults: string[] = [];
+    let preparationRefreshFailed = false;
+    const readFault = (
+      section: string,
+      cause: unknown,
+      scopedPrivateList = false,
+    ) => {
+      if (generation.current !== requestGeneration || !sameWorkspaceBinding(ticket, liveBinding.current)) return;
+      faults.push(`${section}: ${failureText(cause)}`);
+      if (["Preparation", "Own preparation", "Configuration"].includes(section)) preparationRefreshFailed = true;
+      if (
+        scopedPrivateList &&
+        chosen &&
+        cause instanceof ServiceError &&
+        [401, 403, 404].includes(cause.status)
+      ) {
+        // An already attached parallel reply must close when this same authorised
+        // ticket receives a known scope denial. Individual photo/entity reads
+        // and a new account's invitation setup do not use this list-read gate.
+        closeDeniedScope(ticket);
+        setErrors([
+          ...faults,
+          "Private workspace views were closed because the service refused this scope. Refresh service views to verify current access. Retained requests remain unchanged.",
+        ]);
+      }
+    };
+    const tasks: Promise<void>[] = isAdministrator
+      ? []
+      : [
+          client
+            .request<CommunityDto>(scopedPath("community"))
+            .then(async (value) => {
+              const attached = await attach(value);
+              if (attached) setCommunity(attached);
+            })
+            .catch((cause) => readFault("Community", cause, true)),
+          client
+            .request<RecordsDto>(scopedPath("records"))
+            .then(async (reply) => {
+              if (
+                reply.results.visibilityScope !== ticket.role ||
+                (!isManager && (reply.editableState || reply.activeMatch))
+              )
+                throw new Error(
+                  "The service returned a report outside the selected role. The view was discarded.",
+                );
+              const attached = await attach({
+                revision: reply.revision,
+                results: reply.results,
+                participation: reply.participation,
+                matches: reply.matches,
+                ...(isManager
+                  ? {
+                      editableState: reply.editableState,
+                      activeMatch: reply.activeMatch,
+                      contexts: reply.contexts,
+                    }
+                  : {}),
+                playerLabels: reply.playerLabels,
+              });
+              if (attached) setRecords(attached);
+            })
+            .catch((cause) => readFault("Reports", cause, true)),
+        ];
+    if (chosen)
+      tasks.push(
+        client
+          .request<BrandingDto>(scopedPath("branding"))
+          .then(async (value) => {
+            assertBrandingResponse(value, {
+              teamId: resolvedTeamId,
+              authoritySeasonId: resolvedSeasonId,
+              role: ticket.role,
+            });
+            const attached = await attach(value);
+            if (attached) setBranding(attached);
+          })
+          .catch((cause) => readFault("Branding", cause, true)),
+      );
+    if (!isAdministrator)
+      tasks.push(
+        client
+          .request<unknown>(scopedPath("matches"))
+          .then(async (reply) => {
+            const page = parseMatchListPage<ConnectedMatchCentreDto>(reply, ticket);
+            const attached = await attach(page);
+            if (attached) setMatches(attached);
+          })
+          .catch((cause) => readFault("Matches", cause, true)),
+      );
+    if (isManager || isAdministrator)
+      tasks.push(
+        client
+          .request<ConnectedSeasonOptions>(
+            scopedPath("seasons/rollover-options"),
+          )
+          .then(async (value) => {
+            const attached = await attach(value);
+            if (attached) setSeasons(attached);
+          })
+          .catch((cause) => {
+            if (generation.current === requestGeneration)
+              faults.push(`Seasons: ${failureText(cause)}`);
+          }),
+      );
+    if (isAdministrator)
+      tasks.push(
+        client
+          .request<ConnectedConfigurationDto>(scopedPath("configuration"))
+          .then(async (value) => {
+            const attached = await attach(value);
+            if (attached) setConfiguration(attached);
+          })
+          .catch((cause) => {
+            readFault("Configuration", cause, true);
+          }),
+      );
+    if (isAdministrator)
+      tasks.push(
+        client
+          .request<ConnectedStaffDto>(scopedPath("managers"))
+          .then(async (value) => {
+            if (
+              value.kind !== "manager-roster" ||
+              value.teamId !== ticket.teamId ||
+              value.seasonId !== ticket.seasonId ||
+              !Number.isSafeInteger(value.revision) ||
+              value.revision < 0
+            )
+              throw new Error(
+                "The staff roster differs from this authorised scope. It was discarded.",
+              );
+            const attached = await attach(value);
+            if (attached) setStaff(attached);
+          })
+          .catch((cause) => {
+            readFault("Staff", cause, true);
+          }),
+      );
+    if (!isAdministrator)
+      tasks.push(
+        client
+          .request<OwnTeamPrivileges>(scopedPath("privileges/own"))
+          .then(async (value) => {
+            assertOwnTeamPrivileges(value, resolvedTeamId, resolvedSeasonId);
+            const attached = await attach(value);
+            if (attached) setOwnPrivileges(attached);
+          })
+          .catch((cause) => readFault("Contribution privileges", cause, true)),
+      );
+    if (isManager)
+      tasks.push(
+        client
+          .request<TeamPrivilegesView>(scopedPath("privileges"))
+          .then(async (value) => {
+            assertTeamPrivilegesView(value, resolvedTeamId, resolvedSeasonId);
+            const attached = await attach(value);
+            if (attached) setTeamPrivileges(attached);
+          })
+          .catch((cause) => readFault("Team privilege decisions", cause, true)),
+      );
+    if (isManager)
+      tasks.push(
+        client
+          .request<PreparationState>(scopedPath("preparation"))
+          .then(async (value) => {
+            const attached = await attach(value);
+            if (attached) setPreparation(attached);
+          })
+          .catch((cause) => readFault("Preparation", cause, true)),
+      );
+    if (!isManager && isPlayer)
+      tasks.push(
+        client
+          .request<unknown>(scopedPath("preparation/own"))
+          .then(async (candidate) => {
+            const value = parseOwnPlayerPreparation(candidate, {
+              teamId: ticket.teamId,
+              seasonId: ticket.seasonId,
+              playerId: ticket.playerId ?? "",
+            });
+            const attached = await attach(value);
+            if (attached) setOwn(attached);
+          })
+          .catch((cause) => readFault("Own preparation", cause, true)),
+      );
+    tasks.push(client.request<unknown>(scopedPath('team-overview')).then(async value => {
+      assertTeamOverviewDto(value, {teamId:ticket.teamId,seasonId:ticket.seasonId});
+      const attached = await attach(value); if (attached) setTeamOverview(attached);
+    }).catch(cause => readFault('Team overview',cause,true)));
+    if (isManager || isAdministrator || isPlayer) tasks.push(
+      client.request<unknown>(scopedPath('player-stats')).then(async value => {
+        assertPlayerStatsDto(value, { role: chosen.role, teamId: ticket.teamId, seasonId: ticket.seasonId, ...(isPlayer ? { playerId: ticket.playerId ?? '' } : {}) });
+        const attached = await attach(value); if (attached) setStats(attached);
+      }).catch(cause => readFault('Player statistics', cause, true)),
+    );
+    if (isManager || isPlayer) tasks.push(
+      client.request<unknown>(scopedPath('match-feedback')).then(async value => {
+        assertMatchFeedbackView(value, { accountId: ticket.accountId, teamId: ticket.teamId, seasonId: ticket.seasonId, role: isManager ? 'manager' : 'player', ...(isPlayer ? { playerId: ticket.playerId ?? '' } : {}) });
+        const attached = await attach(value); if (attached) setFeedback(attached);
+      }).catch(cause => readFault('Match feedback', cause, true)),
+    );
+    if (isManager || isAdministrator) tasks.push(
+      client.request<unknown>(scopedPath('scheduled-games')).then(async value => {
+        assertScheduledGameManagementDto(value, { teamId: ticket.teamId, seasonId: ticket.seasonId });
+        const attached = await attach(value); if (attached) setScheduledGames(attached);
+      }).catch(cause => readFault('Scheduled games', cause, true)),
+    );
+    await Promise.all(tasks);
+    if (await stillCurrent()) { setErrors(faults); setRefreshRequired(preparationRefreshFailed); if (!preparationRefreshFailed) setRefreshSuggested(false); }
+  }, [
+    client,
+    scopeChoice,
+    requestedTeamId,
+    requestedSeasonId,
+    roleChoice,
+    absoluteApi,
+    oidcSessionId,
+    oidcAccountId,
+    oidcIssuer,
+    oidcSubject,
+    closeDeniedScope,
+    props.initialRole,
+  ]);
+  useEffect(() => {
+    if (props.active === false) { suspendRequests(); return; }
+    let live = true;
+    void Promise.resolve().then(async () => {
+      if (!live) return;
+      setBusy(true);
+      try {
+        await load();
+      } catch (cause) {
+        if (live) setErrors([failureText(cause)]);
+      } finally {
+        if (live) setBusy(false);
+      }
+    });
+    return () => {
+      live = false;
+      if (activeRef.current) invalidateRequests(); else suspendRequests();
+    };
+  }, [load, invalidateRequests, suspendRequests, props.active]);
+
+  // Shared viewers receive accepted score updates without a manual Refresh. Do not
+  // reload preparation forms or replace the paginated history/cursor while polling.
+  const sharedRefreshEnabled = Boolean(props.active !== false && expectedBinding && membership &&
+    (membership.role === "player" || membership.role === "spectator" || membership.role === "manager" && tab === "centre") &&
+    ["home", "overview", "centre", "reports", "community"].includes(tab) &&
+    !busy && !pending && !loadingMoreMatches && !uploadRetained && !brandRetained && !invitationHeld?.active);
+  const sharedRefreshKey = expectedBinding ? JSON.stringify(expectedBinding) : null;
+  useEffect(() => {
+    if (!sharedRefreshEnabled || !expectedBinding || !sharedRefreshKey) return;
+    const ticket = expectedBinding;
+    const sessionCurrent = async () => {
+      if (!sameWorkspaceBinding(ticket, liveBinding.current)) return false;
+      if (!oidcSessionId) return true;
+      const session = await getConnectedSessionSummary();
+      return Boolean(workspaceSessionAllows(session, absoluteApi, Date.now()) && session?.sessionId === oidcSessionId && session.accountId === ticket.accountId && session.issuer === ticket.issuer && session.subject === ticket.subject);
+    };
+    const scoped = (section: string) => `/v1/teams/${encodeURIComponent(ticket.teamId)}/${section}?seasonId=${encodeURIComponent(ticket.seasonId)}`;
+    const foreground = () => Platform.OS === "web"
+      ? typeof document !== "undefined" && document.visibilityState !== "hidden"
+      : AppState.currentState === "active";
+    const refresh = startForegroundRefresh({
+      read: async (signal, related) => {
+        if (lock.current || !sameWorkspaceBinding(ticket, liveBinding.current)) return;
+        let freshIdentity: Identity | null = null;
+        const previous = sameWorkspaceBinding(sharedRefreshRef.current?.binding ?? null, ticket)
+          ? sharedRefreshRef.current!.value
+          : (matchList?.items.filter(isActiveSharedMatch) ?? []);
+        const next = await refreshSharedMatchViews<ConnectedMatchCentreDto>(ticket, previous, {
+          me: async (requestSignal) => { freshIdentity = await client.request<Identity>("/v1/me", { signal: requestSignal }); return freshIdentity; },
+          request: (requestPath, requestSignal) => client.request<unknown>(requestPath, { signal: requestSignal }),
+          currentBinding: () => liveBinding.current, sessionCurrent,
+          now: serviceActionTime,
+        }, signal);
+        if (!next || signal.aborted || !sameWorkspaceBinding(ticket, liveBinding.current) || !await sessionCurrent()) return;
+        if (freshIdentity) setIdentity(freshIdentity);
+        sharedRefreshRef.current = next.matches;
+        setSharedRefreshCache(next.matches);
+        if (!related || lock.current) return;
+        const [report, social, overview] = await Promise.all([
+          client.request<RecordsDto>(scoped("records"), { signal }),
+          client.request<CommunityDto>(scoped("community"), { signal }),
+          client.request<unknown>(scoped("team-overview"), { signal }),
+        ]);
+        if (signal.aborted || !sameWorkspaceBinding(ticket, liveBinding.current) || !await sessionCurrent()) return;
+        if (report.results.visibilityScope !== ticket.role || report.results.teamId !== ticket.teamId || report.results.seasonId !== ticket.seasonId ||
+          (ticket.role !== "manager" && (report.editableState || report.activeMatch)))
+          throw new Error("The refreshed report differs from the selected role or team. The last confirmed view is retained.");
+        assertTeamOverviewDto(overview,{teamId:ticket.teamId,seasonId:ticket.seasonId});
+        const attach = <T,>(value: T) => attachWorkspaceValue(ticket, liveBinding.current, next.identity.principal, next.identity.memberships, serviceActionTime(), value);
+        const recordsUpdate = attach({
+          revision: report.revision, results: report.results, participation: report.participation, matches: report.matches,
+          ...(ticket.role === "manager" ? { editableState: report.editableState, activeMatch: report.activeMatch, contexts: report.contexts } : {}),
+          playerLabels: report.playerLabels,
+        });
+        const communityUpdate = attach(social);
+        const overviewUpdate = attach(overview);
+        const visibleRefresh = attach(visibleScheduledMatches(next.matches.value,overview));
+        if (overviewUpdate && visibleRefresh) { setTeamOverview(overviewUpdate); sharedRefreshRef.current = visibleRefresh; setSharedRefreshCache(visibleRefresh); }
+        if (recordsUpdate && communityUpdate) { setRecords(recordsUpdate); setCommunity(communityUpdate); }
+        const history = await refreshSharedHistoryPage(ticket,
+          visibleScheduledMatches(mergeSharedMatchViews(matchList?.items ?? [], next.matches.value),overview),
+          sameWorkspaceBinding(ticket, sharedHistoryCursor.current?.binding ?? null) ? sharedHistoryCursor.current!.cursor : null,
+          next.identity, {
+            me: (requestSignal) => client.request<Identity>("/v1/me", { signal: requestSignal }),
+            request: (requestPath, requestSignal) => client.request<unknown>(requestPath, { signal: requestSignal }),
+            currentBinding: () => liveBinding.current, sessionCurrent, now: serviceActionTime,
+          }, signal);
+        if (history && !signal.aborted && sameWorkspaceBinding(ticket, liveBinding.current)) {
+          sharedHistoryCursor.current = { binding: ticket, cursor: history.nextCursor };
+          sharedRefreshRef.current = history.matches; setSharedRefreshCache(history.matches);
+        }
+      },
+      onSuccess: () => setSharedRefreshDelayed(false),
+      onFailure: (cause) => {
+        if (!sameWorkspaceBinding(ticket, liveBinding.current)) return "stop";
+        if (cause instanceof SharedMatchRefreshAuthorityDenied || cause instanceof ServiceError && [401, 403, 404].includes(cause.status)) {
+          closeDeniedScope(ticket);
+          setErrors(["Current service access changed. Private workspace views were closed. Refresh to verify your account; retained requests remain unchanged."]);
+          return "stop";
+        }
+        setSharedRefreshDelayed(true); return "retry";
+      },
+    }, foreground());
+    const nativeSubscription = AppState.addEventListener("change", () => refresh.setForeground(foreground()));
+    const visibilityChanged = () => refresh.setForeground(foreground());
+    if (Platform.OS === "web" && typeof document !== "undefined") document.addEventListener("visibilitychange", visibilityChanged);
+    return () => {
+      refresh.stop(); nativeSubscription.remove();
+      if (Platform.OS === "web" && typeof document !== "undefined") document.removeEventListener("visibilitychange", visibilityChanged);
+    };
+    // The identity/ticket is rechecked on every accepted read. DTO refreshes never
+    // recreate this timer or overwrite a form draft; changing scope aborts it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sharedRefreshEnabled, sharedRefreshKey, client, absoluteApi, oidcSessionId, closeDeniedScope]);
+
+  const execute = async (
+    request: PendingRequest,
+    retained?: WorkspaceOutboxState,
+  ): Promise<boolean> => {
+    const source = liveBinding.current;
+    let outcomeAttempted = false;
+    const durable = request.protected === true;
+    const settle = async (outcome: WorkspaceRequestOutcome) => {
+      outcomeAttempted = true;
+      if (durable && !(await outboxPort.current?.settle(request.key, outcome)))
+        throw new Error(
+          "The service outcome has not been saved in protected storage. Retry the protected request save before another network attempt.",
+        );
+    };
+    try {
+      const type = (request.body as { command?: { type?: string } }).command
+        ?.type;
+      if (
+        type &&
+        ["invite.created", "invite.accepted", "invite.revoked"].includes(type)
+      )
+        throw new Error(
+          "This legacy invitation request cannot be sent. Review and retire it locally before using server-issued invitations; its original content is retained.",
+        );
+      const fresh = await client.me<Identity>();
+      const verifiedAtMs = serviceActionTime();
+      if (!activeRef.current) throw new Error("This request is retained while the workspace is hidden. Return to the app and retry after current access is verified.");
+      if (
+        !identity ||
+        fresh.principal.accountId !== identity.principal.accountId ||
+        fresh.principal.issuer !== identity.principal.issuer ||
+        fresh.principal.subject !== identity.principal.subject
+      )
+        throw new ServiceError(
+          "IDENTITY_CHANGED",
+          403,
+          "The current service account changed. This request is retained; reopen its original account before retrying.",
+          false,
+        );
+      const session =
+        connection.mode === "oidc" ? await getConnectedSessionSummary() : null;
+      if (
+        connection.mode === "oidc" &&
+        (!session ||
+          !workspaceSessionAllows(session, absoluteApi, serviceActionTime()) ||
+          session?.sessionId !== oidcSessionId ||
+          session.accountId !== fresh.principal.accountId ||
+          session.issuer !== fresh.principal.issuer ||
+          session.subject !== fresh.principal.subject)
+      )
+        throw new ServiceError(
+          "INVALID_SESSION",
+          401,
+          "An active unlocked sign-in for the original request account is required.",
+          false,
+        );
+      let bodyJson = request.bodyJson ?? JSON.stringify(request.body);
+      {
+        const live = liveBinding.current;
+        if (
+          !binding ||
+          !sameWorkspaceBinding(binding, live) ||
+          !workspaceBindingIsCurrent(
+            binding,
+            fresh.principal,
+            fresh.memberships,
+            serviceActionTime(),
+          )
+        )
+          throw new ServiceError(
+            "ACCESS_CHANGED",
+            403,
+            "Current access does not allow this request. Its original content is retained.",
+            false,
+          );
+        if (durable) {
+          if (!protectedOutbox)
+            throw new Error(
+              "Protected request storage is not currently verified. The service request has not been sent.",
+            );
+          const state = retained ?? outboxPort.current?.snapshot();
+          if (!state || state.pending?.key !== request.key)
+            throw new Error(
+              "Save the exact protected request before sending it to the service.",
+            );
+          bodyJson = authorizeWorkspaceReplay(state, {
+            binding: live!,
+            principal: fresh.principal,
+            memberships: fresh.memberships,
+            verifiedAtMs,
+            nowMs: serviceActionTime(),
+            synthetic: connection.mode === "synthetic",
+            session,
+          }).bodyJson;
+        }
+      }
+      const response = await authenticatedFetch(
+        `${client.baseUrl}${request.path}`,
+        {
+          method: "POST",
+          headers: selectedRoleHeaders(
+            {
+              Accept: "application/json",
+              "Content-Type": "application/json",
+              "Idempotency-Key": request.key,
+              "X-Api-Contract-Version": "longball.events/1.1",
+            },
+            roleChoice,
+            binding?.role ?? null,
+          ),
+          body: bodyJson,
+        },
+      );
+      let body: {
+        code?: string;
+        message?: string;
+        revision?: number;
+        requestId?: string;
+      };
+      try {
+        body = (await response.json()) as typeof body;
+      } catch {
+        await settle({
+          kind: "unconfirmed",
+          reason: "unreadable",
+          httpStatus: response.status,
+        });
+        throw new Error(
+          "The service response was unreadable. The exact original request remains available for retry.",
+        );
+      }
+      if (!response.ok) {
+        const code = body.code ?? "HTTP_FAILURE";
+        const definitive =
+          (response.status >= 400 &&
+            response.status < 500 &&
+            ![401, 403, 404, 408, 425, 429].includes(response.status)) ||
+          (response.status === 503 &&
+            ["POLICY_APPROVAL_REQUIRED", "SEASON_ASSIGNMENT_REQUIRED"].includes(
+              code,
+            ));
+        await settle(
+          definitive
+            ? {
+                kind: "refused",
+                httpStatus: response.status,
+                code,
+                serverRequestId: body.requestId ?? null,
+              }
+            : {
+                kind: "unconfirmed",
+                reason:
+                  response.status === 401
+                    ? "authentication"
+                    : [403, 404].includes(response.status)
+                      ? "access"
+                      : "retryable_service",
+                httpStatus: response.status,
+                code,
+              },
+        );
+        if (definitive) {
+          setPending(null);
+          // A rejected draft may need fresh comparison, while ordinary validation
+          // failures must still allow correcting the current fields.
+          if ([409, 422].includes(response.status) && sameWorkspaceBinding(source, liveBinding.current)) setRefreshSuggested(true);
+        }
+        throw new ServiceError(
+          code,
+          response.status,
+          body.message ?? "The service refused this change.",
+          response.status >= 500 || response.status === 429,
+        );
+      }
+      if (!Number.isSafeInteger(body.revision) || body.revision! < 0) {
+        await settle({
+          kind: "unconfirmed",
+          reason: "unreadable",
+          httpStatus: response.status,
+        });
+        throw new Error(
+          "The service did not return a valid revision receipt. The exact request is retained.",
+        );
+      }
+      await settle({
+        kind: "accepted",
+        httpStatus: response.status,
+        serverRevision: body.revision,
+        serverRequestId: response.headers.get("x-request-id"),
+      });
+      setPending(null);
+      setNotice(
+        `${request.label} saved by the service${durable ? " and its receipt retained on this device" : ""}.`,
+      );
+      try {
+        await load();
+      } catch (cause) {
+        setErrors([
+          `The command was accepted; the refreshed view is unavailable: ${failureText(cause)}`,
+        ]);
+      }
+      return true;
+    } catch (cause) {
+      if (durable && !outcomeAttempted) {
+        try {
+          await settle({
+            kind: "unconfirmed",
+            reason:
+              cause instanceof ServiceError && cause.status === 401
+                ? "authentication"
+                : cause instanceof ServiceError &&
+                    [403, 404].includes(cause.status)
+                  ? "access"
+                  : "network",
+            ...(cause instanceof ServiceError
+              ? { httpStatus: cause.status, code: cause.code }
+              : {}),
+          });
+        } catch {
+          /* The exact pending request stays in the journal; its local save may need retry. */
+        }
+      }
+      if (cause instanceof ServiceError && [401, 403, 404].includes(cause.status)) closeDeniedScope(source);
+      throw cause;
+    }
+  };
+  const retireLegacyInvitation = async () => {
+    if (
+      lock.current ||
+      !pending?.protected ||
+      legacyReviewKey !== pending.key ||
+      !binding ||
+      !identity
+    )
+      return;
+    const sourceGeneration = generation.current,
+      sourceBinding = binding,
+      key = pending.key;
+    lock.current = true;
+    setBusy(true);
+    setErrors([]);
+    try {
+      const fresh = await client.me<Identity>();
+      const verifiedAtMs = serviceActionTime();
+      const session =
+        connection.mode === "oidc" ? await getConnectedSessionSummary() : null;
+      if (
+        generation.current !== sourceGeneration ||
+        !sameWorkspaceBinding(sourceBinding, liveBinding.current) ||
+        !workspaceBindingIsCurrent(
+          sourceBinding,
+          fresh.principal,
+          fresh.memberships,
+          serviceActionTime(),
+        ) ||
+        fresh.principal.accountId !== identity.principal.accountId ||
+        fresh.principal.issuer !== identity.principal.issuer ||
+        fresh.principal.subject !== identity.principal.subject ||
+        (connection.mode === "oidc" &&
+          (!workspaceSessionAllows(session, absoluteApi, serviceActionTime()) ||
+            session?.sessionId !== oidcSessionId ||
+            session?.accountId !== identity.principal.accountId ||
+            session?.issuer !== identity.principal.issuer ||
+            session?.subject !== identity.principal.subject))
+      )
+        throw new Error(
+          "Current access changed. The legacy request remains retained and has not been replayed or retired.",
+        );
+      const saved = await outboxPort.current?.retireLegacy(key, {
+        binding: sourceBinding,
+        principal: fresh.principal,
+        memberships: fresh.memberships,
+        verifiedAtMs,
+        nowMs: serviceActionTime(),
+        synthetic: connection.mode === "synthetic",
+        session,
+      });
+      if (!saved)
+        throw new Error(
+          "The local protocol retirement could not be saved. Keep the original request and retry its protected save.",
+        );
+      setPending(null);
+      setLegacyReviewKey(null);
+      setNotice(
+        "The old invitation request was retired locally and will never be replayed. Its exact content remains in protected history. This is not a server receipt; the previous server status remains unknown. Use current server-issued invitations after refreshing their status.",
+      );
+    } catch (cause) {
+      setErrors([failureText(cause)]);
+    } finally {
+      lock.current = false;
+      setBusy(false);
+    }
+  };
+  const mutate = async (
+    section: string,
+    command:
+      | PreparationCommand
+      | OwnCommand
+      | CommunityCommand
+      | RecordsCommand
+      | ConnectedRecordsCommand
+      | SeasonRolloverCommand
+      | ConnectedStaffCommand
+      | BrandingCommand
+      | TeamPrivilegeCommand
+      | MatchFeedbackCommand
+      | ScheduledGameCommand,
+    label: string,
+  ): Promise<boolean> => {
+    if (
+      lock.current ||
+      pending ||
+      uploadRetainedRef.current ||
+      brandRetainedRef.current ||
+      invitationIsRetained()
+    )
+      return false;
+    lock.current = true;
+    setBusy(true);
+    setErrors([]);
+    setNotice(null);
+    try {
+      if (
+        ["invite.created", "invite.accepted", "invite.revoked"].includes(
+          command.type,
+        )
+      )
+        throw new Error(
+          "Use the current server-issued invitation flow. This older request was not converted or sent.",
+        );
+      if (
+        !identity ||
+        (oidcSessionId &&
+          (identity.principal.accountId !== oidcAccountId ||
+            identity.principal.issuer !== oidcIssuer ||
+            identity.principal.subject !== oidcSubject))
+      )
+        throw new Error(
+          "Verify the current service identity before sending this change.",
+        );
+      if (
+        !sameWorkspaceBinding(binding, liveBinding.current) ||
+        !workspaceBindingIsCurrent(
+          binding,
+          identity?.principal ?? null,
+          identity?.memberships ?? [],
+          serviceActionTime(),
+        )
+      )
+        throw new Error(
+          "This workspace scope is no longer current. Refresh or sign in again before changing it.",
+        );
+      const key = "id" in command ? command.id : command.commandId;
+      const request = {
+        path: path(section),
+        key,
+        body: { command },
+        label,
+        protected: protectedOutbox,
+      };
+      setPending(request);
+      let retained: WorkspaceOutboxState | undefined;
+      if (request.protected) {
+        if (
+          !binding ||
+          !currentOutbox?.state ||
+          currentOutbox.retryPending ||
+          currentOutbox.conflict
+        )
+          throw new Error(
+            "Wait for protected request storage or retry its outstanding save before sending.",
+          );
+        const saved = await outboxPort.current?.enqueue(binding, request);
+        if (!saved)
+          throw new Error(
+            "The service request has not been sent because its exact command could not be saved. Retry protected storage first.",
+          );
+        retained = saved;
+      }
+      return await execute(request, retained);
+    } catch (cause) {
+      setErrors([failureText(cause)]);
+      return false;
+    } finally {
+      lock.current = false;
+      setBusy(false);
+    }
+  };
+  const loadMoreMatches = async () => {
+    const cached = matchesCache;
+    if (lock.current || !cached || !matchList?.nextCursor || !sameWorkspaceBinding(cached.binding, liveBinding.current)) return;
+    lock.current = true;
+    setLoadingMoreMatches(true);
+    try {
+      const next = await continueMatchList(cached, {
+        me: () => client.me<Identity>(),
+        request: (path) => client.request<unknown>(path),
+        currentBinding: () => liveBinding.current,
+        sessionCurrent: async (ticket) => {
+          if (!sameWorkspaceBinding(ticket, liveBinding.current)) return false;
+          if (!oidcSessionId) return true;
+          const session = await getConnectedSessionSummary();
+          return Boolean(workspaceSessionAllows(session, absoluteApi, Date.now()) && session?.sessionId === oidcSessionId && session.accountId === ticket.accountId && session.issuer === ticket.issuer && session.subject === ticket.subject);
+        },
+        now: serviceActionTime,
+      });
+      if (next) setMatches(next);
+    } catch (cause) {
+      if (!sameWorkspaceBinding(cached.binding, liveBinding.current)) return;
+      if (cause instanceof MatchListAuthorityDenied || cause instanceof ServiceError && [401, 403, 404].includes(cause.status)) {
+        closeDeniedScope(cached.binding);
+      }
+      setErrors([failureText(cause)]);
+    } finally { lock.current = false; setLoadingMoreMatches(false); }
+  };
+  const changeCommunity = (payload: CommunityPayload) =>
+    mutate(
+      "community",
+      { ...payload, id: randomUUID(), expectedRevision: community?.revision },
+      "Community change",
+    );
+  const reload = async () => {
+    if (
+      lock.current ||
+      (pending && liveBinding.current !== null) ||
+      uploadRetainedRef.current ||
+      brandRetainedRef.current ||
+      invitationIsRetained()
+    )
+      return;
+    lock.current = true;
+    setBusy(true);
+    try {
+      await load();
+      setNotice("Read the latest service views.");
+    } catch (cause) {
+      setErrors([failureText(cause)]);
+    } finally {
+      lock.current = false;
+      setBusy(false);
+    }
+  };
+  const switchScope = (
+    destination: { teamId: string; seasonId: string; playerId?: string | null },
+    role: WorkspaceBinding["role"] | null = null,
+  ) => {
+    guardNavigation(() => {
+      setRefreshSuggested(false);
+      setAlbumSelection(null);
+      invitationAuthority.current = null;
+      invitationHeldRef.current = null;
+      setInvitationHeld(null);
+      brandScopeRef.current = null;
+      brandRetainedRef.current = false;
+      setBrandRetained(false);
+      albumKeyRef.current = null;
+      uploadRetainedRef.current = false;
+      setUploadRetained(false);
+      invalidateRequests();
+      setBinding(null);
+      setTeamOverview(null); setStats(null); setFeedback(null); setScheduledGames(null); setSelectedStatsPlayerId(undefined); setSelectedOverviewGameId(null);
+    setPreparation(null);
+      setOwn(null);
+      setRecords(null);
+      setCommunity(null);
+      setOwnPrivileges(null);
+      setTeamPrivileges(null);
+      setMatches(null);
+      setSeasons(null);
+      setConfiguration(null);
+      setStaff(null);
+      setBranding(null);
+      setServiceMatchId("");
+      setMatchFocused(false);
+      setSelectedReportMatchId(null);
+      setCommunityInitialSection("photos");
+      setRoleChoice(role);
+      setScopeChoice(destination);
+      setContextPickerOpen(false);
+      setTab(
+        role === "administrator"
+          ? "clubs"
+          : role === "spectator"
+            ? "overview"
+            : "home",
+      );
+    });
+  };
+  const exportCalendar = async (selectedKeys: string[]): Promise<string> => {
+    const source = liveBinding.current;
+    if (!source) throw new Error("Open a current authorised schedule first.");
+    const scopedClient = new LongBallServiceClient(
+      connection.baseUrl,
+      (url, options) =>
+        authenticatedFetch(url, {
+          ...options,
+          headers: selectedRoleHeaders(options.headers, source.role),
+        }),
+    );
+    try {
+      return await exportScopedCalendar({
+        source,
+        currentBinding: () => liveBinding.current,
+        readIdentity: () => scopedClient.request<Identity>("/v1/me"),
+        readSchedule: () =>
+          scopedClient.request<PreparationState | OwnPreparationDto>(
+            `/v1/teams/${encodeURIComponent(source.teamId)}/preparation${source.role === "player" ? "/own" : ""}?seasonId=${encodeURIComponent(source.seasonId)}`,
+          ),
+        selectedKeys,
+        nowMs: Date.now,
+        session:
+          connection.mode === "oidc"
+            ? {
+                requiredSessionId: oidcSessionId ?? "",
+                read: getConnectedSessionSummary,
+              }
+            : null,
+        deliver: deliverCalendarExport,
+      });
+    } catch (cause) {
+      if (
+        sameWorkspaceBinding(source, liveBinding.current) &&
+        (cause instanceof CalendarAccessDeniedError ||
+          (cause instanceof ServiceError &&
+            [401, 403, 404].includes(cause.status)))
+      ) {
+        closeDeniedScope(source);
+        setErrors([
+          "Schedule access could not be verified. Private workspace views were closed; refresh service views to verify current access.",
+        ]);
+      }
+      throw cause;
+    }
+  };
+  const closeDeniedExportScope = (source: WorkspaceBinding) => {
+    if (!closeDeniedScope(source)) return;
+    setErrors(["Export access could not be verified. Private workspace views were closed; refresh to verify current access. Retained requests and match records remain unchanged."]);
+  };
+  const openExportJobs = (): ReportExportJobPort => {
+    const source = liveBinding.current;
+    if (!source || source.role === "administrator") throw new Error("Open a current authorised report before preparing an export.");
+    const assertAccess = () => assertReportExportAccess({
+      source, currentBinding: () => liveBinding.current,
+      principal: identity?.principal ?? null, memberships: identity?.memberships ?? [], nowMs: Date.now,
+      session: connection.mode === "oidc" ? { requiredSessionId: oidcSessionId ?? "", read: getConnectedSessionSummary } : null,
+    });
+    const jobs = new ReportExportJobsClient({
+      baseUrl: source.apiBaseUrl, role: source.role, teamId: source.teamId, seasonId: source.seasonId,
+      fetch: authenticatedFetch, assertAccess, onAccessDenied: () => closeDeniedExportScope(source), deliver: deliverReportExport,
+    });
+    return {
+      create: (request, revision, key, signal) => jobs.create(request, revision, key, signal),
+      read: (id, signal) => jobs.read(id, signal),
+      download: (id, format, signal) => jobs.download(id, format, signal),
+    };
+  };
+  const exportReport = async (
+    request: ConnectedExportRequest,
+    signal?: AbortSignal,
+  ): Promise<string> => {
+    const source = liveBinding.current;
+    if (!source)
+      throw new Error("Open a current authorised workspace before exporting.");
+    const parameters = new URLSearchParams({
+      kind: request.kind,
+      format: request.format,
+      expectedProjectionVersion: String(request.expectedProjectionVersion),
+      ...(request.matchId ? { matchId: request.matchId } : {}),
+    });
+    const artifact = await client.request<{
+      kind: string;
+      fileName: string;
+      contentType: string;
+      body: string;
+      teamId: string;
+      seasonId: string;
+      audience: string;
+      projectionVersion: number;
+    }>(`${path("records/export")}&${parameters}`, { signal }).catch((cause) => {
+      if (cause instanceof ServiceError && [401, 403, 404].includes(cause.status)) closeDeniedExportScope(source);
+      throw cause;
+    });
+    const assertAccess = async () => {
+      if (signal?.aborted) { const error = new Error("The export operation was cancelled."); error.name = "AbortError"; throw error; }
+      await assertReportExportAccess({
+        source,
+        currentBinding: () => liveBinding.current,
+        principal: identity?.principal ?? null,
+        memberships: identity?.memberships ?? [],
+        nowMs: Date.now,
+        session:
+          connection.mode === "oidc"
+            ? {
+                requiredSessionId: oidcSessionId ?? "",
+                read: getConnectedSessionSummary,
+              }
+            : null,
+      });
+      if (signal?.aborted) { const error = new Error("The export operation was cancelled."); error.name = "AbortError"; throw error; }
+    };
+    if (
+      artifact.kind !== "records-export" ||
+      artifact.teamId !== source.teamId ||
+      artifact.seasonId !== source.seasonId ||
+      artifact.audience !== source.role ||
+      artifact.projectionVersion !== request.expectedProjectionVersion
+    )
+      throw new Error(
+        "The export receipt differs from the requested audience or projection. The file was discarded.",
+      );
+    return deliverReportExport(artifact, assertAccess);
+  };
+  const legacyInvitationPending = Boolean(
+    pending?.protected &&
+      ["invite.created", "invite.accepted"].includes(
+        (pending.body as { command?: { type?: string } }).command?.type ?? "",
+      ),
+  );
+  const disabledWithoutInvitation =
+    refreshRequired ||
+    uploadRetained ||
+    brandRetained ||
+    busy ||
+    Boolean(pending) ||
+    !storageChecked ||
+    (workspaceNeedsProtectedOutbox(
+      protectedOutbox,
+      expectedBinding,
+      identity?.principal ?? null,
+      identity?.memberships ?? [],
+      membershipTime,
+    ) &&
+      (!currentOutbox?.state ||
+        currentOutbox.busy ||
+        currentOutbox.retryPending ||
+        currentOutbox.conflict));
+  const disabled =
+    disabledWithoutInvitation ||
+    invitationRetained ||
+    Boolean(navigationReview);
+  const activeController =
+    controllerStatus?.source === controllerSource
+      ? controllerStatus.state
+      : null;
+  useLayoutEffect(() => {
+    navigationStateRef.current = {
+      memoryPending: Boolean(pending && !pending.protected),
+      savedPending: Boolean(
+        pending?.protected ||
+          currentOutbox?.retryPending ||
+          currentOutbox?.conflict,
+      ),
+      controllerPending: Boolean(activeController?.pendingNetwork),
+      controllerUnsent: Boolean(activeController?.unsent),
+    };
+  }, [
+    pending,
+    currentOutbox?.retryPending,
+    currentOutbox?.conflict,
+    activeController,
+  ]);
+  const brandingPanel =
+    branding && brandClient && brandScopeKey ? (
+      <BrandLogos
+        value={branding}
+        client={brandClient}
+        scopeKey={brandScopeKey}
+        assertAccess={assertBrandAccess}
+        disabled={disabled}
+        synthetic={connection.mode === "synthetic"}
+        onRetainedChange={onBrandRetained}
+        onChanged={reload}
+        onChange={(command) =>
+          mutate(
+            `branding/${command.kind}/${command.type === "logo.published" ? "publish" : "remove"}`,
+            command,
+            command.type === "logo.published"
+              ? "Logo publication"
+              : "Logo reference removal",
+          )
+        }
+      />
+    ) : (
+      <Notice>
+        Uploaded logos are unavailable until the service returns a current
+        authorised branding view.
+      </Notice>
+    );
+  const overviewTeamLabel = preparation ? `${preparation.team.name} ${preparation.team.ageGroup}` : own ? `${own.team.name} ${own.team.ageGroup}` : configuration ? `${configuration.team.name} ${configuration.team.ageGroup}` : branding ? `${branding.team.name} ${branding.team.ageGroup}`.trim() : community?.teamLabel ?? selectedContext?.teamLabel ?? 'Your team';
+  const overviewGames: TeamOverviewGame[] = teamOverview?.games ?? [];
+  const selectedOverviewGame = overviewGames.find(game => game.id === selectedOverviewGameId);
+  const openOverviewGame = (id: string) => guardNavigation(() => {
+    setSelectedOverviewGameId(id);
+    if (manager) {
+      if (props.journal && props.deviceId && preparation?.snapshots.some(snapshot => snapshot.fixtureId === id)) { setServiceMatchId(id); setMatchFocused(true); setTab('controller'); }
+      else setTab('schedule');
+    } else if (administrator) setTab('schedule');
+    else setTab('centre');
+  });
+  const focusedMatch = Boolean(props.initialConnection && manager && tab === "controller" && matchFocused);
+  return (
+    <WorkspaceFrame fullScreen={Boolean(props.initialConnection)} fixedMatch={focusedMatch} resetKey={tab} footer={
+      expectedBinding && membership && !focusedMatch && (
+        <View testID="workspace-context-ready">
+          <WorkspaceNavigation
+            role={membership.role}
+            active={tab}
+            disabled={disabled}
+            onSelect={(value) => {
+              if (
+                !uploadRetainedRef.current &&
+                !brandRetainedRef.current &&
+                !invitationIsRetained()
+              ) {
+                if (value === "account" && props.onOpenAccount)
+                  guardNavigation(props.onOpenAccount);
+                else {
+                  if (value === "community")
+                    setCommunityInitialSection("photos");
+                  setSelectedOverviewGameId(null);
+                  setTab(value);
+                }
+              }
+            }}
+          />
+        </View>
+      )
+    }>
+      <Card style={{ padding: focusedMatch ? 2 : 12 }}>
+        {focusedMatch && (
+          <View style={s.row} testID="workspace-match-header">
+            <Text testID="workspace-current-role" style={[typography.muted,{fontWeight:"700",color:colors.brand}]}>Manager</Text>
+            <Button label="Back to team" accessibilityLabel="Back to team; clock continues" testID="workspace-back-to-team" variant="quiet" compact style={{ flex: 1, paddingHorizontal: 4 }} disabled={disabled} onPress={() => setTab("overview")} />
+            <Button label="Account" accessibilityLabel="Account and security" testID="workspace-match-account" variant="quiet" icon="lock" iconOnly compact style={{ paddingHorizontal: 4 }} onPress={() => guardNavigation(props.onOpenAccount ?? (() => setTab("account")))} />
+            {props.onSignOut && <Button label="Sign out" compact icon="logout" iconOnly variant="quiet" testID={props.signOutTestID ?? "workspace-sign-out"} onPress={props.onSignOut} />}
+          </View>
+        )}
+        {!focusedMatch && manager && matchFocused && serviceMatchId && (
+          <Button label="Return to selected match" testID="workspace-return-to-match" variant="secondary" disabled={disabled} onPress={() => setTab("controller")} />
+        )}
+        {!focusedMatch && <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Open team overview" testID="workspace-team-overview" disabled={disabled} onPress={() => guardNavigation(() => setTab('overview'))} style={{minWidth:44,minHeight:44,alignItems:'center',justifyContent:'center'}}>
+            {branding && brandClient && brandScopeKey ? <AuthenticatedBrandBadge client={brandClient} reference={branding.effective.logo} scopeKey={brandScopeKey} assertAccess={assertBrandAccess} label={`${branding.team.name} team badge`} /> : <Text style={[typography.section,{color:colors.brand}]}>RU</Text>}
+          </Pressable>
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text style={typography.section}>
+              {selectedContext
+                ? preparation
+                  ? `${preparation.team.name} ${preparation.team.ageGroup}`
+                  : own
+                    ? `${own.team.name} ${own.team.ageGroup}`
+                    : configuration
+                      ? `${configuration.team.name} ${configuration.team.ageGroup}`
+                      : branding
+                        ? `${branding.team.name} ${branding.team.ageGroup}`.trim()
+                        : (community?.teamLabel ?? selectedContext.teamLabel)
+                : identity
+                  ? "Choose your workspace"
+                  : "Checking your account…"}
+            </Text>
+            {selectedContext && (
+              <Text testID="workspace-current-role" style={[typography.muted, {fontWeight:"700", color:colors.brand}]}>
+                {({manager:"Manager",administrator:"Administrator",player:"Player",spectator:"Spectator"})[selectedContext.role]} ·{" "}
+                {formatUkSeasonLabel(own?.season?.label ??
+                  preparation?.seasons.find((item) => item.id === seasonId)
+                    ?.label ??
+                  configuration?.seasons.find((item) => item.id === seasonId)
+                    ?.label ??
+                  community?.seasonLabel ??
+                  selectedContext.seasonLabel)}
+              </Text>
+            )}
+
+          </View>
+          {props.onSignOut && <Button label="Sign out" icon="logout" iconOnly compact testID={props.signOutTestID ?? "workspace-sign-out"} variant="quiet" onPress={props.onSignOut} />}
+        </View>}
+        {!focusedMatch && selectedContext && contextChoices.length > 1 && (
+          <Button
+            label="Change space"
+            testID="workspace-change-context"
+            variant="quiet"
+            icon="swap"
+            disabled={disabled}
+            onPress={() =>
+              guardNavigation(() => setContextPickerOpen((value) => !value))
+            }
+          />
+        )}
+        {!selectedContext && (
+          <View style={s.row}>
+            <Button
+              label="Account"
+              variant="quiet"
+              onPress={() =>
+                guardNavigation(
+                  props.onOpenAccount ?? (() => setTab("account")),
+                )
+              }
+            />
+            {props.onLeaveWorkspace && (
+              <Button
+                label="Return to welcome"
+                variant="quiet"
+                onPress={() => guardNavigation(props.onLeaveWorkspace!)}
+              />
+            )}
+          </View>
+        )}
+        {identity &&
+          (!selectedContext || contextPickerOpen) &&
+          contextChoices.length > 0 && (
+            <View style={s.stack} testID="workspace-context-choices">
+              <Text style={typography.section}>
+                Choose a team, season and role
+              </Text>
+              <Text style={typography.body}>
+                Only current assignments returned by the service are available.
+                Your last valid choice can be remembered on this device.
+              </Text>
+              {contextChoices.map((choice) => (
+                <Card key={workspaceContextKey(choice)}>
+                  {choice.clubLabel && (
+                    <Text style={typography.muted}>{choice.clubLabel}</Text>
+                  )}
+                  <Text style={typography.section}>{choice.teamLabel}</Text>
+                  <Text style={typography.body}>
+                    {choice.seasonLabel} · {choice.roleLabel}
+                  </Text>
+                  <Button
+                    label={`Open ${choice.roleLabel} · ${choice.teamLabel} · ${choice.seasonLabel}`}
+                    testID={`workspace-context-${choice.role}-${choice.teamId}-${choice.seasonId}-${choice.playerId ?? "none"}`}
+                    disabled={disabled}
+                    variant={
+                      selectedContext &&
+                      workspaceContextKey(selectedContext) ===
+                        workspaceContextKey(choice)
+                        ? "secondary"
+                        : "primary"
+                    }
+                    onPress={() =>
+                      switchScope(
+                        {
+                          teamId: choice.teamId,
+                          seasonId: choice.seasonId,
+                          playerId: choice.playerId,
+                        },
+                        choice.role,
+                      )
+                    }
+                  />
+                </Card>
+              ))}
+            </View>
+          )}
+        {props.invitationDestination && (
+          <Button
+            label="Review received season invitation"
+            variant="secondary"
+            disabled={disabled}
+            onPress={() => setTab("invitations")}
+          />
+        )}
+        {sharedRefreshEnabled && sharedRefreshDelayed && (
+          <Notice tone="warning">
+            Updates are delayed. Your last confirmed view is retained while the connection is retried.
+          </Notice>
+        )}
+        {errors.map((error, index) => (
+          <Notice key={`${index}:${error}`} tone="error">
+            {error}
+          </Notice>
+        ))}
+        {notice && <Notice>{notice}</Notice>}
+        {!focusedMatch && (activeController?.unsent || activeController?.pendingNetwork) && (
+          <Notice tone="warning">
+            This match has {activeController.pendingCount} event(s) awaiting
+            acknowledgement
+            {activeController.pendingNetwork
+              ? " and an unresolved service request"
+              : ""}
+            . Saved records remain in this device journal. Upload or review them
+            before changing workspace.
+          </Notice>
+        )}
+        {navigationReview && (
+          <Card>
+            <Text style={typography.section}>
+              Saved requests still need attention
+            </Text>
+            <Text style={typography.body}>
+              Unsynchronised match events or protected requests will remain on
+              this device. Leaving does not upload them or confirm that the
+              service accepted them. Return to this account and workspace to
+              retry.
+            </Text>
+            <Button
+              label="Stay in this workspace"
+              onPress={() => setNavigationReview(null)}
+            />
+            <Button
+              label="Continue; keep saved records"
+              variant="secondary"
+              onPress={() => {
+                if (
+                  brandRetainedRef.current ||
+                  uploadRetainedRef.current ||
+                  invitationIsRetained() ||
+                  navigationStateRef.current.memoryPending ||
+                  lock.current
+                ) {
+                  setErrors([
+                    "A private in-memory request is still retained. Retry or explicitly close it before leaving.",
+                  ]);
+                  return;
+                }
+                const proceed = navigationReview;
+                setNavigationReview(null);
+                proceed();
+              }}
+            />
+          </Card>
+        )}
+        {protectedOutbox &&
+        binding &&
+        currentOutboxId &&
+        props.journal &&
+        props.deviceId ? (
+          <WorkspaceOutboxBridge
+            ref={outboxPort}
+            key={currentOutboxId}
+            binding={binding}
+            journal={props.journal}
+            deviceId={props.deviceId}
+            onStatus={setOutboxStatus}
+            showStorageDetails={tab === "more"}
+          />
+        ) : tab === "more" || !selectedContext ? (
+          <Text style={typography.muted}>
+            {storageChecked
+              ? "Service changes use memory-only retry on this connection. Closing this workspace clears unsent or unresolved requests; real browser command bodies are not written to browser persistence."
+              : "Checking protected request storage before enabling changes…"}
+          </Text>
+        ) : null}
+        {pending && (
+          <>
+            <Notice tone="warning">
+              {pending.protected
+                ? "A request is unresolved. Its exact command and key are retained in this protected workspace. Retry after the service verifies current access; a queued vote is never counted until the service accepts it before the cutoff."
+                : "A request is unresolved. Its exact command and key remain on this open screen. This connection uses memory-only retry; closing this workspace clears the request."}
+            </Notice>
+            <Button
+              label="Retry exact service request"
+              testID="workspace-retry"
+              disabled={
+                busy ||
+                legacyInvitationPending ||
+                (pending.protected === true &&
+                  (!currentOutbox?.state ||
+                    currentOutbox.busy ||
+                    currentOutbox.retryPending ||
+                    currentOutbox.conflict))
+              }
+              onPress={() => {
+                if (lock.current) return;
+                lock.current = true;
+                setBusy(true);
+                void execute(pending)
+                  .catch((cause) => setErrors([failureText(cause)]))
+                  .finally(() => {
+                    lock.current = false;
+                    setBusy(false);
+                  });
+              }}
+            />
+            {legacyInvitationPending && (
+              <View style={s.stack}>
+                <Notice tone="warning">
+                  This older invitation protocol cannot be replayed. The
+                  original request remains in protected storage. You may
+                  explicitly retire only this unsupported request locally, then
+                  issue or reissue a current server-generated invitation. Its
+                  past server status remains unknown.
+                </Notice>
+                <View style={s.row}>
+                  <Switch
+                    accessibilityLabel="Retire unsupported invitation locally; keep exact history"
+                    value={legacyReviewKey === pending.key}
+                    disabled={busy}
+                    onValueChange={(value) =>
+                      setLegacyReviewKey(value ? pending.key : null)
+                    }
+                  />
+                  <Text style={typography.body}>
+                    Keep the original history and never replay this old request.
+                  </Text>
+                </View>
+                <Button
+                  label="Confirm local retirement of old invitation"
+                  testID="workspace-retire-legacy-invitation"
+                  variant="secondary"
+                  disabled={
+                    busy ||
+                    legacyReviewKey !== pending.key ||
+                    !currentOutbox?.state ||
+                    currentOutbox.busy ||
+                    currentOutbox.retryPending ||
+                    currentOutbox.conflict
+                  }
+                  onPress={() => {
+                    void retireLegacyInvitation();
+                  }}
+                />
+              </View>
+            )}
+          </>
+        )}
+        {currentOutbox?.state?.lastSettled?.outcome.kind ===
+          "locally_retired" && (
+          <Notice>
+            Unsupported invitation retired locally. Exact history is retained;
+            no server acknowledgement or delivery is claimed.
+          </Notice>
+        )}
+        {(tab === "more" || tab === "account" || !selectedContext || refreshRequired || refreshSuggested) && (
+          <Button
+            label={busy ? "Contacting service…" : "Refresh service views"}
+            variant="secondary"
+            disabled={
+              busy ||
+              (Boolean(pending) && binding !== null) ||
+              uploadRetained ||
+              brandRetained ||
+              invitationRetained
+            }
+            onPress={() => {
+              void reload();
+            }}
+          />
+        )}
+      </Card>
+      {tab === 'overview' && selectedContext && (teamOverview ? <TeamOverview team={teamOverview.team} games={overviewGames} nowMs={membershipTime} busy={disabled} onOpenGame={openOverviewGame} onRefresh={() => { void reload(); }} /> : <Notice>Your team overview is loading. Refresh your team view if it remains unavailable.</Notice>)}
+      {tab === 'stats' && (manager || administrator || membership?.role === 'player') && <View style={s.stack}><Button label="Refresh stats" compact variant="quiet" disabled={disabled} onPress={() => {void reload();}} />{stats ? stats.kind === 'own-player-stats' ? <PlayerStats value={stats} teamLabel={overviewTeamLabel} /> : <TeamStats value={stats} teamLabel={overviewTeamLabel} selectedPlayerId={selectedStatsPlayerId} onSelectPlayer={setSelectedStatsPlayerId} /> : <Notice>Your statistics are loading. Refresh your team view if they remain unavailable.</Notice>}</View>}
+      {tab === 'feedback' && (manager || membership?.role === 'player') && (feedback ? <MatchFeedback value={feedback} disabled={disabled} onSave={manager ? undefined : command => mutate('match-feedback',command,'Match feedback')} onRefresh={reload} /> : <Notice>Match feedback is loading. Refresh your team view if it remains unavailable.</Notice>)}
+      {tab === "more" && expectedBinding && (
+        <Card>
+          <View style={s.stack} testID="workspace-more-panel">
+            <Text accessibilityRole="header" style={typography.section}>
+              More
+            </Text>
+            {(manager ? [
+              ["overview", "Team overview"], ["centre", "Match centre"], ["reports", "Team records"], ["feedback", "Player feedback"],
+              ["community", "Photos and player of the match"], ["settings", "Team settings"], ["seasons", "Seasons"],
+              ["invitations", "Invitations"], ["privileges", "Upload and invitation privileges"],
+              ...(props.journal && props.deviceId ? [["controller", "Match recording"]] : []),
+            ] : administrator ? [
+              ["overview", "Team overview"], ["people", "People"], ["seasons", "Seasons"], ["settings", "Club and team settings"],
+            ] : membership?.role === 'player' ? [
+              ["overview", "Team overview"], ["centre", "My game"], ["feedback", "My match feedback"], ["team", "My profile"], ["reports", "My reports"], ["invitations", "Invitations"],
+            ] : [["overview", "Team overview"]]
+            ).map(([value, label]) => (
+              <Button
+                key={value}
+                label={label}
+                testID={`workspace-tab-${value}`}
+                compact
+                variant="secondary"
+                disabled={disabled}
+                onPress={() => {
+                  if (value === "community")
+                    setCommunityInitialSection("photos");
+                  setSelectedOverviewGameId(null);
+                  setTab(value as Tab);
+                }}
+              />
+            ))}
+            <Button
+              label="Account"
+              icon="lock"
+              testID="workspace-tab-account"
+              variant="secondary"
+              onPress={() =>
+                guardNavigation(
+                  props.onOpenAccount ?? (() => setTab("account")),
+                )
+              }
+            />
+            {props.onLeaveWorkspace && (
+              <Button
+                label="Return to welcome"
+                variant="quiet"
+                onPress={() => guardNavigation(props.onLeaveWorkspace!)}
+              />
+            )}
+          </View>
+        </Card>
+      )}
+      {tab === "home" && manager && preparation && (
+        <ConnectedManagerHome
+          state={preparation}
+          records={records}
+          community={community}
+          nowMs={membershipTime}
+          onOpenSchedule={() => setTab("schedule")}
+          onOpenTeam={() => setTab("team")}
+          onOpenReports={() => setTab("reports")}
+          onOpenCommunity={() => {
+            setCommunityInitialSection("photos");
+            setTab("community");
+          }}
+          onPrepareMatch={() => setTab("schedule")}
+          onResumeMatch={
+            props.journal && props.deviceId
+              ? (matchId: string) => {
+                  setServiceMatchId(matchId);
+                  setMatchFocused(true);
+                  setTab("controller");
+                }
+              : undefined
+          }
+        />
+      )}
+      {tab === "home" &&
+        membership?.role === "player" &&
+        own &&
+        teamId &&
+        seasonId &&
+        membership.playerId && (
+          <ConnectedPlayerHome
+            key={`${absoluteApi}:${identity?.principal.accountId}:${teamId}:${seasonId}:${membership.playerId}`}
+            own={own}
+            community={community}
+            matches={matches ?? []}
+            scope={{ teamId, seasonId, playerId: membership.playerId }}
+            nowMs={membershipTime}
+            disabled={disabled}
+            displayName={own.profile.displayName}
+            onOpenSchedule={() => setTab("schedule")}
+            onOpenProfile={() => setTab("team")}
+            onOpenGame={() => { const selected = selectTeamOverviewGame(overviewGames, teamOverviewLondonDate(membershipTime)).game; if (selected) openOverviewGame(selected.id); else setTab('centre'); }}
+            onOpenVote={() => {
+              setCommunityInitialSection("awards");
+              setTab("community");
+            }}
+            onOpenAlbum={openAlbum}
+            onReply={(event, response) => {
+              void mutate(
+                "preparation/own",
+                {
+                  id: randomUUID(),
+                  expectedRevision: own.revision,
+                  ...(event.kind === "match"
+                    ? {
+                        type: "own.fixture_response_recorded",
+                        fixtureId: event.id,
+                        response,
+                      }
+                    : {
+                        type: "own.training_response_recorded",
+                        trainingId: event.id,
+                        response,
+                      }),
+                },
+                "Own availability reply",
+              );
+            }}
+            renderPhoto={(photo) =>
+              communityActor ? (
+                <RemotePhoto
+                  key={`${albumKey}:${photo.id}:${photo.version}`}
+                  client={
+                    new MediaUploadClient(
+                      connection.baseUrl || "/",
+                      communityActor,
+                      authenticatedFetch,
+                    )
+                  }
+                  photoId={photo.id}
+                  revision={photo.version}
+                  mode="gallery"
+                  variant="thumbnail"
+                />
+              ) : null
+            }
+          />
+        )}
+      {tab === 'home' && membership?.role === 'player' && <View style={s.row}>
+        <Button label="My Stats" compact icon="chart" variant="secondary" testID="player-home-my-stats" style={{flex:1}} disabled={disabled} onPress={() => setTab('stats')} />
+        <Button label="Match feedback" compact icon="ball" variant="secondary" testID="player-home-feedback" style={{flex:1}} disabled={disabled} onPress={() => setTab('feedback')} />
+      </View>}
+      {tab === "home" && membership?.role === "player" && !own && (
+        <Notice>
+          {busy
+            ? "Loading your player home…"
+            : "Your current player home is unavailable. Refresh after the service confirms your own team and season assignment."}
+        </Notice>
+      )}
+      {tab === "privileges" &&
+        manager &&
+        (teamPrivileges ? (
+          <TeamPrivilegesPanel
+            key={`${absoluteApi}:${identity?.principal.accountId}:${teamId}:${seasonId}`}
+            value={teamPrivileges}
+            disabled={disabled}
+            onChange={(command) =>
+              mutate("privileges", command, "Team privilege decision")
+            }
+          />
+        ) : (
+          <Notice>
+            Current team privilege decisions are unavailable. Refresh to verify
+            your manager assignment.
+          </Notice>
+        ))}
+      {tab === "clubs" && administrator && configuration && (
+        <Card>
+          <Text style={typography.section}>Clubs</Text>
+          <Text style={typography.body}>{configuration.club.name}</Text>
+          <Text style={typography.muted}>
+            This is the club attached to your current service assignment.
+            Private team records require a separate manager role.
+          </Text>
+          <Button
+            label="Edit club and team configuration"
+            disabled={disabled}
+            onPress={() => setTab("settings")}
+          />
+          <Button
+            label="View assigned teams"
+            variant="secondary"
+            disabled={disabled}
+            onPress={() => setTab("team")}
+          />
+        </Card>
+      )}
+      {tab === "people" &&
+        administrator &&
+        (staff ? (
+          <ConnectedStaffPanel
+            value={staff}
+            disabled={disabled}
+            onChange={(command) =>
+              mutate(
+                command.type === "manager.revoked"
+                  ? "managers/revoke"
+                  : "managers",
+                command,
+                "Staff assignment",
+              )
+            }
+          />
+        ) : (
+          <Notice>
+            People are unavailable until the service confirms your administrator
+            assignment.
+          </Notice>
+        ))}
+      {tab === "account" && (
+        <Card>
+          <Text style={typography.section}>Account</Text>
+          <Text style={typography.body}>
+            {selectedContext?.roleLabel ?? "No selected workspace"}
+          </Text>
+          <Text style={typography.muted}>
+            {identity?.principal.accountId ?? "Checking account"}
+          </Text>
+          {props.onOpenAccount && (
+            <Button
+              label="Open account and security"
+              onPress={() => guardNavigation(props.onOpenAccount!)}
+            />
+          )}
+          {props.onLeaveWorkspace && (
+            <Button
+              label="Return to welcome"
+              variant="secondary"
+              onPress={() => guardNavigation(props.onLeaveWorkspace!)}
+            />
+          )}
+        </Card>
+      )}
+      {tab === 'centre' && selectedOverviewGameId && membership?.role !== 'administrator' && <Card>
+        {selectedOverviewGame && !matches?.some(match => match.matchId === selectedOverviewGameId) && <>
+          <Text style={typography.section}>{selectedOverviewGame.opponent}</Text>
+          <Text style={typography.body}>{formatUkDate(selectedOverviewGame.playedDate)} · {selectedOverviewGame.kickoff ?? 'Time to confirm'}</Text>
+          <Text style={typography.muted}>{selectedOverviewGame.venue ?? 'Venue to confirm'}</Text>
+          <Notice>The game is scheduled. Match updates will appear when recording begins.</Notice>
+        </>}
+        <Button label="All games" compact variant="quiet" testID="workspace-all-games" disabled={disabled} onPress={() => setSelectedOverviewGameId(null)} />
+      </Card>}
+      {tab === "centre" &&
+        membership &&
+        membership.role !== "administrator" &&
+        (matches ? (
+          <ConnectedMatchCentre
+            matches={selectedOverviewGameId ? matches.filter(match => match.matchId === selectedOverviewGameId) : matches}
+            hasMore={!selectedOverviewGameId && Boolean(matchList?.nextCursor)}
+            loadingMore={loadingMoreMatches}
+            onLoadMore={() => { void loadMoreMatches(); }}
+            reportView={records}
+            scope={
+              teamId && seasonId
+                ? { teamId, seasonId, playerId: membership.playerId ?? null }
+                : undefined
+            }
+            observedAtMs={membershipTime}
+            audience={membership.role as ConnectedMatchCentreDto["audience"]}
+            busy={disabled}
+            onRefresh={() => {
+              void reload();
+            }}
+            onReports={() => setTab("reports")}
+            onPhotos={() => {
+              setCommunityInitialSection("photos");
+              setTab("community");
+            }}
+            onOpenReport={(matchId) => {
+              setSelectedReportMatchId(matchId);
+              setTab("reports");
+            }}
+            onOpenAlbum={openAlbum}
+          />
+        ) : (
+          <Notice>
+            {busy
+              ? "Loading permitted match updates…"
+              : "Match updates are unavailable in this current authorised context."}
+          </Notice>
+        ))}
+      {(tab === "schedule" || tab === "team" || tab === "settings") &&
+        (administrator && tab === "schedule" ? (
+          scheduledGames ? <ScheduledGameManagement value={scheduledGames} fixtureId={selectedOverviewGameId ?? undefined} busy={disabled} onCommand={command => mutate("scheduled-games", command, "Scheduled game change")} /> : <Notice>Scheduled games are loading. Refresh your team view if they remain unavailable.</Notice>
+        ) : administrator && configuration ? (
+          <ConnectedClubConfiguration
+            key={`${absoluteApi}:${identity?.principal.accountId}:${teamId}:${seasonId}`}
+            value={configuration}
+            disabled={disabled}
+            staff={staff}
+            brandingPanel={brandingPanel}
+            onStaffChange={(command) =>
+              mutate(
+                command.type === "manager.revoked"
+                  ? "managers/revoke"
+                  : "managers",
+                command,
+                "Staff assignment",
+              )
+            }
+            onChange={(command) =>
+              mutate("configuration", command, "Configuration change")
+            }
+          />
+        ) : manager && preparation ? (
+          <PreparationScreens
+            initialFixtureId={selectedOverviewGameId ?? undefined}
+            renderScheduledGameManagement={fixtureId => scheduledGames ? <ScheduledGameManagement value={scheduledGames} fixtureId={fixtureId} busy={disabled} onCommand={command => mutate("scheduled-games", command, "Scheduled game change")} /> : null}
+            storage="service"
+            completedFixtureIds={completedFixtureIds}
+            acceptedFixtureIds={acceptedFixtureIds}
+            onOpenReport={(fixtureId) => guardNavigation(() => { setSelectedReportMatchId(fixtureId); setTab("reports"); })}
+            onExportCalendar={exportCalendar}
+            brandingPanel={brandingPanel}
+            state={preparation}
+            view={tab}
+            onChange={(command) =>
+              mutate("preparation", command, "Preparation change")
+            }
+            busy={disabled}
+            onPrepareRollover={() => setTab("seasons")}
+            onPrepareChildActivation={
+              props.onPrepareChildActivation && teamId && seasonId
+                ? (playerId) =>
+                    props.onPrepareChildActivation?.({
+                      teamId,
+                      seasonId,
+                      playerId,
+                    })
+                : undefined
+            }
+            onOpenMatch={
+              props.journal && props.deviceId
+                ? (fixtureId) => {
+                    setServiceMatchId(fixtureId);
+                    setMatchFocused(true);
+                    setTab("controller");
+                  }
+                : undefined
+            }
+          />
+        ) : own ? (
+          <OwnPreparation
+            key={`${absoluteApi}:${identity?.principal.accountId}:${teamId}:${seasonId}:${own.profile.id}`}
+            completedFixtureIds={completedFixtureIds}
+            value={own}
+            onExportCalendar={exportCalendar}
+            view={tab === "team" ? "profile" : "schedule"}
+            nowMs={membershipTime}
+            disabled={disabled}
+            onChange={(command) =>
+              mutate("preparation/own", command, "Own preparation change")
+            }
+          />
+        ) : (
+          <Notice>
+            {membership?.role === "spectator"
+              ? "Spectator access does not include private squad preparation or attendance."
+              : "Preparation is unavailable for this account. Check the service message above."}
+          </Notice>
+        ))}
+      {tab === "seasons" &&
+        (seasonOptions && (manager || administrator) ? (
+          <ConnectedSeasonRollover
+            key={`${seasonOptions.sourceSeasonId}:${seasonOptions.revision}`}
+            options={seasonOptions}
+            disabled={disabled}
+            onSave={async (command) => {
+              const saved = await mutate("seasons", command, "New season");
+              if (saved && teamId && identity) {
+                const id = identity.principal.accountId;
+                const nextRole = command.managerAccountIds.includes(id)
+                  ? "manager"
+                  : command.administratorAccountIds.includes(id)
+                    ? "administrator"
+                    : command.playerAssignments.some(
+                          (item) => item.accountId === id,
+                        )
+                      ? "player"
+                      : null;
+                if (nextRole)
+                  switchScope(
+                    { teamId, seasonId: command.idForSeason },
+                    nextRole,
+                  );
+                else
+                  setNotice(
+                    `New season ${formatUkSeasonLabel(seasonOptions.nextSeason.label)} was saved. Your account was not assigned a role there; source-season access remains separate.`,
+                  );
+              }
+              return saved;
+            }}
+          />
+        ) : (
+          <Notice>
+            Season assignment options are unavailable in this context. The
+            service checks administrator authority and recent stronger
+            authentication.
+          </Notice>
+        ))}
+      {tab === "reports" &&
+        (membership && membership.role !== "administrator" && records ? (
+          <ConnectedRecordsScreens
+            value={records}
+            initialMatchId={selectedReportMatchId ?? undefined}
+            audience={membership.role as "manager" | "player" | "spectator"}
+            teamLabel={
+              preparation
+                ? `${preparation.team.name} ${preparation.team.ageGroup}`
+                : own
+                  ? `${own.team.name} ${own.team.ageGroup}`
+                  : (community?.teamLabel ?? "Team")
+            }
+            disabled={disabled}
+            onChange={(command) => mutate("records", command, "Result")}
+            onExport={exportReport}
+            openExportJobs={openExportJobs}
+            active={props.active !== false && tab === "reports"}
+            onOpenAlbum={openAlbum}
+            onOpenController={
+              manager && props.journal && props.deviceId
+                ? (matchId) => {
+                    setServiceMatchId(matchId);
+                    setMatchFocused(true);
+                    setTab("controller");
+                  }
+                : undefined
+            }
+          />
+        ) : (
+          <Notice>
+            Reports are unavailable for the current service account.
+          </Notice>
+        ))}
+      {tab === "community" && (
+        <>
+          {community && communityActor && albumScope ? (
+            <ConnectedCommunity
+              key={`${communityActor.accountId}:${communityActor.teamId}:${communityActor.seasonId}:${communityActor.role}`}
+              value={community}
+              initialSection={communityInitialSection}
+              actor={communityActor}
+              albumScope={albumScope}
+              albumSelection={albumSelection}
+              onSelectAlbum={setAlbumSelection}
+              media={
+                new MediaUploadClient(
+                  connection.baseUrl || "/",
+                  communityActor,
+                  authenticatedFetch,
+                )
+              }
+              disabled={disabled}
+              onChange={changeCommunity}
+            />
+          ) : (
+            <Notice>
+              Community is unavailable until the service grants current access.
+            </Notice>
+          )}
+          {community?.allowed &&
+            communityActor &&
+            communityActor.role !== "spectator" &&
+            albumScope && (
+              <MediaUpload
+                actor={communityActor}
+                apiBaseUrl={connection.baseUrl || "/"}
+                synthetic={connection.mode === "synthetic"}
+                allowLibraryPicker={props.allowSynthetic === false}
+                albumScope={albumScope}
+                matches={community.matches}
+                selection={selectedAlbum ? albumSelection : null}
+                allowed={community.allowed}
+                contributionsAllowed={ownPrivileges?.uploadsAllowed === true}
+                onRetainedChange={onUploadRetained}
+                onChanged={reload}
+              />
+            )}
+        </>
+      )}
+      {(tab === "community" || tab === "invitations") &&
+        identity &&
+        invitationScopeKey && (
+          <ScopedWorkspaceInvitations
+            baseUrl={connection.baseUrl || "/"}
+            authenticatedFetch={authenticatedFetch}
+            scopeKey={invitationScopeKey}
+            active={identity.principal.status === "active"}
+            assertCurrent={assertInvitationCurrent}
+            disabled={disabledWithoutInvitation}
+            teamId={teamId ?? null}
+            seasonId={seasonId ?? null}
+            canIssue={
+              invitationRole === "manager" || invitationRole === "player"
+            }
+            contributionsAllowed={ownPrivileges?.invitationsAllowed === true}
+            invitationDestination={props.invitationDestination}
+            onRetainedChange={onInvitationRetained}
+            onChanged={async (acceptedScope) => {
+              await reload();
+              if (acceptedScope) switchScope(acceptedScope, "spectator");
+            }}
+          />
+        )}
+      {tab === "controller" && manager && props.journal && props.deviceId && (
+        <View style={[s.stack, focusedMatch && { flex: 1, minHeight: 0 }]}>
+          {!focusedMatch && <Card>
+            <Text style={typography.section}>Choose the service match</Text>
+            <Text style={typography.body}>
+              Open a prepared fixture or enter an existing accepted match
+              identifier. The service checks its team, season and manager
+              authority.
+            </Text>
+            <TextInput
+              accessibilityLabel="Connected match identifier"
+              value={serviceMatchId}
+              onChangeText={setServiceMatchId}
+              autoCapitalize="none"
+              autoCorrect={false}
+              style={s.input}
+            />
+            {preparation?.fixtures
+              .filter((fixture) =>
+                preparation.snapshots.some(
+                  (snapshot) => snapshot.fixtureId === fixture.id,
+                ),
+              )
+              .map((fixture) => (
+                <Button
+                  key={fixture.id}
+                  label={`Control ${fixture.opponent} · ${formatUkDate(fixture.playedDate)}`}
+                  variant={
+                    serviceMatchId === fixture.id ? "primary" : "secondary"
+                  }
+                  onPress={() => { setServiceMatchId(fixture.id); setMatchFocused(true); }}
+                />
+              ))}
+          </Card>}
+          {teamId && seasonId && serviceMatchId.trim() ? (
+            <ServicePanel
+              fillScreen={focusedMatch}
+              key={`${teamId}:${seasonId}:${serviceMatchId.trim()}`}
+              journal={props.journal}
+              deviceId={props.deviceId}
+              match={
+                props.match?.config.matchId === serviceMatchId.trim()
+                  ? props.match
+                  : null
+              }
+              matchId={serviceMatchId.trim()}
+              teamId={teamId}
+              seasonId={seasonId}
+              allowSynthetic={props.allowSynthetic}
+              initialConnection={
+                props.initialConnection ? connection : undefined
+              }
+              onControllerState={handleControllerState}
+            />
+          ) : (
+            <Notice>
+              Choose an existing service match before opening controller
+              storage.
+            </Notice>
+          )}
+        </View>
+      )}
+    </WorkspaceFrame>
+  );
+}
+
+function OwnPreparation({
+  value,
+  view = "schedule",
+  nowMs,
+  disabled,
+  onChange,
+  onExportCalendar,
+  completedFixtureIds,
+}: {
+  value: OwnPreparationDto;
+  view?: "schedule" | "profile";
+  nowMs: number;
+  disabled: boolean;
+  onChange: (command: OwnCommand) => Promise<boolean>;
+  onExportCalendar: (selectedKeys: string[]) => Promise<string>;
+  completedFixtureIds: ReadonlySet<string>;
+}) {
+  const [preferenceDraft, setPreferenceDraft] = useState(() => revisionedValueDraft(value.profile.preferences, value.revision));
+  const [preferenceAck, setPreferenceAck] = useState<{ submitted: PlayerProfile['preferences']; sourceRevision: number } | null>(null);
+  let nextPreferenceDraft = preferenceDraft.revision !== value.revision || JSON.stringify(preferenceDraft.source) !== JSON.stringify(value.profile.preferences)
+    ? refreshRevisionedValueDraft(preferenceDraft, value.profile.preferences, value.revision) : preferenceDraft;
+  if (preferenceAck && value.revision > preferenceAck.sourceRevision) {
+    nextPreferenceDraft = acknowledgeRevisionedValueDraft(nextPreferenceDraft, preferenceAck.submitted);
+    setPreferenceAck(null);
+  }
+  if (nextPreferenceDraft !== preferenceDraft) setPreferenceDraft(nextPreferenceDraft);
+  const [preferenceRank, setPreferenceRank] = useState(0);
+  const preferences = preferenceDraft.value;
+  const preferencesNeedReview = revisionedValueNeedsReview(preferenceDraft);
+  const command = (payload: OwnPayload, expectedRevision = value.revision) =>
+    onChange({
+      ...payload,
+      id: randomUUID(),
+      expectedRevision,
+    });
+  const responseButtons = (
+    response: AvailabilityResponse,
+    save: (response: AvailabilityResponse) => void,
+  ) => (
+    <View style={s.row}>
+      {(Object.keys(responseLabels) as AvailabilityResponse[]).map((option) => (
+        <Button
+          key={option}
+          label={responseLabels[option]}
+          compact
+          variant={response === option ? "primary" : "secondary"}
+          disabled={disabled}
+          onPress={() => save(option)}
+        />
+      ))}
+    </View>
+  );
+  const [schedulePeriod, setSchedulePeriod] = useState<"upcoming" | "past">(
+    "upcoming",
+  );
+  const [scheduleKind, setScheduleKind] = useState<"all" | "match" | "training">("all");
+  const dayParts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/London",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date(nowMs));
+  const today = `${dayParts.find((part) => part.type === "year")!.value}-${dayParts.find((part) => part.type === "month")!.value}-${dayParts.find((part) => part.type === "day")!.value}`;
+  const events = [
+    ...value.fixtures.map((item) => ({ ...item, kind: "match" as const })),
+    ...value.training.map((item) => ({ ...item, kind: "training" as const })),
+  ];
+  const groups = groupPreparationEvents(events.filter(event => scheduleKind === "all" || event.kind === scheduleKind), {
+    period: schedulePeriod,
+    today,
+    date: (event) => (event.kind === "match" ? event.playedDate : event.date),
+    time: (event) => (event.kind === "match" ? event.kickoff : event.time),
+  });
+  const fixtureCard = (fixture: OwnPreparationDto["fixtures"][number]) => (
+    <Card key={fixture.id}>
+      <Text style={typography.section}>
+        {fixture.homeAway === "away" ? "Away to" : "Home v"} {fixture.opponent}
+      </Text>
+      <Text style={typography.muted}>
+        {formatUkDate(fixture.playedDate)} · {fixture.venue || "Location not recorded"} ·{" "}
+        {fixtureScheduleStatus(fixture, completedFixtureIds, today)}
+      </Text>
+      <FixtureScheduleDetails fixture={fixture} />
+      <Text style={typography.body}>
+        {fixture.selected ? "Selected by manager" : "Not selected"} · actual
+        attendance: {fixture.attendance.replaceAll("_", " ")}
+      </Text>
+      {fixture.status === "scheduled" && !completedFixtureIds.has(fixture.id) && fixture.playedDate >= today ? (
+        responseButtons(fixture.response, (response) => {
+          void command({
+            type: "own.fixture_response_recorded",
+            fixtureId: fixture.id,
+            response,
+          });
+        })
+      ) : (
+        <Text style={typography.muted}>
+          Reply: {responseLabels[fixture.response]}
+        </Text>
+      )}
+    </Card>
+  );
+  const trainingCard = (training: OwnPreparationDto["training"][number]) => (
+    <Card key={training.id}>
+      <Text style={typography.section}>Training · {formatUkDate(training.date)}</Text>
+      <Text style={typography.muted}>
+        {training.time ?? "Time to confirm"} · {training.venue} ·{" "}
+        {training.status}
+      </Text>
+      <Text style={typography.body}>
+        {training.expected
+          ? "Expected at this occurrence"
+          : "Not in this occurrence"}{" "}
+        · actual attendance: {training.attendance.replaceAll("_", " ")}
+      </Text>
+      {training.status === "scheduled" && training.expected ? (
+        responseButtons(training.response, (response) => {
+          void command({
+            type: "own.training_response_recorded",
+            trainingId: training.id,
+            response,
+          });
+        })
+      ) : (
+        <Text style={typography.muted}>
+          Reply: {responseLabels[training.response]}
+        </Text>
+      )}
+    </Card>
+  );
+  return (
+    <View style={s.stack} testID="workspace-own-preparation">
+      {view === "profile" && (
+        <Card>
+          <Text style={typography.section}>
+            {value.profile.displayName} · my preferences
+          </Text>
+          <Text style={typography.muted}>
+            {value.team.name} {value.team.ageGroup} · {formatUkSeasonLabel(value.season.label)}
+          </Text>
+          <Text style={typography.body}>
+            Shirt {value.profile.shirtNumber ?? "not recorded"} · preferred
+            foot: {value.profile.foot.replaceAll("_", " ")} · manager-approved
+            positions:{" "}
+            {value.profile.eligiblePositions.join(", ") || "not recorded"}.
+          </Text>
+          <Text style={typography.body}>Choose your first, second and backup positions. Your manager confirms eligibility.</Text>
+          <View style={s.row}>
+            {preferences.map((selected, rank) => <Button key={rank} label={`${['First','Second','Backup'][rank]} · ${selected}`} compact testID={`own-preference-rank-${rank}`} variant={preferenceRank === rank ? 'primary' : 'secondary'} style={{flex:1,minWidth:74}} disabled={disabled} onPress={() => setPreferenceRank(rank)} />)}
+          </View>
+          <Text style={typography.label}>Choose {['first','second','backup'][preferenceRank]} position</Text>
+          <View style={s.row}>
+            {activePositionCodes(value).map(position => <Button key={position} label={position} compact testID={`own-preference-position-${position}`} accessibilityLabel={`${position}${preferences[preferenceRank] === position ? ', selected' : ''}`} variant={preferences[preferenceRank] === position ? 'primary' : 'secondary'} style={{minWidth:48}} disabled={disabled} onPress={() => setPreferenceDraft(current => ({...current,value:current.value.map((item,index) => index === preferenceRank ? position : item) as PlayerProfile['preferences']}))} />)}
+          </View>
+          {preferencesNeedReview && <>
+            <Notice tone="warning">Your player record changed while you were editing. Your draft preferences are retained. Review the current service choices before saving.</Notice>
+            <Text style={typography.body}>Current preferences: {value.profile.preferences.join(' · ')}</Text>
+            <Button label="I have reviewed the latest preferences; keep my draft" variant="secondary" disabled={disabled} onPress={() => setPreferenceDraft(current => reviewRevisionedValueDraft(current))} />
+          </>}
+          <Button
+            label="Save preferences"
+            disabled={disabled || preferencesNeedReview || new Set(preferences).size !== 3}
+            onPress={() => {
+              void command({ type: "own.preferences_saved", preferences }, preferenceDraft.expectedRevision).then(saved => {
+                if (saved) setPreferenceAck({ submitted: preferences, sourceRevision: value.revision });
+              });
+            }}
+          />
+        </Card>
+      )}
+      {view === "schedule" && (
+        <>
+          <Text accessibilityRole="header" style={typography.section}>
+            My schedule
+          </Text>
+          <CalendarExportPanel
+            events={calendarEventsFromSchedule(value, value.season.id, nowMs)}
+            busy={disabled}
+            onExport={onExportCalendar}
+          />
+          <Text style={typography.muted}>Reply for yourself. Your manager confirms the squad and attendance.</Text>
+          <View style={s.row}>
+            {(["upcoming", "past"] as const).map((period) => (
+              <Button
+                key={period}
+                label={period === "upcoming" ? "Upcoming" : "Past"}
+                testID={`own-schedule-${period}`}
+                variant={schedulePeriod === period ? "primary" : "secondary"}
+                disabled={disabled}
+                onPress={() => setSchedulePeriod(period)}
+              />
+            ))}
+          </View>
+          <View style={s.row} accessibilityRole="tablist" accessibilityLabel="Schedule event type">
+            {(["all", "match", "training"] as const).map((kind) => (
+              <Button
+                key={kind}
+                label={kind === "all" ? "All events" : kind === "match" ? "Matches" : "Training"}
+                testID={`own-schedule-kind-${kind}`}
+                variant={scheduleKind === kind ? "primary" : "secondary"}
+                disabled={disabled}
+                onPress={() => setScheduleKind(kind)}
+              />
+            ))}
+          </View>
+          {!groups.length && (
+            <Notice>
+              No {schedulePeriod} {scheduleKind === "all" ? "matches or training" : scheduleKind === "match" ? "matches" : "training sessions"} are recorded.
+            </Notice>
+          )}
+          {groups.map((group) => (
+            <View
+              key={group.date ?? "undated"}
+              style={s.stack}
+              testID={`own-schedule-group-${group.date ?? "undated"}`}
+            >
+              <Text accessibilityRole="header" style={typography.section}>
+                {formatUkDate(group.date)}
+              </Text>
+              {group.date === null && (
+                <Text style={typography.muted}>
+                  These events have no valid recorded date. Confirm the schedule
+                  before relying on their order.
+                </Text>
+              )}
+              {group.events.map((event) => (
+                <View
+                  key={`${event.kind}:${event.id}`}
+                  testID={`own-schedule-event-${event.kind}-${event.id}`}
+                >
+                  {event.kind === "match"
+                    ? fixtureCard(event)
+                    : trainingCard(event)}
+                </View>
+              ))}
+            </View>
+          ))}
+        </>
+      )}
+    </View>
+  );
+}
+
+function ConnectedCommunity({
+  value,
+  actor,
+  media,
+  albumScope,
+  albumSelection,
+  onSelectAlbum,
+  disabled,
+  onChange,
+  initialSection = "photos",
+}: {
+  value: CommunityDto;
+  actor: CommunityActor;
+  media: MediaUploadClient;
+  albumScope: AlbumScope;
+  albumSelection: AlbumSelection | null;
+  onSelectAlbum: (selection: AlbumSelection | null) => void;
+  disabled: boolean;
+  onChange: (command: CommunityPayload) => Promise<boolean>;
+  initialSection?: "photos" | "awards";
+}) {
+  const [showPreferences, setShowPreferences] = useState(false);
+  const [cutoff, setCutoff] = useState("");
+  const [closingAward, setClosingAward] = useState<string | null>(null);
+  const [reportReason, setReportReason] = useState("");
+  const scopeKey = albumScopeKey(albumScope);
+  const currentScope = useRef(scopeKey);
+  const mounted = useRef(true);
+  const actionLock = useRef(false);
+  const [actionPending, setActionPending] = useState(false);
+  const [voteDrafts, setVoteDrafts] = useState<
+    Record<string, { candidateId: string; baseChoice: string | null }>
+  >({});
+  const [editingVotes, setEditingVotes] = useState<Record<string, boolean>>({});
+  const [voteFeedback, setVoteFeedback] = useState<
+    Record<string, "sending" | "failed" | undefined>
+  >({});
+  const [reportTarget, setReportTarget] = useState<{
+    scopeKey: string;
+    photoId: string;
+    revision: number;
+    type: "photo" | "uploader";
+    id: string;
+    label: string;
+  } | null>(null);
+  const [concernCategory, setConcernCategory] = useState<
+    "privacy" | "inappropriate" | "other"
+  >("privacy");
+  const [concernExplanation, setConcernExplanation] = useState("");
+  const [concernFailed, setConcernFailed] = useState(false);
+  const [hideTarget, setHideTarget] = useState<{
+    scopeKey: string;
+    photoId: string;
+    revision: number;
+    uploaderAccountId: string;
+    label: string;
+  } | null>(null);
+  useLayoutEffect(() => {
+    currentScope.current = scopeKey;
+  }, [scopeKey]);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+  const current = (ticket: string) =>
+    mounted.current && currentScope.current === ticket;
+  const controlsDisabled = disabled || actionPending;
+  const activeReport =
+    reportTarget?.scopeKey === scopeKey &&
+    value.allowed &&
+    value.gallery.some(
+      (photo) =>
+        photo.id === reportTarget.photoId &&
+        photo.version === reportTarget.revision &&
+        (reportTarget.type === "photo" ? photo.id : photo.uploaderAccountId) ===
+          reportTarget.id,
+    )
+      ? reportTarget
+      : null;
+  const activeHide =
+    hideTarget?.scopeKey === scopeKey &&
+    value.allowed &&
+    hideTarget.uploaderAccountId !== actor.accountId &&
+    value.gallery.some(
+      (photo) =>
+        photo.id === hideTarget.photoId &&
+        photo.version === hideTarget.revision &&
+        photo.uploaderAccountId === hideTarget.uploaderAccountId,
+    )
+      ? hideTarget
+      : null;
+  const send = async (command: CommunityPayload): Promise<boolean> => {
+    if (disabled || actionLock.current || !current(scopeKey)) return false;
+    const ticket = scopeKey;
+    actionLock.current = true;
+    setActionPending(true);
+    try {
+      return (await onChange(command)) && current(ticket);
+    } catch {
+      return false;
+    } finally {
+      actionLock.current = false;
+      if (current(ticket)) setActionPending(false);
+    }
+  };
+
+  const [viewed, setViewed] = useState<string[]>([]);
+  const [photoAcknowledged, setPhotoAcknowledged] = useState(false);
+  const [quietStart, setQuietStart] = useState(
+    value.preferences.quietStart ?? "",
+  );
+  const [quietEnd, setQuietEnd] = useState(value.preferences.quietEnd ?? "");
+  const validQuietHours =
+    (!quietStart && !quietEnd) ||
+    (/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(quietStart) &&
+      /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(quietEnd) &&
+      quietStart !== quietEnd);
+  const albumsSection = (
+    <ConnectedAlbums
+      key="community-albums"
+      scope={albumScope}
+      allowed={value.allowed}
+      matches={value.matches}
+      photos={value.gallery}
+      selection={albumSelection}
+      onSelect={onSelectAlbum}
+      disabled={disabled}
+      renderThumbnail={(photo) => (
+        <RemotePhoto
+          key={`${photo.id}:${photo.version}:thumbnail`}
+          client={media}
+          photoId={photo.id}
+          revision={photo.version}
+          mode="gallery"
+          variant="thumbnail"
+        />
+      )}
+      renderPhoto={(photo) => (
+        <View key={photo.id} style={s.divider}>
+          <Text style={typography.label}>{photo.matchLabel}</Text>
+          <Text style={typography.body}>{photo.caption}</Text>
+          <Text style={typography.muted}>
+            {photo.uploaderLabel} · revision {photo.version}
+          </Text>
+          <RemotePhoto
+            key={`${photo.id}:${photo.version}:gallery`}
+            client={media}
+            photoId={photo.id}
+            revision={photo.version}
+            mode="gallery"
+          />
+          <Button
+            label="Report photo"
+            testID={`community-report-photo-${photo.id}`}
+            variant="secondary"
+            disabled={controlsDisabled}
+            onPress={() => {
+              setHideTarget(null);
+              setConcernFailed(false);
+              setConcernCategory("privacy");
+              setConcernExplanation("");
+              setReportTarget({
+                scopeKey,
+                photoId: photo.id,
+                revision: photo.version,
+                type: "photo",
+                id: photo.id,
+                label: photo.caption || "Published photo",
+              });
+            }}
+          />
+          <Button
+            label="Report uploader"
+            testID={`community-report-uploader-${photo.id}`}
+            variant="secondary"
+            disabled={controlsDisabled}
+            onPress={() => {
+              setHideTarget(null);
+              setConcernFailed(false);
+              setConcernCategory("privacy");
+              setConcernExplanation("");
+              setReportTarget({
+                scopeKey,
+                photoId: photo.id,
+                revision: photo.version,
+                type: "uploader",
+                id: photo.uploaderAccountId,
+                label: photo.uploaderLabel,
+              });
+            }}
+          />
+          {photo.uploaderAccountId !== actor.accountId && (
+            <Button
+              label="Hide this uploader"
+              testID={`community-hide-uploader-${photo.id}`}
+              variant="quiet"
+              disabled={controlsDisabled}
+              onPress={() => {
+                setReportTarget(null);
+                setHideTarget({
+                  scopeKey,
+                  photoId: photo.id,
+                  revision: photo.version,
+                  uploaderAccountId: photo.uploaderAccountId,
+                  label: photo.uploaderLabel,
+                });
+              }}
+            />
+          )}
+          {activeReport?.photoId === photo.id && (
+            <View
+              style={s.divider}
+              testID={`community-concern-form-${photo.id}`}
+            >
+              <Text style={typography.section}>
+                Report {activeReport.type === "photo" ? "photo" : "uploader"}
+              </Text>
+              <Text style={typography.body}>{activeReport.label}</Text>
+              <Text style={typography.muted}>
+                Choose a concern category. Avoid unnecessary personal details.
+                Reporting and hiding are separate actions; your identity is not
+                shown to the uploader.
+              </Text>
+              <View style={s.row}>
+                {(["privacy", "inappropriate", "other"] as const).map(
+                  (category) => (
+                    <Button
+                      key={category}
+                      label={`${category === "privacy" ? "Privacy" : category === "inappropriate" ? "Inappropriate content" : "Other"}${concernCategory === category ? " · selected" : ""}`}
+                      testID={`community-concern-category-${category}`}
+                      variant={
+                        concernCategory === category ? "primary" : "secondary"
+                      }
+                      disabled={controlsDisabled}
+                      onPress={() => setConcernCategory(category)}
+                    />
+                  ),
+                )}
+              </View>
+              <TextInput
+                accessibilityLabel="Concern explanation"
+                value={concernExplanation}
+                onChangeText={setConcernExplanation}
+                maxLength={500}
+                multiline
+                placeholder="Optional explanation · up to 500 characters"
+                style={s.input}
+                editable={!controlsDisabled}
+              />
+              <Button
+                label="Submit report"
+                testID="community-submit-concern"
+                disabled={controlsDisabled || concernExplanation.length > 500}
+                onPress={() => {
+                  const target = activeReport,
+                    ticket = scopeKey;
+                  if (!target) return;
+                  setConcernFailed(false);
+                  void send({
+                    type: "concern.submitted",
+                    concernId: randomUUID(),
+                    targetType: target.type,
+                    targetId: target.id,
+                    category: concernCategory,
+                    explanation: concernExplanation.trim(),
+                  }).then((saved) => {
+                    if (!current(ticket)) return;
+                    if (saved) {
+                      setReportTarget(null);
+                      setConcernExplanation("");
+                    } else setConcernFailed(true);
+                  });
+                }}
+              />
+              {concernFailed && (
+                <Notice tone="warning">
+                  The report has not been confirmed. Review the service message
+                  and any retained request before submitting again.
+                </Notice>
+              )}
+              <Button
+                label="Cancel report"
+                testID="community-cancel-concern"
+                variant="quiet"
+                disabled={controlsDisabled}
+                onPress={() => {
+                  setReportTarget(null);
+                  setConcernExplanation("");
+                  setConcernFailed(false);
+                }}
+              />
+            </View>
+          )}
+          {activeHide?.photoId === photo.id && (
+            <View style={s.divider} testID="community-hide-confirmation">
+              <Text style={typography.section}>
+                Hide {activeHide.label} from your gallery?
+              </Text>
+              <Notice>
+                Their photos will be hidden from this account’s gallery.
+                Official match records and authorised moderation stay available.
+                This does not remove photos for other people or block the
+                uploader’s account.
+              </Notice>
+              <Button
+                label="Confirm gallery-only hide"
+                testID="community-confirm-hide-uploader"
+                disabled={controlsDisabled}
+                onPress={() => {
+                  const target = activeHide,
+                    ticket = scopeKey;
+                  if (!target) return;
+                  void send({
+                    type: "uploader.hidden",
+                    uploaderAccountId: target.uploaderAccountId,
+                    hidden: true,
+                  }).then((saved) => {
+                    if (saved && current(ticket)) setHideTarget(null);
+                  });
+                }}
+              />
+              <Button
+                label="Cancel hide"
+                testID="community-cancel-hide-uploader"
+                variant="quiet"
+                disabled={controlsDisabled}
+                onPress={() => setHideTarget(null)}
+              />
+            </View>
+          )}
+          {actor.role === "manager" && (
+            <Button
+              label="Remove this published service photo"
+              variant="danger"
+              disabled={disabled}
+              onPress={() => {
+                void onChange({ type: "photo.removed", photoId: photo.id });
+              }}
+            />
+          )}
+        </View>
+      )}
+    />
+  );
+  const awardsSection = (
+    <View key="community-awards" style={s.stack} testID="community-awards">
+      {value.matches.map((match) => (
+        <Card key={match.id}>
+          <Text style={typography.section}>{match.label}</Text>
+          {!match.sharingAllowed ? (
+            <Notice>
+              Match context is withheld by the service’s competition policy.
+            </Notice>
+          ) : (
+            <>
+              <Text style={typography.muted}>
+                Full time: {dateTime(match.fullTimeAtMs)} · finish quality:{" "}
+                {match.finishQuality}
+              </Text>
+              <Text style={typography.muted}>
+                Voting closes: {dateTime(match.cutoffAtMs)} · finalisation
+                deadline: {dateTime(match.deadlineAtMs)}
+              </Text>
+              {match.award && (
+                <Text style={typography.body}>
+                  {match.award.result === "no_valid_votes"
+                    ? "No valid votes"
+                    : `Players’ Player: ${match.award.winnerLabels.join(", ")}`}
+                  {match.award.deadlineMissed
+                    ? " · finalisation deadline missed"
+                    : ""}
+                </Text>
+              )}
+              {actor.role === "player" && (
+                <View style={s.stack} testID={`connected-ballot-${match.id}`}>
+                  {match.ownChoice && (
+                    <View style={s.stack}>
+                      <Text style={typography.label}>
+                        Current choice:{" "}
+                        {match.candidates.find(
+                          (candidate) => candidate.id === match.ownChoice,
+                        )?.label ?? "Your recorded teammate choice"}
+                      </Text>
+                      <Text style={typography.muted}>
+                        Confirmed by the service. This account has one recorded
+                        private choice.
+                      </Text>
+                    </View>
+                  )}
+                  {match.mayVote ? (
+                    !match.ownChoice || editingVotes[match.id] ? (
+                      <>
+                        <Text style={typography.label}>
+                          Choose one teammate who played
+                        </Text>
+                        <Text style={typography.muted}>
+                          Selecting a name is a draft. Your vote counts only
+                          after the service confirms it.
+                        </Text>
+                        {match.candidates.map((candidate) => {
+                          const draft = voteDrafts[match.id];
+                          const selected =
+                            draft?.baseChoice === match.ownChoice &&
+                            draft.candidateId === candidate.id;
+                          return (
+                            <Button
+                              key={candidate.id}
+                              testID={`community-vote-option-${match.id}-${candidate.id}`}
+                              label={`${candidate.label}${selected ? " · selected" : ""}`}
+                              variant={selected ? "primary" : "secondary"}
+                              disabled={controlsDisabled}
+                              onPress={() => {
+                                setVoteDrafts((previous) => ({
+                                  ...previous,
+                                  [match.id]: {
+                                    candidateId: candidate.id,
+                                    baseChoice: match.ownChoice,
+                                  },
+                                }));
+                                setVoteFeedback((previous) => ({
+                                  ...previous,
+                                  [match.id]: undefined,
+                                }));
+                              }}
+                            />
+                          );
+                        })}
+                        <Button
+                          label={
+                            match.ownChoice
+                              ? "Confirm changed vote"
+                              : "Confirm vote"
+                          }
+                          testID={`community-confirm-vote-${match.id}`}
+                          disabled={
+                            controlsDisabled ||
+                            voteDrafts[match.id]?.baseChoice !==
+                              match.ownChoice ||
+                            !match.candidates.some(
+                              (candidate) =>
+                                candidate.id ===
+                                voteDrafts[match.id]?.candidateId,
+                            ) ||
+                            voteDrafts[match.id]?.candidateId ===
+                              match.ownChoice
+                          }
+                          onPress={() => {
+                            const draft = voteDrafts[match.id],
+                              ticket = scopeKey;
+                            if (
+                              !draft ||
+                              draft.baseChoice !== match.ownChoice ||
+                              !match.mayVote ||
+                              !match.candidates.some(
+                                (candidate) =>
+                                  candidate.id === draft.candidateId,
+                              )
+                            )
+                              return;
+                            setVoteFeedback((previous) => ({
+                              ...previous,
+                              [match.id]: "sending",
+                            }));
+                            void send({
+                              type: "ballot.cast",
+                              matchId: match.id,
+                              candidatePlayerId: draft.candidateId,
+                            }).then((saved) => {
+                              if (!current(ticket)) return;
+                              setVoteFeedback((previous) => ({
+                                ...previous,
+                                [match.id]: saved ? undefined : "failed",
+                              }));
+                              if (saved)
+                                setEditingVotes((previous) => ({
+                                  ...previous,
+                                  [match.id]: false,
+                                }));
+                            });
+                          }}
+                        />
+                        {match.ownChoice && (
+                          <Button
+                            label="Keep current vote"
+                            variant="quiet"
+                            disabled={controlsDisabled}
+                            onPress={() => {
+                              setEditingVotes((previous) => ({
+                                ...previous,
+                                [match.id]: false,
+                              }));
+                              setVoteDrafts((previous) => ({
+                                ...previous,
+                                [match.id]: {
+                                  candidateId: match.ownChoice!,
+                                  baseChoice: match.ownChoice,
+                                },
+                              }));
+                            }}
+                          />
+                        )}
+                      </>
+                    ) : (
+                      <Button
+                        label="Change vote"
+                        testID={`community-change-vote-${match.id}`}
+                        variant="secondary"
+                        disabled={controlsDisabled}
+                        onPress={() => {
+                          setEditingVotes((previous) => ({
+                            ...previous,
+                            [match.id]: true,
+                          }));
+                          setVoteDrafts((previous) => ({
+                            ...previous,
+                            [match.id]: {
+                              candidateId: match.ownChoice!,
+                              baseChoice: match.ownChoice,
+                            },
+                          }));
+                        }}
+                      />
+                    )
+                  ) : (
+                    <Text style={typography.muted}>
+                      {match.award
+                        ? "Voting is closed. Any final award is shown above."
+                        : "Voting is unavailable for this account or match window."}
+                    </Text>
+                  )}
+                  {voteFeedback[match.id] === "sending" && (
+                    <Text
+                      accessibilityLiveRegion="polite"
+                      testID={`community-vote-status-${match.id}`}
+                      style={typography.muted}
+                    >
+                      Sending vote for service confirmation…
+                    </Text>
+                  )}
+                  {voteFeedback[match.id] === "failed" && (
+                    <Notice tone="warning">
+                      Your vote has not been confirmed. Review the service
+                      message and retry any retained original request above
+                      before starting another.
+                    </Notice>
+                  )}
+                </View>
+              )}
+              {actor.role === "manager" &&
+                match.finishQuality === "trusted" &&
+                match.fullTimeAtMs !== null &&
+                !match.award && (
+                  <>
+                    <Text style={typography.label}>
+                      Explicit cutoff, minutes after actual full time
+                    </Text>
+                    <TextInput
+                      accessibilityLabel={`Award cutoff for ${match.label}`}
+                      value={cutoff}
+                      onChangeText={setCutoff}
+                      keyboardType="number-pad"
+                      style={s.input}
+                    />
+                    <Button
+                      label="Save this explicit voting cutoff"
+                      variant="secondary"
+                      disabled={disabled || !/^\d{1,4}$/.test(cutoff)}
+                      onPress={() => {
+                        void onChange({
+                          type: "award.cutoffConfigured",
+                          matchId: match.id,
+                          minutesAfterFullTime: Number(cutoff),
+                        });
+                      }}
+                    />
+                    {closingAward === match.id ? (
+                      <>
+                        <Notice tone="warning">
+                          Closing seals the latest valid private choices and
+                          records a winner, joint winners or no valid votes. It
+                          cannot reopen voting or move the original finalisation
+                          deadline.
+                        </Notice>
+                        <Button
+                          label="Confirm service ballot close and finalise"
+                          disabled={disabled}
+                          onPress={() => {
+                            void onChange({
+                              type: "award.finalised",
+                              matchId: match.id,
+                            }).then((saved) => {
+                              if (saved) setClosingAward(null);
+                            });
+                          }}
+                        />
+                        <Button
+                          label="Keep service ballot open"
+                          variant="quiet"
+                          disabled={disabled}
+                          onPress={() => setClosingAward(null)}
+                        />
+                      </>
+                    ) : (
+                      <Button
+                        label="Review closing this service ballot"
+                        variant="secondary"
+                        disabled={disabled}
+                        onPress={() => setClosingAward(match.id)}
+                      />
+                    )}
+                  </>
+                )}
+            </>
+          )}
+        </Card>
+      ))}
+    </View>
+  );
+  return (
+    <View style={s.stack} testID="workspace-community">
+      <Card>
+        <Text style={typography.section}>{value.teamLabel} community</Text>
+        <Text style={typography.muted}>
+          {value.accountLabel} · {value.seasonLabel} · service revision{" "}
+          {value.revision}
+        </Text>
+        {!value.allowed && (
+          <Notice tone="warning">{value.accessMessage}</Notice>
+        )}
+        {value.matches.some((match) => !match.sharingAllowed) && (
+          <Notice tone="warning">
+            The service withholds match context, scores and derived awards where
+            competition sharing is unapproved. Accepted match finish evidence
+            and an approved policy are required for connected award
+            registration.
+          </Notice>
+        )}
+      </Card>
+      {initialSection === "awards"
+        ? [awardsSection, albumsSection]
+        : [albumsSection, awardsSection]}
+      <Button
+        label={
+          showPreferences
+            ? "Hide notification preferences"
+            : "Show notification preferences"
+        }
+        testID="community-toggle-preferences"
+        variant="quiet"
+        disabled={controlsDisabled}
+        onPress={() => setShowPreferences((visible) => !visible)}
+      />
+      {showPreferences && (
+        <Card>
+          <Text style={typography.section}>My notification preferences</Text>
+          <Text style={typography.body}>
+            These choices control eligible service notifications. A saved
+            preference does not mean a message has been delivered; device
+            permission and an operational delivery provider are also required.
+          </Text>
+          {(["schedule", "match", "awards", "photos"] as const).map(
+            (category) => (
+              <View
+                key={category}
+                style={[s.row, { justifyContent: "space-between" }]}
+              >
+                <Text style={typography.label}>{category} updates</Text>
+                <Switch
+                  accessibilityLabel={`Service ${category} updates`}
+                  value={value.preferences[category]}
+                  disabled={disabled}
+                  onValueChange={(enabled) => {
+                    void onChange({
+                      type: "preferences.changed",
+                      preferences: {
+                        ...value.preferences,
+                        [category]: enabled,
+                      },
+                    });
+                  }}
+                />
+              </View>
+            ),
+          )}
+          <Text style={typography.label}>Quiet hours · Europe/London</Text>
+          <TextInput
+            accessibilityLabel="Service quiet hours start Europe/London"
+            placeholder="Start HH:MM"
+            value={quietStart}
+            onChangeText={setQuietStart}
+            style={s.input}
+            autoCapitalize="none"
+          />
+          <TextInput
+            accessibilityLabel="Service quiet hours end Europe/London"
+            placeholder="End HH:MM"
+            value={quietEnd}
+            onChangeText={setQuietEnd}
+            style={s.input}
+            autoCapitalize="none"
+          />
+          {!validQuietHours && (
+            <Notice tone="warning">
+              Choose two distinct HH:MM times or clear both fields. Use the
+              category switches to pause notifications all day.
+            </Notice>
+          )}
+          <Button
+            label="Save service quiet hours"
+            variant="secondary"
+            disabled={disabled || !validQuietHours}
+            onPress={() => {
+              void onChange({
+                type: "preferences.changed",
+                preferences: {
+                  ...value.preferences,
+                  quietStart: quietStart || null,
+                  quietEnd: quietEnd || null,
+                },
+              });
+            }}
+          />
+        </Card>
+      )}
+      {actor.role !== "spectator" && value.grants.length > 0 && (
+        <Card>
+          <Text style={typography.section}>
+            Accepted spectator season grants
+          </Text>
+          {value.grants.map((grant) => (
+            <View key={grant.id} style={s.divider}>
+              <Text style={typography.body}>
+                {grant.accountLabel} · expires {dateTime(grant.expiresAtMs)}
+              </Text>
+              {!grant.revokedAtMs && (
+                <Button
+                  label={`Revoke ${grant.accountLabel} season grant`}
+                  variant="danger"
+                  disabled={disabled}
+                  onPress={() => {
+                    void onChange({ type: "grant.revoked", grantId: grant.id });
+                  }}
+                />
+              )}
+            </View>
+          ))}
+        </Card>
+      )}
+      <Card>
+        <Text style={typography.section}>My concerns</Text>
+        <Text style={typography.muted}>
+          References and status for reports made by this account. Reporter
+          identity is not disclosed to uploaders.
+        </Text>
+        <View style={s.stack} testID="community-own-concerns">
+          {value.ownConcerns.length ? (
+            value.ownConcerns.map((concern) => (
+              <View
+                key={concern.id}
+                style={s.divider}
+                testID={`community-own-concern-${concern.id}`}
+              >
+                <Pill tone="info">{concern.status.replaceAll("_", " ")}</Pill>
+                <Text style={typography.label}>
+                  {concern.targetType === "photo"
+                    ? "Photo concern"
+                    : "Uploader concern"}
+                </Text>
+                <Text selectable style={typography.muted}>
+                  Reference {concern.id}
+                </Text>
+                <Text style={typography.muted}>
+                  Submitted {dateTime(concern.createdAtMs)}
+                </Text>
+              </View>
+            ))
+          ) : (
+            <Text style={typography.body}>
+              No concerns submitted by this account.
+            </Text>
+          )}
+        </View>
+      </Card>
+      {value.submissions.length > 0 && (
+        <Card>
+          <Text style={typography.section}>My service submissions</Text>
+          {value.submissions.map((photo) => (
+            <View key={photo.id} style={s.divider}>
+              <Text style={typography.label}>
+                {photo.caption || "Photo"} · revision {photo.version}
+              </Text>
+              <Text style={typography.body}>{photo.status}</Text>
+              {["draft", "pending", "published"].includes(photo.status) && (
+                <RemotePhoto
+                  key={`${photo.id}:${photo.version}:own`}
+                  client={media}
+                  photoId={photo.id}
+                  revision={photo.version}
+                  mode="own"
+                  onViewed={() =>
+                    setViewed((current) => [
+                      ...new Set([...current, `${photo.id}:${photo.version}`]),
+                    ])
+                  }
+                />
+              )}
+              {actor.role === "manager" && photo.status === "draft" && (
+                <>
+                  <Button
+                    label={
+                      photoAcknowledged
+                        ? "Photo and content rules reviewed"
+                        : "Acknowledge reviewing this photo and content rules"
+                    }
+                    variant={photoAcknowledged ? "primary" : "secondary"}
+                    disabled={disabled}
+                    onPress={() => setPhotoAcknowledged((current) => !current)}
+                  />
+                  <Button
+                    label="Publish this exact service photo revision"
+                    disabled={
+                      disabled ||
+                      !photoAcknowledged ||
+                      !viewed.includes(`${photo.id}:${photo.version}`)
+                    }
+                    onPress={() => {
+                      void onChange({
+                        type: "photo.published",
+                        photoId: photo.id,
+                        sourceRevision: photo.version,
+                        policyAcknowledged: true,
+                      });
+                    }}
+                  />
+                </>
+              )}
+              {photo.rejectionReason && (
+                <Notice tone="warning">{photo.rejectionReason}</Notice>
+              )}
+              {["draft", "pending", "published"].includes(photo.status) && (
+                <Button
+                  label="Withdraw this service submission"
+                  variant="danger"
+                  disabled={disabled}
+                  onPress={() => {
+                    void onChange({
+                      type: "photo.withdrawn",
+                      photoId: photo.id,
+                      sourceRevision: photo.version,
+                    });
+                  }}
+                />
+              )}
+            </View>
+          ))}
+        </Card>
+      )}
+      {actor.role === "manager" && value.reviewQueue.length > 0 && (
+        <Card>
+          <Text style={typography.section}>Private photo review</Text>
+          <Text style={typography.body}>
+            Approval checks this exact revision. A later edit needs its own
+            review.
+          </Text>
+          {value.reviewQueue.map((photo) => (
+            <View key={`${photo.id}:${photo.version}`} style={s.divider}>
+              <Text style={typography.label}>
+                {photo.uploaderLabel} · revision {photo.version}
+              </Text>
+              <Text style={typography.body}>{photo.caption}</Text>
+              <RemotePhoto
+                key={`${photo.id}:${photo.version}:review`}
+                client={media}
+                photoId={photo.id}
+                revision={photo.version}
+                mode="review"
+                onViewed={() =>
+                  setViewed((current) => [
+                    ...new Set([...current, `${photo.id}:${photo.version}`]),
+                  ])
+                }
+              />
+              <Button
+                label="Approve this exact service photo revision"
+                disabled={
+                  disabled || !viewed.includes(`${photo.id}:${photo.version}`)
+                }
+                onPress={() => {
+                  void onChange({
+                    type: "photo.reviewed",
+                    photoId: photo.id,
+                    sourceRevision: photo.version,
+                    decision: "approve",
+                  });
+                }}
+              />
+              <TextInput
+                accessibilityLabel={`Photo rejection reason ${photo.id}`}
+                value={reportReason}
+                onChangeText={setReportReason}
+                placeholder="Reason for rejection"
+                style={s.input}
+              />
+              <Button
+                label="Reject this exact service photo revision"
+                variant="danger"
+                disabled={disabled || !reportReason.trim()}
+                onPress={() => {
+                  void onChange({
+                    type: "photo.reviewed",
+                    photoId: photo.id,
+                    sourceRevision: photo.version,
+                    decision: "reject",
+                    reason: reportReason.trim(),
+                  });
+                }}
+              />
+            </View>
+          ))}
+        </Card>
+      )}
+      {value.reviewConcerns.map((concern) => (
+        <Card key={concern.id}>
+          <Text style={typography.section}>
+            Content concern · {concern.category}
+          </Text>
+          <Text style={typography.body}>{concern.explanation}</Text>
+          <Text style={typography.muted}>{concern.status}</Text>
+          <Button
+            label="Mark concern under service review"
+            variant="secondary"
+            disabled={disabled}
+            onPress={() => {
+              void onChange({
+                type: "concern.updated",
+                concernId: concern.id,
+                status: "under_review",
+              });
+            }}
+          />
+          <Button
+            label="Resolve service concern"
+            disabled={disabled}
+            onPress={() => {
+              void onChange({
+                type: "concern.updated",
+                concernId: concern.id,
+                status: "resolved",
+              });
+            }}
+          />
+        </Card>
+      ))}
+      {value.hiddenUploaders.length > 0 && (
+        <Card>
+          <Text style={typography.section}>Hidden uploaders</Text>
+          {value.hiddenUploaders.map((person) => (
+            <Button
+              key={person.id}
+              label={`Show ${person.label} again`}
+              variant="secondary"
+              disabled={disabled}
+              onPress={() => {
+                void onChange({
+                  type: "uploader.hidden",
+                  uploaderAccountId: person.id,
+                  hidden: false,
+                });
+              }}
+            />
+          ))}
+        </Card>
+      )}
+    </View>
+  );
+}
+
+function RemotePhoto({
+  client,
+  photoId,
+  revision,
+  mode,
+  variant = "display",
+  onViewed,
+}: {
+  client: MediaUploadClient;
+  photoId: string;
+  revision: number;
+  mode: "own" | "gallery" | "review";
+  variant?: "thumbnail" | "display";
+  onViewed?: () => void;
+}) {
+  const [uri, setUri] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const lock = useRef(false);
+  return (
+    <View style={s.stack}>
+      <Button
+        label={
+          busy
+            ? "Checking current image access…"
+            : variant === "thumbnail"
+              ? "View authorised thumbnail"
+              : "View authorised service image"
+        }
+        variant="secondary"
+        disabled={busy}
+        onPress={() => {
+          if (lock.current) return;
+          lock.current = true;
+          setBusy(true);
+          setError(null);
+          setUri(null);
+          void client
+            .image(photoId, revision, variant, mode)
+            .then((bytes) => {
+              const encoded = base64Url(bytes)
+                .replaceAll("-", "+")
+                .replaceAll("_", "/");
+              setUri(
+                `data:image/jpeg;base64,${encoded}${"=".repeat((4 - (encoded.length % 4)) % 4)}`,
+              );
+              onViewed?.();
+            })
+            .catch((cause) => setError(failureText(cause)))
+            .finally(() => {
+              lock.current = false;
+              setBusy(false);
+            });
+        }}
+      />
+      {error && <Notice tone="warning">{error}</Notice>}
+      {uri && (
+        <>
+          <Image
+            source={{ uri, cache: "reload" }}
+            accessibilityLabel={`Authorised service photo revision ${revision}`}
+            style={{
+              width: "100%",
+              height: variant === "thumbnail" ? 120 : 240,
+              resizeMode: "contain",
+              backgroundColor: colors.bench,
+            }}
+          />
+          <Button
+            label="Close service image"
+            variant="quiet"
+            onPress={() => setUri(null)}
+          />
+          <Text style={typography.muted}>
+            This derivative is held in memory. The service checks current access
+            on each fetch; it cannot recall an existing screenshot.
+          </Text>
+        </>
+      )}
+    </View>
+  );
+}
+
+const s = StyleSheet.create({
+  stack: { gap: 12 },
+  row: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  input: {
+    minHeight: 52,
+    borderWidth: 1,
+    borderColor: colors.controlBorder,
+    backgroundColor: colors.surface,
+    color: colors.ink,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 16,
+  },
+  divider: {
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    paddingTop: 12,
+    gap: 8,
+  },
+});

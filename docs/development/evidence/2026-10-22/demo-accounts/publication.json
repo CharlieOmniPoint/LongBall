@@ -1,0 +1,149 @@
+{
+  "observedAt": "2026-10-22T09:50:00Z",
+  "productSource": "214844e65310ccd4bb070b2f5a35395837fed19c",
+  "reviewUrl": "https://charlieomnipoint.github.io/LongBall/?v=214844e",
+  "pages": {
+    "transport": "d2bd6074be147f0e76a9010e78f16abeb4a7df7b",
+    "workflowRun": 39758047703,
+    "conclusion": "success",
+    "actualBuildSourceMatched": true,
+    "actualScriptPath": "/LongBall/_expo/static/js/web/index-0ab4b3c94ebea1e4af15c1209a90197c.js",
+    "actualScriptDigest": "e433e41cbb518a986a734d4e74265206a9ff7de7566884d5b3b81b2d82a0de75",
+    "actualBytesMatchPackagedArtifact": true
+  },
+  "service": {
+    "url": "https://carroll-longest-leadership-ada.trycloudflare.com",
+    "transport": "52710880706fcf94f502b766157f0119cb455e04",
+    "workflowRun": 39757554853,
+    "actualBuildSourceMatched": true,
+    "healthStatus": 200,
+    "demoAccountLogin": true,
+    "legacyManagerTokenStatus": 401,
+    "expiresAt": "2026-10-22T14:45:26Z",
+    "expiresAtUK": "22 October 2026, 15:45:26 BST"
+  },
+  "browser": {
+    "provider": "Firecrawl managed Chromium",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "roles": [
+      {
+        "role": "manager",
+        "assignedWorkspaceOpened": true,
+        "tabs": [
+          "Home",
+          "Schedule",
+          "Team",
+          "Reports",
+          "More"
+        ],
+        "noOverflow": true,
+        "pageErrors": [],
+        "signedOut": true
+      },
+      {
+        "role": "administrator",
+        "assignedWorkspaceOpened": true,
+        "tabs": [
+          "Clubs",
+          "Teams",
+          "People",
+          "Operations",
+          "Account"
+        ],
+        "noOverflow": true,
+        "pageErrors": [],
+        "signedOut": true
+      },
+      {
+        "role": "player",
+        "assignedWorkspaceOpened": true,
+        "tabs": [
+          "Home",
+          "Schedule",
+          "My game",
+          "Photos",
+          "More"
+        ],
+        "noOverflow": true,
+        "pageErrors": [],
+        "signedOut": true
+      },
+      {
+        "role": "spectator",
+        "assignedWorkspaceOpened": true,
+        "tabs": [
+          "Scores",
+          "Results",
+          "Photos",
+          "Account"
+        ],
+        "noOverflow": true,
+        "pageErrors": [],
+        "signedOut": true
+      }
+    ],
+    "pageErrors": []
+  },
+  "data": {
+    "squadPlayers": 13,
+    "allPlayersNamed": true,
+    "fixtures": [
+      {
+        "date": "2026-10-24",
+        "opponent": "Maple FC",
+        "status": "preparation",
+        "score": {
+          "for": 0,
+          "against": 0
+        }
+      },
+      {
+        "date": "2026-10-31",
+        "opponent": "Oak FC",
+        "status": "preparation",
+        "score": {
+          "for": 0,
+          "against": 0
+        }
+      },
+      {
+        "date": "2026-10-10",
+        "opponent": "Oak FC",
+        "status": "completed",
+        "score": {
+          "for": 2,
+          "against": 2
+        }
+      },
+      {
+        "date": "2026-10-17",
+        "opponent": "Hill FC",
+        "status": "completed",
+        "score": {
+          "for": 3,
+          "against": 1
+        }
+      }
+    ],
+    "seasonTotals": {
+      "played": 2,
+      "wins": 1,
+      "draws": 1,
+      "losses": 0,
+      "goalsFor": 5,
+      "goalsAgainst": 3,
+      "goalDifference": 2,
+      "points": 4
+    },
+    "logoutRevokedSession": true
+  },
+  "limits": [
+    "The unversioned HTML in the already-open managed browser retained the prior index while build-info was current. The versioned entry URL fetched matching new HTML and exact JavaScript bytes. Use the versioned link or a full cache-refresh for existing tabs.",
+    "An initial public data assertion assumed public DTO fields at the root of a manager response. The manager DTO correctly wraps accepted state; inspecting the actual nested state verified two completed and two preparation matches.",
+    "This is a bounded five-hour API session; Pages and the verifier transport persist, while sessions/database contents are disposable.",
+    "No actual login credential, opaque session token or password verifier is retained in this evidence."
+  ]
+}

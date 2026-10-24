@@ -1,0 +1,23 @@
+{
+  "passed": true,
+  "checkedAt": "2026-10-21T19:45:19.473Z",
+  "source": "d08666f02aa1a229ee66b031cd2e238c7c263cfa",
+  "script": "/LongBall/_expo/static/js/web/index-24e195296fefd8de20dcc9709aa99fff.js",
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "welcome": true,
+  "signIn": true,
+  "advancedProviderControlsHidden": true,
+  "anonymousDatabases": 0,
+  "explicitRoleChoices": [
+    "manager",
+    "administrator",
+    "player",
+    "spectator"
+  ],
+  "overflow": false,
+  "runtimeErrors": [],
+  "connectedRolesChecked": false
+}

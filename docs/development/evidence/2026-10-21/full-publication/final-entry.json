@@ -1,0 +1,25 @@
+{
+  "passed": true,
+  "checkedAt": "2026-10-21T20:21:22.377Z",
+  "source": "c53841966c822f7a5172584370b6a557833398b4",
+  "script": "/LongBall/_expo/static/js/web/index-7fab0edf4a9d3e7235135358806137b5.js",
+  "sha256": "9ab07712ed0f074c259e1bbdd94d052e2358c83dd95ca40ce9e55c1def715bf1",
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "welcome": true,
+  "consumerSignIn": true,
+  "explicitFictionalRoleChoices": [
+    "manager",
+    "administrator",
+    "player",
+    "spectator"
+  ],
+  "anonymousRecordingDatabases": 0,
+  "advancedProviderControlsHidden": true,
+  "overflow": false,
+  "runtimeErrors": [],
+  "connectedRolesChecked": false,
+  "nativeDeviceEvidence": false
+}

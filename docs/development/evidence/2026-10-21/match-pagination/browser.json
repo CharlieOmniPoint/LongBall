@@ -1,0 +1,50 @@
+{
+  "status": "passed",
+  "checkedAt": "2026-10-21T18:37:35.672Z",
+  "baseURL": "http://127.0.0.1:4390",
+  "api": "http://127.0.0.1:4391",
+  "checks": [
+    "The phone Match Centre initially renders the authorised default page of25 service snapshots.",
+    "Four explicit Load more actions render25→50→75→100→108 distinct matches, including the formerly undiscoverable101st+ records; the final page has no continuation.",
+    "Refresh replaces the accumulated list with a fresh authorised first page and its new continuation; no background full-collection fetch occurs."
+  ],
+  "pageRequests": [
+    {
+      "path": "/v1/teams/synthetic-roma-u10/matches",
+      "cursor": null,
+      "limit": null
+    },
+    {
+      "path": "/v1/teams/synthetic-roma-u10/matches",
+      "cursor": "eyJ2ZXJzaW9uIjoxLCJiaW5kaW5nIjoiOGpPem9vemRYNXp6LThoRUJKYl8tSGgwX2FOMDFONVotSFcwYWZ5Zk5ZSSIsImFmdGVySWQiOiJwYWdlLW1hdGNoLTAyNCJ9",
+      "limit": null
+    },
+    {
+      "path": "/v1/teams/synthetic-roma-u10/matches",
+      "cursor": "eyJ2ZXJzaW9uIjoxLCJiaW5kaW5nIjoiOGpPem9vemRYNXp6LThoRUJKYl8tSGgwX2FOMDFONVotSFcwYWZ5Zk5ZSSIsImFmdGVySWQiOiJwYWdlLW1hdGNoLTA0OSJ9",
+      "limit": null
+    },
+    {
+      "path": "/v1/teams/synthetic-roma-u10/matches",
+      "cursor": "eyJ2ZXJzaW9uIjoxLCJiaW5kaW5nIjoiOGpPem9vemRYNXp6LThoRUJKYl8tSGgwX2FOMDFONVotSFcwYWZ5Zk5ZSSIsImFmdGVySWQiOiJwYWdlLW1hdGNoLTA3NCJ9",
+      "limit": null
+    },
+    {
+      "path": "/v1/teams/synthetic-roma-u10/matches",
+      "cursor": "eyJ2ZXJzaW9uIjoxLCJiaW5kaW5nIjoiOGpPem9vemRYNXp6LThoRUJKYl8tSGgwX2FOMDFONVotSFcwYWZ5Zk5ZSSIsImFmdGVySWQiOiJwYWdlLW1hdGNoLTA5OSJ9",
+      "limit": null
+    },
+    {
+      "path": "/v1/teams/synthetic-roma-u10/matches",
+      "cursor": null,
+      "limit": null
+    }
+  ],
+  "browserErrors": [],
+  "web": {
+    "entry": "/_expo/static/js/web/index-a4be9c54dcf40661d3add62cb9a36166.js",
+    "sha256": "9c4226d0209c50c2b62e62b0d708ba31d683ef9528652a6fb436af916300c981"
+  },
+  "method": "Explicit fictional account, disposable108-snapshot service fixture, transport-only discovery redirect, real UI continuation and HTTP; no browser business-state injection.",
+  "nativeDeviceEvidence": false
+}

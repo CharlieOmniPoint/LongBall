@@ -1,0 +1,161 @@
+{
+  "observedAt": "2026-10-23T22:49:25Z",
+  "runId": 40034161097,
+  "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40034161097",
+  "status": "completed",
+  "conclusion": "success",
+  "attempt": 1,
+  "transportCommit": "2fd2fe8ee8107b589ff462b0351c50db4a4e533e",
+  "sourceCommit": "e2bf5a6744fbcdebd832d2d4e8795641d9d4488d",
+  "sourceTree": "dc02bb704d522a1916573bccc09312a7755a7176",
+  "requested": {
+    "source": "e2bf5a6744fbcdebd832d2d4e8795641d9d4488d",
+    "upload_artifacts": false,
+    "demo_account_login": true
+  },
+  "bindingReadIndependently": true,
+  "sourceImportLogVerification": "Both completed-job decoded source-proof JSON blocks were independently parsed and matched the exact source, bundle, transport, demo-login flag and upload=false request. Product tree was read independently from its Git commit.",
+  "jobs": [
+    {
+      "id": 120689419288,
+      "name": "ios native compile",
+      "status": "completed",
+      "conclusion": "success",
+      "successfulSteps": [
+        "Set up job",
+        "Read the preview transport branch",
+        "Verify and import the exact development source",
+        "Use the pinned Node runtime",
+        "Install the pinned package manager and frozen dependencies",
+        "Select the explicit iOS toolchain",
+        "Generate the native project and verify security configuration",
+        "Install iOS pods",
+        "Compile the iOS simulator development client without signing",
+        "Record the scope of this evidence",
+        "Post Use the pinned Node runtime",
+        "Post Read the preview transport branch",
+        "Complete job"
+      ],
+      "skippedSteps": [
+        "Use the Android Java toolchain",
+        "Install the exact Android SDK components",
+        "Compile the Android debug development client",
+        "Prepare bounded logs and optional binary artifacts",
+        "Retain requested artifacts for one day"
+      ]
+    },
+    {
+      "id": 120689419487,
+      "name": "android native compile",
+      "status": "completed",
+      "conclusion": "success",
+      "successfulSteps": [
+        "Set up job",
+        "Read the preview transport branch",
+        "Verify and import the exact development source",
+        "Use the pinned Node runtime",
+        "Install the pinned package manager and frozen dependencies",
+        "Use the Android Java toolchain",
+        "Install the exact Android SDK components",
+        "Generate the native project and verify security configuration",
+        "Compile the Android debug development client",
+        "Record the scope of this evidence",
+        "Post Use the Android Java toolchain",
+        "Post Use the pinned Node runtime",
+        "Post Read the preview transport branch",
+        "Complete job"
+      ],
+      "skippedSteps": [
+        "Select the explicit iOS toolchain",
+        "Install iOS pods",
+        "Compile the iOS simulator development client without signing",
+        "Prepare bounded logs and optional binary artifacts",
+        "Retain requested artifacts for one day"
+      ]
+    }
+  ],
+  "artifacts": {
+    "observed": [],
+    "final": true,
+    "uploadRequested": false,
+    "binaryDownloaded": false,
+    "binaryDigestAvailable": false
+  },
+  "limitations": [
+    "Read-only monitoring only; no workflow reruns, retries, binary artifact downloads, source changes or provisioning.",
+    "Android arm64 Debug and unsigned x86_64 iOS Simulator development compilation passed; no executable was launched.",
+    "Artifact upload was disabled and GitHub returned an empty artifact list. No downloadable binary, independent binary digest or Release packaging proof is claimed.",
+    "Production signing/distribution, installation, physical iPhone/Android runtime, sleep/reboot timing, journal encryption/key recovery, prompts, file-share cleanup and actual push delivery remain outside this evidence."
+  ],
+  "android": {
+    "jobId": 120689419487,
+    "conclusion": "success",
+    "sourceProof": {
+      "sourceHead": "e2bf5a6744fbcdebd832d2d4e8795641d9d4488d",
+      "transportHead": "2fd2fe8ee8107b589ff462b0351c50db4a4e533e",
+      "sourceRef": "refs/heads/dev/longball-m0-journey",
+      "platform": "android",
+      "artifactUploadRequested": false,
+      "demoAccountLogin": true,
+      "physicalDeviceProof": false,
+      "artifactDigests": [
+        {
+          "file": "bundleSha256",
+          "digest": "99abc97639d1c37c5f3979107dd965054807d79e5dbb0a0465453cb9007b6034"
+        }
+      ]
+    },
+    "actualDemoLoginEnvironmentFlag": "1",
+    "actualBuild": ":app:assembleDebug",
+    "architecture": "arm64-v8a",
+    "buildSucceededAt": "2026-10-23T22:39:41.2411946Z",
+    "buildDuration": "7m 15s",
+    "apkExistenceAssertion": "test -s app/build/outputs/apk/debug/app-debug.apk",
+    "binaryUploaded": false,
+    "binaryDownloaded": false,
+    "releaseBinary": false,
+    "executionProof": false
+  },
+  "runStartedAt": "2026-10-23T22:31:28Z",
+  "runUpdatedAt": "2026-10-23T22:49:10Z",
+  "ios": {
+    "jobId": 120689419288,
+    "conclusion": "success",
+    "sourceProof": {
+      "sourceHead": "e2bf5a6744fbcdebd832d2d4e8795641d9d4488d",
+      "transportHead": "2fd2fe8ee8107b589ff462b0351c50db4a4e533e",
+      "sourceRef": "refs/heads/dev/longball-m0-journey",
+      "platform": "ios",
+      "artifactUploadRequested": false,
+      "demoAccountLogin": true,
+      "physicalDeviceProof": false,
+      "artifactDigests": [
+        {
+          "file": "bundleSha256",
+          "digest": "99abc97639d1c37c5f3979107dd965054807d79e5dbb0a0465453cb9007b6034"
+        }
+      ]
+    },
+    "actualDemoLoginEnvironmentFlag": "1",
+    "toolchain": "Xcode 26.3, build 17C529",
+    "actualBuild": "xcodebuild build",
+    "configuration": "Debug",
+    "sdk": "iphonesimulator",
+    "destination": "generic/platform=iOS Simulator",
+    "architecture": "x86_64",
+    "signing": "CODE_SIGNING_ALLOWED=NO; CODE_SIGNING_REQUIRED=NO; empty code-signing identity and development team",
+    "buildSucceededAt": "2026-10-23T22:48:58.3209830Z",
+    "appExistenceAssertion": "test -d \"$RUNNER_TEMP/longball-ios-build/Build/Products/Debug-iphonesimulator/LongBallSyntheticLab.app\"",
+    "binaryUploaded": false,
+    "binaryDownloaded": false,
+    "iphoneDeviceBinaryBuilt": false,
+    "releaseBinary": false,
+    "executionProof": false
+  },
+  "artifactDigests": [
+    {
+      "file": "bundleSha256",
+      "digest": "99abc97639d1c37c5f3979107dd965054807d79e5dbb0a0465453cb9007b6034"
+    }
+  ]
+}

@@ -1,0 +1,2997 @@
+openapi: 3.1.0
+info:
+  title: LongBall implemented runtime extensions
+  version: 1.8.0
+  description: >-
+    Runtime additions beside the unchanged supplied canonical contract. Server
+    authorization, explicit policy decisions and native-device acceptance remain
+    independent. Ordinary mutations require the event contract version and an exact
+    stable idempotency key. Schema details for preparation and records commands are
+    maintained by their strict parsers in packages/application/src.
+servers:
+  - url: /v1
+security:
+  - bearerAuth: []
+paths:
+  /me:
+    get:
+      operationId: readOwnWorkspaceIdentity
+      summary: Read the signed-in identity and its current named workspace choices
+      description: Display names are optional metadata from the exact authorized team-season. They never replace opaque IDs, selected role or player binding and do not grant preparation or roster access.
+      responses:
+        '200':
+          description: Current own identity and memberships only; private, no-store
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [accountId, identityClassification, principal, memberships, serverTime, syntheticOnly]
+                properties:
+                  accountId: {$ref: '#/components/schemas/Identifier'}
+                  identityClassification: {enum: [child_shared, adult_individual, unclassified]}
+                  principal: {type: object, description: Current authenticated runtime principal; no credentials}
+                  memberships:
+                    type: array
+                    items: {$ref: '#/components/schemas/NamedWorkspaceMembership'}
+                  serverTime: {type: string, format: date-time}
+                  syntheticOnly: {type: boolean}
+        '401': {description: A current authenticated identity is required}
+        '403': {description: The account is unavailable}
+  /exports:
+    post:
+      operationId: createProtectedReportExport
+      summary: Queue a requester-bound CSV or PDF report
+      description: >-
+        Implements the canonical report-export job contract. Own participation is player-only;
+        team participation is manager-only; attendance excludes spectators and players receive
+        only their own records. Match and season summaries retain current publication policy.
+        The role-filtered snapshot and generated artifact are encrypted at rest. A separate
+        leased worker creates the file. Current identity, membership, role, source fingerprint
+        and sharing policy are rechecked before delivery. No public download token is issued.
+        Export capability requires an explicit private key and artifact TTL; no deployment or
+        privacy-retention approval is inferred. Legacy synchronous JSON/CSV remains available.
+      parameters:
+      - $ref: '#/components/parameters/SelectedRole'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      - $ref: '#/components/parameters/ContractVersion'
+      - name: If-Match
+        in: header
+        required: false
+        schema: {type: string, pattern: '^"(?:0|[1-9][0-9]{0,14})"$'}
+        description: Optional exact quoted records projection revision. A supplied stale revision is rejected. An absent header captures the current transaction snapshot. The idempotency signature includes this header.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ReportExportRequest'}
+      responses:
+        '202':
+          description: Durable queued export; private, no-store
+          content: {application/json: {schema: {$ref: '#/components/schemas/ReportExportStatus'}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '404': {$ref: '#/components/responses/Unavailable'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '413': {description: The filtered snapshot exceeds the five MiB report limit}
+        '503': {description: EXPORT_NOT_CONFIGURED; configure a private encryption key and explicit artifact TTL}
+  /exports/{exportId}:
+    parameters:
+    - $ref: '#/components/parameters/ReportExportId'
+    - $ref: '#/components/parameters/SelectedRole'
+    get:
+      operationId: readProtectedReportExport
+      summary: Read current requester-bound export status
+      responses:
+        '200':
+          description: Current state; expired or invalidated bytes are cleared, private, no-store
+          content: {application/json: {schema: {$ref: '#/components/schemas/ReportExportStatus'}}}
+        '404': {$ref: '#/components/responses/Unavailable'}
+  /exports/{exportId}/download:
+    parameters:
+    - $ref: '#/components/parameters/ReportExportId'
+    - $ref: '#/components/parameters/SelectedRole'
+    get:
+      operationId: downloadProtectedReportExport
+      summary: Download a ready file after fresh access and policy checks
+      description: At most five MiB. Authenticated downloadPath is relative to this API. Content-Disposition uses only the opaque export UUID. Cross-origin allowed responses expose its attachment header. Saved external copies remain under the recipient's control.
+      responses:
+        '200':
+          description: Authenticated binary attachment; Cache-Control private, no-store; exact Content-Length and sanitized Content-Disposition
+          headers:
+            Content-Disposition: {schema: {type: string}, description: 'attachment; filename="longball-report-<UUID>.csv|pdf"'}
+            Content-Length: {schema: {type: integer, minimum: 1, maximum: 5242880}}
+          content:
+            application/pdf: {schema: {type: string, format: binary}}
+            text/csv: {schema: {type: string, format: binary}}
+        '404': {$ref: '#/components/responses/Unavailable'}
+        '409': {description: 'Export is not ready, source/policy changed, key changed or encrypted artifact verification failed; request a fresh report'}
+        '410': {description: EXPORT_EXPIRED; encrypted bytes were cleared}
+  /matches/{matchId}/download:
+    parameters:
+    - $ref: '#/components/parameters/MatchId'
+    - $ref: '#/components/parameters/SelectedRole'
+    - name: deviceId
+      in: query
+      required: true
+      schema:
+        type: string
+        pattern: ^[A-Za-z0-9_-]{1,120}$
+    get:
+      operationId: downloadVerifiedManagerCheckpoint
+      summary: Read assigned-manager accepted checkpoint without acquiring authority
+      description: Requires current adult assigned manager. Controller metadata is observation only and never grants recording
+        authority. Another manager can inspect this checkpoint without acquiring a capability. Snapshot schema1 is independent
+        of wire schema1 and engine4. Checksum covers every canonical payload field except checksumSha256. Client verifies before
+        atomic journal install; old unsigned caches remain retained but need a verified refresh before capture. Accepted envelopes
+        keep original engine versions; control transitions retain separate actual IDs/epochs. State.config contains immutable
+        fixture/rules/player/formation snapshots; state.lineup/stagedLineup and clock checkpoint are part of the same snapshot.
+        No contacts, birth dates, ballots or galleries.
+      responses:
+        '200':
+          description: One complete consistent verified snapshot; private, no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerifiedMatchSnapshot'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/Unavailable'
+        '422':
+          description: OFFLINE_BUNDLE_UNSUPPORTED; history beyond10000 records or incomplete/inconsistent evidence is rejected
+            without truncation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /matches/{matchId}/offline-bundle:
+    parameters:
+    - $ref: '#/components/parameters/MatchId'
+    - $ref: '#/components/parameters/SelectedRole'
+    - name: deviceId
+      in: query
+      required: true
+      schema:
+        type: string
+        pattern: ^[A-Za-z0-9_-]{1,120}$
+    - $ref: '#/components/parameters/ControllerToken'
+    get:
+      operationId: downloadVerifiedControllerBundle
+      summary: Download complete controller offline snapshot
+      description: Requires current adult manager, matching unfrozen controller capability and its enrolled device. Authority
+        cannot change during the transaction. Capability stays in the separately encrypted local grant; the response never issues
+        or reveals it. Snapshot schema1 is independent of wire schema1 and engine4. Checksum covers every canonical payload
+        field except checksumSha256. Client verifies before atomic journal install; old unsigned caches remain retained but
+        need a verified refresh before capture. Accepted envelopes keep original engine versions; control transitions retain
+        separate actual IDs/epochs. State.config contains immutable fixture/rules/player/formation snapshots; state.lineup/stagedLineup
+        and clock checkpoint are part of the same snapshot. No contacts, birth dates, ballots or galleries.
+      responses:
+        '200':
+          description: One complete consistent verified snapshot; private, no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerifiedMatchSnapshot'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/Unavailable'
+        '422':
+          description: OFFLINE_BUNDLE_UNSUPPORTED; history beyond10000 records or incomplete/inconsistent evidence is rejected
+            without truncation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /teams/{teamId}/matches:
+    parameters:
+    - $ref: '#/components/parameters/TeamId'
+    - $ref: '#/components/parameters/SeasonId'
+    - $ref: '#/components/parameters/SelectedRole'
+    get:
+      operationId: listCurrentScopeMatches
+      summary: Read a typed, role-filtered page of current-scope matches
+      description: Fresh verified membership and selected audience apply on every page. Only seasonId, limit, cursor and status query
+        keys are accepted, once each. Cursor binds verified account/issuer/subject, team, season, effective audience and player
+        identity and status filter; it never grants authority. Stable binary match-ID ordering. A missing or withdrawn row is not exposed by a
+        continuation. status=active selects running or paused halves and half-time before paging so foreground viewers can discover live games beyond the first history page.
+      parameters:
+      - name: status
+        in: query
+        schema:
+          type: string
+          enum: [active]
+        description: Optional active-match selection; omitted returns all match states. Preserve it on continuation requests.
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 25
+      - name: cursor
+        in: query
+        schema:
+          type: string
+          minLength: 1
+        description: Opaque scope-bound continuation from the previous page
+      responses:
+        '200':
+          description: Role-filtered items, nullable continuation and server observation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurrentMatchPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/Unavailable'
+  /matches/{matchId}/events:
+    parameters:
+      - {$ref: '#/components/parameters/MatchId'}
+      - {$ref: '#/components/parameters/SelectedRole'}
+      - {$ref: '#/components/parameters/ContractVersion'}
+      - {$ref: '#/components/parameters/IdempotencyKey'}
+      - {$ref: '#/components/parameters/ControllerToken'}
+    post:
+      operationId: uploadVersionedMatchCommands
+      summary: Upload an exact ordered controller stream, including prospective policy confirmations
+      description: >-
+        Current manager membership, held controller capability, epoch, per-device
+        sequence, preceding event, source revision and effective time are checked by
+        the service and deterministic engine. The service binds actorId. Exact retries
+        reuse their original bytes and idempotency key. Unsupported engine events
+        remain retained in quarantine; v3 pending evidence is never relabelled v4.
+        Policy versions are prospective; keeper transitions remain Q07-unapproved.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [events]
+              properties:
+                events:
+                  type: array
+                  minItems: 1
+                  maxItems: 100
+                  items: {$ref: '#/components/schemas/MatchCommandEnvelope'}
+      responses:
+        '200':
+          description: Per-event accepted or quarantined dispositions; acceptance is distinct from local persistence
+          content: {application/json: {schema: {$ref: '#/components/schemas/MatchUploadReceipt'}}}
+        '404': {$ref: '#/components/responses/Unavailable'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /me/push-registrations:
+    get:
+      operationId: getOwnPushRegistrationStatus
+      summary: Read own enrolled-device push metadata and configured platform policies
+      description: >-
+        Requires the active verified account; team membership and selected role are
+        not required. Returns no token, digest, ciphertext, key material or other
+        account's devices. Registration configuration and actual delivery provider
+        configuration are independent; neither flag establishes notification delivery.
+      responses:
+        '200':
+          description: Own-account metadata only; private, no-store
+          content: {application/json: {schema: {$ref: '#/components/schemas/AccountPushStatus'}}}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+    post:
+      operationId: registerOwnEnrolledPushDevice
+      summary: Register or rotate a configured delivery destination for an own enrolled native device
+      parameters:
+        - {$ref: '#/components/parameters/ContractVersion'}
+        - {$ref: '#/components/parameters/IdempotencyKey'}
+        - {$ref: '#/components/parameters/PushIfMatch'}
+      description: >-
+        The account and issuer come from the active verified session. The native
+        device and reported platform must match that account's current enrollment.
+        Only the configured transport is accepted. A token is delivery metadata,
+        never authentication. If-Match is the exact quoted current device revision,
+        including "0" when no registration exists. The body and revision are bound
+        to the stable idempotency key. Exact retries recheck current enrollment and
+        configuration, and return the original metadata receipt without reactivating
+        a withdrawn destination. Changed token, permission, build, processor binding
+        or encryption key advances the revision; an identical current-key registration
+        may return its existing revision. Denied permission requires withdrawal.
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/PushRegistrationInput'}}}
+      responses:
+        '200':
+          description: Canonical MutationResult fields; no token material
+          content: {application/json: {schema: {$ref: '#/components/schemas/PushRegistrationMutationResult'}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '404': {$ref: '#/components/responses/Unavailable'}
+        '409': {$ref: '#/components/responses/PushConflict'}
+        '428': {$ref: '#/components/responses/PushRevisionRequired'}
+        '503': {$ref: '#/components/responses/PushConfigurationRequired'}
+  /me/push-registrations/{deviceId}:
+    parameters:
+      - {$ref: '#/components/parameters/PushDeviceId'}
+    delete:
+      operationId: withdrawOwnEnrolledPushDevice
+      summary: Withdraw an own push registration while retaining its revision tombstone
+      parameters:
+        - {$ref: '#/components/parameters/ContractVersion'}
+        - {$ref: '#/components/parameters/IdempotencyKey'}
+        - {$ref: '#/components/parameters/PushIfMatch'}
+      description: >-
+        Requires the same active account, issuer and enrolled native device. Send
+        the quoted current revision, or "0" if absent. Clears encrypted token
+        material and records a new revision tombstone atomically. The path device
+        and revision bind the idempotency receipt. Exact retries return the original
+        acknowledgement; a stale registration cannot overtake withdrawal. Withdrawal
+        remains available when registration configuration is disabled. This endpoint
+        does not revoke account sessions, native enrollment or match-controller authority.
+      responses:
+        '202':
+          description: Canonical Accepted fields with status completed; private metadata acknowledgement
+          content: {application/json: {schema: {$ref: '#/components/schemas/PushRegistrationWithdrawalAccepted'}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '404': {$ref: '#/components/responses/Unavailable'}
+        '409': {$ref: '#/components/responses/PushConflict'}
+        '428': {$ref: '#/components/responses/PushRevisionRequired'}
+  /teams/{teamId}/privileges:
+    parameters:
+      - {$ref: '#/components/parameters/TeamId'}
+      - {$ref: '#/components/parameters/SeasonId'}
+      - {$ref: '#/components/parameters/SelectedRole'}
+    get:
+      operationId: getManagerTeamPrivilegeStatus
+      summary: Read current manager-visible contribution restrictions
+      description: >-
+        Requires current verified-adult strong-authentication authority and an assigned manager in the selected
+        team/season context. An omitted role uses the service's verified membership
+        selection; selecting a different role does not combine its authority with
+        manager membership. The revision is team-wide across seasons. This view
+        includes eligible target labels and flags, without reasons or private notes.
+      responses:
+        '200':
+          description: Current scoped manager status only
+          content: {application/json: {schema: {$ref: '#/components/schemas/TeamPrivilegesView'}}}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/AdultAuthorityRequired'}
+        '404': {$ref: '#/components/responses/Unavailable'}
+        '409': {$ref: '#/components/responses/TeamPrivilegeConflict'}
+        '503': {$ref: '#/components/responses/TeamPrivilegesUnavailable'}
+    post:
+      operationId: recordTeamPrivilegeDecision
+      summary: Explicitly suspend or reinstate one target's uploads or invitations in this team
+      parameters:
+        - {$ref: '#/components/parameters/ContractVersion'}
+        - {$ref: '#/components/parameters/IdempotencyKey'}
+      description: >-
+        Requires current verified-adult strong-authentication and assigned-manager authority in the current team/season
+        and an eligible target. command.id must equal Idempotency-Key. The body
+        expectedRevision is the current team-wide ledger revision; this endpoint
+        uses no If-Match header. Confirmed decision, reason, optional private note,
+        ledger revision, immutable audit and exact receipt commit together. Exact
+        retries retain their command bytes and identity. Suspension prevents later
+        contribution writes with TEAM_UPLOADS_SUSPENDED or TEAM_INVITATIONS_SUSPENDED
+        (403); it does not erase existing media, revoke invitations/grants or remove
+        published photos. Reinstatement restores only this contribution permission.
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/TeamPrivilegeRequest'}}}
+      responses:
+        '200':
+          description: Atomic revision and command acknowledgement without reasons or private notes
+          content: {application/json: {schema: {$ref: '#/components/schemas/TeamPrivilegeReceipt'}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/AdultAuthorityRequired'}
+        '404': {$ref: '#/components/responses/Unavailable'}
+        '409': {$ref: '#/components/responses/TeamPrivilegeConflict'}
+        '503': {$ref: '#/components/responses/TeamPrivilegesUnavailable'}
+  /teams/{teamId}/privileges/own:
+    parameters:
+      - {$ref: '#/components/parameters/TeamId'}
+      - {$ref: '#/components/parameters/SeasonId'}
+      - {$ref: '#/components/parameters/SelectedRole'}
+    get:
+      operationId: getOwnTeamContributionPrivileges
+      summary: Read only the current account's contribution flags for this team and season
+      description: >-
+        Rechecks the current selected membership. Only eligible managers/players
+        can have allowed contribution flags; a current spectator receives false
+        flags. No manager ledger revision, target directory, reason or private note
+        is exposed by this own-account response.
+      responses:
+        '200':
+          description: Own flags only
+          content: {application/json: {schema: {$ref: '#/components/schemas/OwnTeamPrivileges'}}}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403': {$ref: '#/components/responses/AdultAuthorityRequired'}
+        '404': {$ref: '#/components/responses/Unavailable'}
+        '409': {$ref: '#/components/responses/TeamPrivilegeConflict'}
+        '503': {$ref: '#/components/responses/TeamPrivilegesUnavailable'}
+  /identity/devices:
+    get:
+      operationId: listOwnRecognisedDevices
+      summary: Read the authenticated account's recognised installation metadata
+      description: No device credentials, push tokens, advertising IDs, other account metadata or remote-revocation action is exposed. Unknown legacy metadata stays null. A device identifier is not authentication or match-controller authority.
+      responses:
+        '200':
+          description: Own recognised devices only; Cache-Control private, no-store
+          content: {application/json: {schema: {$ref: '#/components/schemas/RecognisedDevices'}}}
+        '404': {$ref: '#/components/responses/Unavailable'}
+    post:
+      operationId: enrolOwnNativeInstallation
+      summary: Record a reported native installation for the current account
+      parameters:
+        - {$ref: '#/components/parameters/ContractVersion'}
+        - {$ref: '#/components/parameters/IdempotencyKey'}
+      description: The account and issuer come from the verified session. Times come from the service. The reported platform remains unverified and confers no controller authority. An existing installation cannot be transferred to another account.
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/NativeDeviceInput'}}}
+      responses:
+        '200':
+          description: Current own recognised devices
+          content: {application/json: {schema: {$ref: '#/components/schemas/RecognisedDevices'}}}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /teams/{teamId}/spectator-invites:
+    parameters:
+      - {$ref: '#/components/parameters/TeamId'}
+      - {$ref: '#/components/parameters/SelectedRole'}
+    get:
+      operationId: listCurrentSpectatorInvitations
+      summary: List safe invitation summaries for a current manager or the original current player
+      parameters:
+        - {$ref: '#/components/parameters/SeasonId'}
+      responses:
+        '200':
+          description: No plaintext token, verifier, share URL or private account directory
+          content: {application/json: {schema: {$ref: '#/components/schemas/InvitationList'}}}
+        '404': {$ref: '#/components/responses/Unavailable'}
+    post:
+      operationId: issueServerGeneratedSpectatorInvitation
+      summary: Issue a single-use spectator credential without a player approval step
+      description: The season comes from the body; a contradictory query is refused. The service CSPRNG generates 32 bytes and stores only a domain-separated SHA-256 verifier. Explicit expiry is 1–48 hours and bounded by the selected season. No proposed default or player invitation cap is silently selected. The raw share URL is returned once and remains memory-only; it never enters generic outboxes, logs or durable receipts.
+      parameters:
+        - {$ref: '#/components/parameters/ContractVersion'}
+        - {$ref: '#/components/parameters/IdempotencyKey'}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/InvitationWrite'}}}
+      responses:
+        '201':
+          description: First response contains the one-time credential in the configured app entry URL fragment
+          content: {application/json: {schema: {$ref: '#/components/schemas/InvitationCreated'}}}
+        '200':
+          description: Exact retry returns retained metadata only; explicitly reissue if the first credential was lost
+          content: {application/json: {schema: {$ref: '#/components/schemas/RedactedInvitationReceipt'}}}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '503': {$ref: '#/components/responses/PolicyRequired'}
+  /teams/{teamId}/spectator-invites/{invitationId}/reissue:
+    parameters:
+      - {$ref: '#/components/parameters/TeamId'}
+      - {$ref: '#/components/parameters/InvitationId'}
+      - {$ref: '#/components/parameters/SelectedRole'}
+      - {$ref: '#/components/parameters/ContractVersion'}
+      - {$ref: '#/components/parameters/IdempotencyKey'}
+    post:
+      operationId: explicitlyReissuePendingSpectatorInvitation
+      summary: Atomically retire a pending link and issue its explicit replacement
+      description: Only its original current player or a current manager may reissue. An accepted invitation or grant cannot be rotated. Legacy plaintext credentials remain retired. Source identity and original retirement evidence remain retained; a second replacement from the same source is refused. The new raw credential is returned once, with a redacted durable retry receipt.
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/InvitationWrite'}}}
+      responses:
+        '201':
+          description: Explicit replacement with one-time share URL
+          content: {application/json: {schema: {$ref: '#/components/schemas/InvitationCreated'}}}
+        '200':
+          description: Exact retry contains no raw credential
+          content: {application/json: {schema: {$ref: '#/components/schemas/RedactedInvitationReceipt'}}}
+        '404': {$ref: '#/components/responses/Unavailable'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /teams/{teamId}/spectator-invites/{invitationId}:
+    parameters:
+      - {$ref: '#/components/parameters/TeamId'}
+      - {$ref: '#/components/parameters/InvitationId'}
+      - {$ref: '#/components/parameters/SeasonId'}
+      - {$ref: '#/components/parameters/SelectedRole'}
+      - {$ref: '#/components/parameters/ContractVersion'}
+      - {$ref: '#/components/parameters/IdempotencyKey'}
+    delete:
+      operationId: revokeInvitationAndItsGrant
+      summary: A current manager revokes the invitation and its associated future grant access
+      description: The verifier mirror, retained community evidence and spectator membership union update in one transaction. Other accepted grants, unrelated roles and historical records remain intact. No account is deleted.
+      responses:
+        '200':
+          description: Immutable revocation acknowledgement; current permissions are re-read separately
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [invitationId, revoked]
+                properties:
+                  invitationId: {$ref: '#/components/schemas/Identifier'}
+                  revoked: {const: true}
+        '404': {$ref: '#/components/responses/Unavailable'}
+  /spectator-invites/inspect:
+    post:
+      operationId: inspectPossessedInvitationDestination
+      summary: Confirm the actual invitation destination before authenticated acceptance
+      description: Read-only lookup for the exact server-hashed token and current authenticated account. Link-supplied team, season and labels do not authorize a destination. Returns only current club/team/age-group/season context and a role-only inviter label. No account, session, grant or receipt is created; no person name, verifier, token, roster or contact is returned.
+      parameters:
+        - {$ref: '#/components/parameters/ContractVersion'}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/InvitationTokenInput'}}}
+      responses:
+        '200':
+          description: Safe token-bound destination metadata
+          content: {application/json: {schema: {$ref: '#/components/schemas/InvitationInspection'}}}
+        '404': {$ref: '#/components/responses/Unavailable'}
+  /spectator-invites/accept:
+    post:
+      operationId: acceptServerVerifiedSpectatorInvitation
+      summary: Accept a possessed single-use invitation into the signed-in global account
+      description: No prior destination membership is required. The service resolves the exact raw token into a scoped verifier context before its transaction. The accepted grant ends at the recorded Europe/London season boundary; invitation expiry is separate. No name matching, automatic identity linking, duplicate account or adult authority is created. Raw token and exact retries remain memory-only; durable receipts contain safe acknowledgement fields only. Refresh current memberships after acceptance.
+      parameters:
+        - {$ref: '#/components/parameters/ContractVersion'}
+        - {$ref: '#/components/parameters/IdempotencyKey'}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/InvitationTokenInput'}}}
+      responses:
+        '200':
+          description: Accepted grant acknowledgement; includes no authentication or private team data
+          content: {application/json: {schema: {$ref: '#/components/schemas/InvitationDestination'}}}
+        '404': {$ref: '#/components/responses/Unavailable'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /spectator-invites/activation-info:
+    post:
+      operationId: getFirstSpectatorActivationPolicy
+      summary: Read the exact pending invitation's configured activation policy
+      security: []
+      parameters:
+        - {$ref: '#/components/parameters/ContractVersion'}
+        - {$ref: '#/components/parameters/IdempotencyKey'}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/InvitationTokenInput'}}}
+      responses:
+        '200':
+          description: Minimal exact-token destination context, expiry and policy; creates no account or access
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [invitationId, teamId, seasonId, expiresAt, policyVersion, context]
+                properties:
+                  invitationId: {$ref: '#/components/schemas/Identifier'}
+                  teamId: {$ref: '#/components/schemas/Identifier'}
+                  seasonId: {$ref: '#/components/schemas/Identifier'}
+                  expiresAt: {type: string, format: date-time}
+                  policyVersion: {$ref: '#/components/schemas/Identifier'}
+                  context: {$ref: '#/components/schemas/InvitationContext'}
+        '410': {$ref: '#/components/responses/Unavailable'}
+        '429': {description: The bounded capability request window has been reached}
+        '503': {$ref: '#/components/responses/PolicyRequired'}
+  /spectator-invites/activate:
+    post:
+      operationId: beginFirstSpectatorUsernameActivation
+      summary: Provision a pending username identity for the possessed invitation
+      security: []
+      description: Requires explicit configured provider and activation policy. A reserved identity stays unclassified and disabled until exact provider completion. The provider URL never contains the invitation token. Its sole nonsecret longballActivation fragment identifies the attempt and is removed before opening the trusted provider. Completion alone creates no membership or app session; sign in with PKCE and explicitly accept the invitation afterwards. Existing-account users sign in directly.
+      parameters:
+        - {$ref: '#/components/parameters/ContractVersion'}
+        - {$ref: '#/components/parameters/IdempotencyKey'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [token, deviceId, policyVersion]
+              properties:
+                token: {$ref: '#/components/schemas/InvitationToken'}
+                deviceId: {$ref: '#/components/schemas/Identifier'}
+                policyVersion: {$ref: '#/components/schemas/Identifier'}
+      responses:
+        '200':
+          description: Trusted provider setup link without invitation secret or application credentials
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [accountId, username, identityActionUrl, expiresAt]
+                properties:
+                  accountId: {$ref: '#/components/schemas/Identifier'}
+                  username: {type: string, minLength: 1}
+                  identityActionUrl: {type: string, format: uri}
+                  expiresAt: {type: string, format: date-time}
+        '410': {$ref: '#/components/responses/Unavailable'}
+        '429': {description: The bounded capability request window has been reached}
+        '503': {$ref: '#/components/responses/PolicyRequired'}
+  /activation/complete:
+    post:
+      operationId: completeOriginalTokenActivation
+      summary: Verify provider completion for the exact original household or spectator activation capability
+      security: []
+      description: The original opaque token and activation ID resolve exactly one household or spectator family before provider I/O. Actual provider proof is verified outside the transaction before an atomic capability-bound completion. The token remains memory-only; a cold return requires the original token again. This operation creates no membership or app session and never returns credentials or recovery material.
+      parameters:
+        - {$ref: '#/components/parameters/ContractVersion'}
+        - {$ref: '#/components/parameters/IdempotencyKey'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [activationId, token, completionProof]
+              properties:
+                activationId: {type: string, format: uuid}
+                token: {type: string, pattern: '^[A-Za-z0-9_-]{43}$', writeOnly: true}
+                completionProof: {type: string, minLength: 1, maxLength: 16384, writeOnly: true}
+      responses:
+        '200':
+          description: Completion requires a separate sign-in; no application session is created
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [status, signInRequired]
+                properties:
+                  status: {const: complete}
+                  signInRequired: {const: true}
+        '404': {$ref: '#/components/responses/Unavailable'}
+        '410': {$ref: '#/components/responses/Unavailable'}
+        '429': {description: The bounded activation attempt window has been reached}
+        '503': {$ref: '#/components/responses/PolicyRequired'}
+  /matches/{matchId}/clock/challenges:
+    parameters:
+      - {$ref: '#/components/parameters/MatchId'}
+      - {$ref: '#/components/parameters/ContractVersion'}
+      - {$ref: '#/components/parameters/IdempotencyKey'}
+      - {$ref: '#/components/parameters/ControllerToken'}
+    post:
+      operationId: issueControllerClockChallenge
+      summary: Establish a single-use server-observed continuous-clock challenge
+      description: Requires current controller authority and an explicitly configured trusted-time policy. Device wall time is never evidence.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [deviceId, controllerEpoch, continuityId]
+              properties:
+                deviceId: {$ref: '#/components/schemas/Identifier'}
+                controllerEpoch: {type: integer, minimum: 1}
+                continuityId: {$ref: '#/components/schemas/Identifier'}
+      responses:
+        '200': {description: Server-issued scoped challenge with original issue/expiry and policy identity}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '503': {$ref: '#/components/responses/PolicyRequired'}
+  /matches/{matchId}/clock/challenges/{challengeId}/acknowledge:
+    parameters:
+      - {$ref: '#/components/parameters/MatchId'}
+      - {name: challengeId, in: path, required: true, schema: {$ref: '#/components/schemas/Identifier'}}
+      - {$ref: '#/components/parameters/ContractVersion'}
+      - {$ref: '#/components/parameters/IdempotencyKey'}
+      - {$ref: '#/components/parameters/ControllerToken'}
+    post:
+      operationId: acknowledgeControllerClockChallenge
+      summary: Consume a challenge and persist a bounded continuous-clock mapping
+      description: >-
+        A challenge is consumed transactionally. Replaying the exact request key
+        returns its receipt. A new request cannot consume it again. The original
+        controller, device, epoch and continuity must still match.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [receivedMonotonicMs, sentMonotonicMs]
+              properties:
+                receivedMonotonicMs: {type: number, minimum: 0}
+                sentMonotonicMs: {type: number, minimum: 0}
+      responses:
+        '200': {description: 'Persisted mapping with original validity, offset interval and policy identity'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '503': {$ref: '#/components/responses/PolicyRequired'}
+  /teams/{teamId}/seasons/rollover-options:
+    parameters:
+      - {$ref: '#/components/parameters/TeamId'}
+      - {$ref: '#/components/parameters/SeasonId'}
+    get:
+      operationId: getSeasonRolloverOptions
+      summary: Read authorised current-season assignment candidates
+      responses:
+        '200': {description: 'Destination boundaries, existing destination, verified account bindings and current manager slots'}
+        '404': {$ref: '#/components/responses/Unavailable'}
+  /teams/{teamId}/seasons:
+    parameters:
+      - {$ref: '#/components/parameters/TeamId'}
+      - {$ref: '#/components/parameters/SeasonId'}
+      - {$ref: '#/components/parameters/ContractVersion'}
+      - {$ref: '#/components/parameters/IdempotencyKey'}
+    post:
+      operationId: createExplicitlyAssignedSeason
+      summary: Create the next season without rewriting source history or copying spectator grants
+      description: Requires a current administrator and recent stronger adult sign-in. At most four active manager accounts across the team; no automatic revocation or promotion.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [command]
+              properties:
+                command:
+                  type: object
+                  additionalProperties: false
+                  required: [id, type, expectedPreparationRevision, idForSeason, startYear, copyPlayers, managerAccountIds, administratorAccountIds, playerAssignments, confirmSpectatorRenewal]
+                  properties:
+                    id: {$ref: '#/components/schemas/Identifier'}
+                    type: {const: season.rolled_over}
+                    expectedPreparationRevision: {type: integer, minimum: 0}
+                    idForSeason: {$ref: '#/components/schemas/Identifier', maxLength: 80}
+                    startYear: {type: integer, minimum: 2020, maximum: 2100}
+                    copyPlayers: {type: boolean}
+                    managerAccountIds: {type: array, maxItems: 4, uniqueItems: true, items: {$ref: '#/components/schemas/Identifier'}}
+                    administratorAccountIds: {type: array, minItems: 1, uniqueItems: true, items: {$ref: '#/components/schemas/Identifier'}}
+                    playerAssignments:
+                      type: array
+                      items:
+                        type: object
+                        additionalProperties: false
+                        required: [accountId, playerId]
+                        properties:
+                          accountId: {$ref: '#/components/schemas/Identifier'}
+                          playerId: {$ref: '#/components/schemas/Identifier'}
+                    confirmSpectatorRenewal: {const: true}
+      responses:
+        '200': {description: 'Created destination season and explicit assignment counts, without source mutation'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /teams/{teamId}/configuration:
+    parameters:
+      - {$ref: '#/components/parameters/TeamId'}
+      - {$ref: '#/components/parameters/SeasonId'}
+    get:
+      operationId: getAdministratorConfiguration
+      summary: Read club/team configuration without granting private manager report access
+      responses:
+        '200': {description: Permitted configuration and formation templates only}
+        '404': {$ref: '#/components/responses/Unavailable'}
+    post:
+      operationId: updateAdministratorConfiguration
+      summary: Save an allowlisted configuration command under current administrator authority
+      parameters:
+        - {$ref: '#/components/parameters/ContractVersion'}
+        - {$ref: '#/components/parameters/IdempotencyKey'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object, required: [command], properties: {command: {type: object}}}
+      responses:
+        '200': {description: Fresh permitted configuration projection}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /teams/{teamId}/records/export:
+    parameters:
+      - {$ref: '#/components/parameters/TeamId'}
+      - {$ref: '#/components/parameters/SeasonId'}
+      - {$ref: '#/components/parameters/SelectedRole'}
+    get:
+      operationId: exportPermittedRecords
+      summary: Build an authorised JSON or CSV report from current policy and role
+      description: Players receive their own named participation only; spectators receive no named participation. Withheld scores also withhold revealing derived totals. Unknown history stays unknown. No raw state, ballots or manager audit is exported.
+      parameters:
+        - {name: kind, in: query, required: true, schema: {enum: [season, match]}}
+        - {name: format, in: query, required: true, schema: {enum: [json, csv]}}
+        - {name: matchId, in: query, schema: {$ref: '#/components/schemas/Identifier'}}
+        - {name: expectedProjectionVersion, in: query, schema: {type: integer, minimum: 0}}
+        - {name: expectedPolicyFingerprint, in: query, schema: {type: string}}
+      responses:
+        '200': {description: 'No-store JSON envelope containing the export body and its audience, policy, version, coverage and generation metadata'}
+  /matches/{matchId}/reconciliation:
+    parameters:
+      - {$ref: '#/components/parameters/MatchId'}
+    get:
+      operationId: getReconciliationEvidence
+      summary: Read retained original submissions and immutable reviewed proposals
+      responses:
+        '200': {description: 'Current accepted revision, original submission digests, prepared proposals and unresolved Q08 authority policy'}
+        '404': {$ref: '#/components/responses/Unavailable'}
+  /matches/{matchId}/reconciliation/proposals:
+    parameters:
+      - {$ref: '#/components/parameters/MatchId'}
+      - {$ref: '#/components/parameters/ContractVersion'}
+      - {$ref: '#/components/parameters/IdempotencyKey'}
+    post:
+      operationId: prepareReconciliationProposal
+      summary: Save a deliberate history review without changing accepted match history
+      description: >-
+        Original submissions and accepted-state digests bind the preview. Saving a
+        proposal does not approve the reviewer policy, consume canonical event
+        positions or remove quarantined evidence.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [proposalId, baseRevision, sourceSubmissionIds, reason, resolution, commands]
+              properties:
+                proposalId: {$ref: '#/components/schemas/Identifier'}
+                baseRevision: {type: integer, minimum: 0}
+                sourceSubmissionIds: {type: array, minItems: 1, uniqueItems: true, items: {$ref: '#/components/schemas/Identifier'}}
+                reason: {type: string, minLength: 1}
+                resolution: {enum: [duplicate, retain_conflict, import_confirmed_events]}
+                commands:
+                  type: array
+                  description: Strictly validated deliberate command intents without caller-supplied identity, sample or stream authority
+                  items: {type: object, required: [type], properties: {type: {type: string}}}
+      responses:
+        '200': {description: Immutable proposal receipt and server-recomputed conservation preview}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /matches/{matchId}/reconciliation/apply:
+    parameters:
+      - {$ref: '#/components/parameters/MatchId'}
+      - {$ref: '#/components/parameters/ContractVersion'}
+      - {$ref: '#/components/parameters/IdempotencyKey'}
+    post:
+      operationId: applyReconciliationWhenApproved
+      summary: Preserve a separate final authority gate for unresolved history
+      description: Currently returns Q08_AUTHORITY_UNAPPROVED. Assigned manager access and preparing a proposal do not approve final reconciliation authority.
+      responses:
+        '503': {$ref: '#/components/responses/PolicyRequired'}
+  /teams/{teamId}/managers:
+    parameters:
+      - {$ref: '#/components/parameters/TeamId'}
+      - {$ref: '#/components/parameters/SeasonId'}
+    get:
+      operationId: readScopedManagerRoster
+      summary: Read current season assignments and associated verified adult candidates
+      description: Requires current administrator authority and stronger adult authentication. No child fields or global account directory are returned. The distinct active team-wide manager cap is four; other-season assignments retain their place.
+      responses:
+        '200': {description: 'Authoritative revision, manager assignments, safe associated candidates and cap'}
+        '404': {$ref: '#/components/responses/Unavailable'}
+    post:
+      operationId: assignExplicitSeasonManager
+      summary: Assign a verified adult account in the selected team and season
+      description: Requires current administrator authority and recent stronger adult authentication. Revisioned commands are retained for exact retry; stale revisions do not overwrite newer staff changes.
+      parameters:
+        - {$ref: '#/components/parameters/ContractVersion'}
+        - {$ref: '#/components/parameters/IdempotencyKey'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/StaffCommand'}
+      responses:
+        '200': {description: Audited revisioned assignment receipt}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '404': {$ref: '#/components/responses/Unavailable'}
+  /teams/{teamId}/managers/revoke:
+    parameters:
+      - {$ref: '#/components/parameters/TeamId'}
+      - {$ref: '#/components/parameters/SeasonId'}
+      - {$ref: '#/components/parameters/ContractVersion'}
+      - {$ref: '#/components/parameters/IdempotencyKey'}
+    post:
+      operationId: revokeExplicitSeasonManager
+      summary: Audit an explicit manager revocation for the requested season
+      description: Requires a current administrator and recent stronger adult sign-in. Freezes affected controller writes. Other-season memberships are retained and may continue to occupy a manager slot.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/StaffCommand'}
+      responses:
+        '200': {description: Audited revisioned season-scoped revocation receipt}
+        '404': {$ref: '#/components/responses/Unavailable'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /privacy/requests:
+    get:
+      operationId: readOwnAccountPrivacyRequests
+      summary: Read only the signed-in account's requests and affected own memberships
+      description: Legacy unscoped leave requests require explicit scope. Duplicate retained requests remain visible for review. A pending request never establishes fulfilment, erasure or a retention decision.
+      responses:
+        '200': {description: Own-account request statuses and current own membership list}
+        '403': {$ref: '#/components/responses/Unavailable'}
+    post:
+      operationId: submitOwnScopedPrivacyRequest
+      summary: Submit an explicitly confirmed account export, account deletion or selected team-season leave request
+      description: Global requests include all memberships. Leave requests require a current own membership in the exact team and season. Durable pending-business-key deduplication preserves one canonical pending request across response loss and new transport keys; existing audit rows remain intact.
+      parameters:
+        - {$ref: '#/components/parameters/ContractVersion'}
+        - {$ref: '#/components/parameters/IdempotencyKey'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: object
+                  additionalProperties: false
+                  required: [kind, scope, confirmAllMemberships]
+                  properties:
+                    kind: {enum: [export, delete_account]}
+                    scope: {const: all_memberships}
+                    confirmAllMemberships: {const: true}
+                - type: object
+                  additionalProperties: false
+                  required: [kind, teamId, seasonId, confirmLeave]
+                  properties:
+                    kind: {const: leave_team}
+                    teamId: {$ref: '#/components/schemas/Identifier'}
+                    seasonId: {$ref: '#/components/schemas/Identifier'}
+                    confirmLeave: {const: true}
+      responses:
+        '200': {description: Pending request receipt with verificationRequired true and fulfilled/erased false}
+        '404': {$ref: '#/components/responses/Unavailable'}
+        '409': {$ref: '#/components/responses/Conflict'}
+
+  /teams/{teamId}/branding:
+    parameters:
+      - {$ref: '#/components/parameters/TeamId'}
+      - {$ref: '#/components/parameters/SeasonId'}
+      - {$ref: '#/components/parameters/SelectedRole'}
+    get:
+      operationId: getScopedLiveBranding
+      summary: Read separate live club and team logo references with current inheritance
+      description: Season is the current authority context only. Logo assets never carry a season or match. Only the current author's permitted pending manifests are returned; player/spectator views contain published references only. Saved match/player snapshots are untouched.
+      responses:
+        '200':
+          description: Current no-store branding projection
+          content: {application/json: {schema: {$ref: '#/components/schemas/BrandingDto'}}}
+        '404': {$ref: '#/components/responses/Unavailable'}
+  /teams/{teamId}/branding/{kind}/uploads/prepare:
+    parameters:
+      - {$ref: '#/components/parameters/TeamId'}
+      - {$ref: '#/components/parameters/SeasonId'}
+      - {$ref: '#/components/parameters/BrandWriteRole'}
+      - {$ref: '#/components/parameters/BrandKind'}
+      - {$ref: '#/components/parameters/ContractVersion'}
+      - {$ref: '#/components/parameters/IdempotencyKey'}
+    post:
+      operationId: prepareKindScopedLogoUpload
+      summary: Prepare a private club or team logo upload under current kind-specific authority
+      description: Club logos require a club-authorised administrator in administrator context; team logos require an assigned manager in manager context. The body discriminator must equal the path kind. Club logos have club ancestry only; team logos derive club ancestry from the authorised team. Match, season, owner, filename and requestId body fields are rejected. Idempotency-Key identifies the immutable upload request.
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/LogoPrepareInput'}}}
+      responses:
+        '200':
+          description: Private prepared manifest and bounded write capability; upload token is memory-only and is never a read URL
+          content: {application/json: {schema: {$ref: '#/components/schemas/PreparedLogoUpload'}}}
+        '404': {$ref: '#/components/responses/Unavailable'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '422': {description: 'Invalid type, ancestry, size, hash or content-policy acknowledgement'}
+  /teams/{teamId}/branding/uploads/{uploadId}:
+    parameters:
+      - {$ref: '#/components/parameters/TeamId'}
+      - {$ref: '#/components/parameters/SeasonId'}
+      - {$ref: '#/components/parameters/BrandWriteRole'}
+      - {$ref: '#/components/parameters/BrandUploadId'}
+      - {$ref: '#/components/parameters/BrandUploadToken'}
+      - {$ref: '#/components/parameters/ContractVersion'}
+      - {$ref: '#/components/parameters/IdempotencyKey'}
+    put:
+      operationId: uploadPrivateLogoBytes
+      summary: Upload bounded private JPEG, PNG or HEIC bytes to the exact prepared manifest
+      requestBody:
+        required: true
+        content:
+          image/jpeg: {schema: {type: string, format: binary}}
+          image/png: {schema: {type: string, format: binary}}
+          image/heic: {schema: {type: string, format: binary}}
+      responses:
+        '200':
+          description: Bytes received; no publication or reusable read capability is created
+          content: {application/json: {schema: {$ref: '#/components/schemas/UploadedLogoReceipt'}}}
+        '404': {$ref: '#/components/responses/Unavailable'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '413': {description: Upload exceeds its exact prepared size or the 15 MiB limit}
+  /teams/{teamId}/branding/uploads/{uploadId}/complete:
+    parameters:
+      - {$ref: '#/components/parameters/TeamId'}
+      - {$ref: '#/components/parameters/SeasonId'}
+      - {$ref: '#/components/parameters/BrandWriteRole'}
+      - {$ref: '#/components/parameters/BrandUploadId'}
+      - {$ref: '#/components/parameters/BrandUploadToken'}
+      - {$ref: '#/components/parameters/ContractVersion'}
+      - {$ref: '#/components/parameters/IdempotencyKey'}
+    post:
+      operationId: processPrivateLogoUpload
+      summary: Scan and decode a bounded metadata-free PNG derivative, preserving transparency
+      description: Processing success retains a private processed manifest. It never updates a published logo slot. Scanner absence/failure does not fabricate clean processing.
+      requestBody:
+        required: true
+        content: {application/json: {schema: {type: object, additionalProperties: false}}}
+      responses:
+        '200':
+          description: Exact processed revision ready for an explicit review/publication action
+          content: {application/json: {schema: {$ref: '#/components/schemas/ProcessedLogoUpload'}}}
+        '404': {$ref: '#/components/responses/Unavailable'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '422': {description: 'Decode, signature, dimension, animation or metadata-processing refusal'}
+        '503': {description: Required scanner or processor unavailable; asset remains private}
+  /teams/{teamId}/branding/{kind}/publish:
+    parameters:
+      - {$ref: '#/components/parameters/TeamId'}
+      - {$ref: '#/components/parameters/SeasonId'}
+      - {$ref: '#/components/parameters/BrandWriteRole'}
+      - {$ref: '#/components/parameters/BrandKind'}
+      - {$ref: '#/components/parameters/ContractVersion'}
+      - {$ref: '#/components/parameters/IdempotencyKey'}
+    post:
+      operationId: publishExactReviewedLogo
+      summary: Atomically publish an exact clean reviewed logo revision and update its owning pointer
+      description: Club administrator and assigned team-manager authority are separate. command.id must equal Idempotency-Key, and kind must equal the path kind. Current rights-policy acknowledgement, reviewed revision and expected pointer version are required. Pointer, asset status, audit and exact retry receipt commit together. This supplies no access to child reports or game-photo moderation.
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/BrandPublishRequest'}}}
+      responses:
+        '200':
+          description: Exact command acknowledgement and fresh permitted branding
+          content: {application/json: {schema: {$ref: '#/components/schemas/BrandingCommandReceipt'}}}
+        '404': {$ref: '#/components/responses/Unavailable'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '422': {description: Unprocessed/unreviewed revision or missing current rights-policy confirmation}
+  /teams/{teamId}/branding/{kind}/remove:
+    parameters:
+      - {$ref: '#/components/parameters/TeamId'}
+      - {$ref: '#/components/parameters/SeasonId'}
+      - {$ref: '#/components/parameters/BrandWriteRole'}
+      - {$ref: '#/components/parameters/BrandKind'}
+      - {$ref: '#/components/parameters/ContractVersion'}
+      - {$ref: '#/components/parameters/IdempotencyKey'}
+    post:
+      operationId: removeLogoOverride
+      summary: Clear the exact owning slot with an audited current-version confirmation
+      description: Removing a team override restores the current club logo, then the neutral fallback. Removing a club logo preserves team overrides. Former published derivatives are no longer retrievable in published mode through the removed pointer. Private retention is separate from instant erasure.
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/BrandRemoveRequest'}}}
+      responses:
+        '200':
+          description: Exact command acknowledgement and fresh permitted branding
+          content: {application/json: {schema: {$ref: '#/components/schemas/BrandingCommandReceipt'}}}
+        '404': {$ref: '#/components/responses/Unavailable'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /teams/{teamId}/branding/assets/{assetId}/revisions/{revision}/{variant}:
+    parameters:
+      - {$ref: '#/components/parameters/TeamId'}
+      - {$ref: '#/components/parameters/SeasonId'}
+      - {$ref: '#/components/parameters/SelectedRole'}
+      - {name: assetId, in: path, required: true, schema: {$ref: '#/components/schemas/Identifier'}}
+      - {name: revision, in: path, required: true, schema: {type: integer, minimum: 1}}
+      - {name: variant, in: path, required: true, schema: {enum: [display, thumbnail]}}
+      - {name: mode, in: query, schema: {enum: [own, published], default: published}}
+    get:
+      operationId: getAuthorisedLogoDerivative
+      summary: Recheck current membership and the exact private or published logo revision for every image
+      description: PNG bytes use private/no-store headers. Own mode requires current kind-write authority and ownership. Published mode requires a current authorised viewer and the matching current owning slot. Revocation, expiry, replacement and removal deny old published reads. Bearer authentication is required in the request header. Tokens in URLs and reusable signed read URLs are not accepted.
+      responses:
+        '200':
+          description: Exact permitted PNG derivative
+          headers: {Cache-Control: {schema: {const: 'private, no-store'}}}
+          content: {image/png: {schema: {type: string, format: binary}}}
+        '404': {$ref: '#/components/responses/Unavailable'}
+
+  /teams/{teamId}/scheduled-games:
+    parameters:
+      - {$ref: '#/components/parameters/TeamId'}
+      - {$ref: '#/components/parameters/SeasonId'}
+      - {name: X-Longball-Role, in: header, required: true, schema: {enum: [manager, administrator]}}
+    get:
+      operationId: readStaffScheduledGames
+      summary: Read fixture metadata and current cancellation/deletion capabilities
+      description: No roster, replies, attendance, private reasons or feedback enter this projection. A controller grant or any saved match history protects the game from both actions.
+      responses:
+        '200': {description: Current metadata-only schedule, content: {application/json: {schema: {$ref: '#/components/schemas/ScheduledGameManagement'}}}}
+        '404': {$ref: '#/components/responses/Unavailable'}
+    post:
+      operationId: manageUnplayedScheduledGame
+      summary: Explicitly cancel or delete an unplayed schedule item
+      description: Cancellation stays visible as Cancelled. Deletion removes the schedule item while retaining its private audited tombstone and canonical rows; this is not a privacy-erasure operation. Current role, revision and recording history are rechecked atomically against controller writes. Deleted identities cannot be recreated. Original event-contract and exact command-identity headers are required.
+      parameters:
+        - {$ref: '#/components/parameters/ContractVersion'}
+        - {$ref: '#/components/parameters/IdempotencyKey'}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {type: object, additionalProperties: false, required: [command], properties: {command: {$ref: '#/components/schemas/ScheduledGameCommand'}}}}}
+      responses:
+        '200': {description: Retained acknowledgement and current metadata-only schedule, content: {application/json: {schema: {$ref: '#/components/schemas/ScheduledGameManagement'}}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '404': {$ref: '#/components/responses/Unavailable'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /teams/{teamId}/player-stats:
+    parameters:
+      - {$ref: '#/components/parameters/TeamId'}
+      - {$ref: '#/components/parameters/SeasonId'}
+      - {name: X-Longball-Role, in: header, required: true, schema: {enum: [manager, administrator, player]}}
+    get:
+      operationId: readScopedPlayerStatistics
+      summary: Read staff aggregates or only the currently linked player's aggregates
+      description: Spectators are denied. Administrators use a narrow database projection; existing private records, preparation and feedback access is not widened. Accepted checkpoints override older archived revisions once per game. Unknown or reviewed detail stays explicit; no scheduled duration becomes actual participation. No attendance, RSVP, injury, preferences or private feedback is returned.
+      responses:
+        '200': {description: Exact own-player or team aggregate projection, content: {application/json: {schema: {$ref: '#/components/schemas/PlayerStatistics'}}}}
+        '404': {$ref: '#/components/responses/Unavailable'}
+  /teams/{teamId}/match-feedback:
+    parameters:
+      - {$ref: '#/components/parameters/TeamId'}
+      - {$ref: '#/components/parameters/SeasonId'}
+      - {name: X-Longball-Role, in: header, required: true, schema: {enum: [manager, player]}}
+    get:
+      operationId: readPrivatePostGameFeedback
+      summary: Read own private feedback or assigned-manager feedback
+      description: Other players never receive another child's notes. Administrators and spectators are denied. Private feedback uses separate storage and is absent from team statistics, community and report exports.
+      responses:
+        '200': {description: Current private feedback and authoritative edit-window status, content: {application/json: {schema: {$ref: '#/components/schemas/PrivateMatchFeedback'}}}}
+        '404': {$ref: '#/components/responses/Unavailable'}
+    post:
+      operationId: saveOwnPrivatePostGameFeedback
+      summary: Save the current linked player's rating and optional note
+      description: Requires positive accepted participation and a verified original completion. Editing closes exclusively at midnight Europe/London on that completion day, including DST. Receipt replay does not submit a new edit or extend the original window. The durable command ID must equal Idempotency-Key; submitted player/account IDs are rejected.
+      parameters:
+        - {name: X-Longball-Role, in: header, required: true, schema: {const: player}}
+        - {$ref: '#/components/parameters/ContractVersion'}
+        - {$ref: '#/components/parameters/IdempotencyKey'}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {type: object, additionalProperties: false, required: [command], properties: {command: {$ref: '#/components/schemas/PrivateMatchFeedbackCommand'}}}}}
+      responses:
+        '200': {description: Durable actor-bound feedback receipt, content: {application/json: {schema: {$ref: '#/components/schemas/PrivateMatchFeedbackReceipt'}}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '404': {$ref: '#/components/responses/Unavailable'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /teams/{teamId}/team-overview:
+    parameters:
+      - {$ref: '#/components/parameters/TeamId'}
+      - {$ref: '#/components/parameters/SeasonId'}
+      - {name: X-Longball-Role, in: header, required: true, schema: {enum: [manager, administrator, player, spectator]}}
+    get:
+      operationId: readCurrentPublicTeamOverview
+      summary: Read current team and safe fixture metadata for all assigned roles
+      description: Spectator access requires a current live grant. Includes saved unprepared fixtures; accepted match status overrides scheduled metadata without overriding explicit cancellation/postponement. Deleted tombstones are excluded. No roster, score, attendance, replies, feedback or raw preparation documents are returned.
+      responses:
+        '200': {description: Current safe team metadata, content: {application/json: {schema: {$ref: '#/components/schemas/TeamOverview'}}}}
+        '404': {$ref: '#/components/responses/Unavailable'}
+
+components:
+  securitySchemes:
+    bearerAuth: {type: http, scheme: bearer, bearerFormat: JWT}
+  schemas:
+    ScheduledGameCommand:
+      type: object
+      additionalProperties: false
+      required: [id, expectedRevision, fixtureId, type, reason, confirm]
+      properties:
+        id: {$ref: '#/components/schemas/Identifier'}
+        expectedRevision: {type: integer, minimum: 0}
+        fixtureId: {$ref: '#/components/schemas/Identifier'}
+        type: {enum: [fixture.cancelled, fixture.deleted]}
+        reason: {type: string, minLength: 5, maxLength: 500}
+        confirm: {const: true}
+    ScheduledGameMetadata:
+      type: object
+      additionalProperties: false
+      required: [id, seasonId, opponent, playedDate, kickoff, arrival, venue, homeAway, format, plannedHalfDurationMs, status, canCancel, canDelete, blockedReason]
+      properties:
+        id: {$ref: '#/components/schemas/Identifier'}
+        seasonId: {$ref: '#/components/schemas/Identifier'}
+        opponent: {type: string}
+        playedDate: {type: string, format: date}
+        kickoff: {type: [string, 'null']}
+        arrival: {type: [string, 'null']}
+        venue: {type: string}
+        homeAway: {enum: [home, away]}
+        format: {type: integer, minimum: 5, maximum: 11}
+        plannedHalfDurationMs: {type: integer, minimum: 1}
+        status: {enum: [scheduled, postponed, cancelled]}
+        canCancel: {type: boolean}
+        canDelete: {type: boolean}
+        blockedReason: {enum: [recording_exists, null]}
+    ScheduledGameManagement:
+      type: object
+      additionalProperties: false
+      required: [kind, teamId, seasonId, revision, teamName, fixtures]
+      properties:
+        kind: {const: scheduled-game-management}
+        teamId: {$ref: '#/components/schemas/Identifier'}
+        seasonId: {$ref: '#/components/schemas/Identifier'}
+        revision: {type: integer, minimum: 0}
+        teamName: {type: string}
+        fixtures: {type: array, items: {$ref: '#/components/schemas/ScheduledGameMetadata'}}
+    TeamOverview:
+      type: object
+      additionalProperties: false
+      required: [kind, teamId, seasonId, team, games]
+      properties:
+        kind: {const: team-overview}
+        teamId: {$ref: '#/components/schemas/Identifier'}
+        seasonId: {$ref: '#/components/schemas/Identifier'}
+        team:
+          type: object
+          additionalProperties: false
+          required: [name, ageGroup, clubName, seasonLabel]
+          properties: {name: {type: string}, ageGroup: {type: string}, clubName: {type: string}, seasonLabel: {type: string}}
+        games:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [id, opponent, playedDate, kickoff, venue, status, active]
+            properties:
+              id: {$ref: '#/components/schemas/Identifier'}
+              opponent: {type: string}
+              playedDate: {type: string, description: 'ISO calendar date; empty string explicitly represents an unknown date'}
+              kickoff: {type: [string, 'null']}
+              venue: {type: [string, 'null']}
+              status: {enum: [scheduled, preparation, postponed, cancelled, first_half_running, first_half_paused, half_time, second_half_running, second_half_paused, completed, abandoned]}
+              active: {type: boolean}
+    StatisticPosition:
+      type: object
+      additionalProperties: false
+      required: [code, label, playingMs, percentage]
+      properties:
+        code: {type: string}
+        label: {type: string}
+        playingMs: {type: integer, minimum: 0}
+        percentage: {type: [number, 'null'], minimum: 0, maximum: 100}
+    PlayerStatisticRow:
+      type: object
+      additionalProperties: false
+      required: [playerId, label, knownPlayingMs, knownAppearances, knownGoals, knownOwnGoals, positions, unknownPositionMs, coverage]
+      properties:
+        playerId: {$ref: '#/components/schemas/Identifier'}
+        label: {type: string}
+        knownPlayingMs: {type: integer, minimum: 0}
+        knownAppearances: {type: integer, minimum: 0}
+        knownGoals: {type: integer, minimum: 0}
+        knownOwnGoals: {type: integer, minimum: 0}
+        positions: {type: array, items: {$ref: '#/components/schemas/StatisticPosition'}}
+        unknownPositionMs: {type: integer, minimum: 0}
+        coverage:
+          type: object
+          additionalProperties: false
+          required: [recordedMatches, playingTimeKnownMatches, playingTimeUnknownMatches, reviewRequiredMatches, scoringCompleteMatches, scoringPartialMatches, scoringUnknownMatches]
+          properties:
+            recordedMatches: {type: integer, minimum: 0}
+            playingTimeKnownMatches: {type: integer, minimum: 0}
+            playingTimeUnknownMatches: {type: integer, minimum: 0}
+            reviewRequiredMatches: {type: integer, minimum: 0}
+            scoringCompleteMatches: {type: integer, minimum: 0}
+            scoringPartialMatches: {type: integer, minimum: 0}
+            scoringUnknownMatches: {type: integer, minimum: 0}
+    StatisticScope:
+      type: object
+      additionalProperties: false
+      required: [clubId, teamId, seasonId, seasonLabel, projectionVersion, asOf]
+      properties:
+        clubId: {$ref: '#/components/schemas/Identifier'}
+        teamId: {$ref: '#/components/schemas/Identifier'}
+        seasonId: {$ref: '#/components/schemas/Identifier'}
+        seasonLabel: {type: string}
+        projectionVersion: {type: integer, minimum: 0}
+        asOf: {type: [string, 'null'], format: date-time}
+    PlayerStatistics:
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required: [kind, scope, player]
+          properties:
+            kind: {const: own-player-stats}
+            scope: {$ref: '#/components/schemas/StatisticScope'}
+            player: {$ref: '#/components/schemas/PlayerStatisticRow'}
+        - type: object
+          additionalProperties: false
+          required: [kind, scope, players, team, formation]
+          properties:
+            kind: {const: team-player-stats}
+            scope: {$ref: '#/components/schemas/StatisticScope'}
+            players: {type: array, items: {$ref: '#/components/schemas/PlayerStatisticRow'}}
+            team:
+              type: object
+              additionalProperties: false
+              required: [knownPlayingMs, positions, unknownPositionMs]
+              properties:
+                knownPlayingMs: {type: integer, minimum: 0}
+                positions: {type: array, items: {$ref: '#/components/schemas/StatisticPosition'}}
+                unknownPositionMs: {type: integer, minimum: 0}
+            formation:
+              type: [object, 'null']
+              additionalProperties: false
+              required: [id, label, slots]
+              properties:
+                id: {type: string}
+                label: {type: string}
+                slots:
+                  type: array
+                  items:
+                    type: object
+                    additionalProperties: false
+                    required: [id, positionCode, label, x, y]
+                    properties: {id: {type: string}, positionCode: {type: string}, label: {type: string}, x: {type: number, minimum: 0, maximum: 1}, y: {type: number, minimum: 0, maximum: 1}}
+    PrivateMatchFeedbackCommand:
+      type: object
+      additionalProperties: false
+      required: [id, type, matchId, expectedRevision, rating, text]
+      properties:
+        id: {$ref: '#/components/schemas/Identifier'}
+        type: {const: feedback.saved}
+        matchId: {$ref: '#/components/schemas/Identifier'}
+        expectedRevision: {type: integer, minimum: 0}
+        rating: {type: integer, minimum: 1, maximum: 5}
+        text: {type: [string, 'null'], maxLength: 256}
+    PrivateMatchFeedbackReceipt:
+      type: object
+      additionalProperties: false
+      required: [kind, commandId, teamId, seasonId, matchId, revision]
+      properties:
+        kind: {const: match-feedback-receipt}
+        commandId: {$ref: '#/components/schemas/Identifier'}
+        teamId: {$ref: '#/components/schemas/Identifier'}
+        seasonId: {$ref: '#/components/schemas/Identifier'}
+        matchId: {$ref: '#/components/schemas/Identifier'}
+        revision: {type: integer, minimum: 1}
+    PrivateMatchFeedbackEntry:
+      type: object
+      additionalProperties: false
+      required: [playerId, playerLabel, rating, text, revision, createdAtMs, updatedAtMs]
+      properties:
+        playerId: {$ref: '#/components/schemas/Identifier'}
+        playerLabel: {type: string}
+        rating: {type: integer, minimum: 1, maximum: 5}
+        text: {type: [string, 'null'], maxLength: 256}
+        revision: {type: integer, minimum: 1}
+        createdAtMs: {type: integer, minimum: 0}
+        updatedAtMs: {type: integer, minimum: 0}
+    PrivateMatchFeedback:
+      type: object
+      additionalProperties: false
+      required: [kind, accountId, playerId, teamId, seasonId, audience, serverNowMs, matches]
+      properties:
+        kind: {const: match-feedback}
+        accountId: {$ref: '#/components/schemas/Identifier'}
+        playerId: {type: [string, 'null']}
+        teamId: {$ref: '#/components/schemas/Identifier'}
+        seasonId: {$ref: '#/components/schemas/Identifier'}
+        audience: {enum: [manager, player]}
+        serverNowMs: {type: integer, minimum: 0}
+        matches:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [matchId, label, playedDate, completedAtMs, closesAtMs, status, eligible, canEdit, own]
+            properties:
+              matchId: {$ref: '#/components/schemas/Identifier'}
+              label: {type: string}
+              playedDate: {type: [string, 'null'], format: date}
+              completedAtMs: {type: [integer, 'null'], minimum: 0}
+              closesAtMs: {type: [integer, 'null'], minimum: 0}
+              status: {enum: [open, closed, review_required]}
+              eligible: {type: boolean}
+              canEdit: {type: boolean}
+              own: {oneOf: [{$ref: '#/components/schemas/PrivateMatchFeedbackEntry'}, {type: 'null'}]}
+              entries: {type: array, items: {$ref: '#/components/schemas/PrivateMatchFeedbackEntry'}, description: Assigned-manager projection only; never present in a player view}
+    NamedWorkspaceMembership:
+      type: object
+      additionalProperties: false
+      required: [accountId, teamId, seasonId, role]
+      properties:
+        accountId: {$ref: '#/components/schemas/Identifier'}
+        teamId: {$ref: '#/components/schemas/Identifier'}
+        seasonId: {$ref: '#/components/schemas/Identifier'}
+        role: {enum: [administrator, manager, player, spectator]}
+        playerId: {$ref: '#/components/schemas/Identifier'}
+        expiresAt: {type: [integer, 'null'], minimum: 0}
+        revokedAt: {type: [integer, 'null'], minimum: 0}
+        teamName: {type: string, minLength: 1, maxLength: 120, description: Optional server-bound display name including the current age group when known}
+        clubName: {type: string, minLength: 1, maxLength: 120}
+        seasonLabel: {type: string, minLength: 1, maxLength: 120}
+    ReportExportRequest:
+      type: object
+      additionalProperties: false
+      required: [kind, teamId, seasonId, format]
+      properties:
+        kind: {enum: [own_participation, team_participation, attendance, match_summary, season_results]}
+        teamId: {$ref: '#/components/schemas/Identifier'}
+        seasonId: {$ref: '#/components/schemas/Identifier'}
+        matchId: {type: [string, 'null'], maxLength: 150, description: Required only for match_summary; absent or null for other kinds}
+        format: {enum: [csv, pdf]}
+    ReportExportStatus:
+      type: object
+      additionalProperties: false
+      required: [id, status, downloadPath, expiresAt, failureCode, publicationPolicyVersions, generatedAt]
+      properties:
+        id: {type: string, format: uuid}
+        status: {enum: [queued, working, ready, failed, expired]}
+        downloadPath: {type: [string, 'null'], description: 'Only ready jobs have /v1/exports/<UUID>/download; always authenticated'}
+        expiresAt: {type: string, format: date-time}
+        failureCode: {type: [string, 'null'], pattern: '^[A-Z0-9_]{1,80}$'}
+        publicationPolicyVersions:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [policyId, version]
+            properties:
+              policyId: {type: string}
+              version: {type: integer, minimum: 0}
+        generatedAt: {type: [string, 'null'], format: date-time}
+    OfflinePlayerSnapshot:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - displayName
+      - goalkeeperChoice
+      properties:
+        id:
+          $ref: '#/components/schemas/Identifier'
+        displayName:
+          type: string
+        goalkeeperChoice:
+          type: integer
+          minimum: 0
+        positionPreferences:
+          type: array
+          items:
+            type: string
+        profileVersion:
+          type: string
+        available:
+          type: boolean
+          description: Preserved legacy fictional selection metadata; never manager attendance or proof of playing
+    OfflineMatchProjection:
+      type: object
+      additionalProperties: false
+      required:
+      - config
+      - status
+      - revision
+      - attendance
+      - availability
+      - stagedLineup
+      - lineup
+      - half
+      - halfActiveMs
+      - matchActiveMs
+      - firstHalfDurationMs
+      - anchor
+      - recoveryRequired
+      - intervals
+      - targetIntervals
+      - score
+      - halfTimeScore
+      - completedAtMs
+      - completedTimeQuality
+      - recoveryReason
+      - appliedEvents
+      properties:
+        config:
+          type: object
+          additionalProperties: false
+          required:
+          - matchId
+          - players
+          - selectedPlayerIds
+          - pitchPlaces
+          - plannedHalfDurationMs
+          - fixedKeeperId
+          properties:
+            matchId:
+              $ref: '#/components/schemas/Identifier'
+            players:
+              type: array
+              items:
+                $ref: '#/components/schemas/OfflinePlayerSnapshot'
+              maxItems: 100
+            selectedPlayerIds:
+              type: array
+              items:
+                $ref: '#/components/schemas/Identifier'
+              maxItems: 100
+            pitchPlaces:
+              type: integer
+              minimum: 5
+              maximum: 11
+            plannedHalfDurationMs:
+              type: integer
+              minimum: 1
+            fixedKeeperId:
+              anyOf:
+              - $ref: '#/components/schemas/Identifier'
+              - type: 'null'
+            initialPolicyProposal:
+              type: object
+            initialLineupProposal:
+              type: array
+              items:
+                type: object
+                additionalProperties: false
+                required:
+                - slotId
+                - position
+                - playerId
+                properties:
+                  slotId:
+                    $ref: '#/components/schemas/Identifier'
+                  position:
+                    type: string
+                  playerId:
+                    $ref: '#/components/schemas/Identifier'
+              maxItems: 11
+            initialAttendance:
+              type: object
+              additionalProperties:
+                enum:
+                - present
+                - absent
+                - excused
+                - not_selected
+                - not_recorded
+            slots:
+              type: array
+              items:
+                type: object
+                additionalProperties: false
+                required:
+                - slotId
+                - position
+                properties:
+                  slotId:
+                    $ref: '#/components/schemas/Identifier'
+                  position:
+                    type: string
+                  x:
+                    type: number
+                  y:
+                    type: number
+                  label:
+                    type: string
+              maxItems: 11
+            fixture:
+              type: object
+              additionalProperties: false
+              required:
+              - opponent
+              - playedDate
+              - kickoff
+              - homeAway
+              - seasonId
+              - teamId
+              - teamName
+              - clubName
+              properties:
+                opponent:
+                  type: string
+                playedDate:
+                  type: string
+                  format: date
+                kickoff:
+                  anyOf:
+                  - type: string
+                  - type: 'null'
+                homeAway:
+                  enum:
+                  - home
+                  - away
+                seasonId:
+                  $ref: '#/components/schemas/Identifier'
+                teamId:
+                  $ref: '#/components/schemas/Identifier'
+                teamName:
+                  type: string
+                clubName:
+                  type: string
+            profileSnapshot:
+              type: array
+              items:
+                type: object
+                additionalProperties: false
+                required:
+                - playerId
+                - preferences
+                - eligiblePositions
+                - initials
+                properties:
+                  playerId:
+                    $ref: '#/components/schemas/Identifier'
+                  preferences:
+                    type: array
+                    items:
+                      type: string
+                  eligiblePositions:
+                    type: array
+                    items:
+                      type: string
+                  initials:
+                    type: string
+              maxItems: 100
+        status:
+          enum:
+          - preparation
+          - first_half_running
+          - first_half_paused
+          - half_time
+          - second_half_running
+          - second_half_paused
+          - completed
+          - abandoned
+        revision:
+          type: integer
+          minimum: 0
+        attendance:
+          type: object
+        availability:
+          type: object
+        stagedLineup:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required:
+            - slotId
+            - position
+            - playerId
+            properties:
+              slotId:
+                $ref: '#/components/schemas/Identifier'
+              position:
+                type: string
+              playerId:
+                $ref: '#/components/schemas/Identifier'
+          maxItems: 11
+        lineup:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required:
+            - slotId
+            - position
+            - playerId
+            properties:
+              slotId:
+                $ref: '#/components/schemas/Identifier'
+              position:
+                type: string
+              playerId:
+                $ref: '#/components/schemas/Identifier'
+          maxItems: 11
+        half:
+          enum:
+          - 0
+          - 1
+          - 2
+        halfActiveMs:
+          type: integer
+          minimum: 0
+        matchActiveMs:
+          type: integer
+          minimum: 0
+        firstHalfDurationMs:
+          anyOf:
+          - type: integer
+            minimum: 0
+          - type: 'null'
+        anchor:
+          anyOf:
+          - type: object
+          - type: 'null'
+        recoveryRequired:
+          type: boolean
+        intervals:
+          type: array
+          items:
+            type: object
+        targetIntervals:
+          type: array
+          items:
+            type: object
+        score:
+          type: object
+          additionalProperties: false
+          required:
+          - for
+          - against
+          properties:
+            for:
+              type: integer
+              minimum: 0
+            against:
+              type: integer
+              minimum: 0
+        halfTimeScore:
+          anyOf:
+          - type: object
+            additionalProperties: false
+            required:
+            - for
+            - against
+            properties:
+              for:
+                type: integer
+                minimum: 0
+              against:
+                type: integer
+                minimum: 0
+          - type: 'null'
+        completedAtMs:
+          anyOf:
+          - type: integer
+            minimum: 0
+          - type: 'null'
+        completedTimeQuality:
+          enum:
+          - reviewRequired
+          - null
+        abandonedAtMs:
+          anyOf:
+          - type: integer
+            minimum: 0
+          - type: 'null'
+        abandonReason:
+          enum:
+          - weather
+          - safety
+          - insufficient_players
+          - other
+          - null
+        recoveryReason:
+          anyOf:
+          - type: string
+          - type: 'null'
+        appliedEvents:
+          type: object
+          additionalProperties:
+            type: string
+        schemaVersion:
+          const: 2
+        goals:
+          type: array
+          items:
+            type: object
+        availabilityHistory:
+          type: array
+          items:
+            type: object
+        eventHistory:
+          type: array
+          items:
+            type: object
+          maxItems: 10000
+        audit:
+          type: array
+          items:
+            type: object
+        activePolicy:
+          type: object
+        policyHistory:
+          type: array
+          items:
+            type: object
+      description: Current deterministic MatchState schema. Optional legacy fields preserve original evidence. Detailed events/rules
+        are enforced by the domain engine; only match-time profiles occur here, never account contacts or birth dates.
+    OfflinePublication:
+      type: object
+      additionalProperties: false
+      required:
+      - fixtureClass
+      - classificationVersion
+      - resultPolicy
+      - sharingPolicy
+      properties:
+        fixtureClass:
+          anyOf:
+          - enum:
+            - development
+            - friendly
+            - trophy
+            - unclassified
+          - type: 'null'
+        classificationVersion:
+          anyOf:
+          - type: integer
+            minimum: 1
+          - type: 'null'
+        resultPolicy:
+          anyOf:
+          - type: object
+            additionalProperties: false
+            required:
+            - id
+            - version
+            - fixtureClass
+            - confirmed
+            - confirmationReference
+            - allowedRoles
+            properties:
+              id:
+                $ref: '#/components/schemas/Identifier'
+              version:
+                type: integer
+                minimum: 1
+              fixtureClass:
+                enum:
+                - development
+                - friendly
+                - trophy
+                - unclassified
+              confirmed:
+                type: boolean
+              confirmationReference:
+                anyOf:
+                - type: string
+                - type: 'null'
+              allowedRoles:
+                type: array
+                items:
+                  enum:
+                  - player
+                  - spectator
+          - type: 'null'
+        sharingPolicy:
+          type: object
+          additionalProperties: false
+          required:
+          - version
+          - approvedBy
+          - approvedAt
+          - shareScores
+          - shareDerivedResults
+          properties:
+            version:
+              type: string
+            approvedBy:
+              anyOf:
+              - $ref: '#/components/schemas/Identifier'
+              - type: 'null'
+            approvedAt:
+              anyOf:
+              - type: integer
+                minimum: 0
+              - type: 'null'
+            shareScores:
+              type: boolean
+            shareDerivedResults:
+              type: boolean
+      description: Only actually recorded classification/publication. Null means unknown; inclusion never approves sharing. Re-evaluate
+        online on later policy changes.
+    AcceptedHistoricalWireEvent:
+      type: object
+      additionalProperties: false
+      required:
+      - contractVersion
+      - schemaVersion
+      - engineVersion
+      - eventId
+      - matchId
+      - deviceId
+      - controllerEpoch
+      - clientSequence
+      - previousEventId
+      - baseRevision
+      - effectiveHalf
+      - halfElapsedMs
+      - matchElapsedMs
+      - effectiveAt
+      - recordedAt
+      - timeQuality
+      - clockEvidence
+      - command
+      properties:
+        contractVersion:
+          type: string
+          minLength: 1
+        schemaVersion:
+          type: integer
+          minimum: 1
+        engineVersion:
+          type: string
+          minLength: 1
+        eventId:
+          $ref: '#/components/schemas/Identifier'
+        matchId:
+          $ref: '#/components/schemas/Identifier'
+        deviceId:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{1,120}$
+        controllerEpoch:
+          type: integer
+          minimum: 1
+        clientSequence:
+          type: integer
+          minimum: 1
+        previousEventId:
+          anyOf:
+          - $ref: '#/components/schemas/Identifier'
+          - type: 'null'
+        baseRevision:
+          type: integer
+          minimum: 0
+        effectiveHalf:
+          type: integer
+          enum:
+          - 0
+          - 1
+          - 2
+        halfElapsedMs:
+          type: integer
+          minimum: 0
+        matchElapsedMs:
+          type: integer
+          minimum: 0
+        effectiveAt:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        recordedAt:
+          type: string
+          format: date-time
+        timeQuality:
+          enum:
+          - anchored
+          - estimated
+          - reviewRequired
+        clockEvidence:
+          type: object
+          additionalProperties: false
+          required:
+          - monotonicMs
+          - anchorId
+          - continuityId
+          properties:
+            monotonicMs:
+              type: number
+              minimum: 0
+            anchorId:
+              $ref: '#/components/schemas/Identifier'
+            continuityId:
+              anyOf:
+              - $ref: '#/components/schemas/Identifier'
+              - type: 'null'
+        command:
+          type: object
+          required:
+          - id
+          - type
+          - sample
+          properties:
+            id:
+              $ref: '#/components/schemas/Identifier'
+            type:
+              type: string
+            sample:
+              $ref: '#/components/schemas/MatchClockSample'
+      description: Original persisted accepted wire bytes as parsed JSON, including original schema/engine labels. Historical
+        evidence is not relabelled or automatically replayed by a newer capture engine.
+    OfflineAcceptedRecord:
+      type: object
+      additionalProperties: false
+      required:
+      - serverSequence
+      - receivedAt
+      - event
+      properties:
+        serverSequence:
+          type: integer
+          minimum: 1
+        receivedAt:
+          type: string
+          format: date-time
+        event:
+          $ref: '#/components/schemas/AcceptedHistoricalWireEvent'
+    OfflineControllerTransition:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - epoch
+      - actorId
+      - fromDevice
+      - toDevice
+      - kind
+      - reason
+      - createdAt
+      properties:
+        id:
+          $ref: '#/components/schemas/Identifier'
+        epoch:
+          type: integer
+          minimum: 1
+        actorId:
+          $ref: '#/components/schemas/Identifier'
+        fromDevice:
+          anyOf:
+          - $ref: '#/components/schemas/Identifier'
+          - type: 'null'
+        toDevice:
+          $ref: '#/components/schemas/Identifier'
+        kind:
+          type: string
+        reason:
+          anyOf:
+          - type: string
+          - type: 'null'
+        createdAt:
+          type: string
+          format: date-time
+    VerifiedMatchSnapshot:
+      type: object
+      additionalProperties: false
+      required:
+      - contractVersion
+      - schemaVersion
+      - engineVersion
+      - bundleId
+      - snapshotSchemaVersion
+      - checksumSerialization
+      - checksumSha256
+      - matchId
+      - teamId
+      - seasonId
+      - deviceId
+      - state
+      - acceptedRevision
+      - deviceCheckpoint
+      - controller
+      - publication
+      - acceptedEvents
+      - controllerTransitions
+      - downloadedAt
+      - clockAnchor
+      - syntheticOnly
+      properties:
+        contractVersion:
+          const: longball.events/1.1
+        schemaVersion:
+          const: 1
+        engineVersion:
+          const: synthetic-live-4
+        bundleId:
+          $ref: '#/components/schemas/Identifier'
+        snapshotSchemaVersion:
+          const: 1
+        checksumSerialization:
+          const: longball.canonical-json/1
+        checksumSha256:
+          type: string
+          pattern: ^[0-9a-f]{64}$
+        matchId:
+          $ref: '#/components/schemas/Identifier'
+        teamId:
+          $ref: '#/components/schemas/Identifier'
+        seasonId:
+          $ref: '#/components/schemas/Identifier'
+        deviceId:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{1,120}$
+        state:
+          $ref: '#/components/schemas/OfflineMatchProjection'
+        acceptedRevision:
+          type: integer
+          minimum: 0
+        deviceCheckpoint:
+          type: object
+          additionalProperties: false
+          required:
+          - clientSequence
+          - previousEventId
+          properties:
+            clientSequence:
+              type: integer
+              minimum: 0
+            previousEventId:
+              anyOf:
+              - $ref: '#/components/schemas/Identifier'
+              - type: 'null'
+        controller:
+          anyOf:
+          - type: object
+            additionalProperties: false
+            required:
+            - epoch
+            - account_id
+            - device_id
+            - frozen
+            properties:
+              epoch:
+                type: integer
+                minimum: 1
+              account_id:
+                $ref: '#/components/schemas/Identifier'
+              device_id:
+                $ref: '#/components/schemas/Identifier'
+              frozen:
+                enum:
+                - 0
+                - 1
+          - type: 'null'
+        publication:
+          $ref: '#/components/schemas/OfflinePublication'
+        acceptedEvents:
+          type: array
+          items:
+            $ref: '#/components/schemas/OfflineAcceptedRecord'
+          maxItems: 10000
+        controllerTransitions:
+          type: array
+          items:
+            $ref: '#/components/schemas/OfflineControllerTransition'
+          maxItems: 10000
+        downloadedAt:
+          type: string
+          format: date-time
+        clockAnchor:
+          type: object
+          additionalProperties: false
+          required:
+          - serverTime
+          - quality
+          - continuousMappingEstablished
+          properties:
+            serverTime:
+              type: string
+              format: date-time
+            quality:
+              const: observation_only
+            continuousMappingEstablished:
+              const: false
+        syntheticOnly:
+          type: boolean
+    CurrentMatchPage:
+      type: object
+      additionalProperties: false
+      required:
+      - items
+      - nextCursor
+      - serverTime
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+          maxItems: 100
+        nextCursor:
+          anyOf:
+          - type: string
+            minLength: 1
+          - type: 'null'
+        serverTime:
+          type: string
+          format: date-time
+      description: Each item is the existing audience-filtered match DTO; raw manager state is never sent for player/spectator
+        audiences.
+    PushRegistrationInput:
+      type: object
+      additionalProperties: false
+      required: [deviceId, platform, transport, token, appBuild, permission]
+      properties:
+        deviceId: {type: string, pattern: '^[A-Za-z0-9_-]{1,120}$'}
+        platform: {enum: [ios, android]}
+        transport: {enum: [apns, fcm, expo]}
+        token: {type: string, minLength: 20, maxLength: 4096, not: {pattern: '[\s\x00-\x1f\x7f]'}, writeOnly: true}
+        appBuild: {type: string, maxLength: 60, not: {pattern: '[\x00-\x1f\x7f]'}}
+        permission: {enum: [granted, provisional, denied]}
+      description: Canonical push registration fields. Denied is parseable but registration returns409; use DELETE to withdraw. Platform/transport must match current enrollment and operator configuration.
+    PushApnsPolicy:
+      type: object
+      additionalProperties: false
+      required: [transport, providerConfigId]
+      properties:
+        transport: {const: apns}
+        providerConfigId: {$ref: '#/components/schemas/Identifier'}
+    PushFcmPolicy:
+      type: object
+      additionalProperties: false
+      required: [transport, providerConfigId]
+      properties:
+        transport: {const: fcm}
+        providerConfigId: {$ref: '#/components/schemas/Identifier'}
+    PushExpoPolicy:
+      type: object
+      additionalProperties: false
+      required: [transport, providerConfigId, projectId]
+      properties:
+        transport: {const: expo}
+        providerConfigId: {$ref: '#/components/schemas/Identifier'}
+        projectId: {type: string, pattern: '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'}
+    PushDeviceStatus:
+      type: object
+      additionalProperties: false
+      required: [deviceId, platform, transport, permission, state, revision, appBuild, registeredAt, updatedAt, revokedAt, lastOperationId]
+      properties:
+        deviceId: {$ref: '#/components/schemas/Identifier'}
+        platform: {enum: [ios, android]}
+        transport: {enum: [apns, fcm, expo, null]}
+        permission: {enum: [granted, provisional, denied]}
+        state: {enum: [registered, revoked]}
+        revision: {type: integer, minimum: 1, maximum: 9007199254740991}
+        appBuild: {type: string, maxLength: 60}
+        registeredAt: {type: [string, 'null'], format: date-time}
+        updatedAt: {type: string, format: date-time}
+        revokedAt: {type: [string, 'null'], format: date-time}
+        lastOperationId: {$ref: '#/components/schemas/Identifier'}
+      allOf:
+        - if: {properties: {state: {const: registered}}}
+          then:
+            properties:
+              transport: {enum: [apns, fcm, expo]}
+              permission: {enum: [granted, provisional]}
+              registeredAt: {type: string}
+              revokedAt: {type: 'null'}
+        - if: {properties: {state: {const: revoked}}}
+          then:
+            properties:
+              permission: {const: denied}
+              revokedAt: {type: string}
+    AccountPushStatus:
+      type: object
+      additionalProperties: false
+      required: [accountId, registrationConfigured, deliveryConfigured, platforms, devices]
+      properties:
+        accountId: {$ref: '#/components/schemas/Identifier'}
+        registrationConfigured: {type: boolean}
+        deliveryConfigured: {type: boolean}
+        platforms:
+          type: object
+          additionalProperties: false
+          properties:
+            ios: {oneOf: [{$ref: '#/components/schemas/PushApnsPolicy'}, {$ref: '#/components/schemas/PushExpoPolicy'}]}
+            android: {oneOf: [{$ref: '#/components/schemas/PushFcmPolicy'}, {$ref: '#/components/schemas/PushExpoPolicy'}]}
+        devices:
+          type: array
+          maxItems: 1000
+          uniqueItems: true
+          items: {$ref: '#/components/schemas/PushDeviceStatus'}
+      description: Device IDs are unique within the own-account response. Tokens, token hashes, ciphertext and private provider credentials are excluded.
+    PushRegistrationMutationResult:
+      type: object
+      additionalProperties: false
+      required: [id, revision, serverTime]
+      properties:
+        id: {$ref: '#/components/schemas/Identifier'}
+        revision: {type: integer, minimum: 1, maximum: 9007199254740991}
+        serverTime: {type: string, format: date-time}
+    PushRegistrationWithdrawalAccepted:
+      type: object
+      additionalProperties: false
+      required: [operationId, status, serverTime]
+      properties:
+        operationId: {$ref: '#/components/schemas/Identifier'}
+        status: {const: completed}
+        serverTime: {type: string, format: date-time}
+    OwnTeamPrivileges:
+      type: object
+      additionalProperties: false
+      required: [kind, teamId, seasonId, uploadsAllowed, invitationsAllowed]
+      properties:
+        kind: {const: own-team-privileges}
+        teamId: {$ref: '#/components/schemas/Identifier'}
+        seasonId: {$ref: '#/components/schemas/Identifier'}
+        uploadsAllowed: {type: boolean}
+        invitationsAllowed: {type: boolean}
+    TeamPrivilegesView:
+      type: object
+      additionalProperties: false
+      required: [kind, teamId, seasonId, revision, own, targets]
+      properties:
+        kind: {const: team-privileges}
+        teamId: {$ref: '#/components/schemas/Identifier'}
+        seasonId: {$ref: '#/components/schemas/Identifier'}
+        revision: {type: integer, minimum: 0, maximum: 9007199254740991}
+        own: {$ref: '#/components/schemas/OwnTeamPrivileges'}
+        targets:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [accountId, label, uploadsSuspended, invitationsSuspended]
+            properties:
+              accountId: {$ref: '#/components/schemas/Identifier'}
+              label: {type: string, maxLength: 300}
+              uploadsSuspended: {type: boolean}
+              invitationsSuspended: {type: boolean}
+    TeamPrivilegeRequest:
+      type: object
+      additionalProperties: false
+      required: [command]
+      properties:
+        command:
+          type: object
+          additionalProperties: false
+          required: [id, type, expectedRevision, targetAccountId, privilege, reasonCode, confirm]
+          properties:
+            id: {$ref: '#/components/schemas/Identifier'}
+            type: {enum: [privilege.suspended, privilege.reinstated]}
+            expectedRevision: {type: integer, minimum: 0, maximum: 9007199254740991}
+            targetAccountId: {$ref: '#/components/schemas/Identifier'}
+            privilege: {enum: [uploads, invitations]}
+            reasonCode: {type: string, pattern: '^[A-Za-z0-9][A-Za-z0-9_.-]{0,79}$'}
+            privateNote: {type: [string, 'null'], maxLength: 1000, pattern: '^[^\x00-\x08\x0b\x0c\x0e-\x1f\x7f]*$'}
+            confirm: {const: true}
+    TeamPrivilegeReceipt:
+      type: object
+      additionalProperties: false
+      required: [kind, commandId, teamId, revision]
+      properties:
+        kind: {const: team-privilege-receipt}
+        commandId: {$ref: '#/components/schemas/Identifier'}
+        teamId: {$ref: '#/components/schemas/Identifier'}
+        revision: {type: integer, minimum: 1, maximum: 9007199254740991}
+    MatchClockSample:
+      type: object
+      additionalProperties: false
+      required:
+      - monotonicMs
+      - sessionId
+      - wallTimeMs
+      properties:
+        monotonicMs:
+          type: number
+          minimum: 0
+        sessionId: &id002
+          $ref: '#/components/schemas/Identifier'
+        wallTimeMs: &id001
+          type: integer
+          minimum: 0
+    PolicyEffectiveTime:
+      type: object
+      additionalProperties: false
+      required:
+      - half
+      - halfElapsedMs
+      - matchElapsedMs
+      properties:
+        half:
+          type: integer
+          enum:
+          - 0
+          - 1
+          - 2
+        halfElapsedMs: *id001
+        matchElapsedMs: *id001
+    ProspectivePolicyPayload:
+      type: object
+      additionalProperties: false
+      required:
+      - keeperMode
+      - fixedKeeperPlayerSeasonId
+      - minimumStintMs
+      - batchLimit
+      - scoreLeadThreshold
+      - returnToNormalEnabled
+      properties:
+        keeperMode:
+          enum:
+          - sole_fixed
+          - common_pool
+        fixedKeeperPlayerSeasonId: &id004
+          anyOf:
+          - *id002
+          - type: 'null'
+        minimumStintMs: *id001
+        batchLimit:
+          type: integer
+          minimum: 1
+          maximum: 11
+        scoreLeadThreshold: &id003
+          type: integer
+          minimum: 1
+        returnToNormalEnabled:
+          type: boolean
+      description: Supplied canonical PolicyPayload fields. Minimum stint and batch remain explicitly soft runtime preferences.
+        A keeper transition is refused while Q07 is unapproved.
+    PolicyApplicability:
+      type: object
+      additionalProperties: false
+      required:
+      - minimumStint
+      - batchLimit
+      - q07
+      properties:
+        minimumStint:
+          const: soft_preference
+        batchLimit:
+          const: soft_preference
+        q07:
+          const: unapproved
+    PolicySoftPreferences:
+      type: object
+      additionalProperties: false
+      required:
+      - halfBufferFraction
+      properties:
+        halfBufferFraction:
+          type: number
+          minimum: 0
+          maximum: 0.49
+    PolicyChangeCommand:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - sample
+      - type
+      - policySchemaVersion
+      - policyVersion
+      - previousPolicyVersion
+      - sourceRevision
+      - effective
+      - reason
+      - payload
+      - applicability
+      - softPreferences
+      properties:
+        id: *id002
+        sample:
+          $ref: '#/components/schemas/MatchClockSample'
+        type:
+          const: policy.changed
+        policySchemaVersion:
+          const: 1
+        policyVersion: *id003
+        previousPolicyVersion: *id001
+        sourceRevision: *id001
+        effective:
+          $ref: '#/components/schemas/PolicyEffectiveTime'
+        reason:
+          type: string
+          minLength: 5
+          maxLength: 500
+          pattern: \S[\s\S]{3,}\S
+        payload:
+          $ref: '#/components/schemas/ProspectivePolicyPayload'
+        applicability:
+          $ref: '#/components/schemas/PolicyApplicability'
+        softPreferences:
+          $ref: '#/components/schemas/PolicySoftPreferences'
+        resetPositionMode:
+          type: boolean
+        actorId:
+          type: string
+          description: Rebound by the authenticated service; a caller value confers no authority.
+      description: Exact source revision, prior/new version chain and current continuous effective boundary must be
+        validated together. Preparation uses half0 and zero active time. No committed history, attendance or player
+        allocation is rewritten.
+    OtherMatchCommand:
+      type: object
+      required:
+      - id
+      - type
+      - sample
+      properties:
+        id: *id002
+        sample:
+          $ref: '#/components/schemas/MatchClockSample'
+        type:
+          enum:
+          - attendance.recorded
+          - availability.changed
+          - lineup.staged
+          - half.started
+          - half.paused
+          - half.resumed
+          - half.ended
+          - lineup.committed
+          - goal.recorded
+          - clock.recovery_required
+          - clock.corrected
+          - event.corrected
+          - event.voided
+          - match.abandoned
+      description: Other engine4 command fields remain validated by the strict deterministic reducer and companion events-v1.1
+        transport schema.
+    MatchCommandEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+      - contractVersion
+      - schemaVersion
+      - engineVersion
+      - eventId
+      - matchId
+      - deviceId
+      - controllerEpoch
+      - clientSequence
+      - previousEventId
+      - baseRevision
+      - effectiveHalf
+      - halfElapsedMs
+      - matchElapsedMs
+      - effectiveAt
+      - recordedAt
+      - timeQuality
+      - clockEvidence
+      - command
+      properties:
+        contractVersion:
+          const: longball.events/1.1
+        schemaVersion:
+          const: 1
+        engineVersion:
+          const: synthetic-live-4
+        eventId: *id002
+        matchId: *id002
+        deviceId:
+          type: string
+          pattern: '^[A-Za-z0-9_-]{1,120}$'
+        controllerEpoch: *id003
+        clientSequence: *id003
+        previousEventId: *id004
+        baseRevision: *id001
+        effectiveHalf:
+          type: integer
+          enum:
+          - 0
+          - 1
+          - 2
+        halfElapsedMs: *id001
+        matchElapsedMs: *id001
+        effectiveAt:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        recordedAt:
+          type: string
+          format: date-time
+        timeQuality:
+          enum:
+          - anchored
+          - estimated
+          - reviewRequired
+        clockEvidence:
+          type: object
+          additionalProperties: false
+          required:
+          - monotonicMs
+          - anchorId
+          - continuityId
+          properties:
+            monotonicMs:
+              type: number
+              minimum: 0
+            anchorId: *id002
+            continuityId: *id004
+        command:
+          oneOf:
+          - $ref: '#/components/schemas/PolicyChangeCommand'
+          - $ref: '#/components/schemas/OtherMatchCommand'
+    MatchUploadReceipt:
+      type: object
+      additionalProperties: false
+      required:
+      - results
+      - revision
+      - pendingReview
+      properties:
+        results:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required:
+            - eventId
+            - clientSequence
+            - disposition
+            - reason
+            - revision
+            - duplicate
+            properties:
+              eventId: *id002
+              clientSequence: *id003
+              disposition:
+                enum:
+                - accepted
+                - quarantined
+              reason:
+                type:
+                - string
+                - 'null'
+              revision:
+                type:
+                - integer
+                - 'null'
+                minimum: 0
+              duplicate:
+                type: boolean
+        revision: *id001
+        pendingReview:
+          type: boolean
+    InvitationToken:
+      type: string
+      minLength: 43
+      maxLength: 43
+      pattern: '^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$'
+      writeOnly: true
+    InvitationTokenInput:
+      type: object
+      additionalProperties: false
+      required: [token]
+      properties:
+        token: {$ref: '#/components/schemas/InvitationToken'}
+    InvitationWrite:
+      type: object
+      additionalProperties: false
+      required: [seasonId, expiresInHours]
+      properties:
+        seasonId: {$ref: '#/components/schemas/Identifier'}
+        expiresInHours: {type: integer, minimum: 1, maximum: 48}
+      description: Runtime requires explicit expiry unless an operator has explicitly configured a default. No caller credential or verifier is accepted.
+    InvitationCreated:
+      type: object
+      additionalProperties: false
+      required: [id, shareUrl, expiresAt, teamId, seasonId]
+      properties:
+        id: {$ref: '#/components/schemas/Identifier'}
+        shareUrl: {type: string, format: uri, description: One-time secret; never log, publish or persist it}
+        expiresAt: {type: string, format: date-time}
+        teamId: {$ref: '#/components/schemas/Identifier'}
+        seasonId: {$ref: '#/components/schemas/Identifier'}
+    RedactedInvitationReceipt:
+      type: object
+      additionalProperties: false
+      required: [id, expiresAt, teamId, seasonId, credentialAvailable, requiresReissue]
+      properties:
+        id: {$ref: '#/components/schemas/Identifier'}
+        expiresAt: {type: string, format: date-time}
+        teamId: {$ref: '#/components/schemas/Identifier'}
+        seasonId: {$ref: '#/components/schemas/Identifier'}
+        credentialAvailable: {const: false}
+        requiresReissue: {const: true}
+    InvitationDestination:
+      type: object
+      additionalProperties: false
+      required: [invitationId, teamId, seasonId, expiresAt]
+      properties:
+        invitationId: {$ref: '#/components/schemas/Identifier'}
+        teamId: {$ref: '#/components/schemas/Identifier'}
+        seasonId: {$ref: '#/components/schemas/Identifier'}
+        expiresAt: {type: string, format: date-time}
+    InvitationContext:
+      type: object
+      additionalProperties: false
+      required: [clubName, teamName, ageGroup, seasonLabel, inviterLabel]
+      properties:
+        clubName: {type: string, minLength: 1, maxLength: 150}
+        teamName: {type: string, minLength: 1, maxLength: 150}
+        ageGroup: {type: [string, 'null'], minLength: 1, maxLength: 150}
+        seasonLabel: {type: [string, 'null'], minLength: 1, maxLength: 150}
+        inviterLabel: {type: string, enum: [Team manager, Team member]}
+      description: Display metadata only from the exact current server-validated invitation scope. Role-only inviter label exposes no person's identity and grants no authority.
+    InvitationInspection:
+      type: object
+      additionalProperties: false
+      required: [invitationId, teamId, seasonId, expiresAt, context]
+      properties:
+        invitationId: {$ref: '#/components/schemas/Identifier'}
+        teamId: {$ref: '#/components/schemas/Identifier'}
+        seasonId: {$ref: '#/components/schemas/Identifier'}
+        expiresAt: {type: string, format: date-time}
+        context: {$ref: '#/components/schemas/InvitationContext'}
+    InvitationList:
+      type: object
+      additionalProperties: false
+      required: [kind, teamId, seasonId, revision, invitations]
+      properties:
+        kind: {const: spectator-invitations}
+        teamId: {$ref: '#/components/schemas/Identifier'}
+        seasonId: {$ref: '#/components/schemas/Identifier'}
+        revision: {type: integer, minimum: 0}
+        invitations:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [id, teamId, seasonId, expiresAt, status, canReissue, canRevoke]
+            properties:
+              id: {$ref: '#/components/schemas/Identifier'}
+              teamId: {$ref: '#/components/schemas/Identifier'}
+              seasonId: {$ref: '#/components/schemas/Identifier'}
+              expiresAt: {type: string, format: date-time}
+              status: {enum: [pending, accepted, revoked, expired, requires_reissue]}
+              canReissue: {type: boolean}
+              canRevoke: {type: boolean}
+    NativeDeviceInput:
+      type: object
+      additionalProperties: false
+      required: [deviceId, platform]
+      properties:
+        deviceId: {type: string, minLength: 1, maxLength: 120, pattern: '^[A-Za-z0-9_-]+$'}
+        platform: {enum: [ios, android]}
+    RecognisedDevices:
+      type: object
+      additionalProperties: false
+      required: [kind, accountId, asOf, devices, remoteRevocationAvailable]
+      properties:
+        kind: {const: recognised-devices}
+        accountId: {$ref: '#/components/schemas/Identifier'}
+        asOf: {type: string, format: date-time}
+        remoteRevocationAvailable: {const: false}
+        devices:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [deviceId, source, label, platform, platformVerified, registeredAt, lastSeenAt]
+            properties:
+              deviceId: {$ref: '#/components/schemas/Identifier'}
+              source: {enum: [native_app_enrolment, match_controller_enrolment]}
+              label: {type: 'null'}
+              platform: {enum: [ios, android, null]}
+              platformVerified: {const: false}
+              registeredAt: {type: [string, 'null'], format: date-time}
+              lastSeenAt: {type: [string, 'null'], format: date-time}
+    Identifier: {type: string, pattern: '^[A-Za-z0-9_-]{1,150}$'}
+    StaffCommand:
+      type: object
+      additionalProperties: false
+      required: [command]
+      properties:
+        command:
+          oneOf:
+            - type: object
+              additionalProperties: false
+              required: [type, id, expectedRevision, accountId]
+              properties:
+                type: {const: manager.assigned}
+                id: {$ref: '#/components/schemas/Identifier'}
+                expectedRevision: {type: integer, minimum: 0}
+                accountId: {$ref: '#/components/schemas/Identifier'}
+            - type: object
+              additionalProperties: false
+              required: [type, id, expectedRevision, accountId, reason, confirmRevocation]
+              properties:
+                type: {const: manager.revoked}
+                id: {$ref: '#/components/schemas/Identifier'}
+                expectedRevision: {type: integer, minimum: 0}
+                accountId: {$ref: '#/components/schemas/Identifier'}
+                reason: {type: string, minLength: 1}
+                confirmRevocation: {const: true}
+    PreparedLogoUpload:
+      type: object
+      additionalProperties: false
+      required: [kind, uploadId, asset, uploadToken, expiresAtMs, maxBytes]
+      properties:
+        kind: {const: prepared-logo-upload}
+        uploadId: {$ref: '#/components/schemas/Identifier'}
+        asset: {$ref: '#/components/schemas/BrandReference'}
+        uploadToken: {type: string, minLength: 43, maxLength: 43, pattern: '^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$', description: 'Private bounded upload capability; keep only in memory and never use for reading'}
+        expiresAtMs: {type: integer, minimum: 0}
+        maxBytes: {const: 15728640}
+    UploadedLogoReceipt:
+      type: object
+      additionalProperties: false
+      required: [uploadId, status, byteSize]
+      properties:
+        uploadId: {$ref: '#/components/schemas/Identifier'}
+        status: {const: uploaded}
+        byteSize: {type: integer, minimum: 1, maximum: 15728640}
+    ProcessedLogoUpload:
+      type: object
+      additionalProperties: false
+      required: [kind, uploadId, asset, status, width, height]
+      properties:
+        kind: {const: processed-logo-upload}
+        uploadId: {$ref: '#/components/schemas/Identifier'}
+        asset: {$ref: '#/components/schemas/BrandReference'}
+        status: {const: processed}
+        width: {type: integer, minimum: 1, maximum: 1024}
+        height: {type: integer, minimum: 1, maximum: 1024}
+    BrandingCommandReceipt:
+      type: object
+      additionalProperties: false
+      required: [kind, commandId, revision, acceptedAt, branding]
+      properties:
+        kind: {const: branding-command-receipt}
+        commandId: {$ref: '#/components/schemas/Identifier'}
+        revision: {type: integer, minimum: 1}
+        acceptedAt: {type: string, format: date-time}
+        branding: {$ref: '#/components/schemas/BrandingDto'}
+    BrandReference:
+      type: object
+      additionalProperties: false
+      required: [assetId, revision, kind, clubId, teamId]
+      properties:
+        assetId: {$ref: '#/components/schemas/Identifier'}
+        revision: {type: integer, minimum: 1}
+        kind: {enum: [club_logo, team_logo]}
+        clubId: {$ref: '#/components/schemas/Identifier'}
+        teamId: {oneOf: [{$ref: '#/components/schemas/Identifier'}, {type: 'null'}]}
+      oneOf:
+        - properties: {kind: {const: club_logo}, teamId: {type: 'null'}}
+        - properties: {kind: {const: team_logo}, teamId: {$ref: '#/components/schemas/Identifier'}}
+    LogoPrepareInput:
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required: [kind, clubId, byteSize, mimeType, sha256, policyAcknowledged]
+          properties:
+            kind: {const: club_logo}
+            clubId: {$ref: '#/components/schemas/Identifier'}
+            byteSize: {type: integer, minimum: 1, maximum: 15728640}
+            mimeType: {enum: [image/jpeg, image/png, image/heic]}
+            sha256: {type: string, pattern: '^[a-fA-F0-9]{64}$'}
+            policyAcknowledged: {const: true}
+        - type: object
+          additionalProperties: false
+          required: [kind, teamId, byteSize, mimeType, sha256, policyAcknowledged]
+          properties:
+            kind: {const: team_logo}
+            teamId: {$ref: '#/components/schemas/Identifier'}
+            byteSize: {type: integer, minimum: 1, maximum: 15728640}
+            mimeType: {enum: [image/jpeg, image/png, image/heic]}
+            sha256: {type: string, pattern: '^[a-fA-F0-9]{64}$'}
+            policyAcknowledged: {const: true}
+    BrandPublishRequest:
+      type: object
+      additionalProperties: false
+      required: [command]
+      properties:
+        command:
+          type: object
+          additionalProperties: false
+          required: [id, type, kind, expectedSlotVersion, assetId, reviewedRevision, confirmRightsToUse, policyVersion]
+          properties:
+            id: {$ref: '#/components/schemas/Identifier'}
+            type: {const: logo.published}
+            kind: {enum: [club_logo, team_logo]}
+            expectedSlotVersion: {type: integer, minimum: 0}
+            assetId: {$ref: '#/components/schemas/Identifier'}
+            reviewedRevision: {type: integer, minimum: 1}
+            confirmRightsToUse: {const: true}
+            policyVersion: {type: string, minLength: 1, maxLength: 150}
+    BrandRemoveRequest:
+      type: object
+      additionalProperties: false
+      required: [command]
+      properties:
+        command:
+          type: object
+          additionalProperties: false
+          required: [id, type, kind, expectedSlotVersion]
+          properties:
+            id: {$ref: '#/components/schemas/Identifier'}
+            type: {const: logo.removed}
+            kind: {enum: [club_logo, team_logo]}
+            expectedSlotVersion: {type: integer, minimum: 0}
+    BrandingDto:
+      type: object
+      additionalProperties: false
+      required: [kind, teamId, clubId, authoritySeasonId, policyVersion, club, team, effective, canWriteClub, canWriteTeam, assets]
+      properties:
+        kind: {const: team-branding}
+        teamId: {$ref: '#/components/schemas/Identifier'}
+        clubId: {$ref: '#/components/schemas/Identifier'}
+        authoritySeasonId: {$ref: '#/components/schemas/Identifier'}
+        policyVersion: {type: string}
+        club:
+          type: object
+          additionalProperties: false
+          required: [id, name, slotVersion, logo]
+          properties:
+            id: {$ref: '#/components/schemas/Identifier'}
+            name: {type: string}
+            slotVersion: {type: integer, minimum: 0}
+            logo: {oneOf: [{$ref: '#/components/schemas/BrandReference'}, {type: 'null'}]}
+        team:
+          type: object
+          additionalProperties: false
+          required: [id, name, ageGroup, slotVersion, logo]
+          properties:
+            id: {$ref: '#/components/schemas/Identifier'}
+            name: {type: string}
+            ageGroup: {type: string}
+            slotVersion: {type: integer, minimum: 0}
+            logo: {oneOf: [{$ref: '#/components/schemas/BrandReference'}, {type: 'null'}]}
+        effective:
+          type: object
+          additionalProperties: false
+          required: [source, logo]
+          properties:
+            source: {enum: [team, club, neutral]}
+            logo: {oneOf: [{$ref: '#/components/schemas/BrandReference'}, {type: 'null'}]}
+        canWriteClub: {type: boolean}
+        canWriteTeam: {type: boolean}
+        assets:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [assetId, revision, kind, clubId, teamId, status, byteSize, width, height, createdAt, processedAt]
+            properties:
+              assetId: {$ref: '#/components/schemas/Identifier'}
+              revision: {type: integer, minimum: 1}
+              kind: {enum: [club_logo, team_logo]}
+              clubId: {$ref: '#/components/schemas/Identifier'}
+              teamId: {oneOf: [{$ref: '#/components/schemas/Identifier'}, {type: 'null'}]}
+              status: {enum: [prepared, uploaded, processing, processed, published, rejected]}
+              byteSize: {type: integer, minimum: 1, maximum: 15728640}
+              width: {type: [integer, 'null'], minimum: 1}
+              height: {type: [integer, 'null'], minimum: 1}
+              createdAt: {type: integer, minimum: 0}
+              processedAt: {type: [integer, 'null'], minimum: 0}
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code: {type: string}
+        message: {type: string}
+        retryable: {type: boolean}
+  parameters:
+    ReportExportId: {name: exportId, in: path, required: true, schema: {type: string, format: uuid}}
+    PushDeviceId: {name: deviceId, in: path, required: true, schema: {type: string, pattern: '^[A-Za-z0-9_-]{1,120}$'}}
+    PushIfMatch:
+      name: If-Match
+      in: header
+      required: true
+      schema: {type: string, pattern: '^"(?:0|[1-9][0-9]{0,14})"(?![\s\S])'}
+      description: Exact quoted current push-device revision. Send '"0"' for an absent registration; no wildcard, weak ETag, list, unquoted number or leading zero is accepted.
+      example: '"0"'
+    BrandWriteRole: {name: X-Longball-Role, in: header, required: true, schema: {enum: [administrator, manager]}, description: 'Choose the explicit current kind authority: administrator for club_logo or assigned manager for team_logo'}
+    InvitationId: {name: invitationId, in: path, required: true, schema: {$ref: '#/components/schemas/Identifier'}}
+    BrandKind: {name: kind, in: path, required: true, schema: {enum: [club_logo, team_logo]}}
+    BrandUploadId: {name: uploadId, in: path, required: true, schema: {$ref: '#/components/schemas/Identifier'}}
+    BrandUploadToken: {name: X-Media-Upload-Token, in: header, required: true, schema: {type: string, writeOnly: true}}
+    MatchId: {name: matchId, in: path, required: true, schema: {$ref: '#/components/schemas/Identifier'}}
+    TeamId: {name: teamId, in: path, required: true, schema: {$ref: '#/components/schemas/Identifier'}}
+    SeasonId: {name: seasonId, in: query, required: true, schema: {$ref: '#/components/schemas/Identifier'}}
+    SelectedRole: {name: X-Longball-Role, in: header, schema: {enum: [administrator, manager, player, spectator]}}
+    ContractVersion: {name: X-Api-Contract-Version, in: header, required: true, schema: {const: longball.events/1.1}}
+    IdempotencyKey: {name: Idempotency-Key, in: header, required: true, schema: {type: string, pattern: '^[A-Za-z0-9_-]{8,150}$'}}
+    ControllerToken: {name: X-Controller-Token, in: header, required: true, schema: {type: string}}
+  responses:
+    BadRequest:
+      description: Invalid exact body, quoted revision, command identity or stable idempotency key
+      content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}
+    Unauthenticated:
+      description: An active verified account/session is required
+      content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}
+    PushConflict:
+      description: PUSH_REGISTRATION_CHANGED, PUSH_PROCESSOR_UNAVAILABLE, PUSH_PERMISSION_DENIED, contract-version mismatch or idempotency key reused with different body/revision; refresh metadata and preserve uncertain requests
+      content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}
+    PushRevisionRequired:
+      description: PUSH_REVISION_REQUIRED; read own status and send the exact quoted If-Match revision, including zero when absent
+      content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}
+    PushConfigurationRequired:
+      description: PUSH_NOT_CONFIGURED; registration needs explicitly selected platform policy and deployment encryption keys
+      content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}
+    AdultAuthorityRequired:
+      description: ADULT_AUTHORITY_REQUIRED; the selected manager account must have current adult verification and stronger authentication
+      content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}
+    TeamPrivilegeConflict:
+      description: TEAM_PRIVILEGE_REVISION_CONFLICT, TEAM_PRIVILEGE_ALREADY_SET, reconciliation required, contract-version mismatch or idempotency conflict; refresh the current team-wide decision before a new command
+      content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}
+    TeamPrivilegesUnavailable:
+      description: TEAM_PRIVILEGES_UNAVAILABLE; the service cannot establish current contribution permission
+      content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}
+    Conflict:
+      description: Current revision, controller authority, challenge validity or exact request differs; retain uncertain local work
+      content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}
+    PolicyRequired:
+      description: An explicit operator policy is absent; implementation does not approve it
+      content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}
+    Unavailable:
+      description: Current identity, membership or object scope does not permit this resource
+      content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}

@@ -1,0 +1,21 @@
+{
+  "compiledSource": "ee7cb613695b8d96388e742a60dc248277b24091",
+  "note": "Copied built ee7 artifacts; subsequent source-only changes and current working tree are excluded. No shared rebuild.",
+  "files": {
+    "site/metadata.json": "aa5f19cc84d41c0f8c70ececb2bc82e863227ea1e121632aca879eb616056991",
+    "site/index.html": "f7606ed37b35e4f89b8b5e997a93d1c9ad534810f04f7fdf665a5faf2684f1a3",
+    "site/_expo/static/js/web/index-9ddd154bdda7116598b3c07d353833e3.js": "b2fc5a1438ac398d43cf59f52ad6691f812e398232698fb2171a8748b2417158",
+    "backend/media-worker.mjs": "4b878815f5255ec427900db496df40c278176e381bfc3b7f6809912fe4cea5ed",
+    "backend/heic-proof.mjs": "5a2263b3649d5243b83bf3c071a67af6d5759684907eb08c016b08704d43afae",
+    "backend/heic-worker.mjs": "af403995a2780164fdddbce814fbf6f4c5789fcc00dcb49c9235dfb76a0e751d",
+    "backend/report-pdf-probe.mjs": "48ccf62ded67599efb33db7f223c14b9b1baf40520740acd2ef3c40e65f36b4e",
+    "backend/worker.cjs": "b7070da60b2596164e0c9a31e4a7cb68f083b831a5e63c188d4ef4b7a8044e74",
+    "backend/api.mjs": "6217c496603d372a6fc80c82e9907b68dc5a5501642d1594fe630eb69df16873",
+    "backend/rls-restore-proof.mjs": "ad0b475dd62a88e38735d95ea32adeaf090625e90fdf65b570e71f5b9b7c7689",
+    "backend/worker.mjs": "46e3c525fd77b98405193efcab13cfdf27f48cf1d536fe05bb59805f27203e08",
+    "backend/api.cjs": "e40a9d89b2662febe8f59c5dc9bc92c71c73c374b98a953d839026848b5a7cf9",
+    "backend/migrate.mjs": "70bf31182c1ca59c88f506c8f8b2fed18a1e9aa8d2e0e69244d83696c3a11f0d",
+    "backend/assets/fonts/DejaVuSans.ttf": "57f73e11f51999432bf7ab22ce55b6f945d5eca1bf824404cfa9ec2e3718c84e",
+    "backend/assets/fonts/LICENSE": "313b3a0d96941787361031e2610533303ded274f814e0dd2e81187a13ca42bb3"
+  }
+}

@@ -1,0 +1,52 @@
+[
+  {
+    "file": "site/_expo/static/js/web/index-013584515a6855da478abd86efec7884.js",
+    "digest": "4fde0da7aa2abbd26b0e2138f8d331ea40d98353f7f041abe05b1a5712f639ad",
+    "bytes": 1556703
+  },
+  {
+    "file": "site/index.html",
+    "digest": "d12aabc66ee53f9e1570cf911cb27fb31c3900535ae42af378624ec965200792",
+    "bytes": 1290
+  },
+  {
+    "file": "pages-site/_expo/static/js/web/index-92b8cc385ed32c60b8bacb4c91c5130e.js",
+    "digest": "796cdfb86d75c53968e90111804c409a48f6d80286a0a955404058ae801b7e83",
+    "bytes": 1557125
+  },
+  {
+    "file": "pages-site/index.html",
+    "digest": "dc5b05e7aeaeb1c51159c5a1f0b28f8d6379d0fea121b213e1ea6f8b61e6db36",
+    "bytes": 1299
+  },
+  {
+    "file": "backend/api.mjs",
+    "digest": "a8c0eacd04f2bc7858e08665251ce0c32f02ec90bbdee907c72954a82d665fc3",
+    "bytes": 3600471
+  },
+  {
+    "file": "backend/heic-worker.mjs",
+    "digest": "af403995a2780164fdddbce814fbf6f4c5789fcc00dcb49c9235dfb76a0e751d",
+    "bytes": 1326
+  },
+  {
+    "file": "backend/media-worker.mjs",
+    "digest": "4b878815f5255ec427900db496df40c278176e381bfc3b7f6809912fe4cea5ed",
+    "bytes": 3467
+  },
+  {
+    "file": "backend/migrate.mjs",
+    "digest": "b0ab30fb2f5fd8553ff2cab8c7e3f59b143d3421b17a0d190f5961005abbf7ef",
+    "bytes": 486913
+  },
+  {
+    "file": "backend/report-pdf-probe.mjs",
+    "digest": "6372f1bcf98de5f99167d13b6c5a27f395ba2c41751eabe41d2fe8c33257a50f",
+    "bytes": 2721682
+  },
+  {
+    "file": "backend/worker.mjs",
+    "digest": "7d88610a3aa9d459beb6d290890625f6bbbe410b05e5ef9b1e3cbf49c2d60f8c",
+    "bytes": 3303482
+  }
+]

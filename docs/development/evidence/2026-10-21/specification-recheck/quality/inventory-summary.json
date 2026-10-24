@@ -1,0 +1,32 @@
+{
+  "observedAt": "2026-10-21T23:10:55.162Z",
+  "sourceCommit": "94f32d694e56cf09926fbd3c81e1f5182016c00e",
+  "workingTreeDirty": false,
+  "lockSha256": "8d702b43acdc476549452fd8d7e0cdd7a7c3723cb7b4f155c4b364e3a3ec0caf",
+  "packageCount": 411,
+  "assetCount": 1,
+  "retainedLicenseFiles": 320,
+  "sbom": "sbom.spdx.json",
+  "licenses": "licenses.json",
+  "assets": [
+    {
+      "name": "DejaVu Sans",
+      "kind": "report PDF font",
+      "sourcePath": "apps/api/src/assets/fonts/DejaVuSans.ttf",
+      "source": "https://dejavu-fonts.github.io/",
+      "bytes": 759720,
+      "sha256": "57f73e11f51999432bf7ab22ce55b6f945d5eca1bf824404cfa9ec2e3718c84e",
+      "declaredLicense": "Bitstream-Vera",
+      "licenseNote": "Unmodified font; DejaVu changes are in the public domain. See retained notice. No legal approval is inferred.",
+      "retained": [
+        {
+          "file": "licenses/report-font/DejaVuSans-LICENSE",
+          "sha256": "313b3a0d96941787361031e2610533303ded274f814e0dd2e81187a13ca42bb3",
+          "bytes": 2497
+        }
+      ]
+    }
+  ],
+  "scope": "Resolved JavaScript workspace and report PDF font; optional uninstalled packages have no retained licence text. Native/image inventories remain separate.",
+  "retainedLicenseHashesVerified": 320
+}

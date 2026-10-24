@@ -1,0 +1,94 @@
+{
+  "status": "passed",
+  "checkedAt": "2026-10-21T19:33:52.392Z",
+  "baseURL": "http://127.0.0.1:4173/",
+  "api": "http://127.0.0.1:4394",
+  "checks": [
+    "Connected UI confirms a reason and explicit soft values through its durable canonical outbox; independent HTTP verifies service acceptance and bound actor.",
+    "A distinct browser phone explicitly accepts addressed controller handover and opens the same accepted policy history and settings."
+  ],
+  "acceptedRevision": 2,
+  "policyHistory": [
+    {
+      "policySchemaVersion": 1,
+      "policyVersion": 1,
+      "previousPolicyVersion": 0,
+      "sourceRevision": 0,
+      "effective": {
+        "half": 0,
+        "halfElapsedMs": 0,
+        "matchElapsedMs": 0
+      },
+      "reason": "Phone A explicitly confirmed three-minute spells and ten-percent soft buffers.",
+      "payload": {
+        "keeperMode": "sole_fixed",
+        "fixedKeeperPlayerSeasonId": "synthetic-player-01",
+        "minimumStintMs": 180000,
+        "batchLimit": 2,
+        "scoreLeadThreshold": 2,
+        "returnToNormalEnabled": false
+      },
+      "applicability": {
+        "minimumStint": "soft_preference",
+        "batchLimit": "soft_preference",
+        "q07": "unapproved"
+      },
+      "softPreferences": {
+        "halfBufferFraction": 0.1
+      },
+      "eventId": "8c425340-c21a-45b8-866a-450e3f432a21",
+      "revision": 1,
+      "recordedAtMs": 1792611225882,
+      "actorId": "synthetic-account-manager-2"
+    },
+    {
+      "policySchemaVersion": 1,
+      "policyVersion": 2,
+      "previousPolicyVersion": 1,
+      "sourceRevision": 1,
+      "effective": {
+        "half": 0,
+        "halfElapsedMs": 0,
+        "matchElapsedMs": 0
+      },
+      "reason": "Phone B reviewed longer soft spells after the explicit controller handover.",
+      "payload": {
+        "keeperMode": "sole_fixed",
+        "fixedKeeperPlayerSeasonId": "synthetic-player-01",
+        "minimumStintMs": 420000,
+        "batchLimit": 2,
+        "scoreLeadThreshold": 2,
+        "returnToNormalEnabled": false
+      },
+      "applicability": {
+        "minimumStint": "soft_preference",
+        "batchLimit": "soft_preference",
+        "q07": "unapproved"
+      },
+      "softPreferences": {
+        "halfBufferFraction": 0.2
+      },
+      "eventId": "da77277b-03c8-44ce-9dd7-7b15b5e10261",
+      "revision": 2,
+      "recordedAtMs": 1792611231013,
+      "actorId": "synthetic-account-manager-2"
+    }
+  ],
+  "browserErrors": [],
+  "artifacts": {
+    "sourceRevision": "7ede8d1ef944823cfd6a5f6965ab51d4c37d286e",
+    "web": {
+      "entry": "/_expo/static/js/web/index-0e10e3d0fbd5528d8ee4e090a5d1e659.js",
+      "sha256": "c007d2543cbff4ce46c1eded82f8ce9d485b2dba7b2fa68f25e1eee7e2e126c7"
+    },
+    "api": {
+      "entry": "apps/api/dist/api.mjs",
+      "sha256": "d1568c20879d2e1df83843fc31e35a6fa053751785560988f53093c546e10798"
+    }
+  },
+  "limitations": [
+    "Fictional development accounts and transport-only discovery redirect to loopback.",
+    "Browser evidence does not establish native encrypted storage, physical clocks, background reminders or real identity-provider sign-in.",
+    "Q07 keeper transitions remain unapproved and refused."
+  ]
+}

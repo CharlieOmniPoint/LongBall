@@ -1,0 +1,91 @@
+{
+  "status": "passed",
+  "observedAt": "2026-10-21T19:35:21.222Z",
+  "syntheticOnly": true,
+  "execution": "host-bundled-operational-proof",
+  "productionImageExercised": false,
+  "actualPushDelivered": false,
+  "versions": [
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15
+  ],
+  "featureVersions": {
+    "media": 4,
+    "mediaVersions": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "activation": 2
+  },
+  "protectedTables": 37,
+  "sourceSha256": {
+    "apps/api/src/pg.ts": "c6f91c5045031bc083aff884e10e5af460548a44a5a8b4354453c2938eebcaae",
+    "apps/api/src/runtime-grants.ts": "93f6d591c87c7ba609df8f9f7b61bf6489238ee6b51a5cdf445f68a02d846577",
+    "apps/api/migrations/postgresql/013_team_privileges.sql": "5fb3ea71eec74ec2f23370d102cab117f5f03918ff53023f0dad7dc4c580205d",
+    "apps/api/migrations/postgresql/014_push_registrations.sql": "4b94f3b563084c9e9eb442a4ea291241fdb772c978254c89f83044dd4b63d6b3",
+    "apps/api/migrations/postgresql/015_team_privilege_audit_clock.sql": "51f85dd33068db7321c4be5da053edefc3ce20509607f2862a9859b7ad47efe9",
+    "apps/api/migrations/postgresql/media_004_team_privileges.sql": "fb0c26cfae3bf1c4732cd7cdd589829ae1b7d8ce64b13ec70dacc39e335a2c05",
+    "scripts/runtime-contribution-boundaries.ts": "fd16ee07389a0530f243a348d57c6243c3951849af9473d6d47734847b6843a6",
+    "scripts/runtime-heic.ts": "e0bbc78e000033daef85fff3991ed266e491911f5af2a03e8087a887669873a7",
+    "scripts/runtime-rls-restore.ts": "b75a622116b34c88271f8de3108f0f1f9df6335b5b66e69aead25419d89d5163"
+  },
+  "proofBundle": {
+    "file": "rls-restore-proof.mjs",
+    "sha256": "ad0b475dd62a88e38735d95ea32adeaf090625e90fdf65b570e71f5b9b7c7689"
+  },
+  "contributionChecks": {
+    "exactPrivateRowsRestored": true,
+    "auditedSuspensionsPreserved": 2,
+    "ownPrivilegesRemainSuspended": true,
+    "privateDecisionNotesWithheld": true,
+    "exactEncryptedRegistrationPreserved": true,
+    "encryptedRegistrationSha256": "c836978aadac9b7a97effee1c8a826511a7d7632aff08d5a5382fec75a9580e1",
+    "decryptsWithSeparatelyRetainedEphemeralTestKey": true,
+    "ownStatusHasNoToken": true,
+    "otherAccountDenied": true,
+    "foreignTeamPrivilegesDenied": true,
+    "contextFreeNewTablesDenied": true,
+    "workerRawNewTablesDenied": true,
+    "apiWorkerFunctionDenied": true,
+    "unclaimedWorkerDestinationDenied": true,
+    "exactLeasedRecipientOnly": true,
+    "wrongLeaseCapabilityDenied": true,
+    "actualPushDelivered": false
+  },
+  "historicalMediaCheckpoint": "2026-10-21T08:53:54.914Z",
+  "archiveSha256": "02278264438c8b05677c08ab0311e892493f78c27f2107d55428645f48f678c1",
+  "exactRestoredDerivativeSha256": "b0272eac7747fa4f2217c81c2388794bd32d685f7cd86ef79ffe2ad4ccf94050",
+  "compositeForeignKeys": 30,
+  "preservedCounts": {
+    "manifests": 3,
+    "clubs": 1,
+    "seasons": 1,
+    "game_contexts": 2
+  },
+  "temporaryDatabaseCreateRevoked": true,
+  "restoredSchemaOwnerNonBypass": true,
+  "restoredApiWorkerNonBypass": true,
+  "restoredCurrentPlayerGateway": true,
+  "contextFreeDataDenied": true,
+  "foreignTeamDenied": true,
+  "workerForgedActorDenied": true,
+  "limitations": [
+    "Reuses previously processed fictional image bytes; ClamAV engine was not rerun.",
+    "Paired private object copy and custom-format archive; no encrypted offsite backup, retention, RPO or RTO claim.",
+    "Disposable proof database roles use loopback-only trust authentication; production credentials remain separate mounted secrets."
+  ]
+}

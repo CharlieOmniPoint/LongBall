@@ -1,0 +1,63 @@
+{
+  "productSource": "e2bf5a6744fbcdebd832d2d4e8795641d9d4488d",
+  "productTree": "dc02bb704d522a1916573bccc09312a7755a7176",
+  "unit": {
+    "passed": true,
+    "tests": 784,
+    "files": 89,
+    "skipped": 0,
+    "startedAtEpochMs": 1792794684118
+  },
+  "api": {
+    "passed": true,
+    "tests": 396,
+    "files": 60,
+    "skipped": 0,
+    "startedAtEpochMs": 1792792445420,
+    "scope": "Full completed host API suite with real disposable PostgreSQL and maintained HEIC decoder. API/worker bytes match the final packaged source; client-only fixes do not change either bundle."
+  },
+  "migrations": {
+    "passed": true,
+    "tests": 24,
+    "files": 4,
+    "database": "Owned disposable PostgreSQL, stopped and removed after checks."
+  },
+  "static": {
+    "lint": true,
+    "rootAndMobileTypes": true,
+    "contracts": true,
+    "sampleFixtures": true,
+    "sourcePublicationTests": 1,
+    "verifierPackagingTests": 6,
+    "nodeReviewScriptTests": 3
+  },
+  "browser": {
+    "ordinaryGroups": 10,
+    "connectedLegacyGroups": 6,
+    "demoRoleJourneys": 8,
+    "demoGroups": 24,
+    "demoViewports": [
+      320,
+      390
+    ]
+  },
+  "nativeExport": {
+    "passed": true,
+    "iosModules": 1052,
+    "androidModules": 1053,
+    "scope": "Flagged Hermes JavaScript exports; runtime sources match final product. Compilation/signing/device evidence is separate."
+  },
+  "nativeConfigurationGroups": 6,
+  "physicalDeviceEvidence": false,
+  "paidServicesProvisioned": false,
+  "remaining": "Owner-deferred Q05/Q09/Q10 and physical phones; privacy fulfilment, governed support/recovery and production operating/distribution gates remain open.",
+  "nativeCompilation": {
+    "passed": true,
+    "runId": 40034161097,
+    "exactProductSource": true,
+    "android": "arm64 Debug",
+    "ios": "unsigned x86_64 iOS Simulator Debug",
+    "uploadedArtifacts": false,
+    "physicalDeviceEvidence": false
+  }
+}

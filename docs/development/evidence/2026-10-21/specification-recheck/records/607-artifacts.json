@@ -1,0 +1,22 @@
+{
+  "compiledSource": "60789694c89dd4bc8aa5902ddb984dc84f6cba45",
+  "observedHead": "60789694c89dd4bc8aa5902ddb984dc84f6cba45",
+  "note": "Private copied fresh607 web/API/worker/font artifacts, excluding shared-output mutations.",
+  "files": {
+    "site/metadata.json": "aa5f19cc84d41c0f8c70ececb2bc82e863227ea1e121632aca879eb616056991",
+    "site/index.html": "f7606ed37b35e4f89b8b5e997a93d1c9ad534810f04f7fdf665a5faf2684f1a3",
+    "site/_expo/static/js/web/index-9ddd154bdda7116598b3c07d353833e3.js": "b2fc5a1438ac398d43cf59f52ad6691f812e398232698fb2171a8748b2417158",
+    "backend/media-worker.mjs": "4b878815f5255ec427900db496df40c278176e381bfc3b7f6809912fe4cea5ed",
+    "backend/heic-proof.mjs": "2ab9e7aa745231b44fb9d6afef41bc7b1f1236ea5a2be56a289d3362c0417b6c",
+    "backend/heic-worker.mjs": "af403995a2780164fdddbce814fbf6f4c5789fcc00dcb49c9235dfb76a0e751d",
+    "backend/report-pdf-probe.mjs": "6372f1bcf98de5f99167d13b6c5a27f395ba2c41751eabe41d2fe8c33257a50f",
+    "backend/worker.cjs": "b7070da60b2596164e0c9a31e4a7cb68f083b831a5e63c188d4ef4b7a8044e74",
+    "backend/api.mjs": "db2c7472091b296c3f165dea501ccc59cc7acdf2f66a48a11cd30c373ac48a4a",
+    "backend/rls-restore-proof.mjs": "ad0b475dd62a88e38735d95ea32adeaf090625e90fdf65b570e71f5b9b7c7689",
+    "backend/worker.mjs": "4ba4032dfe0a7500f6027948345ac86a64933613c950bd614abb24bdf9e803d7",
+    "backend/api.cjs": "e40a9d89b2662febe8f59c5dc9bc92c71c73c374b98a953d839026848b5a7cf9",
+    "backend/migrate.mjs": "560a8d5f0d7d3440a3e703577235e3dd203f674cb9306c36e202cb0022bcbf6f",
+    "backend/assets/fonts/DejaVuSans.ttf": "57f73e11f51999432bf7ab22ce55b6f945d5eca1bf824404cfa9ec2e3718c84e",
+    "backend/assets/fonts/LICENSE": "313b3a0d96941787361031e2610533303ded274f814e0dd2e81187a13ca42bb3"
+  }
+}

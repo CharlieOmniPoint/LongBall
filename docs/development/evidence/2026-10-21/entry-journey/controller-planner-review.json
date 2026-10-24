@@ -1,0 +1,168 @@
+{
+  "status": "passed",
+  "checkedAt": "2026-10-21T16:58:15.474Z",
+  "fictionalDataOnly": true,
+  "nativeDeviceEvidence": false,
+  "method": "Actual Chromium UI controls with real fictional browser journal. IndexedDB reads only for persistence assertions. No domain state injection, except the existing intentional quota-failure test and clock-observation controls in the match recovery suite.",
+  "totals": {
+    "normalBrowserChecks": 25,
+    "plannerBrowserChecks": 4,
+    "plannerActualSqliteTests": 7
+  },
+  "sourceSha256": {
+    "apps/mobile/src/features/ServicePanel.tsx": "128a57a4832444afe1f7bae2efdf82599648b174da027f0b574a3a5c2ff63b06",
+    "apps/mobile/src/features/PlannerPanel.tsx": "0e61d719c4dfc054792a167e403f2f04b231431a2896e9c2dcd68f8fbfee0bb5",
+    "apps/mobile/src/platform/planner-preferences.ts": "e64d5fc597c0772182c59931e55fa33bedd8fe1368d1ba624deca411b97949ec",
+    "apps/mobile/src/platform/planner-preferences.test.ts": "d69f7e66103028de4fa769a53b4dcd5fa5cecccf3155beb8d72bd4b7fe13cf7e",
+    "scripts/browser-review.mjs": "811baf80973501485f4ced6609ebf0229b41d5e3f927b3a9b7e12325d07c1ed8",
+    "scripts/live-review.mjs": "6671620bc010294ca0a77b27453ab3c9b1f08495e98674eb3e7ea30f955a0b9a",
+    "scripts/application-review.mjs": "aead96535bb3f11982a389a510f1485fcf85a2f371af9ce181d5242c1be048cd",
+    "scripts/planner-preferences-review.mjs": "c9ef1ae17e3d3d0e45ca64621419c50da460553effcf7e17c1631b7f4f4ee42c",
+    "scripts/review-entry.mjs": "6a9b69b4487ccc28743f317ff47cf46b519a2c1158a798a302eb821ca7de795e"
+  },
+  "suites": [
+    {
+      "name": "canonical match journey",
+      "script": "scripts/browser-review.mjs",
+      "asset": {
+        "checkedAt": "2026-10-21T16:43:05.643Z",
+        "baseURL": "http://127.0.0.1:4173/",
+        "script": "/_expo/static/js/web/index-88ba6dcb351db0520729829566434f3a.js",
+        "assetSha256": "783114d860677de2600b3670e2d5918c1f012082238adc9d74274b5fb834bd7f",
+        "bytes": 1356727
+      },
+      "checks": [
+        "Home: 13 fictional roster records, nine selected, zero inferred attendance.",
+        "Attendance: explicit absent/present change and bulk check-in preserve separate availability.",
+        "Lineup: empty start blocked, ineligible keeper change rejected with an error, seven unique places and a bench swap remain drafts.",
+        "Clock: skipped render ticks retain time; pause excludes three minutes; navigation never pauses; manual first-half ending preserves 23:40.",
+        "Half-time: seven-minute break and lineup staging add no time; the second half restarts at 25:00 with one committed lineup.",
+        "Recovery: reload retains the journal and requires explicit referee time plus unchanged-lineup confirmation.",
+        "Full time: wall-clock rollback leaves active time intact; added time keeps running; manual finish totals 49:52 and exact seven-place participation.",
+        "Persistence: event IDs survive reload; sequence and predecessor chain remain complete and unique.",
+        "Storage failure: injected quota failure shows unsaved state, preserves history, and retries the same event exactly once.",
+        "Concurrent tabs: stale projection stays quarantined with its reserved sequence; reloaded writes retain the winning action and predecessor chain."
+      ],
+      "savedRecords": 21,
+      "finalActiveDurationMs": 2992000
+    },
+    {
+      "name": "live scoring, corrections, vacancies and formats",
+      "script": "scripts/live-review.mjs",
+      "asset": {
+        "checkedAt": "2026-10-21T16:43:05.643Z",
+        "baseURL": "http://127.0.0.1:4173/",
+        "script": "/_expo/static/js/web/index-88ba6dcb351db0520729829566434f3a.js",
+        "assetSha256": "783114d860677de2600b3670e2d5918c1f012082238adc9d74274b5fb834bd7f",
+        "bytes": 1356727
+      },
+      "checks": [
+        "A goal retains its captured active time and scorer while the clock advances through entry.",
+        "Both own-goal directions change the correct score and preserve truthful team attribution.",
+        "Correction and compensating void retain original evidence and reasons without changing paused actual minutes or targets.",
+        "Injury preserves a 40-second vacancy; confirmed return stays on the bench until a reviewed replacement, and every player partition conserves actual active time.",
+        "5-a-side fixture creation, selection, saved profile/formation snapshot and valid 5-place draft preserve the original fixture and team duration.",
+        "11-a-side fixture creation, selection, saved profile/formation snapshot and valid 11-place draft preserve the original fixture and team duration."
+      ]
+    },
+    {
+      "name": "private role projections, media revisions, fixtures, records and durability",
+      "script": "scripts/application-review.mjs",
+      "asset": {
+        "checkedAt": "2026-10-21T16:55:57.365Z",
+        "baseURL": "http://127.0.0.1:4173/",
+        "script": "/_expo/static/js/web/index-36983ce33bc13c9b033a353609a92fa8.js",
+        "assetSha256": "576e5188a57fc84ae9db4c69c9b6d6d6404959f5044abbc0c46b145fccf93a38",
+        "bytes": 1356801
+      },
+      "checkedAt": "2026-10-21T16:57:29.921Z",
+      "scenarios": [
+        {
+          "name": "01-fixture-history",
+          "status": "passed",
+          "detail": "Create/reschedule/cancel preserve one identity and old played date; cancelled status survives reload."
+        },
+        {
+          "name": "02-training-evidence",
+          "status": "passed",
+          "detail": "RSVP does not check in; held expected session contributes 1/1, cancelled occurrence excluded independently."
+        },
+        {
+          "name": "03-snapshots-and-formats",
+          "status": "passed",
+          "detail": "Prepared profiles are unchanged after edit; 5- and 11-place formations save with distinct stable slots."
+        },
+        {
+          "name": "04-historical-results",
+          "status": "passed",
+          "detail": "A friendly win adds 3 points; corrected loss removes them with before/after audit; unknown participation remains null."
+        },
+        {
+          "name": "05-private-role-projections",
+          "status": "passed",
+          "detail": "Player sees own named rows only; responses leave attendance unknown; spectator has no private report/control or withheld derived score."
+        },
+        {
+          "name": "06-exact-photo-revision",
+          "status": "passed",
+          "detail": "Pending media stays private; exact approval publishes v1/v2, previous approved revision remains until replacement approval, removal blocks spectator retrieval."
+        },
+        {
+          "name": "07-private-ballot",
+          "status": "passed",
+          "detail": "No default +59 cutoff; explicit fictional +25; self excluded, one player changes own private revision, manager sees no ballot, latest valid vote seals under original deadline."
+        },
+        {
+          "name": "08-invitations-revocation",
+          "status": "passed",
+          "detail": "Individual invitation and season grant revocations retain audit and block old spectator gallery retrieval."
+        },
+        {
+          "name": "09-durability-stale-tab",
+          "status": "passed",
+          "detail": "Reload preserves accepted team document; stale second-tab write cannot overwrite it and retained rejected projection survives reload."
+        }
+      ],
+      "pageErrors": []
+    },
+    {
+      "name": "durable planner settings and sticky position mode",
+      "script": "scripts/planner-preferences-review.mjs",
+      "asset": {
+        "checkedAt": "2026-10-21T16:43:05.643Z",
+        "baseURL": "http://127.0.0.1:4173/",
+        "script": "/_expo/static/js/web/index-88ba6dcb351db0520729829566434f3a.js",
+        "assetSha256": "783114d860677de2600b3670e2d5918c1f012082238adc9d74274b5fb834bd7f",
+        "bytes": 1356727
+      },
+      "checkedAt": "2026-10-21T16:53:03.863Z",
+      "checks": [
+        "Explicit settings become confirmed only after the real browser journal save.",
+        "Actual fictional score changes enter adventurous mode and retain it when the lead falls with return-to-normal off.",
+        "Confirmed settings and sticky adventurous mode survive panel closure and a complete page reload.",
+        "An explicit manual reset is committed and remains normal after reload of the same match checkpoint."
+      ],
+      "browserErrors": []
+    }
+  ],
+  "separateChecks": {
+    "plannerDurability": "Seven tests use real Node SQLite journal transactions, rollback, CAS/quarantine and reopen; this is not SQLCipher or native device proof.",
+    "scopedEslint": "passed",
+    "gitDiffCheck": "passed"
+  },
+  "reentryRegression": {
+    "fix": "Each explicit local review entry has a fresh view revision, resetting the fictional role while opening the same retained journal.",
+    "actualProof": "Scenario06 switches from spectator through the explicit top-level Manager chooser, approves the retained original/replacement photo revisions, and confirms final removal/history. Scenario09 verifies saved document and stale-tab quarantine across reload."
+  },
+  "diagnosticsPreserved": [
+    ".local/entry-browser-first-failure.json",
+    ".local/entry-final-application-first-failure.json",
+    ".local/entry-final-application-second-failure.json"
+  ],
+  "limitations": [
+    "These local fictional role controls do not prove server authorization. Parent-owned real HTTP role and controller suites provide separate authorization evidence.",
+    "Synthetic illustrations do not establish real photo picker, native upload or scanner behavior. Separate prior runtime evidence covers actual private processing.",
+    "Encrypted journal, native lifecycle/reboot/lock, OS authentication, notifications and phone installation still require physical iPhone/Android tests.",
+    "Q07 strategy remains an explicit fictional experiment; these checks do not approve unresolved product or privacy policy."
+  ]
+}

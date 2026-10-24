@@ -1,0 +1,44 @@
+{
+  "baseURL": "http://127.0.0.1:4177",
+  "artifact": {
+    "bundle": "/_expo/static/js/web/index-10163860d6bac1b67477af79c4a59033.js",
+    "sha256": "d907f5b1f7db28946d96a825f2a831ea7e2582c8ddc03f385a0d423381639130"
+  },
+  "observedAt": "2026-10-21T16:30:50.354Z",
+  "results": [
+    {
+      "width": 320,
+      "status": "passed",
+      "bundles": [
+        "http://127.0.0.1:4177/_expo/static/js/web/index-10163860d6bac1b67477af79c4a59033.js",
+        "http://127.0.0.1:4177/_expo/static/js/web/index-10163860d6bac1b67477af79c4a59033.js"
+      ],
+      "checks": [
+        "Manager upcoming/past match and training filters",
+        "Missing fixture time remains unknown",
+        "11-slot tap placement remains draft then saves atomically",
+        "48px position-list and directional alternative",
+        "GK/CB slot identities and saved snapshots preserved",
+        "Reopen retains coordinates",
+        "Player own schedule period/type controls without manager actions"
+      ]
+    },
+    {
+      "width": 390,
+      "status": "passed",
+      "bundles": [
+        "http://127.0.0.1:4177/_expo/static/js/web/index-10163860d6bac1b67477af79c4a59033.js",
+        "http://127.0.0.1:4177/_expo/static/js/web/index-10163860d6bac1b67477af79c4a59033.js"
+      ],
+      "checks": [
+        "Manager upcoming/past match and training filters",
+        "Missing fixture time remains unknown",
+        "5-slot tap placement remains draft then saves atomically",
+        "48px position-list and directional alternative",
+        "GK/CB slot identities and saved snapshots preserved",
+        "Reopen retains coordinates",
+        "Player own schedule period/type controls without manager actions"
+      ]
+    }
+  ]
+}

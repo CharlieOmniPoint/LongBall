@@ -1,0 +1,86 @@
+{
+  "version": "0.1",
+  "status": "proposed design tokens",
+  "product": "LongBall",
+  "colour": {
+    "canvas": "#F6F8F7",
+    "surface": "#FFFFFF",
+    "ink": "#14251D",
+    "inkMuted": "#526459",
+    "brand": "#126946",
+    "brandPressed": "#0D4F35",
+    "pitch": "#176B45",
+    "pitchAlternate": "#1B754D",
+    "pitchLine": "#FFFFFF",
+    "border": "#CAD5CE",
+    "controlBorder": "#526459",
+    "focus": "#145BCD",
+    "warningInk": "#7B4900",
+    "warningSurface": "#FFF2D4",
+    "errorInk": "#A32622",
+    "errorSurface": "#FFF0EF",
+    "infoInk": "#194E7A",
+    "infoSurface": "#EDF5FC",
+    "disc": "#FFFFFF",
+    "discInk": "#14251D",
+    "selection": "#FFDB70",
+    "bench": "#E7ECE9"
+  },
+  "fontFamily": "system sans-serif",
+  "type": {
+    "displayClock": {
+      "size": 40,
+      "lineHeight": 44,
+      "weight": 700,
+      "tabular": true
+    },
+    "score": {
+      "size": 32,
+      "lineHeight": 36,
+      "weight": 700
+    },
+    "title": {
+      "size": 24,
+      "lineHeight": 30,
+      "weight": 700
+    },
+    "section": {
+      "size": 20,
+      "lineHeight": 26,
+      "weight": 600
+    },
+    "body": {
+      "size": 16,
+      "lineHeight": 24,
+      "weight": 400
+    },
+    "label": {
+      "size": 14,
+      "lineHeight": 20,
+      "weight": 600
+    }
+  },
+  "spacing": [
+    4,
+    8,
+    12,
+    16,
+    24,
+    32
+  ],
+  "radius": {
+    "control": 8,
+    "card": 12,
+    "disc": 999
+  },
+  "touch": {
+    "minimum": 48,
+    "primaryLiveHeight": 56
+  },
+  "motion": {
+    "shortMs": 120,
+    "standardMs": 180,
+    "respectReducedMotion": true
+  },
+  "units": "logical density-independent units, mapped to platform points/dp"
+}

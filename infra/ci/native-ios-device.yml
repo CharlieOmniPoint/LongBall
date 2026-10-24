@@ -1,0 +1,431 @@
+name: LongBall unsigned fictional iPhoneOS kit
+
+# Publish only on preview/native-ios-device; independent of existing native/cloud jobs.
+on:
+  push:
+    branches: [preview/native-ios-device]
+    paths:
+      - .github/workflows/native-ios-device.yml
+      - preview/ios-device-build-request.txt
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: longball-unsigned-ios-device-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CI: "1"
+  EXPO_NO_TELEMETRY: "1"
+  EXPO_NO_DOTENV: "1"
+  EXPO_OFFLINE: "1"
+  EXPO_PUBLIC_ENVIRONMENT: development
+  EXPECTED_SOURCE_HEAD: c71f19dcea05f76adb0f7b5a4e2afb621d49bd40
+  EXPECTED_BUNDLE_SHA256: 438742d45601956f0dc9ab4230ed33c494533ada74c5115ed76c0cde56909660
+
+jobs:
+  unsigned_iphoneos:
+    if: github.repository == 'CharlieOmniPoint/LongBall' && github.event.repository.private == false && github.ref == 'refs/heads/preview/native-ios-device'
+    name: Unsigned iPhoneOS arm64 fictional IPA
+    # Standard free public Intel host; iPhoneOS output remains arm64.
+    # ARM64 hosted pools reported capacity constraints during this rehearsal.
+    runs-on: macos-15-intel
+    timeout-minutes: 60
+    env:
+      NATIVE_PLATFORM: ios
+    steps:
+      - name: Read the isolated device transport branch
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify and import the exact development source
+        id: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/longball-native-logs"
+          python3 - <<'PY'
+          import base64
+          import hashlib
+          import json
+          import os
+          import pathlib
+          import re
+          import subprocess
+
+          root = pathlib.Path.cwd()
+          preview = root / "preview"
+          expected_head = (preview / "source-head.txt").read_text().strip()
+          expected_sha = (preview / "source.bundle.sha256").read_text().strip()
+          if not re.fullmatch(r"[0-9a-f]{40}", expected_head):
+              raise SystemExit("source-head.txt must contain exactly one commit SHA")
+          if not re.fullmatch(r"[0-9a-f]{64}", expected_sha):
+              raise SystemExit("source.bundle.sha256 must contain the decoded SHA256")
+          encoded_path = preview / "source.bundle.base64"
+          if encoded_path.stat().st_size > 96 * 1024 * 1024:
+              raise SystemExit("Encoded source bundle exceeds the 96 MiB transport limit")
+          decoded = base64.b64decode(b"".join(encoded_path.read_bytes().split()), validate=True)
+          actual_sha = hashlib.sha256(decoded).hexdigest()
+          if not decoded or len(decoded) > 64 * 1024 * 1024 or actual_sha != expected_sha:
+              raise SystemExit("Decoded source bundle is empty, oversized or has the wrong SHA256")
+          if expected_sha != os.environ["EXPECTED_BUNDLE_SHA256"]:
+              raise SystemExit("Device source bundle checksum differs from the reviewed c71 transport")
+          if expected_head != os.environ["EXPECTED_SOURCE_HEAD"]:
+              raise SystemExit("Device build source is not the reviewed c71 checkpoint")
+          marker = json.loads((preview / "ios-device-build-request.txt").read_text())
+          if not isinstance(marker, dict) or set(marker) != {"sourceHead", "fictionalOnly", "requestId"}:
+              raise SystemExit("Device request must contain only sourceHead, fictionalOnly and requestId")
+          if marker["sourceHead"] != expected_head or marker["fictionalOnly"] is not True:
+              raise SystemExit("Device request must bind the exact reviewed fictional source")
+          if not isinstance(marker["requestId"], str) or not re.fullmatch(r"[A-Za-z0-9_-]{1,80}", marker["requestId"]):
+              raise SystemExit("Device request ID must be a bounded identifier")
+          bundle = pathlib.Path(os.environ["RUNNER_TEMP"]) / "longball-source.bundle"
+          bundle.write_bytes(decoded)
+          source = root / "source"
+          if source.exists():
+              raise SystemExit("Refusing to replace an existing source directory")
+
+          def git(*args, cwd=root):
+              return subprocess.check_output(["git", *args], cwd=cwd, text=True).strip()
+
+          # Cloning the full transport repository preserves the origin/main
+          # prerequisite objects used by the differential bundle.
+          subprocess.run(["git", "clone", "--no-hardlinks", "--no-checkout", str(root), str(source)], check=True)
+          subprocess.run(["git", "bundle", "verify", str(bundle)], cwd=source, check=True)
+          bundle_ref = "refs/heads/dev/longball-m0-journey"
+          heads = git("bundle", "list-heads", str(bundle), bundle_ref, cwd=source).splitlines()
+          if heads != [f"{expected_head} {bundle_ref}"]:
+              raise SystemExit("Bundle development branch does not match source-head.txt")
+          subprocess.run(["git", "fetch", "--no-tags", str(bundle), bundle_ref], cwd=source, check=True)
+          subprocess.run(["git", "checkout", "--detach", expected_head], cwd=source, check=True)
+          if git("rev-parse", "HEAD", cwd=source) != expected_head:
+              raise SystemExit("Imported source HEAD verification failed")
+          proof = {
+              "sourceHead": expected_head,
+              "bundleSha256": actual_sha,
+              "transportHead": git("rev-parse", "HEAD"),
+              "sourceRef": bundle_ref,
+              "platform": os.environ["NATIVE_PLATFORM"],
+              "runnerImageOS": os.environ.get("ImageOS"),
+              "runnerImageVersion": os.environ.get("ImageVersion"),
+              "artifactUploadRequested": True,
+              "requestId": marker["requestId"],
+              "mode": "fictional unsigned iPhoneOS Release variant with declared local-notification-only configuration",
+              "physicalDeviceProof": False,
+          }
+          log_dir = pathlib.Path(os.environ["RUNNER_TEMP"]) / "longball-native-logs"
+          (log_dir / "source-proof.json").write_text(json.dumps(proof, indent=2) + "\n")
+          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+              output.write(f"head={expected_head}\nimported=true\n")
+          print(json.dumps(proof, indent=2))
+          PY
+
+      - name: Use the pinned Node runtime
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "24.19.0"
+
+      - name: Install the pinned package manager and frozen dependencies
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(node --version)" = v24.19.0
+          npm install --global pnpm@11.25.0 --no-audit --no-fund
+          test "$(pnpm --version)" = 11.25.0
+          pnpm install --frozen-lockfile 2>&1 | tee "$RUNNER_TEMP/longball-native-logs/dependencies.log"
+          node --version > "$RUNNER_TEMP/longball-native-logs/tools.log"
+          pnpm --version >> "$RUNNER_TEMP/longball-native-logs/tools.log"
+
+      - name: Select the explicit iOS toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -d /Applications/Xcode_26.3.app/Contents/Developer
+          sudo xcode-select --switch /Applications/Xcode_26.3.app/Contents/Developer
+          xcodebuild -version | tee -a "$RUNNER_TEMP/longball-native-logs/tools.log"
+          test "$(xcodebuild -version)" = $'Xcode 26.3\nBuild version 17C529'
+          sw_vers >> "$RUNNER_TEMP/longball-native-logs/tools.log"
+          uname -m >> "$RUNNER_TEMP/longball-native-logs/tools.log"
+          ruby --version >> "$RUNNER_TEMP/longball-native-logs/tools.log"
+          gem install cocoapods --version 1.17.0 --no-document --user-install
+          pod_bin="$(ruby -e 'print Gem.user_dir')/bin"
+          printf '%s\n' "$pod_bin" >> "$GITHUB_PATH"
+          test "$("$pod_bin/pod" --version)" = 1.17.0
+          "$pod_bin/pod" --version >> "$RUNNER_TEMP/longball-native-logs/tools.log"
+
+      - name: Apply only the declared local-notification test configuration
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PYCODE'
+          import copy
+          import hashlib
+          import json
+          import os
+          import pathlib
+          import re
+          import subprocess
+
+          path = pathlib.Path("apps/mobile/app.json")
+          before = path.read_bytes()
+          original = subprocess.check_output(["git", "show", "HEAD:apps/mobile/app.json"])
+          if before != original or subprocess.check_output(["git", "diff", "--name-only"], text=True).strip():
+              raise SystemExit("Source must be pristine before the declared test configuration")
+          config = json.loads(before)
+          plugins = config["expo"]["plugins"]
+          positions = [i for i, plugin in enumerate(plugins) if plugin == "expo-notifications"]
+          if len(positions) != 1:
+              raise SystemExit("The reviewed c71 notification plugin shape changed")
+          expected = copy.deepcopy(config)
+          expected["expo"]["plugins"][positions[0]] = ["expo-notifications", {"enableRemoteNotifications": False}]
+          after, count = re.subn(rb'(?m)^([ \t]*)"expo-notifications",([ \t]*)$', rb'\1["expo-notifications", {"enableRemoteNotifications": false}],\2', before)
+          if count != 1 or json.loads(after) != expected:
+              raise SystemExit("Only the allowlisted notification configuration may change")
+          path.write_bytes(after)
+          changed = subprocess.check_output(["git", "diff", "--name-only"], text=True).splitlines()
+          if changed != ["apps/mobile/app.json"]:
+              raise SystemExit("Unexpected tracked source changes")
+          proof = {
+              "sourceHead": os.environ["EXPECTED_SOURCE_HEAD"],
+              "compiledConfigurationIsUnmodifiedSource": False,
+              "allowedChangedTrackedFiles": changed,
+              "beforeConfigSha256": hashlib.sha256(before).hexdigest(),
+              "afterConfigSha256": hashlib.sha256(after).hexdigest(),
+              "semanticChanges": [{"path": f"expo.plugins[{positions[0]}]", "before": "expo-notifications", "after": ["expo-notifications", {"enableRemoteNotifications": False}]}],
+              "reason": "Free personal-signing candidate: preserve local reminders without requesting unsupported APNs entitlement.",
+              "remotePushProof": False,
+          }
+          logs = pathlib.Path(os.environ["RUNNER_TEMP"]) / "longball-native-logs"
+          (logs / "test-configuration.json").write_text(json.dumps(proof, indent=2) + "\n")
+          (logs / "test-configuration.diff").write_bytes(subprocess.check_output(["git", "diff", "--", "apps/mobile/app.json"]))
+          print(json.dumps(proof, indent=2))
+          PYCODE
+
+      - name: Generate and verify the local-only iOS native project
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$EXPO_PUBLIC_ENVIRONMENT" = development
+          test ! -e apps/mobile/ios
+          pnpm --filter mobile prebuild --platform ios 2>&1 | tee "$RUNNER_TEMP/longball-native-logs/prebuild.log"
+          python3 - <<'PYCODE'
+          import json
+          import pathlib
+          import plistlib
+
+          mobile = pathlib.Path("apps/mobile")
+          config = json.loads((mobile / "app.json").read_text())["expo"]
+          assert config["ios"]["bundleIdentifier"] == "dev.longball.synthetic"
+          notification = [p for p in config["plugins"] if isinstance(p, list) and p[0] == "expo-notifications"]
+          assert notification == [["expo-notifications", {"enableRemoteNotifications": False}]]
+          props = json.loads((mobile / "ios/Podfile.properties.json").read_text())
+          assert props.get("expo.sqlite.useSQLCipher") == "true"
+          entitlements = plistlib.loads((mobile / "ios/LongBallSyntheticLab/LongBallSyntheticLab.entitlements").read_bytes())
+          assert entitlements == {}, f"Unexpected requested entitlements: {sorted(entitlements)}"
+          info = plistlib.loads((mobile / "ios/LongBallSyntheticLab/Info.plist").read_bytes())
+          assert "remote-notification" not in info.get("UIBackgroundModes", [])
+          assert info.get("NSFaceIDUsageDescription")
+          assert any("longball" in item.get("CFBundleURLSchemes", []) for item in info.get("CFBundleURLTypes", []))
+          module = json.loads((mobile / "modules/longball-native/expo-module.config.json").read_text())
+          assert module["apple"]["modules"] == ["LongBallNativeModule"]
+          print("Local-only notification variant: no requested APNs/other entitlement or remote background mode; SQLCipher/native module/Face ID usage declared.")
+          PYCODE
+          pnpm --filter mobile exec expo-modules-autolinking resolve --platform apple --json > "$RUNNER_TEMP/longball-native-logs/autolinking.json"
+          python3 - <<'PYCODE'
+          import os
+          import pathlib
+          text = (pathlib.Path(os.environ["RUNNER_TEMP"]) / "longball-native-logs/autolinking.json").read_text()
+          assert "LongBallNativeModule" in text or "longball-native" in text
+          PYCODE
+
+      - name: Install the same pinned iOS pod toolchain
+        working-directory: source/apps/mobile/ios
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(pod --version)" = 1.17.0
+          pod install 2>&1 | tee "$RUNNER_TEMP/longball-native-logs/ios-pods.log"
+          test -d LongBallSyntheticLab.xcworkspace
+          python3 - <<'PYCODE'
+          import hashlib
+          import os
+          import pathlib
+          import re
+
+          sqlite = pathlib.Path("../node_modules/expo-sqlite")
+          for name in ["sqlite3.c", "sqlite3.h"]:
+              assert (sqlite / "ios" / name).read_bytes() == (sqlite / "vendor/sqlcipher" / name).read_bytes(), "Pod must compile vendored SQLCipher, not plain SQLite"
+          logs = pathlib.Path(os.environ["RUNNER_TEMP"]) / "longball-native-logs"
+          # CocoaPods may omit Pod::UI.message output. Verify the actual
+          # Release compiler configuration, rather than console verbosity.
+          candidates = list(pathlib.Path("Pods/Target Support Files/ExpoSQLite").glob("*.release.xcconfig"))
+          assert len(candidates) == 1, "Expected one generated ExpoSQLite Release configuration"
+          flags = candidates[0].read_text()
+          cflags = re.search(r"^OTHER_CFLAGS\s*=\s*(.+)$", flags, re.M)
+          assert cflags, "Generated SQLCipher compiler flags are missing"
+          for required in ["-DSQLITE_HAS_CODEC=1", "-DSQLCIPHER_CRYPTO_CC", "-DSQLITE_EXTRA_INIT=sqlcipher_extra_init", "-DSQLITE_EXTRA_SHUTDOWN=sqlcipher_extra_shutdown"]:
+              assert required in cflags[1].split(), f"Required SQLCipher compiler flag missing: {required}"
+          (logs / "sqlcipher-release.xcconfig").write_text(flags)
+          print("SQLCipher vendored source and codec build flag verified; physical encryption remains unproved.")
+          PYCODE
+
+      - name: Build an unsigned iPhoneOS release app with embedded JavaScript
+        id: iphoneos
+        working-directory: source/apps/mobile/ios
+        shell: bash
+        env:
+          NODE_ENV: production
+        run: |
+          set -euo pipefail
+          xcodebuild \
+            -workspace LongBallSyntheticLab.xcworkspace \
+            -scheme LongBallSyntheticLab -configuration Release \
+            -sdk iphoneos -destination 'generic/platform=iOS' \
+            -derivedDataPath "$RUNNER_TEMP/longball-iphoneos-build" \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY= DEVELOPMENT_TEAM= \
+            ONLY_ACTIVE_ARCH=NO ARCHS=arm64 \
+            build 2>&1 | tee "$RUNNER_TEMP/longball-native-logs/iphoneos-build.log"
+          test -d "$RUNNER_TEMP/longball-iphoneos-build/Build/Products/Release-iphoneos/LongBallSyntheticLab.app"
+
+      - name: Verify the device binary and package a bounded unsigned IPA
+        id: kit
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PYCODE'
+          import hashlib
+          import json
+          import os
+          import pathlib
+          import plistlib
+          import re
+          import shutil
+          import subprocess
+          import zipfile
+
+          temp = pathlib.Path(os.environ["RUNNER_TEMP"])
+          logs = temp / "longball-native-logs"
+          app = temp / "longball-iphoneos-build/Build/Products/Release-iphoneos/LongBallSyntheticLab.app"
+          info = plistlib.loads((app / "Info.plist").read_bytes())
+          assert info["CFBundleIdentifier"] == "dev.longball.synthetic"
+          assert info.get("DTPlatformName") == "iphoneos"
+          assert info.get("CFBundleSupportedPlatforms") == ["iPhoneOS"]
+          assert "remote-notification" not in info.get("UIBackgroundModes", [])
+          assert info.get("NSFaceIDUsageDescription")
+          executable = info["CFBundleExecutable"]
+          assert re.fullmatch(r"[A-Za-z0-9_-]+", executable)
+          binary = app / executable
+          architectures = subprocess.check_output(["xcrun", "lipo", "-archs", str(binary)], text=True).strip()
+          assert architectures == "arm64", "A simulator/other architecture is not a physical iPhone build"
+          platform = subprocess.check_output(["xcrun", "vtool", "-show-build", str(binary)], text=True)
+          assert re.search(r"^\s*platform IOS\s*$", platform, re.M), "Mach-O must target IOS, not IOSSIMULATOR"
+          assert "IOSSIMULATOR" not in platform
+          (logs / "iphoneos-mach-o.txt").write_text(architectures + "\n" + platform)
+          assert (app / "main.jsbundle").stat().st_size > 1024
+          binary_bytes = binary.read_bytes()
+          assert b"LongBallNative" in binary_bytes, "Local native module marker missing from linked binary"
+          assert b"cipher_version" in binary_bytes, "Linked SQLCipher marker missing"
+          assert not list(app.rglob("embedded.mobileprovision")), "No account provisioning profile is allowed in this unsigned artifact"
+          signing = subprocess.run(["codesign", "-dv", str(app)], capture_output=True, text=True)
+          assert signing.returncode != 0 and "code object is not signed at all" in signing.stderr, "The app must remain unsigned"
+          requested = plistlib.loads(pathlib.Path("source/apps/mobile/ios/LongBallSyntheticLab/LongBallSyntheticLab.entitlements").read_bytes())
+          assert requested == {}
+          config_proof = json.loads((logs / "test-configuration.json").read_text())
+          assert subprocess.check_output(["git", "diff", "--name-only"], cwd="source", text=True).splitlines() == ["apps/mobile/app.json"]
+          app_config = pathlib.Path("source/apps/mobile/app.json").read_bytes()
+          assert hashlib.sha256(app_config).hexdigest() == config_proof["afterConfigSha256"]
+          destination = temp / "longball-iphoneos-kit"
+          destination.mkdir()
+          stage = temp / "longball-iphoneos-payload"
+          payload = stage / "Payload"
+          payload.mkdir(parents=True)
+          shutil.copytree(app, payload / app.name, symlinks=True)
+          ipa = destination / "LongBall-fictional-c71-local-only-unsigned.ipa"
+          subprocess.run(["ditto", "-c", "-k", "--keepParent", str(payload), str(ipa)], check=True)
+          with zipfile.ZipFile(ipa) as archive:
+              assert "Payload/LongBallSyntheticLab.app/main.jsbundle" in archive.namelist()
+              assert "Payload/LongBallSyntheticLab.app/Info.plist" in archive.namelist()
+          with ipa.open("rb") as handle:
+              digest = hashlib.file_digest(handle, "sha256").hexdigest()
+          proof = json.loads((logs / "source-proof.json").read_text())
+          proof.update({
+              "artifactName": ipa.name, "ipaSha256": digest, "ipaBytes": ipa.stat().st_size,
+              "applicationId": info["CFBundleIdentifier"], "minimumIOS": info["MinimumOSVersion"],
+              "sdkPlatform": "iphoneos", "machOPlatform": "IOS", "architectures": architectures,
+              "buildVariant": "Release", "embeddedJavaScriptVerified": True, "requiresMetro": False,
+              "applicationUnsigned": True, "provisioningProfileIncluded": False,
+              "testConfigurationOverride": config_proof,
+              "requestedEntitlements": [], "remoteBackgroundMode": False,
+              "remotePushProof": False, "localNotificationsConfigured": True,
+              "nativeModuleLinkedMarker": True, "sqlCipherLinkedMarker": True,
+              "physicalDeviceProof": False, "freePersonalSigningProved": False,
+              "ownerAppleCredentialsUsed": False,
+          })
+          (destination / "build-proof.json").write_text(json.dumps(proof, indent=2) + "\n")
+          for name in ["tools.log", "test-configuration.json", "test-configuration.diff", "sqlcipher-release.xcconfig", "iphoneos-mach-o.txt", "prebuild.log", "ios-pods.log", "iphoneos-build.log"]:
+              log = logs / name
+              with log.open("rb") as handle:
+                  handle.seek(max(0, log.stat().st_size - 2 * 1024 * 1024))
+                  (destination / name).write_bytes(handle.read())
+          (destination / "START-HERE.txt").write_text(
+              "LongBall unsigned fictional iPhoneOS candidate\n"
+              "Source: " + proof["sourceHead"] + " plus the recorded local-notification-only configuration override.\n"
+              "This is an iPhoneOS arm64 Release IPA, NOT a simulator app or directly installable signed app.\n"
+              "No Apple account, certificate, profile or signing service was used by this workflow.\n"
+              "A compatible Windows personal-signing tool may be a free route; actual signing/installability is unproved.\n"
+              "The owner handles their Apple account and any 2FA locally. Never send credentials/profiles to chat or CI.\n"
+              "Free profiles generally expire in seven days and have device/app/AppID limits.\n"
+              "This variant omits APNs entitlement and remote-notification background mode; it cannot prove remote push/universal links.\n"
+              "Only fictional data; verify IPA SHA256 before local signing. Re-signing changes binary hashes/signing identity.\n"
+              "Do not change identity/uninstall/clear storage to resolve key access failures.\n"
+              "Guide: https://github.com/CharlieOmniPoint/LongBall/blob/dev/longball-m0-journey/docs/development/device-review.md\n"
+          )
+          hashes = []
+          for file in sorted(destination.iterdir()):
+              if file.is_file():
+                  with file.open("rb") as handle:
+                      checksum = hashlib.file_digest(handle, "sha256").hexdigest()
+                  hashes.append(f"{checksum}  {file.name}")
+          (destination / "SHA256SUMS").write_text("\n".join(hashes) + "\n")
+          if sum(file.stat().st_size for file in destination.iterdir()) > 250 * 1024 * 1024:
+              raise SystemExit("Unsigned iPhoneOS kit exceeds 250MiB; no upload")
+          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+              output.write(f"ipa_sha256={digest}\nminimum_ios={info['MinimumOSVersion']}\n")
+          print(json.dumps(proof, indent=2))
+          PYCODE
+
+      - name: Retain the unsigned candidate kit for one day
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: longball-fictional-iphoneos-c71-local-only-unsigned
+          path: ${{ runner.temp }}/longball-iphoneos-kit/
+          retention-days: 1
+          compression-level: 0
+          if-no-files-found: error
+
+      - name: Record the exact variant and remaining installation gate
+        if: always()
+        shell: bash
+        env:
+          SOURCE_HEAD: ${{ steps.source.outputs.head }}
+          BUILD_RESULT: ${{ steps.iphoneos.outcome }}
+          IPA_SHA256: ${{ steps.kit.outputs.ipa_sha256 }}
+        run: |
+          python3 - <<'PYCODE'
+          import os
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as output:
+              output.write("## Unsigned fictional iPhoneOS candidate\n\n")
+              output.write(f"Source `{os.environ.get('SOURCE_HEAD') or 'not imported'}` plus the allowlisted local-notification-only build configuration; compile **{os.environ.get('BUILD_RESULT') or 'not run'}**.\n\n")
+              if os.environ.get("IPA_SHA256"):
+                  output.write(f"Unsigned IPA SHA256: `{os.environ['IPA_SHA256']}`.\n\n")
+              output.write("iPhoneOS arm64 Release with embedded JavaScript, no APNs entitlement or remote-notification background mode. Before/after configuration SHA256 and the exact one-file diff are included. One-day artifact, cap250MiB.\n\n")
+              output.write("No Apple credentials, signing certificate, provisioning profile, paid runner or EAS used. The IPA is not directly installable. Owner-local free signing, device launch, SQLCipher/backup/clock/local alerts/native authentication remain unproved. No remote-push/universal-link proof is claimed.\n")
+          PYCODE

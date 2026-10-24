@@ -1,0 +1,42 @@
+{
+  "compiledSource": "ee7cb613695b8d96388e742a60dc248277b24091",
+  "artifactManifest": "ee7-artifacts.json",
+  "passedObservationFile": "ee7-passed-observations.json",
+  "failedAttemptFile": "ee7-failed-attempts.json",
+  "namedWorkspaceChoiceVerified": true,
+  "coverage": "Scenario01 passed in a run that then failed the new PDF readability assertion. Scenarios03\u201305 later passed together. Scenario05 also passed independently. These are distinct runs against the copied ee7 artifacts.",
+  "pdfResultAtCapture": "The actual worker generated a real PDF and pdftotext parsed Maple FC and participation. It omitted the human team name; the readability assertion failed. The gap was fixed in later source and verified by focused 607 scenario02.",
+  "resolutionEvidence": "607-summary.json",
+  "originalPrivateSummarySha256": "3b3e146c90b8c1a21d82a0de00941270832165cb76d7a685c505f7fd3a9344bc",
+  "originalPrivateReports": [
+    {
+      "scope": "history-and-workspace-labels",
+      "sha256": "5879be012722443fce2a61a708e14e8181049eab632b58de40aa1477005e212f",
+      "passedScenarios": [
+        "01-rich-history-audited-correction-and-unknown-coverage"
+      ]
+    },
+    {
+      "scope": "readable-invitation-in-isolation",
+      "sha256": "e56202bd67f5784f933fd601c65917f61abd7962dcccf78c3c3ff638c4356c99",
+      "passedScenarios": [
+        "05-new-account-invitation-remains-online-and-usable"
+      ]
+    },
+    {
+      "scope": "rollover-denial-recovery-and-renamed-invitation",
+      "sha256": "ebc064fbd14d4a55b7f50a4580a008a41a3779ac9c8d2fa09b54264a627781f9",
+      "passedScenarios": [
+        "03-administrator-configuration-explicit-rollover-preserves-source",
+        "04-delayed-scope-denial-closes-parallel-private-replies",
+        "05-new-account-invitation-remains-online-and-usable"
+      ]
+    }
+  ],
+  "limitations": [
+    "403 denial is an explicit transport fixture; actual membership revocation is covered by API tests, not this browser run.",
+    "No native device evidence.",
+    "No uninterrupted five-scenario all-pass claim."
+  ],
+  "ownedResourcesAtCapture": "Browsers/API/workers closed; static4520 and4528 stopped; all three ports4520/4526/4528 confirmed not listening; temporary export keys removed."
+}

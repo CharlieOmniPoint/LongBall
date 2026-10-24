@@ -1,0 +1,149 @@
+{
+  "status": "passed",
+  "observedAt": "2026-10-21T23:19:42.551Z",
+  "syntheticOnly": true,
+  "execution": "host-bundled-operational-proof",
+  "productionImageExercised": false,
+  "actualPushDelivered": false,
+  "versions": [
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16
+  ],
+  "featureVersions": {
+    "media": 4,
+    "mediaVersions": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "activation": 2
+  },
+  "protectedTables": 38,
+  "sourceSha256": {
+    "apps/api/src/pg.ts": "a6fbebf30d06c2079a8436d069d86ec712896cf5b8c45590dc917ae96cb89399",
+    "apps/api/src/runtime-grants.ts": "b7fa95875e083f292d12f2ed7c88107d7e91ddd3dd3a40d41c10526f4dd1a492",
+    "apps/api/migrations/postgresql/013_team_privileges.sql": "5fb3ea71eec74ec2f23370d102cab117f5f03918ff53023f0dad7dc4c580205d",
+    "apps/api/migrations/postgresql/014_push_registrations.sql": "4b94f3b563084c9e9eb442a4ea291241fdb772c978254c89f83044dd4b63d6b3",
+    "apps/api/migrations/postgresql/015_team_privilege_audit_clock.sql": "51f85dd33068db7321c4be5da053edefc3ce20509607f2862a9859b7ad47efe9",
+    "apps/api/migrations/postgresql/016_report_exports.sql": "aeca325431937f1624b22f9a291f973571fb261c786e62642a32d9635e5cae4f",
+    "apps/api/migrations/postgresql/media_004_team_privileges.sql": "fb0c26cfae3bf1c4732cd7cdd589829ae1b7d8ce64b13ec70dacc39e335a2c05",
+    "scripts/runtime-contribution-boundaries.ts": "d3a747412f9015a809402b040aa8e390524c113fed7d82ee5e03f508aa926a1c",
+    "scripts/runtime-heic.ts": "0716bc02d09ba9b969640b499290a2e33bce5638adcefab7f6d968a89544b5d7",
+    "scripts/runtime-rls-restore.ts": "77decd8697d3916fc273a95af456f109f3344ef8634753ded6aa0a631b4e8669"
+  },
+  "proofBundle": {
+    "file": "heic-proof.mjs",
+    "sha256": "2ab9e7aa745231b44fb9d6afef41bc7b1f1236ea5a2be56a289d3362c0417b6c"
+  },
+  "checks": [
+    {
+      "name": "actual-maintained-clamav-clean-and-eicar",
+      "detail": {
+        "engine": "clamav:1.5.4/db:28157",
+        "clean": "clean",
+        "standardHarmlessAntivirusPattern": "rejected"
+      }
+    },
+    {
+      "name": "actual-restricted-pg-scanned-heic-logo-journey",
+      "detail": {
+        "originalSha256": "dad24840cd53fce49f3cda0461cea8356860587dd45745d1e8afab23b885214e",
+        "clubDerivativeSha256": "1d7bdf928333f278ccc95a84d7af8db96a2d6e9a5f7f41e188932bba6f4f66c0",
+        "teamDerivativeSha256": "1d7bdf928333f278ccc95a84d7af8db96a2d6e9a5f7f41e188932bba6f4f66c0",
+        "dimensions": [
+          32,
+          64
+        ],
+        "metadataStripped": true,
+        "pendingPrivate": true,
+        "explicitReviewedPublication": true,
+        "staleVersionDenied": true,
+        "teamClubNeutralInheritance": true,
+        "removedRevisionPrivate": true
+      }
+    },
+    {
+      "name": "actual-original-heic-scan-photo-decode-and-reject-controls",
+      "detail": {
+        "jpegSha256": "f2761078ac017be369776fb63c9dd61c48db2797ee0d0121b4c5c124cbcf2ea7",
+        "dimensions": [
+          32,
+          64
+        ],
+        "orientationAppliedOnce": true,
+        "exifGpsStripped": true,
+        "multiplePrimaryRejected": true,
+        "oversizeHiddenThumbnailRejected": true,
+        "noRejectedDerivative": true
+      }
+    },
+    {
+      "name": "actual-scanner-unavailable-fail-closed",
+      "detail": {
+        "originalRetainedPrivate": true,
+        "noProcessedPointer": true
+      }
+    },
+    {
+      "name": "actual-schema16-encrypted-push-and-audited-privilege-restore",
+      "detail": {
+        "exactPrivateRowsRestored": true,
+        "auditedSuspensionsPreserved": 2,
+        "ownPrivilegesRemainSuspended": true,
+        "privateDecisionNotesWithheld": true,
+        "exactEncryptedRegistrationPreserved": true,
+        "encryptedRegistrationSha256": "5ba7c94824708217482478cac14758482362673746dc4c646c6471ad382297a6",
+        "decryptsWithSeparatelyRetainedEphemeralTestKey": true,
+        "ownStatusHasNoToken": true,
+        "otherAccountDenied": true,
+        "foreignTeamPrivilegesDenied": true,
+        "contextFreeNewTablesDenied": true,
+        "workerRawNewTablesDenied": true,
+        "apiWorkerFunctionDenied": true,
+        "unclaimedWorkerDestinationDenied": true,
+        "exactLeasedRecipientOnly": true,
+        "wrongLeaseCapabilityDenied": true,
+        "exactEncryptedReportRestored": true,
+        "reportDecryptsOnlyWithSeparateKey": true,
+        "missingReportKeyFailsClosedAndClearsArtifact": true,
+        "actualPushDelivered": false
+      }
+    },
+    {
+      "name": "actual-schema16-paired-archive-object-restore",
+      "detail": {
+        "archiveSha256": "02d45c5e9e6f4db66e840bc328d3bcc9ebbdbc64521880a5938dececcfb4f08c",
+        "exactPhotoDerivativeSha256": "f2761078ac017be369776fb63c9dd61c48db2797ee0d0121b4c5c124cbcf2ea7",
+        "exactCurrentLogoDerivativeSha256": "1d7bdf928333f278ccc95a84d7af8db96a2d6e9a5f7f41e188932bba6f4f66c0",
+        "protectedTables": 38,
+        "apiWorkerNonOwnerNonBypass": true,
+        "verifyOnlyStartup": true,
+        "currentReviewedPointerPreserved": true,
+        "contextFreeAndForeignTeamDenied": true,
+        "workerForgedActorDenied": true,
+        "temporaryCreateGrantRevoked": true
+      }
+    }
+  ],
+  "limitations": [
+    "Generated flat-color fictional HEIC fixtures with deliberate fictional EXIF/GPS, and standard harmless EICAR scanner probe; no people.",
+    "Actual PostgreSQL uses isolated non-owner API/worker roles and disposable loopback trust authentication.",
+    "Scanner verdict/version is an observation, not an operating signature-update SLA.",
+    "Paired private object copy and database archive; no offsite encryption, retention, RPO or RTO claim.",
+    "Physical iPhone/Android picker behavior remains separate native device testing."
+  ]
+}

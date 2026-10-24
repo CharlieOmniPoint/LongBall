@@ -1,0 +1,24 @@
+{
+  "scope": "Sanitized records browser evidence only",
+  "files": {
+    "607-artifacts.json": "26b5d4dc78674636955ab0ef00af08626e11c83c1f25def9bbb540ba83433278",
+    "607-records02-report.json": "e42c799ba8b8efe16fb7366c3f3e0b2674698d7fb947652d9c4e077c4b216875",
+    "607-summary.json": "6e97766773ba6b0ddefecae054c295359026daad7becdd83393b98d7745ba037",
+    "README.md": "e57bb1a1a31c702ae124dd9a1f98d868bc4e44c385aad318aa1a8b57a732c0b6",
+    "ee7-artifacts.json": "b6392725f2c164055c190637d446ef30319b2bd1b17c36a8a92d1ce7e4b1c222",
+    "ee7-failed-attempts.json": "c4e7f1d6c41c7993d3753f160033035322e5ab38a388e7060762a24de5051067",
+    "ee7-passed-observations.json": "7ab18644a11dd73f7fec3d4877cd367a971b322aec75b686f89e9351c673995a",
+    "ee7-scope-summary.json": "c096ac3956fd3932f04197c5057af976c077f78088a80cf8856ce467f44f545d",
+    "historical-baseline-70ed.json": "fe4445398f6ea252b40b7a3293b1ab7127cb8c7778438832794ffdce1018d600"
+  },
+  "excluded": [
+    "Invitation capabilities",
+    "Session/authentication headers",
+    "Key material",
+    "SQLite or PostgreSQL database data",
+    "Raw logs",
+    "Downloaded files",
+    "Screenshots"
+  ],
+  "claim": "Mixed-source scoped evidence; no exact-source all-five run and no deployed or native acceptance claim."
+}

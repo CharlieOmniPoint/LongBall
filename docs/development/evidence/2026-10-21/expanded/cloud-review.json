@@ -1,0 +1,26 @@
+{
+  "verifiedAt": "2026-10-21T07:33:08.639418+00:00",
+  "url": "https://adapter-premiere-releases-worldcat.trycloudflare.com/",
+  "expiresAt": "2026-10-21T08:23:26Z",
+  "sourceCommit": "36223f726d69a51408d40a443376341b9b52f163",
+  "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/39561530654",
+  "browser": "Independent public Chromium session",
+  "viewport": {
+    "width": 390,
+    "height": 844,
+    "documentWidth": 390
+  },
+  "checks": {
+    "homeRendered": true,
+    "sourceMetadataMatched": true,
+    "authenticatedApiStatus": 200,
+    "explicitAttendance": 9,
+    "lineupStartAndPause": true,
+    "workspaceConnected": true,
+    "fixtureCreatedThroughUiAndPersisted": true,
+    "runtimeErrors": []
+  },
+  "syntheticOnly": true,
+  "persistentHosting": false,
+  "physicalNativeEvidence": false
+}

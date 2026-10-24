@@ -1,0 +1,50 @@
+{
+  "scope": "Allowlisted fields from actual Expo config --type introspect at the tested source; not a compiled native binary.",
+  "profile": "production",
+  "webBasePath": null,
+  "identities": {
+    "displayName": "LongBall Synthetic Lab",
+    "iosBundleIdentifier": "dev.longball.synthetic",
+    "androidPackage": "dev.longball.synthetic",
+    "appScheme": "longball"
+  },
+  "ios": {
+    "ats": {
+      "NSAllowsArbitraryLoads": false,
+      "NSAllowsLocalNetworking": false
+    },
+    "bonjourServices": [],
+    "localNetworkUsageDescriptionPresent": false,
+    "urlSchemes": [
+      "longball",
+      "dev.longball.synthetic"
+    ],
+    "devMenuShowsAtLaunch": false,
+    "devMenuFloatingActionButton": false,
+    "apnsEnvironment": "production",
+    "sqlcipher": "true",
+    "faceIDUsageDescriptionPresent": true
+  },
+  "android": {
+    "usesCleartextTraffic": "false",
+    "allowBackup": "false",
+    "fullBackupContent": "@xml/secure_store_backup_rules",
+    "dataExtractionRules": "@xml/secure_store_data_extraction_rules",
+    "sqlcipher": "true",
+    "urlSchemes": [
+      "longball"
+    ]
+  },
+  "requiredAutolinkedModules": {
+    "longball-native": true,
+    "expo-sqlite": true,
+    "expo-secure-store": true,
+    "expo-local-authentication": true,
+    "expo-notifications": true
+  },
+  "remoteNotificationsConfigured": true,
+  "signedEntitlementValidated": false,
+  "providerConfigured": false,
+  "hardwareTested": false,
+  "evaluatedSource": "b25a74f03b6f27d07871f0bb86fd6a5f9e202e5f"
+}

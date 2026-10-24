@@ -1,0 +1,54 @@
+{
+  "checkedAt": "2026-10-21T17:54:49.776198+00:00",
+  "baseCommit": "f4fbffe",
+  "domainDependencyCommit": "06c22ac",
+  "worktreeHeadBeforeFeatureCommit": "aaca962de330692ff4c46cd9fadd4e116aa39991",
+  "bundle": {
+    "file": "index-3c0e016521b8c6ff85a03a74e70442d5.js",
+    "sha256": "b2f5814d96ad7049b642cf3f9982402f559f3eb2ac64ab674b02aedfa91aa2d5"
+  },
+  "checks": {
+    "applicationPreparationRollover": {
+      "passed": 34,
+      "files": 3
+    },
+    "actualHttp": {
+      "passed": 2,
+      "backends": [
+        "SQLite",
+        "PostgreSQL 18.6"
+      ],
+      "postgresFixtureAuthority": "explicit operator-owned synthetic fixture; not a new restricted-role RLS proof"
+    },
+    "browser": {
+      "passed": 2,
+      "viewports": [
+        "320x844",
+        "390x844"
+      ],
+      "report": "report.json",
+      "stateInjection": false
+    },
+    "rootTypeScript": "passed",
+    "mobileTypeScript": "passed",
+    "scopedEslint": "passed",
+    "gitDiffCheck": "passed"
+  },
+  "sourceSha256": {
+    "packages/application/src/match-plans.ts": "f6abea3d0f2716eeb7dab34ac514558e6b83ed88b6042ce1ccffc39fc72920bf",
+    "packages/application/src/preparation.ts": "2925029be8d8635b00c97ce9edfd0bb051139160e702b4f89a5c0cf4c7f5be00",
+    "packages/application/src/application.ts": "e3a2a6b5c1cd2e3149edee06ced5c4582ff2356b4d6f96ed5bed5d6f375088f2",
+    "packages/application/src/season-service.ts": "5abf54e693fe876fd7771fbe9fb5ceedce8722595426f7ea8b5a4cdeeee82074",
+    "apps/api/src/store.ts": "cbfe936211307b5065d36c347d50b045ab4df015a49ef787fb77b0f0da70e318",
+    "apps/api/src/postgres-store.ts": "2ea769dcf44a7c1abc1d47463d9aaf3cc758ffa68c09d8fec3f904e8cf95cba9",
+    "apps/mobile/App.tsx": "aa5e0d24e0be9ef787e22e6af740c1420df9e1b4948036a96488c502e98fd706",
+    "apps/mobile/src/features/ReusableMatchPlans.tsx": "279948be73578f7143d5c1ef5dc35cf347145d0bf49fcc50a5fa579e98061ef3",
+    "apps/mobile/src/features/PreparationScreens.tsx": "72332ac397b96558c56bce96b0a00727dbb3a48df62e80539e46733c73a3739c",
+    "apps/mobile/src/features/ConnectedLiveEditor.tsx": "cfcb8e25a5c35c6b42436a181894c6b207f837709eba23b28e0b2a803cb61619"
+  },
+  "limitations": [
+    "Physical native acceptance not performed",
+    "Q07 remains unapproved; template settings remain inactive proposals until explicit policy confirmation",
+    "This evidence is an isolated feature checkpoint, not a full root release or newly published build"
+  ]
+}
