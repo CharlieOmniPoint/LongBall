@@ -13,7 +13,7 @@ import { openWorkspaceTab, reviewDateLabel } from './review-entry.mjs';
 
 /** Real built clients/API/worker, isolated generated credentials, and loopback-only transport. */
 const output = path.resolve('.local/quality/demo-account-review');
-const webRoot = path.resolve('apps/mobile/dist-demo-web');
+const webRoot = path.resolve(process.env.LONGBALL_DEMO_REVIEW_WEB_ROOT ?? 'apps/mobile/dist-demo-web');
 const apiBundle = path.resolve('apps/api/dist/api.mjs');
 const workerBundle = path.resolve('apps/api/dist/worker.mjs');
 const virtualApi = 'https://longball-qa-demo.trycloudflare.com';
@@ -168,15 +168,20 @@ async function retainFailureWorkspace(state) {
     report.failureWorkspaces ??= [];
     const index = report.failureWorkspaces.length;
     await safeScreenshot(state.page, `failure-signed-in-${index}`);
-    report.failureWorkspaces.push({ accountId: state.currentSession?.accountId ?? 'unknown', stage, body, screenshot: `failure-signed-in-${index}.png` });
+    report.failureWorkspaces.push({ accountId: state.currentSession?.accountId ?? 'unknown', stage, body, runtimeErrors: state.errors, transportErrors: state.routes, requestFailures: state.requestFailures, screenshot: `failure-signed-in-${index}.png` });
   } catch { /* A closed or changing view must not replace the original safe failure. */ }
 }
 async function makePage(width) {
   const context = await browser.newContext({ viewport: { width, height: 844 }, acceptDownloads: true, reducedMotion: 'reduce' });
   const page = await context.newPage();
-  const state = { context, page, errors: [], routes: [], closed: false, currentSession: null, lastLoginStatus: null, meRequests: 0, holdMe: null, meReplyOnce: null, preparationPosts: 0, configurationPosts: 0, scopedReadReplyOnce: null };
+  const state = { context, page, errors: [], routes: [], requestFailures: [], closed: false, currentSession: null, lastLoginStatus: null, meRequests: 0, holdMe: null, meReplyOnce: null, preparationPosts: 0, configurationPosts: 0, scopedReadReplyOnce: null };
   browserStates.push(state);
   page.on('pageerror', error => state.errors.push(sanitise(error.message)));
+  page.on('requestfailed', request => {
+    const address = new URL(request.url());
+    state.requestFailures.push({ origin: address.origin === base ? 'owned-local-web' : address.origin === virtualApi ? 'isolated-demo-api' : 'unexpected-origin', pathname: address.pathname.slice(0, 160), error: sanitise(request.failure()?.errorText ?? 'Request failed.', 200) });
+    if (state.requestFailures.length > 30) state.requestFailures.shift();
+  });
   await page.clock.install();
   await context.route('**/*', async route => {
     const request = route.request(), address = new URL(request.url());

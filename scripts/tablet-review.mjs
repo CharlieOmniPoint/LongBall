@@ -193,7 +193,11 @@ async function geometry(state, label) {
     const columns = columnIds.flatMap(id => {
       const element = document.querySelector(`[data-testid="${id}"]`); if (!element || !visible(element)) return [];
       const rect = element.getBoundingClientRect(), direction = getComputedStyle(element).flexDirection;
-      return [{ id, width: rect.width, direction, expected: tablet && innerHeight >= 480 && rect.width >= 700 ? 'row' : 'column' }];
+      const axis = direction === 'row-reverse' ? 'row' : direction, expected = tablet && innerHeight >= 480 && rect.width >= 700 ? 'row' : 'column';
+      const panels = [...element.children].filter(visible).map(child => child.getBoundingClientRect());
+      const overlaps = panels.some((panel, index) => panels.slice(index + 1).some(other => Math.min(panel.right, other.right) - Math.max(panel.left, other.left) > 2 && Math.min(panel.bottom, other.bottom) - Math.max(panel.top, other.top) > 2));
+      const positioned = panels.length < 2 || (expected === 'row' ? panels.every(panel => Math.abs(panel.top - panels[0].top) <= 2) : panels.every((panel, index) => index === 0 || panel.top >= panels[index - 1].bottom - 2));
+      return [{ id, width: rect.width, direction, axis, expected, siblingPanelsDoNotOverlap: !overlaps, siblingPanelsFollowAxis: positioned }];
     });
     return { overflow: document.documentElement.scrollWidth > innerWidth + 1, undersized, fonts, mapOverlaps: overlaps, columns, targetCount: targets.length };
   });
@@ -201,7 +205,10 @@ async function geometry(state, label) {
   assert.deepEqual(result.undersized, [], `${label}: actionable controls must retain44px targets.`);
   assert.deepEqual(result.fonts, [], `${label}: visible text must use readable sans-serif typography.`);
   assert.deepEqual(result.mapOverlaps, [], `${label}: statistics position cards must not overlap.`);
-  for (const columns of result.columns) assert.equal(columns.direction, columns.expected, `${label}: ${columns.id} must adapt to the actual available width.`);
+  for (const columns of result.columns) {
+    assert.equal(columns.axis, columns.expected, `${label}: ${columns.id} must adapt to the actual available width.`);
+    assert(columns.siblingPanelsDoNotOverlap && columns.siblingPanelsFollowAxis, `${label}: ${columns.id} must place sibling panels safely along the selected axis.`);
+  }
   assert.deepEqual(state.errors, [], `${label}: no runtime errors.`); assert.deepEqual(state.transportErrors, [], `${label}: no unexpected transports.`);
   return { visibleTargets: result.targetCount, noOverflow: true, targets44px: true, readableTypography: true, mapCardsDoNotOverlap: true, columns: result.columns };
 }
