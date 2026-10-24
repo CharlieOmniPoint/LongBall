@@ -1,9 +1,9 @@
 {
-  "state": "ready",
-  "url": "https://silence-stainless-anaheim-fast.trycloudflare.com",
-  "sourceRevision": "18b24b9f9cbeead4e7a9f38e47f25e8c309dbf0e",
-  "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40123746833",
-  "startedAt": "2026-10-24T19:10:03Z",
-  "expiresAt": "2026-10-25T00:10:03Z",
+  "state": "starting",
+  "url": "",
+  "sourceRevision": "a16ae284cbf71b090b56f10da920a98d53882589",
+  "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40128670191",
+  "startedAt": "2026-10-24T20:21:48Z",
+  "expiresAt": "",
   "audience": "LongBall demo review with simulated Roma U10 teams and matches"
 }
