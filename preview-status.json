@@ -1,9 +1,9 @@
 {
-  "state": "starting",
-  "url": "",
+  "state": "ready",
+  "url": "https://secrets-proposals-cup-horse.trycloudflare.com",
   "sourceRevision": "c8400d2db240770c5f93669322fe33b6ce0ffeb7",
   "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40085713495",
-  "startedAt": "2026-10-24T10:26:01Z",
-  "expiresAt": "",
+  "startedAt": "2026-10-24T10:26:31Z",
+  "expiresAt": "2026-10-24T15:26:31Z",
   "audience": "LongBall demo review with simulated Roma U10 teams and matches"
 }
