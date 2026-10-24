@@ -1,11 +1,13 @@
-import { Children, Fragment, isValidElement, useState, type ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { Children, Fragment, isValidElement, useState, type ComponentRef, type ReactNode, type Ref } from 'react';
+import { Pressable, StyleSheet, Text, View, type AccessibilityState, type StyleProp, type ViewStyle } from 'react-native';
 import { Icon, type IconName } from './Icon';
 import { colors } from './tokens';
 
-export function Button({ label, accessibilityLabel, onPress, variant = 'primary', icon, disabled = false, testID, style, compact = false, iconOnly = false }: {
+export function Button({ label, accessibilityLabel, accessibilityState, buttonRef, onPress, variant = 'primary', icon, disabled = false, testID, style, compact = false, iconOnly = false }: {
   label: string;
   accessibilityLabel?: string;
+  accessibilityState?: AccessibilityState;
+  buttonRef?: Ref<ComponentRef<typeof View>>;
   onPress: () => void;
   variant?: 'primary' | 'secondary' | 'danger' | 'quiet';
   icon?: IconName;
@@ -18,9 +20,10 @@ export function Button({ label, accessibilityLabel, onPress, variant = 'primary'
   const [focused, setFocused] = useState(false);
   const ink = variant === 'primary' ? colors.surface : variant === 'danger' ? colors.errorInk : colors.brand;
   return <Pressable
+    ref={buttonRef}
     accessibilityRole="button"
     accessibilityLabel={accessibilityLabel ?? (iconOnly ? label : undefined)}
-    accessibilityState={{ disabled }}
+    accessibilityState={{ ...accessibilityState, disabled }}
     aria-disabled={disabled}
     disabled={disabled}
     onPress={onPress}

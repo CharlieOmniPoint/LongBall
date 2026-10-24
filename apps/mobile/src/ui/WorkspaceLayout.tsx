@@ -7,6 +7,8 @@ import {
   useRef,
   useState,
   type ReactNode,
+  type RefObject,
+  type ComponentRef,
 } from "react";
 import {
   Pressable,
@@ -44,6 +46,7 @@ type Choice = {
   error: boolean;
   open: boolean;
   toggle: () => void;
+  menuRef: RefObject<ComponentRef<typeof View> | null>;
 };
 const ChoiceContext = createContext<Choice | null>(null);
 export const useWorkspaceLayout = () => useContext(LayoutContext);
@@ -63,9 +66,12 @@ export function WorkspaceLayoutProvider({
   const [error, setError] = useState(false);
   const [open, setOpen] = useState(false);
   const generation = useRef(0),
+    focusGeneration = useRef(0),
+    menuRef = useRef<ComponentRef<typeof View> | null>(null),
     writes = useRef<Promise<void>>(Promise.resolve());
   useEffect(() => {
     const ticket = ++generation.current;
+    ++focusGeneration.current;
     let active = true;
     if (!staffLayoutRole(role)) return;
     void writes.current
@@ -87,6 +93,10 @@ export function WorkspaceLayoutProvider({
     setChoice({ role, preference: value });
     setOpen(false);
     setError(false);
+    const focusTicket = ++focusGeneration.current;
+    requestAnimationFrame(() => {
+      if (focusGeneration.current === focusTicket) menuRef.current?.focus();
+    });
     writes.current = writes.current
       .catch(() => undefined)
       .then(() => saveLayoutPreference(value))
@@ -116,7 +126,11 @@ export function WorkspaceLayoutProvider({
         select,
         error,
         open,
-        toggle: () => setOpen((value) => !value),
+        toggle: () => {
+          ++focusGeneration.current;
+          setOpen((value) => !value);
+        },
+        menuRef,
       }}
     >
       <LayoutContext.Provider value={layout}>{children}</LayoutContext.Provider>
@@ -239,6 +253,8 @@ export function WorkspaceLayoutMenuButton({
     <Button
       label={`Layout: ${choice.preference[0].toUpperCase() + choice.preference.slice(1)}`}
       accessibilityLabel={`Change display layout, ${choice.preference} selected`}
+      accessibilityState={{ expanded: choice.open || choice.error }}
+      buttonRef={choice.menuRef}
       icon="layout"
       iconOnly={compact}
       compact

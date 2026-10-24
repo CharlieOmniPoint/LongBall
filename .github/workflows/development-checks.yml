@@ -117,6 +117,8 @@ jobs:
             .local/quality/inventory/
             .local/quality/demo-account-review/report.json
             .local/quality/demo-account-review/*.png
+            .local/quality/tablet-review/report.json
+            .local/quality/tablet-review/*.png
           if-no-files-found: warn
           retention-days: 3
 

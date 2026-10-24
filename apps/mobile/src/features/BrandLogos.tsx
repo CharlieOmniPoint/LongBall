@@ -68,6 +68,7 @@ function LogoAcknowledgement({
   onValueChange: (value: boolean) => void;
   disabled: boolean;
 }) {
+  const [focused, setFocused] = useState(false);
   return (
     <Pressable
       accessibilityRole="switch"
@@ -77,7 +78,13 @@ function LogoAcknowledgement({
       aria-disabled={disabled}
       disabled={disabled}
       onPress={() => onValueChange(!value)}
-      style={[styles.acknowledgement, disabled && styles.disabled]}
+      onFocus={() => setFocused(true)}
+      onBlur={() => setFocused(false)}
+      style={[
+        styles.acknowledgement,
+        focused && styles.acknowledgementFocused,
+        disabled && styles.disabled,
+      ]}
     >
       <Text style={[typography.body, styles.flex]}>{label}</Text>
       <View
@@ -703,7 +710,12 @@ const styles = StyleSheet.create({
     minHeight: 44,
     minWidth: 44,
     paddingVertical: 6,
+    paddingHorizontal: 4,
+    borderWidth: 2,
+    borderColor: "transparent",
+    borderRadius: 8,
   },
+  acknowledgementFocused: { borderColor: colors.focus },
   disabled: { opacity: 0.5 },
   toggleTrack: {
     width: 40,

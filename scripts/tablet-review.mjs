@@ -105,8 +105,10 @@ async function makePage(viewport = viewports[0]) {
 async function login(state, account, role = account.role, navigate = true) {
   const { page } = state;
   if (navigate) await page.goto(base, { waitUntil: 'networkidle' });
-  if (await page.getByTestId('welcome-sign-in').isVisible()) await page.getByTestId('welcome-sign-in').click();
-  await page.getByTestId('demo-login-screen').waitFor();
+  const welcome = page.getByTestId('welcome-sign-in'), form = page.getByTestId('demo-login-screen');
+  await welcome.or(form).first().waitFor();
+  if (await welcome.isVisible()) await welcome.click();
+  await form.waitFor();
   assert.equal(await page.getByTestId('review-account-screen').count(), 0, 'The build must require actual demo credentials.');
   await page.getByTestId('demo-username').fill(account.username); await page.getByTestId('demo-passcode').fill(account.passcode); await page.getByTestId('demo-login-submit').click();
   await selectWorkspaceContext(page, role);
@@ -148,11 +150,20 @@ async function expectLayout(state, role, preference = 'auto') {
   }
   return effective;
 }
-async function chooseLayout(state, preference) {
+async function chooseLayout(state, preference, { keyboard = false } = {}) {
   const before = state.mutations.length;
-  const controls = state.page.getByTestId('workspace-layout-controls');
-  if (!await controls.isVisible()) await state.page.getByTestId('workspace-layout-menu').click();
-  await controls.waitFor(); await controls.getByTestId(`workspace-layout-choice-${preference}`).click(); await controls.waitFor({ state: 'hidden' }); await settled(state.page);
+  const controls = state.page.getByTestId('workspace-layout-controls'), menu = state.page.getByTestId('workspace-layout-menu');
+  if (!await controls.isVisible()) {
+    if (keyboard) { await menu.focus(); await state.page.keyboard.press('Enter'); }
+    else await menu.click();
+  }
+  await controls.waitFor(); assert.equal(await menu.getAttribute('aria-expanded'), 'true', 'The layout disclosure must expose its expanded state.');
+  const choice = controls.getByTestId(`workspace-layout-choice-${preference}`);
+  if (keyboard) { await choice.focus(); await state.page.keyboard.press('Enter'); }
+  else await choice.click();
+  await controls.waitFor({ state: 'hidden' }); await settled(state.page);
+  assert.equal(await menu.getAttribute('aria-expanded'), 'false', 'A chosen layout must close its disclosure semantically.');
+  if (keyboard) assert(await menu.evaluate(element => document.activeElement === element), 'Choosing a layout from the keyboard must restore focus to the menu rather than the document body.');
   await state.page.waitForFunction(value => localStorage.getItem('longball.layout.v1.staff') === value, preference);
   const keys = await state.page.evaluate(() => Object.keys(localStorage).filter(key => key.startsWith('longball.layout.')));
   assert.deepEqual(keys, ['longball.layout.v1.staff'], 'Only one device-local staff preference key may be stored; no account or authority binding belongs in a layout preference.');
@@ -255,7 +266,7 @@ async function roleMatrix(account) {
 async function adminPreferenceDrafts(account, playerAccount, spectatorAccount) {
   const state = await makePage({ width: 1024, height: 768 }), { page } = state;
   try {
-    await login(state, account, 'manager'); await expectLayout(state, 'manager'); await chooseLayout(state, 'phone'); await expectLayout(state, 'manager', 'phone');
+    await login(state, account, 'manager'); await expectLayout(state, 'manager'); await chooseLayout(state, 'phone', { keyboard: true }); await expectLayout(state, 'manager', 'phone');
     await changeWorkspaceContext(page, 'administrator'); await expectLayout(state, 'administrator', 'phone');
     await chooseLayout(state, 'tablet'); await expectLayout(state, 'administrator', 'tablet');
     await openWorkspaceTab(page, 'clubs'); await page.getByRole('button', { name: 'Edit club and team configuration', exact: true }).click(); await page.getByTestId('administrator-configuration').waitFor();
@@ -302,6 +313,7 @@ async function managerDrafts(account) {
   await freshBudget(account, 'manager actual-match layout retention');
   const state = await makePage({ width: 820, height: 1180 }), { page } = state, button = name => page.getByRole('button', { name, exact: true });
   try {
+    stage = 'manager profile draft and rotation';
     await login(state, account); await expectLayout(state, 'manager');
     await openWorkspaceTab(page, 'team');
     const preparation = await currentJson(state, route('preparation')), profile = preparation.profiles.find(item => item.playerId === 'synthetic-player-02'); assert(profile);
@@ -313,6 +325,7 @@ async function managerDrafts(account) {
     }
     assert.equal(state.mutations.length, rosterPosts, 'Rotation/toggles must retain a profile editor without saving it.');
     await name.fill(profile.displayName); await button('Keep previous values').click();
+    stage = 'manager actual recording and check-in setup';
     await page.setViewportSize(viewports[3]); await chooseLayout(state, 'auto'); await openWorkspaceTab(page, 'schedule');
     await page.getByRole('button', { name: /^Open fixture Maple FC,/ }).click(); await page.getByTestId('preparation-open-match').click();
     await page.getByTestId('recording-acquire').click(); await page.getByTestId('connected-match-attendance').click();
@@ -323,6 +336,7 @@ async function managerDrafts(account) {
       await row.getByRole('button', { name: 'Present', exact: true }).click(); await page.waitForFunction(() => !document.querySelector('[role="progressbar"]'));
     }
     await page.getByTestId('connected-match-lineup').click(); await page.getByTestId('lineup-auto-fill').click(); await button('Show position list').click();
+    stage = 'manager unsaved lineup rotation and preference';
     const firstSlot = match.config.slots[0], slot = page.getByRole('button', { name: new RegExp(`^${firstSlot.label ?? firstSlot.position} · place 1,`) });
     await slot.click(); const chooseLabel = page.getByText(`Choose for ${firstSlot.label ?? firstSlot.position}`, { exact: true }); await chooseLabel.waitFor();
     const lineupLabels = await page.getByRole('button', { name: / · place \d+,/ }).allTextContents();
@@ -330,12 +344,14 @@ async function managerDrafts(account) {
     for (const viewport of [viewports[4], viewports[2], viewports[0], viewports[3]]) await mutateLayoutOnly(state, async () => { await page.setViewportSize(viewport); await expectLayout(state, 'manager'); }, retainLineup, 'unsaved lineup rotation');
     for (const preference of ['phone', 'tablet', 'auto']) await mutateLayoutOnly(state, async () => { await chooseLayout(state, preference); await expectLayout(state, 'manager', preference); }, retainLineup, 'unsaved lineup preference');
     await safeScreenshot(state, 'manager-unsaved-lineup');
+    stage = 'manager pending kickoff review retention';
     await button('Save staged lineup').click(); await page.waitForFunction(() => !document.querySelector('[role="progressbar"]'));
     await page.getByTestId('connected-match-live').click(); await button('Start first half').click();
     const confirmation = button('Confirm the actual event now'); await confirmation.waitFor();
     await mutateLayoutOnly(state, async () => { await page.setViewportSize(viewports[4]); await chooseLayout(state, 'tablet'); }, async () => { await confirmation.waitFor(); assert.equal((await localMatch(page)).state.status, 'preparation'); }, 'pending kickoff review');
     await confirmation.click(); await button('Review referee pause').click(); await button('Confirm the actual event now').click();
     current = await localMatch(page); assert.equal(current.state.status, 'first_half_paused');
+    stage = 'manager penalty review rotation and short-height controls';
     await page.getByTestId('open-goal').filter({ visible: true }).click(); await button('Penalty').click();
     const scorerName = match.config.players.find(player => player.id === match.config.selectedPlayerIds[0]).displayName; await button(scorerName).click();
     const captured = await page.getByText(/^Effective time: half /).innerText();
@@ -345,6 +361,7 @@ async function managerDrafts(account) {
     for (const preference of ['phone', 'auto', 'tablet']) await mutateLayoutOnly(state, async () => { await chooseLayout(state, preference); await expectLayout(state, 'manager', preference); }, retainGoal, 'goal review preference');
     await safeScreenshot(state, 'manager-goal-review');
     await button('Cancel goal entry').click();
+    stage = 'manager running clock rotation';
     await button('Review clock resume').click(); await button('Confirm the actual event now').click();
     for (const [viewport, preference] of [[viewports[2], 'auto'], [viewports[4], 'phone'], [viewports[3], 'tablet']]) {
       await mutateLayoutOnly(state, async () => { await page.setViewportSize(viewport); await chooseLayout(state, preference); await expectLayout(state, 'manager', preference); }, async () => { await page.getByTestId('connected-match-countdown').waitFor(); assert.equal((await localMatch(page)).state.status, 'first_half_running'); await button('Review referee pause').click({ trial: true }); }, 'running match rotation');
@@ -360,7 +377,12 @@ async function managerDrafts(account) {
   finally { state.closed = true; await state.context.close(); }
 }
 async function retainFailure(state) {
-  try { if (state.closed || await state.page.getByTestId('demo-signed-in').count() !== 1) return; await safeScreenshot(state, 'failure-signed-in'); report.failureWorkspace = sanitise(await state.page.locator('body').innerText(), 12000); } catch { /* Keep the original failure if the session is changing. */ }
+  try {
+    if (state.closed) return;
+    const body = sanitise(await state.page.locator('body').innerText(), 12000);
+    if (await state.page.getByTestId('demo-signed-in').count() !== 1) { report.failureEntry = { welcomeVisible: await state.page.getByTestId('welcome-sign-in').isVisible(), loginVisible: await state.page.getByTestId('demo-login-screen').isVisible(), body }; return; }
+    await safeScreenshot(state, 'failure-signed-in'); report.failureWorkspace = body;
+  } catch { /* Keep the original failure if the session is changing. */ }
 }
 const watchdog = setTimeout(() => { void browser?.close().catch(() => undefined); for (const child of children) child.kill('SIGTERM'); }, 540000); watchdog.unref();
 try {

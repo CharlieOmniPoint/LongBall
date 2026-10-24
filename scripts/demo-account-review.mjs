@@ -437,6 +437,9 @@ async function managerDetailRegression(state, preparation, fixtureId) {
   await openWorkspaceTab(page, 'schedule');
   const fixture = preparation.fixtures.find(item => item.id === fixtureId);
   await page.getByRole('button', { name: `Open fixture ${fixture.opponent}, ${reviewDateLabel(fixture.playedDate)}`, exact: true }).click();
+  // The mounted schedule master also names this fixture; assert the selected
+  // detail beside its own Back control, including when the master is hidden.
+  const detail = page.getByTestId('preparation-workspace-panels').getByRole('button', { name: 'Back to schedule', exact: true }).locator('..');
   for (const profileId of fixture.selectedProfileIds.slice(0, 2)) {
     const profile = preparation.profiles.find(item => item.id === profileId);
     const saved = page.waitForResponse(response => /\/preparation$/.test(new URL(response.url()).pathname) && response.request().method() === 'POST');
@@ -445,7 +448,7 @@ async function managerDetailRegression(state, preparation, fixtureId) {
     check((await saved).status() === 200, 'The manager detail mutation must reach the actual service.');
     await page.getByRole('button', { name: 'Back to schedule', exact: true }).waitFor();
     await page.waitForFunction(name => document.querySelector(`[role="radio"][aria-label="${name}"]`)?.getAttribute('aria-checked') === 'true', `${profile.displayName} availability reply: Unsure`);
-    check(await page.getByText(`${preparation.team.name} vs ${fixture.opponent}`, { exact: true }).isVisible(), 'Accepted preparation refresh must retain the selected fixture detail.');
+    check(await detail.getByText(`${preparation.team.name} vs ${fixture.opponent}`, { exact: true }).isVisible(), 'Accepted preparation refresh must retain the selected fixture detail.');
   }
   const accepted = await currentJson(state.currentSession.accessToken, `/v1/teams/${teamId}/preparation?seasonId=${seasonId}`);
   const updated = accepted.fixtures.find(item => item.id === fixtureId);
