@@ -2693,7 +2693,7 @@ function WorkspaceSession({
         </View>
       )
     }>
-      <Card style={{ padding: focusedMatch ? 2 : 12 }}>
+      <Card style={{ padding: focusedMatch ? 2 : 8 }}>
         {focusedMatch && (
           <View style={s.row} testID="workspace-match-header">
             <Text testID="workspace-current-role" style={[typography.muted,{fontWeight:"700",color:colors.brand}]}>Manager</Text>
@@ -2706,12 +2706,12 @@ function WorkspaceSession({
         {!focusedMatch && manager && matchFocused && serviceMatchId && (
           <Button label="Return to selected match" testID="workspace-return-to-match" variant="secondary" disabled={disabled} onPress={() => setTab("controller")} />
         )}
-        {!focusedMatch && <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+        {!focusedMatch && <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
           <Pressable accessibilityRole="button" accessibilityLabel="Open team overview" testID="workspace-team-overview" disabled={disabled} onPress={() => guardNavigation(() => setTab('overview'))} style={{minWidth:44,minHeight:44,alignItems:'center',justifyContent:'center'}}>
             {branding && brandClient && brandScopeKey ? <AuthenticatedBrandBadge client={brandClient} reference={branding.effective.logo} scopeKey={brandScopeKey} assertAccess={assertBrandAccess} label={`${branding.team.name} team badge`} /> : <Text style={[typography.section,{color:colors.brand}]}>RU</Text>}
           </Pressable>
-          <View style={{ flex: 1, gap: 2 }}>
-            <Text style={typography.section}>
+          <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+            <Text style={typography.section} numberOfLines={1}>
               {selectedContext
                 ? preparation
                   ? `${preparation.team.name} ${preparation.team.ageGroup}`
