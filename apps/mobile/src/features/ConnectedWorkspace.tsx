@@ -1199,7 +1199,8 @@ function WorkspaceSession({
   );
   const matches = matchList ? visibleScheduledMatches(mergeSharedMatchViews(matchList.items, refreshedMatches ?? []), teamOverview) : null;
   const completedFixtureIds = acceptedCompletedFixtureIds(matches, { teamId, seasonId });
-  const replyClosedFixtureIds = new Set([...completedFixtureIds, ...(matches ?? []).filter(match => {
+  const replyClosedFixtureIds = new Set([...completedFixtureIds, ...(records?.matches ?? []).flatMap(match =>
+    match && match.teamId === teamId && match.seasonId === seasonId && ['completed', 'abandoned'].includes(match.status) ? [match.matchId] : []), ...(matches ?? []).filter(match => {
     const status = match.status ?? match.state?.status;
     return match.teamId === teamId && match.seasonId === seasonId && status && status !== 'preparation';
   }).map(match => match.matchId)]);
