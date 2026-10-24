@@ -1,0 +1,145 @@
+name: LongBall compatible frontend review
+
+on:
+  push:
+    branches: [preview/longball-m0]
+    paths: ["preview/frontend-review-request.json"]
+
+permissions:
+  contents: read
+  actions: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: longball-fictional-pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    if: github.repository == 'CharlieOmniPoint/LongBall' && github.ref == 'refs/heads/preview/longball-m0' && github.event.repository.private == false
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    env:
+      EXPO_NO_TELEMETRY: "1"
+      EXPO_NO_DOTENV: "1"
+      EXPO_PUBLIC_ENVIRONMENT: development
+      EXPO_PUBLIC_DEMO_ACCOUNT_LOGIN: "1"
+      EXPO_PUBLIC_REVIEW_STATIC: "1"
+      LONGBALL_WEB_BASE_PATH: /LongBall
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Verify pinned review source, completed checks and live backend
+        id: verified
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import base64, datetime, hashlib, json, os, re, urllib.request
+          from pathlib import Path
+          request = json.loads(Path("preview/frontend-review-request.json").read_text())
+          assert set(request) == {"mode", "frontendSourceCommit", "backendSourceCommit", "backendTransportCommit", "apiSha256", "workerSha256", "testedRunId"}
+          assert request["mode"] == "compatible-frontend-review-v1"
+          for key in ("frontendSourceCommit", "backendSourceCommit", "backendTransportCommit"):
+              assert re.fullmatch(r"[0-9a-f]{40}", request[key])
+          for key in ("apiSha256", "workerSha256"):
+              assert re.fullmatch(r"[0-9a-f]{64}", request[key])
+          assert isinstance(request["testedRunId"], int) and request["testedRunId"] > 0
+          assert Path("preview/source-head.txt").read_text().strip() == request["backendSourceCommit"]
+          for key, filename in (("apiSha256", "api.mjs"), ("workerSha256", "worker.mjs")):
+              assert hashlib.sha256((Path("backend") / filename).read_bytes()).hexdigest() == request[key]
+          def github(path):
+              req = urllib.request.Request("https://api.github.com/repos/" + os.environ["GITHUB_REPOSITORY"] + path, headers={"Authorization": "Bearer " + os.environ["GH_TOKEN"], "Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28"})
+              with urllib.request.urlopen(req, timeout=30) as reply:
+                  return json.load(reply)
+          run = github("/actions/runs/" + str(request["testedRunId"]))
+          assert run["head_sha"] == request["frontendSourceCommit"] and run["status"] == "completed"
+          assert run["path"] == ".github/workflows/development-checks.yml"
+          jobs = github("/actions/runs/" + str(request["testedRunId"]) + "/jobs?per_page=100")["jobs"]
+          quality = next(job for job in jobs if job["name"] == "quality")
+          image = next(job for job in jobs if job["name"] == "runtime-image")
+          assert quality["status"] == "completed" and image["conclusion"] == "success"
+          required = {"Scan current source for secrets", "Lint and check both TypeScript clients", "Shared rules, platform adapters and real PostgreSQL API boundaries", "Retained-history and actual PostgreSQL migration checks", "Validate canonical contracts, source publication and sample fixtures", "Check native production configuration and compile JavaScript exports", "Exercise the built browser journey", "Exercise configured demo accounts and queued report downloads"}
+          steps = {step["name"]: step["conclusion"] for step in quality["steps"]}
+          assert all(steps.get(name) == "success" for name in required)
+          failed = {step["name"] for step in quality["steps"] if step["conclusion"] == "failure"}
+          assert failed <= {"Enforce the dependency audit result"}
+          assert quality["conclusion"] in ("success", "failure")
+          def current_file(path):
+              data = github("/contents/" + path + "?ref=preview%2Flongball-m0")
+              return base64.b64decode(data["content"]).decode()
+          assert current_file("preview/source-head.txt").strip() == request["backendSourceCommit"]
+          marker = json.loads(current_file("preview-status.json"))
+          assert marker["state"] == "ready" and marker["sourceRevision"] == request["backendTransportCommit"]
+          expiry = datetime.datetime.fromisoformat(marker["expiresAt"].replace("Z", "+00:00"))
+          assert expiry > datetime.datetime.now(datetime.timezone.utc)
+          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+              output.write("frontend=" + request["frontendSourceCommit"] + "\n")
+              output.write("backend=" + request["backendSourceCommit"] + "\n")
+          print(json.dumps({"frontendSource": request["frontendSourceCommit"], "backendSource": request["backendSourceCommit"], "testedRunId": request["testedRunId"], "functionalChecks": "passed", "dependencyEnforcement": steps.get("Enforce the dependency audit result"), "production": False, "backendRestarted": False}))
+          PY
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ steps.verified.outputs.frontend }}
+          path: frontend-source
+          persist-credentials: false
+      - name: Prove backend, shared rules, locks and native configuration unchanged
+        env:
+          FRONTEND_SOURCE: ${{ steps.verified.outputs.frontend }}
+          BACKEND_SOURCE: ${{ steps.verified.outputs.backend }}
+        run: |
+          test "$(git -C frontend-source rev-parse HEAD)" = "$FRONTEND_SOURCE"
+          git -C frontend-source fetch --no-tags --depth=1 origin "$BACKEND_SOURCE"
+          git -C frontend-source diff --exit-code "$BACKEND_SOURCE" "$FRONTEND_SOURCE" -- apps/api apps/worker packages package.json pnpm-lock.yaml pnpm-workspace.yaml scripts/build-api.mjs infra/runtime infra/cloud-preview/backend apps/mobile/app.json apps/mobile/package.json ':(glob)apps/mobile/app.config.*' apps/mobile/plugins
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24.19.0
+      - name: Install pinned frontend and build the review export
+        working-directory: frontend-source
+        run: |
+          npm install --global pnpm@11.25.0 --ignore-scripts --no-audit --no-fund
+          pnpm install --frozen-lockfile
+          pnpm --filter mobile exec expo export --platform web --output-dir "$GITHUB_WORKSPACE/frontend-pages"
+      - name: Stamp and verify separate frontend/backend provenance
+        env:
+          FRONTEND_SOURCE: ${{ steps.verified.outputs.frontend }}
+          BACKEND_SOURCE: ${{ steps.verified.outputs.backend }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import base64, datetime, hashlib, json, os, re, urllib.request
+          from pathlib import Path
+          request = json.loads(Path("preview/frontend-review-request.json").read_text())
+          def current_file(path):
+              req = urllib.request.Request("https://api.github.com/repos/" + os.environ["GITHUB_REPOSITORY"] + "/contents/" + path + "?ref=preview%2Flongball-m0", headers={"Authorization": "Bearer " + os.environ["GH_TOKEN"], "Accept": "application/vnd.github+json"})
+              with urllib.request.urlopen(req, timeout=30) as reply:
+                  return base64.b64decode(json.load(reply)["content"]).decode()
+          assert current_file("preview/source-head.txt").strip() == os.environ["BACKEND_SOURCE"]
+          marker = json.loads(current_file("preview-status.json"))
+          assert marker["state"] == "ready" and marker["sourceRevision"] == request["backendTransportCommit"]
+          assert datetime.datetime.fromisoformat(marker["expiresAt"].replace("Z", "+00:00")) > datetime.datetime.now(datetime.timezone.utc)
+          site = Path("frontend-pages")
+          assert not any(path.is_symlink() for path in site.rglob("*"))
+          assert sum(path.stat().st_size for path in site.rglob("*") if path.is_file()) < 50_000_000
+          html = (site / "index.html").read_text()
+          script = re.search(r'<script[^>]+src="([^"]+)"', html).group(1)
+          assert script.startswith("/LongBall/_expo/") and ".." not in script
+          entry = site / script.removeprefix("/LongBall/")
+          info = {"sourceCommit": os.environ["FRONTEND_SOURCE"], "sourceBranch": "dev/longball-m0-journey", "backendSourceCommit": os.environ["BACKEND_SOURCE"], "backendTransportCommit": request["backendTransportCommit"], "backendApiSha256": request["apiSha256"], "backendWorkerSha256": request["workerSha256"], "backendInputsUnchanged": True, "testedRunId": request["testedRunId"], "synthetic": True, "production": False, "basePath": "/LongBall", "connectedBackendIncluded": False, "nativeTargets": ["iPhone", "Android"], "entryScript": script, "entryJavaScriptSha256": hashlib.sha256(entry.read_bytes()).hexdigest(), "backendRestarted": False}
+          (site / "build-info.json").write_text(json.dumps(info, indent=2) + "\n")
+          print(json.dumps(info))
+          PY
+      - name: Read enabled GitHub Pages configuration
+        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6
+      - uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4
+        with:
+          path: frontend-pages
+          retention-days: 1
+      - name: Publish compatible frontend review
+        id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4
