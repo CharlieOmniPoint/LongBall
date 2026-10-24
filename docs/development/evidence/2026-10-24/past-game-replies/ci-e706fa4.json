@@ -1,0 +1,199 @@
+{
+  "observedAt": "2026-10-24 20:32:42 UTC",
+  "frontendSource": "e706fa4c9ba55aaf6d5783f3c74aa68a9415cc39",
+  "frontendTree": "15e95c43bea53a9014cae1fb67163781cf5e84d6",
+  "checkoutCommit": "8300f006e51ec42d3ee01aa6e6cbf404145b4e58",
+  "checkoutTree": "15e95c43bea53a9014cae1fb67163781cf5e84d6",
+  "runId": 40127475188,
+  "url": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40127475188",
+  "overallConclusion": "failure",
+  "functionalChecksPassed": true,
+  "soleFailedStep": "Enforce the dependency audit result",
+  "jobs": [
+    {
+      "id": 120971954334,
+      "name": "runtime-image",
+      "conclusion": "success",
+      "steps": [
+        {
+          "name": "Set up job",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+          "conclusion": "success"
+        },
+        {
+          "name": "Build and exercise the isolated production image",
+          "conclusion": "success"
+        },
+        {
+          "name": "Retain safe image acceptance evidence",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683",
+          "conclusion": "success"
+        },
+        {
+          "name": "Complete job",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "id": 120971954435,
+      "name": "quality",
+      "conclusion": "failure",
+      "steps": [
+        {
+          "name": "Set up job",
+          "conclusion": "success"
+        },
+        {
+          "name": "Initialize containers",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+          "conclusion": "success"
+        },
+        {
+          "name": "Install the pinned frozen workspace",
+          "conclusion": "success"
+        },
+        {
+          "name": "Retain resolved dependency and licence inventories",
+          "conclusion": "success"
+        },
+        {
+          "name": "Scan current source for secrets",
+          "conclusion": "success"
+        },
+        {
+          "name": "Audit workspace and runtime dependency locks",
+          "conclusion": "success"
+        },
+        {
+          "name": "Lint and check both TypeScript clients",
+          "conclusion": "success"
+        },
+        {
+          "name": "Shared rules, platform adapters and real PostgreSQL API boundaries",
+          "conclusion": "success"
+        },
+        {
+          "name": "Retained-history and actual PostgreSQL migration checks",
+          "conclusion": "success"
+        },
+        {
+          "name": "Validate canonical contracts, source publication and sample fixtures",
+          "conclusion": "success"
+        },
+        {
+          "name": "Check native production configuration and compile JavaScript exports",
+          "conclusion": "success"
+        },
+        {
+          "name": "Exercise the built browser journey",
+          "conclusion": "success"
+        },
+        {
+          "name": "Exercise configured demo accounts and queued report downloads",
+          "conclusion": "success"
+        },
+        {
+          "name": "Enforce the dependency audit result",
+          "conclusion": "failure"
+        },
+        {
+          "name": "Retain safe quality evidence",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Post Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683",
+          "conclusion": "success"
+        },
+        {
+          "name": "Stop containers",
+          "conclusion": "success"
+        },
+        {
+          "name": "Complete job",
+          "conclusion": "success"
+        }
+      ]
+    }
+  ],
+  "results": {
+    "shared": {
+      "passed": 855,
+      "files": 101
+    },
+    "api": {
+      "passed": 427,
+      "conditionalAbsentHeicHelperSkips": 3,
+      "total": 430,
+      "files": 65
+    },
+    "migrations": {
+      "passed": 30,
+      "files": 6
+    },
+    "ordinaryBrowserGroups": 10,
+    "demoRoleJourneys": 8,
+    "demoGroups": 26,
+    "tabletJourneys": 36,
+    "tabletGroups": 2,
+    "runtimeImage": "passed",
+    "nativeJavaScriptExports": [
+      "android",
+      "ios"
+    ]
+  },
+  "projectionCase": {
+    "mocked": true,
+    "source": "One role-filtered records GET only",
+    "actualCanonicalStatus": "preparation",
+    "homeAndScheduleClosed": true,
+    "actualRecordsRestored": true,
+    "extraPreparationWrites": 0,
+    "otherUnplayedActionsPreserved": true
+  },
+  "artifacts": [
+    {
+      "id": 12573759678,
+      "bytes": 3431395,
+      "digestFromGitHub": "sha256:b7c5c3d7465b24e3ed6e98da58b5d5e9d10fa720c56f04df2445398b879cc764",
+      "archiveExamined": false
+    },
+    {
+      "id": 12572908951,
+      "bytes": 3494,
+      "digestFromGitHub": "sha256:f31db2c8df8098589284ff3792c29c6ce05f52ee33d5847635559ec4b1b418ed",
+      "archiveExamined": false
+    }
+  ],
+  "limits": [
+    "Counts overlap focused tests; do not add them.",
+    "No full 430-case maintained-HEIC host result or physical-device result is claimed.",
+    "Actual native binary compilation remains the separately recorded38e source; this source has fresh native JavaScript exports.",
+    "The unchanged dependency gate remains failed without a release exception."
+  ]
+}

@@ -1,0 +1,97 @@
+{
+  "recordedAt": "2026-10-24T19:10:51.496Z",
+  "source": {
+    "productCommit": "38e08797755fe5ca154786c0ad2130888f8b6d1a",
+    "productTree": "93dafb22cdc0b04f6f8fd3d4dfa9695df47bdcce",
+    "transportCommit": "18b24b9f9cbeead4e7a9f38e47f25e8c309dbf0e",
+    "decodedBundleSha256": "5c1253e1a22f4b0057d297b7a29f498310120472a50522925b5c4e84b5d6644c",
+    "remoteMarkersVerified": true
+  },
+  "run": {
+    "id": 40123746833,
+    "url": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40123746833",
+    "name": "LongBall temporary demo service",
+    "status": "in_progress",
+    "conclusion": null,
+    "expectedBoundedServing": true,
+    "jobId": 120960853948
+  },
+  "readiness": {
+    "state": "ready",
+    "url": "https://silence-stainless-anaheim-fast.trycloudflare.com",
+    "sourceRevision": "18b24b9f9cbeead4e7a9f38e47f25e8c309dbf0e",
+    "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40123746833",
+    "startedAt": "2026-10-24T19:10:03Z",
+    "expiresAt": "2026-10-25T00:10:03Z",
+    "audience": "LongBall demo review with simulated Roma U10 teams and matches",
+    "statusGitBlobSha": "85cfccd1d65a40a25c0f25258540b78aac1defd0",
+    "observedReadyAt": "2026-10-24T19:10:19.530Z"
+  },
+  "packagedBackendArtifacts": {
+    "backend/api.mjs": {
+      "bytes": 3681095,
+      "sha256": "022ec44e6ad09f2423f66d7066b07538783d23c2f0c7c9fb485c567b5c7cf7c7",
+      "gitBlobSha": "5f8c62a3d92abc5963ddb4dca5d6f91e3d15fc72"
+    },
+    "backend/worker.mjs": {
+      "bytes": 3361593,
+      "sha256": "5562a6a844defdd8dda6d48d0af7fc7a8f6b5f3d4480ee341b64dac314b40e93",
+      "gitBlobSha": "b3c5d37fa0c69c12d3fd44505b710fbc38f5031a"
+    }
+  },
+  "artifactHashMethod": "Bytes and SHA256 measured directly from exact18b24b9 local Git blob objects; values are new compiled artifacts and are not carried forward from the preceding API build.",
+  "steps": [
+    {
+      "name": "Set up job",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Run actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Use the pinned Node runtime",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Install the isolated decoder runtime",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Build the pinned maintained HEIC runtime",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Serve the demo for a bounded five-hour review",
+      "status": "in_progress",
+      "conclusion": null
+    },
+    {
+      "name": "Post Use the pinned Node runtime",
+      "status": "pending",
+      "conclusion": null
+    },
+    {
+      "name": "Post Run actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803",
+      "status": "pending",
+      "conclusion": null
+    }
+  ],
+  "scope": "Source-bound ready marker after workflow API/media startup checks for the historic-player-availability change. The five-hour fictional review is intentionally still serving.",
+  "limits": {
+    "directPublicHealthRequestByObserver": false,
+    "liveRuntimeBinaryHashIndependentlyMeasured": false,
+    "browserOrAccountSessionByObserver": false,
+    "permanentHosting": false,
+    "physicalDeviceEvidence": false,
+    "paidServicesProvisioned": false,
+    "workflowMutationsOrRetries": false,
+    "artifactDownloads": false,
+    "sourceEdits": false
+  }
+}

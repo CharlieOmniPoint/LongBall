@@ -1,0 +1,258 @@
+{
+  "frontendSourceCommit": "e706fa4c9ba55aaf6d5783f3c74aa68a9415cc39",
+  "backendSourceCommit": "38e08797755fe5ca154786c0ad2130888f8b6d1a",
+  "pagesUrl": "https://charlieomnipoint.github.io/LongBall/?v=e706fa4",
+  "apiUrl": "https://bent-seller-ministries-strengths.trycloudflare.com",
+  "serviceStartsAt": "2026-10-24T20:22:39Z",
+  "serviceExpiresAt": "2026-10-25T01:22:39Z",
+  "serviceExpiresAtLondon": "25 October 2026 01:22:39 GMT",
+  "ownerApprovedDestination": "Firecrawl for dummy demo account functionality testing",
+  "sourcePairQualification": "Frontend e706fa4 is served with backend 38e0879. The compatible frontend workflow verifies unchanged API, worker, shared packages, lockfiles and native configurations; these are intentionally different source commits. This smoke does not relabel older native binary proof.",
+  "preflight": {
+    "pagesStatus": 200,
+    "apiStatus": 200,
+    "healthStatus": 200,
+    "pagesSource": "e706fa4c9ba55aaf6d5783f3c74aa68a9415cc39",
+    "apiSource": "38e08797755fe5ca154786c0ad2130888f8b6d1a",
+    "backendTransportCommit": "a16ae284cbf71b090b56f10da920a98d53882589",
+    "backendInputsUnchanged": true,
+    "backendRestarted": false,
+    "apiSha256": "022ec44e6ad09f2423f66d7066b07538783d23c2f0c7c9fb485c567b5c7cf7c7",
+    "workerSha256": "5562a6a844defdd8dda6d48d0af7fc7a8f6b5f3d4480ee341b64dac314b40e93",
+    "scriptPath": "/LongBall/_expo/static/js/web/index-f36be213689ee1e654ddedcd9aaf4e5f.js",
+    "scriptSha256": "60b032657fa233e9a72d1aa6be2903adebe4bab0a6b190ef693b75f2f34d2103",
+    "scriptReferencedInActualHtml": true,
+    "demoAccountLogin": true,
+    "matchesExpected": true
+  },
+  "uiJourneys": [
+    {
+      "width": 320,
+      "height": 844,
+      "assignedRole": "player",
+      "past": [
+        {
+          "fixtureId": "synthetic-history-oak",
+          "replyButtonCounts": {
+            "Available": 0,
+            "Unavailable": 0,
+            "Unsure": 0,
+            "No reply": 0
+          },
+          "recordedReplyVisible": true,
+          "actualAttendanceVisible": true
+        },
+        {
+          "fixtureId": "synthetic-history-hill",
+          "replyButtonCounts": {
+            "Available": 0,
+            "Unavailable": 0,
+            "Unsure": 0,
+            "No reply": 0
+          },
+          "recordedReplyVisible": true,
+          "actualAttendanceVisible": true
+        }
+      ],
+      "upcoming": [
+        {
+          "fixtureId": "synthetic-roma-maple-2026-10-24",
+          "replyButtonCounts": {
+            "Available": 1,
+            "Unavailable": 1,
+            "Unsure": 1,
+            "No reply": 1
+          },
+          "replyActionsEnabled": {
+            "Available": true,
+            "Unavailable": true,
+            "Unsure": true,
+            "No reply": true
+          }
+        },
+        {
+          "fixtureId": "synthetic-roma-oak-2026-10-31",
+          "replyButtonCounts": {
+            "Available": 1,
+            "Unavailable": 1,
+            "Unsure": 1,
+            "No reply": 1
+          },
+          "replyActionsEnabled": {
+            "Available": true,
+            "Unavailable": true,
+            "Unsure": true,
+            "No reply": true
+          }
+        }
+      ],
+      "availabilityActionsClicked": 0,
+      "loginStatus": 200,
+      "assignedWorkspaceVerified": true,
+      "horizontalOverflow": false,
+      "passed": true,
+      "logoutStatus": 204,
+      "privateWorkspaceClosed": true
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "assignedRole": "player",
+      "past": [
+        {
+          "fixtureId": "synthetic-history-oak",
+          "replyButtonCounts": {
+            "Available": 0,
+            "Unavailable": 0,
+            "Unsure": 0,
+            "No reply": 0
+          },
+          "recordedReplyVisible": true,
+          "actualAttendanceVisible": true
+        },
+        {
+          "fixtureId": "synthetic-history-hill",
+          "replyButtonCounts": {
+            "Available": 0,
+            "Unavailable": 0,
+            "Unsure": 0,
+            "No reply": 0
+          },
+          "recordedReplyVisible": true,
+          "actualAttendanceVisible": true
+        }
+      ],
+      "upcoming": [
+        {
+          "fixtureId": "synthetic-roma-maple-2026-10-24",
+          "replyButtonCounts": {
+            "Available": 1,
+            "Unavailable": 1,
+            "Unsure": 1,
+            "No reply": 1
+          },
+          "replyActionsEnabled": {
+            "Available": true,
+            "Unavailable": true,
+            "Unsure": true,
+            "No reply": true
+          }
+        },
+        {
+          "fixtureId": "synthetic-roma-oak-2026-10-31",
+          "replyButtonCounts": {
+            "Available": 1,
+            "Unavailable": 1,
+            "Unsure": 1,
+            "No reply": 1
+          },
+          "replyActionsEnabled": {
+            "Available": true,
+            "Unavailable": true,
+            "Unsure": true,
+            "No reply": true
+          }
+        }
+      ],
+      "availabilityActionsClicked": 0,
+      "loginStatus": 200,
+      "assignedWorkspaceVerified": true,
+      "horizontalOverflow": false,
+      "passed": true,
+      "logoutStatus": 204,
+      "privateWorkspaceClosed": true
+    }
+  ],
+  "pageErrors": [],
+  "uiWrites": [
+    {
+      "method": "POST",
+      "path": "/v1/demo/sessions",
+      "status": 200
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1/demo/sessions/current",
+      "status": 204
+    },
+    {
+      "method": "POST",
+      "path": "/v1/demo/sessions",
+      "status": 200
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1/demo/sessions/current",
+      "status": 204
+    }
+  ],
+  "failures": [],
+  "mockedRequests": false,
+  "positiveAvailabilityWrites": 0,
+  "credentialValuesRecorded": false,
+  "screenshotsCaptured": false,
+  "nativeDeviceProof": false,
+  "earlierAttempts": [
+    {
+      "kind": "negative-harness-scope-assertion",
+      "applicationCommandAttempts": 0,
+      "logoutStatus": 204,
+      "sameHttpSessionAfterLogoutStatus": 401,
+      "cause": "Scope assertion checked profile id against a player id before submitting any command; exact playerId check is required."
+    }
+  ],
+  "rejectedPastReply": {
+    "attempts": 1,
+    "contractVersion": "longball.events/1.1",
+    "fixtureId": "synthetic-history-oak",
+    "freshCommandId": true,
+    "freshIdempotencyKey": true,
+    "status": 422,
+    "responseCode": "COMMAND_REJECTED",
+    "loginStatus": 200,
+    "assignedScopeVerified": true,
+    "playedDate": "2026-10-10",
+    "revision": 0,
+    "beforeOwnDtoSha256": "35aea9283b371a10a880080e0778623a760eadcac85073d03bb2654bdabaa4dc",
+    "afterOwnDtoSha256": "35aea9283b371a10a880080e0778623a760eadcac85073d03bb2654bdabaa4dc",
+    "ownDtoUnchanged": true,
+    "passed": true,
+    "logoutStatus": 204,
+    "sameHttpSessionAfterLogoutStatus": 401
+  },
+  "finalBinding": {
+    "pagesStatus": 200,
+    "apiStatus": 200,
+    "healthStatus": 200,
+    "pagesSource": "e706fa4c9ba55aaf6d5783f3c74aa68a9415cc39",
+    "apiSource": "38e08797755fe5ca154786c0ad2130888f8b6d1a",
+    "backendTransportCommit": "a16ae284cbf71b090b56f10da920a98d53882589",
+    "backendInputsUnchanged": true,
+    "backendRestarted": false,
+    "apiSha256": "022ec44e6ad09f2423f66d7066b07538783d23c2f0c7c9fb485c567b5c7cf7c7",
+    "workerSha256": "5562a6a844defdd8dda6d48d0af7fc7a8f6b5f3d4480ee341b64dac314b40e93",
+    "scriptPath": "/LongBall/_expo/static/js/web/index-f36be213689ee1e654ddedcd9aaf4e5f.js",
+    "scriptSha256": "60b032657fa233e9a72d1aa6be2903adebe4bab0a6b190ef693b75f2f34d2103",
+    "scriptReferencedInActualHtml": true,
+    "demoAccountLogin": true,
+    "matchesExpected": true
+  },
+  "observedAt": "2026-10-24T20:30:28.720415+00:00",
+  "uiReadOnlyWritesVerified": true,
+  "passed": true,
+  "pagesTransportCommit": "ac7fcaa634a13606537a950e4f71929559c10f74",
+  "pagesWorkflowRun": 40129608075,
+  "pagesWorkflowJob": 120978312472,
+  "pagesWorkflowConclusion": "success",
+  "backendWorkflowRun": 40128670191,
+  "backendWorkflowAttempt": 2,
+  "limitations": [
+    "Focused public Player reply-window smoke only. No native-device, full-suite, positive future-reply, manager-correction, operating or dependency acceptance is claimed.",
+    "One fresh past-game command was actually submitted and rejected 422; no prospective availability action was clicked or submitted.",
+    "The frontend and backend intentionally have different source commits, bound by the compatible frontend workflow and separately identified in this report. Native binary proof remains tied to backend/product source 38e0879; no e706fa4 native compilation is claimed.",
+    "An initial negative-check harness used the profile ID where playerId was required, stopped before any application command and revoked its session. This earlier attempt is preserved.",
+    "Only the separate direct HTTPS session is checked for exact same-token 401 after logout; UI checks verify actual logout204 and private view closure. No browser-storage or all-store claim is made."
+  ],
+  "browserSessionStopped": true
+}
+

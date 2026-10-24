@@ -1,0 +1,28 @@
+{
+  "scope": "Focused shared window/player projections; not the full shared suite. Native JavaScript exports, not physical runtime or a new signed binary.",
+  "productionSource": "4fd2261bab0f39ddcb8c44bdd302d753adfdbce6",
+  "publishedCandidate": "38e08797755fe5ca154786c0ad2130888f8b6d1a",
+  "candidateDifference": "Only a fixed clock in one API test; all application, API and native inputs are identical.",
+  "shared": {
+    "command": "vitest run packages/application/src/fixture-response-window.test.ts packages/application/src/player-home.test.ts packages/application/src/player-preparation.test.ts --maxWorkers=2",
+    "passed": true,
+    "tests": 23,
+    "files": 3
+  },
+  "nativeJavaScriptExports": {
+    "passed": true,
+    "platforms": [
+      "android",
+      "ios"
+    ]
+  },
+  "rootAndMobileTypeScript": "passed",
+  "fullESLint": "passed",
+  "regressionClockCase": {
+    "passed": 1,
+    "filteredOut": 29,
+    "scope": "One old positive RSVP test now observes the scheduled day instead of Jan2027; not a full server-test run."
+  },
+  "physicalDevicesTested": false,
+  "paidServicesProvisioned": false
+}

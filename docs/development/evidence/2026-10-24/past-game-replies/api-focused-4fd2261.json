@@ -1,0 +1,49 @@
+{
+  "scope": "Focused prospective-player-reply rules and both actual HTTP backends; no full-suite, physical-device or publication claim.",
+  "shared": {
+    "testFiles": 1,
+    "testsPassed": 4,
+    "skipped": 0
+  },
+  "api": {
+    "testFiles": 1,
+    "testsPassed": 14,
+    "backends": [
+      "sqlite",
+      "postgresql"
+    ],
+    "skipped": 0,
+    "log": ".local/past-rsvp/own-player-api-final.log"
+  },
+  "rootTypeScript": "passed",
+  "scopedESLint": "passed",
+  "whitespace": "passed",
+  "clockPolicy": "Tests inject24October2026 with London-midnight transition; planned kick-off does not close an unplayed game.",
+  "behavior": [
+    "Past still-scheduled own replies denied without preparation/record changes; manager corrections retained",
+    "Today/future unplayed replies accepted despite incomplete summaries",
+    "Accepted HTTP receipt and command-identity replay remain valid after closure",
+    "Canonical started/completed/abandoned and completed historical summaries close new replies",
+    "Existing own RSVP then historical report keeps availability separate from actual attendance"
+  ],
+  "postgres": {
+    "existingLocalContainerStarted": true,
+    "container": "longball-runtime-database-1",
+    "authenticationOrHbaChanged": false,
+    "ownedLoopbackStdioRelay": true,
+    "testsCreateUniqueDatabasesAndRoles": true,
+    "remainingUi07TestDatabases": 0,
+    "remainingUi07TestRoles": 0,
+    "ownedRelayStopped": true,
+    "ownedStartedContainerStopped": true
+  },
+  "files": {
+    "packages/application/src/fixture-response-window.ts": "517d24096bf0da90e1d95a87571e6826902af2885e9a3b8c8b7151aa4a99b1a8",
+    "packages/application/src/fixture-response-window.test.ts": "a70d7101f6eaf15ea129247c75a3f2283b63f70e0c7d4677952cc1865bb91c2e",
+    "apps/api/src/store.ts": "83c6c06aec9cdaf02d9f8eb7b4460675e251b72b60665941a98a34e288b4578a",
+    "apps/api/src/postgres-store.ts": "fd07b5fdede243e2a8eb7abc00c95ce34de39ee53a26cb79e4386ec93eba26b8",
+    "apps/api/src/own-player-preparation.test.ts": "cfeb7ffe6ab9d79de4cf3eaaf56aa20ec461419a76e6cb28f8161e2a1ac6674e"
+  },
+  "sourceCommit": "4fd2261bab0f39ddcb8c44bdd302d753adfdbce6",
+  "ownedFilesMatchCommittedSource": true
+}

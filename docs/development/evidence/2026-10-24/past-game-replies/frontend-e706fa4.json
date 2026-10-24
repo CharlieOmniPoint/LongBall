@@ -1,0 +1,63 @@
+{
+  "observedAt": "2026-10-24 20:33:34 UTC",
+  "runId": 40129608075,
+  "jobId": 120978312472,
+  "requestCommit": "ac7fcaa634a13606537a950e4f71929559c10f74",
+  "workflow": ".github/workflows/pages-compatible-frontend.yml",
+  "conclusion": "success",
+  "build": {
+    "sourceCommit": "e706fa4c9ba55aaf6d5783f3c74aa68a9415cc39",
+    "sourceBranch": "dev/longball-m0-journey",
+    "backendSourceCommit": "38e08797755fe5ca154786c0ad2130888f8b6d1a",
+    "backendTransportCommit": "a16ae284cbf71b090b56f10da920a98d53882589",
+    "backendApiSha256": "022ec44e6ad09f2423f66d7066b07538783d23c2f0c7c9fb485c567b5c7cf7c7",
+    "backendWorkerSha256": "5562a6a844defdd8dda6d48d0af7fc7a8f6b5f3d4480ee341b64dac314b40e93",
+    "backendInputsUnchanged": true,
+    "testedRunId": 40127475188,
+    "synthetic": true,
+    "production": false,
+    "basePath": "/LongBall",
+    "connectedBackendIncluded": false,
+    "nativeTargets": [
+      "iPhone",
+      "Android"
+    ],
+    "entryScript": "/LongBall/_expo/static/js/web/index-f36be213689ee1e654ddedcd9aaf4e5f.js",
+    "entryJavaScriptSha256": "60b032657fa233e9a72d1aa6be2903adebe4bab0a6b190ef693b75f2f34d2103",
+    "backendRestarted": false
+  },
+  "backendMarkerAtRequest": {
+    "state": "ready",
+    "url": "https://bent-seller-ministries-strengths.trycloudflare.com",
+    "sourceRevision": "a16ae284cbf71b090b56f10da920a98d53882589",
+    "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40128670191",
+    "startedAt": "2026-10-24T20:22:39Z",
+    "expiresAt": "2026-10-25T01:22:39Z",
+    "audience": "LongBall demo review with simulated Roma U10 teams and matches"
+  },
+  "backendMarkerAfterPublication": {
+    "state": "ready",
+    "url": "https://bent-seller-ministries-strengths.trycloudflare.com",
+    "sourceRevision": "a16ae284cbf71b090b56f10da920a98d53882589",
+    "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40128670191",
+    "startedAt": "2026-10-24T20:22:39Z",
+    "expiresAt": "2026-10-25T01:22:39Z",
+    "audience": "LongBall demo review with simulated Roma U10 teams and matches"
+  },
+  "requestTriggeredOnlyFrontendWorkflow": true,
+  "backendRenewedByFinalRequest": false,
+  "earlierAttempts": [
+    {
+      "requestCommit": "a16ae284cbf71b090b56f10da920a98d53882589",
+      "problem": "The initial request under preview/** also triggered the broad API workflow and cancelled the prior disposable service.",
+      "correctedBy": "Move requests to frontend-review/request.json, outside API/native/default-Pages trigger paths."
+    },
+    {
+      "runId": 40128670191,
+      "attempt": 1,
+      "problem": "Publishing the startup marker failed because the preview branch changed while the service was bootstrapping.",
+      "correctedBy": "Retry the unchanged backend job with preview writes held until its ready marker."
+    }
+  ],
+  "scope": "Source-pinned frontend-only review; unchanged backend/shared/lock/native inputs and actual deployed hashes checked. Existing dependency gate not approved. No new provider or paid service."
+}
