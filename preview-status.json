@@ -1,9 +1,9 @@
 {
-  "state": "ready",
-  "url": "https://pharmaceutical-geo-achieved-macintosh.trycloudflare.com",
-  "sourceRevision": "7cb2760d8abdcbba1ce5cfefec6345d286f61185",
-  "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40118882780",
-  "startedAt": "2026-10-24T18:05:30Z",
-  "expiresAt": "2026-10-24T23:05:30Z",
+  "state": "starting",
+  "url": "",
+  "sourceRevision": "970ccd344026a11c1dc0218b144feae4bdd86775",
+  "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40119447887",
+  "startedAt": "2026-10-24T18:13:02Z",
+  "expiresAt": "",
   "audience": "LongBall demo review with simulated Roma U10 teams and matches"
 }
