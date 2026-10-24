@@ -1,0 +1,312 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-10-24T23:01:12.351Z",
+  "repository": "CharlieOmniPoint/LongBall",
+  "productCommit": "194e6cf3407071f1c9011654aef81718f05d649e",
+  "productTree": "367969992dac34ae2eebacf5f23c6ff0e2c5a71c",
+  "transportCommit": "4721b9aa8997437c48a80aaf2c44efee926b325f",
+  "transportTree": "a718c0252eff6ae848d9cf65cb2dbd0eda0c788d",
+  "sourceBundleSha256": "10736999438a6a7581b50aecf87bccae9ae43959855bc3a41d1de5cfc59e2dfb",
+  "workflow": {
+    "runId": 40140008855,
+    "url": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40140008855",
+    "event": "push",
+    "observedJobsCompleted": true,
+    "observedJobsConclusion": "success"
+  },
+  "jobs": [
+    {
+      "id": 121009569590,
+      "name": "android native compile",
+      "url": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40140008855/job/121009569590",
+      "status": "completed",
+      "conclusion": "success",
+      "firstLogAt": "2026-10-24T22:46:56.9902446Z",
+      "lastLogAt": "2026-10-24T22:54:43.2147979Z",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Read the preview transport branch",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Verify and import the exact development source",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Use the pinned Node runtime",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Install the pinned package manager and frozen dependencies",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Use the Android Java toolchain",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Install the exact Android SDK components",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Select the explicit iOS toolchain",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Generate the native project and verify security configuration",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Compile the Android debug development client",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Install iOS pods",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Compile the iOS simulator development client without signing",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Prepare bounded logs and optional binary artifacts",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Retain requested artifacts for one day",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Record the scope of this evidence",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Use the Android Java toolchain",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Use the pinned Node runtime",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Read the preview transport branch",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "id": 121009569846,
+      "name": "ios native compile",
+      "url": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40140008855/job/121009569846",
+      "status": "completed",
+      "conclusion": "success",
+      "firstLogAt": "2026-10-24T22:46:55.7980890Z",
+      "lastLogAt": "2026-10-24T22:57:19.8451750Z",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Read the preview transport branch",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Verify and import the exact development source",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Use the pinned Node runtime",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Install the pinned package manager and frozen dependencies",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Use the Android Java toolchain",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Install the exact Android SDK components",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Select the explicit iOS toolchain",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Generate the native project and verify security configuration",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Compile the Android debug development client",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Install iOS pods",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Compile the iOS simulator development client without signing",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Prepare bounded logs and optional binary artifacts",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Retain requested artifacts for one day",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Record the scope of this evidence",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Use the pinned Node runtime",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Read the preview transport branch",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    }
+  ],
+  "platforms": {
+    "android": {
+      "jobId": 121009569590,
+      "sourceProof": {
+        "sourceHead": "194e6cf3407071f1c9011654aef81718f05d649e",
+        "bundleSha256": "10736999438a6a7581b50aecf87bccae9ae43959855bc3a41d1de5cfc59e2dfb",
+        "transportHead": "4721b9aa8997437c48a80aaf2c44efee926b325f",
+        "sourceRef": "refs/heads/dev/longball-m0-journey",
+        "platform": "android",
+        "artifactUploadRequested": false,
+        "demoAccountLogin": true,
+        "physicalDeviceProof": false
+      },
+      "configuration": "Debug development client",
+      "targetArchitecture": "arm64-v8a",
+      "host": "ubuntu-24.04",
+      "buildCommand": "./gradlew :app:assembleDebug --no-daemon --max-workers=2 -PreactNativeArchitectures=arm64-v8a",
+      "actualSuccessMarker": {
+        "timestamp": "2026-10-24T22:54:41.7649703Z",
+        "text": "BUILD SUCCESSFUL in 6m 50s"
+      },
+      "outputExistenceCheckPassed": true,
+      "toolchain": {
+        "node": "24.19.0",
+        "pnpm": "11.25.0",
+        "javaMajor": 17,
+        "androidCommandLineTools": "23.0",
+        "evidence": "Actual pinned runtime/SDK installation and property guards passed in the completed job."
+      }
+    },
+    "ios": {
+      "jobId": 121009569846,
+      "sourceProof": {
+        "sourceHead": "194e6cf3407071f1c9011654aef81718f05d649e",
+        "bundleSha256": "10736999438a6a7581b50aecf87bccae9ae43959855bc3a41d1de5cfc59e2dfb",
+        "transportHead": "4721b9aa8997437c48a80aaf2c44efee926b325f",
+        "sourceRef": "refs/heads/dev/longball-m0-journey",
+        "platform": "ios",
+        "artifactUploadRequested": false,
+        "demoAccountLogin": true,
+        "physicalDeviceProof": false
+      },
+      "configuration": "Debug",
+      "target": "generic/platform=iOS Simulator",
+      "targetArchitecture": "x86_64",
+      "host": "macos-15-intel",
+      "signing": {
+        "codeSigningAllowed": false,
+        "codeSigningRequired": false,
+        "developmentTeamConfigured": false,
+        "productionSigned": false
+      },
+      "actualSuccessMarker": {
+        "timestamp": "2026-10-24T22:57:17.1804240Z",
+        "text": "** BUILD SUCCEEDED **"
+      },
+      "outputExistenceCheckPassed": true,
+      "toolchain": {
+        "node": "24.19.0",
+        "pnpm": "11.25.0",
+        "xcode": "26.3",
+        "xcodeBuild": "17C529",
+        "cocoaPods": "1.17.0",
+        "evidence": "Actual Xcode version/build output and passing pinned pod-version guards; xcodebuild command targets the unsigned x86_64 Simulator."
+      }
+    }
+  },
+  "artifacts": {
+    "requested": false,
+    "metadataCount": 0,
+    "binariesRetained": false,
+    "downloaded": false
+  },
+  "physicalDeviceProof": false,
+  "installed": false,
+  "launched": false,
+  "limitations": [
+    "Android Debug and unsigned iOS Simulator compilation establish native build feasibility. They do not establish production signing/distribution, installation/launch, real iPhone/iPad/Android-tablet behaviour, audio/background delivery, clock continuity, biometrics, storage/recovery or OS dialog acceptance.",
+    "No APK or app archive was retained or independently downloaded."
+  ],
+  "provenance": {
+    "method": "Read-only GitHub MCP completed job, decoded log and artifact-list metadata. Both actual job source-proof fields match the exact product, transport and bundle digest; only allowlisted metadata and actual success markers are retained.",
+    "repositoryMutated": false,
+    "rerunRequested": false,
+    "cancelRequested": false
+  }
+}

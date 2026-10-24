@@ -1,0 +1,94 @@
+{
+  "stage": "after",
+  "pinnedProductSource": "194e6cf3407071f1c9011654aef81718f05d649e",
+  "observedRepositoryHead": "194e6cf3407071f1c9011654aef81718f05d649e",
+  "productDiffFromPinned": "",
+  "allThreeSiteFilesUnchanged": true,
+  "apiAndWorkerRunnerBytesUnchanged": true,
+  "harnessBytesMatchReport": true,
+  "siteFilesSha256": {
+    "_expo/static/js/web/index-311d2e11675cb4706a9b29aedb66b654.js": "289258d42b21fc155fa24526d0e397f7d4bfc159d85a4e6e7ca7368f8c84ea22",
+    "index.html": "f15b8f1b45500c6a8119f33b51ab6b285f033e07aba4a91ac20b55853014feef",
+    "metadata.json": "aa5f19cc84d41c0f8c70ececb2bc82e863227ea1e121632aca879eb616056991"
+  },
+  "apiSha256": "4aa4b31b3235911156b6dcd412e9fef9d3a2e893699e313ccb8e9d888d01e859",
+  "workerSha256": "a2fef0d79f7657dd45fae2aed4d2f32a445d38fd6f02f8bffaedf343950a938a",
+  "reportSha256": "5eff41e61d3ce96d2efa9d7d7341ec072ec19b5fa490a230db9550ac32f22d04",
+  "passed": true,
+  "roles": 8,
+  "groups": 27,
+  "failures": [],
+  "reportSource": {
+    "gitHead": "194e6cf3407071f1c9011654aef81718f05d649e",
+    "workingTreeDirty": false,
+    "harnessSha256": "009317d95754c3f03d10ea033e8f91713352440f31e036f4b694d3e636515155",
+    "webIndexSha256": "f15b8f1b45500c6a8119f33b51ab6b285f033e07aba4a91ac20b55853014feef",
+    "webJavaScriptSha256": "289258d42b21fc155fa24526d0e397f7d4bfc159d85a4e6e7ca7368f8c84ea22",
+    "apiBundleSha256": "4aa4b31b3235911156b6dcd412e9fef9d3a2e893699e313ccb8e9d888d01e859",
+    "workerBundleSha256": "a2fef0d79f7657dd45fae2aed4d2f32a445d38fd6f02f8bffaedf343950a938a"
+  },
+  "substitutionCountdown": {
+    "configuredBeforeFirstKickoff": true,
+    "numericAfterFirstKickoff": true,
+    "bothTimersUnclippedAtPhoneWidths": [
+      {
+        "width": 390,
+        "height": 844,
+        "timers": [
+          {
+            "id": "connected-match-countdown",
+            "text": "24:59",
+            "x": 27,
+            "y": 287,
+            "width": 163,
+            "height": 38,
+            "fullyInViewportAndUnclipped": true
+          },
+          {
+            "id": "next-substitution-time",
+            "text": "12:30",
+            "x": 209,
+            "y": 292,
+            "width": 61.390625,
+            "height": 28,
+            "fullyInViewportAndUnclipped": true
+          }
+        ]
+      },
+      {
+        "width": 320,
+        "height": 844,
+        "timers": [
+          {
+            "id": "connected-match-countdown",
+            "text": "24:59",
+            "x": 27,
+            "y": 327,
+            "width": 128,
+            "height": 38,
+            "fullyInViewportAndUnclipped": true
+          },
+          {
+            "id": "next-substitution-time",
+            "text": "12:30",
+            "x": 174,
+            "y": 332,
+            "width": 61.390625,
+            "height": 28,
+            "fullyInViewportAndUnclipped": true
+          }
+        ]
+      }
+    ],
+    "before": "12:30",
+    "after": "12:28",
+    "decreasesDuringActivePlay": true,
+    "actualLineupAndQueueUnchanged": true,
+    "hardwareSoundDeliveryProved": false,
+    "pausedBefore": "12:29",
+    "pausedAfter": "12:29",
+    "freezesWhilePaused": true,
+    "pausedLineupAndQueueUnchanged": true
+  },
+  "scope": "Actual fresh SQLite API, separate report worker, browser client at corrected pinned194e6cf site. Source correction includes server authority/WAL work. Browser functionality/geometry only; no native-speaker/hardware acceptance."
+}

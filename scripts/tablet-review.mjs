@@ -25,6 +25,31 @@ const viewports = [
 ];
 const roleLabels = { manager: /Manager/, administrator: /Super Admin|Club Admin/, player: /Player/, spectator: /Spectator/ };
 const children = [], states = [], secrets = new Set(), tokenAccounts = new Map(), budgets = new Map();
+const startedAt = Date.now(), requestRecords = new WeakMap(), sessions = new Map(), observedHttpFailures = [];
+let nextRequestId = 0;
+function sessionRecord(token) {
+  if (!token) return null;
+  if (!sessions.has(token)) sessions.set(token, { label: `session-${sessions.size + 1}` });
+  return sessions.get(token);
+}
+function classifyHttpFailures() {
+  report.httpFailures = []; report.expectedRevokedSessionDenials = [];
+  for (const failure of observedHttpFailures) {
+    const session = sessions.get(failure.token), closing = session?.logout;
+    const publicFailure = { ...failure.public, session: session?.label ?? null };
+    // A request created for the then-current session may finish after explicit
+    // sign-out. Its denied read is expected only once that exact token's DELETE,
+    // private-view closure and independent revocation probe have all succeeded.
+    const expected = failure.public.method === 'GET' && failure.public.status === 401 && failure.public.code === 'INVALID_SESSION'
+      && failure.token && failure.token === failure.currentTokenAtCreation && closing?.deleteStatus === 204
+      && closing.privateViewClosed === true && closing.revocationStatus === 401
+      && failure.public.requestId <= closing.requestBoundary
+      && failure.createdAt <= closing.beganAt && failure.respondedAt >= closing.beganAt;
+    if (expected) report.expectedRevokedSessionDenials.push({ ...publicFailure, requestCreatedAtMs: failure.createdAt - startedAt, logoutBeganAtMs: closing.beganAt - startedAt, responseAtMs: failure.respondedAt - startedAt, exactSessionExplicitlyRevoked: true, privateViewClosed: true });
+    else report.httpFailures.push(publicFailure);
+  }
+  report.observedHttpFailureCount = observedHttpFailures.length;
+}
 const report = { scope: 'Staff-only device-local tablet layout, role boundaries, rotation and untouched football command state against an isolated generated-account API and exact built application.', passed: false, viewports, journeys: [], checks: [], failures: [], apiBudgetWaits: [], nativeDeviceEvidence: false, paidServicesProvisioned: false };
 let browser, privateDirectory, base, stage = 'preconditions', diagnostics = '';
 const delay = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
@@ -81,6 +106,12 @@ async function makePage(viewport = viewports[0]) {
   const state = { context, page, errors: [], transportErrors: [], mutations: [], session: null, closed: false };
   states.push(state); page.setDefaultTimeout(20000);
   page.on('pageerror', error => state.errors.push(sanitise(error.message)));
+  page.on('request', request => {
+    const address = new URL(request.url()); if (address.origin !== virtualApi) return;
+    const token = request.headers().authorization?.replace(/^Bearer\s+/i, '');
+    requestRecords.set(request, { id: ++nextRequestId, token, currentTokenAtCreation: state.session?.accessToken, createdAt: Date.now() });
+    if (token) { secrets.add(token); sessionRecord(token); }
+  });
   await context.route('**/*', async intercepted => {
     const request = intercepted.request(), address = new URL(request.url());
     if (address.origin === base) return intercepted.continue();
@@ -91,10 +122,14 @@ async function makePage(viewport = viewports[0]) {
     for (const name of ['x-controller-token', 'x-media-upload-token']) if (headers[name]) secrets.add(headers[name]);
     if (!['GET', 'HEAD', 'OPTIONS'].includes(request.method())) state.mutations.push({ method: request.method(), pathname: address.pathname, commandType: request.postDataJSON()?.command?.type ?? null });
     try {
+      const observed = requestRecords.get(request);
+      const held = state.holdNextOwnPrivileges && request.method() === 'GET' && address.pathname === `/v1/teams/${teamId}/privileges/own` ? state.holdNextOwnPrivileges : null;
+      if (held) { state.holdNextOwnPrivileges = null; held.request = request; held.requestId = observed.id; held.readyResolve(); await held.release; }
       const response = await intercepted.fetch({ url: base + address.pathname + address.search, maxRedirects: 0 });
-      if (response.status() >= 400) { const value = await response.json().catch(() => null); (report.httpFailures ??= []).push({ stage, method: request.method(), pathname: address.pathname, status: response.status(), code: typeof value?.code === 'string' && /^[A-Z0-9_]{1,80}$/.test(value.code) ? value.code : 'UNRECOGNISED_ERROR' }); }
-      if (address.pathname === '/v1/demo/sessions' && request.method() === 'POST' && [200, 201].includes(response.status())) { state.session = await response.json(); secrets.add(state.session.accessToken); tokenAccounts.set(state.session.accessToken, state.session.accountId); }
+      if (response.status() >= 400) { const value = await response.json().catch(() => null); observedHttpFailures.push({ ...observed, respondedAt: Date.now(), public: { stage, requestId: observed.id, method: request.method(), pathname: address.pathname, status: response.status(), code: typeof value?.code === 'string' && /^[A-Z0-9_]{1,80}$/.test(value.code) ? value.code : 'UNRECOGNISED_ERROR' } }); }
+      if (address.pathname === '/v1/demo/sessions' && request.method() === 'POST' && [200, 201].includes(response.status())) { state.session = await response.json(); secrets.add(state.session.accessToken); tokenAccounts.set(state.session.accessToken, state.session.accountId); sessionRecord(state.session.accessToken); }
       await intercepted.fulfill({ response });
+      if (held) { held.status = response.status(); held.delivered = true; }
     } catch (error) {
       if (!state.closed && !/abort|closed|disposed|canceled|cancelled|already handled/i.test(error.message)) state.transportErrors.push(sanitise(error.message));
       await intercepted.abort().catch(() => undefined);
@@ -114,14 +149,20 @@ async function login(state, account, role = account.role, navigate = true) {
   await selectWorkspaceContext(page, role);
   assert.match(await page.getByTestId('workspace-current-role').innerText(), roleLabels[role]);
   assert.equal(state.session?.accountId, account.accountId, 'The configured account must be server-bound.');
+  const current = await currentJson(state, '/v1/me', role);
+  assert.equal(current.principal.accountId, account.accountId, 'The new session must independently authenticate the intended account.');
   report.loginAttempts = (report.loginAttempts ?? 0) + 1;
   assert(report.loginAttempts <= 17, 'The review must stay within its bounded seventeen-login budget.');
 }
 async function logout(state) {
   const token = state.session.accessToken;
+  const closing = { beganAt: Date.now(), requestBoundary: nextRequestId }; sessionRecord(token).logout = closing;
   const ended = state.page.waitForResponse(response => new URL(response.url()).pathname === '/v1/demo/sessions/current' && response.request().method() === 'DELETE');
-  await state.page.getByTestId('demo-sign-out').click(); await state.page.getByTestId('demo-login-screen').waitFor(); assert.equal((await ended).status(), 204);
-  assert.equal((await fetch(base + '/v1/me', { headers: { Authorization: `Bearer ${token}` } })).status, 401, 'Sign out must revoke the exact current session.');
+  await state.page.getByTestId('demo-sign-out').click(); await state.page.getByTestId('demo-login-screen').waitFor(); closing.deleteStatus = (await ended).status(); assert.equal(closing.deleteStatus, 204);
+  assert.equal(await state.page.getByTestId('demo-signed-in').count(), 0, 'Sign out must close private account content.');
+  assert.equal(await state.page.getByTestId('workspace-context-ready').count(), 0, 'Sign out must close the private workspace.'); closing.privateViewClosed = true;
+  observe(token, 'GET'); closing.revocationStatus = (await fetch(base + '/v1/me', { headers: { Authorization: `Bearer ${token}` } })).status;
+  assert.equal(closing.revocationStatus, 401, 'Sign out must revoke the exact current session.');
 }
 async function currentJson(state, pathname, role = 'manager') {
   const token = state.session.accessToken; observe(token, 'GET');
@@ -334,7 +375,10 @@ async function managerDrafts(account) {
     await name.fill(profile.displayName); await button('Keep previous values').click();
     stage = 'manager actual recording and check-in setup';
     await page.setViewportSize(viewports[3]); await chooseLayout(state, 'auto'); await openWorkspaceTab(page, 'schedule');
-    await page.getByRole('button', { name: /^Open fixture Maple FC,/ }).click(); await page.getByTestId('preparation-open-match').click();
+    const fixture = page.getByRole('button', { name: /^Open fixture Maple FC,/ });
+    await page.getByRole('radio', { name: 'Schedule period: Upcoming', exact: true }).waitFor();
+    if (!await fixture.isVisible()) await page.getByRole('radio', { name: 'Schedule period: Past', exact: true }).click();
+    await fixture.click(); await page.getByTestId('preparation-open-match').click();
     await page.getByTestId('recording-acquire').click(); await page.getByTestId('connected-match-attendance').click();
     let current = await localMatch(page); assert(current?.state.status === 'preparation'); const match = current.state;
     for (const playerId of match.config.selectedPlayerIds) {
@@ -383,6 +427,40 @@ async function managerDrafts(account) {
   } catch (error) { await retainFailure(state); throw error; }
   finally { state.closed = true; await state.context.close(); }
 }
+async function heldReadAcrossSignOut(manager, player) {
+  const state = await makePage({ width: 390, height: 844 }), held = {};
+  held.ready = new Promise(resolve => { held.readyResolve = resolve; });
+  held.release = new Promise(resolve => { held.releaseResolve = resolve; });
+  state.holdNextOwnPrivileges = held;
+  try {
+    await login(state, manager); await held.ready;
+    const oldToken = state.session.accessToken, oldSession = sessionRecord(oldToken).label;
+    assert.equal(requestRecords.get(held.request).token, oldToken, 'The held request must be an original browser read with the current Manager session.');
+    await logout(state);
+    await login(state, player, 'player', false);
+    const newToken = state.session.accessToken, newSession = sessionRecord(newToken).label;
+    assert.notEqual(newToken, oldToken, 'The replacement account must receive a distinct session.');
+    const denied = state.page.waitForResponse(response => response.request() === held.request);
+    held.releaseResolve();
+    const response = await denied;
+    assert.equal(response.status(), 401); assert.equal((await response.json()).code, 'INVALID_SESSION');
+    await delay(200); await settled(state.page);
+    assert.equal(held.delivered, true, 'The original read must actually reach the browser after revocation; a canceled read is not this test.');
+    assert.match(await state.page.getByTestId('workspace-current-role').innerText(), /Player/);
+    assert.equal(await state.page.getByTestId('demo-login-screen').count(), 0, 'An old response must not close the replacement account.');
+    assert.equal(await state.page.getByTestId('team-player-stats').count(), 0, 'An old response must not attach Manager statistics to the replacement Player.');
+    assert.equal(await state.page.getByTestId('workspace-layout-controls').count(), 0, 'The replacement Player must retain its own simple controls.');
+    assert.equal((await currentJson(state, '/v1/me', 'player')).principal.accountId, player.accountId, 'The new account must remain independently authorized after the old denial.');
+    assert.deepEqual(state.errors, [], 'An old denial must not cause a browser runtime error.');
+    assert.deepEqual(state.transportErrors, [], 'The session boundary must not hide an unexpected transport error.');
+    assert(state.mutations.every(item => item.pathname === '/v1/demo/sessions' || item.pathname === '/v1/demo/sessions/current'), 'This session-boundary check must not write a team, match or player.');
+    await logout(state); classifyHttpFailures();
+    assert(report.expectedRevokedSessionDenials.some(item => item.requestId === held.requestId), 'Only the observed original request with its explicitly revoked session may be classified as expected.');
+    report.controlledHeldOldSession = { oldSession, newSession, requestId: held.requestId, pathname: `/v1/teams/${teamId}/privileges/own`, oldResponseStatus: response.status(), oldResponseDelivered: true, exactSessionExplicitlyRevoked: true, privateViewClosedAtSignOut: true, newPlayerSessionRemainedAuthorized: true, domainMutations: 0 };
+    report.checks.push('An original Manager read deliberately held until after exact-token sign-out and a new Player login receives401; the old response cannot attach Manager data or close the new private view, and the new session independently remains200. Only captured pre-sign-out reads for explicitly revoked sessions are classified as expected denials.');
+  } catch (error) { await retainFailure(state); throw error; }
+  finally { held.releaseResolve(); state.closed = true; await state.context.close(); }
+}
 async function retainFailure(state) {
   try {
     if (state.closed) return;
@@ -413,13 +491,16 @@ try {
   for (const role of ['manager', 'administrator', 'player', 'spectator']) { stage = `${role} viewport matrix`; await roleMatrix(accounts.find(account => account.role === role)); }
   stage = 'staff preference and administrator draft retention'; await adminPreferenceDrafts(accounts.find(account => account.key === 'dual'), accounts.find(account => account.role === 'player'), accounts.find(account => account.role === 'spectator'));
   stage = 'manager football draft and event-review retention'; await managerDrafts(accounts.find(account => account.key === 'manager'));
-  assert.deepEqual(report.httpFailures ?? [], [], 'No real API request may fail during the tablet review.'); report.passed = true;
+  stage = 'original read across explicit sign-out and replacement account'; await heldReadAcrossSignOut(accounts.find(account => account.key === 'manager'), accounts.find(account => account.role === 'player'));
+  classifyHttpFailures(); assert.deepEqual(report.httpFailures, [], 'No current-session or otherwise unexpected real API request may fail during the tablet review.'); report.passed = true;
 } catch (error) {
   report.failures.push({ stage, name: sanitise(error.name), message: sanitise(error.message) }); report.processDiagnostic = sanitise(diagnostics); process.exitCode = 1;
   for (const state of states) await retainFailure(state);
 } finally {
   clearTimeout(watchdog); for (const state of states) state.closed = true; await browser?.close().catch(() => undefined); for (const child of [...children].reverse()) await stop(child);
   if (privateDirectory) await rm(privateDirectory, { recursive: true, force: true });
+  classifyHttpFailures();
+  if (report.passed && report.httpFailures.length) { report.passed = false; process.exitCode = 1; report.failures.push({ stage: 'final response classification', name: 'UnexpectedHttpFailure', message: 'A late current-session or otherwise unexpected API failure must not be hidden by cleanup.' }); }
   await mkdir(output, { recursive: true }); await writeFile(path.join(output, 'report.json'), sanitise(JSON.stringify(report, null, 2), Infinity) + '\n');
 }
 console.log(JSON.stringify({ passed: report.passed, viewportJourneys: report.journeys.length, checks: report.checks.length, failures: report.failures, report: '.local/quality/tablet-review/report.json' }));

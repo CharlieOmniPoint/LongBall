@@ -137,7 +137,9 @@ async function formations(account) {
   await page.getByTestId('formation-pattern-save').click({ trial: true }); await pitch.scrollIntoViewIfNeeded(); await screenshot(state, 'manager-formation-390');
   await budget(state, 'before-formation-advice'); await openWorkspaceTab(page, 'schedule');
   const fixture = stored.fixtures.find(item => item.id === 'synthetic-roma-maple-2026-10-24'); check(fixture, 'The real demo fixture must exist.');
-  await page.getByRole('button', { name: `Open fixture ${fixture.opponent}, ${reviewDateLabel(fixture.playedDate)}`, exact: true }).click(); await page.getByTestId('formation-advice-open').click(); await page.getByTestId('formation-advice-choose').waitFor();
+  const fixtureButton = page.getByRole('button', { name: `Open fixture ${fixture.opponent}, ${reviewDateLabel(fixture.playedDate)}`, exact: true });
+  if (!await fixtureButton.isVisible()) await page.getByRole('radio', { name: 'Schedule period: Past', exact: true }).click();
+  await fixtureButton.click(); await page.getByTestId('formation-advice-open').click(); await page.getByTestId('formation-advice-choose').waitFor();
   check(await page.getByTestId('formation-advice-choose').isEnabled(), 'The available Roma squad must receive a usable formation recommendation.');
   const advisedName = (await page.getByTestId('formation-advice').getByTestId('formation-pattern-pitch').innerText()).split(' · ')[0];
   await page.getByTestId('formation-advice-choose').click();

@@ -1,0 +1,142 @@
+{
+  "productSource": "194e6cf3407071f1c9011654aef81718f05d649e",
+  "productTree": "367969992dac34ae2eebacf5f23c6ff0e2c5a71c",
+  "scope": "File fingerprints only. Original source/time/dirty-tree and harness fields are preserved. CI/native/Pages/runtime/public proof binds product194e6cf; tablet and UK-midnight follow-ups change only tests/docs against unchanged deployed artifacts. Historical failed attempts are not relabelled. No signing, physical-device, privacy-policy or dependency-gate acceptance is inferred.",
+  "files": [
+    {
+      "name": "README.md",
+      "bytes": 9818,
+      "sha256": "5f1d9852181f51582608f7d05cad31fe4d0401eed3f98083c7360c23c65e8ade"
+    },
+    {
+      "name": "ci-194e6cf.json",
+      "bytes": 10590,
+      "sha256": "23b7388fc8a129fea374161ca010adb8d550427fe7f6f7257f39dc5759eb08a5"
+    },
+    {
+      "name": "countdowns-194e6cf-320.png",
+      "bytes": 55630,
+      "sha256": "ef644235a52faa2bd769c9d4bc9740db94be1154ccaa108f95644fdf2e3ccfe1"
+    },
+    {
+      "name": "countdowns-194e6cf-390.png",
+      "bytes": 59427,
+      "sha256": "594dfd3228624632954dbe0ae8f024bedf83ca88af55e26d5cb09e498d4fa530"
+    },
+    {
+      "name": "date-aware-assets-194e6cf.json",
+      "bytes": 1215,
+      "sha256": "0b3103041f8708f951e1727fa6824f2a13a9128450b26f1fcbb607027eefe6c2"
+    },
+    {
+      "name": "demo-assets-after-194e6cf.json",
+      "bytes": 3414,
+      "sha256": "ed2dbdf82429687a52c99f5e1c60baddc1517f83f31a4766b1943468fef1a602"
+    },
+    {
+      "name": "demo-assets-before-194e6cf.json",
+      "bytes": 905,
+      "sha256": "633544129d877a9458a02c21de2d9b6826e1432ee42187fea6c57c0314d077e1"
+    },
+    {
+      "name": "demo-browser-194e6cf.json",
+      "bytes": 19681,
+      "sha256": "5eff41e61d3ce96d2efa9d7d7341ec072ec19b5fa490a230db9550ac32f22d04"
+    },
+    {
+      "name": "demo-date-aware-194e6cf.json",
+      "bytes": 20104,
+      "sha256": "94e77cc2b78206294b8cdcfa01914bb40d93a82eb4405d7a9f8fcdfbdc47404a"
+    },
+    {
+      "name": "demo-login-cap-test-failure-194e6cf.json",
+      "bytes": 24008,
+      "sha256": "4ad244ec28ab21a7f0b4af713faab66c43d7cadbe513b6e82d5da6b588ca33ce"
+    },
+    {
+      "name": "dependencies.json",
+      "bytes": 6870,
+      "sha256": "e9707b8ab919da5a76daf8b59dedf474831091b3fb271b59d54f6d08aba28f00"
+    },
+    {
+      "name": "expansion-browser-194e6cf.json",
+      "bytes": 6026,
+      "sha256": "984004fbf42891effc26a25b4d034eb3d95c10e1a6d9bcae9285168f9946c5d0"
+    },
+    {
+      "name": "expansion-date-aware-194e6cf.json",
+      "bytes": 6025,
+      "sha256": "d193760fc6ce426fda268b61fd64491a42e0f9e8a09292476ee3e4d61d15c5ed"
+    },
+    {
+      "name": "formation-194e6cf-390.png",
+      "bytes": 37565,
+      "sha256": "588db7ec7462d1759cd60f297fa2344997af751671d8ff16fb71f06ad024ecc0"
+    },
+    {
+      "name": "native-194e6cf.json",
+      "bytes": 10390,
+      "sha256": "bcf5c4843d78a82719cf557a3644f5dd66bab440b5baa77eaa703199921515f3"
+    },
+    {
+      "name": "pages-194e6cf.json",
+      "bytes": 3760,
+      "sha256": "c08f327ea2bab9b44940f5fa9d9078dbd08d1db7e7fc060818a934d95793aa57"
+    },
+    {
+      "name": "public-browser-194e6cf.json",
+      "bytes": 1510,
+      "sha256": "5d58cd3e207c2fafc392eab53da98663a2d8e1e3da7270e7e027982d60b087c1"
+    },
+    {
+      "name": "runtime-194e6cf.json",
+      "bytes": 3853,
+      "sha256": "b020cf9e622181b4f49e6bcc020d29e8c910090b0a39b5048edb0214d95eb6aa"
+    },
+    {
+      "name": "spectator-194e6cf-390.png",
+      "bytes": 59601,
+      "sha256": "74577183a44698266e6a20973d9921a44921886f916c836b5a2641afc49429f7"
+    },
+    {
+      "name": "super-admin-194e6cf-tablet.png",
+      "bytes": 57020,
+      "sha256": "c431a987def707a3c5658228a8467c949cb9081254944429d931637bcf8bcfbc"
+    },
+    {
+      "name": "tablet-followup-194e6cf.json",
+      "bytes": 20968,
+      "sha256": "89a6707afdd8e14451f2840412d783ddf48f428193872d49c87833dc87960f91"
+    },
+    {
+      "name": "tablet-followup-assets-194e6cf.json",
+      "bytes": 1923,
+      "sha256": "201ff834674e161175acfdd96b152184e7cf4083698dce47548b13614597fa56"
+    },
+    {
+      "name": "tablet-held-old-session-diagnostic-194e6cf.json",
+      "bytes": 60260,
+      "sha256": "56c911d56af9e1b11631a51cd1988888dc5e78cd0c3ea142f74433ae5c76faf9"
+    },
+    {
+      "name": "tablet-midnight-test-failure-194e6cf.json",
+      "bytes": 20424,
+      "sha256": "12a8436591dbe06d28e6cb9ab44f4d1f2aca3d2993cd178efec169e041e8b738"
+    },
+    {
+      "name": "tablet-ordering-diagnostic-194e6cf.json",
+      "bytes": 464054,
+      "sha256": "d7c2a45bf7603edb8e47ebbada22743674922853744e195f2c2c15e14cba69ce"
+    },
+    {
+      "name": "tablet-original-failure-194e6cf.json",
+      "bytes": 23558,
+      "sha256": "a5cfb95f222f8abf9368dc5475100065bc2a1a8fe6337fce8b830714ba29f3fd"
+    },
+    {
+      "name": "wal-startup-stress.json",
+      "bytes": 1306,
+      "sha256": "8134523dbfb14102c76044bbdb36314a23d9cffff20f9a02b70bfb9f78a8c9ad"
+    }
+  ]
+}

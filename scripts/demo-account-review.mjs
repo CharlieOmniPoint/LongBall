@@ -202,7 +202,8 @@ async function makePage(width) {
     try {
       if (address.pathname === '/v1/demo/sessions' && request.method() === 'POST') {
         report.loginAttempts++;
-        check(report.loginAttempts <= 17, 'The complete isolated review must stay within its bounded seventeen-attempt login budget.');
+        // The real calendar fixture setup adds one Manager sign-in; this remains below the unchanged API twenty-attempt/IP/minute ceiling.
+        check(report.loginAttempts <= 18, 'The complete isolated review must stay within its bounded eighteen-attempt login budget.');
       }
       if (/\/preparation$/.test(address.pathname) && request.method() === 'POST') state.preparationPosts++;
       if (/\/preparation\/own$/.test(address.pathname) && request.method() === 'POST') state.ownPreparationPosts++;
@@ -439,11 +440,23 @@ async function selectedWorkspaceTab(page, tab) {
   await target.waitFor();
   check(await target.getAttribute('aria-selected') === 'true', 'The current workspace navigation tab must expose its selected state to browser assistive technology.');
 }
+/** Recorded fixture identity remains usable after the UK calendar moves it to Past. */
+async function openRecordedManagerFixture(page, fixture) {
+  const button = page.getByRole('button', { name: `Open fixture ${fixture.opponent}, ${reviewDateLabel(fixture.playedDate)}`, exact: true });
+  if (!await button.isVisible()) {
+    for (const period of ['Upcoming', 'Past']) {
+      await page.getByRole('radio', { name: `Schedule period: ${period}`, exact: true }).click();
+      if (await button.isVisible()) break;
+    }
+  }
+  await button.click();
+}
+
 async function managerDetailRegression(state, preparation, fixtureId) {
   const { page } = state;
   await openWorkspaceTab(page, 'schedule');
   const fixture = preparation.fixtures.find(item => item.id === fixtureId);
-  await page.getByRole('button', { name: `Open fixture ${fixture.opponent}, ${reviewDateLabel(fixture.playedDate)}`, exact: true }).click();
+  await openRecordedManagerFixture(page, fixture);
   // The mounted schedule master also names this fixture; assert the selected
   // detail beside its own Back control, including when the master is hidden.
   const detail = page.getByTestId('preparation-workspace-panels').getByRole('button', { name: 'Back to schedule', exact: true }).locator('..');
@@ -539,13 +552,47 @@ async function administratorDraftRegression(account) {
     checks.push('Controlled required configuration503 retains the same disabled draft and explicit retry restores it; configuration403 closes private views even while independently verified /v1/me remains200.');
   } finally { state.closed = true; await state.context.close(); }
 }
+function currentUkCalendarDate() {
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/London', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
+  const part = kind => parts.find(item => item.type === kind).value;
+  return `${part('year')}-${part('month')}-${part('day')}`;
+}
+
+/** Keep the isolated RSVP positive control real after a seeded game becomes historical. */
+async function ensureUpcomingReplyFixtures(managerAccount) {
+  const state = await makePage(390);
+  try {
+    await openDemo(state, managerAccount);
+    const token = state.currentSession.accessToken;
+    const route = `/v1/teams/${teamId}/preparation?seasonId=${seasonId}`;
+    let current = await currentJson(token, route);
+    const originalFixtures = structuredClone(current.fixtures);
+    const today = currentUkCalendarDate();
+    const upcoming = () => current.fixtures.filter(item => item.status === 'scheduled' && item.playedDate >= today).sort((a, b) => a.playedDate.localeCompare(b.playedDate));
+    const created = [];
+    for (let index = upcoming().length; index < 2; index++) {
+      const playedDate = new Date(Date.parse(`${today}T12:00:00Z`) + (index + 1) * 7 * 86400000).toISOString().slice(0, 10);
+      const id = `review-calendar-${randomUUID()}`;
+      await preparationCommand(token, { type: 'fixture.saved', fixture: { id, seasonId, opponent: `Review Rovers ${index + 1}`, playedDate, kickoff: '10:00', arrival: '09:30', venue: 'North recreation ground', homeAway: 'home', format: 7, plannedHalfDurationMs: 1500000 } });
+      await preparationCommand(token, { type: 'fixture.selection_saved', fixtureId: id, selectedProfileIds: current.profiles.filter(item => item.active).slice(0, 9).map(item => item.id) });
+      await preparationCommand(token, { type: 'fixture.prepared', fixtureId: id, formationId: 'formation-7' });
+      created.push({ fixtureId: id, playedDate, realManagerCommands: 3 });
+      current = await currentJson(token, route);
+    }
+    check(upcoming().length >= 2, 'The isolated RSVP test requires two actual scheduled upcoming fixtures.');
+    assert.deepEqual(current.fixtures.filter(item => originalFixtures.some(original => original.id === item.id)), originalFixtures, 'Calendar test setup must not rewrite any original seeded fixture.');
+    report.calendarFixtureSetup = { today, originalSeedUnchanged: true, createdOnlyInIsolatedDatabase: created, source: 'Actual authenticated Manager fixture.saved/selection_saved/prepared commands; no DTO or date overrides.' };
+    const fixtureId = upcoming()[0].id;
+    await logout(state);
+    return fixtureId;
+  } finally { state.closed = true; await state.context.close(); }
+}
+
 async function playerHistoricSchedule(state, width) {
   const { page } = state, token = state.currentSession.accessToken;
   const route = `/v1/teams/${teamId}/preparation/own?seasonId=${seasonId}`;
   const before = await currentJson(token, route, 'player'), posts = state.ownPreparationPosts;
-  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/London', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
-  const part = kind => parts.find(item => item.type === kind).value;
-  const today = `${part('year')}-${part('month')}-${part('day')}`;
+  const today = currentUkCalendarDate();
   const historic = before.fixtures.filter(item => item.playedDate < today);
   check(historic.length > 0, 'The historical availability check requires actual past game records.');
   const labels = { available: 'Available', unavailable: 'Unavailable', unsure: 'Unsure', no_reply: 'No reply' };
@@ -570,9 +617,8 @@ async function playerHistoricSchedule(state, width) {
   assert.deepEqual(await currentJson(token, route, 'player'), before, 'Reviewing historical game records must leave all saved player preparation, replies and attendance unchanged.');
   (report.playerHistoricSchedule ??= []).push({ width, historicGames: historic.length, upcomingGames: upcoming.length, everyHistoricalReplyActionAbsent: true, recordedReplyAndAttendanceRetained: true, upcomingReplyActionsRetained: true, navigationPosts: 0, servicePreparationUnchanged: true });
 }
-async function playerSummaryProjection(state) {
+async function playerSummaryProjection(state, fixtureId) {
   const { page, context } = state, token = state.currentSession.accessToken;
-  const fixtureId = 'synthetic-roma-maple-2026-10-24';
   const ownRoute = '/v1/teams/' + teamId + '/preparation/own?seasonId=' + seasonId;
   const recordsPath = '/v1/teams/' + teamId + '/records';
   const recordsRoute = recordsPath + '?seasonId=' + seasonId;
@@ -580,7 +626,7 @@ async function playerSummaryProjection(state) {
   const ownBefore = await currentJson(token, ownRoute, 'player');
   const fixture = ownBefore.fixtures.find(item => item.id === fixtureId);
   check(fixture, 'The controlled projection case requires the actual current unplayed fixture.');
-  const other = ownBefore.fixtures.find(item => item.id !== fixtureId && item.status === 'scheduled' && item.playedDate >= fixture.playedDate);
+  const other = ownBefore.fixtures.find(item => item.id !== fixtureId && item.status === 'scheduled' && item.playedDate >= currentUkCalendarDate());
   check(other, 'The controlled projection case requires another actual unplayed fixture.');
   const matchesBefore = await currentJson(token, matchRoute, 'player');
   const canonical = matchesBefore.items.find(item => item.matchId === fixtureId && item.teamId === teamId && item.seasonId === seasonId);
@@ -631,7 +677,7 @@ async function playerSummaryProjection(state) {
     await page.getByTestId('own-schedule-upcoming').click();
     const closed = page.getByTestId('player-fixture-' + fixtureId);
     await closed.waitFor();
-    for (const label of ['Available', 'Unavailable', 'Unsure', 'No reply']) check(await closed.getByRole('button', { name: label, exact: true }).count() === 0, 'A controlled same-day terminal summary must hide every reply action even while the canonical match stays in preparation.');
+    for (const label of ['Available', 'Unavailable', 'Unsure', 'No reply']) check(await closed.getByRole('button', { name: label, exact: true }).count() === 0, 'A controlled upcoming-game terminal summary must hide every reply action even while the canonical match stays in preparation.');
     const labels = { available: 'Available', unavailable: 'Unavailable', unsure: 'Unsure', no_reply: 'No reply' };
     const content = (await closed.innerText()).replace(/\s+/g, ' ');
     check(content.includes('Recorded reply: ' + labels[fixture.response]) && content.includes('actual attendance: ' + fixture.attendance.replaceAll('_', ' ')), 'The controlled summary must retain the actual own-player reply and attendance.');
@@ -653,10 +699,11 @@ async function playerSummaryProjection(state) {
   const actualMatch = actualMatches.items.find(item => item.matchId === fixtureId && item.teamId === teamId && item.seasonId === seasonId);
   check(actualMatch && (actualMatch.status ?? actualMatch.state?.status) === 'preparation', 'The controlled projection must never start or complete the actual match.');
   report.playerTerminalSummaryProjection = { mocked: true, method: 'GET', pathname: recordsPath, mockedReads, scope: { teamId, seasonId, playerId: ownBefore.profile.playerId }, fixtureId, canonicalStatusBeforeAndAfter: 'preparation', terminalSummaryOnlyInClientProjection: true, homeNextGameReplyExcluded: true, allReplyActionsHidden: true, recordedReplyAndAttendanceRetained: true, otherUnplayedReplyActionsRetained: true, originalRecordsRestored: true, preparationPosts: 0, actualOwnPreparationUnchanged: true, backendGuardScope: 'Separate real SQLite/PostgreSQL HTTP tests; this case only exercises client projection.' };
-  checks.push('One separately labelled filtered-records GET projection marks a same-day game completed while its actual canonical match remains unstarted; Home omits its reply and Schedule hides all reply actions, preserves recorded details, leaves another unplayed game open, and restores the actual records without any preparation write.');
+  checks.push('One separately labelled filtered-records GET projection marks an upcoming game completed while its actual canonical match remains unstarted; Home omits its reply and Schedule hides all reply actions, preserves recorded details, leaves another unplayed game open, and restores the actual records without any preparation write.');
 }
 
-async function playerReplyRegression(account) {
+async function playerReplyRegression(account, managerAccount) {
+  const fixtureId = await ensureUpcomingReplyFixtures(managerAccount);
   await freshManagerRequestWindow(account.accountId, 'before-player-rsvp-and-summary-projection', 'player');
   const state = await makePage(390), { page } = state;
   try {
@@ -664,7 +711,6 @@ async function playerReplyRegression(account) {
     await openWorkspaceTab(page, 'schedule');
     await page.getByTestId('own-schedule-upcoming').click();
     await page.getByTestId('own-schedule-kind-match').click();
-    const fixtureId = 'synthetic-roma-maple-2026-10-24';
     const fixture = page.getByTestId(`own-schedule-event-match-${fixtureId}`);
     await fixture.evaluate(node => { node.dataset.qaRetainedReply = 'same-selected-match'; });
     const before = await currentJson(state.currentSession.accessToken, `/v1/teams/${teamId}/preparation/own?seasonId=${seasonId}`, 'player');
@@ -679,7 +725,7 @@ async function playerReplyRegression(account) {
     check(current.response === 'unsure' && current.attendance === previous.attendance && current.selected === previous.selected, 'Own RSVP must change only the current player reply, retaining selection and actual attendance.');
     check(await fixture.evaluate(node => node.dataset.qaRetainedReply === 'same-selected-match') && await page.getByTestId(/^own-schedule-event-training-/).count() === 0, 'Accepted own-reply refresh must retain the mounted match card and Matches filter.');
     check(state.errors.length === 0 && state.routes.length === 0, 'Player RSVP regression must have no runtime or transport errors.');
-    await playerSummaryProjection(state);
+    await playerSummaryProjection(state, fixtureId);
     await checkStoredCredentials(page);
     await logout(state);
     report.playerReply = { accepted: 'unsure', actualAttendanceUnchanged: true, selectionUnchanged: true, matchFilterRetained: true, matchCardRetained: true, signedOut: true };
@@ -751,14 +797,14 @@ async function archivedFutureRegression(state) {
   check(profile?.active && fixture.selectedProfileIds.includes(profile.id), 'The archive regression needs an active named player selected for the future Oak game.');
   const retainedHistory = structuredClone(before.training.filter(item => item.status !== 'scheduled'));
   const held = retainedHistory.find(item => item.status === 'held' && item.expectedProfileIds.includes(profile.id));
-  const upcomingTraining = before.training.filter(item => item.status === 'scheduled' && item.date >= '2026-10-24').sort((a, b) => a.date.localeCompare(b.date));
+  const upcomingTraining = before.training.filter(item => item.status === 'scheduled' && item.date >= currentUkCalendarDate()).sort((a, b) => a.date.localeCompare(b.date));
   check(upcomingTraining.length >= 2 && held, 'The archive regression needs future occurrence/series drafts and actual held history.');
   const occurrence = upcomingTraining.at(-1), seriesOccurrence = upcomingTraining[0];
   await preparationCommand(token, { type: 'profile.archived', profileId: profile.id });
   await page.getByTestId('workspace-back-to-team').click();
   await refreshManagerViews(page);
   await openWorkspaceTab(page, 'schedule');
-  await page.getByRole('button', { name: `Open fixture ${fixture.opponent}, ${reviewDateLabel(fixture.playedDate)}`, exact: true }).click();
+  await openRecordedManagerFixture(page, fixture);
   const remove = page.getByRole('button', { name: `Remove ${profile.displayName} from match squad`, exact: true });
   await remove.waitFor();
   check(await page.getByText('Archived', { exact: true }).count() > 0, 'A retained archived selection must remain visible rather than silently disappearing.');
@@ -829,7 +875,7 @@ async function managerMatchday(accounts, databasePath) {
     check(await page.getByTestId('workspace-tab-home').count() === 0, 'The focused match console must hide team navigation.');
     stage = 'manager initial accepted checkpoint after current preparation';
     const initial = await readAccepted(), match = initial.state;
-    check(initial.acceptedRevision === 0 && match.config.selectedPlayerIds.length === 9 && match.config.pitchPlaces === 7, 'The prepared upcoming game must start with nine selected, seven places and no accepted play.');
+    check(initial.acceptedRevision === 0 && match.config.selectedPlayerIds.length === 9 && match.config.pitchPlaces === 7, 'The prepared unplayed game must start with nine selected, seven places and no accepted play.');
     const assignments = fixtureLineup(match), slots = match.config.slots;
     stage = 'manager initial controller acquisition after accepted checkpoint';
     await page.getByTestId('recording-acquire').click();
@@ -947,7 +993,7 @@ async function managerMatchday(accounts, databasePath) {
     await page.getByTestId('workspace-back-to-team').click();
     await refreshManagerViews(page);
     await openWorkspaceTab(page, 'schedule');
-    await page.getByRole('button', { name: 'Open fixture Maple FC, 24/10/26', exact: true }).click();
+    await openRecordedManagerFixture(page, preparation.fixtures.find(item => item.id === matchId));
     const postsBeforeOpen = manager.preparationPosts;
     await page.getByTestId('preparation-open-saved-match').click();
     await page.getByText('Recording on this phone', { exact: true }).waitFor();
@@ -1087,7 +1133,7 @@ try {
         const preparation = await currentJson(state.currentSession.accessToken, `/v1/teams/${teamId}/preparation?seasonId=${seasonId}`);
         const matches = await currentJson(state.currentSession.accessToken, `/v1/teams/${teamId}/matches?seasonId=${seasonId}`);
         const statuses = matches.items.map(item => item.status ?? item.state?.status);
-        check(preparation.profiles.length === 13 && preparation.fixtures.length === 4 && matches.items.length === 4 && statuses.filter(status => status === 'completed').length === 2 && statuses.filter(status => status === 'preparation').length === 2, 'The fresh demo must contain thirteen profiles, four accepted fixtures, two completed games and two prepared upcoming games.');
+        check(preparation.profiles.length === 13 && preparation.fixtures.length === 4 && matches.items.length === 4 && statuses.filter(status => status === 'completed').length === 2 && statuses.filter(status => status === 'preparation').length === 2, 'The fresh demo must contain thirteen profiles, four accepted fixtures, two completed games and two prepared unplayed games.');
         await page.getByRole('tab', { name: 'Team', exact: true }).click();
         await selectedWorkspaceTab(page, 'team');
         await page.getByText('13 active players', { exact: true }).waitFor();
@@ -1142,7 +1188,7 @@ try {
   stage = 'administrator retained configuration draft';
   await administratorDraftRegression(accounts.find(account => account.role === 'administrator'));
   stage = 'player retained schedule reply';
-  await playerReplyRegression(accounts.find(account => account.role === 'player'));
+  await playerReplyRegression(accounts.find(account => account.role === 'player'), accounts.find(account => account.role === 'manager'));
   stage = 'actual manager matchday and accepted spectator refresh';
   await freshManagerRequestWindow(accounts.find(account => account.role === 'manager').accountId, 'before-manager-matchday');
   await managerMatchday(accounts, databasePath);
