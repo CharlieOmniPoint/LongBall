@@ -1,1951 +1,5 @@
-// fixtures/roma.synthetic.json
-var roma_synthetic_default = {
-  synthetic: true,
-  teamId: "synthetic-roma-u10",
-  season: "2026/27",
-  timeZone: "Europe/London",
-  pitchPlaces: 7,
-  plannedHalfDurationMs: 15e5,
-  players: [
-    {
-      id: "synthetic-player-01",
-      displayName: "Oliver Bennett",
-      available: true,
-      goalkeeperChoice: 1
-    },
-    {
-      id: "synthetic-player-02",
-      displayName: "Noah Patel",
-      available: true,
-      goalkeeperChoice: 0
-    },
-    {
-      id: "synthetic-player-03",
-      displayName: "Leo Martin",
-      available: true,
-      goalkeeperChoice: 0
-    },
-    {
-      id: "synthetic-player-04",
-      displayName: "Theo Clarke",
-      available: true,
-      goalkeeperChoice: 0
-    },
-    {
-      id: "synthetic-player-05",
-      displayName: "Oscar Evans",
-      available: true,
-      goalkeeperChoice: 0
-    },
-    {
-      id: "synthetic-player-06",
-      displayName: "Ethan Brooks",
-      available: true,
-      goalkeeperChoice: 0
-    },
-    {
-      id: "synthetic-player-07",
-      displayName: "Jack Turner",
-      available: true,
-      goalkeeperChoice: 0
-    },
-    {
-      id: "synthetic-player-08",
-      displayName: "Freddie Lewis",
-      available: true,
-      goalkeeperChoice: 0
-    },
-    {
-      id: "synthetic-player-09",
-      displayName: "Arthur James",
-      available: true,
-      goalkeeperChoice: 0
-    },
-    {
-      id: "synthetic-player-10",
-      displayName: "Lucas Wilson",
-      available: false,
-      goalkeeperChoice: 0
-    },
-    {
-      id: "synthetic-player-11",
-      displayName: "Muhammad Khan",
-      available: false,
-      goalkeeperChoice: 0
-    },
-    {
-      id: "synthetic-player-12",
-      displayName: "Archie Green",
-      available: false,
-      goalkeeperChoice: 0
-    },
-    {
-      id: "synthetic-player-13",
-      displayName: "George Taylor",
-      available: false,
-      goalkeeperChoice: 0
-    }
-  ],
-  demo: {
-    name: "Roma autumn matchdays",
-    generated: true,
-    description: "Simulated club, players and matchdays for testing. No real people, photographs or contact details.",
-    referenceDate: "2026-10-22"
-  },
-  club: {
-    id: "synthetic-richmond-rovers",
-    name: "Richmond Rovers"
-  },
-  team: {
-    name: "Roma",
-    ageGroup: "U10"
-  },
-  opponents: [
-    {
-      id: "demo-maple",
-      name: "Maple FC",
-      venue: "Maple Sports Ground \xB7 Pitch 1"
-    },
-    {
-      id: "demo-oak",
-      name: "Oak FC",
-      venue: "Oak Meadow \xB7 Junior pitch"
-    },
-    {
-      id: "demo-hill",
-      name: "Hill FC",
-      venue: "Hill Park \xB7 Pitch 3"
-    },
-    {
-      id: "demo-willow",
-      name: "Willow FC",
-      venue: "Willow Playing Fields \xB7 Pitch 2"
-    },
-    {
-      id: "demo-cedar",
-      name: "Cedar Athletic",
-      venue: "Cedar Lane Sports Ground"
-    }
-  ],
-  fixtures: [
-    {
-      id: "synthetic-roma-maple-2026-10-24",
-      opponent: "Maple FC",
-      playedDate: "2026-10-24",
-      kickoff: "10:00",
-      arrival: "09:30",
-      venue: "Rovers Sports Ground \xB7 Pitch 2",
-      homeAway: "home",
-      status: "scheduled",
-      selectedCount: 9,
-      selectedPlayerIds: [
-        "synthetic-player-01",
-        "synthetic-player-02",
-        "synthetic-player-03",
-        "synthetic-player-04",
-        "synthetic-player-05",
-        "synthetic-player-06",
-        "synthetic-player-07",
-        "synthetic-player-08",
-        "synthetic-player-09"
-      ],
-      demoPhase: "scheduled",
-      fixtureClass: "development"
-    },
-    {
-      id: "synthetic-roma-oak-2026-10-31",
-      opponent: "Oak FC",
-      playedDate: "2026-10-31",
-      kickoff: "10:30",
-      arrival: "10:00",
-      venue: "Oak Meadow \xB7 Junior pitch",
-      homeAway: "away",
-      status: "scheduled",
-      selectedCount: 9,
-      selectedPlayerIds: [
-        "synthetic-player-01",
-        "synthetic-player-02",
-        "synthetic-player-03",
-        "synthetic-player-04",
-        "synthetic-player-05",
-        "synthetic-player-06",
-        "synthetic-player-07",
-        "synthetic-player-08",
-        "synthetic-player-09"
-      ],
-      demoPhase: "scheduled",
-      fixtureClass: "development"
-    },
-    {
-      id: "synthetic-history-oak",
-      opponent: "Oak FC",
-      playedDate: "2026-10-10",
-      kickoff: "10:30",
-      arrival: "10:00",
-      venue: "Oak Meadow \xB7 Junior pitch",
-      homeAway: "away",
-      status: "scheduled",
-      selectedCount: 9,
-      selectedPlayerIds: [
-        "synthetic-player-01",
-        "synthetic-player-02",
-        "synthetic-player-03",
-        "synthetic-player-04",
-        "synthetic-player-05",
-        "synthetic-player-06",
-        "synthetic-player-07",
-        "synthetic-player-08",
-        "synthetic-player-09"
-      ],
-      demoPhase: "completed",
-      fixtureClass: "friendly",
-      result: {
-        halfTime: {
-          for: 1,
-          against: 1
-        },
-        final: {
-          for: 2,
-          against: 2
-        },
-        halfMinutes: 25
-      }
-    },
-    {
-      id: "synthetic-history-hill",
-      opponent: "Hill FC",
-      playedDate: "2026-10-17",
-      kickoff: "09:30",
-      arrival: "09:00",
-      venue: "Rovers Sports Ground \xB7 Pitch 2",
-      homeAway: "home",
-      status: "scheduled",
-      selectedCount: 9,
-      selectedPlayerIds: [
-        "synthetic-player-01",
-        "synthetic-player-02",
-        "synthetic-player-03",
-        "synthetic-player-04",
-        "synthetic-player-05",
-        "synthetic-player-10",
-        "synthetic-player-11",
-        "synthetic-player-12",
-        "synthetic-player-13"
-      ],
-      demoPhase: "completed",
-      fixtureClass: "development",
-      result: {
-        halfTime: {
-          for: 1,
-          against: 1
-        },
-        final: {
-          for: 3,
-          against: 1
-        },
-        halfMinutes: 25
-      }
-    }
-  ],
-  training: [
-    {
-      id: "synthetic-training-1",
-      date: "2026-10-22",
-      time: "18:00",
-      venue: "Rovers Sports Ground \xB7 Training area",
-      status: "scheduled"
-    },
-    {
-      id: "synthetic-training-2",
-      date: "2026-10-29",
-      time: "18:00",
-      venue: "Rovers Sports Ground \xB7 Training area",
-      status: "scheduled"
-    },
-    {
-      id: "synthetic-training-2026-11-05",
-      date: "2026-11-05",
-      time: "18:00",
-      venue: "Rovers Sports Ground \xB7 Training area",
-      status: "scheduled"
-    },
-    {
-      id: "synthetic-training-2026-10-01",
-      date: "2026-10-01",
-      time: "18:00",
-      venue: "Rovers Sports Ground \xB7 Training area",
-      status: "held"
-    },
-    {
-      id: "synthetic-training-2026-10-08",
-      date: "2026-10-08",
-      time: "18:00",
-      venue: "Rovers Sports Ground \xB7 Training area",
-      status: "held"
-    },
-    {
-      id: "synthetic-training-2026-10-15",
-      date: "2026-10-15",
-      time: "18:00",
-      venue: "Rovers Sports Ground \xB7 Training area",
-      status: "held"
-    },
-    {
-      id: "synthetic-training-2026-09-24",
-      date: "2026-09-24",
-      time: "18:00",
-      venue: "Rovers Sports Ground \xB7 Training area",
-      status: "cancelled"
-    }
-  ],
-  profiles: [
-    {
-      playerId: "synthetic-player-01",
-      initials: "OB",
-      shirtNumber: 1,
-      foot: "right",
-      preferences: [
-        "GK",
-        "CM",
-        "CB"
-      ],
-      eligiblePositions: [
-        "GK",
-        "CB",
-        "ST"
-      ]
-    },
-    {
-      playerId: "synthetic-player-02",
-      initials: "NP",
-      shirtNumber: 2,
-      foot: "right",
-      preferences: [
-        "CB",
-        "CM",
-        "ST"
-      ],
-      eligiblePositions: [
-        "CB",
-        "LB",
-        "RB",
-        "CM",
-        "LW",
-        "RW",
-        "ST"
-      ]
-    },
-    {
-      playerId: "synthetic-player-03",
-      initials: "LM",
-      shirtNumber: 3,
-      foot: "left",
-      preferences: [
-        "CB",
-        "CM",
-        "ST"
-      ],
-      eligiblePositions: [
-        "CB",
-        "LB",
-        "RB",
-        "CM",
-        "LW",
-        "RW",
-        "ST"
-      ]
-    },
-    {
-      playerId: "synthetic-player-04",
-      initials: "TC",
-      shirtNumber: 4,
-      foot: "both",
-      preferences: [
-        "CM",
-        "CB",
-        "ST"
-      ],
-      eligiblePositions: [
-        "CB",
-        "LB",
-        "RB",
-        "CM",
-        "LW",
-        "RW",
-        "ST"
-      ]
-    },
-    {
-      playerId: "synthetic-player-05",
-      initials: "OE",
-      shirtNumber: 5,
-      foot: "left",
-      preferences: [
-        "LW",
-        "CM",
-        "CB"
-      ],
-      eligiblePositions: [
-        "CB",
-        "LB",
-        "RB",
-        "CM",
-        "LW",
-        "RW",
-        "ST"
-      ]
-    },
-    {
-      playerId: "synthetic-player-06",
-      initials: "EB",
-      shirtNumber: 6,
-      foot: "right",
-      preferences: [
-        "RW",
-        "CM",
-        "CB"
-      ],
-      eligiblePositions: [
-        "CB",
-        "LB",
-        "RB",
-        "CM",
-        "LW",
-        "RW",
-        "ST"
-      ]
-    },
-    {
-      playerId: "synthetic-player-07",
-      initials: "JT",
-      shirtNumber: 7,
-      foot: "right",
-      preferences: [
-        "ST",
-        "CM",
-        "CB"
-      ],
-      eligiblePositions: [
-        "CB",
-        "LB",
-        "RB",
-        "CM",
-        "LW",
-        "RW",
-        "ST"
-      ]
-    },
-    {
-      playerId: "synthetic-player-08",
-      initials: "FL",
-      shirtNumber: 8,
-      foot: "left",
-      preferences: [
-        "LW",
-        "CM",
-        "CB"
-      ],
-      eligiblePositions: [
-        "CB",
-        "LB",
-        "RB",
-        "CM",
-        "LW",
-        "RW",
-        "ST"
-      ]
-    },
-    {
-      playerId: "synthetic-player-09",
-      initials: "AJ",
-      shirtNumber: 9,
-      foot: "right",
-      preferences: [
-        "RW",
-        "CM",
-        "CB"
-      ],
-      eligiblePositions: [
-        "CB",
-        "LB",
-        "RB",
-        "CM",
-        "LW",
-        "RW",
-        "ST"
-      ]
-    },
-    {
-      playerId: "synthetic-player-10",
-      initials: "LW",
-      shirtNumber: 10,
-      foot: "both",
-      preferences: [
-        "CM",
-        "CB",
-        "ST"
-      ],
-      eligiblePositions: [
-        "CB",
-        "LB",
-        "RB",
-        "CM",
-        "LW",
-        "RW",
-        "ST"
-      ]
-    },
-    {
-      playerId: "synthetic-player-11",
-      initials: "MK",
-      shirtNumber: 11,
-      foot: "right",
-      preferences: [
-        "CB",
-        "CM",
-        "ST"
-      ],
-      eligiblePositions: [
-        "CB",
-        "LB",
-        "RB",
-        "CM",
-        "LW",
-        "RW",
-        "ST"
-      ]
-    },
-    {
-      playerId: "synthetic-player-12",
-      initials: "AG",
-      shirtNumber: 12,
-      foot: "left",
-      preferences: [
-        "ST",
-        "CM",
-        "CB"
-      ],
-      eligiblePositions: [
-        "CB",
-        "LB",
-        "RB",
-        "CM",
-        "LW",
-        "RW",
-        "ST"
-      ]
-    },
-    {
-      playerId: "synthetic-player-13",
-      initials: "GT",
-      shirtNumber: 13,
-      foot: "right",
-      preferences: [
-        "CM",
-        "CB",
-        "ST"
-      ],
-      eligiblePositions: [
-        "CB",
-        "LB",
-        "RB",
-        "CM",
-        "LW",
-        "RW",
-        "ST"
-      ]
-    }
-  ]
-};
-
-// packages/testing/src/index.ts
-var romaFixture = roma_synthetic_default;
-var demoAccountLabels = {
-  "synthetic-account-manager": "Alex Morgan",
-  "synthetic-account-manager-2": "Priya Shah",
-  "synthetic-account-manager-3": "Dan Foster",
-  "synthetic-account-manager-4": "Chris Lewis",
-  "synthetic-account-manager-5": "Nicky Hughes",
-  "synthetic-account-admin": "Sam Taylor",
-  "synthetic-account-spectator": "Jamie Bennett",
-  "synthetic-account-invitee": "Casey Bennett",
-  "synthetic-account-other-manager": "Robin Ellis",
-  ...Object.fromEntries(roma_synthetic_default.players.map((player) => [`synthetic-account-player-${player.id.slice(-2)}`, player.displayName]))
-};
-
-// packages/application/src/training-series.ts
-var maximumTrainingOccurrences = 52;
-function requireThat(condition, message) {
-  if (!condition) throw new Error(message);
-}
-function trainingSeriesOccurrences(state, seasonId, recurrenceGroupId) {
-  requireThat(typeof recurrenceGroupId === "string" && recurrenceGroupId.trim().length > 0 && recurrenceGroupId.length <= 150, "A stable training series identity is required.");
-  requireThat(seasonId === state.activeSeasonId, "Choose the current season before editing a training series.");
-  const occurrences = state.training.filter((item) => item.recurrenceGroupId === recurrenceGroupId);
-  requireThat(occurrences.every((item) => item.seasonId === seasonId), "The training series belongs to a different season.");
-  return [...occurrences].sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time) || a.id.localeCompare(b.id));
-}
-function applyTrainingSeries(state, command, validate) {
-  requireThat(command.confirmOccurrences === true, "Review and explicitly confirm the listed training occurrences.");
-  const series = trainingSeriesOccurrences(state, command.seasonId, command.recurrenceGroupId);
-  if (command.type === "training.series_created") {
-    requireThat(series.length === 0, "That training series already exists; use its scheduled-occurrence editor.");
-    requireThat(Array.isArray(command.occurrences) && command.occurrences.length >= 2 && command.occurrences.length <= maximumTrainingOccurrences, "A series needs between 2 and 52 explicit occurrences.");
-    const ids = /* @__PURE__ */ new Set(), dates = /* @__PURE__ */ new Set();
-    for (const draft of command.occurrences) {
-      requireThat(draft.seasonId === command.seasonId && draft.recurrenceGroupId === command.recurrenceGroupId, "Every occurrence must belong to the confirmed series and season.");
-      requireThat(!ids.has(draft.id) && !state.training.some((item) => item.id === draft.id), "Each occurrence must have a new stable identity.");
-      requireThat(!dates.has(draft.date), "Each series occurrence must have a distinct calendar date.");
-      validate(draft);
-      ids.add(draft.id);
-      dates.add(draft.date);
-    }
-    state.training.push(...command.occurrences.map((draft) => ({ ...draft, expectedProfileIds: [...draft.expectedProfileIds], status: "scheduled", responses: {}, attendance: {} })));
-    return;
-  }
-  const scheduled = series.filter((item) => item.status === "scheduled");
-  requireThat(Array.isArray(command.occurrenceIds) && command.occurrenceIds.length > 0 && command.occurrenceIds.length <= maximumTrainingOccurrences && new Set(command.occurrenceIds).size === command.occurrenceIds.length, "Review a nonempty list of distinct scheduled occurrences.");
-  requireThat(command.occurrenceIds.length === scheduled.length && scheduled.every((item) => command.occurrenceIds.includes(item.id)), "The scheduled series changed; review its exact occurrence list again. Held and cancelled occurrences cannot be edited as scheduled sessions.");
-  if (command.type === "training.series_updated") {
-    for (const occurrence of scheduled) validate({ ...occurrence, ...command.changes });
-    const ids = new Set(command.occurrenceIds);
-    state.training = state.training.map((item) => ids.has(item.id) ? { ...item, time: command.changes.time, venue: command.changes.venue, expectedProfileIds: [...command.changes.expectedProfileIds] } : item);
-  } else {
-    const ids = new Set(command.occurrenceIds);
-    state.training = state.training.map((item) => ids.has(item.id) ? { ...item, status: "cancelled" } : item);
-  }
-}
-
-// packages/domain/src/live-events.ts
-function cloneValue(value) {
-  return JSON.parse(JSON.stringify(value));
-}
-function duration(value, label2) {
-  if (!Number.isSafeInteger(value) || value < 0) throw new Error(`${label2} must be a nonnegative safe integer.`);
-}
-function effectiveTime(state, requested) {
-  if (state.half !== 1 && state.half !== 2) throw new Error("An effective match event requires a started half.");
-  const time3 = requested ?? { half: state.half, halfElapsedMs: state.halfActiveMs, matchElapsedMs: state.matchActiveMs };
-  if (time3.half !== 1 && time3.half !== 2) throw new Error("Effective half must be one or two.");
-  duration(time3.halfElapsedMs, "Effective half time");
-  duration(time3.matchElapsedMs, "Effective match time");
-  if (time3.half > state.half) throw new Error("Effective time cannot refer to a half that has not started.");
-  const firstHalf = state.firstHalfDurationMs;
-  if (time3.half === 2 && firstHalf === null) throw new Error("Second-half time requires the recorded actual first-half duration.");
-  const expected = (time3.half === 2 ? firstHalf ?? 0 : 0) + time3.halfElapsedMs;
-  if (expected !== time3.matchElapsedMs) throw new Error("Effective cumulative time must use actual first-half duration and exclude half-time.");
-  const maximum = time3.half === 1 && firstHalf !== null ? firstHalf : state.halfActiveMs;
-  if (time3.halfElapsedMs > maximum || time3.matchElapsedMs > state.matchActiveMs) throw new Error("Effective time cannot invent future active play.");
-  return { ...time3 };
-}
-function wasOnPitch(state, playerId, time3) {
-  if (time3.matchElapsedMs === state.matchActiveMs && time3.half === state.half && state.lineup.some((item) => item.playerId === playerId)) return true;
-  return state.intervals.some((interval) => interval.playerId === playerId && interval.state === "playing" && interval.half === time3.half && interval.startMs <= time3.matchElapsedMs && interval.endMs >= time3.matchElapsedMs);
-}
-function goalRecord(state, details, eventId, recordedAtMs) {
-  if (details.beneficiary !== "us" && details.beneficiary !== "opposition") throw new Error("Goal beneficiary is invalid.");
-  if (details.isOwnGoal !== void 0 && typeof details.isOwnGoal !== "boolean") throw new Error("Own-goal classification must be explicit.");
-  const isOwnGoal = details.isOwnGoal ?? false;
-  const scorerPlayerId = details.scorerPlayerId ?? null;
-  const goalType = details.goalType ?? "not_recorded";
-  if (!["open_play", "free_kick", "penalty", "not_recorded"].includes(goalType)) throw new Error("Goal type is invalid.");
-  const effective = effectiveTime(state, details.effective);
-  if (scorerPlayerId !== null) {
-    if (!state.config.selectedPlayerIds.includes(scorerPlayerId)) throw new Error("A scorer must belong to this selected match squad.");
-    if (details.beneficiary === "us" && isOwnGoal || details.beneficiary === "opposition" && !isOwnGoal) {
-      throw new Error("An opposition scorer or opposition own goal cannot credit a team player.");
-    }
-    if (!wasOnPitch(state, scorerPlayerId, effective)) throw new Error("The scorer has no recorded on-pitch evidence at the effective goal time. Correct participation separately before attributing this goal.");
-  }
-  return { eventId, latestEventId: eventId, beneficiary: details.beneficiary, isOwnGoal, scorerPlayerId, goalType, effective, recordedAtMs, voided: false };
-}
-function scoresFromGoals(state, goals) {
-  const active2 = goals.filter((goal) => !goal.voided);
-  const sum = (values) => ({
-    for: values.filter((goal) => goal.beneficiary === "us").length,
-    against: values.filter((goal) => goal.beneficiary === "opposition").length
-  });
-  return {
-    score: sum(active2),
-    halfTimeScore: state.firstHalfDurationMs === null ? state.halfTimeScore : sum(active2.filter((goal) => goal.effective.half === 1))
-  };
-}
-
-// packages/domain/src/policy.ts
-function fail(message) {
-  throw new Error(message);
-}
-function keys(value, fields5, label2) {
-  if (!value || typeof value !== "object" || Array.isArray(value) || Object.keys(value).some((key) => !fields5.includes(key)) || fields5.some((key) => !Object.hasOwn(value, key))) fail(`Use the exact versioned ${label2} fields.`);
-}
-function nonnegative(value, label2) {
-  if (!Number.isSafeInteger(value) || Number(value) < 0) fail(`${label2} must be a nonnegative safe integer.`);
-}
-function keeperRank(config, playerId) {
-  const saved = config.profileSnapshot?.find((profile) => profile.playerId === playerId);
-  return saved ? saved.preferences.indexOf("GK") + 1 : config.players.find((player) => player.id === playerId)?.goalkeeperChoice ?? 0;
-}
-function initialKeeperPolicy(config) {
-  return { keeperMode: config.fixedKeeperId ? "sole_fixed" : "common_pool", fixedKeeperPlayerSeasonId: config.fixedKeeperId };
-}
-function assertMatchPolicyProposal(value, config) {
-  keys(value, ["payload", "applicability", "softPreferences"], "match policy proposal");
-  const payload = value.payload;
-  keys(payload, ["keeperMode", "fixedKeeperPlayerSeasonId", "minimumStintMs", "batchLimit", "scoreLeadThreshold", "returnToNormalEnabled"], "canonical policy payload");
-  if (!["sole_fixed", "common_pool"].includes(String(payload.keeperMode))) fail("Choose an explicit supported goalkeeper policy.");
-  if (payload.keeperMode === "common_pool" && payload.fixedKeeperPlayerSeasonId !== null) fail("Common-pool policy cannot create a fixed-keeper exemption.");
-  if (payload.keeperMode === "sole_fixed" && (typeof payload.fixedKeeperPlayerSeasonId !== "string" || !config.selectedPlayerIds.includes(payload.fixedKeeperPlayerSeasonId) || ![1, 2].includes(keeperRank(config, payload.fixedKeeperPlayerSeasonId)))) fail("The fixed keeper must be a selected first- or second-choice goalkeeper.");
-  nonnegative(payload.minimumStintMs, "Preferred minimum stint");
-  if (!Number.isSafeInteger(payload.batchLimit) || Number(payload.batchLimit) < 1 || Number(payload.batchLimit) > 11) fail("Choose a batch preference from one to eleven.");
-  if (!Number.isSafeInteger(payload.scoreLeadThreshold) || Number(payload.scoreLeadThreshold) < 1 || typeof payload.returnToNormalEnabled !== "boolean") fail("Choose a positive score threshold and an explicit return-to-normal option.");
-  keys(value.applicability, ["minimumStint", "batchLimit", "q07"], "policy applicability");
-  if (value.applicability.minimumStint !== "soft_preference" || value.applicability.batchLimit !== "soft_preference" || value.applicability.q07 !== "unapproved") fail("Ordinary stint and batch settings remain soft. This command cannot approve Q07 or introduce a mandatory constraint.");
-  keys(value.softPreferences, ["halfBufferFraction"], "soft preferences");
-  const fraction = value.softPreferences.halfBufferFraction;
-  if (typeof fraction !== "number" || !Number.isFinite(fraction) || fraction < 0 || fraction > 0.49) fail("The soft half buffer must be between zero and 0.49.");
-}
-function assertInitialLineupProposal(config, value) {
-  if (!Array.isArray(value) || value.length !== config.pitchPlaces || new Set(value.map((item) => item?.playerId)).size !== value.length || new Set(value.map((item) => item?.slotId)).size !== value.length) fail("A starting-lineup proposal needs distinct selected players and slots for the saved format.");
-  for (const allocation of value) {
-    keys(allocation, ["slotId", "position", "playerId"], "lineup proposal");
-    if (typeof allocation.playerId !== "string" || !config.selectedPlayerIds.includes(allocation.playerId) || typeof allocation.slotId !== "string" || !allocation.slotId || typeof allocation.position !== "string" || !allocation.position) fail("Starting-lineup proposals must use the selected saved match squad.");
-    if (config.slots && !config.slots.some((slot) => slot.slotId === allocation.slotId && slot.position === allocation.position)) fail("Starting-lineup proposals must use the saved formation slots and roles.");
-    const saved = config.profileSnapshot?.find((profile) => profile.playerId === allocation.playerId);
-    if (saved && !saved.eligiblePositions.includes(allocation.position)) fail("A proposed role is outside the saved player eligibility.");
-  }
-  const keepers = value.filter((allocation) => allocation.position === "GK");
-  if (keepers.length !== 1 || ![1, 2].includes(keeperRank(config, keepers[0].playerId)) || config.fixedKeeperId && keepers[0].playerId !== config.fixedKeeperId) fail("A lineup proposal needs one qualifying keeper consistent with its explicit policy.");
-}
-function policyAtBoundary(state, half2, activeMs, maximumRevision = Infinity) {
-  const matching = (state.policyHistory ?? []).filter((policy) => policy.revision <= maximumRevision && policy.effective.half <= half2 && policy.effective.matchElapsedMs <= activeMs);
-  return matching.length ? matching[matching.length - 1] : null;
-}
-function fixedKeeperAtBoundary(state, half2, activeMs, maximumRevision = Infinity) {
-  const policy = policyAtBoundary(state, half2, activeMs, maximumRevision);
-  return policy ? policy.payload.keeperMode === "sole_fixed" ? policy.payload.fixedKeeperPlayerSeasonId : null : state.config.fixedKeeperId;
-}
-function currentFixedKeeper(state) {
-  return state.activePolicy ? state.activePolicy.payload.keeperMode === "sole_fixed" ? state.activePolicy.payload.fixedKeeperPlayerSeasonId : null : state.config.fixedKeeperId;
-}
-function assertPolicyBoundary(state, time3) {
-  keys(time3, ["half", "halfElapsedMs", "matchElapsedMs"], "policy boundary");
-  nonnegative(time3.halfElapsedMs, "Policy half time");
-  nonnegative(time3.matchElapsedMs, "Policy match time");
-  if (time3.half !== state.half || ![0, 1, 2].includes(time3.half)) fail("Policy changes must use the current preparation or half boundary.");
-  const expected = (time3.half === 2 ? state.firstHalfDurationMs ?? fail("The actual first-half duration is required.") : 0) + time3.halfElapsedMs;
-  if (expected !== time3.matchElapsedMs || time3.matchElapsedMs !== state.matchActiveMs || time3.halfElapsedMs !== state.halfActiveMs) fail("Policy changes are prospective only; the captured boundary must match the current continuous checkpoint.");
-}
-function applyPolicyChange(state, event, previousRevision) {
-  const allowed = ["id", "sample", "actorId", "type", "policySchemaVersion", "policyVersion", "previousPolicyVersion", "sourceRevision", "effective", "reason", "payload", "applicability", "softPreferences", "resetPositionMode"];
-  if (Object.keys(event).some((key) => !allowed.includes(key))) fail("Use only the documented versioned policy command fields.");
-  nonnegative(event.policyVersion, "Policy version");
-  nonnegative(event.previousPolicyVersion, "Previous policy version");
-  nonnegative(event.sourceRevision, "Policy source revision");
-  assertMatchPolicyProposal({ payload: event.payload, applicability: event.applicability, softPreferences: event.softPreferences }, state.config);
-  if (event.policySchemaVersion !== 1 || event.sourceRevision !== previousRevision || event.previousPolicyVersion !== (state.activePolicy?.policyVersion ?? 0) || event.policyVersion !== event.previousPolicyVersion + 1) fail("The policy source or version changed. Review the current match before confirming again.");
-  if (typeof event.reason !== "string" || event.reason.trim().length < 5 || event.reason.length > 500) fail("Record a concise reason for this prospective settings change.");
-  if (event.resetPositionMode !== void 0 && typeof event.resetPositionMode !== "boolean") fail("A position-mode reset must be explicit.");
-  assertPolicyBoundary(state, event.effective);
-  const previous = state.activePolicy?.payload ?? initialKeeperPolicy(state.config);
-  if (event.payload.keeperMode !== previous.keeperMode || event.payload.fixedKeeperPlayerSeasonId !== previous.fixedKeeperPlayerSeasonId) fail("Q07 goalkeeper-policy transitions are unapproved. This service has no explicit experimental transition gate; retain the proposal for policy review.");
-  const details = { policySchemaVersion: 1, policyVersion: event.policyVersion, previousPolicyVersion: event.previousPolicyVersion, sourceRevision: event.sourceRevision, effective: cloneValue(event.effective), reason: event.reason, payload: cloneValue(event.payload), applicability: cloneValue(event.applicability), softPreferences: cloneValue(event.softPreferences), ...event.resetPositionMode === void 0 ? {} : { resetPositionMode: event.resetPositionMode } };
-  const record = { ...details, eventId: event.id, revision: previousRevision + 1, recordedAtMs: event.sample.wallTimeMs, actorId: event.actorId ?? null };
-  const activePolicy = { ...cloneValue(record), positionMode: event.resetPositionMode ? "normal" : state.activePolicy?.positionMode ?? "normal", manualResetAtSourceRevision: event.resetPositionMode ? previousRevision + 1 : null };
-  return { ...state, activePolicy, policyHistory: [...state.policyHistory ?? [], record] };
-}
-function updatePolicyPositionMode(state, nextRevision) {
-  const policy = state.activePolicy;
-  if (!policy || policy.manualResetAtSourceRevision === nextRevision) return state;
-  const leading = state.score.for - state.score.against >= policy.payload.scoreLeadThreshold;
-  const mode = leading ? "adventurous" : policy.payload.returnToNormalEnabled ? "normal" : policy.positionMode;
-  return mode === policy.positionMode ? state : { ...state, activePolicy: { ...policy, positionMode: mode } };
-}
-
-// packages/domain/src/participation-corrections.ts
-var copyLineup = (lineup) => lineup.map((item) => ({ ...item }));
-function policyStateAt(state, half2, activeMs, maximumRevision = Infinity) {
-  const policy = policyAtBoundary(state, half2, activeMs, maximumRevision);
-  return { ...state, activePolicy: policy ? { ...policy, positionMode: "normal", manualResetAtSourceRevision: null } : void 0 };
-}
-var compare = (left, right) => (left.effective?.half ?? 0) - (right.effective?.half ?? 0) || (left.effective?.matchElapsedMs ?? 0) - (right.effective?.matchElapsedMs ?? 0) || left.order - right.order;
-function knownBoundary(state, eventId) {
-  const audit = state.audit?.find((item) => item.eventId === eventId);
-  if (!audit)
-    throw new Error(
-      "Original event boundary evidence is missing. Retain the history for explicit reconciliation."
-    );
-  return audit.effective ? effectiveTime(state, audit.effective) : null;
-}
-function initial(state) {
-  return {
-    attendance: Object.fromEntries(
-      state.config.selectedPlayerIds.map((id4) => [
-        id4,
-        state.config.initialAttendance?.[id4] ?? "not_recorded"
-      ])
-    ),
-    availability: Object.fromEntries(
-      state.config.selectedPlayerIds.map((id4) => [id4, true])
-    ),
-    lineup: []
-  };
-}
-function applyFact(current3, fact) {
-  if (fact.voided) return;
-  if (fact.type === "attendance.recorded") {
-    current3.attendance[fact.playerId] = fact.status;
-    if (fact.status !== "present")
-      current3.lineup = current3.lineup.filter(
-        (item) => item.playerId !== fact.playerId
-      );
-  } else if (fact.type === "availability.changed") {
-    current3.availability[fact.playerId] = fact.available;
-    if (!fact.available)
-      current3.lineup = current3.lineup.filter(
-        (item) => item.playerId !== fact.playerId
-      );
-    if (fact.lineup) current3.lineup = copyLineup(fact.lineup);
-  } else current3.lineup = copyLineup(fact.lineup);
-}
-function factsAt(state, facts, half2, activeMs) {
-  const current3 = initial(state);
-  for (const fact of [...facts].sort(compare)) {
-    if (fact.effective && (fact.effective.half > half2 || fact.effective.matchElapsedMs > activeMs))
-      continue;
-    applyFact(current3, fact);
-  }
-  return current3;
-}
-function replacementValue(state, fact, event) {
-  if (fact.type !== "lineup.committed" && fact.type !== "availability.changed")
-    throw new Error(
-      "This correction requires a separate review of clock, halves or attendance evidence."
-    );
-  const next = {
-    ...cloneValue(fact),
-    latestEventId: event.id,
-    aliases: [...fact.aliases, event.id]
-  };
-  if (event.type === "event.voided") {
-    if (fact.voided)
-      throw new Error("This participation event is already voided.");
-    return { ...next, voided: true };
-  }
-  if (event.replacement.type !== fact.type)
-    throw new Error("A correction cannot change the original event family.");
-  if (fact.voided && event.restoreVoided !== true)
-    throw new Error(
-      "Restoring a voided participation event needs explicit confirmation."
-    );
-  const requested = event.replacement.effective ?? fact.effective;
-  const boundary = requested ? effectiveTime(state, requested) : null;
-  if ((boundary?.half ?? 0) !== (fact.effective?.half ?? 0))
-    throw new Error(
-      "A participation correction cannot move evidence into another half. Review both halves separately."
-    );
-  if (event.replacement.type === "lineup.committed") {
-    if (!boundary)
-      throw new Error(
-        "A corrected lineup needs its actual active-time boundary."
-      );
-    return {
-      ...next,
-      effective: boundary,
-      lineup: copyLineup(event.replacement.lineup),
-      voided: false
-    };
-  }
-  const replacement = event.replacement;
-  if (replacement.playerId !== fact.playerId || !state.config.selectedPlayerIds.includes(replacement.playerId))
-    throw new Error(
-      "An availability correction must retain its selected player identity."
-    );
-  if (typeof replacement.available !== "boolean")
-    throw new Error("Availability must be confirmed explicitly.");
-  const reason = replacement.reason ?? fact.reason ?? "other";
-  if (!["arrival", "departure", "injury", "return", "other"].includes(reason) || ["arrival", "return"].includes(reason) && !replacement.available || ["injury", "departure"].includes(reason) && replacement.available)
-    throw new Error("Availability reason conflicts with the confirmed state.");
-  return {
-    ...next,
-    effective: boundary,
-    available: replacement.available,
-    reason,
-    lineup: replacement.replacementLineup ? copyLineup(replacement.replacementLineup) : fact.lineup ? copyLineup(fact.lineup) : void 0,
-    voided: false
-  };
-}
-function retainedParticipationFacts(state) {
-  const facts = [];
-  let staged = [];
-  for (const [order, event] of (state.eventHistory ?? []).entries()) {
-    const effective = knownBoundary(state, event.id);
-    if (event.type === "lineup.staged") {
-      staged = copyLineup(event.lineup);
-      continue;
-    }
-    if (event.type === "half.ended" && effective?.half === 1) {
-      staged = copyLineup(
-        factsAt(state, facts, 1, effective.matchElapsedMs).lineup
-      );
-      continue;
-    }
-    if (event.type === "event.corrected" || event.type === "event.voided") {
-      const index = facts.findIndex(
-        (fact) => fact.aliases.includes(event.targetEventId)
-      );
-      if (index >= 0 && ["lineup.committed", "availability.changed"].includes(facts[index].type))
-        facts[index] = replacementValue(state, facts[index], event);
-      continue;
-    }
-    const base = {
-      eventId: event.id,
-      latestEventId: event.id,
-      aliases: [event.id],
-      order,
-      effective,
-      recordedAtMs: event.sample.wallTimeMs,
-      voided: false
-    };
-    if (event.type === "half.started") {
-      if (!effective)
-        throw new Error("A half start is missing its actual active boundary.");
-      facts.push({ ...base, type: event.type, lineup: copyLineup(staged) });
-    } else if (event.type === "lineup.committed")
-      facts.push({
-        ...base,
-        type: event.type,
-        lineup: copyLineup(event.lineup)
-      });
-    else if (event.type === "attendance.recorded")
-      facts.push({
-        ...base,
-        type: event.type,
-        playerId: event.playerId,
-        status: event.status
-      });
-    else if (event.type === "availability.changed")
-      facts.push({
-        ...base,
-        type: event.type,
-        playerId: event.playerId,
-        available: event.available,
-        reason: event.reason ?? "other",
-        lineup: event.replacementLineup ? copyLineup(event.replacementLineup) : void 0
-      });
-  }
-  return facts;
-}
-function reprojectParticipation(state, correction, validateLineup2) {
-  if (correction.sourceRevision !== state.revision)
-    throw new Error(
-      "Participation correction draft is stale or lacks explicit interval reconciliation review. Review the current recorded history first."
-    );
-  const facts = retainedParticipationFacts(state);
-  let prior = null;
-  let changed;
-  if (correction.type === "event.corrected" || correction.type === "event.voided") {
-    const targetIndex = facts.findIndex(
-      (fact) => fact.aliases.includes(correction.targetEventId)
-    );
-    if (targetIndex < 0)
-      throw new Error(
-        "The participation correction target has no complete original evidence in this match."
-      );
-    prior = cloneValue(facts[targetIndex]);
-    changed = replacementValue(state, prior, correction);
-    facts[targetIndex] = changed;
-  } else {
-    if (!correction.effective || !correction.lateEntryReason?.trim() || correction.lateEntryReason.length > 500)
-      throw new Error(
-        "A historical participation entry needs an explicit effective time and audited late-entry reason of 1\u2013500 characters."
-      );
-    const effective = effectiveTime(state, correction.effective);
-    const base = {
-      eventId: correction.id,
-      latestEventId: correction.id,
-      aliases: [correction.id],
-      order: state.eventHistory?.length ?? 0,
-      effective,
-      recordedAtMs: correction.sample.wallTimeMs,
-      voided: false
-    };
-    if (correction.type === "lineup.committed")
-      changed = {
-        ...base,
-        type: correction.type,
-        lineup: copyLineup(correction.lineup)
-      };
-    else {
-      if (!state.config.selectedPlayerIds.includes(correction.playerId) || typeof correction.available !== "boolean")
-        throw new Error(
-          "Historical availability requires a selected player and explicit state."
-        );
-      const reason = correction.reason ?? "other";
-      if (!["arrival", "departure", "injury", "return", "other"].includes(
-        reason
-      ) || ["arrival", "return"].includes(reason) && !correction.available || ["injury", "departure"].includes(reason) && correction.available)
-        throw new Error(
-          "Availability reason conflicts with the confirmed state."
-        );
-      changed = {
-        ...base,
-        type: correction.type,
-        playerId: correction.playerId,
-        available: correction.available,
-        reason,
-        lineup: correction.replacementLineup ? copyLineup(correction.replacementLineup) : void 0
-      };
-    }
-    facts.push(changed);
-  }
-  const sorted = [...facts].sort(compare);
-  const intervals = [];
-  const targetIntervals = [];
-  const availabilityHistory = [];
-  const current3 = initial(state);
-  let activeHalf = 0;
-  for (const fact of sorted) {
-    if (fact.voided) continue;
-    if (fact.type === "availability.changed")
-      availabilityHistory.push({
-        eventId: fact.eventId,
-        latestEventId: fact.latestEventId,
-        playerId: fact.playerId,
-        available: fact.available,
-        previousAvailability: current3.availability[fact.playerId],
-        reason: fact.reason ?? "other",
-        effective: fact.effective,
-        recordedAtMs: fact.recordedAtMs
-      });
-    applyFact(current3, fact);
-    if (fact.effective) activeHalf = fact.effective.half;
-    if (fact.type === "half.started" || fact.type === "lineup.committed" || fact.type === "availability.changed" && fact.lineup) {
-      const errors = validateLineup2(
-        {
-          ...policyStateAt(state, fact.effective?.half ?? 0, fact.effective?.matchElapsedMs ?? 0, fact.order + 1),
-          attendance: current3.attendance,
-          availability: current3.availability
-        },
-        current3.lineup,
-        true
-      );
-      if (errors.length)
-        throw new Error(`Corrected allocation is invalid: ${errors.join(" ")}`);
-    }
-    if (activeHalf > state.half)
-      throw new Error("Corrected evidence refers to an unstarted half.");
-  }
-  const firstEnd = state.firstHalfDurationMs ?? (state.half === 1 ? state.matchActiveMs : 0);
-  for (const half2 of [1, 2]) {
-    if (half2 > state.half) continue;
-    const start = half2 === 1 ? 0 : firstEnd;
-    const end = half2 === 1 ? firstEnd : state.matchActiveMs;
-    const boundaries = [
-      .../* @__PURE__ */ new Set([
-        start,
-        end,
-        ...sorted.filter((fact) => !fact.voided && fact.effective?.half === half2).map((fact) => fact.effective.matchElapsedMs),
-        ...(state.policyHistory ?? []).filter((policy) => policy.effective.half === half2).map((policy) => policy.effective.matchElapsedMs)
-      ])
-    ].sort((a, b) => a - b);
-    for (let index = 0; index + 1 < boundaries.length; index++) {
-      const from = boundaries[index], to = boundaries[index + 1];
-      if (from < start || to > end || to <= from) continue;
-      const actual = factsAt(state, sorted, half2, from);
-      const errors = validateLineup2(
-        {
-          ...policyStateAt(state, half2, from),
-          attendance: actual.attendance,
-          availability: actual.availability
-        },
-        actual.lineup,
-        false
-      );
-      if (errors.length)
-        throw new Error(
-          `Corrected participation is invalid: ${errors.join(" ")}`
-        );
-      for (const playerId of state.config.selectedPlayerIds) {
-        const allocation = actual.lineup.find(
-          (item) => item.playerId === playerId
-        );
-        const available2 = actual.attendance[playerId] === "present" && actual.availability[playerId];
-        intervals.push({
-          playerId,
-          state: allocation ? "playing" : available2 ? "available_bench" : "unavailable",
-          position: allocation?.position ?? null,
-          slotId: allocation?.slotId ?? null,
-          startMs: from,
-          endMs: to,
-          half: half2
-        });
-      }
-      const availablePlayerIds = state.config.selectedPlayerIds.filter(
-        (id4) => actual.attendance[id4] === "present" && actual.availability[id4]
-      );
-      const policy = policyAtBoundary(state, half2, from);
-      const fixedKeeperId = fixedKeeperAtBoundary(state, half2, from);
-      targetIntervals.push({
-        durationMs: to - from,
-        availablePlayerIds,
-        pitchPlaces: state.config.pitchPlaces,
-        fixedKeeperId: fixedKeeperId && availablePlayerIds.includes(fixedKeeperId) ? fixedKeeperId : null,
-        ...policy ? { policyVersion: policy.policyVersion } : {}
-      });
-    }
-  }
-  const final = factsAt(state, sorted, state.half, state.matchActiveMs);
-  const projected = {
-    ...state,
-    intervals,
-    targetIntervals,
-    lineup: final.lineup,
-    attendance: { ...state.attendance, ...final.attendance },
-    availability: { ...state.availability, ...final.availability },
-    availabilityHistory
-  };
-  for (const goal of state.goals ?? [])
-    if (!goal.voided) {
-      try {
-        goalRecord(projected, goal, goal.eventId, goal.recordedAtMs);
-      } catch {
-        throw new Error(
-          `Goal ${goal.eventId} no longer has consistent on-pitch evidence. Review that goal explicitly before applying this participation correction.`
-        );
-      }
-    }
-  const oldTime = prior?.effective, newTime = changed.effective;
-  const earliestAffected = oldTime && newTime ? oldTime.matchElapsedMs <= newTime.matchElapsedMs ? oldTime : newTime : oldTime ?? newTime;
-  return {
-    state: projected,
-    priorValue: prior,
-    value: changed,
-    effective: changed.effective,
-    earliestAffected
-  };
-}
-
-// packages/domain/src/index.ts
-var ENGINE_VERSION = "synthetic-live-4";
-function integer(value, label2) {
-  if (!Number.isSafeInteger(value) || value < 0) throw new Error(`${label2} must be a nonnegative safe integer.`);
-}
-function assertSample(sample) {
-  if (!Number.isFinite(sample.monotonicMs) || sample.monotonicMs < 0 || !Number.isSafeInteger(Math.floor(sample.monotonicMs)) || !sample.sessionId) throw new Error("Clock sample is invalid.");
-  integer(sample.wallTimeMs, "Wall time");
-}
-function isRunning(state) {
-  return state.status === "first_half_running" || state.status === "second_half_running";
-}
-function isPaused(state) {
-  return state.status === "first_half_paused" || state.status === "second_half_paused";
-}
-function available(state, id4) {
-  return state.availability[id4] === true && state.attendance[id4] === "present";
-}
-function selectedPlayer(state, id4) {
-  if (!state.config.selectedPlayerIds.includes(id4)) throw new Error("Player is outside this selected match squad.");
-}
-function cloneLineup(lineup) {
-  return lineup.map((item) => ({ ...item }));
-}
-function keeperChoice(config, playerId) {
-  const snapshot = config.profileSnapshot?.find((profile) => profile.playerId === playerId);
-  if (snapshot?.preferences.length) return snapshot.preferences.indexOf("GK") + 1;
-  return config.players.find((player) => player.id === playerId)?.goalkeeperChoice ?? 0;
-}
-function createMatch(config) {
-  if (!config.matchId || config.pitchPlaces < 5 || config.pitchPlaces > 11 || !Number.isInteger(config.pitchPlaces)) throw new Error("Match format must have 5\u201311 pitch places.");
-  integer(config.plannedHalfDurationMs, "Planned half duration");
-  if (config.plannedHalfDurationMs < 3e4) throw new Error("Planned half duration must be at least 30 seconds.");
-  const ids = config.players.map((player) => player.id);
-  if (new Set(ids).size !== ids.length || new Set(config.selectedPlayerIds).size !== config.selectedPlayerIds.length) throw new Error("Player identifiers must be unique.");
-  if (config.selectedPlayerIds.some((id4) => !ids.includes(id4))) throw new Error("Selected players must belong to this roster.");
-  if (config.initialAttendance && Object.entries(config.initialAttendance).some(([id4, status]) => !config.selectedPlayerIds.includes(id4) || !["present", "absent", "excused", "not_selected", "not_recorded"].includes(status))) throw new Error("Initial attendance must be explicit valid check-in for the selected squad.");
-  if (config.slots && (config.slots.length !== config.pitchPlaces || new Set(config.slots.map((slot) => slot.slotId)).size !== config.slots.length || config.slots.filter((slot) => slot.position === "GK").length !== 1 || config.slots.some((slot) => !slot.slotId || !slot.position))) throw new Error("Saved formation needs one distinct slot per pitch place and exactly one goalkeeper.");
-  if (config.profileSnapshot && (new Set(config.profileSnapshot.map((profile) => profile.playerId)).size !== config.profileSnapshot.length || config.profileSnapshot.some((profile) => !ids.includes(profile.playerId) || profile.preferences.length > 3 || new Set(profile.preferences).size !== profile.preferences.length || new Set(profile.eligiblePositions).size !== profile.eligiblePositions.length))) throw new Error("Match profile snapshots must belong to distinct roster players with distinct preferences and eligibility.");
-  if (config.fixedKeeperId !== null && (!config.selectedPlayerIds.includes(config.fixedKeeperId) || ![1, 2].includes(keeperChoice(config, config.fixedKeeperId)))) throw new Error("Fixed keeper must be a selected first- or second-choice goalkeeper.");
-  if (config.initialPolicyProposal !== void 0) assertMatchPolicyProposal(config.initialPolicyProposal, config);
-  if (config.initialLineupProposal !== void 0) assertInitialLineupProposal(config, config.initialLineupProposal);
-  return {
-    config: cloneValue(config),
-    status: "preparation",
-    revision: 0,
-    attendance: Object.fromEntries(ids.map((id4) => [id4, config.initialAttendance?.[id4] ?? "not_recorded"])),
-    availability: Object.fromEntries(ids.map((id4) => [id4, config.selectedPlayerIds.includes(id4)])),
-    stagedLineup: [],
-    lineup: [],
-    half: 0,
-    halfActiveMs: 0,
-    matchActiveMs: 0,
-    firstHalfDurationMs: null,
-    anchor: null,
-    recoveryRequired: false,
-    intervals: [],
-    targetIntervals: [],
-    score: { for: 0, against: 0 },
-    halfTimeScore: null,
-    completedAtMs: null,
-    completedTimeQuality: null,
-    abandonedAtMs: null,
-    abandonReason: null,
-    recoveryReason: null,
-    appliedEvents: {},
-    schemaVersion: 2,
-    goals: [],
-    availabilityHistory: [],
-    eventHistory: [],
-    audit: []
-  };
-}
-function upgradeMatchState(previous) {
-  if (previous.schemaVersion === 2 && previous.goals && previous.availabilityHistory && previous.eventHistory && previous.audit) return previous;
-  let events;
-  try {
-    events = Object.values(previous.appliedEvents).map((signature2) => JSON.parse(signature2));
-  } catch {
-    throw new Error("Legacy command history cannot be read. Preserve the journal and reconcile it before continuing.");
-  }
-  const replayed = replayMatch(previous.config, events);
-  for (const field of ["status", "revision", "half", "halfActiveMs", "matchActiveMs", "firstHalfDurationMs", "completedAtMs", "completedTimeQuality", "recoveryRequired", "recoveryReason", "attendance", "availability", "anchor", "score", "halfTimeScore", "lineup", "stagedLineup", "intervals", "targetIntervals"]) {
-    if (canonical(replayed[field]) !== canonical(previous[field])) throw new Error(`Legacy replay differs at ${field}. Preserve the original journal for explicit reconciliation.`);
-  }
-  return replayed;
-}
-function validateLineup(state, lineup, requireComplete = true) {
-  const errors = [];
-  const fixedKeeperId = currentFixedKeeper(state);
-  if (lineup.length > state.config.pitchPlaces || requireComplete && lineup.length !== state.config.pitchPlaces) errors.push(`Choose exactly ${state.config.pitchPlaces} pitch players.`);
-  if (new Set(lineup.map((item) => item.playerId)).size !== lineup.length) errors.push("A player can occupy only one pitch place.");
-  if (new Set(lineup.map((item) => item.slotId)).size !== lineup.length) errors.push("Each pitch slot must be unique.");
-  for (const item of lineup) {
-    if (!item.slotId || !item.position) errors.push("Every allocation needs a slot and position.");
-    if (!state.config.selectedPlayerIds.includes(item.playerId)) errors.push("Only selected match-squad players can start.");
-    else {
-      if (state.attendance[item.playerId] !== "present") errors.push(`${item.playerId}: confirm actual attendance first.`);
-      if (!state.availability[item.playerId]) errors.push(`${item.playerId}: player is unavailable.`);
-    }
-    if (state.config.slots && !state.config.slots.some((slot) => slot.slotId === item.slotId && slot.position === item.position)) errors.push("Allocation must use its saved formation slot and position.");
-    const profile = state.config.profileSnapshot?.find((snapshot) => snapshot.playerId === item.playerId);
-    if (profile && !profile.eligiblePositions.includes(item.position)) errors.push(`${item.playerId}: position is outside the saved match eligibility.`);
-  }
-  const keepers = lineup.filter((item) => item.position === "GK");
-  if (requireComplete && keepers.length !== 1) errors.push("Choose exactly one goalkeeper.");
-  if (keepers.length > 1) errors.push("Only one goalkeeper place is allowed.");
-  for (const keeper2 of keepers) {
-    const player = state.config.players.find((item) => item.id === keeper2.playerId);
-    if (!player || ![1, 2].includes(keeperChoice(state.config, keeper2.playerId))) errors.push("Goalkeeper cover requires a first- or second-choice eligible keeper.");
-    if (fixedKeeperId && keeper2.playerId !== fixedKeeperId) errors.push("The fixed keeper policy cannot be changed by moving a pitch piece.");
-  }
-  const qualifying = state.config.players.filter((player) => available(state, player.id) && [1, 2].includes(keeperChoice(state.config, player.id)));
-  if (fixedKeeperId && qualifying.length > 1) errors.push("Multiple qualifying available keepers require a reviewed shared-keeper policy.");
-  return [...new Set(errors)];
-}
-function readClock(state, sample) {
-  assertSample(sample);
-  let halfActiveMs = state.halfActiveMs;
-  let matchActiveMs = state.matchActiveMs;
-  let recoveryRequired = state.recoveryRequired;
-  if (isRunning(state)) {
-    const anchor = state.anchor;
-    if (!anchor || anchor.sample.sessionId !== sample.sessionId || sample.monotonicMs < anchor.sample.monotonicMs) recoveryRequired = true;
-    if (!recoveryRequired && anchor) {
-      const delta = Math.floor(sample.monotonicMs) - Math.floor(anchor.sample.monotonicMs);
-      halfActiveMs = anchor.halfActiveMs + delta;
-      matchActiveMs = anchor.matchActiveMs + delta;
-    }
-  }
-  integer(halfActiveMs, "Half active time");
-  integer(matchActiveMs, "Match active time");
-  return {
-    halfActiveMs,
-    matchActiveMs,
-    remainingMs: Math.max(0, state.config.plannedHalfDurationMs - halfActiveMs),
-    addedMs: Math.max(0, halfActiveMs - state.config.plannedHalfDurationMs),
-    recoveryRequired
-  };
-}
-function accrue(state, sample) {
-  const clock = readClock(state, sample);
-  if (clock.recoveryRequired) throw new Error("Time needs checking. Confirm the clock against a referee or trusted source.");
-  const durationMs = clock.matchActiveMs - state.matchActiveMs;
-  const fixedKeeperId = currentFixedKeeper(state);
-  if (!isRunning(state) || durationMs === 0) return state;
-  if (state.half !== 1 && state.half !== 2) throw new Error("No active half.");
-  const intervals = state.config.selectedPlayerIds.map((playerId) => {
-    const allocation = state.lineup.find((item) => item.playerId === playerId);
-    const eligible2 = available(state, playerId);
-    return {
-      playerId,
-      state: allocation ? "playing" : eligible2 ? "available_bench" : "unavailable",
-      position: allocation?.position ?? null,
-      slotId: allocation?.slotId ?? null,
-      startMs: state.matchActiveMs,
-      endMs: clock.matchActiveMs,
-      half: state.half
-    };
-  });
-  return {
-    ...state,
-    halfActiveMs: clock.halfActiveMs,
-    matchActiveMs: clock.matchActiveMs,
-    anchor: { sample: { ...sample }, halfActiveMs: clock.halfActiveMs, matchActiveMs: clock.matchActiveMs },
-    intervals: [...state.intervals, ...intervals],
-    targetIntervals: [...state.targetIntervals, {
-      durationMs,
-      availablePlayerIds: state.config.selectedPlayerIds.filter((id4) => available(state, id4)),
-      pitchPlaces: state.config.pitchPlaces,
-      fixedKeeperId: fixedKeeperId && available(state, fixedKeeperId) ? fixedKeeperId : null,
-      ...state.activePolicy ? { policyVersion: state.activePolicy.policyVersion } : {}
-    }]
-  };
-}
-function ensureLive(state) {
-  if (!isRunning(state) && !isPaused(state)) throw new Error("This command requires an active half.");
-}
-function assertLineup(state, lineup) {
-  const errors = validateLineup(state, lineup);
-  if (errors.length) throw new Error(errors.join(" "));
-}
-function canonical(value) {
-  if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
-  if (value !== null && typeof value === "object") return `{${Object.entries(value).filter(([, item]) => item !== void 0).sort(([left], [right]) => left.localeCompare(right)).map(([key, item]) => `${JSON.stringify(key)}:${canonical(item)}`).join(",")}}`;
-  return JSON.stringify(value);
-}
-function reduceMatch(previous, event) {
-  previous = upgradeMatchState(previous);
-  if (!event.id) throw new Error("Event id is required.");
-  const signature2 = canonical(event);
-  if (previous.appliedEvents[event.id]) {
-    if (previous.appliedEvents[event.id] !== signature2) throw new Error("Event id was reused with different content.");
-    return previous;
-  }
-  assertSample(event.sample);
-  if ((previous.status === "completed" || previous.status === "abandoned") && event.type !== "event.corrected" && event.type !== "event.voided" && event.type !== "goal.recorded" && !((event.type === "lineup.committed" || event.type === "availability.changed") && event.effective && event.sourceRevision !== void 0 && event.lateEntryReason?.trim())) throw new Error("Completed or abandoned play is read-only. Use an audited correction without reopening the clock.");
-  let state = previous;
-  let auditEffective;
-  let auditPrior = null;
-  let auditValue = event;
-  const reviewedParticipationEntry = (event.type === "lineup.committed" || event.type === "availability.changed") && event.effective !== void 0 && event.sourceRevision !== void 0 && Boolean(event.lateEntryReason?.trim());
-  if (event.type === "policy.changed") {
-    const latest = accrue(previous, event.sample);
-    const boundary = event.effective;
-    if (!boundary || boundary.half !== previous.half || !Number.isSafeInteger(boundary.matchElapsedMs) || boundary.matchElapsedMs < previous.matchActiveMs || boundary.matchElapsedMs > latest.matchActiveMs) throw new Error("A policy change must use its captured current continuous boundary, never earlier history or future play.");
-    if (isRunning(previous)) {
-      if (!previous.anchor) throw new Error("A continuous anchor is required for prospective policy changes.");
-      const boundarySample = { ...event.sample, monotonicMs: Math.floor(previous.anchor.sample.monotonicMs) + boundary.matchElapsedMs - previous.anchor.matchActiveMs };
-      state = accrue(previous, boundarySample);
-    } else state = latest;
-  } else if (event.type === "availability.changed" && event.effective && !reviewedParticipationEntry) {
-    if (previous.half === 0) throw new Error("Preparation availability has no active-time boundary.");
-    const latest = accrue(previous, event.sample);
-    const boundary = effectiveTime(latest, event.effective);
-    if (boundary.half !== previous.half || boundary.matchElapsedMs < previous.matchActiveMs) throw new Error("Historical availability crosses a recorded boundary. Preserve actual intervals and use explicit history reconciliation; no minutes were changed.");
-    if (!isRunning(previous) && boundary.matchElapsedMs !== previous.matchActiveMs) throw new Error("Paused or half-time availability must use the current active-time boundary.");
-    if (isRunning(previous)) {
-      if (!previous.anchor) throw new Error("A continuous anchor is required for an effective availability boundary.");
-      const boundarySample = { ...event.sample, monotonicMs: Math.floor(previous.anchor.sample.monotonicMs) + boundary.matchElapsedMs - previous.anchor.matchActiveMs };
-      state = accrue(previous, boundarySample);
-    } else state = latest;
-    auditEffective = boundary;
-  } else if (event.type !== "clock.recovery_required" && event.type !== "clock.corrected") state = accrue(previous, event.sample);
-  switch (event.type) {
-    case "policy.changed": {
-      auditPrior = state.activePolicy ?? null;
-      state = applyPolicyChange(state, event, previous.revision);
-      auditEffective = event.effective.half === 0 ? null : { ...event.effective, half: event.effective.half };
-      auditValue = state.policyHistory?.at(-1);
-      state = accrue(state, event.sample);
-      break;
-    }
-    case "attendance.recorded": {
-      selectedPlayer(state, event.playerId);
-      if (!["present", "absent", "excused", "not_selected", "not_recorded"].includes(event.status)) throw new Error("Attendance status is invalid.");
-      state = { ...state, attendance: { ...state.attendance, [event.playerId]: event.status } };
-      if (event.status !== "present") state = { ...state, lineup: state.lineup.filter((item) => item.playerId !== event.playerId), stagedLineup: state.stagedLineup.filter((item) => item.playerId !== event.playerId) };
-      break;
-    }
-    case "availability.changed": {
-      if (reviewedParticipationEntry) {
-        const corrected = reprojectParticipation(state, event, validateLineup);
-        state = corrected.state;
-        auditEffective = corrected.effective;
-        auditPrior = corrected.priorValue;
-        auditValue = { inserted: corrected.value, earliestAffected: corrected.earliestAffected };
-        break;
-      }
-      selectedPlayer(state, event.playerId);
-      if (typeof event.available !== "boolean") throw new Error("Availability must be explicitly true or false.");
-      const reason = event.reason ?? "other";
-      if (!["arrival", "departure", "injury", "return", "other"].includes(reason)) throw new Error("Availability reason must be an approved category.");
-      if ((reason === "arrival" || reason === "return") && !event.available) throw new Error("Arrival or return requires confirmed availability.");
-      if ((reason === "departure" || reason === "injury") && event.available) throw new Error("Injury or departure requires unavailable status.");
-      const record = {
-        eventId: event.id,
-        latestEventId: event.id,
-        playerId: event.playerId,
-        available: event.available,
-        previousAvailability: state.availability[event.playerId],
-        reason,
-        effective: auditEffective ?? (state.half === 0 ? null : effectiveTime(state)),
-        recordedAtMs: event.sample.wallTimeMs
-      };
-      auditPrior = { available: record.previousAvailability, lineup: cloneLineup(state.lineup) };
-      state = { ...state, availability: { ...state.availability, [event.playerId]: event.available } };
-      if (!event.available) state = { ...state, lineup: state.lineup.filter((item) => item.playerId !== event.playerId), stagedLineup: state.stagedLineup.filter((item) => item.playerId !== event.playerId) };
-      if (event.replacementLineup) {
-        ensureLive(state);
-        assertLineup(state, event.replacementLineup);
-        state = { ...state, lineup: cloneLineup(event.replacementLineup) };
-      }
-      state = { ...state, availabilityHistory: [...state.availabilityHistory ?? [], record] };
-      auditEffective = record.effective;
-      auditValue = record;
-      state = accrue(state, event.sample);
-      break;
-    }
-    case "lineup.staged": {
-      if (state.status !== "preparation" && state.status !== "half_time") throw new Error("Only preparation and half-time have a staged lineup.");
-      const errors = validateLineup(state, event.lineup, false);
-      if (errors.length) throw new Error(errors.join(" "));
-      state = { ...state, stagedLineup: cloneLineup(event.lineup) };
-      break;
-    }
-    case "half.started": {
-      if (state.status !== "preparation" && state.status !== "half_time") throw new Error("A half can start only from preparation or half-time.");
-      assertLineup(state, state.stagedLineup);
-      const half2 = state.status === "preparation" ? 1 : 2;
-      state = {
-        ...state,
-        half: half2,
-        status: half2 === 1 ? "first_half_running" : "second_half_running",
-        lineup: cloneLineup(state.stagedLineup),
-        halfActiveMs: 0,
-        anchor: { sample: { ...event.sample }, halfActiveMs: 0, matchActiveMs: state.matchActiveMs }
-      };
-      break;
-    }
-    case "half.paused": {
-      if (!isRunning(state)) throw new Error("Only a running half can pause.");
-      state = { ...state, status: state.half === 1 ? "first_half_paused" : "second_half_paused", anchor: null };
-      break;
-    }
-    case "half.resumed": {
-      if (!isPaused(state)) throw new Error("Only a paused half can resume.");
-      assertLineup(state, state.lineup);
-      state = { ...state, status: state.half === 1 ? "first_half_running" : "second_half_running", anchor: { sample: { ...event.sample }, halfActiveMs: state.halfActiveMs, matchActiveMs: state.matchActiveMs } };
-      break;
-    }
-    case "half.ended": {
-      ensureLive(state);
-      if (state.half === 1) state = { ...state, status: "half_time", anchor: null, firstHalfDurationMs: state.halfActiveMs, halfTimeScore: { ...state.score }, stagedLineup: cloneLineup(state.lineup) };
-      else state = { ...state, status: "completed", anchor: null, completedAtMs: event.sample.wallTimeMs, completedTimeQuality: "reviewRequired" };
-      break;
-    }
-    case "match.abandoned": {
-      if (state.half === 0) throw new Error("Only a started match can be abandoned; cancel an unplayed fixture separately.");
-      if (!["weather", "safety", "insufficient_players", "other"].includes(event.reason) || (event.note?.length ?? 0) > 200) throw new Error("Abandonment requires an approved reason category and a note of at most 200 characters.");
-      state = { ...state, status: "abandoned", anchor: null, abandonedAtMs: event.sample.wallTimeMs, abandonReason: event.reason };
-      break;
-    }
-    case "lineup.committed": {
-      if (event.effective) {
-        const corrected = reprojectParticipation(state, event, validateLineup);
-        state = corrected.state;
-        auditEffective = corrected.effective;
-        auditPrior = corrected.priorValue;
-        auditValue = { inserted: corrected.value, earliestAffected: corrected.earliestAffected };
-        break;
-      }
-      ensureLive(state);
-      if (event.sourceRevision !== previous.revision) throw new Error("Lineup draft is stale. Review against the current match revision.");
-      assertLineup(state, event.lineup);
-      state = { ...state, lineup: cloneLineup(event.lineup) };
-      break;
-    }
-    case "goal.recorded": {
-      const recorded = goalRecord(state, event, event.id, event.sample.wallTimeMs);
-      if (!isRunning(state) && !isPaused(state) || recorded.effective.half !== state.half) {
-        if (!event.effective || !event.lateEntryReason?.trim()) throw new Error("A goal entered outside its active half needs its actual effective time and a late-entry reason.");
-      }
-      const goals = [...state.goals ?? [], recorded];
-      state = { ...state, goals, ...scoresFromGoals(state, goals) };
-      auditEffective = recorded.effective;
-      auditValue = recorded;
-      break;
-    }
-    case "event.corrected": {
-      if (!event.reason.trim() || event.reason.length > 500) throw new Error("An audited correction needs a reason of 1\u2013500 characters.");
-      const goal = state.goals?.find((item) => item.eventId === event.targetEventId || item.latestEventId === event.targetEventId);
-      if (goal) {
-        if (event.replacement.type !== "goal.recorded") throw new Error("A correction cannot change the original event family.");
-        if (goal.voided && event.restoreVoided !== true) throw new Error("Restoring a voided goal requires explicit restoreVoided confirmation.");
-        const corrected = goalRecord(state, { ...goal, ...event.replacement, effective: event.replacement.effective ?? goal.effective }, goal.eventId, goal.recordedAtMs);
-        const replacement = { ...corrected, latestEventId: event.id };
-        const goals = state.goals.map((item) => item.eventId === goal.eventId ? replacement : item);
-        state = { ...state, goals, ...scoresFromGoals(state, goals) };
-        auditEffective = replacement.effective;
-        auditPrior = goal;
-        auditValue = replacement;
-        break;
-      }
-      const availability = state.availabilityHistory?.find((item) => item.eventId === event.targetEventId || item.latestEventId === event.targetEventId);
-      if (availability) {
-        if (event.replacement.type !== "availability.changed") throw new Error("A correction cannot change the original event family.");
-        const replacement = event.replacement;
-        if (replacement.playerId !== availability.playerId || replacement.available !== availability.available || replacement.replacementLineup || replacement.effective && canonical(replacement.effective) !== canonical(availability.effective)) {
-          const corrected2 = reprojectParticipation(state, event, validateLineup);
-          state = corrected2.state;
-          auditEffective = corrected2.effective;
-          auditPrior = corrected2.priorValue;
-          auditValue = { correction: corrected2.value, earliestAffected: corrected2.earliestAffected };
-          break;
-        }
-        const reason = replacement.reason ?? availability.reason;
-        if (!["arrival", "departure", "injury", "return", "other"].includes(reason) || (reason === "arrival" || reason === "return") && !availability.available || (reason === "injury" || reason === "departure") && availability.available) throw new Error("Corrected availability reason conflicts with its recorded state.");
-        const corrected = { ...availability, reason, latestEventId: event.id };
-        state = { ...state, availabilityHistory: state.availabilityHistory.map((item) => item.eventId === availability.eventId ? corrected : item) };
-        auditEffective = corrected.effective;
-        auditPrior = availability;
-        auditValue = corrected;
-        break;
-      }
-      if (event.replacement.type === "lineup.committed" || event.replacement.type === "availability.changed" && event.sourceRevision !== void 0) {
-        const corrected = reprojectParticipation(state, event, validateLineup);
-        state = corrected.state;
-        auditEffective = corrected.effective;
-        auditPrior = corrected.priorValue;
-        auditValue = { correction: corrected.value, earliestAffected: corrected.earliestAffected };
-        break;
-      }
-      if (state.eventHistory?.some((item) => item.id === event.targetEventId)) throw new Error("This historical interval or half transition needs explicit reconciliation of the affected play. No recorded minutes were changed.");
-      throw new Error("Correction target was not found in this match history.");
-    }
-    case "event.voided": {
-      if (!event.reason.trim() || event.reason.length > 500) throw new Error("Voiding an event needs an audited reason of 1\u2013500 characters.");
-      const goal = state.goals?.find((item) => item.eventId === event.targetEventId || item.latestEventId === event.targetEventId);
-      if (!goal) {
-        if (state.eventHistory?.some((item) => item.id === event.targetEventId && (item.type === "lineup.committed" || item.type === "availability.changed" || item.type === "event.corrected"))) {
-          const corrected = reprojectParticipation(state, event, validateLineup);
-          state = corrected.state;
-          auditEffective = corrected.effective;
-          auditPrior = corrected.priorValue;
-          auditValue = { correction: corrected.value, earliestAffected: corrected.earliestAffected };
-          break;
-        }
-        if (state.eventHistory?.some((item) => item.id === event.targetEventId)) throw new Error("Voiding a participation or half event requires explicit interval reconciliation. Original history was retained.");
-        throw new Error("Void target was not found in this match history.");
-      }
-      if (goal.voided) throw new Error("This goal is already voided.");
-      const replacement = { ...goal, voided: true, latestEventId: event.id };
-      const goals = state.goals.map((item) => item.eventId === goal.eventId ? replacement : item);
-      state = { ...state, goals, ...scoresFromGoals(state, goals) };
-      auditEffective = replacement.effective;
-      auditPrior = goal;
-      auditValue = replacement;
-      break;
-    }
-    case "clock.recovery_required": {
-      if (!isRunning(state)) throw new Error("Only a running clock needs continuity recovery.");
-      if (!event.reason.trim()) throw new Error("A recovery reason is required.");
-      state = { ...state, recoveryRequired: true, recoveryReason: event.reason };
-      break;
-    }
-    case "clock.corrected": {
-      ensureLive(state);
-      if (!isRunning(state) || !(state.recoveryRequired || readClock(state, event.sample).recoveryRequired)) throw new Error("Clock correction is only available for an uncertain running-clock recovery.");
-      if (event.confirmUnchangedLineup !== true) throw new Error("Confirm unchanged lineup and availability since the secure checkpoint, or reconcile history separately.");
-      if (!event.reason.trim()) throw new Error("Record the referee/trusted-source reason for a clock correction.");
-      integer(event.halfActiveMs, "Corrected active half time");
-      if (event.halfActiveMs < state.halfActiveMs) throw new Error("Backdated clock correction needs audited history reconciliation, outside this M0 slice.");
-      const newMatchMs = (state.half === 2 ? state.firstHalfDurationMs ?? 0 : 0) + event.halfActiveMs;
-      if (newMatchMs < state.matchActiveMs) throw new Error("Clock correction cannot discard recorded participation.");
-      if (isRunning(state) && newMatchMs > state.matchActiveMs) {
-        const syntheticSample = { ...event.sample, sessionId: "explicit-referee-correction", monotonicMs: newMatchMs - state.matchActiveMs };
-        state = accrue({ ...state, recoveryRequired: false, anchor: { sample: { ...syntheticSample, monotonicMs: 0 }, halfActiveMs: state.halfActiveMs, matchActiveMs: state.matchActiveMs } }, syntheticSample);
-      }
-      state = { ...state, halfActiveMs: event.halfActiveMs, matchActiveMs: newMatchMs, recoveryRequired: false, recoveryReason: null, anchor: isRunning(state) ? { sample: { ...event.sample }, halfActiveMs: event.halfActiveMs, matchActiveMs: newMatchMs } : null };
-      break;
-    }
-    default:
-      throw new Error("Unsupported match command type.");
-  }
-  state = updatePolicyPositionMode(state, previous.revision + 1);
-  const audit = {
-    eventId: event.id,
-    type: event.type,
-    revision: previous.revision + 1,
-    recordedAtMs: event.sample.wallTimeMs,
-    actorId: event.actorId ?? null,
-    effective: auditEffective === void 0 ? state.half === 0 ? null : effectiveTime(state) : auditEffective,
-    targetEventId: "targetEventId" in event ? event.targetEventId : null,
-    reason: "lateEntryReason" in event && event.lateEntryReason?.trim() ? event.lateEntryReason : "reason" in event ? event.reason ?? null : null,
-    priorValue: cloneValue(auditPrior),
-    value: cloneValue(auditValue)
-  };
-  return {
-    ...state,
-    revision: previous.revision + 1,
-    appliedEvents: { ...previous.appliedEvents, [event.id]: signature2 },
-    eventHistory: [...previous.eventHistory ?? [], cloneValue(event)],
-    audit: [...previous.audit ?? [], audit]
-  };
-}
-function replayMatch(config, events) {
-  return events.reduce(reduceMatch, createMatch(config));
-}
-function goalRecords(state) {
-  return cloneValue(upgradeMatchState(state).goals ?? []);
-}
-function playerMinutes(state, sample) {
-  const clock = readClock(state, sample);
-  const projected = clock.recoveryRequired ? state : accrue(state, sample);
-  return state.config.selectedPlayerIds.map((playerId) => {
-    const result = { playerId, playingMs: 0, benchMs: 0, unavailableMs: 0, positionMs: {} };
-    for (const interval of projected.intervals.filter((item) => item.playerId === playerId)) {
-      const durationMs = interval.endMs - interval.startMs;
-      if (interval.state === "playing") {
-        result.playingMs += durationMs;
-        if (interval.position) result.positionMs[interval.position] = (result.positionMs[interval.position] ?? 0) + durationMs;
-      } else if (interval.state === "available_bench") result.benchMs += durationMs;
-      else result.unavailableMs += durationMs;
-    }
-    return result;
-  });
-}
-function gcd(left, right) {
-  return right === 0n ? left : gcd(right, left % right);
-}
-function rational(numerator, denominator = 1n) {
-  if (denominator <= 0n || numerator < 0n) throw new Error("Rational target must be nonnegative with a positive denominator.");
-  const divisor = gcd(numerator, denominator);
-  return { numerator: numerator / divisor, denominator: denominator / divisor };
-}
-function add(left, right) {
-  return rational(left.numerator * right.denominator + right.numerator * left.denominator, left.denominator * right.denominator);
-}
-function scale(value, numerator, denominator) {
-  return rational(value.numerator * numerator, value.denominator * denominator);
-}
-function rationalToNumber(value) {
-  return Number(value.numerator) / Number(value.denominator);
-}
-function withinTargetBand(actualMs, target) {
-  integer(actualMs, "Actual playing time");
-  const actual = BigInt(actualMs);
-  return actual * target.lower.denominator >= target.lower.numerator && actual * target.upper.denominator <= target.upper.numerator;
-}
-function calculateTargets(intervals, allPlayerIds = []) {
-  const totals = new Map(allPlayerIds.map((id4) => [id4, rational(0n)]));
-  for (const interval of intervals) {
-    integer(interval.durationMs, "Target interval duration");
-    integer(interval.pitchPlaces, "Target pitch capacity");
-    const ids = interval.availablePlayerIds;
-    if (new Set(ids).size !== ids.length) throw new Error("Target interval repeats an available player.");
-    if (interval.fixedKeeperId && !ids.includes(interval.fixedKeeperId)) throw new Error("Fixed keeper is not available in this target interval.");
-    const count = ids.length;
-    const capacity = Math.min(interval.pitchPlaces, count);
-    if (capacity === 0) continue;
-    for (const playerId of ids) {
-      let contribution;
-      if (playerId === interval.fixedKeeperId) contribution = rational(BigInt(interval.durationMs));
-      else if (interval.fixedKeeperId) contribution = rational(BigInt(interval.durationMs) * BigInt(capacity - 1), BigInt(count - 1));
-      else contribution = rational(BigInt(interval.durationMs) * BigInt(capacity), BigInt(count));
-      totals.set(playerId, add(totals.get(playerId) ?? rational(0n), contribution));
-    }
-  }
-  return [...totals].map(([playerId, target]) => ({ playerId, target, lower: scale(target, 9n, 10n), upper: scale(target, 11n, 10n) }));
-}
-function currentTargets(state, sample) {
-  const clock = readClock(state, sample);
-  const projected = clock.recoveryRequired ? state : accrue(state, sample);
-  return calculateTargets(projected.targetIntervals, state.config.selectedPlayerIds);
-}
-
-// packages/application/src/match-plans.ts
-var copy = (value) => JSON.parse(JSON.stringify(value));
-function assert(value, message) {
-  if (!value) throw new Error(message);
-}
-function shape(value, keys2) {
-  assert(
-    value && typeof value === "object" && !Array.isArray(value) && Object.keys(value).every((key) => keys2.includes(key)),
-    "Match-plan data contains unsupported fields."
-  );
-}
-function required(value, maximum, label2) {
-  assert(
-    typeof value === "string" && value.trim() && value.trim().length <= maximum && !/[\u0000-\u001f\u007f]/.test(value),
-    `${label2} is required and must be at most ${maximum} characters.`
-  );
-  return value.trim();
-}
-var canonical2 = (value) => Array.isArray(value) ? `[${value.map(canonical2).join(",")}]` : value && typeof value === "object" ? `{${Object.entries(value).sort(([a], [b]) => a.localeCompare(b)).map(([key, item]) => `${JSON.stringify(key)}:${canonical2(item)}`).join(",")}}` : JSON.stringify(value);
-function keeper(profile) {
-  return profile.eligiblePositions.includes("GK") && ["GK"].includes(profile.preferences[0]) || profile.eligiblePositions.includes("GK") && profile.preferences[1] === "GK";
-}
-function latestMatchPlans(state) {
-  const map = /* @__PURE__ */ new Map();
-  for (const plan of state.matchPlans ?? [])
-    if (!map.has(plan.id) || map.get(plan.id).version < plan.version)
-      map.set(plan.id, plan);
-  return [...map.values()].filter(
-    (plan) => plan.teamId === state.team.id && plan.seasonId === state.activeSeasonId
-  ).map(copy);
-}
-function validateMatchPlanSettings(settings) {
-  shape(settings, ["payload", "applicability", "softPreferences"]);
-  shape(settings.payload, [
-    "keeperMode",
-    "fixedKeeperPlayerSeasonId",
-    "minimumStintMs",
-    "batchLimit",
-    "scoreLeadThreshold",
-    "returnToNormalEnabled"
-  ]);
-  shape(settings.applicability, ["minimumStint", "batchLimit", "q07"]);
-  shape(settings.softPreferences, ["halfBufferFraction"]);
-  const p = settings.payload;
-  assert(
-    ["sole_fixed", "common_pool"].includes(p.keeperMode) && (p.fixedKeeperPlayerSeasonId === null || typeof p.fixedKeeperPlayerSeasonId === "string" && p.fixedKeeperPlayerSeasonId.length > 0),
-    "Choose a known keeper proposal."
-  );
-  assert(
-    p.keeperMode === "sole_fixed" === (p.fixedKeeperPlayerSeasonId !== null),
-    "Fixed keeper identity must agree with the keeper proposal."
-  );
-  assert(
-    Number.isSafeInteger(p.minimumStintMs) && p.minimumStintMs >= 0 && Number.isSafeInteger(p.batchLimit) && p.batchLimit >= 1 && p.batchLimit <= 11 && Number.isSafeInteger(p.scoreLeadThreshold) && p.scoreLeadThreshold >= 1 && typeof p.returnToNormalEnabled === "boolean",
-    "Review minimum spell, batch preference, threshold and explicit return choice."
-  );
-  assert(
-    settings.applicability.minimumStint === "soft_preference" && settings.applicability.batchLimit === "soft_preference" && settings.applicability.q07 === "unapproved",
-    "A saved plan cannot approve Q07 or convert preferences into hard rules."
-  );
-  assert(
-    Number.isFinite(settings.softPreferences.halfBufferFraction) && settings.softPreferences.halfBufferFraction >= 0 && settings.softPreferences.halfBufferFraction <= 0.49,
-    "Half buffer must be a fraction between zero and 0.49."
-  );
-}
-function validateProposal(state, fixture, formation, allocations, settings) {
-  assert(
-    formation.format === fixture.format && formation.slots.length === fixture.format && formation.slots.filter((slot) => slot.position === "GK").length === 1,
-    "The saved formation must match this fixture format and include one goalkeeper."
-  );
-  assert(
-    Array.isArray(allocations) && allocations.length === fixture.format && new Set(allocations.map((row) => row.slotId)).size === fixture.format && new Set(allocations.map((row) => row.playerId)).size === fixture.format,
-    "Review one distinct player for every saved place."
-  );
-  const selected = fixture.selectedProfileIds.map(
-    (id4) => state.profiles.find(
-      (profile) => profile.id === id4 && profile.seasonId === fixture.seasonId && profile.active
-    )
-  ).filter(
-    (profile) => Boolean(profile)
-  );
-  for (const allocation of allocations) {
-    shape(allocation, ["slotId", "position", "playerId"]);
-    const slot = formation.slots.find(
-      (value) => value.id === allocation.slotId
-    );
-    const profile = selected.find(
-      (value) => value.playerId === allocation.playerId
-    );
-    assert(
-      slot && slot.position === allocation.position && profile && profile.eligiblePositions.includes(slot.position),
-      "A proposed player is missing, unselected, archived or no longer eligible. Review the squad and places first."
-    );
-    if (slot.position === "GK")
-      assert(
-        keeper(profile),
-        "The proposed goalkeeper must remain a first- or second-choice eligible keeper."
-      );
-  }
-  validateMatchPlanSettings(settings);
-  const qualifying = selected.filter(keeper);
-  assert(
-    settings.payload.minimumStintMs <= fixture.plannedHalfDurationMs,
-    "The preferred spell exceeds this fixture\u2019s planned half."
-  );
-  assert(
-    settings.payload.keeperMode === "sole_fixed" ? qualifying.length === 1 && qualifying[0].playerId === settings.payload.fixedKeeperPlayerSeasonId && allocations.some(
-      (row) => row.position === "GK" && row.playerId === qualifying[0].playerId
-    ) : qualifying.length >= 2,
-    "The saved keeper proposal does not match this selected squad. Review current keeper coverage; no exemption is inferred."
-  );
-}
-function saveMatchPlan(state, input) {
-  shape(input, [
-    "planId",
-    "expectedPlanVersion",
-    "name",
-    "description",
-    "sourceFixtureId",
-    "sourceSnapshotId",
-    "allocations",
-    "settings"
-  ]);
-  const fixture = state.fixtures.find(
-    (row) => row.id === input.sourceFixtureId && row.seasonId === state.activeSeasonId
-  );
-  const snapshot = state.snapshots.find(
-    (row) => row.id === input.sourceSnapshotId && row.fixtureId === input.sourceFixtureId
-  );
-  assert(
-    fixture && snapshot && snapshot.seasonId === state.activeSeasonId,
-    "Review an explicit saved preparation for this team and season."
-  );
-  const latestSnapshot = state.snapshots.filter((row) => row.fixtureId === fixture.id).at(-1);
-  const {
-    status: _status,
-    selectedProfileIds: _selection,
-    responses: _responses,
-    attendance: _attendance,
-    history: _history,
-    matchPlanDraft: _draft,
-    ...fixtureDetails
-  } = fixture;
-  assert(
-    latestSnapshot?.id === snapshot.id && canonical2(snapshot.fixture) === canonical2(fixtureDetails) && canonical2(snapshot.selectedPlayerIds.slice().sort()) === canonical2(
-      fixture.selectedProfileIds.map(
-        (id4) => state.profiles.find((profile) => profile.id === id4)?.playerId
-      ).sort()
-    ),
-    "Source preparation changed. Prepare and review its latest snapshot before saving a plan."
-  );
-  const previous = latestMatchPlans(state).find(
-    (row) => row.id === input.planId
-  );
-  assert(
-    input.expectedPlanVersion === (previous?.version ?? 0),
-    "The reusable plan changed. Refresh and review its current version."
-  );
-  validateProposal(
-    state,
-    fixture,
-    snapshot.formation,
-    input.allocations,
-    input.settings
-  );
-  assert(
-    typeof input.description === "string" && input.description.length <= 300 && !/[\u0000-\u001f\u007f]/.test(input.description),
-    "Use a short non-sensitive description, at most300 characters."
-  );
-  return {
-    id: required(input.planId, 150, "Plan identity"),
-    version: (previous?.version ?? 0) + 1,
-    teamId: state.team.id,
-    seasonId: fixture.seasonId,
-    name: required(input.name, 40, "Plan name"),
-    description: input.description.trim(),
-    sourceFixtureId: fixture.id,
-    sourceSnapshotId: snapshot.id,
-    sourcePreparedRevision: snapshot.preparedRevision,
-    formation: copy(snapshot.formation),
-    allocations: copy(input.allocations),
-    settings: copy(input.settings)
-  };
-}
-function today(now) {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Europe/London",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit"
-  }).format(new Date(now));
-}
-function previewMatchPlan(state, planId, fixtureId, context = {}) {
-  const plan = latestMatchPlans(state).find((row) => row.id === planId);
-  const fixture = state.fixtures.find(
-    (row) => row.id === fixtureId && row.seasonId === state.activeSeasonId
-  );
-  const issues = [];
-  try {
-    assert(
-      plan && fixture,
-      "Choose an existing plan and target fixture in this team and season."
-    );
-    assert(
-      fixture.id !== plan.sourceFixtureId,
-      "Choose another fixture; saving a template never overwrites its source."
-    );
-    assert(
-      fixture.status === "scheduled" && fixture.playedDate >= today(context.nowMs ?? Date.now()) && !context.protectedFixtureIds?.includes(fixture.id),
-      "Only a prospective, unrecorded and unclaimed fixture can receive a match plan."
-    );
-    validateProposal(
-      state,
-      fixture,
-      plan.formation,
-      plan.allocations,
-      plan.settings
-    );
-  } catch (error) {
-    issues.push(
-      error instanceof Error ? error.message : "This plan is not applicable."
-    );
-  }
-  const previewKey = plan && fixture ? canonical2([
-    state.revision,
-    plan,
-    fixture,
-    state.profiles.filter(
-      (profile) => fixture.selectedProfileIds.includes(profile.id)
-    ).map((profile) => [
-      profile.id,
-      profile.playerId,
-      profile.active,
-      profile.eligiblePositions,
-      profile.preferences
-    ])
-  ]) : "";
-  return {
-    ready: issues.length === 0,
-    issues,
-    previewKey,
-    plan: plan ? copy(plan) : null,
-    fixture: fixture ? copy(fixture) : null
-  };
-}
-function applyMatchPlan(state, input, context = {}) {
-  shape(input, ["planId", "planVersion", "fixtureId", "previewKey", "confirm"]);
-  const preview = previewMatchPlan(
-    state,
-    input.planId,
-    input.fixtureId,
-    context
-  );
-  assert(
-    input.confirm === true && preview.ready && preview.plan && input.planVersion === preview.plan.version && input.previewKey === preview.previewKey,
-    preview.issues[0] ?? "The preview or plan changed. Review this fixture again before explicitly confirming."
-  );
-  const plan = preview.plan;
-  return {
-    templateId: plan.id,
-    templateVersion: plan.version,
-    appliedRevision: state.revision + 1,
-    formation: {
-      ...copy(plan.formation),
-      id: `match-plan:${plan.id}:${plan.version}`,
-      name: plan.name
-    },
-    allocations: copy(plan.allocations),
-    settings: copy(plan.settings)
-  };
-}
-function validateFixtureMatchPlan(state, fixture) {
-  if (fixture.matchPlanDraft)
-    validateProposal(
-      state,
-      fixture,
-      fixture.matchPlanDraft.formation,
-      fixture.matchPlanDraft.allocations,
-      fixture.matchPlanDraft.settings
-    );
-}
-
-// packages/application/src/preparation.ts
-var positionCodes = [
+// packages/application/src/position-catalogue.ts
+var CORE_POSITION_CODES = [
   "GK",
   "CB",
   "LB",
@@ -1955,764 +9,77 @@ var positionCodes = [
   "RW",
   "ST"
 ];
-function requireThat2(condition, message) {
-  if (!condition) throw new Error(message);
-}
-var clone = (value) => JSON.parse(JSON.stringify(value));
-function text(value, label2, maximum = 80) {
-  requireThat2(
-    typeof value === "string" && value.trim().length > 0 && value.trim().length <= maximum,
-    `${label2} is required and must be at most ${maximum} characters.`
-  );
-  return value.trim();
-}
-function canonical3(value) {
-  if (Array.isArray(value)) return `[${value.map(canonical3).join(",")}]`;
-  if (value && typeof value === "object")
-    return `{${Object.entries(value).sort(([a], [b]) => a.localeCompare(b)).map(([key, item]) => `${JSON.stringify(key)}:${canonical3(item)}`).join(",")}}`;
-  return JSON.stringify(value);
-}
-function validDate(value) {
-  const date = /* @__PURE__ */ new Date(`${value}T00:00:00Z`);
-  return /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
-}
-function validTime(value) {
-  return value === null || /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
-}
-function validateFormat(format2) {
-  requireThat2(
-    Number.isInteger(format2) && format2 >= 5 && format2 <= 11,
-    "Choose a format from five to eleven players."
-  );
-}
-function validateHalf(duration2) {
-  requireThat2(
-    Number.isSafeInteger(duration2) && duration2 > 0 && duration2 % 1e3 === 0,
-    "Each planned half must be a positive whole number of seconds."
-  );
-}
-function validateLogo(logo) {
-  requireThat2(
-    logo === null || ["roundel", "shield", "ball"].includes(logo),
-    "Choose one of the sample badges."
-  );
-}
-function activeSeason(state, seasonId) {
-  const season = state.seasons.find((item) => item.id === seasonId);
-  requireThat2(season, "Season not found.");
-  requireThat2(
-    seasonId === state.activeSeasonId,
-    "Past seasons are read-only here. Their records are retained unchanged."
-  );
-  return season;
-}
-function dateInSeason(state, seasonId, date) {
-  const season = activeSeason(state, seasonId);
-  requireThat2(
-    validDate(date) && date >= season.startDate && date <= season.endDate,
-    "Choose a valid date within the selected September-to-August season."
-  );
-}
-function checkProfile(state, profileId, seasonId) {
-  const profile = state.profiles.find(
-    (item) => item.id === profileId && item.seasonId === seasonId && item.active
-  );
-  requireThat2(profile, "Choose an active player from this team and season.");
-  return profile;
-}
-function validResponse(value) {
-  requireThat2(
-    ["available", "unavailable", "unsure", "no_reply"].includes(value),
-    "Choose an availability response."
-  );
-}
-function validAttendance(value) {
-  requireThat2(
-    ["present", "absent", "not_recorded"].includes(value),
-    "Choose Present, Absent or Not recorded."
-  );
-}
-function unique(ids) {
-  requireThat2(
-    new Set(ids).size === ids.length,
-    "Each player or slot can appear only once."
-  );
-}
-function validateTraining(state, training) {
-  text(training.id, "Training identity", 150);
-  dateInSeason(state, training.seasonId, training.date);
-  requireThat2(validTime(training.time) && training.time !== null, "Use a 24-hour HH:MM training time.");
-  requireThat2(typeof training.venue === "string" && training.venue.length <= 200, "Use a training venue of at most 200 characters.");
-  requireThat2(training.recurrenceGroupId === null || typeof training.recurrenceGroupId === "string" && training.recurrenceGroupId.trim().length > 0 && training.recurrenceGroupId.length <= 150, "Use a valid training series identity.");
-  requireThat2(Array.isArray(training.expectedProfileIds), "Choose the expected players explicitly.");
-  unique(training.expectedProfileIds);
-  training.expectedProfileIds.forEach((id4) => checkProfile(state, id4, training.seasonId));
-}
-function seasonBounds(startYear) {
-  requireThat2(
-    Number.isInteger(startYear) && startYear >= 2e3 && startYear <= 2100,
-    "Choose a season start year between 2000 and 2100."
-  );
-  return {
-    startDate: `${startYear}-09-01`,
-    endDate: `${startYear + 1}-08-31`,
-    label: `${startYear}/${String(startYear + 1).slice(-2)}`
-  };
-}
-function seasonPlayers(state, seasonId = state.activeSeasonId) {
-  return state.profiles.filter(
-    (profile) => profile.seasonId === seasonId && profile.active
-  );
-}
-function goalkeeperChoice(profile) {
-  const rank = profile.preferences.indexOf("GK") + 1;
-  return profile.eligiblePositions.includes("GK") && (rank === 1 || rank === 2) ? rank : 0;
-}
-function defaultFormation(format2) {
-  validateFormat(format2);
-  const roles = {
-    5: ["GK", "CB", "CB", "CM", "ST"],
-    6: ["GK", "CB", "CB", "LW", "RW", "ST"],
-    7: ["GK", "CB", "CB", "CM", "LW", "RW", "ST"],
-    8: ["GK", "LB", "CB", "RB", "CM", "LW", "RW", "ST"],
-    9: ["GK", "LB", "CB", "CB", "RB", "CM", "LW", "RW", "ST"],
-    10: ["GK", "LB", "CB", "CB", "RB", "CM", "CM", "LW", "RW", "ST"],
-    11: ["GK", "LB", "CB", "CB", "RB", "CM", "CM", "LW", "RW", "ST", "ST"]
-  };
-  const count = {};
-  const row = (position) => position === "GK" ? 0.9 : ["CB", "LB", "RB"].includes(position) ? 0.72 : position === "CM" ? 0.5 : ["LW", "RW"].includes(position) ? 0.32 : 0.13;
-  return {
-    id: `formation-${format2}`,
-    name: `${format2}-a-side`,
-    format: format2,
-    version: 1,
-    slots: roles[format2].map((position) => {
-      const ordinal = count[position] = (count[position] ?? 0) + 1;
-      const peers = roles[format2].filter((role) => row(role) === row(position));
-      const index = roles[format2].slice(
-        0,
-        roles[format2].findIndex(
-          (role, i) => role === position && roles[format2].slice(0, i + 1).filter((p) => p === position).length === ordinal
-        )
-      ).filter((role) => row(role) === row(position)).length;
-      return {
-        id: `${position.toLowerCase()}-${ordinal}`,
-        position,
-        label: `${position}${roles[format2].filter((role) => role === position).length > 1 ? ordinal : ""}`,
-        x: (index + 1) / (peers.length + 1),
-        y: row(position)
-      };
-    })
-  };
-}
-function prepareFixtureSnapshot(state, fixtureId, formationId) {
-  const fixture = state.fixtures.find((item) => item.id === fixtureId);
-  requireThat2(
-    fixture && fixture.status === "scheduled",
-    "Only a scheduled match can be prepared."
-  );
-  activeSeason(state, fixture.seasonId);
-  if (fixture.matchPlanDraft && fixture.matchPlanDraft.formation.id === formationId) validateFixtureMatchPlan(state, fixture);
-  const formation = fixture.matchPlanDraft && fixture.matchPlanDraft.formation.id === formationId ? fixture.matchPlanDraft.formation : state.formations.find(
-    (item) => item.id === (formationId ?? `formation-${fixture.format}`)
-  );
-  requireThat2(
-    formation && formation.format === fixture.format,
-    "Choose a saved formation for this match format."
-  );
-  requireThat2(
-    fixture.selectedProfileIds.length >= fixture.format,
-    "Select enough players for the match format."
-  );
-  const profiles = fixture.selectedProfileIds.map(
-    (id4) => checkProfile(state, id4, fixture.seasonId)
-  );
-  requireThat2(
-    profiles.some((profile) => goalkeeperChoice(profile) > 0),
-    "Select a first- or second-choice eligible goalkeeper."
-  );
-  const {
-    responses: _responses,
-    attendance: _attendance,
-    selectedProfileIds: _selected,
-    history: _history,
-    status: _status,
-    matchPlanDraft: _planDraft,
-    ...draft
-  } = fixture;
-  return clone({
-    id: `${fixture.id}@${state.revision + 1}`,
-    fixtureId,
-    seasonId: fixture.seasonId,
-    preparedRevision: state.revision + 1,
-    fixture: draft,
-    formation,
-    profiles,
-    selectedPlayerIds: profiles.map((profile) => profile.playerId),
-    attendance: Object.fromEntries(
-      profiles.map((profile) => [
-        profile.playerId,
-        fixture.attendance[profile.id] ?? "not_recorded"
-      ])
-    ),
-    ...fixture.matchPlanDraft?.formation.id === formation.id ? { matchPlanDraft: fixture.matchPlanDraft } : {}
-  });
-}
-function saveProfile(state, source2) {
-  const profile = clone(source2);
-  activeSeason(state, profile.seasonId);
-  text(profile.id, "Profile identity", 150);
-  text(profile.playerId, "Player identity", 150);
-  const existing = state.profiles.find((item) => item.id === profile.id);
-  if (existing)
-    requireThat2(
-      existing.playerId === profile.playerId && existing.seasonId === profile.seasonId,
-      "Profile identity and season cannot be reassigned."
-    );
-  requireThat2(
-    !state.profiles.some(
-      (item) => item.id !== profile.id && item.seasonId === profile.seasonId && item.playerId === profile.playerId
-    ),
-    "That player already has a profile in this season."
-  );
-  profile.displayName = text(profile.displayName, "Display name", 60);
-  requireThat2(
-    typeof profile.initials === "string" && /^[A-Za-z0-9]{1,2}$/.test(profile.initials),
-    "Use one or two letters or digits for the pitch label."
-  );
-  profile.initials = profile.initials.toUpperCase();
-  requireThat2(
-    profile.shirtNumber === null || Number.isInteger(profile.shirtNumber) && profile.shirtNumber >= 1 && profile.shirtNumber <= 99,
-    "Shirt number must be one to 99 or not recorded."
-  );
-  requireThat2(
-    !state.profiles.some(
-      (item) => item.id !== profile.id && item.seasonId === profile.seasonId && item.active && profile.active && profile.shirtNumber !== null && item.shirtNumber === profile.shirtNumber
-    ),
-    "Another active player already has that shirt number."
-  );
-  requireThat2(
-    profile.preferences.length === 3 && new Set(profile.preferences).size === 3 && profile.preferences.every((position) => positionCodes.includes(position)),
-    "Choose three different ranked positions."
-  );
-  requireThat2(
-    profile.eligiblePositions.length > 0 && new Set(profile.eligiblePositions).size === profile.eligiblePositions.length && profile.eligiblePositions.every(
-      (position) => positionCodes.includes(position)
-    ),
-    "Choose distinct manager-approved eligible positions."
-  );
-  requireThat2(
-    ["left", "right", "both", "not_recorded"].includes(profile.foot),
-    "Choose a preferred foot or Not recorded."
-  );
-  state.profiles = state.profiles.filter((item) => item.id !== profile.id);
-  state.profiles.push(profile);
-  return profile;
-}
-function validateRosterImport(state, profiles) {
-  requireThat2(
-    Array.isArray(profiles) && profiles.length > 0 && profiles.length <= 200,
-    "Import between one and 200 new player profiles."
-  );
-  const candidate = clone(state);
-  return Array.from(profiles).map((profile) => {
-    requireThat2(
-      profile && typeof profile === "object" && Object.keys(profile).length === 10 && Object.keys(profile).every(
-        (key) => [
-          "id",
-          "playerId",
-          "seasonId",
-          "displayName",
-          "initials",
-          "shirtNumber",
-          "foot",
-          "preferences",
-          "eligiblePositions",
-          "active"
-        ].includes(key)
-      ),
-      "Use only the documented player profile fields; accounts, contacts and dates of birth cannot be imported."
-    );
-    requireThat2(
-      Array.isArray(profile.preferences) && Array.isArray(profile.eligiblePositions),
-      "Provide ranked preferences and explicit eligible positions."
-    );
-    requireThat2(
-      typeof profile.initials === "string" && profile.initials.length >= 1 && profile.initials.length <= 2 && !/[^A-Za-z0-9]/.test(profile.initials),
-      "Use one or two letters or digits for the pitch label."
-    );
-    requireThat2(
-      profile.active === true && profile.seasonId === state.activeSeasonId,
-      "Import active players into the current season only."
-    );
-    for (const id4 of [profile.id, profile.playerId])
-      requireThat2(
-        typeof id4 === "string" && id4.length >= 1 && id4.length <= 150 && !/[^A-Za-z0-9_.:-]/.test(id4),
-        "Use a valid opaque player/profile identity of at most 150 characters."
-      );
-    requireThat2(
-      !candidate.profiles.some(
-        (existing) => existing.id === profile.id || existing.playerId === profile.playerId
-      ),
-      "A player or profile identity already exists. Import never merges identities; edit that player separately."
-    );
-    return saveProfile(candidate, profile);
-  });
-}
-function reducePreparation(previous, command, context = {}) {
-  requireThat2(
-    command.id && typeof command.id === "string",
-    "A stable command identity is required."
-  );
-  const signature2 = canonical3(command);
-  if (previous.appliedCommands[command.id]) {
-    requireThat2(
-      previous.appliedCommands[command.id] === signature2,
-      "This command identity already belongs to different content."
-    );
-    return previous;
-  }
-  requireThat2(
-    command.expectedRevision === previous.revision,
-    "Preparation changed on another screen. Reload the saved version before applying this change."
-  );
-  const state = clone(previous);
-  const revision = state.revision + 1;
-  switch (command.type) {
-    case "club.updated":
-      validateLogo(command.logo);
-      state.club = {
-        ...state.club,
-        name: text(command.name, "Club name"),
-        logo: command.logo
-      };
-      break;
-    case "team.updated":
-      validateLogo(command.logo);
-      validateFormat(command.defaultPitchPlaces);
-      validateHalf(command.defaultHalfDurationMs);
-      state.team = {
-        ...state.team,
-        name: text(command.name, "Team name"),
-        ageGroup: text(command.ageGroup, "Age group", 12),
-        defaultPitchPlaces: command.defaultPitchPlaces,
-        defaultHalfDurationMs: command.defaultHalfDurationMs,
-        logo: command.logo
-      };
-      break;
-    case "season.rolled_over": {
-      requireThat2(
-        command.confirmSpectatorRenewal === true,
-        "Confirm that spectator access must be renewed explicitly."
-      );
-      const old = state.seasons.find(
-        (item) => item.id === state.activeSeasonId
-      );
-      requireThat2(
-        command.startYear === old.startYear + 1,
-        "Rollover creates the immediately following September-to-August season."
-      );
-      requireThat2(
-        !state.seasons.some(
-          (item) => item.id === command.idForSeason || item.startYear === command.startYear
-        ),
-        "That season already exists."
-      );
-      const season = {
-        id: text(command.idForSeason, "Season identity"),
-        startYear: command.startYear,
-        ...seasonBounds(command.startYear),
-        spectatorRenewalRequired: true
-      };
-      if (command.copyPlayers)
-        state.profiles.push(
-          ...seasonPlayers(state).map((profile) => ({
-            ...clone(profile),
-            id: `${profile.playerId}:${season.id}`,
-            seasonId: season.id
-          }))
-        );
-      state.seasons.push(season);
-      state.activeSeasonId = season.id;
-      break;
-    }
-    case "profile.saved":
-      saveProfile(state, command.profile);
-      break;
-    case "roster.imported": {
-      requireThat2(
-        command.id.length <= 150 && !/[^A-Za-z0-9_.:-]/.test(command.id),
-        "Use a valid stable roster import identity."
-      );
-      requireThat2(
-        command.confirmNewPlayers === true,
-        "Confirm that every imported row creates a new player; no accounts or access are granted."
-      );
-      requireThat2(
-        Object.keys(command).every(
-          (key) => [
-            "id",
-            "type",
-            "expectedRevision",
-            "profiles",
-            "confirmNewPlayers"
-          ].includes(key)
-        ),
-        "Use the documented roster import command."
-      );
-      state.profiles.push(...validateRosterImport(state, command.profiles));
-      break;
-    }
-    case "profile.archived": {
-      const profile = state.profiles.find(
-        (item) => item.id === command.profileId
-      );
-      requireThat2(profile, "Player profile not found.");
-      activeSeason(state, profile.seasonId);
-      profile.active = false;
-      break;
-    }
-    case "formation.saved": {
-      const formation = clone(command.formation);
-      validateFormat(formation.format);
-      formation.name = text(formation.name, "Formation name", 40);
-      requireThat2(
-        formation.slots.length === formation.format && formation.slots.filter((slot) => slot.position === "GK").length === 1,
-        "A formation needs the chosen number of slots and exactly one goalkeeper."
-      );
-      unique(formation.slots.map((slot) => slot.id));
-      for (const slot of formation.slots) {
-        requireThat2(
-          slot.id.length > 0 && positionCodes.includes(slot.position),
-          "Each slot needs an identity and position type."
-        );
-        slot.label = text(slot.label, "Slot label", 16);
-        requireThat2(
-          Number.isFinite(slot.x) && slot.x >= 0 && slot.x <= 1 && Number.isFinite(slot.y) && slot.y >= 0 && slot.y <= 1,
-          "Formation coordinates must be between zero and one."
-        );
-      }
-      const version = (state.formations.find((item) => item.id === formation.id)?.version ?? 0) + 1;
-      state.formations = state.formations.filter(
-        (item) => item.id !== formation.id
-      );
-      state.formations.push({ ...formation, version });
-      break;
-    }
-    case "fixture.saved": {
-      const fixture = clone(command.fixture);
-      dateInSeason(state, fixture.seasonId, fixture.playedDate);
-      validateFormat(fixture.format);
-      validateHalf(fixture.plannedHalfDurationMs);
-      fixture.opponent = text(fixture.opponent, "Opposition");
-      requireThat2(
-        validTime(fixture.kickoff) && validTime(fixture.arrival),
-        "Use 24-hour HH:MM times, or leave time not recorded."
-      );
-      requireThat2(
-        ["home", "away"].includes(fixture.homeAway),
-        "Choose home or away."
-      );
-      const existing = state.fixtures.find((item) => item.id === fixture.id);
-      if (existing)
-        requireThat2(
-          existing.seasonId === fixture.seasonId && existing.status !== "cancelled",
-          "Cancelled matches must be restored explicitly before rescheduling."
-        );
-      const status = "scheduled";
-      const updated = {
-        ...fixture,
-        status,
-        selectedProfileIds: existing?.selectedProfileIds ?? [],
-        responses: existing?.responses ?? {},
-        attendance: existing?.attendance ?? {},
-        ...existing?.matchPlanDraft ? { matchPlanDraft: existing.matchPlanDraft } : {},
-        history: [
-          ...existing?.history ?? [],
-          {
-            revision,
-            action: existing ? "rescheduled" : "created",
-            playedDate: fixture.playedDate,
-            kickoff: fixture.kickoff,
-            status
-          }
-        ]
-      };
-      state.fixtures = state.fixtures.filter((item) => item.id !== fixture.id);
-      state.fixtures.push(updated);
-      break;
-    }
-    case "fixture.status_changed": {
-      const fixture = state.fixtures.find(
-        (item) => item.id === command.fixtureId
-      );
-      requireThat2(fixture, "Match not found.");
-      activeSeason(state, fixture.seasonId);
-      requireThat2(
-        ["scheduled", "postponed", "cancelled"].includes(command.status),
-        "Choose a valid fixture state."
-      );
-      fixture.status = command.status;
-      fixture.history.push({
-        revision,
-        action: command.status,
-        playedDate: fixture.playedDate,
-        kickoff: fixture.kickoff,
-        status: command.status
-      });
-      break;
-    }
-    case "fixture.response_recorded":
-    case "fixture.selection_saved":
-    case "fixture.attendance_recorded": {
-      const fixture = state.fixtures.find(
-        (item) => item.id === command.fixtureId
-      );
-      requireThat2(fixture, "Match not found.");
-      activeSeason(state, fixture.seasonId);
-      requireThat2(
-        fixture.status === "scheduled",
-        "Only a scheduled match can collect responses, selection or attendance."
-      );
-      if (command.type === "fixture.selection_saved") {
-        unique(command.selectedProfileIds);
-        command.selectedProfileIds.forEach(
-          (id4) => checkProfile(state, id4, fixture.seasonId)
-        );
-        fixture.selectedProfileIds = [...command.selectedProfileIds];
-      } else {
-        checkProfile(state, command.profileId, fixture.seasonId);
-        if (command.type === "fixture.response_recorded") {
-          validResponse(command.response);
-          fixture.responses[command.profileId] = command.response;
-        } else {
-          validAttendance(command.attendance);
-          requireThat2(
-            fixture.selectedProfileIds.includes(command.profileId),
-            "Only selected match players can be checked in."
-          );
-          fixture.attendance[command.profileId] = command.attendance;
-        }
-      }
-      break;
-    }
-    case "fixture.prepared": {
-      const snapshot = prepareFixtureSnapshot(
-        state,
-        command.fixtureId,
-        command.formationId
-      );
-      state.snapshots.push(snapshot);
-      break;
-    }
-    case "training.series_created":
-    case "training.series_updated":
-    case "training.series_cancelled": {
-      applyTrainingSeries(state, command, (draft) => validateTraining(state, draft));
-      break;
-    }
-    case "match_plan.saved": {
-      const { type: _type, id: _id, expectedRevision: _revision, ...input } = command;
-      const plan = saveMatchPlan(state, input);
-      state.matchPlans = [...state.matchPlans ?? [], plan];
-      break;
-    }
-    case "match_plan.applied": {
-      const { type: _type, id: _id, expectedRevision: _revision, ...input } = command;
-      const draft = applyMatchPlan(state, input, context);
-      state.fixtures.find((item) => item.id === command.fixtureId).matchPlanDraft = draft;
-      break;
-    }
-    case "match_plan.cleared": {
-      const fixture = state.fixtures.find((item) => item.id === command.fixtureId);
-      requireThat2(fixture && fixture.seasonId === state.activeSeasonId, "Choose a fixture in the current season.");
-      delete fixture.matchPlanDraft;
-      break;
-    }
-    case "training.saved": {
-      const training = clone(command.training);
-      validateTraining(state, training);
-      const existing = state.training.find((item) => item.id === training.id);
-      if (existing)
-        requireThat2(
-          existing.seasonId === training.seasonId && existing.recurrenceGroupId === training.recurrenceGroupId && existing.status === "scheduled",
-          "Held or cancelled training records are retained; create or restore a scheduled occurrence first."
-        );
-      state.training = state.training.filter((item) => item.id !== training.id);
-      state.training.push({
-        ...training,
-        status: "scheduled",
-        responses: existing?.responses ?? {},
-        attendance: existing?.attendance ?? {}
-      });
-      break;
-    }
-    case "training.status_changed": {
-      const training = state.training.find(
-        (item) => item.id === command.trainingId
-      );
-      requireThat2(training, "Training occurrence not found.");
-      activeSeason(state, training.seasonId);
-      requireThat2(
-        ["scheduled", "held", "cancelled"].includes(command.status),
-        "Choose a valid training state."
-      );
-      training.status = command.status;
-      break;
-    }
-    case "training.response_recorded":
-    case "training.attendance_recorded": {
-      const training = state.training.find(
-        (item) => item.id === command.trainingId
-      );
-      requireThat2(training, "Training occurrence not found.");
-      activeSeason(state, training.seasonId);
-      checkProfile(state, command.profileId, training.seasonId);
-      requireThat2(
-        training.expectedProfileIds.includes(command.profileId),
-        "Only expected players belong to this attendance occurrence."
-      );
-      if (command.type === "training.response_recorded") {
-        requireThat2(
-          training.status !== "cancelled",
-          "Cancelled training cannot collect availability."
-        );
-        validResponse(command.response);
-        training.responses[command.profileId] = command.response;
-      } else {
-        requireThat2(
-          training.status === "held",
-          "Mark this occurrence as held before recording actual attendance. Cancelled training is excluded."
-        );
-        validAttendance(command.attendance);
-        training.attendance[command.profileId] = command.attendance;
-      }
-      break;
-    }
-    default:
-      throw new Error(
-        "This preparation command is not supported. No saved records were changed."
-      );
-  }
-  state.revision = revision;
-  state.appliedCommands[command.id] = signature2;
-  state.audit.push({ id: command.id, revision, type: command.type });
-  return state;
-}
-function trainingAttendanceEvidence(state) {
-  return state.training.map((session) => ({
-    sourcePreparationRevision: state.revision,
-    sourceCommandId: state.audit.at(-1)?.id ?? null,
-    sessionId: session.id,
-    playedDate: session.date,
-    eventStatus: session.status,
-    expectedPlayerIds: session.expectedProfileIds.map(
-      (id4) => state.profiles.find((profile) => profile.id === id4)?.playerId
-    ).filter((id4) => Boolean(id4)),
-    attendance: Object.fromEntries(
-      Object.entries(session.attendance).flatMap(([id4, attendance]) => {
-        const profile = state.profiles.find((item) => item.id === id4);
-        return profile ? [[profile.playerId, attendance]] : [];
-      })
-    ),
-    responses: Object.fromEntries(
-      Object.entries(session.responses).flatMap(([id4, response]) => {
-        const profile = state.profiles.find((item) => item.id === id4);
-        return profile ? [[profile.playerId, response]] : [];
-      })
-    )
+var labels = [
+  "Goalkeeper",
+  "Centre back",
+  "Left back",
+  "Right back",
+  "Centre midfield",
+  "Left wing",
+  "Right wing",
+  "Striker"
+];
+function defaultPositionCatalogue() {
+  return CORE_POSITION_CODES.map((code, index) => ({
+    code,
+    label: labels[index],
+    active: true
   }));
 }
-function createPreparationState(options = {}) {
-  const seasonId = "synthetic-season-2026-27";
-  const profiles = Array.from({ length: 13 }, (_, index) => {
-    const number = String(index + 1).padStart(2, "0");
-    const details = romaFixture.profiles.find((profile) => profile.playerId === `synthetic-player-${number}`);
-    const preferences = [...details.preferences];
-    return {
-      id: `synthetic-player-${number}:${seasonId}`,
-      playerId: `synthetic-player-${number}`,
-      seasonId,
-      displayName: romaFixture.players[index].displayName,
-      initials: details.initials,
-      shirtNumber: details.shirtNumber,
-      foot: details.foot,
-      preferences,
-      eligiblePositions: [...details.eligiblePositions],
-      active: true
-    };
-  });
-  const fixtures = romaFixture.fixtures.map((item, index) => {
-    const selected = options.demoScenario ? item.selectedPlayerIds.map((playerId) => profiles.find((profile) => profile.playerId === playerId)) : profiles.slice(0, item.selectedCount);
-    const past = item.playedDate < romaFixture.demo.referenceDate;
-    return {
-      id: item.id,
-      seasonId,
-      opponent: item.opponent,
-      playedDate: item.playedDate,
-      kickoff: item.kickoff,
-      arrival: item.arrival,
-      venue: item.venue,
-      homeAway: item.homeAway,
-      format: 7,
-      plannedHalfDurationMs: 15e5,
-      status: item.status,
-      selectedProfileIds: selected.map((profile) => profile.id),
-      responses: Object.fromEntries(profiles.flatMap((profile, playerIndex) => {
-        if (index === 0) return playerIndex < 9 ? [[profile.id, "available"]] : [];
-        if (past) return [[profile.id, selected.some((item2) => item2.id === profile.id) ? "available" : "unavailable"]];
-        return playerIndex < 6 ? [[profile.id, "available"]] : playerIndex === 6 ? [[profile.id, "unsure"]] : playerIndex === 10 ? [[profile.id, "unavailable"]] : [];
-      })),
-      attendance: past ? Object.fromEntries(selected.map((profile) => [profile.id, "present"])) : {},
-      history: [{ revision: 0, action: "created", playedDate: item.playedDate, kickoff: item.kickoff, status: item.status }]
-    };
-  });
-  const training = romaFixture.training.map((item, sessionIndex) => ({
-    ...item,
-    seasonId,
-    recurrenceGroupId: "synthetic-thursday-training",
-    status: item.status,
-    expectedProfileIds: profiles.map((profile) => profile.id),
-    responses: item.status === "held" ? Object.fromEntries(profiles.map((profile, index) => [profile.id, index === (sessionIndex + 3) % 13 ? "unavailable" : "available"])) : {},
-    attendance: item.status === "held" ? Object.fromEntries(profiles.map((profile, index) => [profile.id, index === (sessionIndex + 3) % 13 ? "absent" : "present"])) : {}
-  }));
-  return {
-    version: 1,
-    synthetic: true,
-    revision: 0,
-    club: {
-      id: "synthetic-richmond-rovers",
-      name: "Richmond Rovers",
-      logo: "roundel"
-    },
-    team: {
-      id: "synthetic-roma-u10",
-      name: "Roma",
-      ageGroup: "U10",
-      defaultPitchPlaces: 7,
-      defaultHalfDurationMs: 15e5,
-      logo: null
-    },
-    activeSeasonId: seasonId,
-    seasons: [
-      {
-        id: seasonId,
-        ...seasonBounds(2026),
-        startYear: 2026,
-        spectatorRenewalRequired: true
-      }
-    ],
-    profiles,
-    formations: Array.from(
-      { length: 7 },
-      (_, index) => defaultFormation(index + 5)
-    ),
-    fixtures,
-    training,
-    snapshots: [],
-    appliedCommands: {},
-    audit: []
-  };
+function validPositionCode(value) {
+  return typeof value === "string" && /^[A-Z]{2}$/.test(value);
+}
+function validPositionCatalogue(value) {
+  return Array.isArray(value) && value.length >= CORE_POSITION_CODES.length && value.length <= 676 && value.every(
+    (item) => item && typeof item === "object" && Object.keys(item).length === 3 && validPositionCode(item.code) && typeof item.label === "string" && item.label.trim().length > 0 && item.label.length <= 60 && !/[\u0000-\u001f\u007f]/.test(item.label) && typeof item.active === "boolean"
+  ) && new Set(value.map((item) => item.code)).size === value.length && CORE_POSITION_CODES.every(
+    (code) => value.some((item) => item.code === code)
+  ) && value.some((item) => item.code === "GK" && item.active);
+}
+function positionCatalogueFor(source2) {
+  return (source2.positionCatalogue ?? defaultPositionCatalogue()).map(
+    (position) => ({ ...position })
+  );
+}
+function activePositionCodes(source2) {
+  return positionCatalogueFor(source2).filter((item) => item.active).map((item) => item.code);
+}
+function saveTeamPosition(source2, position) {
+  if (!position || Object.keys(position).length !== 3 || !validPositionCode(position.code) || typeof position.label !== "string" || !position.label.trim() || position.label.length > 60 || /[\u0000-\u001f\u007f]/.test(position.label) || typeof position.active !== "boolean")
+    throw new Error(
+      "Use a two-letter uppercase position code and a name of up to 60 characters."
+    );
+  if (position.code === "GK" && !position.active)
+    throw new Error("Goalkeeper must remain active under the match rules.");
+  const catalogue = positionCatalogueFor(source2);
+  const previous = catalogue.findIndex((item) => item.code === position.code);
+  const next = { ...position, label: position.label.trim() };
+  if (previous < 0) catalogue.push(next);
+  else catalogue[previous] = next;
+  if (!validPositionCatalogue(catalogue))
+    throw new Error(
+      "Keep the core position catalogue and one active goalkeeper."
+    );
+  return catalogue;
+}
+function archiveTeamPosition(source2, code) {
+  const position = positionCatalogueFor(source2).find(
+    (item) => item.code === code
+  );
+  if (!position) throw new Error("Choose a saved team position.");
+  return saveTeamPosition(source2, { ...position, active: false });
+}
+function assertActiveFormationPositions(source2, formation) {
+  const active3 = new Set(activePositionCodes(source2));
+  if (formation.slots.some((slot) => !active3.has(slot.position)))
+    throw new Error(
+      "Choose active team positions for every formation slot. Inactive positions remain in saved history."
+    );
+}
+function allowedProfilePosition(source2, code, retained = []) {
+  return validPositionCode(code) && positionCatalogueFor(source2).some(
+    (item) => item.code === code && (item.active || retained.includes(code))
+  );
 }
 
 // packages/application/src/player-preparation.ts
@@ -2728,6 +95,7 @@ function projectOwnPlayerPreparation(state, profile, seasonId) {
   return {
     kind: "player-preparation",
     revision: state.revision,
+    positionCatalogue: positionCatalogueFor(state),
     team: {
       id: state.team.id,
       name: state.team.name,
@@ -3413,6 +781,1052 @@ function assertOfflineSnapshot(download, scope) {
   if (!download.clockAnchor || download.clockAnchor.serverTime !== download.downloadedAt || download.clockAnchor.quality !== "observation_only" || download.clockAnchor.continuousMappingEstablished !== false || typeof download.syntheticOnly !== "boolean") fail7();
 }
 
+// packages/domain/src/live-events.ts
+function cloneValue(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+function duration(value, label2) {
+  if (!Number.isSafeInteger(value) || value < 0) throw new Error(`${label2} must be a nonnegative safe integer.`);
+}
+function effectiveTime(state, requested) {
+  if (state.half !== 1 && state.half !== 2) throw new Error("An effective match event requires a started half.");
+  const time3 = requested ?? { half: state.half, halfElapsedMs: state.halfActiveMs, matchElapsedMs: state.matchActiveMs };
+  if (time3.half !== 1 && time3.half !== 2) throw new Error("Effective half must be one or two.");
+  duration(time3.halfElapsedMs, "Effective half time");
+  duration(time3.matchElapsedMs, "Effective match time");
+  if (time3.half > state.half) throw new Error("Effective time cannot refer to a half that has not started.");
+  const firstHalf = state.firstHalfDurationMs;
+  if (time3.half === 2 && firstHalf === null) throw new Error("Second-half time requires the recorded actual first-half duration.");
+  const expected = (time3.half === 2 ? firstHalf ?? 0 : 0) + time3.halfElapsedMs;
+  if (expected !== time3.matchElapsedMs) throw new Error("Effective cumulative time must use actual first-half duration and exclude half-time.");
+  const maximum = time3.half === 1 && firstHalf !== null ? firstHalf : state.halfActiveMs;
+  if (time3.halfElapsedMs > maximum || time3.matchElapsedMs > state.matchActiveMs) throw new Error("Effective time cannot invent future active play.");
+  return { ...time3 };
+}
+function wasOnPitch(state, playerId, time3) {
+  if (time3.matchElapsedMs === state.matchActiveMs && time3.half === state.half && state.lineup.some((item) => item.playerId === playerId)) return true;
+  return state.intervals.some((interval) => interval.playerId === playerId && interval.state === "playing" && interval.half === time3.half && interval.startMs <= time3.matchElapsedMs && interval.endMs >= time3.matchElapsedMs);
+}
+function goalRecord(state, details, eventId, recordedAtMs) {
+  if (details.beneficiary !== "us" && details.beneficiary !== "opposition") throw new Error("Goal beneficiary is invalid.");
+  if (details.isOwnGoal !== void 0 && typeof details.isOwnGoal !== "boolean") throw new Error("Own-goal classification must be explicit.");
+  const isOwnGoal = details.isOwnGoal ?? false;
+  const scorerPlayerId = details.scorerPlayerId ?? null;
+  const goalType = details.goalType ?? "not_recorded";
+  if (!["open_play", "free_kick", "penalty", "not_recorded"].includes(goalType)) throw new Error("Goal type is invalid.");
+  const effective = effectiveTime(state, details.effective);
+  if (scorerPlayerId !== null) {
+    if (!state.config.selectedPlayerIds.includes(scorerPlayerId)) throw new Error("A scorer must belong to this selected match squad.");
+    if (details.beneficiary === "us" && isOwnGoal || details.beneficiary === "opposition" && !isOwnGoal) {
+      throw new Error("An opposition scorer or opposition own goal cannot credit a team player.");
+    }
+    if (!wasOnPitch(state, scorerPlayerId, effective)) throw new Error("The scorer has no recorded on-pitch evidence at the effective goal time. Correct participation separately before attributing this goal.");
+  }
+  return { eventId, latestEventId: eventId, beneficiary: details.beneficiary, isOwnGoal, scorerPlayerId, goalType, effective, recordedAtMs, voided: false };
+}
+function scoresFromGoals(state, goals) {
+  const active3 = goals.filter((goal) => !goal.voided);
+  const sum = (values) => ({
+    for: values.filter((goal) => goal.beneficiary === "us").length,
+    against: values.filter((goal) => goal.beneficiary === "opposition").length
+  });
+  return {
+    score: sum(active3),
+    halfTimeScore: state.firstHalfDurationMs === null ? state.halfTimeScore : sum(active3.filter((goal) => goal.effective.half === 1))
+  };
+}
+
+// packages/domain/src/policy.ts
+function fail(message) {
+  throw new Error(message);
+}
+function keys(value, fields5, label2) {
+  if (!value || typeof value !== "object" || Array.isArray(value) || Object.keys(value).some((key) => !fields5.includes(key)) || fields5.some((key) => !Object.hasOwn(value, key))) fail(`Use the exact versioned ${label2} fields.`);
+}
+function nonnegative(value, label2) {
+  if (!Number.isSafeInteger(value) || Number(value) < 0) fail(`${label2} must be a nonnegative safe integer.`);
+}
+function keeperRank(config, playerId) {
+  const saved = config.profileSnapshot?.find((profile) => profile.playerId === playerId);
+  return saved ? saved.preferences.indexOf("GK") + 1 : config.players.find((player) => player.id === playerId)?.goalkeeperChoice ?? 0;
+}
+function initialKeeperPolicy(config) {
+  return { keeperMode: config.fixedKeeperId ? "sole_fixed" : "common_pool", fixedKeeperPlayerSeasonId: config.fixedKeeperId };
+}
+function assertMatchPolicyProposal(value, config) {
+  keys(value, ["payload", "applicability", "softPreferences"], "match policy proposal");
+  const payload = value.payload;
+  keys(payload, ["keeperMode", "fixedKeeperPlayerSeasonId", "minimumStintMs", "batchLimit", "scoreLeadThreshold", "returnToNormalEnabled"], "canonical policy payload");
+  if (!["sole_fixed", "common_pool"].includes(String(payload.keeperMode))) fail("Choose an explicit supported goalkeeper policy.");
+  if (payload.keeperMode === "common_pool" && payload.fixedKeeperPlayerSeasonId !== null) fail("Common-pool policy cannot create a fixed-keeper exemption.");
+  if (payload.keeperMode === "sole_fixed" && (typeof payload.fixedKeeperPlayerSeasonId !== "string" || !config.selectedPlayerIds.includes(payload.fixedKeeperPlayerSeasonId) || ![1, 2].includes(keeperRank(config, payload.fixedKeeperPlayerSeasonId)))) fail("The fixed keeper must be a selected first- or second-choice goalkeeper.");
+  nonnegative(payload.minimumStintMs, "Preferred minimum stint");
+  if (!Number.isSafeInteger(payload.batchLimit) || Number(payload.batchLimit) < 1 || Number(payload.batchLimit) > 11) fail("Choose a batch preference from one to eleven.");
+  if (!Number.isSafeInteger(payload.scoreLeadThreshold) || Number(payload.scoreLeadThreshold) < 1 || typeof payload.returnToNormalEnabled !== "boolean") fail("Choose a positive score threshold and an explicit return-to-normal option.");
+  keys(value.applicability, ["minimumStint", "batchLimit", "q07"], "policy applicability");
+  if (value.applicability.minimumStint !== "soft_preference" || value.applicability.batchLimit !== "soft_preference" || value.applicability.q07 !== "unapproved") fail("Ordinary stint and batch settings remain soft. This command cannot approve Q07 or introduce a mandatory constraint.");
+  keys(value.softPreferences, ["halfBufferFraction"], "soft preferences");
+  const fraction = value.softPreferences.halfBufferFraction;
+  if (typeof fraction !== "number" || !Number.isFinite(fraction) || fraction < 0 || fraction > 0.49) fail("The soft half buffer must be between zero and 0.49.");
+}
+function assertInitialLineupProposal(config, value) {
+  if (!Array.isArray(value) || value.length !== config.pitchPlaces || new Set(value.map((item) => item?.playerId)).size !== value.length || new Set(value.map((item) => item?.slotId)).size !== value.length) fail("A starting-lineup proposal needs distinct selected players and slots for the saved format.");
+  for (const allocation of value) {
+    keys(allocation, ["slotId", "position", "playerId"], "lineup proposal");
+    if (typeof allocation.playerId !== "string" || !config.selectedPlayerIds.includes(allocation.playerId) || typeof allocation.slotId !== "string" || !allocation.slotId || typeof allocation.position !== "string" || !allocation.position) fail("Starting-lineup proposals must use the selected saved match squad.");
+    if (config.slots && !config.slots.some((slot) => slot.slotId === allocation.slotId && slot.position === allocation.position)) fail("Starting-lineup proposals must use the saved formation slots and roles.");
+    const saved = config.profileSnapshot?.find((profile) => profile.playerId === allocation.playerId);
+    if (saved && !saved.eligiblePositions.includes(allocation.position)) fail("A proposed role is outside the saved player eligibility.");
+  }
+  const keepers = value.filter((allocation) => allocation.position === "GK");
+  if (keepers.length !== 1 || ![1, 2].includes(keeperRank(config, keepers[0].playerId)) || config.fixedKeeperId && keepers[0].playerId !== config.fixedKeeperId) fail("A lineup proposal needs one qualifying keeper consistent with its explicit policy.");
+}
+function policyAtBoundary(state, half2, activeMs, maximumRevision = Infinity) {
+  const matching = (state.policyHistory ?? []).filter((policy) => policy.revision <= maximumRevision && policy.effective.half <= half2 && policy.effective.matchElapsedMs <= activeMs);
+  return matching.length ? matching[matching.length - 1] : null;
+}
+function fixedKeeperAtBoundary(state, half2, activeMs, maximumRevision = Infinity) {
+  const policy = policyAtBoundary(state, half2, activeMs, maximumRevision);
+  return policy ? policy.payload.keeperMode === "sole_fixed" ? policy.payload.fixedKeeperPlayerSeasonId : null : state.config.fixedKeeperId;
+}
+function currentFixedKeeper(state) {
+  return state.activePolicy ? state.activePolicy.payload.keeperMode === "sole_fixed" ? state.activePolicy.payload.fixedKeeperPlayerSeasonId : null : state.config.fixedKeeperId;
+}
+function assertPolicyBoundary(state, time3) {
+  keys(time3, ["half", "halfElapsedMs", "matchElapsedMs"], "policy boundary");
+  nonnegative(time3.halfElapsedMs, "Policy half time");
+  nonnegative(time3.matchElapsedMs, "Policy match time");
+  if (time3.half !== state.half || ![0, 1, 2].includes(time3.half)) fail("Policy changes must use the current preparation or half boundary.");
+  const expected = (time3.half === 2 ? state.firstHalfDurationMs ?? fail("The actual first-half duration is required.") : 0) + time3.halfElapsedMs;
+  if (expected !== time3.matchElapsedMs || time3.matchElapsedMs !== state.matchActiveMs || time3.halfElapsedMs !== state.halfActiveMs) fail("Policy changes are prospective only; the captured boundary must match the current continuous checkpoint.");
+}
+function applyPolicyChange(state, event, previousRevision) {
+  const allowed = ["id", "sample", "actorId", "type", "policySchemaVersion", "policyVersion", "previousPolicyVersion", "sourceRevision", "effective", "reason", "payload", "applicability", "softPreferences", "resetPositionMode"];
+  if (Object.keys(event).some((key) => !allowed.includes(key))) fail("Use only the documented versioned policy command fields.");
+  nonnegative(event.policyVersion, "Policy version");
+  nonnegative(event.previousPolicyVersion, "Previous policy version");
+  nonnegative(event.sourceRevision, "Policy source revision");
+  assertMatchPolicyProposal({ payload: event.payload, applicability: event.applicability, softPreferences: event.softPreferences }, state.config);
+  if (event.policySchemaVersion !== 1 || event.sourceRevision !== previousRevision || event.previousPolicyVersion !== (state.activePolicy?.policyVersion ?? 0) || event.policyVersion !== event.previousPolicyVersion + 1) fail("The policy source or version changed. Review the current match before confirming again.");
+  if (typeof event.reason !== "string" || event.reason.trim().length < 5 || event.reason.length > 500) fail("Record a concise reason for this prospective settings change.");
+  if (event.resetPositionMode !== void 0 && typeof event.resetPositionMode !== "boolean") fail("A position-mode reset must be explicit.");
+  assertPolicyBoundary(state, event.effective);
+  const previous = state.activePolicy?.payload ?? initialKeeperPolicy(state.config);
+  if (event.payload.keeperMode !== previous.keeperMode || event.payload.fixedKeeperPlayerSeasonId !== previous.fixedKeeperPlayerSeasonId) fail("Q07 goalkeeper-policy transitions are unapproved. This service has no explicit experimental transition gate; retain the proposal for policy review.");
+  const details = { policySchemaVersion: 1, policyVersion: event.policyVersion, previousPolicyVersion: event.previousPolicyVersion, sourceRevision: event.sourceRevision, effective: cloneValue(event.effective), reason: event.reason, payload: cloneValue(event.payload), applicability: cloneValue(event.applicability), softPreferences: cloneValue(event.softPreferences), ...event.resetPositionMode === void 0 ? {} : { resetPositionMode: event.resetPositionMode } };
+  const record = { ...details, eventId: event.id, revision: previousRevision + 1, recordedAtMs: event.sample.wallTimeMs, actorId: event.actorId ?? null };
+  const activePolicy = { ...cloneValue(record), positionMode: event.resetPositionMode ? "normal" : state.activePolicy?.positionMode ?? "normal", manualResetAtSourceRevision: event.resetPositionMode ? previousRevision + 1 : null };
+  return { ...state, activePolicy, policyHistory: [...state.policyHistory ?? [], record] };
+}
+function updatePolicyPositionMode(state, nextRevision) {
+  const policy = state.activePolicy;
+  if (!policy || policy.manualResetAtSourceRevision === nextRevision) return state;
+  const leading = state.score.for - state.score.against >= policy.payload.scoreLeadThreshold;
+  const mode = leading ? "adventurous" : policy.payload.returnToNormalEnabled ? "normal" : policy.positionMode;
+  return mode === policy.positionMode ? state : { ...state, activePolicy: { ...policy, positionMode: mode } };
+}
+
+// packages/domain/src/participation-corrections.ts
+var copyLineup = (lineup) => lineup.map((item) => ({ ...item }));
+function policyStateAt(state, half2, activeMs, maximumRevision = Infinity) {
+  const policy = policyAtBoundary(state, half2, activeMs, maximumRevision);
+  return { ...state, activePolicy: policy ? { ...policy, positionMode: "normal", manualResetAtSourceRevision: null } : void 0 };
+}
+var compare = (left, right) => (left.effective?.half ?? 0) - (right.effective?.half ?? 0) || (left.effective?.matchElapsedMs ?? 0) - (right.effective?.matchElapsedMs ?? 0) || left.order - right.order;
+function knownBoundary(state, eventId) {
+  const audit = state.audit?.find((item) => item.eventId === eventId);
+  if (!audit)
+    throw new Error(
+      "Original event boundary evidence is missing. Retain the history for explicit reconciliation."
+    );
+  return audit.effective ? effectiveTime(state, audit.effective) : null;
+}
+function initial(state) {
+  return {
+    attendance: Object.fromEntries(
+      state.config.selectedPlayerIds.map((id5) => [
+        id5,
+        state.config.initialAttendance?.[id5] ?? "not_recorded"
+      ])
+    ),
+    availability: Object.fromEntries(
+      state.config.selectedPlayerIds.map((id5) => [id5, true])
+    ),
+    lineup: []
+  };
+}
+function applyFact(current3, fact) {
+  if (fact.voided) return;
+  if (fact.type === "attendance.recorded") {
+    current3.attendance[fact.playerId] = fact.status;
+    if (fact.status !== "present")
+      current3.lineup = current3.lineup.filter(
+        (item) => item.playerId !== fact.playerId
+      );
+  } else if (fact.type === "availability.changed") {
+    current3.availability[fact.playerId] = fact.available;
+    if (!fact.available)
+      current3.lineup = current3.lineup.filter(
+        (item) => item.playerId !== fact.playerId
+      );
+    if (fact.lineup) current3.lineup = copyLineup(fact.lineup);
+  } else current3.lineup = copyLineup(fact.lineup);
+}
+function factsAt(state, facts, half2, activeMs) {
+  const current3 = initial(state);
+  for (const fact of [...facts].sort(compare)) {
+    if (fact.effective && (fact.effective.half > half2 || fact.effective.matchElapsedMs > activeMs))
+      continue;
+    applyFact(current3, fact);
+  }
+  return current3;
+}
+function replacementValue(state, fact, event) {
+  if (fact.type !== "lineup.committed" && fact.type !== "availability.changed")
+    throw new Error(
+      "This correction requires a separate review of clock, halves or attendance evidence."
+    );
+  const next = {
+    ...cloneValue(fact),
+    latestEventId: event.id,
+    aliases: [...fact.aliases, event.id]
+  };
+  if (event.type === "event.voided") {
+    if (fact.voided)
+      throw new Error("This participation event is already voided.");
+    return { ...next, voided: true };
+  }
+  if (event.replacement.type !== fact.type)
+    throw new Error("A correction cannot change the original event family.");
+  if (fact.voided && event.restoreVoided !== true)
+    throw new Error(
+      "Restoring a voided participation event needs explicit confirmation."
+    );
+  const requested = event.replacement.effective ?? fact.effective;
+  const boundary = requested ? effectiveTime(state, requested) : null;
+  if ((boundary?.half ?? 0) !== (fact.effective?.half ?? 0))
+    throw new Error(
+      "A participation correction cannot move evidence into another half. Review both halves separately."
+    );
+  if (event.replacement.type === "lineup.committed") {
+    if (!boundary)
+      throw new Error(
+        "A corrected lineup needs its actual active-time boundary."
+      );
+    return {
+      ...next,
+      effective: boundary,
+      lineup: copyLineup(event.replacement.lineup),
+      voided: false
+    };
+  }
+  const replacement = event.replacement;
+  if (replacement.playerId !== fact.playerId || !state.config.selectedPlayerIds.includes(replacement.playerId))
+    throw new Error(
+      "An availability correction must retain its selected player identity."
+    );
+  if (typeof replacement.available !== "boolean")
+    throw new Error("Availability must be confirmed explicitly.");
+  const reason = replacement.reason ?? fact.reason ?? "other";
+  if (!["arrival", "departure", "injury", "return", "other"].includes(reason) || ["arrival", "return"].includes(reason) && !replacement.available || ["injury", "departure"].includes(reason) && replacement.available)
+    throw new Error("Availability reason conflicts with the confirmed state.");
+  return {
+    ...next,
+    effective: boundary,
+    available: replacement.available,
+    reason,
+    lineup: replacement.replacementLineup ? copyLineup(replacement.replacementLineup) : fact.lineup ? copyLineup(fact.lineup) : void 0,
+    voided: false
+  };
+}
+function retainedParticipationFacts(state) {
+  const facts = [];
+  let staged = [];
+  for (const [order, event] of (state.eventHistory ?? []).entries()) {
+    const effective = knownBoundary(state, event.id);
+    if (event.type === "lineup.staged") {
+      staged = copyLineup(event.lineup);
+      continue;
+    }
+    if (event.type === "half.ended" && effective?.half === 1) {
+      staged = copyLineup(
+        factsAt(state, facts, 1, effective.matchElapsedMs).lineup
+      );
+      continue;
+    }
+    if (event.type === "event.corrected" || event.type === "event.voided") {
+      const index = facts.findIndex(
+        (fact) => fact.aliases.includes(event.targetEventId)
+      );
+      if (index >= 0 && ["lineup.committed", "availability.changed"].includes(facts[index].type))
+        facts[index] = replacementValue(state, facts[index], event);
+      continue;
+    }
+    const base = {
+      eventId: event.id,
+      latestEventId: event.id,
+      aliases: [event.id],
+      order,
+      effective,
+      recordedAtMs: event.sample.wallTimeMs,
+      voided: false
+    };
+    if (event.type === "half.started") {
+      if (!effective)
+        throw new Error("A half start is missing its actual active boundary.");
+      facts.push({ ...base, type: event.type, lineup: copyLineup(staged) });
+    } else if (event.type === "lineup.committed")
+      facts.push({
+        ...base,
+        type: event.type,
+        lineup: copyLineup(event.lineup)
+      });
+    else if (event.type === "attendance.recorded")
+      facts.push({
+        ...base,
+        type: event.type,
+        playerId: event.playerId,
+        status: event.status
+      });
+    else if (event.type === "availability.changed")
+      facts.push({
+        ...base,
+        type: event.type,
+        playerId: event.playerId,
+        available: event.available,
+        reason: event.reason ?? "other",
+        lineup: event.replacementLineup ? copyLineup(event.replacementLineup) : void 0
+      });
+  }
+  return facts;
+}
+function reprojectParticipation(state, correction, validateLineup2) {
+  if (correction.sourceRevision !== state.revision)
+    throw new Error(
+      "Participation correction draft is stale or lacks explicit interval reconciliation review. Review the current recorded history first."
+    );
+  const facts = retainedParticipationFacts(state);
+  let prior = null;
+  let changed;
+  if (correction.type === "event.corrected" || correction.type === "event.voided") {
+    const targetIndex = facts.findIndex(
+      (fact) => fact.aliases.includes(correction.targetEventId)
+    );
+    if (targetIndex < 0)
+      throw new Error(
+        "The participation correction target has no complete original evidence in this match."
+      );
+    prior = cloneValue(facts[targetIndex]);
+    changed = replacementValue(state, prior, correction);
+    facts[targetIndex] = changed;
+  } else {
+    if (!correction.effective || !correction.lateEntryReason?.trim() || correction.lateEntryReason.length > 500)
+      throw new Error(
+        "A historical participation entry needs an explicit effective time and audited late-entry reason of 1\u2013500 characters."
+      );
+    const effective = effectiveTime(state, correction.effective);
+    const base = {
+      eventId: correction.id,
+      latestEventId: correction.id,
+      aliases: [correction.id],
+      order: state.eventHistory?.length ?? 0,
+      effective,
+      recordedAtMs: correction.sample.wallTimeMs,
+      voided: false
+    };
+    if (correction.type === "lineup.committed")
+      changed = {
+        ...base,
+        type: correction.type,
+        lineup: copyLineup(correction.lineup)
+      };
+    else {
+      if (!state.config.selectedPlayerIds.includes(correction.playerId) || typeof correction.available !== "boolean")
+        throw new Error(
+          "Historical availability requires a selected player and explicit state."
+        );
+      const reason = correction.reason ?? "other";
+      if (!["arrival", "departure", "injury", "return", "other"].includes(
+        reason
+      ) || ["arrival", "return"].includes(reason) && !correction.available || ["injury", "departure"].includes(reason) && correction.available)
+        throw new Error(
+          "Availability reason conflicts with the confirmed state."
+        );
+      changed = {
+        ...base,
+        type: correction.type,
+        playerId: correction.playerId,
+        available: correction.available,
+        reason,
+        lineup: correction.replacementLineup ? copyLineup(correction.replacementLineup) : void 0
+      };
+    }
+    facts.push(changed);
+  }
+  const sorted = [...facts].sort(compare);
+  const intervals = [];
+  const targetIntervals = [];
+  const availabilityHistory = [];
+  const current3 = initial(state);
+  let activeHalf = 0;
+  for (const fact of sorted) {
+    if (fact.voided) continue;
+    if (fact.type === "availability.changed")
+      availabilityHistory.push({
+        eventId: fact.eventId,
+        latestEventId: fact.latestEventId,
+        playerId: fact.playerId,
+        available: fact.available,
+        previousAvailability: current3.availability[fact.playerId],
+        reason: fact.reason ?? "other",
+        effective: fact.effective,
+        recordedAtMs: fact.recordedAtMs
+      });
+    applyFact(current3, fact);
+    if (fact.effective) activeHalf = fact.effective.half;
+    if (fact.type === "half.started" || fact.type === "lineup.committed" || fact.type === "availability.changed" && fact.lineup) {
+      const errors = validateLineup2(
+        {
+          ...policyStateAt(state, fact.effective?.half ?? 0, fact.effective?.matchElapsedMs ?? 0, fact.order + 1),
+          attendance: current3.attendance,
+          availability: current3.availability
+        },
+        current3.lineup,
+        true
+      );
+      if (errors.length)
+        throw new Error(`Corrected allocation is invalid: ${errors.join(" ")}`);
+    }
+    if (activeHalf > state.half)
+      throw new Error("Corrected evidence refers to an unstarted half.");
+  }
+  const firstEnd = state.firstHalfDurationMs ?? (state.half === 1 ? state.matchActiveMs : 0);
+  for (const half2 of [1, 2]) {
+    if (half2 > state.half) continue;
+    const start = half2 === 1 ? 0 : firstEnd;
+    const end = half2 === 1 ? firstEnd : state.matchActiveMs;
+    const boundaries = [
+      .../* @__PURE__ */ new Set([
+        start,
+        end,
+        ...sorted.filter((fact) => !fact.voided && fact.effective?.half === half2).map((fact) => fact.effective.matchElapsedMs),
+        ...(state.policyHistory ?? []).filter((policy) => policy.effective.half === half2).map((policy) => policy.effective.matchElapsedMs)
+      ])
+    ].sort((a, b) => a - b);
+    for (let index = 0; index + 1 < boundaries.length; index++) {
+      const from = boundaries[index], to = boundaries[index + 1];
+      if (from < start || to > end || to <= from) continue;
+      const actual = factsAt(state, sorted, half2, from);
+      const errors = validateLineup2(
+        {
+          ...policyStateAt(state, half2, from),
+          attendance: actual.attendance,
+          availability: actual.availability
+        },
+        actual.lineup,
+        false
+      );
+      if (errors.length)
+        throw new Error(
+          `Corrected participation is invalid: ${errors.join(" ")}`
+        );
+      for (const playerId of state.config.selectedPlayerIds) {
+        const allocation = actual.lineup.find(
+          (item) => item.playerId === playerId
+        );
+        const available2 = actual.attendance[playerId] === "present" && actual.availability[playerId];
+        intervals.push({
+          playerId,
+          state: allocation ? "playing" : available2 ? "available_bench" : "unavailable",
+          position: allocation?.position ?? null,
+          slotId: allocation?.slotId ?? null,
+          startMs: from,
+          endMs: to,
+          half: half2
+        });
+      }
+      const availablePlayerIds = state.config.selectedPlayerIds.filter(
+        (id5) => actual.attendance[id5] === "present" && actual.availability[id5]
+      );
+      const policy = policyAtBoundary(state, half2, from);
+      const fixedKeeperId = fixedKeeperAtBoundary(state, half2, from);
+      targetIntervals.push({
+        durationMs: to - from,
+        availablePlayerIds,
+        pitchPlaces: state.config.pitchPlaces,
+        fixedKeeperId: fixedKeeperId && availablePlayerIds.includes(fixedKeeperId) ? fixedKeeperId : null,
+        ...policy ? { policyVersion: policy.policyVersion } : {}
+      });
+    }
+  }
+  const final = factsAt(state, sorted, state.half, state.matchActiveMs);
+  const projected = {
+    ...state,
+    intervals,
+    targetIntervals,
+    lineup: final.lineup,
+    attendance: { ...state.attendance, ...final.attendance },
+    availability: { ...state.availability, ...final.availability },
+    availabilityHistory
+  };
+  for (const goal of state.goals ?? [])
+    if (!goal.voided) {
+      try {
+        goalRecord(projected, goal, goal.eventId, goal.recordedAtMs);
+      } catch {
+        throw new Error(
+          `Goal ${goal.eventId} no longer has consistent on-pitch evidence. Review that goal explicitly before applying this participation correction.`
+        );
+      }
+    }
+  const oldTime = prior?.effective, newTime = changed.effective;
+  const earliestAffected = oldTime && newTime ? oldTime.matchElapsedMs <= newTime.matchElapsedMs ? oldTime : newTime : oldTime ?? newTime;
+  return {
+    state: projected,
+    priorValue: prior,
+    value: changed,
+    effective: changed.effective,
+    earliestAffected
+  };
+}
+
+// packages/domain/src/index.ts
+var ENGINE_VERSION = "synthetic-live-4";
+function integer(value, label2) {
+  if (!Number.isSafeInteger(value) || value < 0) throw new Error(`${label2} must be a nonnegative safe integer.`);
+}
+function assertSample(sample) {
+  if (!Number.isFinite(sample.monotonicMs) || sample.monotonicMs < 0 || !Number.isSafeInteger(Math.floor(sample.monotonicMs)) || !sample.sessionId) throw new Error("Clock sample is invalid.");
+  integer(sample.wallTimeMs, "Wall time");
+}
+function isRunning(state) {
+  return state.status === "first_half_running" || state.status === "second_half_running";
+}
+function isPaused(state) {
+  return state.status === "first_half_paused" || state.status === "second_half_paused";
+}
+function available(state, id5) {
+  return state.availability[id5] === true && state.attendance[id5] === "present";
+}
+function selectedPlayer(state, id5) {
+  if (!state.config.selectedPlayerIds.includes(id5)) throw new Error("Player is outside this selected match squad.");
+}
+function cloneLineup(lineup) {
+  return lineup.map((item) => ({ ...item }));
+}
+function keeperChoice(config, playerId) {
+  const snapshot = config.profileSnapshot?.find((profile) => profile.playerId === playerId);
+  if (snapshot?.preferences.length) return snapshot.preferences.indexOf("GK") + 1;
+  return config.players.find((player) => player.id === playerId)?.goalkeeperChoice ?? 0;
+}
+function createMatch(config) {
+  if (!config.matchId || config.pitchPlaces < 5 || config.pitchPlaces > 11 || !Number.isInteger(config.pitchPlaces)) throw new Error("Match format must have 5\u201311 pitch places.");
+  integer(config.plannedHalfDurationMs, "Planned half duration");
+  if (config.plannedHalfDurationMs < 3e4) throw new Error("Planned half duration must be at least 30 seconds.");
+  const ids = config.players.map((player) => player.id);
+  if (new Set(ids).size !== ids.length || new Set(config.selectedPlayerIds).size !== config.selectedPlayerIds.length) throw new Error("Player identifiers must be unique.");
+  if (config.selectedPlayerIds.some((id5) => !ids.includes(id5))) throw new Error("Selected players must belong to this roster.");
+  if (config.initialAttendance && Object.entries(config.initialAttendance).some(([id5, status]) => !config.selectedPlayerIds.includes(id5) || !["present", "absent", "excused", "not_selected", "not_recorded"].includes(status))) throw new Error("Initial attendance must be explicit valid check-in for the selected squad.");
+  if (config.slots && (config.slots.length !== config.pitchPlaces || new Set(config.slots.map((slot) => slot.slotId)).size !== config.slots.length || config.slots.filter((slot) => slot.position === "GK").length !== 1 || config.slots.some((slot) => !slot.slotId || !slot.position))) throw new Error("Saved formation needs one distinct slot per pitch place and exactly one goalkeeper.");
+  if (config.profileSnapshot && (new Set(config.profileSnapshot.map((profile) => profile.playerId)).size !== config.profileSnapshot.length || config.profileSnapshot.some((profile) => !ids.includes(profile.playerId) || profile.preferences.length > 3 || new Set(profile.preferences).size !== profile.preferences.length || new Set(profile.eligiblePositions).size !== profile.eligiblePositions.length))) throw new Error("Match profile snapshots must belong to distinct roster players with distinct preferences and eligibility.");
+  if (config.fixedKeeperId !== null && (!config.selectedPlayerIds.includes(config.fixedKeeperId) || ![1, 2].includes(keeperChoice(config, config.fixedKeeperId)))) throw new Error("Fixed keeper must be a selected first- or second-choice goalkeeper.");
+  if (config.initialPolicyProposal !== void 0) assertMatchPolicyProposal(config.initialPolicyProposal, config);
+  if (config.initialLineupProposal !== void 0) assertInitialLineupProposal(config, config.initialLineupProposal);
+  return {
+    config: cloneValue(config),
+    status: "preparation",
+    revision: 0,
+    attendance: Object.fromEntries(ids.map((id5) => [id5, config.initialAttendance?.[id5] ?? "not_recorded"])),
+    availability: Object.fromEntries(ids.map((id5) => [id5, config.selectedPlayerIds.includes(id5)])),
+    stagedLineup: [],
+    lineup: [],
+    half: 0,
+    halfActiveMs: 0,
+    matchActiveMs: 0,
+    firstHalfDurationMs: null,
+    anchor: null,
+    recoveryRequired: false,
+    intervals: [],
+    targetIntervals: [],
+    score: { for: 0, against: 0 },
+    halfTimeScore: null,
+    completedAtMs: null,
+    completedTimeQuality: null,
+    abandonedAtMs: null,
+    abandonReason: null,
+    recoveryReason: null,
+    appliedEvents: {},
+    schemaVersion: 2,
+    goals: [],
+    availabilityHistory: [],
+    eventHistory: [],
+    audit: []
+  };
+}
+function upgradeMatchState(previous) {
+  if (previous.schemaVersion === 2 && previous.goals && previous.availabilityHistory && previous.eventHistory && previous.audit) return previous;
+  let events;
+  try {
+    events = Object.values(previous.appliedEvents).map((signature2) => JSON.parse(signature2));
+  } catch {
+    throw new Error("Legacy command history cannot be read. Preserve the journal and reconcile it before continuing.");
+  }
+  const replayed = replayMatch(previous.config, events);
+  for (const field of ["status", "revision", "half", "halfActiveMs", "matchActiveMs", "firstHalfDurationMs", "completedAtMs", "completedTimeQuality", "recoveryRequired", "recoveryReason", "attendance", "availability", "anchor", "score", "halfTimeScore", "lineup", "stagedLineup", "intervals", "targetIntervals"]) {
+    if (canonical(replayed[field]) !== canonical(previous[field])) throw new Error(`Legacy replay differs at ${field}. Preserve the original journal for explicit reconciliation.`);
+  }
+  return replayed;
+}
+function validateLineup(state, lineup, requireComplete = true) {
+  const errors = [];
+  const fixedKeeperId = currentFixedKeeper(state);
+  if (lineup.length > state.config.pitchPlaces || requireComplete && lineup.length !== state.config.pitchPlaces) errors.push(`Choose exactly ${state.config.pitchPlaces} pitch players.`);
+  if (new Set(lineup.map((item) => item.playerId)).size !== lineup.length) errors.push("A player can occupy only one pitch place.");
+  if (new Set(lineup.map((item) => item.slotId)).size !== lineup.length) errors.push("Each pitch slot must be unique.");
+  for (const item of lineup) {
+    if (!item.slotId || !item.position) errors.push("Every allocation needs a slot and position.");
+    if (!state.config.selectedPlayerIds.includes(item.playerId)) errors.push("Only selected match-squad players can start.");
+    else {
+      if (state.attendance[item.playerId] !== "present") errors.push(`${item.playerId}: confirm actual attendance first.`);
+      if (!state.availability[item.playerId]) errors.push(`${item.playerId}: player is unavailable.`);
+    }
+    if (state.config.slots && !state.config.slots.some((slot) => slot.slotId === item.slotId && slot.position === item.position)) errors.push("Allocation must use its saved formation slot and position.");
+    const profile = state.config.profileSnapshot?.find((snapshot) => snapshot.playerId === item.playerId);
+    if (profile && !profile.eligiblePositions.includes(item.position)) errors.push(`${item.playerId}: position is outside the saved match eligibility.`);
+  }
+  const keepers = lineup.filter((item) => item.position === "GK");
+  if (requireComplete && keepers.length !== 1) errors.push("Choose exactly one goalkeeper.");
+  if (keepers.length > 1) errors.push("Only one goalkeeper place is allowed.");
+  for (const keeper2 of keepers) {
+    const player = state.config.players.find((item) => item.id === keeper2.playerId);
+    if (!player || ![1, 2].includes(keeperChoice(state.config, keeper2.playerId))) errors.push("Goalkeeper cover requires a first- or second-choice eligible keeper.");
+    if (fixedKeeperId && keeper2.playerId !== fixedKeeperId) errors.push("The fixed keeper policy cannot be changed by moving a pitch piece.");
+  }
+  const qualifying = state.config.players.filter((player) => available(state, player.id) && [1, 2].includes(keeperChoice(state.config, player.id)));
+  if (fixedKeeperId && qualifying.length > 1) errors.push("Multiple qualifying available keepers require a reviewed shared-keeper policy.");
+  return [...new Set(errors)];
+}
+function readClock(state, sample) {
+  assertSample(sample);
+  let halfActiveMs = state.halfActiveMs;
+  let matchActiveMs = state.matchActiveMs;
+  let recoveryRequired = state.recoveryRequired;
+  if (isRunning(state)) {
+    const anchor = state.anchor;
+    if (!anchor || anchor.sample.sessionId !== sample.sessionId || sample.monotonicMs < anchor.sample.monotonicMs) recoveryRequired = true;
+    if (!recoveryRequired && anchor) {
+      const delta = Math.floor(sample.monotonicMs) - Math.floor(anchor.sample.monotonicMs);
+      halfActiveMs = anchor.halfActiveMs + delta;
+      matchActiveMs = anchor.matchActiveMs + delta;
+    }
+  }
+  integer(halfActiveMs, "Half active time");
+  integer(matchActiveMs, "Match active time");
+  return {
+    halfActiveMs,
+    matchActiveMs,
+    remainingMs: Math.max(0, state.config.plannedHalfDurationMs - halfActiveMs),
+    addedMs: Math.max(0, halfActiveMs - state.config.plannedHalfDurationMs),
+    recoveryRequired
+  };
+}
+function accrue(state, sample) {
+  const clock = readClock(state, sample);
+  if (clock.recoveryRequired) throw new Error("Time needs checking. Confirm the clock against a referee or trusted source.");
+  const durationMs = clock.matchActiveMs - state.matchActiveMs;
+  const fixedKeeperId = currentFixedKeeper(state);
+  if (!isRunning(state) || durationMs === 0) return state;
+  if (state.half !== 1 && state.half !== 2) throw new Error("No active half.");
+  const intervals = state.config.selectedPlayerIds.map((playerId) => {
+    const allocation = state.lineup.find((item) => item.playerId === playerId);
+    const eligible2 = available(state, playerId);
+    return {
+      playerId,
+      state: allocation ? "playing" : eligible2 ? "available_bench" : "unavailable",
+      position: allocation?.position ?? null,
+      slotId: allocation?.slotId ?? null,
+      startMs: state.matchActiveMs,
+      endMs: clock.matchActiveMs,
+      half: state.half
+    };
+  });
+  return {
+    ...state,
+    halfActiveMs: clock.halfActiveMs,
+    matchActiveMs: clock.matchActiveMs,
+    anchor: { sample: { ...sample }, halfActiveMs: clock.halfActiveMs, matchActiveMs: clock.matchActiveMs },
+    intervals: [...state.intervals, ...intervals],
+    targetIntervals: [...state.targetIntervals, {
+      durationMs,
+      availablePlayerIds: state.config.selectedPlayerIds.filter((id5) => available(state, id5)),
+      pitchPlaces: state.config.pitchPlaces,
+      fixedKeeperId: fixedKeeperId && available(state, fixedKeeperId) ? fixedKeeperId : null,
+      ...state.activePolicy ? { policyVersion: state.activePolicy.policyVersion } : {}
+    }]
+  };
+}
+function ensureLive(state) {
+  if (!isRunning(state) && !isPaused(state)) throw new Error("This command requires an active half.");
+}
+function assertLineup(state, lineup) {
+  const errors = validateLineup(state, lineup);
+  if (errors.length) throw new Error(errors.join(" "));
+}
+function canonical(value) {
+  if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
+  if (value !== null && typeof value === "object") return `{${Object.entries(value).filter(([, item]) => item !== void 0).sort(([left], [right]) => left.localeCompare(right)).map(([key, item]) => `${JSON.stringify(key)}:${canonical(item)}`).join(",")}}`;
+  return JSON.stringify(value);
+}
+function reduceMatch(previous, event) {
+  previous = upgradeMatchState(previous);
+  if (!event.id) throw new Error("Event id is required.");
+  const signature2 = canonical(event);
+  if (previous.appliedEvents[event.id]) {
+    if (previous.appliedEvents[event.id] !== signature2) throw new Error("Event id was reused with different content.");
+    return previous;
+  }
+  assertSample(event.sample);
+  if ((previous.status === "completed" || previous.status === "abandoned") && event.type !== "event.corrected" && event.type !== "event.voided" && event.type !== "goal.recorded" && !((event.type === "lineup.committed" || event.type === "availability.changed") && event.effective && event.sourceRevision !== void 0 && event.lateEntryReason?.trim())) throw new Error("Completed or abandoned play is read-only. Use an audited correction without reopening the clock.");
+  let state = previous;
+  let auditEffective;
+  let auditPrior = null;
+  let auditValue = event;
+  const reviewedParticipationEntry = (event.type === "lineup.committed" || event.type === "availability.changed") && event.effective !== void 0 && event.sourceRevision !== void 0 && Boolean(event.lateEntryReason?.trim());
+  if (event.type === "policy.changed") {
+    const latest2 = accrue(previous, event.sample);
+    const boundary = event.effective;
+    if (!boundary || boundary.half !== previous.half || !Number.isSafeInteger(boundary.matchElapsedMs) || boundary.matchElapsedMs < previous.matchActiveMs || boundary.matchElapsedMs > latest2.matchActiveMs) throw new Error("A policy change must use its captured current continuous boundary, never earlier history or future play.");
+    if (isRunning(previous)) {
+      if (!previous.anchor) throw new Error("A continuous anchor is required for prospective policy changes.");
+      const boundarySample = { ...event.sample, monotonicMs: Math.floor(previous.anchor.sample.monotonicMs) + boundary.matchElapsedMs - previous.anchor.matchActiveMs };
+      state = accrue(previous, boundarySample);
+    } else state = latest2;
+  } else if (event.type === "availability.changed" && event.effective && !reviewedParticipationEntry) {
+    if (previous.half === 0) throw new Error("Preparation availability has no active-time boundary.");
+    const latest2 = accrue(previous, event.sample);
+    const boundary = effectiveTime(latest2, event.effective);
+    if (boundary.half !== previous.half || boundary.matchElapsedMs < previous.matchActiveMs) throw new Error("Historical availability crosses a recorded boundary. Preserve actual intervals and use explicit history reconciliation; no minutes were changed.");
+    if (!isRunning(previous) && boundary.matchElapsedMs !== previous.matchActiveMs) throw new Error("Paused or half-time availability must use the current active-time boundary.");
+    if (isRunning(previous)) {
+      if (!previous.anchor) throw new Error("A continuous anchor is required for an effective availability boundary.");
+      const boundarySample = { ...event.sample, monotonicMs: Math.floor(previous.anchor.sample.monotonicMs) + boundary.matchElapsedMs - previous.anchor.matchActiveMs };
+      state = accrue(previous, boundarySample);
+    } else state = latest2;
+    auditEffective = boundary;
+  } else if (event.type !== "clock.recovery_required" && event.type !== "clock.corrected") state = accrue(previous, event.sample);
+  switch (event.type) {
+    case "policy.changed": {
+      auditPrior = state.activePolicy ?? null;
+      state = applyPolicyChange(state, event, previous.revision);
+      auditEffective = event.effective.half === 0 ? null : { ...event.effective, half: event.effective.half };
+      auditValue = state.policyHistory?.at(-1);
+      state = accrue(state, event.sample);
+      break;
+    }
+    case "attendance.recorded": {
+      selectedPlayer(state, event.playerId);
+      if (!["present", "absent", "excused", "not_selected", "not_recorded"].includes(event.status)) throw new Error("Attendance status is invalid.");
+      state = { ...state, attendance: { ...state.attendance, [event.playerId]: event.status } };
+      if (event.status !== "present") state = { ...state, lineup: state.lineup.filter((item) => item.playerId !== event.playerId), stagedLineup: state.stagedLineup.filter((item) => item.playerId !== event.playerId) };
+      break;
+    }
+    case "availability.changed": {
+      if (reviewedParticipationEntry) {
+        const corrected = reprojectParticipation(state, event, validateLineup);
+        state = corrected.state;
+        auditEffective = corrected.effective;
+        auditPrior = corrected.priorValue;
+        auditValue = { inserted: corrected.value, earliestAffected: corrected.earliestAffected };
+        break;
+      }
+      selectedPlayer(state, event.playerId);
+      if (typeof event.available !== "boolean") throw new Error("Availability must be explicitly true or false.");
+      const reason = event.reason ?? "other";
+      if (!["arrival", "departure", "injury", "return", "other"].includes(reason)) throw new Error("Availability reason must be an approved category.");
+      if ((reason === "arrival" || reason === "return") && !event.available) throw new Error("Arrival or return requires confirmed availability.");
+      if ((reason === "departure" || reason === "injury") && event.available) throw new Error("Injury or departure requires unavailable status.");
+      const record = {
+        eventId: event.id,
+        latestEventId: event.id,
+        playerId: event.playerId,
+        available: event.available,
+        previousAvailability: state.availability[event.playerId],
+        reason,
+        effective: auditEffective ?? (state.half === 0 ? null : effectiveTime(state)),
+        recordedAtMs: event.sample.wallTimeMs
+      };
+      auditPrior = { available: record.previousAvailability, lineup: cloneLineup(state.lineup) };
+      state = { ...state, availability: { ...state.availability, [event.playerId]: event.available } };
+      if (!event.available) state = { ...state, lineup: state.lineup.filter((item) => item.playerId !== event.playerId), stagedLineup: state.stagedLineup.filter((item) => item.playerId !== event.playerId) };
+      if (event.replacementLineup) {
+        ensureLive(state);
+        assertLineup(state, event.replacementLineup);
+        state = { ...state, lineup: cloneLineup(event.replacementLineup) };
+      }
+      state = { ...state, availabilityHistory: [...state.availabilityHistory ?? [], record] };
+      auditEffective = record.effective;
+      auditValue = record;
+      state = accrue(state, event.sample);
+      break;
+    }
+    case "lineup.staged": {
+      if (state.status !== "preparation" && state.status !== "half_time") throw new Error("Only preparation and half-time have a staged lineup.");
+      const errors = validateLineup(state, event.lineup, false);
+      if (errors.length) throw new Error(errors.join(" "));
+      state = { ...state, stagedLineup: cloneLineup(event.lineup) };
+      break;
+    }
+    case "half.started": {
+      if (state.status !== "preparation" && state.status !== "half_time") throw new Error("A half can start only from preparation or half-time.");
+      assertLineup(state, state.stagedLineup);
+      const half2 = state.status === "preparation" ? 1 : 2;
+      state = {
+        ...state,
+        half: half2,
+        status: half2 === 1 ? "first_half_running" : "second_half_running",
+        lineup: cloneLineup(state.stagedLineup),
+        halfActiveMs: 0,
+        anchor: { sample: { ...event.sample }, halfActiveMs: 0, matchActiveMs: state.matchActiveMs }
+      };
+      break;
+    }
+    case "half.paused": {
+      if (!isRunning(state)) throw new Error("Only a running half can pause.");
+      state = { ...state, status: state.half === 1 ? "first_half_paused" : "second_half_paused", anchor: null };
+      break;
+    }
+    case "half.resumed": {
+      if (!isPaused(state)) throw new Error("Only a paused half can resume.");
+      assertLineup(state, state.lineup);
+      state = { ...state, status: state.half === 1 ? "first_half_running" : "second_half_running", anchor: { sample: { ...event.sample }, halfActiveMs: state.halfActiveMs, matchActiveMs: state.matchActiveMs } };
+      break;
+    }
+    case "half.ended": {
+      ensureLive(state);
+      if (state.half === 1) state = { ...state, status: "half_time", anchor: null, firstHalfDurationMs: state.halfActiveMs, halfTimeScore: { ...state.score }, stagedLineup: cloneLineup(state.lineup) };
+      else state = { ...state, status: "completed", anchor: null, completedAtMs: event.sample.wallTimeMs, completedTimeQuality: "reviewRequired" };
+      break;
+    }
+    case "match.abandoned": {
+      if (state.half === 0) throw new Error("Only a started match can be abandoned; cancel an unplayed fixture separately.");
+      if (!["weather", "safety", "insufficient_players", "other"].includes(event.reason) || (event.note?.length ?? 0) > 200) throw new Error("Abandonment requires an approved reason category and a note of at most 200 characters.");
+      state = { ...state, status: "abandoned", anchor: null, abandonedAtMs: event.sample.wallTimeMs, abandonReason: event.reason };
+      break;
+    }
+    case "lineup.committed": {
+      if (event.effective) {
+        const corrected = reprojectParticipation(state, event, validateLineup);
+        state = corrected.state;
+        auditEffective = corrected.effective;
+        auditPrior = corrected.priorValue;
+        auditValue = { inserted: corrected.value, earliestAffected: corrected.earliestAffected };
+        break;
+      }
+      ensureLive(state);
+      if (event.sourceRevision !== previous.revision) throw new Error("Lineup draft is stale. Review against the current match revision.");
+      assertLineup(state, event.lineup);
+      state = { ...state, lineup: cloneLineup(event.lineup) };
+      break;
+    }
+    case "goal.recorded": {
+      const recorded = goalRecord(state, event, event.id, event.sample.wallTimeMs);
+      if (!isRunning(state) && !isPaused(state) || recorded.effective.half !== state.half) {
+        if (!event.effective || !event.lateEntryReason?.trim()) throw new Error("A goal entered outside its active half needs its actual effective time and a late-entry reason.");
+      }
+      const goals = [...state.goals ?? [], recorded];
+      state = { ...state, goals, ...scoresFromGoals(state, goals) };
+      auditEffective = recorded.effective;
+      auditValue = recorded;
+      break;
+    }
+    case "event.corrected": {
+      if (!event.reason.trim() || event.reason.length > 500) throw new Error("An audited correction needs a reason of 1\u2013500 characters.");
+      const goal = state.goals?.find((item) => item.eventId === event.targetEventId || item.latestEventId === event.targetEventId);
+      if (goal) {
+        if (event.replacement.type !== "goal.recorded") throw new Error("A correction cannot change the original event family.");
+        if (goal.voided && event.restoreVoided !== true) throw new Error("Restoring a voided goal requires explicit restoreVoided confirmation.");
+        const corrected = goalRecord(state, { ...goal, ...event.replacement, effective: event.replacement.effective ?? goal.effective }, goal.eventId, goal.recordedAtMs);
+        const replacement = { ...corrected, latestEventId: event.id };
+        const goals = state.goals.map((item) => item.eventId === goal.eventId ? replacement : item);
+        state = { ...state, goals, ...scoresFromGoals(state, goals) };
+        auditEffective = replacement.effective;
+        auditPrior = goal;
+        auditValue = replacement;
+        break;
+      }
+      const availability = state.availabilityHistory?.find((item) => item.eventId === event.targetEventId || item.latestEventId === event.targetEventId);
+      if (availability) {
+        if (event.replacement.type !== "availability.changed") throw new Error("A correction cannot change the original event family.");
+        const replacement = event.replacement;
+        if (replacement.playerId !== availability.playerId || replacement.available !== availability.available || replacement.replacementLineup || replacement.effective && canonical(replacement.effective) !== canonical(availability.effective)) {
+          const corrected2 = reprojectParticipation(state, event, validateLineup);
+          state = corrected2.state;
+          auditEffective = corrected2.effective;
+          auditPrior = corrected2.priorValue;
+          auditValue = { correction: corrected2.value, earliestAffected: corrected2.earliestAffected };
+          break;
+        }
+        const reason = replacement.reason ?? availability.reason;
+        if (!["arrival", "departure", "injury", "return", "other"].includes(reason) || (reason === "arrival" || reason === "return") && !availability.available || (reason === "injury" || reason === "departure") && availability.available) throw new Error("Corrected availability reason conflicts with its recorded state.");
+        const corrected = { ...availability, reason, latestEventId: event.id };
+        state = { ...state, availabilityHistory: state.availabilityHistory.map((item) => item.eventId === availability.eventId ? corrected : item) };
+        auditEffective = corrected.effective;
+        auditPrior = availability;
+        auditValue = corrected;
+        break;
+      }
+      if (event.replacement.type === "lineup.committed" || event.replacement.type === "availability.changed" && event.sourceRevision !== void 0) {
+        const corrected = reprojectParticipation(state, event, validateLineup);
+        state = corrected.state;
+        auditEffective = corrected.effective;
+        auditPrior = corrected.priorValue;
+        auditValue = { correction: corrected.value, earliestAffected: corrected.earliestAffected };
+        break;
+      }
+      if (state.eventHistory?.some((item) => item.id === event.targetEventId)) throw new Error("This historical interval or half transition needs explicit reconciliation of the affected play. No recorded minutes were changed.");
+      throw new Error("Correction target was not found in this match history.");
+    }
+    case "event.voided": {
+      if (!event.reason.trim() || event.reason.length > 500) throw new Error("Voiding an event needs an audited reason of 1\u2013500 characters.");
+      const goal = state.goals?.find((item) => item.eventId === event.targetEventId || item.latestEventId === event.targetEventId);
+      if (!goal) {
+        if (state.eventHistory?.some((item) => item.id === event.targetEventId && (item.type === "lineup.committed" || item.type === "availability.changed" || item.type === "event.corrected"))) {
+          const corrected = reprojectParticipation(state, event, validateLineup);
+          state = corrected.state;
+          auditEffective = corrected.effective;
+          auditPrior = corrected.priorValue;
+          auditValue = { correction: corrected.value, earliestAffected: corrected.earliestAffected };
+          break;
+        }
+        if (state.eventHistory?.some((item) => item.id === event.targetEventId)) throw new Error("Voiding a participation or half event requires explicit interval reconciliation. Original history was retained.");
+        throw new Error("Void target was not found in this match history.");
+      }
+      if (goal.voided) throw new Error("This goal is already voided.");
+      const replacement = { ...goal, voided: true, latestEventId: event.id };
+      const goals = state.goals.map((item) => item.eventId === goal.eventId ? replacement : item);
+      state = { ...state, goals, ...scoresFromGoals(state, goals) };
+      auditEffective = replacement.effective;
+      auditPrior = goal;
+      auditValue = replacement;
+      break;
+    }
+    case "clock.recovery_required": {
+      if (!isRunning(state)) throw new Error("Only a running clock needs continuity recovery.");
+      if (!event.reason.trim()) throw new Error("A recovery reason is required.");
+      state = { ...state, recoveryRequired: true, recoveryReason: event.reason };
+      break;
+    }
+    case "clock.corrected": {
+      ensureLive(state);
+      if (!isRunning(state) || !(state.recoveryRequired || readClock(state, event.sample).recoveryRequired)) throw new Error("Clock correction is only available for an uncertain running-clock recovery.");
+      if (event.confirmUnchangedLineup !== true) throw new Error("Confirm unchanged lineup and availability since the secure checkpoint, or reconcile history separately.");
+      if (!event.reason.trim()) throw new Error("Record the referee/trusted-source reason for a clock correction.");
+      integer(event.halfActiveMs, "Corrected active half time");
+      if (event.halfActiveMs < state.halfActiveMs) throw new Error("Backdated clock correction needs audited history reconciliation, outside this M0 slice.");
+      const newMatchMs = (state.half === 2 ? state.firstHalfDurationMs ?? 0 : 0) + event.halfActiveMs;
+      if (newMatchMs < state.matchActiveMs) throw new Error("Clock correction cannot discard recorded participation.");
+      if (isRunning(state) && newMatchMs > state.matchActiveMs) {
+        const syntheticSample = { ...event.sample, sessionId: "explicit-referee-correction", monotonicMs: newMatchMs - state.matchActiveMs };
+        state = accrue({ ...state, recoveryRequired: false, anchor: { sample: { ...syntheticSample, monotonicMs: 0 }, halfActiveMs: state.halfActiveMs, matchActiveMs: state.matchActiveMs } }, syntheticSample);
+      }
+      state = { ...state, halfActiveMs: event.halfActiveMs, matchActiveMs: newMatchMs, recoveryRequired: false, recoveryReason: null, anchor: isRunning(state) ? { sample: { ...event.sample }, halfActiveMs: event.halfActiveMs, matchActiveMs: newMatchMs } : null };
+      break;
+    }
+    default:
+      throw new Error("Unsupported match command type.");
+  }
+  state = updatePolicyPositionMode(state, previous.revision + 1);
+  const audit = {
+    eventId: event.id,
+    type: event.type,
+    revision: previous.revision + 1,
+    recordedAtMs: event.sample.wallTimeMs,
+    actorId: event.actorId ?? null,
+    effective: auditEffective === void 0 ? state.half === 0 ? null : effectiveTime(state) : auditEffective,
+    targetEventId: "targetEventId" in event ? event.targetEventId : null,
+    reason: "lateEntryReason" in event && event.lateEntryReason?.trim() ? event.lateEntryReason : "reason" in event ? event.reason ?? null : null,
+    priorValue: cloneValue(auditPrior),
+    value: cloneValue(auditValue)
+  };
+  return {
+    ...state,
+    revision: previous.revision + 1,
+    appliedEvents: { ...previous.appliedEvents, [event.id]: signature2 },
+    eventHistory: [...previous.eventHistory ?? [], cloneValue(event)],
+    audit: [...previous.audit ?? [], audit]
+  };
+}
+function replayMatch(config, events) {
+  return events.reduce(reduceMatch, createMatch(config));
+}
+function goalRecords(state) {
+  return cloneValue(upgradeMatchState(state).goals ?? []);
+}
+function playerMinutes(state, sample) {
+  const clock = readClock(state, sample);
+  const projected = clock.recoveryRequired ? state : accrue(state, sample);
+  return state.config.selectedPlayerIds.map((playerId) => {
+    const result = { playerId, playingMs: 0, benchMs: 0, unavailableMs: 0, positionMs: {} };
+    for (const interval of projected.intervals.filter((item) => item.playerId === playerId)) {
+      const durationMs = interval.endMs - interval.startMs;
+      if (interval.state === "playing") {
+        result.playingMs += durationMs;
+        if (interval.position) result.positionMs[interval.position] = (result.positionMs[interval.position] ?? 0) + durationMs;
+      } else if (interval.state === "available_bench") result.benchMs += durationMs;
+      else result.unavailableMs += durationMs;
+    }
+    return result;
+  });
+}
+function gcd(left, right) {
+  return right === 0n ? left : gcd(right, left % right);
+}
+function rational(numerator, denominator = 1n) {
+  if (denominator <= 0n || numerator < 0n) throw new Error("Rational target must be nonnegative with a positive denominator.");
+  const divisor = gcd(numerator, denominator);
+  return { numerator: numerator / divisor, denominator: denominator / divisor };
+}
+function add(left, right) {
+  return rational(left.numerator * right.denominator + right.numerator * left.denominator, left.denominator * right.denominator);
+}
+function scale(value, numerator, denominator) {
+  return rational(value.numerator * numerator, value.denominator * denominator);
+}
+function rationalToNumber(value) {
+  return Number(value.numerator) / Number(value.denominator);
+}
+function withinTargetBand(actualMs, target) {
+  integer(actualMs, "Actual playing time");
+  const actual = BigInt(actualMs);
+  return actual * target.lower.denominator >= target.lower.numerator && actual * target.upper.denominator <= target.upper.numerator;
+}
+function calculateTargets(intervals, allPlayerIds = []) {
+  const totals = new Map(allPlayerIds.map((id5) => [id5, rational(0n)]));
+  for (const interval of intervals) {
+    integer(interval.durationMs, "Target interval duration");
+    integer(interval.pitchPlaces, "Target pitch capacity");
+    const ids = interval.availablePlayerIds;
+    if (new Set(ids).size !== ids.length) throw new Error("Target interval repeats an available player.");
+    if (interval.fixedKeeperId && !ids.includes(interval.fixedKeeperId)) throw new Error("Fixed keeper is not available in this target interval.");
+    const count = ids.length;
+    const capacity = Math.min(interval.pitchPlaces, count);
+    if (capacity === 0) continue;
+    for (const playerId of ids) {
+      let contribution;
+      if (playerId === interval.fixedKeeperId) contribution = rational(BigInt(interval.durationMs));
+      else if (interval.fixedKeeperId) contribution = rational(BigInt(interval.durationMs) * BigInt(capacity - 1), BigInt(count - 1));
+      else contribution = rational(BigInt(interval.durationMs) * BigInt(capacity), BigInt(count));
+      totals.set(playerId, add(totals.get(playerId) ?? rational(0n), contribution));
+    }
+  }
+  return [...totals].map(([playerId, target]) => ({ playerId, target, lower: scale(target, 9n, 10n), upper: scale(target, 11n, 10n) }));
+}
+function currentTargets(state, sample) {
+  const clock = readClock(state, sample);
+  const projected = clock.recoveryRequired ? state : accrue(state, sample);
+  return calculateTargets(projected.targetIntervals, state.config.selectedPlayerIds);
+}
+
 // apps/api/src/offline-bundle.ts
 function offlinePublication(matchId, sharingPolicy, records) {
   const result = records?.results.find((item) => item.id === matchId);
@@ -3466,7 +1880,7 @@ var contextKey = (context) => JSON.stringify(Object.entries(context).sort(([a], 
 function matchWriteTeam(context) {
   if (context?.kind !== "actor" || context.operation !== "match.manage" || !["manager", "default"].includes(context.requestedRole ?? "")) return null;
   const ids = [context.clubId, context.teamId, context.seasonId, context.matchId];
-  if (ids.some((id4) => typeof id4 !== "string" || !/^[A-Za-z0-9_-]{1,150}$/.test(id4))) return null;
+  if (ids.some((id5) => typeof id5 !== "string" || !/^[A-Za-z0-9_-]{1,150}$/.test(id5))) return null;
   return JSON.stringify([context.clubId, context.teamId]);
 }
 function validateContext(context) {
@@ -3609,9 +2023,9 @@ var PgDatabase = class {
   async migrate() {
     if (this.migrationMode === "verify") {
       const versions = await this.query("SELECT version FROM longball.schema_migrations ORDER BY version");
-      if (versions.rows.some((row) => row.version > 16)) throw new Error("This PostgreSQL schema is newer than the application. Preserve it and use a compatible build.");
-      if (![2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16].every((version) => versions.rows.some((row) => row.version === version))) throw new Error("PostgreSQL migrations are required. Run the separate migrator before starting the runtime.");
-      const protectedTables = ["clubs", "teams", "team_seasons", "game_contexts", "accounts", "memberships", "matches", "documents", "devices", "controller_grants", "controller_history", "events", "streams", "conflicting_submissions", "transfers", "clock_challenges", "clock_mappings", "reconciliation_proposals", "audit", "idempotency", "privacy_requests", "privacy_pending_keys", "jobs", "brand_assets", "brand_slots", "spectator_invitations", "lb_spectator_activation_accounts", "lb_spectator_activation_attempts", "native_app_devices", "team_privilege_states", "team_privilege_decisions", "push_registrations", "report_exports"];
+      if (versions.rows.some((row) => row.version > 20)) throw new Error("This PostgreSQL schema is newer than the application. Preserve it and use a compatible build.");
+      if (![2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20].every((version2) => versions.rows.some((row) => row.version === version2))) throw new Error("PostgreSQL migrations are required. Run the separate migrator before starting the runtime.");
+      const protectedTables = ["clubs", "teams", "team_seasons", "game_contexts", "accounts", "memberships", "matches", "documents", "devices", "controller_grants", "controller_history", "events", "streams", "conflicting_submissions", "transfers", "clock_challenges", "clock_mappings", "reconciliation_proposals", "audit", "idempotency", "privacy_requests", "privacy_pending_keys", "jobs", "brand_assets", "brand_slots", "spectator_invitations", "lb_spectator_activation_accounts", "lb_spectator_activation_attempts", "native_app_devices", "team_privilege_states", "team_privilege_decisions", "push_registrations", "report_exports", "match_feedback", "match_feedback_receipts"];
       const security = await this.query(`SELECT c.relname,c.relrowsecurity,(SELECT count(*)::integer FROM pg_catalog.pg_policy p WHERE p.polrelid=c.oid) AS policies FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='longball' AND c.relname=ANY($1::text[])`, [protectedTables]);
       if (security.rows.length !== protectedTables.length || security.rows.some((row) => !row.relrowsecurity || row.policies < 1)) throw new Error("PostgreSQL row security is missing. Run the separate migrator before starting runtime.");
       return;
@@ -3631,12 +2045,16 @@ var PgDatabase = class {
     const pushRegistrationMigration = await readFile(new URL("../migrations/postgresql/014_push_registrations.sql", import.meta.url), "utf8");
     const privilegeAuditClockMigration = await readFile(new URL("../migrations/postgresql/015_team_privilege_audit_clock.sql", import.meta.url), "utf8");
     const reportExportsMigration = await readFile(new URL("../migrations/postgresql/016_report_exports.sql", import.meta.url), "utf8");
+    const feedbackMigration = await readFile(new URL("../migrations/postgresql/017_match_feedback.sql", import.meta.url), "utf8");
+    const scheduledGamesMigration = await readFile(new URL("../migrations/postgresql/018_scheduled_games.sql", import.meta.url), "utf8");
+    const playerStatsMigration = await readFile(new URL("../migrations/postgresql/019_player_stats.sql", import.meta.url), "utf8");
+    const teamOverviewMigration = await readFile(new URL("../migrations/postgresql/020_team_overview.sql", import.meta.url), "utf8");
     await this.transaction(async () => {
       const schema = await this.query("SELECT to_regnamespace('longball')::text AS namespace");
       if (!schema.rows[0]?.namespace) await this.query("CREATE SCHEMA longball");
       await this.query("CREATE TABLE IF NOT EXISTS longball.schema_migrations(version integer PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())");
       const versions = await this.query("SELECT version FROM longball.schema_migrations ORDER BY version");
-      if (versions.rows.some((row) => row.version > 16)) throw new Error("This PostgreSQL schema is newer than the application. Preserve it and use a compatible build.");
+      if (versions.rows.some((row) => row.version > 20)) throw new Error("This PostgreSQL schema is newer than the application. Preserve it and use a compatible build.");
       if (!versions.rows.some((row) => row.version === 2)) {
         await this.query(migration);
         await this.query("INSERT INTO longball.schema_migrations(version) VALUES(2)");
@@ -3697,6 +2115,22 @@ var PgDatabase = class {
         await this.query(reportExportsMigration);
         await this.query("INSERT INTO longball.schema_migrations(version) VALUES(16)");
       }
+      if (!versions.rows.some((row) => row.version === 17)) {
+        await this.query(feedbackMigration);
+        await this.query("INSERT INTO longball.schema_migrations(version) VALUES(17)");
+      }
+      if (!versions.rows.some((row) => row.version === 18)) {
+        await this.query(scheduledGamesMigration);
+        await this.query("INSERT INTO longball.schema_migrations(version) VALUES(18)");
+      }
+      if (!versions.rows.some((row) => row.version === 19)) {
+        await this.query(playerStatsMigration);
+        await this.query("INSERT INTO longball.schema_migrations(version) VALUES(19)");
+      }
+      if (!versions.rows.some((row) => row.version === 20)) {
+        await this.query(teamOverviewMigration);
+        await this.query("INSERT INTO longball.schema_migrations(version) VALUES(20)");
+      }
     });
   }
   async close() {
@@ -3706,6 +2140,1887 @@ var PgDatabase = class {
 
 // apps/api/src/postgres-store.ts
 import { createHash as createHash2, randomBytes, randomUUID as randomUUID2 } from "node:crypto";
+
+// fixtures/roma.synthetic.json
+var roma_synthetic_default = {
+  synthetic: true,
+  teamId: "synthetic-roma-u10",
+  season: "2026/27",
+  timeZone: "Europe/London",
+  pitchPlaces: 7,
+  plannedHalfDurationMs: 15e5,
+  players: [
+    {
+      id: "synthetic-player-01",
+      displayName: "Oliver Bennett",
+      available: true,
+      goalkeeperChoice: 1
+    },
+    {
+      id: "synthetic-player-02",
+      displayName: "Noah Patel",
+      available: true,
+      goalkeeperChoice: 0
+    },
+    {
+      id: "synthetic-player-03",
+      displayName: "Leo Martin",
+      available: true,
+      goalkeeperChoice: 0
+    },
+    {
+      id: "synthetic-player-04",
+      displayName: "Theo Clarke",
+      available: true,
+      goalkeeperChoice: 0
+    },
+    {
+      id: "synthetic-player-05",
+      displayName: "Oscar Evans",
+      available: true,
+      goalkeeperChoice: 0
+    },
+    {
+      id: "synthetic-player-06",
+      displayName: "Ethan Brooks",
+      available: true,
+      goalkeeperChoice: 0
+    },
+    {
+      id: "synthetic-player-07",
+      displayName: "Jack Turner",
+      available: true,
+      goalkeeperChoice: 0
+    },
+    {
+      id: "synthetic-player-08",
+      displayName: "Freddie Lewis",
+      available: true,
+      goalkeeperChoice: 0
+    },
+    {
+      id: "synthetic-player-09",
+      displayName: "Arthur James",
+      available: true,
+      goalkeeperChoice: 0
+    },
+    {
+      id: "synthetic-player-10",
+      displayName: "Lucas Wilson",
+      available: false,
+      goalkeeperChoice: 0
+    },
+    {
+      id: "synthetic-player-11",
+      displayName: "Muhammad Khan",
+      available: false,
+      goalkeeperChoice: 0
+    },
+    {
+      id: "synthetic-player-12",
+      displayName: "Archie Green",
+      available: false,
+      goalkeeperChoice: 0
+    },
+    {
+      id: "synthetic-player-13",
+      displayName: "George Taylor",
+      available: false,
+      goalkeeperChoice: 0
+    }
+  ],
+  demo: {
+    name: "Roma autumn matchdays",
+    generated: true,
+    description: "Simulated club, players and matchdays for testing. No real people, photographs or contact details.",
+    referenceDate: "2026-10-22"
+  },
+  club: {
+    id: "synthetic-richmond-rovers",
+    name: "Richmond Rovers"
+  },
+  team: {
+    name: "Roma",
+    ageGroup: "U10"
+  },
+  opponents: [
+    {
+      id: "demo-maple",
+      name: "Maple FC",
+      venue: "Maple Sports Ground \xB7 Pitch 1"
+    },
+    {
+      id: "demo-oak",
+      name: "Oak FC",
+      venue: "Oak Meadow \xB7 Junior pitch"
+    },
+    {
+      id: "demo-hill",
+      name: "Hill FC",
+      venue: "Hill Park \xB7 Pitch 3"
+    },
+    {
+      id: "demo-willow",
+      name: "Willow FC",
+      venue: "Willow Playing Fields \xB7 Pitch 2"
+    },
+    {
+      id: "demo-cedar",
+      name: "Cedar Athletic",
+      venue: "Cedar Lane Sports Ground"
+    }
+  ],
+  fixtures: [
+    {
+      id: "synthetic-roma-maple-2026-10-24",
+      opponent: "Maple FC",
+      playedDate: "2026-10-24",
+      kickoff: "10:00",
+      arrival: "09:30",
+      venue: "Rovers Sports Ground \xB7 Pitch 2",
+      homeAway: "home",
+      status: "scheduled",
+      selectedCount: 9,
+      selectedPlayerIds: [
+        "synthetic-player-01",
+        "synthetic-player-02",
+        "synthetic-player-03",
+        "synthetic-player-04",
+        "synthetic-player-05",
+        "synthetic-player-06",
+        "synthetic-player-07",
+        "synthetic-player-08",
+        "synthetic-player-09"
+      ],
+      demoPhase: "scheduled",
+      fixtureClass: "development"
+    },
+    {
+      id: "synthetic-roma-oak-2026-10-31",
+      opponent: "Oak FC",
+      playedDate: "2026-10-31",
+      kickoff: "10:30",
+      arrival: "10:00",
+      venue: "Oak Meadow \xB7 Junior pitch",
+      homeAway: "away",
+      status: "scheduled",
+      selectedCount: 9,
+      selectedPlayerIds: [
+        "synthetic-player-01",
+        "synthetic-player-02",
+        "synthetic-player-03",
+        "synthetic-player-04",
+        "synthetic-player-05",
+        "synthetic-player-06",
+        "synthetic-player-07",
+        "synthetic-player-08",
+        "synthetic-player-09"
+      ],
+      demoPhase: "scheduled",
+      fixtureClass: "development"
+    },
+    {
+      id: "synthetic-history-oak",
+      opponent: "Oak FC",
+      playedDate: "2026-10-10",
+      kickoff: "10:30",
+      arrival: "10:00",
+      venue: "Oak Meadow \xB7 Junior pitch",
+      homeAway: "away",
+      status: "scheduled",
+      selectedCount: 9,
+      selectedPlayerIds: [
+        "synthetic-player-01",
+        "synthetic-player-02",
+        "synthetic-player-03",
+        "synthetic-player-04",
+        "synthetic-player-05",
+        "synthetic-player-06",
+        "synthetic-player-07",
+        "synthetic-player-08",
+        "synthetic-player-09"
+      ],
+      demoPhase: "completed",
+      fixtureClass: "friendly",
+      result: {
+        halfTime: {
+          for: 1,
+          against: 1
+        },
+        final: {
+          for: 2,
+          against: 2
+        },
+        halfMinutes: 25
+      }
+    },
+    {
+      id: "synthetic-history-hill",
+      opponent: "Hill FC",
+      playedDate: "2026-10-17",
+      kickoff: "09:30",
+      arrival: "09:00",
+      venue: "Rovers Sports Ground \xB7 Pitch 2",
+      homeAway: "home",
+      status: "scheduled",
+      selectedCount: 9,
+      selectedPlayerIds: [
+        "synthetic-player-01",
+        "synthetic-player-02",
+        "synthetic-player-03",
+        "synthetic-player-04",
+        "synthetic-player-05",
+        "synthetic-player-10",
+        "synthetic-player-11",
+        "synthetic-player-12",
+        "synthetic-player-13"
+      ],
+      demoPhase: "completed",
+      fixtureClass: "development",
+      result: {
+        halfTime: {
+          for: 1,
+          against: 1
+        },
+        final: {
+          for: 3,
+          against: 1
+        },
+        halfMinutes: 25
+      }
+    }
+  ],
+  training: [
+    {
+      id: "synthetic-training-1",
+      date: "2026-10-22",
+      time: "18:00",
+      venue: "Rovers Sports Ground \xB7 Training area",
+      status: "scheduled"
+    },
+    {
+      id: "synthetic-training-2",
+      date: "2026-10-29",
+      time: "18:00",
+      venue: "Rovers Sports Ground \xB7 Training area",
+      status: "scheduled"
+    },
+    {
+      id: "synthetic-training-2026-11-05",
+      date: "2026-11-05",
+      time: "18:00",
+      venue: "Rovers Sports Ground \xB7 Training area",
+      status: "scheduled"
+    },
+    {
+      id: "synthetic-training-2026-10-01",
+      date: "2026-10-01",
+      time: "18:00",
+      venue: "Rovers Sports Ground \xB7 Training area",
+      status: "held"
+    },
+    {
+      id: "synthetic-training-2026-10-08",
+      date: "2026-10-08",
+      time: "18:00",
+      venue: "Rovers Sports Ground \xB7 Training area",
+      status: "held"
+    },
+    {
+      id: "synthetic-training-2026-10-15",
+      date: "2026-10-15",
+      time: "18:00",
+      venue: "Rovers Sports Ground \xB7 Training area",
+      status: "held"
+    },
+    {
+      id: "synthetic-training-2026-09-24",
+      date: "2026-09-24",
+      time: "18:00",
+      venue: "Rovers Sports Ground \xB7 Training area",
+      status: "cancelled"
+    }
+  ],
+  profiles: [
+    {
+      playerId: "synthetic-player-01",
+      initials: "OB",
+      shirtNumber: 1,
+      foot: "right",
+      preferences: [
+        "GK",
+        "CM",
+        "CB"
+      ],
+      eligiblePositions: [
+        "GK",
+        "CB",
+        "ST"
+      ]
+    },
+    {
+      playerId: "synthetic-player-02",
+      initials: "NP",
+      shirtNumber: 2,
+      foot: "right",
+      preferences: [
+        "CB",
+        "CM",
+        "ST"
+      ],
+      eligiblePositions: [
+        "CB",
+        "LB",
+        "RB",
+        "CM",
+        "LW",
+        "RW",
+        "ST"
+      ]
+    },
+    {
+      playerId: "synthetic-player-03",
+      initials: "LM",
+      shirtNumber: 3,
+      foot: "left",
+      preferences: [
+        "CB",
+        "CM",
+        "ST"
+      ],
+      eligiblePositions: [
+        "CB",
+        "LB",
+        "RB",
+        "CM",
+        "LW",
+        "RW",
+        "ST"
+      ]
+    },
+    {
+      playerId: "synthetic-player-04",
+      initials: "TC",
+      shirtNumber: 4,
+      foot: "both",
+      preferences: [
+        "CM",
+        "CB",
+        "ST"
+      ],
+      eligiblePositions: [
+        "CB",
+        "LB",
+        "RB",
+        "CM",
+        "LW",
+        "RW",
+        "ST"
+      ]
+    },
+    {
+      playerId: "synthetic-player-05",
+      initials: "OE",
+      shirtNumber: 5,
+      foot: "left",
+      preferences: [
+        "LW",
+        "CM",
+        "CB"
+      ],
+      eligiblePositions: [
+        "CB",
+        "LB",
+        "RB",
+        "CM",
+        "LW",
+        "RW",
+        "ST"
+      ]
+    },
+    {
+      playerId: "synthetic-player-06",
+      initials: "EB",
+      shirtNumber: 6,
+      foot: "right",
+      preferences: [
+        "RW",
+        "CM",
+        "CB"
+      ],
+      eligiblePositions: [
+        "CB",
+        "LB",
+        "RB",
+        "CM",
+        "LW",
+        "RW",
+        "ST"
+      ]
+    },
+    {
+      playerId: "synthetic-player-07",
+      initials: "JT",
+      shirtNumber: 7,
+      foot: "right",
+      preferences: [
+        "ST",
+        "CM",
+        "CB"
+      ],
+      eligiblePositions: [
+        "CB",
+        "LB",
+        "RB",
+        "CM",
+        "LW",
+        "RW",
+        "ST"
+      ]
+    },
+    {
+      playerId: "synthetic-player-08",
+      initials: "FL",
+      shirtNumber: 8,
+      foot: "left",
+      preferences: [
+        "LW",
+        "CM",
+        "CB"
+      ],
+      eligiblePositions: [
+        "CB",
+        "LB",
+        "RB",
+        "CM",
+        "LW",
+        "RW",
+        "ST"
+      ]
+    },
+    {
+      playerId: "synthetic-player-09",
+      initials: "AJ",
+      shirtNumber: 9,
+      foot: "right",
+      preferences: [
+        "RW",
+        "CM",
+        "CB"
+      ],
+      eligiblePositions: [
+        "CB",
+        "LB",
+        "RB",
+        "CM",
+        "LW",
+        "RW",
+        "ST"
+      ]
+    },
+    {
+      playerId: "synthetic-player-10",
+      initials: "LW",
+      shirtNumber: 10,
+      foot: "both",
+      preferences: [
+        "CM",
+        "CB",
+        "ST"
+      ],
+      eligiblePositions: [
+        "CB",
+        "LB",
+        "RB",
+        "CM",
+        "LW",
+        "RW",
+        "ST"
+      ]
+    },
+    {
+      playerId: "synthetic-player-11",
+      initials: "MK",
+      shirtNumber: 11,
+      foot: "right",
+      preferences: [
+        "CB",
+        "CM",
+        "ST"
+      ],
+      eligiblePositions: [
+        "CB",
+        "LB",
+        "RB",
+        "CM",
+        "LW",
+        "RW",
+        "ST"
+      ]
+    },
+    {
+      playerId: "synthetic-player-12",
+      initials: "AG",
+      shirtNumber: 12,
+      foot: "left",
+      preferences: [
+        "ST",
+        "CM",
+        "CB"
+      ],
+      eligiblePositions: [
+        "CB",
+        "LB",
+        "RB",
+        "CM",
+        "LW",
+        "RW",
+        "ST"
+      ]
+    },
+    {
+      playerId: "synthetic-player-13",
+      initials: "GT",
+      shirtNumber: 13,
+      foot: "right",
+      preferences: [
+        "CM",
+        "CB",
+        "ST"
+      ],
+      eligiblePositions: [
+        "CB",
+        "LB",
+        "RB",
+        "CM",
+        "LW",
+        "RW",
+        "ST"
+      ]
+    }
+  ]
+};
+
+// packages/testing/src/index.ts
+var romaFixture = roma_synthetic_default;
+var demoAccountLabels = {
+  "synthetic-account-manager": "Alex Morgan",
+  "synthetic-account-manager-2": "Priya Shah",
+  "synthetic-account-manager-3": "Dan Foster",
+  "synthetic-account-manager-4": "Chris Lewis",
+  "synthetic-account-manager-5": "Nicky Hughes",
+  "synthetic-account-admin": "Sam Taylor",
+  "synthetic-account-spectator": "Jamie Bennett",
+  "synthetic-account-invitee": "Casey Bennett",
+  "synthetic-account-other-manager": "Robin Ellis",
+  ...Object.fromEntries(roma_synthetic_default.players.map((player) => [`synthetic-account-player-${player.id.slice(-2)}`, player.displayName]))
+};
+
+// packages/application/src/training-series.ts
+var maximumTrainingOccurrences = 52;
+function requireThat(condition, message) {
+  if (!condition) throw new Error(message);
+}
+function trainingSeriesOccurrences(state, seasonId, recurrenceGroupId) {
+  requireThat(typeof recurrenceGroupId === "string" && recurrenceGroupId.trim().length > 0 && recurrenceGroupId.length <= 150, "A stable training series identity is required.");
+  requireThat(seasonId === state.activeSeasonId, "Choose the current season before editing a training series.");
+  const occurrences = state.training.filter((item) => item.recurrenceGroupId === recurrenceGroupId);
+  requireThat(occurrences.every((item) => item.seasonId === seasonId), "The training series belongs to a different season.");
+  return [...occurrences].sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time) || a.id.localeCompare(b.id));
+}
+function applyTrainingSeries(state, command, validate) {
+  requireThat(command.confirmOccurrences === true, "Review and explicitly confirm the listed training occurrences.");
+  const series = trainingSeriesOccurrences(state, command.seasonId, command.recurrenceGroupId);
+  if (command.type === "training.series_created") {
+    requireThat(series.length === 0, "That training series already exists; use its scheduled-occurrence editor.");
+    requireThat(Array.isArray(command.occurrences) && command.occurrences.length >= 2 && command.occurrences.length <= maximumTrainingOccurrences, "A series needs between 2 and 52 explicit occurrences.");
+    const ids = /* @__PURE__ */ new Set(), dates = /* @__PURE__ */ new Set();
+    for (const draft of command.occurrences) {
+      requireThat(draft.seasonId === command.seasonId && draft.recurrenceGroupId === command.recurrenceGroupId, "Every occurrence must belong to the confirmed series and season.");
+      requireThat(!ids.has(draft.id) && !state.training.some((item) => item.id === draft.id), "Each occurrence must have a new stable identity.");
+      requireThat(!dates.has(draft.date), "Each series occurrence must have a distinct calendar date.");
+      validate(draft);
+      ids.add(draft.id);
+      dates.add(draft.date);
+    }
+    state.training.push(...command.occurrences.map((draft) => ({ ...draft, expectedProfileIds: [...draft.expectedProfileIds], status: "scheduled", responses: {}, attendance: {} })));
+    return;
+  }
+  const scheduled = series.filter((item) => item.status === "scheduled");
+  requireThat(Array.isArray(command.occurrenceIds) && command.occurrenceIds.length > 0 && command.occurrenceIds.length <= maximumTrainingOccurrences && new Set(command.occurrenceIds).size === command.occurrenceIds.length, "Review a nonempty list of distinct scheduled occurrences.");
+  requireThat(command.occurrenceIds.length === scheduled.length && scheduled.every((item) => command.occurrenceIds.includes(item.id)), "The scheduled series changed; review its exact occurrence list again. Held and cancelled occurrences cannot be edited as scheduled sessions.");
+  if (command.type === "training.series_updated") {
+    for (const occurrence of scheduled) validate({ ...occurrence, ...command.changes });
+    const ids = new Set(command.occurrenceIds);
+    state.training = state.training.map((item) => ids.has(item.id) ? { ...item, time: command.changes.time, venue: command.changes.venue, expectedProfileIds: [...command.changes.expectedProfileIds] } : item);
+  } else {
+    const ids = new Set(command.occurrenceIds);
+    state.training = state.training.map((item) => ids.has(item.id) ? { ...item, status: "cancelled" } : item);
+  }
+}
+
+// packages/application/src/match-plans.ts
+var copy = (value) => JSON.parse(JSON.stringify(value));
+function assert(value, message) {
+  if (!value) throw new Error(message);
+}
+function shape(value, keys2) {
+  assert(
+    value && typeof value === "object" && !Array.isArray(value) && Object.keys(value).every((key) => keys2.includes(key)),
+    "Match-plan data contains unsupported fields."
+  );
+}
+function required(value, maximum, label2) {
+  assert(
+    typeof value === "string" && value.trim() && value.trim().length <= maximum && !/[\u0000-\u001f\u007f]/.test(value),
+    `${label2} is required and must be at most ${maximum} characters.`
+  );
+  return value.trim();
+}
+var canonical2 = (value) => Array.isArray(value) ? `[${value.map(canonical2).join(",")}]` : value && typeof value === "object" ? `{${Object.entries(value).sort(([a], [b]) => a.localeCompare(b)).map(([key, item]) => `${JSON.stringify(key)}:${canonical2(item)}`).join(",")}}` : JSON.stringify(value);
+function keeper(profile) {
+  return profile.eligiblePositions.includes("GK") && ["GK"].includes(profile.preferences[0]) || profile.eligiblePositions.includes("GK") && profile.preferences[1] === "GK";
+}
+function latestMatchPlans(state) {
+  const map = /* @__PURE__ */ new Map();
+  for (const plan of state.matchPlans ?? [])
+    if (!map.has(plan.id) || map.get(plan.id).version < plan.version)
+      map.set(plan.id, plan);
+  return [...map.values()].filter(
+    (plan) => plan.teamId === state.team.id && plan.seasonId === state.activeSeasonId
+  ).map(copy);
+}
+function validateMatchPlanSettings(settings) {
+  shape(settings, ["payload", "applicability", "softPreferences"]);
+  shape(settings.payload, [
+    "keeperMode",
+    "fixedKeeperPlayerSeasonId",
+    "minimumStintMs",
+    "batchLimit",
+    "scoreLeadThreshold",
+    "returnToNormalEnabled"
+  ]);
+  shape(settings.applicability, ["minimumStint", "batchLimit", "q07"]);
+  shape(settings.softPreferences, ["halfBufferFraction"]);
+  const p = settings.payload;
+  assert(
+    ["sole_fixed", "common_pool"].includes(p.keeperMode) && (p.fixedKeeperPlayerSeasonId === null || typeof p.fixedKeeperPlayerSeasonId === "string" && p.fixedKeeperPlayerSeasonId.length > 0),
+    "Choose a known keeper proposal."
+  );
+  assert(
+    p.keeperMode === "sole_fixed" === (p.fixedKeeperPlayerSeasonId !== null),
+    "Fixed keeper identity must agree with the keeper proposal."
+  );
+  assert(
+    Number.isSafeInteger(p.minimumStintMs) && p.minimumStintMs >= 0 && Number.isSafeInteger(p.batchLimit) && p.batchLimit >= 1 && p.batchLimit <= 11 && Number.isSafeInteger(p.scoreLeadThreshold) && p.scoreLeadThreshold >= 1 && typeof p.returnToNormalEnabled === "boolean",
+    "Review minimum spell, batch preference, threshold and explicit return choice."
+  );
+  assert(
+    settings.applicability.minimumStint === "soft_preference" && settings.applicability.batchLimit === "soft_preference" && settings.applicability.q07 === "unapproved",
+    "A saved plan cannot approve Q07 or convert preferences into hard rules."
+  );
+  assert(
+    Number.isFinite(settings.softPreferences.halfBufferFraction) && settings.softPreferences.halfBufferFraction >= 0 && settings.softPreferences.halfBufferFraction <= 0.49,
+    "Half buffer must be a fraction between zero and 0.49."
+  );
+}
+function validateProposal(state, fixture, formation, allocations, settings) {
+  assertActiveFormationPositions(state, formation);
+  assert(
+    formation.format === fixture.format && formation.slots.length === fixture.format && formation.slots.filter((slot) => slot.position === "GK").length === 1,
+    "The saved formation must match this fixture format and include one goalkeeper."
+  );
+  assert(
+    Array.isArray(allocations) && allocations.length === fixture.format && new Set(allocations.map((row) => row.slotId)).size === fixture.format && new Set(allocations.map((row) => row.playerId)).size === fixture.format,
+    "Review one distinct player for every saved place."
+  );
+  const selected = fixture.selectedProfileIds.map(
+    (id5) => state.profiles.find(
+      (profile) => profile.id === id5 && profile.seasonId === fixture.seasonId && profile.active
+    )
+  ).filter(
+    (profile) => Boolean(profile)
+  );
+  for (const allocation of allocations) {
+    shape(allocation, ["slotId", "position", "playerId"]);
+    const slot = formation.slots.find(
+      (value) => value.id === allocation.slotId
+    );
+    const profile = selected.find(
+      (value) => value.playerId === allocation.playerId
+    );
+    assert(
+      slot && slot.position === allocation.position && profile && profile.eligiblePositions.includes(slot.position),
+      "A proposed player is missing, unselected, archived or no longer eligible. Review the squad and places first."
+    );
+    if (slot.position === "GK")
+      assert(
+        keeper(profile),
+        "The proposed goalkeeper must remain a first- or second-choice eligible keeper."
+      );
+  }
+  validateMatchPlanSettings(settings);
+  const qualifying = selected.filter(keeper);
+  assert(
+    settings.payload.minimumStintMs <= fixture.plannedHalfDurationMs,
+    "The preferred spell exceeds this fixture\u2019s planned half."
+  );
+  assert(
+    settings.payload.keeperMode === "sole_fixed" ? qualifying.length === 1 && qualifying[0].playerId === settings.payload.fixedKeeperPlayerSeasonId && allocations.some(
+      (row) => row.position === "GK" && row.playerId === qualifying[0].playerId
+    ) : qualifying.length >= 2,
+    "The saved keeper proposal does not match this selected squad. Review current keeper coverage; no exemption is inferred."
+  );
+}
+function saveMatchPlan(state, input) {
+  shape(input, [
+    "planId",
+    "expectedPlanVersion",
+    "name",
+    "description",
+    "sourceFixtureId",
+    "sourceSnapshotId",
+    "allocations",
+    "settings"
+  ]);
+  const fixture = state.fixtures.find(
+    (row) => row.id === input.sourceFixtureId && row.seasonId === state.activeSeasonId
+  );
+  const snapshot = state.snapshots.find(
+    (row) => row.id === input.sourceSnapshotId && row.fixtureId === input.sourceFixtureId
+  );
+  assert(
+    fixture && snapshot && snapshot.seasonId === state.activeSeasonId,
+    "Review an explicit saved preparation for this team and season."
+  );
+  const latestSnapshot = state.snapshots.filter((row) => row.fixtureId === fixture.id).at(-1);
+  const {
+    status: _status,
+    selectedProfileIds: _selection,
+    responses: _responses,
+    attendance: _attendance,
+    history: _history,
+    matchPlanDraft: _draft,
+    ...fixtureDetails
+  } = fixture;
+  assert(
+    latestSnapshot?.id === snapshot.id && canonical2(snapshot.fixture) === canonical2(fixtureDetails) && canonical2(snapshot.selectedPlayerIds.slice().sort()) === canonical2(
+      fixture.selectedProfileIds.map(
+        (id5) => state.profiles.find((profile) => profile.id === id5)?.playerId
+      ).sort()
+    ),
+    "Source preparation changed. Prepare and review its latest snapshot before saving a plan."
+  );
+  const previous = latestMatchPlans(state).find(
+    (row) => row.id === input.planId
+  );
+  assert(
+    input.expectedPlanVersion === (previous?.version ?? 0),
+    "The reusable plan changed. Refresh and review its current version."
+  );
+  validateProposal(
+    state,
+    fixture,
+    snapshot.formation,
+    input.allocations,
+    input.settings
+  );
+  assert(
+    typeof input.description === "string" && input.description.length <= 300 && !/[\u0000-\u001f\u007f]/.test(input.description),
+    "Use a short non-sensitive description, at most300 characters."
+  );
+  return {
+    id: required(input.planId, 150, "Plan identity"),
+    version: (previous?.version ?? 0) + 1,
+    teamId: state.team.id,
+    seasonId: fixture.seasonId,
+    name: required(input.name, 40, "Plan name"),
+    description: input.description.trim(),
+    sourceFixtureId: fixture.id,
+    sourceSnapshotId: snapshot.id,
+    sourcePreparedRevision: snapshot.preparedRevision,
+    formation: copy(snapshot.formation),
+    allocations: copy(input.allocations),
+    settings: copy(input.settings)
+  };
+}
+function today(now) {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/London",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).format(new Date(now));
+}
+function previewMatchPlan(state, planId, fixtureId, context = {}) {
+  const plan = latestMatchPlans(state).find((row) => row.id === planId);
+  const fixture = state.fixtures.find(
+    (row) => row.id === fixtureId && row.seasonId === state.activeSeasonId
+  );
+  const issues = [];
+  try {
+    assert(
+      plan && fixture,
+      "Choose an existing plan and target fixture in this team and season."
+    );
+    assert(
+      fixture.id !== plan.sourceFixtureId,
+      "Choose another fixture; saving a template never overwrites its source."
+    );
+    assert(
+      fixture.status === "scheduled" && fixture.playedDate >= today(context.nowMs ?? Date.now()) && !context.protectedFixtureIds?.includes(fixture.id),
+      "Only a prospective, unrecorded and unclaimed fixture can receive a match plan."
+    );
+    validateProposal(
+      state,
+      fixture,
+      plan.formation,
+      plan.allocations,
+      plan.settings
+    );
+  } catch (error) {
+    issues.push(
+      error instanceof Error ? error.message : "This plan is not applicable."
+    );
+  }
+  const previewKey = plan && fixture ? canonical2([
+    state.revision,
+    plan,
+    fixture,
+    state.profiles.filter(
+      (profile) => fixture.selectedProfileIds.includes(profile.id)
+    ).map((profile) => [
+      profile.id,
+      profile.playerId,
+      profile.active,
+      profile.eligiblePositions,
+      profile.preferences
+    ])
+  ]) : "";
+  return {
+    ready: issues.length === 0,
+    issues,
+    previewKey,
+    plan: plan ? copy(plan) : null,
+    fixture: fixture ? copy(fixture) : null
+  };
+}
+function applyMatchPlan(state, input, context = {}) {
+  shape(input, ["planId", "planVersion", "fixtureId", "previewKey", "confirm"]);
+  const preview = previewMatchPlan(
+    state,
+    input.planId,
+    input.fixtureId,
+    context
+  );
+  assert(
+    input.confirm === true && preview.ready && preview.plan && input.planVersion === preview.plan.version && input.previewKey === preview.previewKey,
+    preview.issues[0] ?? "The preview or plan changed. Review this fixture again before explicitly confirming."
+  );
+  const plan = preview.plan;
+  return {
+    templateId: plan.id,
+    templateVersion: plan.version,
+    appliedRevision: state.revision + 1,
+    formation: {
+      ...copy(plan.formation),
+      id: `match-plan:${plan.id}:${plan.version}`,
+      name: plan.name
+    },
+    allocations: copy(plan.allocations),
+    settings: copy(plan.settings)
+  };
+}
+function validateFixtureMatchPlan(state, fixture) {
+  if (fixture.matchPlanDraft)
+    validateProposal(
+      state,
+      fixture,
+      fixture.matchPlanDraft.formation,
+      fixture.matchPlanDraft.allocations,
+      fixture.matchPlanDraft.settings
+    );
+}
+
+// packages/application/src/lineup-templates.ts
+var copy2 = (value) => JSON.parse(JSON.stringify(value));
+function requireThat2(value, message) {
+  if (!value) throw new Error(message);
+}
+function id(value) {
+  return typeof value === "string" && /^[A-Za-z0-9_.:-]{1,150}$/.test(value);
+}
+function version(value) {
+  return Number.isSafeInteger(value) && Number(value) >= 0;
+}
+function latest(state) {
+  const rows = /* @__PURE__ */ new Map();
+  for (const item of state.lineupTemplates ?? []) if (item.teamId === state.team.id && item.seasonId === state.activeSeasonId && (!rows.has(item.id) || rows.get(item.id).version < item.version)) rows.set(item.id, item);
+  return [...rows.values()];
+}
+function latestLineupTemplates(state) {
+  return latest(state).filter((item) => item.active).map(copy2);
+}
+function validateSetup(state, formation, selectedIds, allocations) {
+  assertActiveFormationPositions(state, formation);
+  requireThat2(formation.format >= 5 && formation.format <= 11 && formation.slots.length === formation.format && formation.slots.filter((slot) => slot.position === "GK").length === 1 && new Set(formation.slots.map((slot) => slot.id)).size === formation.format, "Choose a complete saved formation with one goalkeeper place.");
+  requireThat2(Array.isArray(selectedIds) && selectedIds.length >= formation.format && selectedIds.length <= 100 && new Set(selectedIds).size === selectedIds.length, "Choose a distinct squad with enough players for this setup.");
+  const profiles = selectedIds.map((playerId) => state.profiles.find((profile) => profile.playerId === playerId && profile.seasonId === state.activeSeasonId && profile.active));
+  requireThat2(profiles.every(Boolean), "The setup contains an archived or unavailable season player. Review its squad.");
+  requireThat2(Array.isArray(allocations) && allocations.length === formation.format && new Set(allocations.map((row) => row.slotId)).size === formation.format && new Set(allocations.map((row) => row.playerId)).size === formation.format, "Assign one distinct player to every formation place.");
+  for (const row of allocations) {
+    const slot = formation.slots.find((item) => item.id === row.slotId), profile = profiles.find((item) => item?.playerId === row.playerId);
+    requireThat2(slot && slot.position === row.position && profile && profile.eligiblePositions.includes(slot.position), "Every assigned player must be in the selected squad and eligible for that saved place.");
+    requireThat2(slot.position !== "GK" || profile.preferences.slice(0, 2).includes("GK"), "The goalkeeper must be eligible with goalkeeper as a first or second preference.");
+  }
+}
+function saveLineupTemplate(state, input) {
+  requireThat2(id(input.templateId) && version(input.expectedTemplateVersion), "Use a stable setup identity and reviewed version.");
+  const existing = latest(state).find((item) => item.id === input.templateId);
+  requireThat2((existing?.version ?? 0) === input.expectedTemplateVersion, "This setup changed. Open its latest version before saving.");
+  requireThat2(existing?.active || latestLineupTemplates(state).length < 3, "This team already has three saved setups. Edit one or archive a setup before adding another.");
+  requireThat2(typeof input.name === "string" && input.name.trim().length > 0 && input.name.trim().length <= 60 && !/[\u0000-\u001f\u007f]/.test(input.name), "Give this setup a name of at most 60 characters.");
+  const formation = state.formations.find((item) => item.id === input.formationId);
+  requireThat2(formation, "Choose a saved team formation.");
+  validateSetup(state, formation, input.selectedPlayerIds, input.allocations);
+  return copy2({ id: input.templateId, version: (existing?.version ?? 0) + 1, teamId: state.team.id, seasonId: state.activeSeasonId, name: input.name.trim(), active: true, formation, selectedPlayerIds: input.selectedPlayerIds, allocations: input.allocations });
+}
+function archiveLineupTemplate(state, input) {
+  const existing = latest(state).find((item) => item.id === input.templateId && item.active);
+  requireThat2(existing && version(input.expectedTemplateVersion) && existing.version === input.expectedTemplateVersion, "Open the latest saved setup before archiving it.");
+  return copy2({ ...existing, version: existing.version + 1, active: false });
+}
+function today2(nowMs) {
+  const parts = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/London", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date(nowMs));
+  return `${parts.find((item) => item.type === "year").value}-${parts.find((item) => item.type === "month").value}-${parts.find((item) => item.type === "day").value}`;
+}
+function previewLineupTemplate(state, templateId, fixtureId, context = {}) {
+  const template = latestLineupTemplates(state).find((item) => item.id === templateId), fixture = state.fixtures.find((item) => item.id === fixtureId && item.seasonId === state.activeSeasonId);
+  const blockers = [], warnings = [];
+  if (!template) blockers.push("This saved setup is unavailable.");
+  if (!fixture || fixture.status !== "scheduled" || fixture.playedDate < today2(context.nowMs ?? Date.now())) blockers.push("Choose a scheduled current or future fixture.");
+  if (context.protectedFixtureIds?.includes(fixtureId)) blockers.push("This fixture has recording or control history. Its saved setup cannot be replaced.");
+  if (template && fixture) {
+    if (template.formation.format !== fixture.format) blockers.push("The setup and fixture must use the same number of pitch places.");
+    try {
+      validateSetup(state, template.formation, template.selectedPlayerIds, template.allocations);
+    } catch (error) {
+      blockers.push(error instanceof Error ? error.message : "Review the current squad and eligible positions.");
+    }
+    for (const playerId of template.selectedPlayerIds) {
+      const profile = state.profiles.find((item) => item.playerId === playerId && item.seasonId === fixture.seasonId);
+      if (profile && fixture.responses[profile.id] === "unavailable") warnings.push(`${profile.displayName} has replied Unavailable. Applying a draft does not change that reply or check anyone in.`);
+    }
+  }
+  return { ready: blockers.length === 0, template, fixtureId, sourceRevision: state.revision, previewKey: JSON.stringify([state.team.id, state.activeSeasonId, state.revision, templateId, template?.version ?? null, fixtureId]), blockers, warnings };
+}
+function applyLineupTemplate(state, input, context = {}) {
+  const preview = previewLineupTemplate(state, input.templateId, input.fixtureId, context);
+  requireThat2(input.confirm === true && preview.ready && preview.template && preview.template.version === input.templateVersion && input.previewKey === preview.previewKey, preview.blockers.join(" ") || "This setup preview changed. Review the latest fixture and squad before applying it.");
+  return copy2({ templateId: preview.template.id, templateVersion: preview.template.version, appliedRevision: state.revision + 1, formation: { ...preview.template.formation, id: `lineup-template:${preview.template.id}:${preview.template.version}`, name: preview.template.name }, selectedPlayerIds: preview.template.selectedPlayerIds, allocations: preview.template.allocations });
+}
+function validateFixtureLineupTemplate(state, fixture) {
+  const draft = fixture.lineupTemplateDraft;
+  requireThat2(draft, "No saved setup is applied to this fixture.");
+  requireThat2(draft.formation.format === fixture.format, "The saved setup no longer matches this fixture format. Clear it and review another setup.");
+  const selected = fixture.selectedProfileIds.map((profileId) => state.profiles.find((profile) => profile.id === profileId)?.playerId);
+  requireThat2(selected.length === draft.selectedPlayerIds.length && selected.every((playerId) => playerId !== void 0 && draft.selectedPlayerIds.includes(playerId)), "The selected squad changed after applying this setup. Clear the draft and review it again.");
+  validateSetup(state, draft.formation, draft.selectedPlayerIds, draft.allocations);
+}
+
+// packages/application/src/preparation.ts
+var positionCodes = [...CORE_POSITION_CODES];
+function requireThat3(condition, message) {
+  if (!condition) throw new Error(message);
+}
+var clone = (value) => JSON.parse(JSON.stringify(value));
+function text(value, label2, maximum = 80) {
+  requireThat3(
+    typeof value === "string" && value.trim().length > 0 && value.trim().length <= maximum,
+    `${label2} is required and must be at most ${maximum} characters.`
+  );
+  return value.trim();
+}
+function canonical3(value) {
+  if (Array.isArray(value)) return `[${value.map(canonical3).join(",")}]`;
+  if (value && typeof value === "object")
+    return `{${Object.entries(value).sort(([a], [b]) => a.localeCompare(b)).map(([key, item]) => `${JSON.stringify(key)}:${canonical3(item)}`).join(",")}}`;
+  return JSON.stringify(value);
+}
+function validDate(value) {
+  const date = /* @__PURE__ */ new Date(`${value}T00:00:00Z`);
+  return /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
+}
+function validTime(value) {
+  return value === null || /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
+}
+function validateFormat(format2) {
+  requireThat3(
+    Number.isInteger(format2) && format2 >= 5 && format2 <= 11,
+    "Choose a format from five to eleven players."
+  );
+}
+function validateHalf(duration2) {
+  requireThat3(
+    Number.isSafeInteger(duration2) && duration2 > 0 && duration2 % 1e3 === 0,
+    "Each planned half must be a positive whole number of seconds."
+  );
+}
+function validateLogo(logo) {
+  requireThat3(
+    logo === null || ["roundel", "shield", "ball"].includes(logo),
+    "Choose one of the sample badges."
+  );
+}
+function activeSeason(state, seasonId) {
+  const season = state.seasons.find((item) => item.id === seasonId);
+  requireThat3(season, "Season not found.");
+  requireThat3(
+    seasonId === state.activeSeasonId,
+    "Past seasons are read-only here. Their records are retained unchanged."
+  );
+  return season;
+}
+function dateInSeason(state, seasonId, date) {
+  const season = activeSeason(state, seasonId);
+  requireThat3(
+    validDate(date) && date >= season.startDate && date <= season.endDate,
+    "Choose a valid date within the selected September-to-August season."
+  );
+}
+function checkProfile(state, profileId, seasonId) {
+  const profile = state.profiles.find(
+    (item) => item.id === profileId && item.seasonId === seasonId && item.active
+  );
+  requireThat3(profile, "Choose an active player from this team and season.");
+  return profile;
+}
+function validResponse(value) {
+  requireThat3(
+    ["available", "unavailable", "unsure", "no_reply"].includes(value),
+    "Choose an availability response."
+  );
+}
+function validAttendance(value) {
+  requireThat3(
+    ["present", "absent", "not_recorded"].includes(value),
+    "Choose Present, Absent or Not recorded."
+  );
+}
+function unique(ids) {
+  requireThat3(
+    new Set(ids).size === ids.length,
+    "Each player or slot can appear only once."
+  );
+}
+function validateTraining(state, training) {
+  text(training.id, "Training identity", 150);
+  dateInSeason(state, training.seasonId, training.date);
+  requireThat3(
+    validTime(training.time) && training.time !== null,
+    "Use a 24-hour HH:MM training time."
+  );
+  requireThat3(
+    typeof training.venue === "string" && training.venue.length <= 200,
+    "Use a training venue of at most 200 characters."
+  );
+  requireThat3(
+    training.recurrenceGroupId === null || typeof training.recurrenceGroupId === "string" && training.recurrenceGroupId.trim().length > 0 && training.recurrenceGroupId.length <= 150,
+    "Use a valid training series identity."
+  );
+  requireThat3(
+    Array.isArray(training.expectedProfileIds),
+    "Choose the expected players explicitly."
+  );
+  unique(training.expectedProfileIds);
+  training.expectedProfileIds.forEach(
+    (id5) => checkProfile(state, id5, training.seasonId)
+  );
+}
+function seasonBounds(startYear) {
+  requireThat3(
+    Number.isInteger(startYear) && startYear >= 2e3 && startYear <= 2100,
+    "Choose a season start year between 2000 and 2100."
+  );
+  return {
+    startDate: `${startYear}-09-01`,
+    endDate: `${startYear + 1}-08-31`,
+    label: `${startYear}/${String(startYear + 1).slice(-2)}`
+  };
+}
+function seasonPlayers(state, seasonId = state.activeSeasonId) {
+  return state.profiles.filter(
+    (profile) => profile.seasonId === seasonId && profile.active
+  );
+}
+function goalkeeperChoice(profile) {
+  const rank = profile.preferences.indexOf("GK") + 1;
+  return profile.eligiblePositions.includes("GK") && (rank === 1 || rank === 2) ? rank : 0;
+}
+function defaultFormation(format2) {
+  validateFormat(format2);
+  const roles = {
+    5: ["GK", "CB", "CB", "CM", "ST"],
+    6: ["GK", "CB", "CB", "LW", "RW", "ST"],
+    7: ["GK", "CB", "CB", "CM", "LW", "RW", "ST"],
+    8: ["GK", "LB", "CB", "RB", "CM", "LW", "RW", "ST"],
+    9: ["GK", "LB", "CB", "CB", "RB", "CM", "LW", "RW", "ST"],
+    10: ["GK", "LB", "CB", "CB", "RB", "CM", "CM", "LW", "RW", "ST"],
+    11: ["GK", "LB", "CB", "CB", "RB", "CM", "CM", "LW", "RW", "ST", "ST"]
+  };
+  const count = {};
+  const row = (position) => position === "GK" ? 0.9 : ["CB", "LB", "RB"].includes(position) ? 0.72 : position === "CM" ? 0.5 : ["LW", "RW"].includes(position) ? 0.32 : 0.13;
+  return {
+    id: `formation-${format2}`,
+    name: `${format2}-a-side`,
+    format: format2,
+    version: 1,
+    slots: roles[format2].map((position) => {
+      const ordinal = count[position] = (count[position] ?? 0) + 1;
+      const peers = roles[format2].filter((role) => row(role) === row(position));
+      const index = roles[format2].slice(
+        0,
+        roles[format2].findIndex(
+          (role, i) => role === position && roles[format2].slice(0, i + 1).filter((p) => p === position).length === ordinal
+        )
+      ).filter((role) => row(role) === row(position)).length;
+      return {
+        id: `${position.toLowerCase()}-${ordinal}`,
+        position,
+        label: `${position}${roles[format2].filter((role) => role === position).length > 1 ? ordinal : ""}`,
+        x: (index + 1) / (peers.length + 1),
+        y: row(position)
+      };
+    })
+  };
+}
+function prepareFixtureSnapshot(state, fixtureId, formationId) {
+  const fixture = state.fixtures.find((item) => item.id === fixtureId);
+  requireThat3(
+    fixture && fixture.status === "scheduled",
+    "Only a scheduled match can be prepared."
+  );
+  activeSeason(state, fixture.seasonId);
+  if (fixture.lineupTemplateDraft && fixture.lineupTemplateDraft.formation.id === formationId)
+    validateFixtureLineupTemplate(state, fixture);
+  if (fixture.matchPlanDraft && fixture.matchPlanDraft.formation.id === formationId)
+    validateFixtureMatchPlan(state, fixture);
+  const formation = fixture.lineupTemplateDraft && fixture.lineupTemplateDraft.formation.id === formationId ? fixture.lineupTemplateDraft.formation : fixture.matchPlanDraft && fixture.matchPlanDraft.formation.id === formationId ? fixture.matchPlanDraft.formation : state.formations.find(
+    (item) => item.id === (formationId ?? `formation-${fixture.format}`)
+  );
+  requireThat3(
+    formation && formation.format === fixture.format,
+    "Choose a saved formation for this match format."
+  );
+  assertActiveFormationPositions(state, formation);
+  requireThat3(
+    fixture.selectedProfileIds.length >= fixture.format,
+    "Select enough players for the match format."
+  );
+  const profiles = fixture.selectedProfileIds.map(
+    (id5) => checkProfile(state, id5, fixture.seasonId)
+  );
+  requireThat3(
+    profiles.some((profile) => goalkeeperChoice(profile) > 0),
+    "Select a first- or second-choice eligible goalkeeper."
+  );
+  const {
+    responses: _responses,
+    attendance: _attendance,
+    selectedProfileIds: _selected,
+    history: _history,
+    status: _status,
+    matchPlanDraft: _planDraft,
+    lineupTemplateDraft: _lineupDraft,
+    ...draft
+  } = fixture;
+  return clone({
+    id: `${fixture.id}@${state.revision + 1}`,
+    fixtureId,
+    seasonId: fixture.seasonId,
+    preparedRevision: state.revision + 1,
+    fixture: draft,
+    formation,
+    profiles,
+    selectedPlayerIds: profiles.map((profile) => profile.playerId),
+    attendance: Object.fromEntries(
+      profiles.map((profile) => [
+        profile.playerId,
+        fixture.attendance[profile.id] ?? "not_recorded"
+      ])
+    ),
+    ...fixture.matchPlanDraft?.formation.id === formation.id ? { matchPlanDraft: fixture.matchPlanDraft } : {},
+    ...fixture.lineupTemplateDraft?.formation.id === formation.id ? { lineupTemplateDraft: fixture.lineupTemplateDraft } : {}
+  });
+}
+function saveProfile(state, source2) {
+  const profile = clone(source2);
+  activeSeason(state, profile.seasonId);
+  text(profile.id, "Profile identity", 150);
+  text(profile.playerId, "Player identity", 150);
+  const existing = state.profiles.find((item) => item.id === profile.id);
+  if (existing)
+    requireThat3(
+      existing.playerId === profile.playerId && existing.seasonId === profile.seasonId,
+      "Profile identity and season cannot be reassigned."
+    );
+  requireThat3(
+    !state.profiles.some(
+      (item) => item.id !== profile.id && item.seasonId === profile.seasonId && item.playerId === profile.playerId
+    ),
+    "That player already has a profile in this season."
+  );
+  profile.displayName = text(profile.displayName, "Display name", 60);
+  requireThat3(
+    typeof profile.initials === "string" && /^[A-Za-z0-9]{1,2}$/.test(profile.initials),
+    "Use one or two letters or digits for the pitch label."
+  );
+  profile.initials = profile.initials.toUpperCase();
+  requireThat3(
+    profile.shirtNumber === null || Number.isInteger(profile.shirtNumber) && profile.shirtNumber >= 1 && profile.shirtNumber <= 99,
+    "Shirt number must be one to 99 or not recorded."
+  );
+  requireThat3(
+    !state.profiles.some(
+      (item) => item.id !== profile.id && item.seasonId === profile.seasonId && item.active && profile.active && profile.shirtNumber !== null && item.shirtNumber === profile.shirtNumber
+    ),
+    "Another active player already has that shirt number."
+  );
+  requireThat3(
+    profile.preferences.length === 3 && new Set(profile.preferences).size === 3 && profile.preferences.every(
+      (position) => allowedProfilePosition(state, position, existing?.preferences)
+    ),
+    "Choose three different ranked positions."
+  );
+  requireThat3(
+    profile.eligiblePositions.length > 0 && new Set(profile.eligiblePositions).size === profile.eligiblePositions.length && profile.eligiblePositions.every(
+      (position) => allowedProfilePosition(state, position, existing?.eligiblePositions)
+    ),
+    "Choose distinct manager-approved eligible positions."
+  );
+  requireThat3(
+    ["left", "right", "both", "not_recorded"].includes(profile.foot),
+    "Choose a preferred foot or Not recorded."
+  );
+  state.profiles = state.profiles.filter((item) => item.id !== profile.id);
+  state.profiles.push(profile);
+  return profile;
+}
+function validateRosterImport(state, profiles) {
+  requireThat3(
+    Array.isArray(profiles) && profiles.length > 0 && profiles.length <= 200,
+    "Import between one and 200 new player profiles."
+  );
+  const candidate = clone(state);
+  return Array.from(profiles).map((profile) => {
+    requireThat3(
+      profile && typeof profile === "object" && Object.keys(profile).length === 10 && Object.keys(profile).every(
+        (key) => [
+          "id",
+          "playerId",
+          "seasonId",
+          "displayName",
+          "initials",
+          "shirtNumber",
+          "foot",
+          "preferences",
+          "eligiblePositions",
+          "active"
+        ].includes(key)
+      ),
+      "Use only the documented player profile fields; accounts, contacts and dates of birth cannot be imported."
+    );
+    requireThat3(
+      Array.isArray(profile.preferences) && Array.isArray(profile.eligiblePositions),
+      "Provide ranked preferences and explicit eligible positions."
+    );
+    requireThat3(
+      typeof profile.initials === "string" && profile.initials.length >= 1 && profile.initials.length <= 2 && !/[^A-Za-z0-9]/.test(profile.initials),
+      "Use one or two letters or digits for the pitch label."
+    );
+    requireThat3(
+      profile.active === true && profile.seasonId === state.activeSeasonId,
+      "Import active players into the current season only."
+    );
+    for (const id5 of [profile.id, profile.playerId])
+      requireThat3(
+        typeof id5 === "string" && id5.length >= 1 && id5.length <= 150 && !/[^A-Za-z0-9_.:-]/.test(id5),
+        "Use a valid opaque player/profile identity of at most 150 characters."
+      );
+    requireThat3(
+      !candidate.profiles.some(
+        (existing) => existing.id === profile.id || existing.playerId === profile.playerId
+      ),
+      "A player or profile identity already exists. Import never merges identities; edit that player separately."
+    );
+    return saveProfile(candidate, profile);
+  });
+}
+function reducePreparation(previous, command, context = {}) {
+  requireThat3(
+    command.id && typeof command.id === "string",
+    "A stable command identity is required."
+  );
+  const signature2 = canonical3(command);
+  if (previous.appliedCommands[command.id]) {
+    requireThat3(
+      previous.appliedCommands[command.id] === signature2,
+      "This command identity already belongs to different content."
+    );
+    return previous;
+  }
+  requireThat3(
+    command.expectedRevision === previous.revision,
+    "Preparation changed on another screen. Reload the saved version before applying this change."
+  );
+  const state = clone(previous);
+  const revision = state.revision + 1;
+  switch (command.type) {
+    case "position.saved":
+      state.positionCatalogue = saveTeamPosition(state, command.position);
+      break;
+    case "position.archived":
+      state.positionCatalogue = archiveTeamPosition(state, command.code);
+      break;
+    case "club.updated":
+      validateLogo(command.logo);
+      state.club = {
+        ...state.club,
+        name: text(command.name, "Club name"),
+        logo: command.logo
+      };
+      break;
+    case "team.updated":
+      validateLogo(command.logo);
+      validateFormat(command.defaultPitchPlaces);
+      validateHalf(command.defaultHalfDurationMs);
+      state.team = {
+        ...state.team,
+        name: text(command.name, "Team name"),
+        ageGroup: text(command.ageGroup, "Age group", 12),
+        defaultPitchPlaces: command.defaultPitchPlaces,
+        defaultHalfDurationMs: command.defaultHalfDurationMs,
+        logo: command.logo
+      };
+      break;
+    case "season.rolled_over": {
+      requireThat3(
+        command.confirmSpectatorRenewal === true,
+        "Confirm that spectator access must be renewed explicitly."
+      );
+      const old = state.seasons.find(
+        (item) => item.id === state.activeSeasonId
+      );
+      requireThat3(
+        command.startYear === old.startYear + 1,
+        "Rollover creates the immediately following September-to-August season."
+      );
+      requireThat3(
+        !state.seasons.some(
+          (item) => item.id === command.idForSeason || item.startYear === command.startYear
+        ),
+        "That season already exists."
+      );
+      const season = {
+        id: text(command.idForSeason, "Season identity"),
+        startYear: command.startYear,
+        ...seasonBounds(command.startYear),
+        spectatorRenewalRequired: true
+      };
+      if (command.copyPlayers)
+        state.profiles.push(
+          ...seasonPlayers(state).map((profile) => ({
+            ...clone(profile),
+            id: `${profile.playerId}:${season.id}`,
+            seasonId: season.id
+          }))
+        );
+      state.seasons.push(season);
+      state.activeSeasonId = season.id;
+      break;
+    }
+    case "profile.saved":
+      saveProfile(state, command.profile);
+      break;
+    case "roster.imported": {
+      requireThat3(
+        command.id.length <= 150 && !/[^A-Za-z0-9_.:-]/.test(command.id),
+        "Use a valid stable roster import identity."
+      );
+      requireThat3(
+        command.confirmNewPlayers === true,
+        "Confirm that every imported row creates a new player; no accounts or access are granted."
+      );
+      requireThat3(
+        Object.keys(command).every(
+          (key) => [
+            "id",
+            "type",
+            "expectedRevision",
+            "profiles",
+            "confirmNewPlayers"
+          ].includes(key)
+        ),
+        "Use the documented roster import command."
+      );
+      state.profiles.push(...validateRosterImport(state, command.profiles));
+      break;
+    }
+    case "profile.archived": {
+      const profile = state.profiles.find(
+        (item) => item.id === command.profileId
+      );
+      requireThat3(profile, "Player profile not found.");
+      activeSeason(state, profile.seasonId);
+      profile.active = false;
+      break;
+    }
+    case "formation.saved": {
+      const formation = clone(command.formation);
+      validateFormat(formation.format);
+      formation.name = text(formation.name, "Formation name", 40);
+      requireThat3(
+        formation.slots.length === formation.format && formation.slots.filter((slot) => slot.position === "GK").length === 1,
+        "A formation needs the chosen number of slots and exactly one goalkeeper."
+      );
+      unique(formation.slots.map((slot) => slot.id));
+      assertActiveFormationPositions(state, formation);
+      for (const slot of formation.slots) {
+        requireThat3(
+          slot.id.length > 0 && activePositionCodes(state).includes(slot.position),
+          "Each slot needs an identity and position type."
+        );
+        slot.label = text(slot.label, "Slot label", 16);
+        requireThat3(
+          Number.isFinite(slot.x) && slot.x >= 0 && slot.x <= 1 && Number.isFinite(slot.y) && slot.y >= 0 && slot.y <= 1,
+          "Formation coordinates must be between zero and one."
+        );
+      }
+      const version2 = (state.formations.find((item) => item.id === formation.id)?.version ?? 0) + 1;
+      state.formations = state.formations.filter(
+        (item) => item.id !== formation.id
+      );
+      state.formations.push({ ...formation, version: version2 });
+      break;
+    }
+    case "fixture.saved": {
+      const fixture = clone(command.fixture);
+      dateInSeason(state, fixture.seasonId, fixture.playedDate);
+      validateFormat(fixture.format);
+      validateHalf(fixture.plannedHalfDurationMs);
+      fixture.opponent = text(fixture.opponent, "Opposition");
+      requireThat3(
+        validTime(fixture.kickoff) && validTime(fixture.arrival),
+        "Use 24-hour HH:MM times, or leave time not recorded."
+      );
+      requireThat3(
+        ["home", "away"].includes(fixture.homeAway),
+        "Choose home or away."
+      );
+      const existing = state.fixtures.find((item) => item.id === fixture.id);
+      if (existing)
+        requireThat3(
+          existing.seasonId === fixture.seasonId && existing.status !== "cancelled",
+          "Cancelled matches must be restored explicitly before rescheduling."
+        );
+      const status = "scheduled";
+      const updated = {
+        ...fixture,
+        status,
+        selectedProfileIds: existing?.selectedProfileIds ?? [],
+        responses: existing?.responses ?? {},
+        attendance: existing?.attendance ?? {},
+        ...existing?.matchPlanDraft ? { matchPlanDraft: existing.matchPlanDraft } : {},
+        history: [
+          ...existing?.history ?? [],
+          {
+            revision,
+            action: existing ? "rescheduled" : "created",
+            playedDate: fixture.playedDate,
+            kickoff: fixture.kickoff,
+            status
+          }
+        ]
+      };
+      state.fixtures = state.fixtures.filter((item) => item.id !== fixture.id);
+      state.fixtures.push(updated);
+      break;
+    }
+    case "fixture.status_changed": {
+      const fixture = state.fixtures.find(
+        (item) => item.id === command.fixtureId
+      );
+      requireThat3(fixture, "Match not found.");
+      activeSeason(state, fixture.seasonId);
+      requireThat3(
+        ["scheduled", "postponed", "cancelled"].includes(command.status),
+        "Choose a valid fixture state."
+      );
+      fixture.status = command.status;
+      fixture.history.push({
+        revision,
+        action: command.status,
+        playedDate: fixture.playedDate,
+        kickoff: fixture.kickoff,
+        status: command.status
+      });
+      break;
+    }
+    case "fixture.response_recorded":
+    case "fixture.selection_saved":
+    case "fixture.attendance_recorded": {
+      const fixture = state.fixtures.find(
+        (item) => item.id === command.fixtureId
+      );
+      requireThat3(fixture, "Match not found.");
+      activeSeason(state, fixture.seasonId);
+      requireThat3(
+        fixture.status === "scheduled",
+        "Only a scheduled match can collect responses, selection or attendance."
+      );
+      if (command.type === "fixture.selection_saved") {
+        unique(command.selectedProfileIds);
+        command.selectedProfileIds.forEach(
+          (id5) => checkProfile(state, id5, fixture.seasonId)
+        );
+        fixture.selectedProfileIds = [...command.selectedProfileIds];
+      } else {
+        checkProfile(state, command.profileId, fixture.seasonId);
+        if (command.type === "fixture.response_recorded") {
+          validResponse(command.response);
+          fixture.responses[command.profileId] = command.response;
+        } else {
+          validAttendance(command.attendance);
+          requireThat3(
+            fixture.selectedProfileIds.includes(command.profileId),
+            "Only selected match players can be checked in."
+          );
+          fixture.attendance[command.profileId] = command.attendance;
+        }
+      }
+      break;
+    }
+    case "fixture.prepared": {
+      const snapshot = prepareFixtureSnapshot(
+        state,
+        command.fixtureId,
+        command.formationId
+      );
+      state.snapshots.push(snapshot);
+      break;
+    }
+    case "training.series_created":
+    case "training.series_updated":
+    case "training.series_cancelled": {
+      applyTrainingSeries(
+        state,
+        command,
+        (draft) => validateTraining(state, draft)
+      );
+      break;
+    }
+    case "lineup_template.saved":
+      state.lineupTemplates = [
+        ...state.lineupTemplates ?? [],
+        saveLineupTemplate(state, command)
+      ];
+      break;
+    case "lineup_template.archived":
+      state.lineupTemplates = [
+        ...state.lineupTemplates ?? [],
+        archiveLineupTemplate(state, command)
+      ];
+      break;
+    case "lineup_template.applied": {
+      const draft = applyLineupTemplate(state, command, context);
+      const fixture = state.fixtures.find(
+        (item) => item.id === command.fixtureId
+      );
+      fixture.lineupTemplateDraft = draft;
+      fixture.selectedProfileIds = draft.selectedPlayerIds.map(
+        (playerId) => state.profiles.find(
+          (profile) => profile.playerId === playerId && profile.seasonId === fixture.seasonId && profile.active
+        ).id
+      );
+      delete fixture.matchPlanDraft;
+      break;
+    }
+    case "lineup_template.cleared": {
+      const fixture = state.fixtures.find(
+        (item) => item.id === command.fixtureId
+      );
+      requireThat3(
+        fixture && fixture.seasonId === state.activeSeasonId && fixture.status === "scheduled",
+        "Choose a scheduled fixture in the current season."
+      );
+      requireThat3(
+        !context.protectedFixtureIds?.includes(fixture.id),
+        "A saved or recorded match keeps its prepared lineup."
+      );
+      delete fixture.lineupTemplateDraft;
+      break;
+    }
+    case "match_plan.saved": {
+      const {
+        type: _type,
+        id: _id,
+        expectedRevision: _revision,
+        ...input
+      } = command;
+      const plan = saveMatchPlan(state, input);
+      state.matchPlans = [...state.matchPlans ?? [], plan];
+      break;
+    }
+    case "match_plan.applied": {
+      const {
+        type: _type,
+        id: _id,
+        expectedRevision: _revision,
+        ...input
+      } = command;
+      const draft = applyMatchPlan(state, input, context);
+      state.fixtures.find(
+        (item) => item.id === command.fixtureId
+      ).matchPlanDraft = draft;
+      delete state.fixtures.find((item) => item.id === command.fixtureId).lineupTemplateDraft;
+      break;
+    }
+    case "match_plan.cleared": {
+      const fixture = state.fixtures.find(
+        (item) => item.id === command.fixtureId
+      );
+      requireThat3(
+        fixture && fixture.seasonId === state.activeSeasonId,
+        "Choose a fixture in the current season."
+      );
+      delete fixture.matchPlanDraft;
+      break;
+    }
+    case "training.saved": {
+      const training = clone(command.training);
+      validateTraining(state, training);
+      const existing = state.training.find((item) => item.id === training.id);
+      if (existing)
+        requireThat3(
+          existing.seasonId === training.seasonId && existing.recurrenceGroupId === training.recurrenceGroupId && existing.status === "scheduled",
+          "Held or cancelled training records are retained; create or restore a scheduled occurrence first."
+        );
+      state.training = state.training.filter((item) => item.id !== training.id);
+      state.training.push({
+        ...training,
+        status: "scheduled",
+        responses: existing?.responses ?? {},
+        attendance: existing?.attendance ?? {}
+      });
+      break;
+    }
+    case "training.status_changed": {
+      const training = state.training.find(
+        (item) => item.id === command.trainingId
+      );
+      requireThat3(training, "Training occurrence not found.");
+      activeSeason(state, training.seasonId);
+      requireThat3(
+        ["scheduled", "held", "cancelled"].includes(command.status),
+        "Choose a valid training state."
+      );
+      training.status = command.status;
+      break;
+    }
+    case "training.response_recorded":
+    case "training.attendance_recorded": {
+      const training = state.training.find(
+        (item) => item.id === command.trainingId
+      );
+      requireThat3(training, "Training occurrence not found.");
+      activeSeason(state, training.seasonId);
+      checkProfile(state, command.profileId, training.seasonId);
+      requireThat3(
+        training.expectedProfileIds.includes(command.profileId),
+        "Only expected players belong to this attendance occurrence."
+      );
+      if (command.type === "training.response_recorded") {
+        requireThat3(
+          training.status !== "cancelled",
+          "Cancelled training cannot collect availability."
+        );
+        validResponse(command.response);
+        training.responses[command.profileId] = command.response;
+      } else {
+        requireThat3(
+          training.status === "held",
+          "Mark this occurrence as held before recording actual attendance. Cancelled training is excluded."
+        );
+        validAttendance(command.attendance);
+        training.attendance[command.profileId] = command.attendance;
+      }
+      break;
+    }
+    default:
+      throw new Error(
+        "This preparation command is not supported. No saved records were changed."
+      );
+  }
+  state.revision = revision;
+  state.appliedCommands[command.id] = signature2;
+  state.audit.push({ id: command.id, revision, type: command.type });
+  return state;
+}
+function trainingAttendanceEvidence(state) {
+  return state.training.map((session) => ({
+    sourcePreparationRevision: state.revision,
+    sourceCommandId: state.audit.at(-1)?.id ?? null,
+    sessionId: session.id,
+    playedDate: session.date,
+    eventStatus: session.status,
+    expectedPlayerIds: session.expectedProfileIds.map(
+      (id5) => state.profiles.find((profile) => profile.id === id5)?.playerId
+    ).filter((id5) => Boolean(id5)),
+    attendance: Object.fromEntries(
+      Object.entries(session.attendance).flatMap(([id5, attendance]) => {
+        const profile = state.profiles.find((item) => item.id === id5);
+        return profile ? [[profile.playerId, attendance]] : [];
+      })
+    ),
+    responses: Object.fromEntries(
+      Object.entries(session.responses).flatMap(([id5, response]) => {
+        const profile = state.profiles.find((item) => item.id === id5);
+        return profile ? [[profile.playerId, response]] : [];
+      })
+    )
+  }));
+}
+function createPreparationState(options = {}) {
+  const seasonId = "synthetic-season-2026-27";
+  const profiles = Array.from({ length: 13 }, (_, index) => {
+    const number = String(index + 1).padStart(2, "0");
+    const details = romaFixture.profiles.find(
+      (profile) => profile.playerId === `synthetic-player-${number}`
+    );
+    const preferences = [...details.preferences];
+    return {
+      id: `synthetic-player-${number}:${seasonId}`,
+      playerId: `synthetic-player-${number}`,
+      seasonId,
+      displayName: romaFixture.players[index].displayName,
+      initials: details.initials,
+      shirtNumber: details.shirtNumber,
+      foot: details.foot,
+      preferences,
+      eligiblePositions: [...details.eligiblePositions],
+      active: true
+    };
+  });
+  const fixtures = romaFixture.fixtures.map(
+    (item, index) => {
+      const selected = options.demoScenario ? item.selectedPlayerIds.map(
+        (playerId) => profiles.find((profile) => profile.playerId === playerId)
+      ) : profiles.slice(0, item.selectedCount);
+      const past = item.playedDate < romaFixture.demo.referenceDate;
+      return {
+        id: item.id,
+        seasonId,
+        opponent: item.opponent,
+        playedDate: item.playedDate,
+        kickoff: item.kickoff,
+        arrival: item.arrival,
+        venue: item.venue,
+        homeAway: item.homeAway,
+        format: 7,
+        plannedHalfDurationMs: 15e5,
+        status: item.status,
+        selectedProfileIds: selected.map((profile) => profile.id),
+        responses: Object.fromEntries(
+          profiles.flatMap(
+            (profile, playerIndex) => {
+              if (index === 0)
+                return playerIndex < 9 ? [[profile.id, "available"]] : [];
+              if (past)
+                return [
+                  [
+                    profile.id,
+                    selected.some((item2) => item2.id === profile.id) ? "available" : "unavailable"
+                  ]
+                ];
+              return playerIndex < 6 ? [[profile.id, "available"]] : playerIndex === 6 ? [[profile.id, "unsure"]] : playerIndex === 10 ? [[profile.id, "unavailable"]] : [];
+            }
+          )
+        ),
+        attendance: past ? Object.fromEntries(
+          selected.map((profile) => [profile.id, "present"])
+        ) : {},
+        history: [
+          {
+            revision: 0,
+            action: "created",
+            playedDate: item.playedDate,
+            kickoff: item.kickoff,
+            status: item.status
+          }
+        ]
+      };
+    }
+  );
+  const training = romaFixture.training.map(
+    (item, sessionIndex) => ({
+      ...item,
+      seasonId,
+      recurrenceGroupId: "synthetic-thursday-training",
+      status: item.status,
+      expectedProfileIds: profiles.map((profile) => profile.id),
+      responses: item.status === "held" ? Object.fromEntries(
+        profiles.map((profile, index) => [
+          profile.id,
+          index === (sessionIndex + 3) % 13 ? "unavailable" : "available"
+        ])
+      ) : {},
+      attendance: item.status === "held" ? Object.fromEntries(
+        profiles.map((profile, index) => [
+          profile.id,
+          index === (sessionIndex + 3) % 13 ? "absent" : "present"
+        ])
+      ) : {}
+    })
+  );
+  return {
+    version: 1,
+    synthetic: true,
+    revision: 0,
+    club: {
+      id: "synthetic-richmond-rovers",
+      name: "Richmond Rovers",
+      logo: "roundel"
+    },
+    team: {
+      id: "synthetic-roma-u10",
+      name: "Roma",
+      ageGroup: "U10",
+      defaultPitchPlaces: 7,
+      defaultHalfDurationMs: 15e5,
+      logo: null
+    },
+    activeSeasonId: seasonId,
+    seasons: [
+      {
+        id: seasonId,
+        ...seasonBounds(2026),
+        startYear: 2026,
+        spectatorRenewalRequired: true
+      }
+    ],
+    profiles,
+    positionCatalogue: defaultPositionCatalogue(),
+    formations: Array.from(
+      { length: 7 },
+      (_, index) => defaultFormation(index + 5)
+    ),
+    fixtures,
+    training,
+    snapshots: [],
+    appliedCommands: {},
+    audit: []
+  };
+}
 
 // packages/application/src/demo-season.ts
 function createDemoCompletedMatches() {
@@ -3842,18 +4157,18 @@ function assertManager(state, actor, nowMs) {
   assertAccess(state, actor, nowMs);
   requireRule(actor.role === "manager", "forbidden", "Only an assigned verified adult manager can do this.");
 }
-function scopedMatch(state, actor, id4) {
-  const match = state.matches.find((item) => item.id === id4);
+function scopedMatch(state, actor, id5) {
+  const match = state.matches.find((item) => item.id === id5);
   requireRule(match && match.teamId === actor.teamId && match.seasonId === actor.seasonId, "forbidden", "That match is outside this team and season.");
   return match;
 }
-function scopedPhoto(state, actor, id4) {
-  const photo = state.photos.find((item) => item.id === id4);
+function scopedPhoto(state, actor, id5) {
+  const photo = state.photos.find((item) => item.id === id5);
   requireRule(photo && photo.teamId === actor.teamId && photo.seasonId === actor.seasonId, "forbidden", "That photo is outside this team and season.");
   return photo;
 }
-function currentPhoto(photo, version) {
-  if (version !== void 0) requireRule(version === photo.currentRevision, "conflict", "This photo changed. Review its current revision before continuing.");
+function currentPhoto(photo, version2) {
+  if (version2 !== void 0) requireRule(version2 === photo.currentRevision, "conflict", "This photo changed. Review its current revision before continuing.");
   requireRule(photo.removedAtMs === null, "closed", "This photo has been removed.");
   const revision = photo.revisions.find((item) => item.version === photo.currentRevision);
   requireRule(revision, "invalid", "The photo revision is missing.");
@@ -3873,12 +4188,12 @@ function eligibleVoter(match, playerId) {
   return Boolean(playerId && match.selectedPlayerIds.includes(playerId) && match.presentPlayerIds.includes(playerId));
 }
 function latestBallots(state, matchId) {
-  const latest = /* @__PURE__ */ new Map();
+  const latest2 = /* @__PURE__ */ new Map();
   for (const ballot of state.ballots) if (ballot.matchId === matchId) {
-    const previous = latest.get(ballot.voterPlayerId);
-    if (!previous || ballot.revision > previous.revision) latest.set(ballot.voterPlayerId, ballot);
+    const previous = latest2.get(ballot.voterPlayerId);
+    if (!previous || ballot.revision > previous.revision) latest2.set(ballot.voterPlayerId, ballot);
   }
-  return [...latest.values()];
+  return [...latest2.values()];
 }
 function sealAward(state, match, nowMs) {
   requireRule(match.voteCutoffAtMs !== null && match.finalisationDeadlineAtMs !== null, "invalid", "The award timing evidence is missing.");
@@ -3887,7 +4202,7 @@ function sealAward(state, match, nowMs) {
     counts.set(ballot.candidatePlayerId, (counts.get(ballot.candidatePlayerId) ?? 0) + 1);
   }
   const highest = Math.max(0, ...counts.values());
-  const winners = [...counts].filter(([, count]) => count === highest).map(([id4]) => id4).sort();
+  const winners = [...counts].filter(([, count]) => count === highest).map(([id5]) => id5).sort();
   state.awards.push({
     matchId: match.id,
     winnerPlayerIds: winners,
@@ -3986,8 +4301,8 @@ function applyCommunityCommand(state, actor, command, nowMs) {
       requireRule(match.teamId === actor.teamId && match.seasonId === actor.seasonId, "forbidden", "A match must belong to the active team and season.");
       requireRule(!next.matches.some((item) => item.id === match.id), "conflict", "This match is already registered. A corrected finish requires an audited exception process and never reopens an award.");
       requireRule(validTime3(match.playedAtMs) && unique2(match.selectedPlayerIds) && unique2(match.presentPlayerIds) && unique2(match.playedPlayerIds), "invalid", "The match evidence is invalid.");
-      requireRule(match.presentPlayerIds.every((id4) => match.selectedPlayerIds.includes(id4)) && match.playedPlayerIds.every((id4) => match.presentPlayerIds.includes(id4)), "invalid", "Played and present evidence must belong to the selected squad.");
-      requireRule(match.selectedPlayerIds.every((id4) => next.memberships.some((member) => member.playerId === id4 && member.teamId === actor.teamId && member.seasonId === actor.seasonId)), "invalid", "Every selected player needs a membership in this team and season.");
+      requireRule(match.presentPlayerIds.every((id5) => match.selectedPlayerIds.includes(id5)) && match.playedPlayerIds.every((id5) => match.presentPlayerIds.includes(id5)), "invalid", "Played and present evidence must belong to the selected squad.");
+      requireRule(match.selectedPlayerIds.every((id5) => next.memberships.some((member) => member.playerId === id5 && member.teamId === actor.teamId && member.seasonId === actor.seasonId)), "invalid", "Every selected player needs a membership in this team and season.");
       requireRule(match.actualFullTimeAtMs === null || validTime3(match.actualFullTimeAtMs) && match.actualFullTimeAtMs <= nowMs, "invalid", "Actual full time cannot be in the future.");
       next.matches.push({
         ...match,
@@ -4304,8 +4619,8 @@ function getCommunityView(state, actor, nowMs) {
         deadlineAtMs: share ? match.finalisationDeadlineAtMs : null,
         mayVote,
         ownChoice: own?.candidatePlayerId ?? null,
-        candidates: mayVote ? match.playedPlayerIds.filter((id4) => id4 !== actor.playerId).map((id4) => ({ id: id4, label: labelForPlayer(state, id4) })) : [],
-        award: share && award ? { ...award, winnerLabels: award.winnerPlayerIds.map((id4) => labelForPlayer(state, id4)) } : null
+        candidates: mayVote ? match.playedPlayerIds.filter((id5) => id5 !== actor.playerId).map((id5) => ({ id: id5, label: labelForPlayer(state, id5) })) : [],
+        award: share && award ? { ...award, winnerLabels: award.winnerPlayerIds.map((id5) => labelForPlayer(state, id5)) } : null
       };
     }) : [],
     gallery,
@@ -4344,7 +4659,7 @@ function createCommunityState(nowMs = Date.now(), options = {}) {
   const playerIds = Array.from({ length: 13 }, (_, index) => `synthetic-player-${String(index + 1).padStart(2, "0")}`);
   const accounts = [
     { id: "synthetic-account-manager", label: demoAccountLabels["synthetic-account-manager"], classification: "adult_individual", adultVerified: true },
-    ...playerIds.map((id4, index) => ({ id: `synthetic-account-player-${String(index + 1).padStart(2, "0")}`, label: romaFixture.players[index].displayName, classification: "child_shared", adultVerified: false })),
+    ...playerIds.map((id5, index) => ({ id: `synthetic-account-player-${String(index + 1).padStart(2, "0")}`, label: romaFixture.players[index].displayName, classification: "child_shared", adultVerified: false })),
     { id: "synthetic-account-spectator", label: demoAccountLabels["synthetic-account-spectator"], classification: "spectator", adultVerified: false },
     { id: "synthetic-account-invitee", label: demoAccountLabels["synthetic-account-invitee"], classification: "spectator", adultVerified: false }
   ];
@@ -4412,7 +4727,7 @@ function createCommunityState(nowMs = Date.now(), options = {}) {
     revisions: [{
       version: 1,
       art: "pitch",
-      caption: "Matchday at Rovers Sports Ground \xB7 sample illustration",
+      caption: "Matchday at Rovers Sports Ground \xB7 illustration",
       status: "published",
       createdAtMs: fullTime,
       reviewedAtMs: fullTime,
@@ -4434,7 +4749,7 @@ function createCommunityState(nowMs = Date.now(), options = {}) {
     revisions: [{
       version: 1,
       art: "ball",
-      caption: "Saturday football \xB7 sample illustration awaiting review",
+      caption: "Saturday football \xB7 illustration awaiting review",
       status: "pending",
       createdAtMs: fullTime,
       reviewedAtMs: null,
@@ -4462,14 +4777,14 @@ function createCommunityState(nowMs = Date.now(), options = {}) {
       sharing: "fictional_review_only",
       policyVersion: 1
     })).sort((left, right) => right.playedAtMs - left.playedAtMs);
-    const latest = state.matches[0];
+    const latest2 = state.matches[0];
     state.photos = state.photos.map((photo) => ({
       ...photo,
-      matchId: latest.id,
+      matchId: latest2.id,
       revisions: photo.revisions.map((revision) => ({
         ...revision,
-        createdAtMs: latest.actualFullTimeAtMs + 5 * 6e4,
-        reviewedAtMs: revision.reviewedAtMs === null ? null : latest.actualFullTimeAtMs + 10 * 6e4
+        createdAtMs: latest2.actualFullTimeAtMs + 5 * 6e4,
+        reviewedAtMs: revision.reviewedAtMs === null ? null : latest2.actualFullTimeAtMs + 10 * 6e4
       }))
     }));
     for (const completed of [...state.matches].sort((left, right) => left.playedAtMs - right.playedAtMs)) {
@@ -4599,12 +4914,12 @@ function validateInput(state, input) {
   }
   if (input.finalScore && (input.goals.filter((goal) => goal.beneficiary === "us").length > input.finalScore.for || input.goals.filter((goal) => goal.beneficiary === "opposition").length > input.finalScore.against)) throw new Error("Known goal attribution cannot exceed the recorded score.");
 }
-function historicalRecord(state, id4, input, at) {
+function historicalRecord(state, id5, input, at) {
   validateInput(state, input);
   return {
     ...clone2(input),
     opponent: input.opponent.trim(),
-    id: id4,
+    id: id5,
     teamId: state.teamId,
     seasonId: state.seasonId,
     recordMode: "historical_summary",
@@ -4909,7 +5224,7 @@ function selectSeasonResults(state, viewer) {
   const scoped = inScope(state, viewer) ? state.results.filter((record) => record.teamId === state.teamId && record.seasonId === state.seasonId) : [];
   const visible = scoped.filter((record) => canShare(record, viewer.actor)).sort(chronological);
   const withheld = scoped.length - visible.length;
-  const denied = !inScope(state, viewer) || withheld > 0;
+  const denied2 = !inScope(state, viewer) || withheld > 0;
   const included = visible.filter(ordinaryCompleted);
   const totals = { played: 0, wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0, goalDifference: 0, points: 0 };
   for (const record of included) {
@@ -4939,17 +5254,17 @@ function selectSeasonResults(state, viewer) {
     appliedFilters: { teamId: state.teamId, seasonId: state.seasonId },
     asOf: latestRecordTime(state),
     competitionPolicies: visible.map((record) => ({ matchId: record.id, policyId: record.publication.id, policyVersion: record.publication.version, fixtureClass: record.fixtureClass, classificationVersion: record.classificationVersion })),
-    sharing: denied ? "withheld_policy" : "permitted",
-    suppressionReason: denied ? "Scores and derived totals are not shared for this competition or scope." : null,
+    sharing: denied2 ? "withheld_policy" : "permitted",
+    suppressionReason: denied2 ? "Scores and derived totals are not shared for this competition or scope." : null,
     withheldResultCount: viewer.actor === "manager" ? withheld : null,
     rows: visible.map(publicResult),
-    totals: denied ? null : totals,
-    scorerTotals: denied ? null : state.players.filter((player) => scorerCounts.has(player.id)).map((player) => ({ playerId: player.id, label: player.label, knownGoals: scorerCounts.get(player.id) })),
-    form: denied || ambiguous ? null : included.slice(-5).map((record) => ({ matchId: record.id, outcome: resultOutcome(record.finalScore) })),
+    totals: denied2 ? null : totals,
+    scorerTotals: denied2 ? null : state.players.filter((player) => scorerCounts.has(player.id)).map((player) => ({ playerId: player.id, label: player.label, knownGoals: scorerCounts.get(player.id) })),
+    form: denied2 || ambiguous ? null : included.slice(-5).map((record) => ({ matchId: record.id, outcome: resultOutcome(record.finalScore) })),
     formChronologyState: ambiguous ? "same_day_order_unknown" : "known",
     unknownScoreCount: visible.filter((record) => record.status === "completed" && record.finalScore === null).length,
     excludedExceptionalMatches: visible.filter((record) => record.specialOutcome !== "ordinary" || record.status === "abandoned").length,
-    dataCoverage: { totalRecordedMatches: denied ? null : scoped.length, knownOrdinaryResults: denied ? null : included.length, summaryOnlyCount: denied ? null : visible.filter((record) => record.recordMode === "historical_summary").length }
+    dataCoverage: { totalRecordedMatches: denied2 ? null : scoped.length, knownOrdinaryResults: denied2 ? null : included.length, summaryOnlyCount: denied2 ? null : visible.filter((record) => record.recordMode === "historical_summary").length }
   };
 }
 function reportRecords(state, match) {
@@ -5088,7 +5403,7 @@ function selectMatchReport(state, matchId, viewer, currentMatch = null) {
     actualActiveDurationMs: record.actualActiveDurationMs,
     keeperPolicy: record.keeperPolicy,
     participation: record.participation?.filter((item) => eligible2.includes(item.playerId)).map(clone2) ?? null,
-    attendance: record.attendance ? Object.fromEntries(Object.entries(record.attendance).filter(([id4]) => eligible2.includes(id4))) : null
+    attendance: record.attendance ? Object.fromEntries(Object.entries(record.attendance).filter(([id5]) => eligible2.includes(id5))) : null
   };
 }
 
@@ -5126,7 +5441,7 @@ function fixtureMatchConfig(preparation, snapshot) {
     pitchPlaces: snapshot.fixture.format,
     plannedHalfDurationMs: snapshot.fixture.plannedHalfDurationMs,
     fixedKeeperId: keepers.length === 1 ? keepers[0].playerId : null,
-    ...snapshot.matchPlanDraft ? { initialPolicyProposal: snapshot.matchPlanDraft.settings, initialLineupProposal: snapshot.matchPlanDraft.allocations.map((row) => ({ ...row })) } : {},
+    ...snapshot.matchPlanDraft ? { initialPolicyProposal: snapshot.matchPlanDraft.settings, initialLineupProposal: snapshot.matchPlanDraft.allocations.map((row) => ({ ...row })) } : snapshot.lineupTemplateDraft ? { initialLineupProposal: snapshot.lineupTemplateDraft.allocations.map((row) => ({ ...row })) } : {},
     initialAttendance: { ...snapshot.attendance },
     slots: snapshot.formation.slots.map((slot) => ({
       slotId: slot.id,
@@ -5157,11 +5472,11 @@ function fixtureMatchConfig(preparation, snapshot) {
 var defaultPlayerId = romaFixture.players[0].id;
 
 // packages/application/src/season-service.ts
-var copy2 = (value) => JSON.parse(JSON.stringify(value));
+var copy3 = (value) => JSON.parse(JSON.stringify(value));
 var fail2 = (message, code = "INVALID_REQUEST", status = 422) => {
   throw new AccessError(code, status, message);
 };
-function requireThat3(value, message) {
+function requireThat4(value, message) {
   if (!value) fail2(message);
 }
 function validId2(value) {
@@ -5172,11 +5487,11 @@ function current(item, nowMs) {
 }
 function source(context) {
   const { preparation, records } = context;
-  requireThat3(Number.isSafeInteger(context.nowMs) && context.nowMs >= 0, "A trusted server time is required.");
-  requireThat3(preparation.team.id === records.teamId && preparation.club.id === records.clubId, "Preparation and reports must belong to the same club and team.");
+  requireThat4(Number.isSafeInteger(context.nowMs) && context.nowMs >= 0, "A trusted server time is required.");
+  requireThat4(preparation.team.id === records.teamId && preparation.club.id === records.clubId, "Preparation and reports must belong to the same club and team.");
   const season = preparation.seasons.find((item) => item.id === records.seasonId);
-  requireThat3(season, "The source season is unavailable.");
-  requireThat3(context.community.seasons.some((item) => item.teamId === records.teamId && item.id === season.id), "The source community scope is inconsistent.");
+  requireThat4(season, "The source season is unavailable.");
+  requireThat4(context.community.seasons.some((item) => item.teamId === records.teamId && item.id === season.id), "The source community scope is inconsistent.");
   return season;
 }
 function visibleAccounts(context) {
@@ -5194,7 +5509,7 @@ function seasonAccessEndsAtMs(startYear) {
   const midnightUtc = Date.UTC(startYear + 1, 8, 1);
   const offset = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/London", timeZoneName: "shortOffset" }).formatToParts(midnightUtc).find((part) => part.type === "timeZoneName")?.value;
   const match = /^GMT(?:([+-])(\d{1,2})(?::(\d{2}))?)?$/.exec(offset ?? "");
-  requireThat3(match, "The season boundary timezone is unavailable.");
+  requireThat4(match, "The season boundary timezone is unavailable.");
   const minutes = match[1] ? (match[1] === "+" ? 1 : -1) * (Number(match[2]) * 60 + Number(match[3] ?? 0)) : 0;
   return midnightUtc - minutes * 6e4;
 }
@@ -5209,7 +5524,7 @@ function seasonRolloverOptions(context) {
   return {
     revision: preparation.revision,
     sourceSeasonId: season.id,
-    sourceSeason: copy2(season),
+    sourceSeason: copy3(season),
     canRollover: administrator && principal.strongAuth && !existingNextSeasonId && principal.authenticatedAt <= nowMs + 3e4 && nowMs - principal.authenticatedAt <= 3e5,
     existingNextSeasonId,
     requiredAuthority: "administrator_with_recent_stronger_sign_in",
@@ -5226,12 +5541,12 @@ function seasonRolloverOptions(context) {
 function configurationServiceView(input) {
   assertTeamRole(input.principal, input.memberships, input.preparation.team.id, input.seasonId, ["administrator", "manager"], input.nowMs);
   assertAdultAuthority(input.principal, false, input.nowMs);
-  const { version, revision, club, team, activeSeasonId, seasons } = input.preparation;
-  return copy2({ version, revision, club, team, activeSeasonId, seasons });
+  const { version: version2, revision, club, team, activeSeasonId, seasons } = input.preparation;
+  return copy3({ version: version2, revision, club, team, activeSeasonId, seasons });
 }
 function applyConfigurationServiceCommand(input) {
   const { principal, memberships, preparation, seasonId, nowMs, command } = input;
-  requireThat3(command?.type === "club.updated" || command?.type === "team.updated", "Configuration accepts only club or team settings.");
+  requireThat4(command?.type === "club.updated" || command?.type === "team.updated", "Configuration accepts only club or team settings.");
   assertTeamRole(principal, memberships, preparation.team.id, seasonId, command.type === "club.updated" ? ["administrator"] : ["administrator", "manager"], nowMs);
   assertAdultAuthority(principal, command.type === "club.updated", nowMs);
   return reducePreparation(preparation, command);
@@ -5239,26 +5554,26 @@ function applyConfigurationServiceCommand(input) {
 function planSeasonRollover(context) {
   const old = source(context), { principal, memberships, accounts, preparation, records, community, command, nowMs } = context;
   assertTeamRole(principal, memberships, records.teamId, old.id, ["administrator"], nowMs);
-  requireThat3(Number.isSafeInteger(principal.authenticatedAt) && principal.authenticatedAt >= 0, "Verified authentication time is required.");
+  requireThat4(Number.isSafeInteger(principal.authenticatedAt) && principal.authenticatedAt >= 0, "Verified authentication time is required.");
   assertAdultAuthority(principal, true, nowMs);
-  requireThat3(command?.type === "season.rolled_over" && validId2(command.id) && validId2(command.idForSeason), "Use valid command and season identifiers.");
-  requireThat3(command.expectedPreparationRevision === preparation.revision, "The source preparation changed. Refresh before creating its next season.");
-  requireThat3(command.startYear === old.startYear + 1 && command.startYear <= 2100 && command.startYear >= 2020, "Create the immediately following September-to-August season.");
-  requireThat3(command.idForSeason !== old.id && !preparation.seasons.some((item) => item.id === command.idForSeason || item.startYear === command.startYear) && !memberships.some((item) => item.teamId === records.teamId && item.seasonId === command.idForSeason), "That destination season already exists.");
-  requireThat3(!context.existingSeasons.some((item) => item.teamId === records.teamId && (item.id === command.idForSeason || item.startYear === command.startYear)), "That destination season or season year already exists.");
-  requireThat3(command.confirmSpectatorRenewal === true && typeof command.copyPlayers === "boolean", "Acknowledge that spectators receive no automatic new-season access.");
-  requireThat3(Array.isArray(command.managerAccountIds) && Array.isArray(command.administratorAccountIds) && Array.isArray(command.playerAssignments), "Explicit manager, administrator and player assignments are required.");
-  requireThat3(command.playerAssignments.length <= 2e3 && command.playerAssignments.every((item) => item && typeof item === "object" && validId2(item.accountId) && validId2(item.playerId)), "Player assignments must be a bounded list of known identities.");
+  requireThat4(command?.type === "season.rolled_over" && validId2(command.id) && validId2(command.idForSeason), "Use valid command and season identifiers.");
+  requireThat4(command.expectedPreparationRevision === preparation.revision, "The source preparation changed. Refresh before creating its next season.");
+  requireThat4(command.startYear === old.startYear + 1 && command.startYear <= 2100 && command.startYear >= 2020, "Create the immediately following September-to-August season.");
+  requireThat4(command.idForSeason !== old.id && !preparation.seasons.some((item) => item.id === command.idForSeason || item.startYear === command.startYear) && !memberships.some((item) => item.teamId === records.teamId && item.seasonId === command.idForSeason), "That destination season already exists.");
+  requireThat4(!context.existingSeasons.some((item) => item.teamId === records.teamId && (item.id === command.idForSeason || item.startYear === command.startYear)), "That destination season or season year already exists.");
+  requireThat4(command.confirmSpectatorRenewal === true && typeof command.copyPlayers === "boolean", "Acknowledge that spectators receive no automatic new-season access.");
+  requireThat4(Array.isArray(command.managerAccountIds) && Array.isArray(command.administratorAccountIds) && Array.isArray(command.playerAssignments), "Explicit manager, administrator and player assignments are required.");
+  requireThat4(command.playerAssignments.length <= 2e3 && command.playerAssignments.every((item) => item && typeof item === "object" && validId2(item.accountId) && validId2(item.playerId)), "Player assignments must be a bounded list of known identities.");
   const unique3 = (items) => items.every(validId2) && new Set(items).size === items.length;
-  requireThat3(command.managerAccountIds.length >= 1 && command.managerAccountIds.length <= 4 && unique3(command.managerAccountIds), "Select one to four distinct verified adult managers.");
-  requireThat3(command.administratorAccountIds.length >= 1 && unique3(command.administratorAccountIds), "Explicitly retain at least one current verified administrator.");
+  requireThat4(command.managerAccountIds.length >= 1 && command.managerAccountIds.length <= 4 && unique3(command.managerAccountIds), "Select one to four distinct verified adult managers.");
+  requireThat4(command.administratorAccountIds.length >= 1 && unique3(command.administratorAccountIds), "Explicitly retain at least one current verified administrator.");
   const options = seasonRolloverOptions(context);
-  for (const id4 of command.managerAccountIds) requireThat3(options.managerCandidates.some((account2) => account2.accountId === id4), "Each manager must be an active verified adult with stronger authentication already enrolled in this team.");
-  for (const id4 of command.administratorAccountIds) requireThat3(options.managerCandidates.some((account2) => account2.accountId === id4 && account2.administrator), "Only a current verified administrator can retain administrator authority in the new season.");
+  for (const id5 of command.managerAccountIds) requireThat4(options.managerCandidates.some((account2) => account2.accountId === id5), "Each manager must be an active verified adult with stronger authentication already enrolled in this team.");
+  for (const id5 of command.administratorAccountIds) requireThat4(options.managerCandidates.some((account2) => account2.accountId === id5 && account2.administrator), "Only a current verified administrator can retain administrator authority in the new season.");
   if ((/* @__PURE__ */ new Set([...activeManagers(context), ...command.managerAccountIds])).size > 4) fail2("A team can have at most four active manager accounts. Revoke departed manager authority explicitly before adding another account.", "MANAGER_LIMIT", 409);
-  requireThat3(new Set(command.playerAssignments.map((item) => item.accountId)).size === command.playerAssignments.length && new Set(command.playerAssignments.map((item) => item.playerId)).size === command.playerAssignments.length, "Player assignments must retain one distinct known account for each player.");
-  requireThat3(command.copyPlayers || command.playerAssignments.length === 0, "Copy the relevant player profiles before assigning their existing accounts.");
-  for (const assignment of command.playerAssignments) requireThat3(validId2(assignment.accountId) && validId2(assignment.playerId) && options.playerCandidates.some((item) => item.accountId === assignment.accountId && item.playerId === assignment.playerId), "New player membership must preserve the source account/player binding. Use activation for new identity links.");
+  requireThat4(new Set(command.playerAssignments.map((item) => item.accountId)).size === command.playerAssignments.length && new Set(command.playerAssignments.map((item) => item.playerId)).size === command.playerAssignments.length, "Player assignments must retain one distinct known account for each player.");
+  requireThat4(command.copyPlayers || command.playerAssignments.length === 0, "Copy the relevant player profiles before assigning their existing accounts.");
+  for (const assignment of command.playerAssignments) requireThat4(validId2(assignment.accountId) && validId2(assignment.playerId) && options.playerCandidates.some((item) => item.accountId === assignment.accountId && item.playerId === assignment.playerId), "New player membership must preserve the source account/player binding. Use activation for new identity links.");
   const season = { id: command.idForSeason, startYear: command.startYear, ...seasonBounds(command.startYear), spectatorRenewalRequired: true };
   const newMemberships = [
     ...command.managerAccountIds.map((accountId) => ({ accountId, teamId: records.teamId, seasonId: season.id, role: "manager" })),
@@ -5266,11 +5581,11 @@ function planSeasonRollover(context) {
     ...command.playerAssignments.map((item) => ({ ...item, teamId: records.teamId, seasonId: season.id, role: "player" }))
   ];
   const sourceProfiles = preparation.profiles.filter((profile) => profile.seasonId === old.id && profile.active);
-  requireThat3(sourceProfiles.length <= 2e3 && new Set(sourceProfiles.map((profile) => profile.playerId)).size === sourceProfiles.length, "The source roster must have one distinct active profile for each player.");
-  const profiles = command.copyPlayers ? sourceProfiles.map((profile, index) => ({ ...copy2(profile), id: `profile-${season.id.slice(0, 60)}-${String(index + 1).padStart(4, "0")}`, seasonId: season.id })) : [];
-  const nextPreparation = { ...copy2(preparation), revision: 0, activeSeasonId: season.id, seasons: [season], profiles, fixtures: [], training: [], snapshots: [], matchPlans: [], appliedCommands: {}, audit: [{ id: command.id, revision: 0, type: "season.created_from_explicit_assignments" }] };
+  requireThat4(sourceProfiles.length <= 2e3 && new Set(sourceProfiles.map((profile) => profile.playerId)).size === sourceProfiles.length, "The source roster must have one distinct active profile for each player.");
+  const profiles = command.copyPlayers ? sourceProfiles.map((profile, index) => ({ ...copy3(profile), id: `profile-${season.id.slice(0, 60)}-${String(index + 1).padStart(4, "0")}`, seasonId: season.id })) : [];
+  const nextPreparation = { ...copy3(preparation), revision: 0, activeSeasonId: season.id, seasons: [season], profiles, fixtures: [], training: [], snapshots: [], matchPlans: [], appliedCommands: {}, audit: [{ id: command.id, revision: 0, type: "season.created_from_explicit_assignments" }] };
   const nextRecords = {
-    ...copy2(records),
+    ...copy3(records),
     revision: 0,
     seasonId: season.id,
     seasonLabel: season.label,
@@ -5286,7 +5601,7 @@ function planSeasonRollover(context) {
   };
   const assignedIds = new Set(newMemberships.map((item) => item.accountId));
   const nextCommunity = {
-    ...copy2(community),
+    ...copy3(community),
     revision: 0,
     accounts: accounts.filter((account2) => assignedIds.has(account2.accountId)).map((account2) => ({ id: account2.accountId, label: account2.label, classification: account2.identityClassification === "child_shared" ? "child_shared" : "adult_individual", adultVerified: account2.adultVerified })),
     memberships: newMemberships.filter((item) => item.role === "manager" || item.role === "player").map((item) => ({ accountId: item.accountId, teamId: item.teamId, seasonId: item.seasonId, role: item.role, ...item.playerId ? { playerId: item.playerId } : {}, active: true })),
@@ -5300,8 +5615,8 @@ function planSeasonRollover(context) {
     concerns: [],
     privacyRequests: [],
     appliedCommands: {},
-    hiddenUploaders: community.hiddenUploaders.filter((item) => assignedIds.has(item.accountId)).map(copy2),
-    preferences: Object.fromEntries(Object.entries(community.preferences).filter(([accountId]) => assignedIds.has(accountId)).map(([id4, value]) => [id4, copy2(value)])),
+    hiddenUploaders: community.hiddenUploaders.filter((item) => assignedIds.has(item.accountId)).map(copy3),
+    preferences: Object.fromEntries(Object.entries(community.preferences).filter(([accountId]) => assignedIds.has(accountId)).map(([id5, value]) => [id5, copy3(value)])),
     audit: [{ id: command.id, actorAccountId: principal.accountId, action: "season.created_from_explicit_assignments", atMs: nowMs }]
   };
   return {
@@ -5350,11 +5665,11 @@ function gamePreparationEvidence(state, seasonId, sourceCommandId) {
 }
 
 // packages/application/src/records-service.ts
-var copy3 = (value) => JSON.parse(JSON.stringify(value));
+var copy4 = (value) => JSON.parse(JSON.stringify(value));
 function fail3(message, code = "INVALID_REQUEST", status = 422) {
   throw new AccessError(code, status, message);
 }
-function requireThat4(value, message) {
+function requireThat5(value, message) {
   if (!value) fail3(message);
 }
 function object(value) {
@@ -5364,7 +5679,7 @@ function string(value, max = 150) {
   return typeof value === "string" && value.trim().length > 0 && value.length <= max && !/[\u0000-\u001f\u007f]/.test(value);
 }
 function fields(value, permitted) {
-  requireThat4(Object.keys(value).every((key) => permitted.includes(key)), "The request includes unsupported fields.");
+  requireThat5(Object.keys(value).every((key) => permitted.includes(key)), "The request includes unsupported fields.");
 }
 function integer2(value, maximum = Number.MAX_SAFE_INTEGER) {
   return Number.isSafeInteger(value) && value >= 0 && value <= maximum;
@@ -5372,35 +5687,35 @@ function integer2(value, maximum = Number.MAX_SAFE_INTEGER) {
 var fixtureClasses = ["development", "friendly", "trophy", "unclassified"];
 function score(value) {
   if (value === null) return null;
-  requireThat4(object(value), "Provide a known score or explicitly leave it not recorded.");
+  requireThat5(object(value), "Provide a known score or explicitly leave it not recorded.");
   fields(value, ["for", "against"]);
-  requireThat4(integer2(value.for, 999) && integer2(value.against, 999), "Scores must be nonnegative whole goals.");
+  requireThat5(integer2(value.for, 999) && integer2(value.against, 999), "Scores must be nonnegative whole goals.");
   return { for: value.for, against: value.against };
 }
 function parseHistoricalResultInput(value) {
-  requireThat4(object(value), "Historical details are required.");
+  requireThat5(object(value), "Historical details are required.");
   fields(value, ["playedDate", "recordedKickoff", "sameDayOrder", "opponent", "homeAway", "fixtureClass", "status", "specialOutcome", "finalScore", "halfTimeScore", "goals"]);
-  requireThat4(string(value.playedDate, 10) && string(value.opponent, 120), "A played date and opposition are required.");
-  requireThat4(value.recordedKickoff === null || string(value.recordedKickoff, 50), "Known kickoff needs a timestamp; use null for unknown.");
-  requireThat4(value.sameDayOrder === null || integer2(value.sameDayOrder, 100), "Same-day ordering must be a whole number or unknown.");
-  requireThat4(["home", "away", "neutral"].includes(value.homeAway) && fixtureClasses.includes(value.fixtureClass), "Choose a valid venue side and fixture class.");
-  requireThat4(["completed", "abandoned", "cancelled", "postponed", "incomplete"].includes(value.status) && ["ordinary", "awarded", "forfeit", "shootout"].includes(value.specialOutcome), "Choose a known match status and outcome category.");
-  requireThat4(Array.isArray(value.goals) && value.goals.length <= 1e3, "Known goal attribution must be a bounded list.");
+  requireThat5(string(value.playedDate, 10) && string(value.opponent, 120), "A played date and opposition are required.");
+  requireThat5(value.recordedKickoff === null || string(value.recordedKickoff, 50), "Known kickoff needs a timestamp; use null for unknown.");
+  requireThat5(value.sameDayOrder === null || integer2(value.sameDayOrder, 100), "Same-day ordering must be a whole number or unknown.");
+  requireThat5(["home", "away", "neutral"].includes(value.homeAway) && fixtureClasses.includes(value.fixtureClass), "Choose a valid venue side and fixture class.");
+  requireThat5(["completed", "abandoned", "cancelled", "postponed", "incomplete"].includes(value.status) && ["ordinary", "awarded", "forfeit", "shootout"].includes(value.specialOutcome), "Choose a known match status and outcome category.");
+  requireThat5(Array.isArray(value.goals) && value.goals.length <= 1e3, "Known goal attribution must be a bounded list.");
   const goals = value.goals.map((item) => {
-    requireThat4(object(item), "A known goal must be an object.");
+    requireThat5(object(item), "A known goal must be an object.");
     fields(item, ["id", "beneficiary", "isOwnGoal", "scorerPlayerId", "goalType", "half", "halfElapsedMs"]);
-    requireThat4(string(item.id) && ["us", "opposition"].includes(item.beneficiary) && typeof item.isOwnGoal === "boolean", "Known goals require identity, beneficiary and explicit own-goal classification.");
-    requireThat4(item.scorerPlayerId === null || string(item.scorerPlayerId), "Use a saved player identity or unknown scorer.");
-    requireThat4(item.goalType === null || ["open_play", "free_kick", "penalty"].includes(item.goalType), "Use a known goal type or unknown.");
-    requireThat4(item.half === null || item.half === 1 || item.half === 2, "Use a known half or unknown.");
-    requireThat4(item.halfElapsedMs === null || integer2(item.halfElapsedMs, 864e5), "Known active goal time must be nonnegative whole milliseconds.");
+    requireThat5(string(item.id) && ["us", "opposition"].includes(item.beneficiary) && typeof item.isOwnGoal === "boolean", "Known goals require identity, beneficiary and explicit own-goal classification.");
+    requireThat5(item.scorerPlayerId === null || string(item.scorerPlayerId), "Use a saved player identity or unknown scorer.");
+    requireThat5(item.goalType === null || ["open_play", "free_kick", "penalty"].includes(item.goalType), "Use a known goal type or unknown.");
+    requireThat5(item.half === null || item.half === 1 || item.half === 2, "Use a known half or unknown.");
+    requireThat5(item.halfElapsedMs === null || integer2(item.halfElapsedMs, 864e5), "Known active goal time must be nonnegative whole milliseconds.");
     return { id: item.id, beneficiary: item.beneficiary, isOwnGoal: item.isOwnGoal, scorerPlayerId: item.scorerPlayerId, goalType: item.goalType, half: item.half, halfElapsedMs: item.halfElapsedMs };
   });
   return { playedDate: value.playedDate, recordedKickoff: value.recordedKickoff, sameDayOrder: value.sameDayOrder, opponent: value.opponent.trim(), homeAway: value.homeAway, fixtureClass: value.fixtureClass, status: value.status, specialOutcome: value.specialOutcome, finalScore: score(value.finalScore), halfTimeScore: score(value.halfTimeScore), goals };
 }
 function recordsServiceViewer(input) {
   const { principal, memberships, state, nowMs, requestedRole } = input;
-  requireThat4(Number.isSafeInteger(nowMs) && nowMs >= 0, "Trusted server time is required.");
+  requireThat5(Number.isSafeInteger(nowMs) && nowMs >= 0, "Trusted server time is required.");
   if (requestedRole && !["manager", "player", "spectator"].includes(requestedRole)) fail3("Unknown report audience.");
   const permitted = memberships.filter((item) => item.accountId === principal.accountId && item.teamId === state.teamId && item.seasonId === state.seasonId && item.revokedAt == null && (item.expiresAt == null || item.expiresAt > nowMs));
   const preferred = requestedRole ?? (permitted.some((item) => item.role === "manager") ? "manager" : permitted.some((item) => item.role === "player") ? "player" : "spectator");
@@ -5422,17 +5737,17 @@ function contextFor(state, match, fixtureClass) {
 }
 function currentSharingState(input, viewer, derived) {
   if (viewer.actor === "manager") return input.state;
-  const denied = new Set(input.acceptedMatches.filter((row) => {
+  const denied2 = new Set(input.acceptedMatches.filter((row) => {
     if (row.teamId !== input.state.teamId || row.seasonId !== input.state.seasonId || !row.sharingPolicy) return false;
     const policy = row.sharingPolicy;
     return policy.approvedBy === null || policy.approvedAt === null || !policy.shareScores || derived && !policy.shareDerivedResults;
   }).map((row) => row.match.config.matchId));
-  if (!denied.size) return input.state;
+  if (!denied2.size) return input.state;
   const initial2 = input.state.initialLivePublication;
   return {
     ...input.state,
-    ...initial2 && denied.has(initial2.matchId) ? { initialLivePublication: { ...initial2, publication: { ...initial2.publication, confirmed: false, allowedRoles: [] } } } : {},
-    results: input.state.results.map((record) => denied.has(record.id) ? { ...record, publication: { ...record.publication, confirmed: false, allowedRoles: [] } } : record)
+    ...initial2 && denied2.has(initial2.matchId) ? { initialLivePublication: { ...initial2, publication: { ...initial2.publication, confirmed: false, allowedRoles: [] } } } : {},
+    results: input.state.results.map((record) => denied2.has(record.id) ? { ...record, publication: { ...record.publication, confirmed: false, allowedRoles: [] } } : record)
   };
 }
 function recordsServiceView(input) {
@@ -5451,17 +5766,17 @@ function recordsServiceView(input) {
   const ids = new Set(state.results.map((record) => record.id));
   for (const row of input.acceptedMatches)
     if (row.teamId === state.teamId && row.seasonId === state.seasonId && row.match.status !== "preparation") ids.add(row.match.config.matchId);
-  const reports = [...ids].map((id4) => {
-    const match = accepted(input, id4);
-    const details = match ? contextFor(state, match, id4 === state.liveMatch.matchId ? state.liveMatch.fixtureClass : void 0) : null;
-    return selectMatchReport(details ? { ...scoreState, liveMatch: details } : scoreState, id4, viewer, match);
+  const reports = [...ids].map((id5) => {
+    const match = accepted(input, id5);
+    const details = match ? contextFor(state, match, id5 === state.liveMatch.matchId ? state.liveMatch.fixtureClass : void 0) : null;
+    return selectMatchReport(details ? { ...scoreState, liveMatch: details } : scoreState, id5, viewer, match);
   }).filter((item) => item !== null);
   const common = { revision: state.revision, results: stamp(selectSeasonResults(derivedState, viewer)), participation: stamp({ ...selectParticipationReport(reportState, activeMatch, viewer), ...viewer.actor === "spectator" ? {} : { sourcePreparationRevision: preparation?.revision ?? null } }), matches: reports.map((report) => stamp({ ...report, ...composeReportCommunity(report, input.principal.accountId, input.community), goals: report.goals.map((goal) => ({ ...goal, scorerLabel: goal.scorerPlayerId ? state.players.find((player) => player.id === goal.scorerPlayerId)?.label ?? null : null })) })) };
   if (viewer.actor !== "manager") return common;
   return {
     ...common,
-    editableState: copy3(state),
-    activeMatch: activeMatch ? copy3(activeMatch) : null,
+    editableState: copy4(state),
+    activeMatch: activeMatch ? copy4(activeMatch) : null,
     contexts: input.acceptedMatches.filter((row) => row.teamId === state.teamId && row.seasonId === state.seasonId).flatMap((row) => {
       const match = accepted(input, row.match.config.matchId);
       const details = contextFor(state, match, state.liveMatch.matchId === match.config.matchId ? state.liveMatch.fixtureClass : void 0);
@@ -5473,42 +5788,42 @@ function applyRecordsServiceCommand(input) {
   const { state, command, principal, memberships, nowMs } = input;
   assertCanManageTeam(principal, memberships, state.teamId, state.seasonId, nowMs);
   if (input.requestedRole && input.requestedRole !== "manager") fail3("The selected audience cannot edit manager records.", "NOT_FOUND", 404);
-  requireThat4(command && typeof command === "object" && string(command.commandId) && /^[A-Za-z0-9_-]+$/.test(command.commandId), "A stable record command identity is required.");
+  requireThat5(command && typeof command === "object" && string(command.commandId) && /^[A-Za-z0-9_-]+$/.test(command.commandId), "A stable record command identity is required.");
   let bound;
   const base = { commandId: command.commandId, at: new Date(nowMs).toISOString(), actor: "manager" };
   switch (command.type) {
     case "historical.add":
-      requireThat4(string(command.recordId), "A historical match identity is required.");
+      requireThat5(string(command.recordId), "A historical match identity is required.");
       bound = { ...base, type: command.type, recordId: command.recordId, input: parseHistoricalResultInput(command.input), acknowledgePossibleDuplicate: command.acknowledgePossibleDuplicate === true };
       break;
     case "historical.correct":
-      requireThat4(string(command.recordId) && integer2(command.expectedRevision) && string(command.reason, 500), "Review the current record revision and provide a correction reason.");
+      requireThat5(string(command.recordId) && integer2(command.expectedRevision) && string(command.reason, 500), "Review the current record revision and provide a correction reason.");
       bound = { ...base, type: command.type, recordId: command.recordId, expectedRevision: command.expectedRevision, reason: command.reason.trim(), input: parseHistoricalResultInput(command.input) };
       break;
     case "live.context.set": {
-      requireThat4(object(command.details) && string(command.details.matchId) && fixtureClasses.includes(command.details.fixtureClass), "Choose a prepared match and an explicit fixture class.");
+      requireThat5(object(command.details) && string(command.details.matchId) && fixtureClasses.includes(command.details.fixtureClass), "Choose a prepared match and an explicit fixture class.");
       fields(command.details, ["matchId", "playedDate", "opponent", "homeAway", "fixtureClass"]);
       const match = accepted(input, command.details.matchId);
       if (!match) fail3("The prepared match is outside this team and season.", "NOT_FOUND", 404);
       const details = contextFor(state, match, command.details.fixtureClass);
-      requireThat4(details && details.playedDate === command.details.playedDate && details.opponent === command.details.opponent && details.homeAway === command.details.homeAway, "Match report context must retain the accepted fixture date, opponent and home/away side.");
+      requireThat5(details && details.playedDate === command.details.playedDate && details.opponent === command.details.opponent && details.homeAway === command.details.homeAway, "Match report context must retain the accepted fixture date, opponent and home/away side.");
       bound = { ...base, type: command.type, details };
       break;
     }
     case "live.archive": {
       const matchId = "matchId" in command ? command.matchId : command.match?.config?.matchId;
       const expectedRevision = "expectedSourceMatchRevision" in command ? command.expectedSourceMatchRevision : command.match?.revision;
-      requireThat4(string(matchId) && integer2(expectedRevision), "Archive the reviewed accepted match identity and source revision.");
+      requireThat5(string(matchId) && integer2(expectedRevision), "Archive the reviewed accepted match identity and source revision.");
       const match = accepted(input, matchId);
       if (!match) fail3("The accepted match is outside this team and season.", "NOT_FOUND", 404);
       if (match.revision !== expectedRevision) fail3("The accepted match changed. Refresh its report before archiving.", "STALE_REVISION", 409);
       const old = state.results.find((record) => record.id === matchId);
-      if (old && old.fixtureClass !== state.liveMatch.fixtureClass) requireThat4(string(command.reason, 500), "Explain the changed fixture classification before re-archiving.");
+      if (old && old.fixtureClass !== state.liveMatch.fixtureClass) requireThat5(string(command.reason, 500), "Explain the changed fixture classification before re-archiving.");
       bound = { ...base, type: command.type, match, ...command.reason ? { reason: command.reason } : {} };
       break;
     }
     case "participation.exception.noted":
-      requireThat4(string(command.recordId) && string(command.playerId) && integer2(command.expectedRevision) && string(command.reason, 500), "Review the saved participation and explain the exception.");
+      requireThat5(string(command.recordId) && string(command.playerId) && integer2(command.expectedRevision) && string(command.reason, 500), "Review the saved participation and explain the exception.");
       bound = { ...base, type: command.type, recordId: command.recordId, playerId: command.playerId, expectedRevision: command.expectedRevision, reason: command.reason.trim() };
       break;
     case "publication.set":
@@ -5532,7 +5847,7 @@ function policyFingerprint(state, acceptedMatches) {
 }
 function recordsServiceExport(input) {
   const viewer = recordsServiceViewer(input), view = recordsServiceView(input), { request, state, nowMs } = input;
-  requireThat4(request && ["season", "match"].includes(request.kind) && ["json", "csv"].includes(request.format), "Choose a report and supported export format.");
+  requireThat5(request && ["season", "match"].includes(request.kind) && ["json", "csv"].includes(request.format), "Choose a report and supported export format.");
   const fingerprint2 = policyFingerprint(state, input.acceptedMatches);
   if (request.expectedProjectionVersion !== void 0 && request.expectedProjectionVersion !== state.revision || request.expectedPolicyFingerprint !== void 0 && request.expectedPolicyFingerprint !== fingerprint2) fail3("This report or audience policy changed. Refresh before exporting.", "STALE_PROJECTION", 409);
   const matches = request.kind === "match" ? view.matches.filter((report) => report.matchId === request.matchId) : view.matches;
@@ -5590,16 +5905,16 @@ function checkPolicy(policy) {
     throw new Error("A versioned, explicit trusted-time policy is required.");
   }
 }
-function issueClockChallenge(scope, id4, issuedAtMs, policy) {
+function issueClockChallenge(scope, id5, issuedAtMs, policy) {
   checkPolicy(policy);
-  if (!id4 || !scope.accountId || !scope.deviceId || !scope.matchId || !scope.continuityId || !integer3(issuedAtMs) || !integer3(scope.controllerEpoch) || scope.controllerEpoch === 0) {
+  if (!id5 || !scope.accountId || !scope.deviceId || !scope.matchId || !scope.continuityId || !integer3(issuedAtMs) || !integer3(scope.controllerEpoch) || scope.controllerEpoch === 0) {
     throw new Error(
       "The clock challenge requires a current controller and continuous-clock identity."
     );
   }
   return {
     ...scope,
-    id: id4,
+    id: id5,
     issuedAtMs,
     expiresAtMs: issuedAtMs + policy.maximumRoundTripMs,
     policyId: policy.id
@@ -5765,10 +6080,10 @@ function assertParticipationConservation(state) {
     ])
   ].sort((a, b) => a - b);
   for (let index = 0; index + 1 < boundaries.length; index++) {
-    const active2 = state.intervals.filter(
+    const active3 = state.intervals.filter(
       (item) => item.state === "playing" && item.startMs <= boundaries[index] && item.endMs >= boundaries[index + 1]
     );
-    if (active2.length > state.config.pitchPlaces || new Set(active2.map((item) => item.slotId)).size !== active2.length || new Set(active2.map((item) => item.playerId)).size !== active2.length)
+    if (active3.length > state.config.pitchPlaces || new Set(active3.map((item) => item.slotId)).size !== active3.length || new Set(active3.map((item) => item.playerId)).size !== active3.length)
       throw new Error(
         "Participation occupies a player/slot twice or exceeds pitch capacity."
       );
@@ -5895,8 +6210,8 @@ function previewReconciliation(state, input, submissions, context) {
   if (typeof input.reason !== "string" || !input.reason.trim() || input.reason.length > 500)
     issues.push("Record an evidence reason of1\u2013500 characters.");
   if (!Array.isArray(input.sourceSubmissionIds) || input.sourceSubmissionIds.length < 1 || input.sourceSubmissionIds.length > 100 || new Set(input.sourceSubmissionIds).size !== input.sourceSubmissionIds.length || input.sourceSubmissionIds.some(
-    (id4) => !submissions.some(
-      (item) => item.submissionId === id4 && item.matchId === state.config.matchId && Boolean(item.originalDigest)
+    (id5) => !submissions.some(
+      (item) => item.submissionId === id5 && item.matchId === state.config.matchId && Boolean(item.originalDigest)
     )
   ))
     issues.push(
@@ -5951,17 +6266,17 @@ function previewReconciliation(state, input, submissions, context) {
 // apps/api/src/finished-match-context.ts
 function eligibilityEvidence(state) {
   const selected = [...state.config.selectedPlayerIds];
-  const present = selected.filter((id4) => state.attendance[id4] === "present");
+  const present = selected.filter((id5) => state.attendance[id5] === "present");
   const played = selected.filter(
-    (id4) => state.intervals.some(
-      (interval) => interval.playerId === id4 && interval.state === "playing" && interval.endMs > interval.startMs
+    (id5) => state.intervals.some(
+      (interval) => interval.playerId === id5 && interval.state === "playing" && interval.endMs > interval.startMs
     )
   );
   return {
     selected,
     present,
     played,
-    contradictory: played.some((id4) => !present.includes(id4))
+    contradictory: played.some((id5) => !present.includes(id5))
   };
 }
 function finishEligibilityChanged(state, original) {
@@ -5977,7 +6292,7 @@ function deriveFinishedMatchContext(input) {
     );
   const retainedFinish = state.eventHistory?.filter((event) => event.type === "half.ended").at(-1);
   const matchesAcceptedFinish = finish?.command.type === "half.ended" && finish.eventId === retainedFinish?.id && finish.matchId === state.config.matchId && finish.controllerEpoch === input.currentControllerEpoch && finish.command.sample.monotonicMs === retainedFinish.sample.monotonicMs && finish.command.sample.sessionId === retainedFinish.sample.sessionId && finish.clockEvidence.monotonicMs === finish.command.sample.monotonicMs && finish.command.sample.sessionId === finish.clockEvidence.continuityId && input.acceptedFinishActorId !== null;
-  const instant = matchesAcceptedFinish && input.mapping && input.policy && finish ? mapContinuousInstant(
+  const instant2 = matchesAcceptedFinish && input.mapping && input.policy && finish ? mapContinuousInstant(
     input.mapping,
     {
       accountId: input.acceptedFinishActorId,
@@ -5990,7 +6305,7 @@ function deriveFinishedMatchContext(input) {
     input.serverNowMs,
     input.policy
   ) : null;
-  const trusted = !input.unresolvedConflicts && !state.recoveryRequired && instant?.quality === "trusted" && instant.utcMs <= input.serverNowMs;
+  const trusted = !input.unresolvedConflicts && !state.recoveryRequired && instant2?.quality === "trusted" && instant2.utcMs <= input.serverNowMs;
   const eligibility = eligibilityEvidence(state);
   const present = eligibility.present;
   const history = state.eventHistory ?? [];
@@ -6018,11 +6333,11 @@ function deriveFinishedMatchContext(input) {
     selectedPlayerIds: [...state.config.selectedPlayerIds],
     presentPlayerIds: present,
     playedPlayerIds: present.filter(
-      (id4) => state.intervals.some(
-        (interval) => interval.playerId === id4 && interval.state === "playing" && interval.endMs > interval.startMs
+      (id5) => state.intervals.some(
+        (interval) => interval.playerId === id5 && interval.state === "playing" && interval.endMs > interval.startMs
       )
     ),
-    actualFullTimeAtMs: trusted ? instant.utcMs : null,
+    actualFullTimeAtMs: trusted ? instant2.utcMs : null,
     finishQuality: input.unresolvedConflicts ? "conflicted" : trusted && !eligibility.contradictory && !changedAfterFinish ? "trusted" : "review_required",
     sharing: input.sharing,
     policyVersion: input.sharingPolicyVersion
@@ -6093,11 +6408,11 @@ function managerRoster(input) {
 // packages/application/src/privacy-requests.ts
 var object2 = (value) => Boolean(value && typeof value === "object" && !Array.isArray(value));
 var opaque2 = (value) => typeof value === "string" && /^[A-Za-z0-9_-]{1,150}$/.test(value);
-function requireThat5(condition, message) {
+function requireThat6(condition, message) {
   if (!condition) throw new AccessError("INVALID_REQUEST", 400, message);
 }
 function fields2(value, names) {
-  requireThat5(Object.keys(value).length === names.length && Object.keys(value).every((key) => names.includes(key)), "Use only the documented account request fields.");
+  requireThat6(Object.keys(value).length === names.length && Object.keys(value).every((key) => names.includes(key)), "Use only the documented account request fields.");
 }
 function active(principal) {
   if (principal.status !== "active") throw new AccessError("ACCOUNT_UNAVAILABLE", 403, "Use an active signed-in account to review or submit its own requests.");
@@ -6106,36 +6421,36 @@ function validTime4(value) {
   return Number.isSafeInteger(value) && value >= 0;
 }
 function parsePrivacyRequestInput(value) {
-  requireThat5(object2(value), "Choose a scoped account request.");
+  requireThat6(object2(value), "Choose a scoped account request.");
   if (value.kind === "leave_team") {
     fields2(value, ["kind", "teamId", "seasonId", "confirmLeave"]);
-    requireThat5(opaque2(value.teamId) && opaque2(value.seasonId) && value.confirmLeave === true, "Explicitly confirm the selected team and season leave request.");
+    requireThat6(opaque2(value.teamId) && opaque2(value.seasonId) && value.confirmLeave === true, "Explicitly confirm the selected team and season leave request.");
     return { kind: "leave_team", teamId: value.teamId, seasonId: value.seasonId, confirmLeave: true };
   }
   fields2(value, ["kind", "scope", "confirmAllMemberships"]);
-  requireThat5((value.kind === "export" || value.kind === "delete_account") && value.scope === "all_memberships" && value.confirmAllMemberships === true, "Explicitly confirm that this global account request covers every membership.");
+  requireThat6((value.kind === "export" || value.kind === "delete_account") && value.scope === "all_memberships" && value.confirmAllMemberships === true, "Explicitly confirm that this global account request covers every membership.");
   return { kind: value.kind, scope: "all_memberships", confirmAllMemberships: true };
 }
 function parseScope(value) {
   if (value === null) return null;
-  requireThat5(object2(value), "Invalid retained account request scope.");
+  requireThat6(object2(value), "Invalid retained account request scope.");
   if (value.type === "all_memberships") {
     fields2(value, ["type"]);
     return { type: "all_memberships" };
   }
   fields2(value, ["type", "teamId", "seasonId"]);
-  requireThat5(value.type === "team_season" && opaque2(value.teamId) && opaque2(value.seasonId), "Invalid retained team and season scope.");
+  requireThat6(value.type === "team_season" && opaque2(value.teamId) && opaque2(value.seasonId), "Invalid retained team and season scope.");
   return { type: "team_season", teamId: value.teamId, seasonId: value.seasonId };
 }
 function privacyRequestBusinessKey(accountId, kind, scope) {
-  requireThat5(opaque2(accountId) && ["export", "delete_account", "leave_team"].includes(kind), "A stable own-account request scope is required.");
+  requireThat6(opaque2(accountId) && ["export", "delete_account", "leave_team"].includes(kind), "A stable own-account request scope is required.");
   const checked = parseScope(scope);
-  requireThat5(kind === "leave_team" ? checked.type === "team_season" : checked.type === "all_memberships", "The request kind and scope differ.");
+  requireThat6(kind === "leave_team" ? checked.type === "team_season" : checked.type === "all_memberships", "The request kind and scope differ.");
   return JSON.stringify(checked.type === "team_season" ? [accountId, kind, checked.type, checked.teamId, checked.seasonId] : [accountId, kind, checked.type]);
 }
 function ownPrivacyMemberships(principal, memberships, nowMs) {
   active(principal);
-  requireThat5(validTime4(nowMs), "Use the current service time.");
+  requireThat6(validTime4(nowMs), "Use the current service time.");
   return memberships.filter((item) => item.accountId === principal.accountId).map((item) => ({
     teamId: item.teamId,
     seasonId: item.seasonId,
@@ -6162,22 +6477,22 @@ function prepareAccountPrivacyRequest(input) {
   };
 }
 function parseMembership(value) {
-  requireThat5(object2(value), "Invalid affected membership.");
+  requireThat6(object2(value), "Invalid affected membership.");
   fields2(value, ["teamId", "seasonId", "role", "playerId", "status"]);
-  requireThat5(opaque2(value.teamId) && opaque2(value.seasonId) && ["administrator", "manager", "player", "spectator"].includes(value.role) && (value.playerId === null || opaque2(value.playerId)) && ["active", "expired", "revoked"].includes(value.status), "Invalid affected membership fields.");
+  requireThat6(opaque2(value.teamId) && opaque2(value.seasonId) && ["administrator", "manager", "player", "spectator"].includes(value.role) && (value.playerId === null || opaque2(value.playerId)) && ["active", "expired", "revoked"].includes(value.status), "Invalid affected membership fields.");
   return { teamId: value.teamId, seasonId: value.seasonId, role: value.role, playerId: value.playerId, status: value.status };
 }
 function parsePrivacyRequestDto(value) {
-  requireThat5(object2(value), "Invalid account request response.");
+  requireThat6(object2(value), "Invalid account request response.");
   fields2(value, ["requestId", "kind", "status", "scope", "affectedMemberships", "createdAtMs", "verificationRequired", "erased", "fulfilled", "scopeStatus", "reviewStatus", "duplicateOfRequestId"]);
-  requireThat5(opaque2(value.requestId) && ["export", "delete_account", "leave_team"].includes(value.kind) && ["pending_verification_and_policy", "needs_scope"].includes(value.status) && validTime4(value.createdAtMs), "Invalid account request status or identity.");
-  requireThat5(value.verificationRequired === true && value.erased === false && value.fulfilled === false && (value.duplicateOfRequestId === null || opaque2(value.duplicateOfRequestId)), "A pending request never establishes fulfilment or deletion.");
+  requireThat6(opaque2(value.requestId) && ["export", "delete_account", "leave_team"].includes(value.kind) && ["pending_verification_and_policy", "needs_scope"].includes(value.status) && validTime4(value.createdAtMs), "Invalid account request status or identity.");
+  requireThat6(value.verificationRequired === true && value.erased === false && value.fulfilled === false && (value.duplicateOfRequestId === null || opaque2(value.duplicateOfRequestId)), "A pending request never establishes fulfilment or deletion.");
   const scope = parseScope(value.scope), kind = value.kind;
-  requireThat5(scope === null || (kind === "leave_team" ? scope.type === "team_season" : scope.type === "all_memberships"), "The account request kind and scope differ.");
-  requireThat5(value.scopeStatus === (scope === null ? "needs_scope" : "recorded") && value.reviewStatus === (scope === null || value.status === "needs_scope" ? "needs_scope" : value.duplicateOfRequestId === null ? "pending_verification_and_policy" : "duplicate_requires_review"), "The account request review status is inconsistent.");
-  requireThat5(value.affectedMemberships === null || Array.isArray(value.affectedMemberships), "The confirmed membership snapshot is missing or invalid.");
+  requireThat6(scope === null || (kind === "leave_team" ? scope.type === "team_season" : scope.type === "all_memberships"), "The account request kind and scope differ.");
+  requireThat6(value.scopeStatus === (scope === null ? "needs_scope" : "recorded") && value.reviewStatus === (scope === null || value.status === "needs_scope" ? "needs_scope" : value.duplicateOfRequestId === null ? "pending_verification_and_policy" : "duplicate_requires_review"), "The account request review status is inconsistent.");
+  requireThat6(value.affectedMemberships === null || Array.isArray(value.affectedMemberships), "The confirmed membership snapshot is missing or invalid.");
   const affectedMemberships = value.affectedMemberships === null ? null : value.affectedMemberships.map(parseMembership);
-  requireThat5(scope?.type !== "team_season" || affectedMemberships === null || affectedMemberships.every((item) => item.teamId === scope.teamId && item.seasonId === scope.seasonId), "The affected membership snapshot crosses the selected leave scope.");
+  requireThat6(scope?.type !== "team_season" || affectedMemberships === null || affectedMemberships.every((item) => item.teamId === scope.teamId && item.seasonId === scope.seasonId), "The affected membership snapshot crosses the selected leave scope.");
   return { requestId: value.requestId, kind, status: value.status, scope, affectedMemberships, createdAtMs: value.createdAtMs, verificationRequired: true, erased: false, fulfilled: false, scopeStatus: value.scopeStatus, reviewStatus: value.reviewStatus, duplicateOfRequestId: value.duplicateOfRequestId };
 }
 function projectAccountPrivacyRequests(input) {
@@ -6297,6 +6612,362 @@ function namedWorkspaceMembership(membership, names) {
   };
 }
 
+// packages/application/src/fixture-management.ts
+var opaque4 = (value) => typeof value === "string" && /^[A-Za-z0-9_-]{8,150}$/.test(value);
+var entityId = (value) => typeof value === "string" && /^[A-Za-z0-9_.:-]{1,150}$/.test(value);
+var invalid2 = (message) => {
+  throw new AccessError("INVALID_REQUEST", 400, message);
+};
+function parseScheduledGameCommand(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return invalid2("Use a captured scheduled-game command.");
+  const item = value;
+  if (Object.keys(item).some((key) => !["id", "expectedRevision", "fixtureId", "type", "reason", "confirm"].includes(key)) || !opaque4(item.id) || !entityId(item.fixtureId) || !Number.isSafeInteger(item.expectedRevision) || Number(item.expectedRevision) < 0 || !["fixture.cancelled", "fixture.deleted"].includes(String(item.type)) || item.confirm !== true || typeof item.reason !== "string" || item.reason.trim().length < 5 || item.reason.trim().length > 500) {
+    return invalid2("Confirm cancellation or deletion with its current revision and a reason of 5\u2013500 characters.");
+  }
+  return { id: item.id, expectedRevision: Number(item.expectedRevision), fixtureId: item.fixtureId, type: item.type, reason: item.reason.trim(), confirm: true };
+}
+function fixtureWasDeleted(state, fixtureId) {
+  return Boolean(state.fixtureManagement?.tombstones.some((item) => item.fixture.id === fixtureId));
+}
+function assertFixtureNotDeleted(state, fixtureId) {
+  if (fixtureWasDeleted(state, fixtureId)) throw new AccessError("FIXTURE_DELETED", 409, "This schedule item was deleted. Its audit is retained; create a new fixture identity.");
+}
+function fixtureRecordingUnavailable(state, fixtureId) {
+  const fixture = state.fixtures.find((item) => item.id === fixtureId);
+  return fixtureWasDeleted(state, fixtureId) || Boolean(fixture && fixture.status !== "scheduled");
+}
+
+// packages/application/src/player-stats.ts
+function denied() {
+  throw new AccessError(
+    "NOT_FOUND",
+    404,
+    "The requested player statistics are unavailable."
+  );
+}
+var safeMs = (value) => Number.isSafeInteger(value) && value >= 0;
+var instant = (value) => typeof value === "string" && Number.isFinite(Date.parse(value));
+function cleanEvidence(record) {
+  return {
+    id: record.id,
+    teamId: record.teamId,
+    seasonId: record.seasonId,
+    status: record.status,
+    recordMode: record.recordMode,
+    detailCompleteness: record.detailCompleteness,
+    revision: record.revision,
+    sourceMatchRevision: record.sourceMatchRevision,
+    updatedAt: record.updatedAt,
+    finalScore: record.finalScore ? { for: record.finalScore.for, against: record.finalScore.against } : null,
+    goals: record.goals.map((goal) => ({
+      id: goal.id,
+      beneficiary: goal.beneficiary,
+      isOwnGoal: goal.isOwnGoal,
+      scorerPlayerId: goal.scorerPlayerId
+    })),
+    participation: record.participation?.map((row) => ({
+      playerId: row.playerId,
+      playedMs: row.playedMs,
+      positionMs: { ...row.positionMs }
+    })) ?? null
+  };
+}
+function playerStatsSourceFromRecords(input) {
+  const { state } = input, records = /* @__PURE__ */ new Map();
+  for (const record of state.results) {
+    if (record.teamId !== state.teamId || record.seasonId !== state.seasonId)
+      continue;
+    const previous = records.get(record.id);
+    if (!previous || record.revision > previous.revision)
+      records.set(record.id, cleanEvidence(record));
+  }
+  for (const accepted2 of [...input.acceptedMatches ?? []].sort(
+    (left, right) => left.match.revision - right.match.revision
+  )) {
+    const match = accepted2.match, id5 = match.config.matchId;
+    if (accepted2.teamId !== state.teamId || accepted2.seasonId !== state.seasonId || match.status === "preparation")
+      continue;
+    if (match.config.fixture && (match.config.fixture.teamId !== state.teamId || match.config.fixture.seasonId !== state.seasonId))
+      denied();
+    const previous = records.get(id5);
+    if (previous?.sourceMatchRevision != null && previous.sourceMatchRevision >= match.revision)
+      continue;
+    const sample = match.anchor?.sample ?? {
+      monotonicMs: 0,
+      sessionId: "stats-checkpoint",
+      wallTimeMs: 0
+    };
+    const observed = match.eventHistory?.at(-1)?.sample.wallTimeMs ?? match.completedAtMs ?? match.anchor?.sample.wallTimeMs;
+    records.set(id5, {
+      id: id5,
+      teamId: state.teamId,
+      seasonId: state.seasonId,
+      status: match.status === "completed" ? "completed" : match.status === "abandoned" ? "abandoned" : "incomplete",
+      recordMode: "detailed_live",
+      detailCompleteness: match.recoveryRequired ? "review_required" : "complete",
+      revision: previous?.revision ?? 0,
+      sourceMatchRevision: match.revision,
+      updatedAt: typeof observed === "number" && observed > 0 && Number.isFinite(observed) ? new Date(observed).toISOString() : previous?.updatedAt ?? null,
+      finalScore: { for: match.score.for, against: match.score.against },
+      goals: goalRecords(match).filter((goal) => !goal.voided).map((goal) => ({
+        id: goal.eventId,
+        beneficiary: goal.beneficiary,
+        isOwnGoal: goal.isOwnGoal,
+        scorerPlayerId: goal.scorerPlayerId
+      })),
+      participation: playerMinutes(match, sample).map((row) => ({
+        playerId: row.playerId,
+        playedMs: row.playingMs,
+        positionMs: { ...row.positionMs }
+      }))
+    });
+  }
+  return {
+    clubId: state.clubId,
+    teamId: state.teamId,
+    seasonId: state.seasonId,
+    seasonLabel: state.seasonLabel,
+    revision: state.revision,
+    players: state.players.map((player) => ({
+      id: player.id,
+      label: player.label
+    })),
+    matches: [...records.values()],
+    positions: (input.positions ?? []).map((position) => ({
+      code: position.code,
+      label: position.label,
+      active: position.active
+    })),
+    formation: cleanFormation(input.formation ?? null)
+  };
+}
+function cleanFormation(value) {
+  if (!value || value.slots.some(
+    (slot) => !Number.isFinite(slot.x) || !Number.isFinite(slot.y) || slot.x < 0 || slot.x > 1 || slot.y < 0 || slot.y > 1
+  ))
+    return null;
+  return {
+    id: value.id,
+    label: value.label,
+    slots: value.slots.map((slot) => ({
+      id: slot.id,
+      positionCode: slot.positionCode,
+      label: slot.label,
+      x: slot.x,
+      y: slot.y
+    }))
+  };
+}
+function positionsFor(totals, knownPlayingMs, catalogue) {
+  const codes = [
+    .../* @__PURE__ */ new Set([
+      ...catalogue.map((position) => position.code),
+      ...Object.keys(totals)
+    ])
+  ];
+  return codes.map((code) => ({
+    code,
+    label: catalogue.find((position) => position.code === code)?.label ?? code,
+    playingMs: totals[code] ?? 0,
+    percentage: knownPlayingMs > 0 ? (totals[code] ?? 0) / knownPlayingMs * 100 : null
+  }));
+}
+function projectPlayerStats(source2, viewer) {
+  if (!["manager", "administrator", "player"].includes(viewer.role) || viewer.teamId && viewer.teamId !== source2.teamId || viewer.seasonId && viewer.seasonId !== source2.seasonId)
+    denied();
+  const players = viewer.role === "player" ? source2.players.filter((player) => player.id === viewer.playerId) : source2.players;
+  if (viewer.role === "player" && players.length !== 1) denied();
+  const byId = /* @__PURE__ */ new Map();
+  for (const record of source2.matches) {
+    if (record.teamId !== source2.teamId || record.seasonId !== source2.seasonId || record.status === "cancelled" || record.status === "postponed")
+      continue;
+    if (record.status !== "completed" && !(record.recordMode === "detailed_live" && ["incomplete", "abandoned"].includes(record.status)))
+      continue;
+    const previous = byId.get(record.id);
+    if (!previous || (record.sourceMatchRevision ?? -1) > (previous.sourceMatchRevision ?? -1) || record.sourceMatchRevision === previous.sourceMatchRevision && record.revision > previous.revision)
+      byId.set(record.id, record);
+  }
+  const records = [...byId.values()], observed = records.map((record) => record.updatedAt).filter(instant).sort((left, right) => Date.parse(left) - Date.parse(right));
+  const rows = players.map((player) => {
+    const coverage = {
+      recordedMatches: records.length,
+      playingTimeKnownMatches: 0,
+      playingTimeUnknownMatches: 0,
+      reviewRequiredMatches: 0,
+      scoringCompleteMatches: 0,
+      scoringPartialMatches: 0,
+      scoringUnknownMatches: 0
+    };
+    let knownPlayingMs2 = 0, knownAppearances = 0, knownGoals = 0, knownOwnGoals = 0, unknownPositionMs = 0;
+    const positionMs2 = /* @__PURE__ */ Object.create(null);
+    for (const record of records) {
+      if (record.detailCompleteness === "review_required") {
+        coverage.reviewRequiredMatches++;
+        coverage.playingTimeUnknownMatches++;
+        coverage.scoringUnknownMatches++;
+        continue;
+      }
+      const entries = record.participation?.filter((entry2) => entry2.playerId === player.id) ?? [];
+      const entry = entries.length === 1 ? entries[0] : null;
+      const positions = entry ? Object.values(entry.positionMs) : [];
+      if (entry && safeMs(entry.playedMs) && positions.every(safeMs) && positions.reduce((sum, ms) => sum + ms, 0) <= entry.playedMs) {
+        coverage.playingTimeKnownMatches++;
+        knownPlayingMs2 += entry.playedMs;
+        knownAppearances += Number(entry.playedMs > 0);
+        const named = Object.entries(entry.positionMs).filter(
+          ([code]) => /^[A-Z]{2}$/.test(code)
+        );
+        unknownPositionMs += entry.playedMs - named.reduce((sum, [, ms]) => sum + ms, 0);
+        for (const [code, ms] of named)
+          positionMs2[code] = (positionMs2[code] ?? 0) + ms;
+      } else coverage.playingTimeUnknownMatches++;
+      const goals = [
+        ...new Map(record.goals.map((goal) => [goal.id, goal])).values()
+      ];
+      const counts = record.scorerTotals?.find(
+        (item) => item.playerId === player.id
+      );
+      knownGoals += counts && safeMs(counts.knownGoals) ? counts.knownGoals : goals.filter(
+        (goal) => goal.beneficiary === "us" && !goal.isOwnGoal && goal.scorerPlayerId === player.id
+      ).length;
+      knownOwnGoals += counts && safeMs(counts.knownOwnGoals) ? counts.knownOwnGoals : goals.filter(
+        (goal) => goal.beneficiary === "opposition" && goal.isOwnGoal && goal.scorerPlayerId === player.id
+      ).length;
+      const complete = record.finalScore !== null && goals.filter((goal) => goal.beneficiary === "us").length === record.finalScore.for && goals.filter((goal) => goal.beneficiary === "opposition").length === record.finalScore.against && goals.every(
+        (goal) => goal.beneficiary === "us" && !goal.isOwnGoal || goal.beneficiary === "opposition" && goal.isOwnGoal ? goal.scorerPlayerId !== null : true
+      );
+      if (record.scoringCoverage === "complete" || !record.scoringCoverage && complete)
+        coverage.scoringCompleteMatches++;
+      else if (record.scoringCoverage === "partial" || !record.scoringCoverage && (record.finalScore !== null || goals.length))
+        coverage.scoringPartialMatches++;
+      else coverage.scoringUnknownMatches++;
+    }
+    return {
+      playerId: player.id,
+      label: player.label,
+      knownPlayingMs: knownPlayingMs2,
+      knownAppearances,
+      knownGoals,
+      knownOwnGoals,
+      positions: positionsFor(positionMs2, knownPlayingMs2, source2.positions),
+      unknownPositionMs,
+      coverage
+    };
+  });
+  const scope = {
+    clubId: source2.clubId,
+    teamId: source2.teamId,
+    seasonId: source2.seasonId,
+    seasonLabel: source2.seasonLabel,
+    projectionVersion: source2.revision,
+    asOf: observed.at(-1) ?? null
+  };
+  if (viewer.role === "player")
+    return { kind: "own-player-stats", scope, player: rows[0] };
+  const knownPlayingMs = rows.reduce((sum, row) => sum + row.knownPlayingMs, 0), positionMs = /* @__PURE__ */ Object.create(null);
+  for (const row of rows)
+    for (const position of row.positions)
+      positionMs[position.code] = (positionMs[position.code] ?? 0) + position.playingMs;
+  return {
+    kind: "team-player-stats",
+    scope,
+    players: rows,
+    team: {
+      knownPlayingMs,
+      positions: positionsFor(positionMs, knownPlayingMs, source2.positions),
+      unknownPositionMs: rows.reduce(
+        (sum, row) => sum + row.unknownPositionMs,
+        0
+      )
+    },
+    formation: cleanFormation(source2.formation)
+  };
+}
+function assertPlayerStatsDto(value, viewer) {
+  const object4 = (item) => Boolean(item && typeof item === "object" && !Array.isArray(item));
+  const exact = (item, fields5) => Object.keys(item).length === fields5.length && fields5.every((field) => Object.hasOwn(item, field));
+  const text2 = (item) => typeof item === "string" && item.length > 0 && item.length <= 150 && !/[\u0000-\u001f\u007f]/.test(item);
+  const number = (item) => typeof item === "number" && safeMs(item);
+  const totals = (item) => {
+    if (!object4(item) || !number(item.knownPlayingMs) || !number(item.unknownPositionMs) || !Array.isArray(item.positions))
+      return false;
+    let named = 0;
+    const codes = /* @__PURE__ */ new Set();
+    for (const position of item.positions) {
+      if (!object4(position) || !exact(position, ["code", "label", "playingMs", "percentage"]) || typeof position.code !== "string" || !/^[A-Z]{2}$/.test(position.code) || codes.has(position.code) || !text2(position.label) || !number(position.playingMs))
+        return false;
+      const expected = item.knownPlayingMs ? position.playingMs / item.knownPlayingMs * 100 : null;
+      if (expected === null ? position.percentage !== null : typeof position.percentage !== "number" || !Number.isFinite(position.percentage) || Math.abs(position.percentage - expected) > 1e-6)
+        return false;
+      codes.add(position.code);
+      named += position.playingMs;
+    }
+    return named + item.unknownPositionMs === item.knownPlayingMs;
+  };
+  const row = (item) => {
+    if (!totals(item) || !exact(item, [
+      "playerId",
+      "label",
+      "knownPlayingMs",
+      "knownAppearances",
+      "knownGoals",
+      "knownOwnGoals",
+      "positions",
+      "unknownPositionMs",
+      "coverage"
+    ]) || !text2(item.playerId) || !text2(item.label) || !number(item.knownAppearances) || !number(item.knownGoals) || !number(item.knownOwnGoals) || !object4(item.coverage))
+      return false;
+    const coverage = item.coverage;
+    const fields5 = [
+      "recordedMatches",
+      "playingTimeKnownMatches",
+      "playingTimeUnknownMatches",
+      "reviewRequiredMatches",
+      "scoringCompleteMatches",
+      "scoringPartialMatches",
+      "scoringUnknownMatches"
+    ];
+    return exact(coverage, fields5) && fields5.every((field) => number(coverage[field])) && Number(coverage.playingTimeKnownMatches) + Number(coverage.playingTimeUnknownMatches) === coverage.recordedMatches && Number(coverage.scoringCompleteMatches) + Number(coverage.scoringPartialMatches) + Number(coverage.scoringUnknownMatches) === coverage.recordedMatches && Number(coverage.reviewRequiredMatches) <= Number(coverage.playingTimeUnknownMatches);
+  };
+  if (!object4(value) || !object4(value.scope) || !exact(value.scope, [
+    "clubId",
+    "teamId",
+    "seasonId",
+    "seasonLabel",
+    "projectionVersion",
+    "asOf"
+  ]) || !text2(value.scope.clubId) || value.scope.teamId !== viewer.teamId || value.scope.seasonId !== viewer.seasonId || !text2(value.scope.seasonLabel) || !number(value.scope.projectionVersion) || !(value.scope.asOf === null || typeof value.scope.asOf === "string" && instant(value.scope.asOf)))
+    denied();
+  if (viewer.role === "player") {
+    if (value.kind !== "own-player-stats" || !exact(value, ["kind", "scope", "player"]) || !row(value.player) || value.player.playerId !== viewer.playerId)
+      denied();
+    return;
+  }
+  if (!["manager", "administrator"].includes(viewer.role) || value.kind !== "team-player-stats" || !exact(value, ["kind", "scope", "players", "team", "formation"]) || !Array.isArray(value.players) || !value.players.every(row) || new Set(value.players.map((player) => player.playerId)).size !== value.players.length || !totals(value.team) || !exact(value.team, ["knownPlayingMs", "positions", "unknownPositionMs"]))
+    denied();
+  if (value.formation !== null && (!object4(value.formation) || !exact(value.formation, ["id", "label", "slots"]) || !text2(value.formation.id) || !text2(value.formation.label) || !Array.isArray(value.formation.slots) || value.formation.slots.some(
+    (slot) => !object4(slot) || !exact(slot, ["id", "positionCode", "label", "x", "y"]) || !text2(slot.id) || !text2(slot.positionCode) || !text2(slot.label) || typeof slot.x !== "number" || typeof slot.y !== "number" || !Number.isFinite(slot.x) || !Number.isFinite(slot.y) || slot.x < 0 || slot.x > 1 || slot.y < 0 || slot.y > 1
+  )))
+    denied();
+}
+
+// packages/application/src/team-overview-service.ts
+var active2 = /* @__PURE__ */ new Set(["first_half_running", "first_half_paused", "half_time", "second_half_running", "second_half_paused"]);
+function assertTeamOverviewDto(value, scope) {
+  const object4 = (item) => Boolean(item && typeof item === "object" && !Array.isArray(item));
+  const keys2 = (item, names) => Object.keys(item).length === names.length && Object.keys(item).every((key) => names.includes(key));
+  const text2 = (item, maximum = 200) => typeof item === "string" && item.length <= maximum && !/[\u0000-\u001f\u007f]/.test(item);
+  const error = () => {
+    throw new Error("The team overview differs from its current scope or contains unsupported private fields.");
+  };
+  if (!object4(value) || !keys2(value, ["kind", "teamId", "seasonId", "team", "games"]) || value.kind !== "team-overview" || value.teamId !== scope.teamId || value.seasonId !== scope.seasonId || !object4(value.team) || !keys2(value.team, ["name", "ageGroup", "clubName", "seasonLabel"]) || !Object.values(value.team).every((item) => text2(item)) || !Array.isArray(value.games)) return error();
+  const ids = /* @__PURE__ */ new Set(), statuses = ["scheduled", "postponed", "cancelled", "preparation", ...active2, "completed", "abandoned"];
+  for (const game of value.games) {
+    if (!object4(game) || !keys2(game, ["id", "opponent", "playedDate", "kickoff", "venue", "status", "active"]) || typeof game.id !== "string" || !/^[A-Za-z0-9_.:-]{1,150}$/.test(game.id) || ids.has(game.id) || !text2(game.opponent) || typeof game.playedDate !== "string" || game.playedDate !== "" && (!/^\d{4}-\d{2}-\d{2}$/.test(game.playedDate) || !Number.isFinite(Date.parse(game.playedDate)) || new Date(game.playedDate).toISOString().slice(0, 10) !== game.playedDate) || !(game.kickoff === null || typeof game.kickoff === "string" && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(game.kickoff)) || !(game.venue === null || text2(game.venue, 1e3)) || !statuses.includes(String(game.status)) || typeof game.active !== "boolean" || game.active !== active2.has(String(game.status))) return error();
+    ids.add(game.id);
+  }
+}
+
 // apps/api/src/postgres-store.ts
 var EVENT_CONTRACT_VERSION = "longball.events/1.1";
 var SYNTHETIC_IDS = { teamId: "synthetic-roma-u10", seasonId: "synthetic-season-2026-27", matchId: "synthetic-roma-maple-2026-10-24" };
@@ -6401,23 +7072,23 @@ var PostgresStore = class _PostgresStore {
       await this.execute("INSERT INTO teams(id,name,club_id,scope_status) VALUES($1,$2,$3,'resolved')", [SYNTHETIC_IDS.teamId, "Roma U10", "synthetic-richmond-rovers"]);
       await this.execute("INSERT INTO teams(id,name,club_id,scope_status) VALUES($1,$2,$3,'resolved')", ["synthetic-other-team", "Milan U11", "synthetic-other-club"]);
       await this.execute("INSERT INTO team_seasons(club_id,team_id,season_id,label,start_year,start_date,end_date) VALUES($1,$2,$3,$4,$5,$6,$7),($8,$9,$3,$4,$5,$6,$7)", ["synthetic-richmond-rovers", SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId, "2026/27", 2026, "2026-09-01", "2027-08-31", "synthetic-other-club", "synthetic-other-team"]);
-      const add2 = async (id4, classification, adult) => await this.execute("INSERT INTO accounts(id,issuer,subject,classification,adult_verified,strong_auth_enrolled) VALUES($1,$2,$3,$4,$5,$6)", [id4, "urn:longball:synthetic", id4, classification, Number(adult), Number(adult)]);
-      const membership = async (id4, role, playerId = null, teamId = SYNTHETIC_IDS.teamId) => await this.execute("INSERT INTO memberships(account_id,team_id,season_id,role,player_id) VALUES($1,$2,$3,$4,$5)", [id4, teamId, SYNTHETIC_IDS.seasonId, role, playerId]);
+      const add2 = async (id5, classification, adult) => await this.execute("INSERT INTO accounts(id,issuer,subject,classification,adult_verified,strong_auth_enrolled) VALUES($1,$2,$3,$4,$5,$6)", [id5, "urn:longball:synthetic", id5, classification, Number(adult), Number(adult)]);
+      const membership = async (id5, role, playerId = null, teamId = SYNTHETIC_IDS.teamId) => await this.execute("INSERT INTO memberships(account_id,team_id,season_id,role,player_id) VALUES($1,$2,$3,$4,$5)", [id5, teamId, SYNTHETIC_IDS.seasonId, role, playerId]);
       await add2("synthetic-account-admin", "adult_individual", true);
       await membership("synthetic-account-admin", "administrator");
       for (let number = 1; number <= 5; number++) {
-        const id4 = number === 1 ? "synthetic-account-manager" : `synthetic-account-manager-${number}`;
-        await add2(id4, "adult_individual", true);
+        const id5 = number === 1 ? "synthetic-account-manager" : `synthetic-account-manager-${number}`;
+        await add2(id5, "adult_individual", true);
         if (number <= 4)
-          await membership(id4, "manager");
+          await membership(id5, "manager");
         if (number === 1)
-          await membership(id4, "administrator");
+          await membership(id5, "administrator");
       }
       for (let number = 1; number <= 13; number++) {
         const suffix = String(number).padStart(2, "0");
-        const id4 = `synthetic-account-player-${suffix}`;
-        await add2(id4, "child_shared", false);
-        await membership(id4, "player", `synthetic-player-${suffix}`);
+        const id5 = `synthetic-account-player-${suffix}`;
+        await add2(id5, "child_shared", false);
+        await membership(id5, "player", `synthetic-player-${suffix}`);
       }
       await add2("synthetic-account-spectator", "adult_individual", false);
       await membership("synthetic-account-spectator", "spectator");
@@ -6443,9 +7114,9 @@ var PostgresStore = class _PostgresStore {
       }
       if (!options.demoSharing) community.matches = community.matches.map((match) => ({ ...match, sharing: "manager_only" }));
       for (let number = 2; number <= 4; number++) {
-        const id4 = `synthetic-account-manager-${number}`;
-        community.accounts.push({ id: id4, label: demoAccountLabels[id4], classification: "adult_individual", adultVerified: true });
-        community.memberships.push({ accountId: id4, teamId: SYNTHETIC_IDS.teamId, seasonId: SYNTHETIC_IDS.seasonId, role: "manager", active: true });
+        const id5 = `synthetic-account-manager-${number}`;
+        community.accounts.push({ id: id5, label: demoAccountLabels[id5], classification: "adult_individual", adultVerified: true });
+        community.memberships.push({ accountId: id5, teamId: SYNTHETIC_IDS.teamId, seasonId: SYNTHETIC_IDS.seasonId, role: "manager", active: true });
       }
       await this.saveDocument(SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId, "preparation", preparation);
       await this.saveDocument(SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId, "community", community);
@@ -6514,11 +7185,18 @@ var PostgresStore = class _PostgresStore {
   async managerMatch(principal, matchId) {
     const row = await this.match(matchId);
     assertCanManageTeam(principal, await this.myMemberships(principal), row.team_id, row.season_id, this.now());
+    await this.assertScheduledMatchAvailable(row);
     return row;
+  }
+  async assertScheduledMatchAvailable(row) {
+    const saved = await this.one("SELECT value_json FROM documents WHERE team_id=$1 AND season_id=$2 AND kind='preparation'", [row.team_id, row.season_id]);
+    if (saved && fixtureRecordingUnavailable(JSON.parse(saved.value_json), row.id)) throw new AccessError("FIXTURE_UNAVAILABLE", 409, "This schedule item is cancelled, postponed or deleted. Match recording and downloads are unavailable.");
   }
   async matchDto(principal, matchId, requestedRole) {
     const row = await this.match(matchId);
-    return filterMatchForPrincipal({ principal, memberships: await this.myMemberships(principal), teamId: row.team_id, seasonId: row.season_id, state: JSON.parse(row.state_json), policy: JSON.parse(row.sharing_policy_json), lastSyncAt: row.last_sync_at, now: this.now(), requestedRole });
+    const dto = filterMatchForPrincipal({ principal, memberships: await this.myMemberships(principal), teamId: row.team_id, seasonId: row.season_id, state: JSON.parse(row.state_json), policy: JSON.parse(row.sharing_policy_json), lastSyncAt: row.last_sync_at, now: this.now(), requestedRole });
+    await this.assertScheduledMatchAvailable(row);
+    return dto;
   }
   async download(principal, matchId, deviceId, syntheticOnly = false, controllerToken) {
     return this.transaction(async () => {
@@ -6643,7 +7321,7 @@ var PostgresStore = class _PostgresStore {
       throw new AccessError("RECONCILIATION_PREVIEW_REJECTED", 422, preview.issues.join(" ").slice(0, 1500));
     const { projectedState: discarded, ...savedPreview } = preview;
     void discarded;
-    const receipt = { input, matchId, actorId: principal.accountId, createdAt: new Date(this.now()).toISOString(), sourceDigests: input.sourceSubmissionIds.map((id4) => ({ submissionId: id4, originalDigest: snapshot.submissions.find((item) => item.submissionId === id4).originalDigest })), acceptedStateDigest: digest(canonical4(state)), preview: savedPreview, status: "prepared", appliedRevision: null };
+    const receipt = { input, matchId, actorId: principal.accountId, createdAt: new Date(this.now()).toISOString(), sourceDigests: input.sourceSubmissionIds.map((id5) => ({ submissionId: id5, originalDigest: snapshot.submissions.find((item) => item.submissionId === id5).originalDigest })), acceptedStateDigest: digest(canonical4(state)), preview: savedPreview, status: "prepared", appliedRevision: null };
     await this.execute("INSERT INTO reconciliation_proposals(id,match_id,actor_id,signature,receipt_json,created_at) VALUES($1,$2,$3,$4,$5,$6)", [input.proposalId, matchId, principal.accountId, signature2, JSON.stringify(receipt), this.now()]);
     await this.audit(principal, "reconciliation.proposal_prepared", matchId, "q08_authority_unapproved");
     return receipt;
@@ -6790,11 +7468,11 @@ var PostgresStore = class _PostgresStore {
       throw new AccessError("NOT_FOUND", 404, "The requested object is unavailable.");
     const targetPrincipal = { accountId: target.id, issuer: target.issuer, subject: target.subject, identityClassification: target.classification, adultVerified: !!target.adult_verified, strongAuth: !!target.strong_auth_enrolled, authenticatedAt: this.now(), status: target.status };
     assertCanManageTeam(targetPrincipal, await this.memberships(), row.team_id, row.season_id, this.now());
-    const id4 = randomUUID2();
-    await this.execute("INSERT INTO transfers VALUES($1,$2,$3,$4,$5,$6,$7)", [id4, matchId, grant.epoch, toAccountId, toDeviceId, "pending", this.now()]);
+    const id5 = randomUUID2();
+    await this.execute("INSERT INTO transfers VALUES($1,$2,$3,$4,$5,$6,$7)", [id5, matchId, grant.epoch, toAccountId, toDeviceId, "pending", this.now()]);
     await this.execute("UPDATE controller_grants SET frozen=1 WHERE match_id=$1", [matchId]);
     await this.audit(principal, "controller.transfer_offered", matchId, "pending");
-    return { transferId: id4, state: "pending", acceptedRevision: state.revision };
+    return { transferId: id5, state: "pending", acceptedRevision: state.revision };
   }
   async acceptHandover(principal, matchId, transferId, deviceId) {
     await this.managerMatch(principal, matchId);
@@ -6929,7 +7607,11 @@ var PostgresStore = class _PostgresStore {
     const memberships = await this.memberships();
     const audience = matchPageAudience(principal, memberships, teamId, seasonId, requestedRole, this.now());
     const scope = { principal, teamId, seasonId, role: audience.role, playerId: audience.playerId ?? null, status: query.status }, afterId = matchPagePosition(scope, query);
-    const rows = await this.many(`SELECT id,state_json,sharing_policy_json,last_sync_at FROM matches WHERE team_id=$1 AND season_id=$2 AND ($3::text IS NULL OR id COLLATE "C" > $3::text COLLATE "C") AND (NOT $4::boolean OR state_json::jsonb ->> 'status' IN ('first_half_running','first_half_paused','half_time','second_half_running','second_half_paused')) ORDER BY id COLLATE "C" LIMIT $5`, [teamId, seasonId, afterId, query.status === "active", query.limit + 1]);
+    const rows = await this.many(`SELECT m.id,m.state_json,m.sharing_policy_json,m.last_sync_at FROM matches m WHERE m.team_id=$1 AND m.season_id=$2 AND ($3::text IS NULL OR m.id COLLATE "C" > $3::text COLLATE "C") AND (NOT $4::boolean OR m.state_json::jsonb ->> 'status' IN ('first_half_running','first_half_paused','half_time','second_half_running','second_half_paused'))
+      AND NOT EXISTS(SELECT 1 FROM documents d WHERE d.team_id=m.team_id AND d.season_id=m.season_id AND d.kind='preparation' AND(
+        EXISTS(SELECT 1 FROM jsonb_array_elements(COALESCE(d.value_json->'fixtures','[]'::jsonb)) f WHERE f->>'id'=m.id AND f->>'status'<>'scheduled')
+        OR EXISTS(SELECT 1 FROM jsonb_array_elements(COALESCE(d.value_json#>'{fixtureManagement,tombstones}','[]'::jsonb)) t WHERE t#>>'{fixture,id}'=m.id)))
+      ORDER BY m.id COLLATE "C" LIMIT $5`, [teamId, seasonId, afterId, query.status === "active", query.limit + 1]);
     const visible = rows.slice(0, query.limit);
     return { items: visible.map((row) => filterMatchForPrincipal({ principal, memberships, teamId, seasonId, state: JSON.parse(row.state_json), policy: JSON.parse(row.sharing_policy_json), lastSyncAt: row.last_sync_at, requestedRole, now: this.now() })), nextCursor: rows.length > query.limit ? matchPageCursor(scope, visible[visible.length - 1].id) : null, serverTime: new Date(this.now()).toISOString() };
   }
@@ -6942,7 +7624,7 @@ var PostgresStore = class _PostgresStore {
   async saveDocument(teamId, seasonId, kind, state) {
     await this.execute("INSERT INTO documents(team_id,season_id,kind,revision,value_json) VALUES($1,$2,$3,$4,$5) ON CONFLICT(team_id,season_id,kind) DO UPDATE SET revision=excluded.revision,value_json=excluded.value_json", [teamId, seasonId, kind, state.revision, JSON.stringify(state)]);
   }
-  async enqueueNotifications(teamId, seasonId, category, entityId, sourceId) {
+  async enqueueNotifications(teamId, seasonId, category, entityId2, sourceId) {
     const workerJob = this.db.applicationContext?.kind === "worker_job";
     const observed = workerJob ? (await this.one("SELECT floor(extract(epoch FROM clock_timestamp())*1000)::bigint AS now_ms"))?.now_ms : this.now();
     if (typeof observed !== "number" || !Number.isSafeInteger(observed) || observed < 0) throw new Error("DATABASE_CLOCK_UNAVAILABLE");
@@ -6958,8 +7640,8 @@ var PostgresStore = class _PostgresStore {
     for (const member of recipients.values()) {
       if (member.role === "administrator" || member.role === "player" && !member.playerId)
         continue;
-      const businessKey = `notify:${digest(canonical4([teamId, seasonId, category, entityId, sourceId, member.accountId, member.role]))}`;
-      const job = createTeamNotificationJob({ id: randomUUID2(), businessKey, accountId: member.accountId, teamId, seasonId, audience: member.role, playerId: member.role === "player" ? member.playerId : null, category, entityId, dueAtMs: observed });
+      const businessKey = `notify:${digest(canonical4([teamId, seasonId, category, entityId2, sourceId, member.accountId, member.role]))}`;
+      const job = createTeamNotificationJob({ id: randomUUID2(), businessKey, accountId: member.accountId, teamId, seasonId, audience: member.role, playerId: member.role === "player" ? member.playerId : null, category, entityId: entityId2, dueAtMs: observed });
       if (workerJob) {
         const result = await this.one("SELECT longball.enqueue_award_notification($1,$2,$3::jsonb,$4) AS changes", [job.id, businessKey, JSON.stringify(job), job.dueAtMs]);
         inserted += Number(result?.changes ?? 0);
@@ -6975,6 +7657,54 @@ var PostgresStore = class _PostgresStore {
   async preparation(principal, teamId, seasonId) {
     assertCanManageTeam(principal, await this.memberships(), teamId, seasonId, this.now());
     return await this.document(teamId, seasonId, "preparation");
+  }
+  async protectedScheduleFixtures(teamId, seasonId) {
+    return (await this.many(`SELECT m.id FROM matches m WHERE m.team_id=$1 AND m.season_id=$2 AND (
+      COALESCE((m.state_json->>'revision')::bigint,-1)<>0 OR m.state_json->>'status'<>'preparation'
+      OR EXISTS(SELECT 1 FROM controller_grants g WHERE g.match_id=m.id) OR EXISTS(SELECT 1 FROM controller_history h WHERE h.match_id=m.id)
+      OR EXISTS(SELECT 1 FROM events e WHERE e.match_id=m.id) OR EXISTS(SELECT 1 FROM conflicting_submissions c WHERE c.match_id=m.id)
+      OR EXISTS(SELECT 1 FROM transfers t WHERE t.match_id=m.id))`, [teamId, seasonId])).map((row) => row.id);
+  }
+  scheduledGameResult(value) {
+    const result = typeof value === "string" ? JSON.parse(value) : value;
+    const errors = {
+      STALE_REVISION: [409, "The schedule changed. Refresh it before reviewing this decision again."],
+      MATCH_HISTORY_EXISTS: [409, "This game has recording authority or saved match history. Preserve its recorded snapshot."],
+      FIXTURE_DELETED: [409, "This schedule item was deleted. Its audit remains retained; create a new fixture identity."],
+      IDEMPOTENCY_CONFLICT: [409, "This command identity already preserves another decision."],
+      ALREADY_CANCELLED: [409, "This fixture is already cancelled."],
+      NOT_FOUND: [404, "The requested schedule item is unavailable."],
+      INVALID_REQUEST: [400, "Use the bounded reviewed scheduled-game command."]
+    };
+    if (typeof result?.error === "string" && errors[result.error]) {
+      const [status, message] = errors[result.error];
+      throw new AccessError(result.error, status, message);
+    }
+    if (result?.kind !== "scheduled-game-management" || !Array.isArray(result.fixtures)) throw new Error("Invalid scheduled-game metadata projection.");
+    return result;
+  }
+  async scheduledGames(principal, teamId, seasonId, role) {
+    assertTeamRole(principal, await this.memberships(), teamId, seasonId, [role], this.now());
+    assertAdultAuthority(principal, role === "administrator", this.now());
+    const row = await this.one("SELECT longball.scheduled_games($1,$2) AS value", [teamId, seasonId]);
+    return this.scheduledGameResult(row?.value);
+  }
+  async teamOverview(principal, teamId, seasonId, role) {
+    if (!role || !["manager", "administrator", "player", "spectator"].includes(role)) throw new AccessError("NOT_FOUND", 404, "Choose the current team overview context.");
+    assertTeamRole(principal, await this.memberships(), teamId, seasonId, [role], this.now());
+    const row = await this.one("SELECT longball.team_overview_source($1,$2) AS value", [teamId, seasonId]);
+    const dto = typeof row?.value === "string" ? JSON.parse(row.value) : row?.value;
+    assertTeamOverviewDto(dto, { teamId, seasonId });
+    return dto;
+  }
+  async scheduledGameCommand(principal, teamId, seasonId, input, role) {
+    assertTeamRole(principal, await this.memberships(), teamId, seasonId, [role], this.now());
+    assertAdultAuthority(principal, role === "administrator", this.now());
+    const command = parseScheduledGameCommand(input);
+    return this.transaction(async () => {
+      const row = await this.one("SELECT longball.manage_scheduled_game($1,$2,$3::jsonb) AS value", [teamId, seasonId, JSON.stringify(command)]);
+      return this.scheduledGameResult(row?.value);
+    });
   }
   async configuration(principal, teamId, seasonId, role) {
     if (role)
@@ -7033,10 +7763,10 @@ var PostgresStore = class _PostgresStore {
   /** Called inside the preparation mutation transaction; current labels never rewrite saved match evidence. */
   async projectPreparationRecords(teamId, seasonId, preparation, sourceCommandId) {
     const previous = await this.document(teamId, seasonId, "records");
-    const labels = new Map(previous.players.map((player) => [player.id, player]));
+    const labels2 = new Map(previous.players.map((player) => [player.id, player]));
     for (const profile of preparation.profiles.filter((profile2) => profile2.seasonId === seasonId))
-      labels.set(profile.playerId, { id: profile.playerId, label: profile.displayName });
-    const players = [...labels.values()];
+      labels2.set(profile.playerId, { id: profile.playerId, label: profile.displayName });
+    const players = [...labels2.values()];
     const evidence = trainingAttendanceEvidence({ ...preparation, training: preparation.training.filter((session) => session.seasonId === seasonId) });
     let records = previous;
     const at = new Date(this.now()).toISOString();
@@ -7057,7 +7787,7 @@ var PostgresStore = class _PostgresStore {
   }
   async preparationCommand(principal, teamId, seasonId, command) {
     const previous = await this.preparation(principal, teamId, seasonId);
-    const types2 = ["club.updated", "team.updated", "season.rolled_over", "profile.saved", "roster.imported", "profile.archived", "formation.saved", "fixture.saved", "fixture.status_changed", "fixture.response_recorded", "fixture.selection_saved", "fixture.attendance_recorded", "fixture.prepared", "match_plan.saved", "match_plan.applied", "match_plan.cleared", "training.series_created", "training.series_updated", "training.series_cancelled", "training.saved", "training.status_changed", "training.response_recorded", "training.attendance_recorded"];
+    const types2 = ["club.updated", "team.updated", "season.rolled_over", "profile.saved", "roster.imported", "profile.archived", "formation.saved", "position.saved", "position.archived", "lineup_template.saved", "lineup_template.archived", "lineup_template.applied", "lineup_template.cleared", "fixture.saved", "fixture.status_changed", "fixture.response_recorded", "fixture.selection_saved", "fixture.attendance_recorded", "fixture.prepared", "match_plan.saved", "match_plan.applied", "match_plan.cleared", "training.series_created", "training.series_updated", "training.series_cancelled", "training.saved", "training.status_changed", "training.response_recorded", "training.attendance_recorded"];
     if (!command || !types2.includes(command.type))
       bad("Unsupported preparation command.");
     if (command.type === "season.rolled_over")
@@ -7066,13 +7796,12 @@ var PostgresStore = class _PostgresStore {
       assertTeamRole(principal, await this.memberships(), teamId, seasonId, ["administrator"], this.now());
       assertAdultAuthority(principal, true, this.now());
     }
+    if (command.type === "fixture.saved") assertFixtureNotDeleted(previous, command.fixture.id);
+    else if ("fixtureId" in command && typeof command.fixtureId === "string") assertFixtureNotDeleted(previous, command.fixtureId);
     const protectedFixtureIds = [];
-    if (command.type === "match_plan.applied") {
-      const match = await this.one("SELECT state_json FROM matches WHERE id=$1 AND team_id=$2 AND season_id=$3", [command.fixtureId, teamId, seasonId]);
-      if (match) {
-        const accepted2 = JSON.parse(match.state_json);
-        if (accepted2.status !== "preparation" || accepted2.revision !== 0 || await this.one("SELECT match_id FROM controller_grants WHERE match_id=$1", [command.fixtureId]) || await this.one("SELECT event_id FROM events WHERE match_id=$1 LIMIT 1", [command.fixtureId])) protectedFixtureIds.push(command.fixtureId);
-      }
+    if (["match_plan.applied", "match_plan.cleared", "lineup_template.applied", "lineup_template.cleared", "fixture.status_changed"].includes(command.type) && "fixtureId" in command && typeof command.fixtureId === "string") {
+      if ((await this.protectedScheduleFixtures(teamId, seasonId)).includes(command.fixtureId)) protectedFixtureIds.push(command.fixtureId);
+      if (protectedFixtureIds.length && ["fixture.status_changed", "match_plan.cleared"].includes(command.type)) throw new AccessError("MATCH_HISTORY_EXISTS", 409, "This game has recording authority or saved match history. Preserve its schedule and recorded snapshot.");
     }
     const state = reducePreparation(previous, command, { nowMs: this.now(), protectedFixtureIds });
     if (command.type === "fixture.prepared") {
@@ -7112,7 +7841,7 @@ var PostgresStore = class _PostgresStore {
     else if (command.type === "training.series_created")
       for (const occurrence of command.occurrences) await this.enqueueNotifications(teamId, seasonId, "schedule", occurrence.id, command.id);
     else if (command.type === "training.series_updated" || command.type === "training.series_cancelled")
-      for (const id4 of command.occurrenceIds) await this.enqueueNotifications(teamId, seasonId, "schedule", id4, command.id);
+      for (const id5 of command.occurrenceIds) await this.enqueueNotifications(teamId, seasonId, "schedule", id5, command.id);
     return state;
   }
   async ownPreparation(principal, teamId, seasonId) {
@@ -7211,9 +7940,9 @@ var PostgresStore = class _PostgresStore {
       scopes.set(JSON.stringify([grant.accountId, grant.teamId, grant.seasonId]), { accountId: grant.accountId, teamId: grant.teamId, seasonId: grant.seasonId });
     for (const scope of scopes.values()) {
       const grants = state.grants.filter((grant) => grant.accountId === scope.accountId && grant.teamId === scope.teamId && grant.seasonId === scope.seasonId);
-      const active2 = grants.filter((grant) => grant.revokedAtMs === null && grant.startsAtMs <= this.now() && grant.expiresAtMs > this.now());
-      const expiresAt = Math.max(...(active2.length ? active2 : grants).map((grant) => grant.expiresAtMs));
-      const revokedAt = active2.length ? null : Math.max(1, this.now());
+      const active3 = grants.filter((grant) => grant.revokedAtMs === null && grant.startsAtMs <= this.now() && grant.expiresAtMs > this.now());
+      const expiresAt = Math.max(...(active3.length ? active3 : grants).map((grant) => grant.expiresAtMs));
+      const revokedAt = active3.length ? null : Math.max(1, this.now());
       await this.execute("INSERT INTO memberships(account_id,team_id,season_id,role,expires_at,revoked_at) VALUES($1,$2,$3,'spectator',$4,$5) ON CONFLICT(account_id,team_id,season_id,role) DO UPDATE SET expires_at=excluded.expires_at,revoked_at=excluded.revoked_at", [scope.accountId, scope.teamId, scope.seasonId, expiresAt, revokedAt]);
     }
   }
@@ -7238,6 +7967,30 @@ var PostgresStore = class _PostgresStore {
   }
   async records(principal, teamId, seasonId, role) {
     return recordsServiceView(await this.recordsContext(principal, teamId, seasonId, role));
+  }
+  async playerStats(principal, teamId, seasonId, role) {
+    if (!role || !["manager", "administrator", "player"].includes(role)) throw new AccessError("NOT_FOUND", 404, "Choose the current staff or own-player statistics context.");
+    const memberships = currentMemberships(principal, await this.memberships(), this.now()).filter((member) => member.teamId === teamId && member.seasonId === seasonId);
+    assertTeamRole(principal, memberships, teamId, seasonId, [role], this.now());
+    if (role !== "player") assertAdultAuthority(principal, role === "administrator", this.now());
+    const bindings = memberships.filter((member) => member.role === "player").map((member) => member.playerId);
+    if (role === "player" && (new Set(bindings).size !== 1 || !bindings[0])) throw new AccessError("NOT_FOUND", 404, "The current own-player statistics binding is unavailable.");
+    let source2;
+    if (role === "administrator") {
+      const row = await this.one("SELECT longball.admin_player_stats_source($1,$2) AS value", [teamId, seasonId]);
+      source2 = typeof row?.value === "string" ? JSON.parse(row.value) : row?.value;
+      if (!source2 || source2.teamId !== teamId || source2.seasonId !== seasonId) throw new AccessError("NOT_FOUND", 404, "The requested staff statistics are unavailable.");
+      if (!source2.positions.length) source2 = { ...source2, positions: defaultPositionCatalogue() };
+    } else {
+      const preparation = await this.document(teamId, seasonId, "preparation");
+      const rows = await this.many("SELECT state_json,sharing_policy_json FROM matches WHERE team_id=$1 AND season_id=$2 ORDER BY id", [teamId, seasonId]);
+      const formation = preparation.formations.find((item) => item.format === preparation.team.defaultPitchPlaces);
+      source2 = playerStatsSourceFromRecords({ state: await this.document(teamId, seasonId, "records"), acceptedMatches: rows.map((row) => ({ teamId, seasonId, match: JSON.parse(row.state_json), sharingPolicy: JSON.parse(row.sharing_policy_json) })), positions: positionCatalogueFor(preparation), formation: formation ? { id: formation.id, label: formation.name, slots: formation.slots.map((slot) => ({ id: slot.id, positionCode: slot.position, label: slot.label, x: slot.x, y: slot.y })) } : null });
+    }
+    const viewer = { role, teamId, seasonId, ...role === "player" ? { playerId: bindings[0] } : {} };
+    const dto = projectPlayerStats(source2, viewer);
+    assertPlayerStatsDto(dto, viewer);
+    return dto;
   }
   async recordsExport(principal, teamId, seasonId, request, role) {
     return recordsServiceExport({ ...await this.recordsContext(principal, teamId, seasonId, role), request });
@@ -7412,7 +8165,7 @@ async function processPrivateImage(input) {
 // apps/api/src/media.ts
 var executeFile2 = promisify2(execFile2);
 var hash = (value) => createHash4("sha256").update(value).digest("hex");
-var id = (value) => typeof value === "string" && /^[a-zA-Z0-9_-]{1,150}$/.test(value);
+var id2 = (value) => typeof value === "string" && /^[a-zA-Z0-9_-]{1,150}$/.test(value);
 function fail5(code, status, message) {
   throw new AccessError(code, status, message);
 }
@@ -7422,7 +8175,7 @@ function auth(state, actor, now, upload = false) {
 function sameToken(expectedHash, token) {
   return typeof token === "string" && token.length <= 256 && timingSafeEqual(Buffer.from(expectedHash, "hex"), Buffer.from(hash(token), "hex"));
 }
-var mediaInternals = { executeFile: executeFile2, hash, id, fail: fail5, auth, sameToken, bounded, actualMime, rejectAnimatedPng };
+var mediaInternals = { executeFile: executeFile2, hash, id: id2, fail: fail5, auth, sameToken, bounded, actualMime, rejectAnimatedPng };
 
 // apps/api/src/postgres-security.ts
 import { readFile as readFile3 } from "node:fs/promises";
@@ -7462,7 +8215,7 @@ async function installTeamPrivilegeMedia(database) {
 // apps/api/src/postgres-media.ts
 var {
   hash: hash2,
-  id: id2,
+  id: id3,
   auth: auth2,
   sameToken: sameToken2,
   bounded: bounded2
@@ -7498,7 +8251,7 @@ var PgMediaService = class _PgMediaService {
         "SELECT version FROM longball.media_schema_migrations ORDER BY version"
       );
       if (versions.rows.some((row) => row.version > 4)) throw new Error("Media schema is newer than this build.");
-      if (![2, 3, 4].every((version) => versions.rows.some((row) => row.version === version))) throw new Error("Run the separate media migrator before starting the runtime.");
+      if (![2, 3, 4].every((version2) => versions.rows.some((row) => row.version === version2))) throw new Error("Run the separate media migrator before starting the runtime.");
       await verifyMediaSecurity(this.database);
       return;
     }
@@ -7563,7 +8316,7 @@ var PgMediaService = class _PgMediaService {
   }
   async row(state, actor, uploadId, token) {
     auth2(state, actor, this.now(), true);
-    if (!id2(uploadId))
+    if (!id3(uploadId))
       fail6("NOT_FOUND", 404, "The requested upload is unavailable.");
     const row = await this.one(
       "SELECT * FROM longball.media_uploads WHERE id=$1 AND owner_id=$2 AND team_id=$3 AND season_id=$4",
@@ -7587,7 +8340,7 @@ var PgMediaService = class _PgMediaService {
         "photoId",
         "sourceRevision"
       ];
-      if (!input || typeof input !== "object" || Object.keys(input).some((key) => !allowedKeys.includes(key)) || !id2(input.requestId) || !id2(input.matchId) || !Number.isSafeInteger(input.byteSize) || input.byteSize < 1 || input.byteSize > MEDIA_LIMITS.maxBytes || !["image/jpeg", "image/png", "image/heic"].includes(input.mimeType) || typeof input.sha256 !== "string" || !/^[a-fA-F0-9]{64}$/.test(input.sha256) || typeof input.caption !== "string" || input.caption.trim().length > 160 || input.policyAcknowledged !== true) {
+      if (!input || typeof input !== "object" || Object.keys(input).some((key) => !allowedKeys.includes(key)) || !id3(input.requestId) || !id3(input.matchId) || !Number.isSafeInteger(input.byteSize) || input.byteSize < 1 || input.byteSize > MEDIA_LIMITS.maxBytes || !["image/jpeg", "image/png", "image/heic"].includes(input.mimeType) || typeof input.sha256 !== "string" || !/^[a-fA-F0-9]{64}$/.test(input.sha256) || typeof input.caption !== "string" || input.caption.trim().length > 160 || input.policyAcknowledged !== true) {
         fail6(
           "INVALID_MEDIA_PREPARATION",
           422,
@@ -7946,7 +8699,7 @@ var PgMediaService = class _PgMediaService {
 // apps/api/src/postgres-activation.ts
 import { createHash as createHash6, randomBytes as randomBytes4, randomUUID as randomUUID5 } from "node:crypto";
 var hash3 = (value) => createHash6("sha256").update(value).digest("hex");
-var id3 = (value) => typeof value === "string" && /^[A-Za-z0-9_-]{1,150}$/.test(value);
+var id4 = (value) => typeof value === "string" && /^[A-Za-z0-9_-]{1,150}$/.test(value);
 var uuid = (value) => typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 function unavailable() {
   throw new AccessError(
@@ -7955,7 +8708,7 @@ function unavailable() {
     "This activation cannot be used. Request a new activation through the agreed household process."
   );
 }
-function invalid2() {
+function invalid3() {
   throw new AccessError(
     "INVALID_REQUEST",
     400,
@@ -7971,7 +8724,7 @@ function conflict() {
 }
 function fields4(value, names) {
   if (!value || typeof value !== "object" || Array.isArray(value) || Object.keys(value).some((key) => !names.includes(key)) || names.some((key) => !(key in value)))
-    invalid2();
+    invalid3();
 }
 function fingerprint(actor, input) {
   return hash3(
@@ -8006,7 +8759,7 @@ var PostgresActivationService = class {
     this.store = options.store;
     this.provider = options.provider;
     this.policy = options.policy;
-    if (options.policy && (options.policy.fictionalOnly !== true || !id3(options.policy.version) || !Number.isSafeInteger(options.policy.activationTtlMs) || options.policy.activationTtlMs <= 0))
+    if (options.policy && (options.policy.fictionalOnly !== true || !id4(options.policy.version) || !Number.isSafeInteger(options.policy.activationTtlMs) || options.policy.activationTtlMs <= 0))
       throw new Error(
         "An explicit versioned test activation policy and positive expiry are required."
       );
@@ -8038,10 +8791,10 @@ var PostgresActivationService = class {
   }
   async migrate() {
     if (this.store.db.migrationMode === "verify") {
-      const version = await this.store.one(
+      const version2 = await this.store.one(
         "SELECT version FROM lb_activation_schema WHERE singleton=1"
       );
-      if (!version || version.version !== 2)
+      if (!version2 || version2.version !== 2)
         throw new Error(
           "Activation schema is missing or unsupported. Run the privileged migration command; preserve the database."
         );
@@ -8052,19 +8805,19 @@ var PostgresActivationService = class {
       await this.store.db.query(
         "CREATE TABLE IF NOT EXISTS lb_activation_schema(singleton INTEGER PRIMARY KEY CHECK(singleton=1),version INTEGER NOT NULL)"
       );
-      const version = await this.store.one(
+      const version2 = await this.store.one(
         "SELECT version FROM lb_activation_schema WHERE singleton=1",
         []
       );
-      if (version && ![1, 2].includes(version.version))
+      if (version2 && ![1, 2].includes(version2.version))
         throw new Error(
           "Unsupported activation feature schema; preserve the database."
         );
-      if (version?.version === 2) {
+      if (version2?.version === 2) {
         await verifyActivationSecurity(this.store.db);
         return;
       }
-      if (!version)
+      if (!version2)
         await this.store.db.query(`
         CREATE TABLE lb_activation_children(
           account_id TEXT PRIMARY KEY REFERENCES accounts(id),username TEXT NOT NULL,
@@ -8163,8 +8916,8 @@ CREATE TRIGGER lb_activation_immutable_child BEFORE UPDATE OF classification ON 
     await this.ready;
     const { provider } = await this.enabled();
     fields4(input, ["requestId", "teamId", "seasonId", "playerId"]);
-    if (![input.requestId, input.teamId, input.seasonId, input.playerId].every(id3))
-      invalid2();
+    if (![input.requestId, input.teamId, input.seasonId, input.playerId].every(id4))
+      invalid3();
     const signature2 = fingerprint(principal.accountId, input);
     const candidateAccountId = randomUUID5();
     const row = await this.withProvisionedAccount(
@@ -8334,8 +9087,8 @@ CREATE TRIGGER lb_activation_immutable_child BEFORE UPDATE OF classification ON 
     await this.ready;
     const { provider, policy } = await this.enabled();
     fields4(input, ["requestId", "teamId", "seasonId", "accountId"]);
-    if (![input.requestId, input.teamId, input.seasonId].every(id3) || !uuid(input.accountId))
-      invalid2();
+    if (![input.requestId, input.teamId, input.seasonId].every(id4) || !uuid(input.accountId))
+      invalid3();
     const signature2 = fingerprint(principal.accountId, input);
     const preparation = await this.store.transaction(async () => {
       const child = await this.child(
@@ -8476,7 +9229,7 @@ CREATE TRIGGER lb_activation_immutable_child BEFORE UPDATE OF classification ON 
   async redeemActivation(input) {
     await this.ready;
     fields4(input, ["token", "requestId"]);
-    if (typeof input.token !== "string" || !/^[A-Za-z0-9_-]{43}$/.test(input.token) || !id3(input.requestId))
+    if (typeof input.token !== "string" || !/^[A-Za-z0-9_-]{43}$/.test(input.token) || !id4(input.requestId))
       unavailable();
     return this.store.db.withContext(
       {
@@ -8491,7 +9244,7 @@ CREATE TRIGGER lb_activation_immutable_child BEFORE UPDATE OF classification ON 
     await this.ready;
     const { provider } = await this.enabled();
     fields4(input, ["token", "requestId"]);
-    if (typeof input.token !== "string" || !/^[A-Za-z0-9_-]{43}$/.test(input.token) || !id3(input.requestId))
+    if (typeof input.token !== "string" || !/^[A-Za-z0-9_-]{43}$/.test(input.token) || !id4(input.requestId))
       unavailable();
     const reserved = await this.store.transaction(async () => {
       const token = await this.store.one(
@@ -8532,7 +9285,7 @@ CREATE TRIGGER lb_activation_immutable_child BEFORE UPDATE OF classification ON 
         "The provider credential flow could not be safely opened."
       );
     }
-    if (setup.protocol !== "https:" || setup.username || setup.password || !provider.credentialSetupOrigins.includes(setup.origin) || result.setupUrl.includes(input.token) || !id3(result.flowId) || !Number.isSafeInteger(result.expiresAt) || result.expiresAt > reserved.token.expires_at || result.expiresAt <= this.store.now())
+    if (setup.protocol !== "https:" || setup.username || setup.password || !provider.credentialSetupOrigins.includes(setup.origin) || result.setupUrl.includes(input.token) || !id4(result.flowId) || !Number.isSafeInteger(result.expiresAt) || result.expiresAt > reserved.token.expires_at || result.expiresAt <= this.store.now())
       throw new AccessError(
         "PROVIDER_FLOW_REJECTED",
         502,
@@ -8666,7 +9419,7 @@ CREATE TRIGGER lb_activation_immutable_child BEFORE UPDATE OF classification ON 
       "playerId",
       "existingAccountId"
     ]);
-    if (!id3(input.playerId) || !uuid(input.existingAccountId)) invalid2();
+    if (!id4(input.playerId) || !uuid(input.existingAccountId)) invalid3();
     return await this.verificationRequest(
       principal,
       "link",
@@ -8678,7 +9431,7 @@ CREATE TRIGGER lb_activation_immutable_child BEFORE UPDATE OF classification ON 
   async requestRecovery(principal, input) {
     await this.ready;
     fields4(input, ["requestId", "teamId", "seasonId", "accountId"]);
-    if (!uuid(input.accountId)) invalid2();
+    if (!uuid(input.accountId)) invalid3();
     return await this.verificationRequest(
       principal,
       "recovery",
@@ -8689,7 +9442,7 @@ CREATE TRIGGER lb_activation_immutable_child BEFORE UPDATE OF classification ON 
   }
   async verificationRequest(principal, kind, input, target, playerId) {
     const { policy } = await this.enabled();
-    if (![input.requestId, input.teamId, input.seasonId].every(id3)) invalid2();
+    if (![input.requestId, input.teamId, input.seasonId].every(id4)) invalid3();
     const signature2 = fingerprint(principal.accountId, { ...input, kind });
     return await this.store.transaction(async () => {
       await this.manager(principal, input.teamId, input.seasonId);
@@ -8770,8 +9523,11 @@ async function applyRuntimeGrants(database, roles = { apiRole: "longball_api", w
     await database.query(`GRANT USAGE ON SCHEMA longball TO ${api},${worker}`);
     await database.query(`REVOKE ALL ON ALL TABLES IN SCHEMA longball FROM ${api},${worker}`);
     await database.query(`REVOKE ALL ON ALL FUNCTIONS IN SCHEMA longball FROM PUBLIC,${api},${worker}`);
-    const apiTables = ["clubs", "teams", "team_seasons", "game_contexts", "accounts", "memberships", "matches", "documents", "devices", "controller_grants", "controller_history", "events", "streams", "conflicting_submissions", "transfers", "clock_challenges", "clock_mappings", "reconciliation_proposals", "audit", "idempotency", "privacy_requests", "privacy_pending_keys", "jobs", "media_uploads", "lb_activation_children", "lb_activation_issues", "lb_activation_tokens", "lb_activation_verification_requests", "brand_assets", "brand_slots", "spectator_invitations", "lb_spectator_activation_accounts", "lb_spectator_activation_attempts", "native_app_devices", "team_privilege_states", "team_privilege_decisions", "push_registrations", "report_exports"];
+    const apiTables = ["clubs", "teams", "team_seasons", "game_contexts", "accounts", "memberships", "matches", "documents", "devices", "controller_grants", "controller_history", "events", "streams", "conflicting_submissions", "transfers", "clock_challenges", "clock_mappings", "reconciliation_proposals", "audit", "idempotency", "privacy_requests", "privacy_pending_keys", "jobs", "media_uploads", "lb_activation_children", "lb_activation_issues", "lb_activation_tokens", "lb_activation_verification_requests", "brand_assets", "brand_slots", "spectator_invitations", "lb_spectator_activation_accounts", "lb_spectator_activation_attempts", "native_app_devices", "team_privilege_states", "team_privilege_decisions", "push_registrations", "report_exports", "match_feedback"];
     await database.query(`GRANT SELECT,INSERT,UPDATE ON ${apiTables.map((table) => `longball.${table}`).join(",")} TO ${api}`);
+    await database.query(`GRANT SELECT,INSERT ON longball.match_feedback_receipts TO ${api}`);
+    await database.query(`GRANT EXECUTE ON FUNCTION longball.feedback_player(text,text,text,text,text),longball.feedback_reader(text,text,text,text,text) TO ${api}`);
+    await database.query(`GRANT EXECUTE ON FUNCTION longball.scheduled_games(text,text),longball.manage_scheduled_game(text,text,jsonb),longball.admin_player_stats_source(text,text),longball.team_overview_source(text,text) TO ${api}`);
     await database.query(`GRANT SELECT ON longball.schema_migrations,longball.media_schema_migrations,longball.lb_activation_schema TO ${api},${worker}`);
     await database.query(`REVOKE UPDATE ON longball.events,longball.audit,longball.controller_history,longball.reconciliation_proposals,longball.clock_mappings,longball.team_privilege_decisions FROM ${api}`);
     await database.query(`GRANT SELECT ON longball.clubs,longball.teams,longball.team_seasons,longball.game_contexts,longball.accounts,longball.memberships,longball.matches TO ${worker}`);
