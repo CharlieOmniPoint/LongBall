@@ -24015,12 +24015,12 @@ var require_fontkit_umd = __commonJS({
       function umask() {
         return 0;
       }
-      var performance5 = global$1.performance || {};
-      var performanceNow = performance5.now || performance5.mozNow || performance5.msNow || performance5.oNow || performance5.webkitNow || function() {
+      var performance6 = global$1.performance || {};
+      var performanceNow = performance6.now || performance6.mozNow || performance6.msNow || performance6.oNow || performance6.webkitNow || function() {
         return (/* @__PURE__ */ new Date()).getTime();
       };
       function hrtime(previousTimestamp) {
-        var clocktime = performanceNow.call(performance5) * 1e-3;
+        var clocktime = performanceNow.call(performance6) * 1e-3;
         var seconds = Math.floor(clocktime);
         var nanoseconds = Math.floor(clocktime % 1 * 1e9);
         if (previousTimestamp) {
@@ -62749,8 +62749,8 @@ var PgDatabase = class {
   async migrate() {
     if (this.migrationMode === "verify") {
       const versions = await this.query("SELECT version FROM longball.schema_migrations ORDER BY version");
-      if (versions.rows.some((row) => row.version > 24)) throw new Error("This PostgreSQL schema is newer than the application. Preserve it and use a compatible build.");
-      if (![2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24].every((version2) => versions.rows.some((row) => row.version === version2))) throw new Error("PostgreSQL migrations are required. Run the separate migrator before starting the runtime.");
+      if (versions.rows.some((row) => row.version > 25)) throw new Error("This PostgreSQL schema is newer than the application. Preserve it and use a compatible build.");
+      if (![2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25].every((version2) => versions.rows.some((row) => row.version === version2))) throw new Error("PostgreSQL migrations are required. Run the separate migrator before starting the runtime.");
       const protectedTables = ["clubs", "teams", "team_seasons", "game_contexts", "accounts", "memberships", "matches", "documents", "devices", "controller_grants", "controller_history", "events", "streams", "conflicting_submissions", "transfers", "clock_challenges", "clock_mappings", "reconciliation_proposals", "audit", "idempotency", "privacy_requests", "privacy_pending_keys", "jobs", "brand_assets", "brand_slots", "spectator_invitations", "lb_spectator_activation_accounts", "lb_spectator_activation_attempts", "native_app_devices", "team_privilege_states", "team_privilege_decisions", "push_registrations", "report_exports", "match_feedback", "match_feedback_receipts", "administration_grants", "administrative_memberships", "team_documents", "opposition_reviews", "opposition_review_receipts", "spectator_pin_credentials", "invite_requests"];
       const security = await this.query(`SELECT c.relname,c.relrowsecurity,(SELECT count(*)::integer FROM pg_catalog.pg_policy p WHERE p.polrelid=c.oid) AS policies FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='longball' AND c.relname=ANY($1::text[])`, [protectedTables]);
       if (security.rows.length !== protectedTables.length || security.rows.some((row) => !row.relrowsecurity || row.policies < 1)) throw new Error("PostgreSQL row security is missing. Run the separate migrator before starting runtime.");
@@ -62779,12 +62779,13 @@ var PgDatabase = class {
     const teamDocumentsMigration = await readFile(new URL("../migrations/postgresql/022_team_documents.sql", import.meta.url), "utf8");
     const oppositionReviewsMigration = await readFile(new URL("../migrations/postgresql/023_opposition_reviews.sql", import.meta.url), "utf8");
     const spectatorAccessMigration = await readFile(new URL("../migrations/postgresql/024_spectator_access.sql", import.meta.url), "utf8");
+    const inheritedManagerMigration = await readFile(new URL("../migrations/postgresql/025_inherited_manager_authority.sql", import.meta.url), "utf8");
     await this.transaction(async () => {
       const schema = await this.query("SELECT to_regnamespace('longball')::text AS namespace");
       if (!schema.rows[0]?.namespace) await this.query("CREATE SCHEMA longball");
       await this.query("CREATE TABLE IF NOT EXISTS longball.schema_migrations(version integer PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())");
       const versions = await this.query("SELECT version FROM longball.schema_migrations ORDER BY version");
-      if (versions.rows.some((row) => row.version > 24)) throw new Error("This PostgreSQL schema is newer than the application. Preserve it and use a compatible build.");
+      if (versions.rows.some((row) => row.version > 25)) throw new Error("This PostgreSQL schema is newer than the application. Preserve it and use a compatible build.");
       if (!versions.rows.some((row) => row.version === 2)) {
         await this.query(migration);
         await this.query("INSERT INTO longball.schema_migrations(version) VALUES(2)");
@@ -62876,6 +62877,10 @@ var PgDatabase = class {
       if (!versions.rows.some((row) => row.version === 24)) {
         await this.query(spectatorAccessMigration);
         await this.query("INSERT INTO longball.schema_migrations(version) VALUES(24)");
+      }
+      if (!versions.rows.some((row) => row.version === 25)) {
+        await this.query(inheritedManagerMigration);
+        await this.query("INSERT INTO longball.schema_migrations(version) VALUES(25)");
       }
     });
   }
@@ -67232,9 +67237,9 @@ var PostgresStore = class _PostgresStore {
       bad2("Confirm a scoped manager revocation and record its evidence reason.");
     if (expectedRevision !== void 0 && (!nonnegative3(expectedRevision) || expectedRevision !== await this.staffRevision(teamId, seasonId)))
       throw new AccessError("STALE_REVISION", 409, "Refresh the current staff assignments before changing them.");
-    const member = await this.one("SELECT account_id,revoked_at FROM memberships WHERE account_id=$1 AND team_id=$2 AND season_id=$3 AND role='manager'", [input.accountId, teamId, seasonId]);
-    if (!member)
-      throw new AccessError("NOT_FOUND", 404, "That manager assignment is outside this scope.");
+    const member = await this.one("SELECT m.account_id,m.revoked_at,EXISTS(SELECT 1 FROM administrative_memberships am WHERE am.account_id=m.account_id AND am.team_id=m.team_id AND am.season_id=m.season_id AND am.role=m.role) AS inherited FROM memberships m WHERE m.account_id=$1 AND m.team_id=$2 AND m.season_id=$3 AND m.role='manager'", [input.accountId, teamId, seasonId]);
+    if (!member || member.inherited)
+      throw new AccessError("NOT_FOUND", 404, "That appointed manager assignment is unavailable.");
     if (member.revoked_at === null) {
       await this.execute("UPDATE memberships SET revoked_at=$1 WHERE account_id=$2 AND team_id=$3 AND season_id=$4 AND role='manager'", [this.now(), input.accountId, teamId, seasonId]);
       await this.execute("UPDATE controller_grants SET frozen=1 WHERE account_id=$1 AND team_id=$2 AND season_id=$3", [input.accountId, teamId, seasonId]);
@@ -69104,7 +69109,8 @@ var DevelopmentStore = class {
     this.database = new DatabaseSync(path);
     try {
       if (path !== ":memory:") chmodSync(path, 384);
-      this.database.exec("PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000; PRAGMA journal_mode=WAL;");
+      this.database.exec("PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000;");
+      this.enableWal();
       this.migrate();
     } catch (error) {
       this.database.close();
@@ -69114,6 +69120,26 @@ var DevelopmentStore = class {
   path;
   now;
   database;
+  enableWal() {
+    const deadline = performance.now() + 5e3;
+    const pause = new Int32Array(new SharedArrayBuffer(4));
+    this.database.exec("PRAGMA busy_timeout=0;");
+    try {
+      for (; ; ) {
+        try {
+          this.database.exec("PRAGMA journal_mode=WAL;");
+          return;
+        } catch (error) {
+          const code = error && typeof error === "object" && "errcode" in error ? error.errcode : void 0;
+          const remaining = deadline - performance.now();
+          if (typeof code !== "number" || !Number.isSafeInteger(code) || ![5, 6].includes(code & 255) || remaining <= 0) throw error;
+          Atomics.wait(pause, 0, 0, Math.min(25, remaining));
+        }
+      }
+    } finally {
+      this.database.exec("PRAGMA busy_timeout=5000;");
+    }
+  }
   close() {
     this.database.close();
   }
@@ -69652,8 +69678,8 @@ var DevelopmentStore = class {
     assertAdultAuthority(actor, true, this.now());
     if (!input || Object.keys(input).some((key) => !["accountId", "reason", "confirmRevocation"].includes(key)) || !validId4(input.accountId) || input.confirmRevocation !== true || typeof input.reason !== "string" || input.reason.trim().length < 5 || input.reason.length > 500) bad3("Confirm a scoped manager revocation and record its evidence reason.");
     if (expectedRevision !== void 0 && (!nonnegative4(expectedRevision) || expectedRevision !== this.staffRevision(teamId, seasonId))) throw new AccessError("STALE_REVISION", 409, "Refresh the current staff assignments before changing them.");
-    const member = this.database.prepare("SELECT account_id,revoked_at FROM memberships WHERE account_id=? AND team_id=? AND season_id=? AND role='manager'").get(input.accountId, teamId, seasonId);
-    if (!member) throw new AccessError("NOT_FOUND", 404, "That manager assignment is outside this scope.");
+    const member = this.database.prepare("SELECT m.account_id,m.revoked_at,EXISTS(SELECT 1 FROM administrative_memberships am WHERE am.account_id=m.account_id AND am.team_id=m.team_id AND am.season_id=m.season_id AND am.role=m.role) AS inherited FROM memberships m WHERE m.account_id=? AND m.team_id=? AND m.season_id=? AND m.role='manager'").get(input.accountId, teamId, seasonId);
+    if (!member || member.inherited) throw new AccessError("NOT_FOUND", 404, "That appointed manager assignment is unavailable.");
     if (member.revoked_at === null) {
       this.database.prepare("UPDATE memberships SET revoked_at=? WHERE account_id=? AND team_id=? AND season_id=? AND role='manager'").run(this.now(), input.accountId, teamId, seasonId);
       this.database.prepare("UPDATE controller_grants SET frozen=1 WHERE account_id=? AND match_id IN (SELECT id FROM matches WHERE team_id=? AND season_id=?)").run(input.accountId, teamId, seasonId);
@@ -70364,7 +70390,7 @@ var OppositionReviewService = class {
 
 // apps/api/src/report-export-repository.ts
 import { createHash as createHash10, randomBytes as randomBytes5 } from "node:crypto";
-import { performance } from "node:perf_hooks";
+import { performance as performance2 } from "node:perf_hooks";
 
 // apps/api/src/runtime-store.ts
 import { AsyncLocalStorage as AsyncLocalStorage2 } from "node:async_hooks";
@@ -70500,7 +70526,7 @@ var ReportExportRepository = class {
       const job = await store.db.withContext({ kind: "worker_claim", jobKind: KIND, nowMs: observed }, () => store.one("SELECT * FROM longball.claim_due_job($1,$2,$3)", [KIND, observed, leaseToken]));
       if (!job) return null;
       if (typeof job.club_id !== "string" || typeof job.team_id !== "string" || typeof job.season_id !== "string" || !Number.isSafeInteger(job.lease_until)) throw new Error("EXPORT_JOB_SCOPE_CONFLICT");
-      const claim = { row: void 0, jobId: job.id, attempt: job.attempts + 1, leaseToken, clubId: job.club_id, teamId: job.team_id, seasonId: job.season_id, claimedAtMs: job.lease_until - LEASE_MS, claimedMonotonicMs: performance.now() };
+      const claim = { row: void 0, jobId: job.id, attempt: job.attempts + 1, leaseToken, clubId: job.club_id, teamId: job.team_id, seasonId: job.season_id, claimedAtMs: job.lease_until - LEASE_MS, claimedMonotonicMs: performance2.now() };
       return this.withClaim(claim, () => this.transaction(async () => {
         const incremented = await store.execute("UPDATE jobs SET attempts=attempts+1 WHERE id=$1 AND state='leased' AND attempts=$2", [job.id, job.attempts]);
         if (!incremented.changes) return null;
@@ -70536,7 +70562,7 @@ var ReportExportRepository = class {
         return null;
       }
       const preparation = store.document(row.team_id, row.season_id, "preparation");
-      const claim = { row, jobId: job.id, attempt: job.attempts + 1, leaseToken, clubId: preparation.club.id, teamId: row.team_id, seasonId: row.season_id, claimedAtMs: nowMs, claimedMonotonicMs: performance.now() };
+      const claim = { row, jobId: job.id, attempt: job.attempts + 1, leaseToken, clubId: preparation.club.id, teamId: row.team_id, seasonId: row.season_id, claimedAtMs: nowMs, claimedMonotonicMs: performance2.now() };
       if (["ready", "failed", "expired"].includes(row.status)) {
         store.database.prepare("UPDATE jobs SET state=?,lease_until=NULL,last_error_code=? WHERE id=?").run(row.status === "ready" ? "completed" : "failed", row.failure_code, job.id);
         return null;
@@ -70552,7 +70578,7 @@ var ReportExportRepository = class {
   }
   async withClaim(claim, work) {
     if (!(this.source instanceof PostgresStore)) return work();
-    return this.source.db.withContext({ kind: "worker_job", jobId: claim.jobId, leaseToken: claim.leaseToken, clubId: claim.clubId, teamId: claim.teamId, seasonId: claim.seasonId, nowMs: Math.floor(claim.claimedAtMs + performance.now() - claim.claimedMonotonicMs) }, work);
+    return this.source.db.withContext({ kind: "worker_job", jobId: claim.jobId, leaseToken: claim.leaseToken, clubId: claim.clubId, teamId: claim.teamId, seasonId: claim.seasonId, nowMs: Math.floor(claim.claimedAtMs + performance2.now() - claim.claimedMonotonicMs) }, work);
   }
   async owns(claim) {
     const nowMs = await this.now();
@@ -71432,7 +71458,7 @@ import { open as open2, rename as rename2, unlink as unlink2 } from "node:fs/pro
 import { isAbsolute as isAbsolute3, join, resolve, sep } from "node:path";
 import { execFile as execFile2, spawn } from "node:child_process";
 import { promisify as promisify2 } from "node:util";
-import { performance as performance3 } from "node:perf_hooks";
+import { performance as performance4 } from "node:perf_hooks";
 import { Socket } from "node:net";
 import { DatabaseSync as DatabaseSync2 } from "node:sqlite";
 
@@ -71441,7 +71467,7 @@ import { createHash as createHash12 } from "node:crypto";
 import { access, open, readFile as readFile3, rename, unlink } from "node:fs/promises";
 import { constants } from "node:fs";
 import { isAbsolute as isAbsolute2 } from "node:path";
-import { performance as performance2 } from "node:perf_hooks";
+import { performance as performance3 } from "node:perf_hooks";
 import { fileURLToPath } from "node:url";
 
 // apps/api/src/image-process.ts
@@ -71551,11 +71577,11 @@ function rejectAnimatedPng(bytes) {
 }
 async function receivePrivateImage(input) {
   const destination = input.temporaryPath ? await open(input.temporaryPath, "wx", 384) : null;
-  const digest5 = createHash12("sha256"), began = performance2.now(), iterator = input.source[Symbol.asyncIterator]();
+  const digest5 = createHash12("sha256"), began = performance3.now(), iterator = input.source[Symbol.asyncIterator]();
   let received = 0;
   try {
     while (true) {
-      const item = await bounded2(iterator.next(), MEDIA_LIMITS.uploadTimeoutMs - (performance2.now() - began), "UPLOAD_TIMEOUT");
+      const item = await bounded2(iterator.next(), MEDIA_LIMITS.uploadTimeoutMs - (performance3.now() - began), "UPLOAD_TIMEOUT");
       if (item.done) break;
       const chunk = Buffer.from(item.value);
       received += chunk.length;
@@ -71836,11 +71862,11 @@ var DevelopmentMediaService = class {
     const destination = duplicate ? null : await open2(temporary, "wx", 384);
     const digest5 = createHash13("sha256");
     let received = 0;
-    const began = performance3.now();
+    const began = performance4.now();
     const iterator = source2[Symbol.asyncIterator]();
     try {
       while (true) {
-        const item = await bounded2(iterator.next(), MEDIA_LIMITS.uploadTimeoutMs - (performance3.now() - began), "UPLOAD_TIMEOUT");
+        const item = await bounded2(iterator.next(), MEDIA_LIMITS.uploadTimeoutMs - (performance4.now() - began), "UPLOAD_TIMEOUT");
         if (item.done) break;
         const chunk = Buffer.from(item.value);
         received += chunk.length;
@@ -74411,7 +74437,7 @@ import { createHash as createHash19, randomBytes as randomBytes12, randomUUID as
 import { chmodSync as chmodSync4, mkdirSync as mkdirSync4, readFileSync as readFileSync6 } from "node:fs";
 import { open as open3, rename as rename3, unlink as unlink3 } from "node:fs/promises";
 import { join as join4, resolve as resolve3, sep as sep4 } from "node:path";
-import { performance as performance4 } from "node:perf_hooks";
+import { performance as performance5 } from "node:perf_hooks";
 
 // apps/api/src/postgres-security.ts
 import { readFile as readFile5 } from "node:fs/promises";
@@ -74704,13 +74730,13 @@ var PgMediaService = class _PgMediaService {
     const destination = duplicate ? null : await open3(temporary, "wx", 384);
     const digest5 = createHash19("sha256");
     let received = 0;
-    const began = performance4.now();
+    const began = performance5.now();
     const iterator = source2[Symbol.asyncIterator]();
     try {
       while (true) {
         const item = await bounded3(
           iterator.next(),
-          MEDIA_LIMITS.uploadTimeoutMs - (performance4.now() - began),
+          MEDIA_LIMITS.uploadTimeoutMs - (performance5.now() - began),
           "UPLOAD_TIMEOUT"
         );
         if (item.done) break;
