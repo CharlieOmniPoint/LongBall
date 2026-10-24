@@ -89,7 +89,7 @@ try {
     await page.getByTestId('preparation-save').click();
     let app = await until(page, value => value.preparation.fixtures.some(item => item.opponent === 'Birch FC rehearsal'), 'Fixture create');
     const fixture = app.preparation.fixtures.find(item => item.opponent === 'Birch FC rehearsal');
-    await button(page, 'Open fixture Birch FC rehearsal, 2026-11-07');
+    await button(page, 'Open fixture Birch FC rehearsal, 07/11/26');
     await button(page, 'Edit or reschedule fixture');
     await page.getByLabel('Match date (YYYY-MM-DD)', { exact: true }).fill('2026-11-14');
     await page.getByTestId('preparation-save').click();
@@ -103,7 +103,7 @@ try {
     await page.reload({ waitUntil: 'networkidle' });
     await enterFictionalReview(page);
     await button(page, 'Schedule');
-    await button(page, 'Open fixture Birch FC rehearsal, 2026-11-14');
+    await button(page, 'Open fixture Birch FC rehearsal, 14/11/26');
     await page.getByRole('button', { name: 'Restore as scheduled', exact: true }).waitFor();
     return 'Create/reschedule/cancel preserve one identity and old played date; cancelled status survives reload.';
   });
@@ -113,7 +113,7 @@ try {
     const initialProfileId = initial.preparation.profiles.find(item => item.playerId === playerId).id;
     const initialHeld = initial.preparation.training.filter(item => item.status === 'held' && item.seasonId === seasonId && item.expectedProfileIds.includes(initialProfileId)).length;
     await button(page, 'Schedule'); await radio(page, 'Event type: Training');
-    await button(page, 'Open training 2026-10-22');
+    await button(page, 'Open training 22/10/26');
     await radio(page, 'Oliver Bennett training reply: Available');
     let app = await until(page, value => Object.values(value.preparation.training[0].responses).includes('available'), 'Training RSVP');
     const profile = app.preparation.profiles.find(item => item.playerId === playerId);
@@ -122,7 +122,7 @@ try {
     await until(page, value => value.preparation.training[0].status === 'held', 'Training held');
     await radio(page, 'Oliver Bennett training attendance: Present');
     await until(page, value => value.preparation.training[0].attendance[profile.id] === 'present', 'Training actual attendance');
-    await button(page, 'Back to schedule'); await button(page, 'Open training 2026-10-29');
+    await button(page, 'Back to schedule'); await button(page, 'Open training 29/10/26');
     await radio(page, 'Occurrence status: Cancelled');
     app = await until(page, value => value.preparation.training[1].status === 'cancelled', 'Cancel second occurrence');
     assert.equal(app.preparation.training[0].status, 'held', 'Occurrence cancellation cannot cancel whole series');
@@ -139,7 +139,7 @@ try {
   });
 
   await scenario('03-snapshots-and-formats', async page => {
-    await button(page, 'Schedule'); await button(page, 'Open fixture Maple FC, 2026-10-24');
+    await button(page, 'Schedule'); await button(page, 'Open fixture Maple FC, 24/10/26');
     await page.getByTestId('preparation-open-match').click();
     const prepared = await until(page, value => value.preparation.snapshots.length > 0, 'Prepare immutable profile snapshot');
     const previous = prepared.preparation.snapshots[0].profiles.find(item => item.playerId === playerId);

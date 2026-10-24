@@ -30,6 +30,10 @@ import { brandSelectedRole,type BrandingAuthority } from './brand-repository';
 import { ownDevicesDto,parseNativeDeviceInput,type NativeDeviceRow } from './devices';
 import { namedWorkspaceMembership, type WorkspaceMembershipNames } from './workspace-memberships';
 import type { NamedWorkspaceMembership } from '../../../packages/application/src/workspace-context';
+import { applyScheduledGameCommand, assertFixtureNotDeleted, fixtureRecordingUnavailable, scheduledGameManagementView, type FixtureManagementRole, type ScheduledGameManagementDto } from '../../../packages/application/src/fixture-management';
+import { assertPlayerStatsDto, playerStatsSourceFromRecords, projectPlayerStats, type PlayerStatsDto } from '../../../packages/application/src/player-stats';
+import { positionCatalogueFor } from '../../../packages/application/src/position-catalogue';
+import { assertTeamOverviewDto, projectTeamOverview, type TeamOverviewDto } from '../../../packages/application/src/team-overview-service';
 
 export const EVENT_CONTRACT_VERSION = 'longball.events/1.1';
 export const SYNTHETIC_IDS = { teamId: 'synthetic-roma-u10', seasonId: 'synthetic-season-2026-27', matchId: 'synthetic-roma-maple-2026-10-24' } as const;
@@ -296,11 +300,17 @@ export class DevelopmentStore {
     return row;
   }
   managerMatch(principal: Principal, matchId: string): MatchRow {
-    const row = this.match(matchId); assertCanManageTeam(principal, this.memberships(), row.team_id, row.season_id, this.now()); return row;
+    const row = this.match(matchId); assertCanManageTeam(principal, this.memberships(), row.team_id, row.season_id, this.now()); this.assertScheduledMatchAvailable(row); return row;
+  }
+  private assertScheduledMatchAvailable(row: Pick<MatchRow, 'id' | 'team_id' | 'season_id'>): void {
+    const saved = this.database.prepare("SELECT value_json FROM documents WHERE team_id=? AND season_id=? AND kind='preparation'").get(row.team_id, row.season_id) as { value_json: string } | undefined;
+    if (saved && fixtureRecordingUnavailable(JSON.parse(saved.value_json) as PreparationState, row.id)) throw new AccessError('FIXTURE_UNAVAILABLE', 409, 'This schedule item is cancelled, postponed or deleted. Match recording and downloads are unavailable.');
   }
   matchDto(principal: Principal, matchId: string, requestedRole?: string): Record<string, unknown> {
     const row = this.match(matchId);
-    return filterMatchForPrincipal({ principal, memberships: this.memberships(), teamId: row.team_id, seasonId: row.season_id, state: JSON.parse(row.state_json) as MatchState, policy: JSON.parse(row.sharing_policy_json) as SharingPolicy, lastSyncAt: row.last_sync_at, now: this.now(), requestedRole });
+    const dto = filterMatchForPrincipal({ principal, memberships: this.memberships(), teamId: row.team_id, seasonId: row.season_id, state: JSON.parse(row.state_json) as MatchState, policy: JSON.parse(row.sharing_policy_json) as SharingPolicy, lastSyncAt: row.last_sync_at, now: this.now(), requestedRole });
+    this.assertScheduledMatchAvailable(row);
+    return dto;
   }
   download(principal: Principal, matchId: string, deviceId: string, syntheticOnly = false, controllerToken?: string): ReturnType<typeof buildOfflineDownload> {
     const read = () => {
@@ -630,7 +640,11 @@ export class DevelopmentStore {
     const memberships = this.memberships();
     const audience = matchPageAudience(principal, memberships, teamId, seasonId, requestedRole, this.now());
     const scope = { principal, teamId, seasonId, role: audience.role, playerId: audience.playerId ?? null, status: query.status }, afterId = matchPagePosition(scope, query);
-    const rows = this.database.prepare("SELECT id,state_json,sharing_policy_json,last_sync_at FROM matches WHERE team_id=? AND season_id=? AND (? IS NULL OR id > ?) AND (?=0 OR json_extract(state_json,'$.status') IN ('first_half_running','first_half_paused','half_time','second_half_running','second_half_paused')) ORDER BY id COLLATE BINARY LIMIT ?").all(teamId, seasonId, afterId, afterId, query.status === 'active' ? 1 : 0, query.limit + 1) as Pick<MatchRow, 'id' | 'state_json' | 'sharing_policy_json' | 'last_sync_at'>[];
+    const rows = this.database.prepare(`SELECT m.id,m.state_json,m.sharing_policy_json,m.last_sync_at FROM matches m WHERE m.team_id=? AND m.season_id=? AND (? IS NULL OR m.id > ?) AND (?=0 OR json_extract(m.state_json,'$.status') IN ('first_half_running','first_half_paused','half_time','second_half_running','second_half_paused'))
+      AND NOT EXISTS(SELECT 1 FROM documents d WHERE d.team_id=m.team_id AND d.season_id=m.season_id AND d.kind='preparation' AND(
+        EXISTS(SELECT 1 FROM json_each(d.value_json,'$.fixtures') f WHERE json_extract(f.value,'$.id')=m.id AND json_extract(f.value,'$.status')<>'scheduled')
+        OR EXISTS(SELECT 1 FROM json_each(d.value_json,'$.fixtureManagement.tombstones') t WHERE json_extract(t.value,'$.fixture.id')=m.id)))
+      ORDER BY m.id COLLATE BINARY LIMIT ?`).all(teamId, seasonId, afterId, afterId, query.status === 'active' ? 1 : 0, query.limit + 1) as Pick<MatchRow, 'id' | 'state_json' | 'sharing_policy_json' | 'last_sync_at'>[];
     const visible = rows.slice(0, query.limit);
     return { items: visible.map(row => filterMatchForPrincipal({ principal, memberships, teamId, seasonId, state: JSON.parse(row.state_json), policy: JSON.parse(row.sharing_policy_json), lastSyncAt: row.last_sync_at, requestedRole, now: this.now() })), nextCursor: rows.length > query.limit ? matchPageCursor(scope, visible[visible.length - 1].id) : null, serverTime: new Date(this.now()).toISOString() };
   }
@@ -658,6 +672,38 @@ export class DevelopmentStore {
   preparation(principal: Principal, teamId: string, seasonId: string): PreparationState {
     assertCanManageTeam(principal, this.memberships(), teamId, seasonId, this.now());
     return this.document<PreparationState>(teamId, seasonId, 'preparation');
+  }
+  private protectedScheduleFixtures(teamId: string, seasonId: string): string[] {
+    return (this.database.prepare(`SELECT m.id FROM matches m WHERE m.team_id=? AND m.season_id=? AND (
+      COALESCE(json_extract(m.state_json,'$.revision'),-1)<>0 OR json_extract(m.state_json,'$.status')<>'preparation'
+      OR EXISTS(SELECT 1 FROM controller_grants g WHERE g.match_id=m.id) OR EXISTS(SELECT 1 FROM controller_history h WHERE h.match_id=m.id)
+      OR EXISTS(SELECT 1 FROM events e WHERE e.match_id=m.id) OR EXISTS(SELECT 1 FROM conflicting_submissions c WHERE c.match_id=m.id)
+      OR EXISTS(SELECT 1 FROM transfers t WHERE t.match_id=m.id))`).all(teamId, seasonId) as { id: string }[]).map(row => row.id);
+  }
+  scheduledGames(principal: Principal, teamId: string, seasonId: string, role: FixtureManagementRole): ScheduledGameManagementDto {
+    return scheduledGameManagementView(this.document<PreparationState>(teamId, seasonId, 'preparation'), { principal, memberships: this.memberships(), role, seasonId, nowMs: this.now(), protectedFixtureIds: this.protectedScheduleFixtures(teamId, seasonId) });
+  }
+  teamOverview(principal: Principal, teamId: string, seasonId: string, role?: string): TeamOverviewDto {
+    if (!role || !['manager', 'administrator', 'player', 'spectator'].includes(role)) throw new AccessError('NOT_FOUND', 404, 'Choose the current team overview context.');
+    assertTeamRole(principal, this.memberships(), teamId, seasonId, [role as 'manager' | 'administrator' | 'player' | 'spectator'], this.now());
+    const preparation = this.document<PreparationState>(teamId, seasonId, 'preparation');
+    const rows = this.database.prepare('SELECT state_json FROM matches WHERE team_id=? AND season_id=? ORDER BY id').all(teamId, seasonId) as { state_json: string }[];
+    const dto = projectTeamOverview(preparation, rows.map(row => JSON.parse(row.state_json) as MatchState), seasonId);
+    assertTeamOverviewDto(dto, { teamId, seasonId }); return dto;
+  }
+  scheduledGameCommand(principal: Principal, teamId: string, seasonId: string, command: unknown, role: FixtureManagementRole): ScheduledGameManagementDto {
+    const apply = () => {
+      const previous = this.document<PreparationState>(teamId, seasonId, 'preparation');
+      const state = applyScheduledGameCommand(previous, command, { principal, memberships: this.memberships(), role, seasonId, nowMs: this.now(), protectedFixtureIds: this.protectedScheduleFixtures(teamId, seasonId) });
+      if (state !== previous) {
+        this.saveDocument(teamId, seasonId, 'preparation', state);
+        const action = state.fixtureManagement!.actions.at(-1)!;
+        this.audit(principal, action.type, action.fixtureId, 'schedule_changed_history_retained');
+        this.enqueueNotifications(teamId, seasonId, 'schedule', action.fixtureId, action.commandId);
+      }
+      return this.scheduledGames(principal, teamId, seasonId, role);
+    };
+    return this.database.isTransaction ? apply() : this.transaction(apply);
   }
   configuration(principal: Principal, teamId: string, seasonId: string,role?:string): ReturnType<typeof configurationServiceView> {
     if(role)assertTeamRole(principal,this.memberships(),teamId,seasonId,role==='manager'||role==='administrator'?[role]:[],this.now());
@@ -711,20 +757,19 @@ export class DevelopmentStore {
   }
   preparationCommand(principal: Principal, teamId: string, seasonId: string, command: PreparationCommand): PreparationState {
     const previous = this.preparation(principal, teamId, seasonId);
-    const types = ['club.updated', 'team.updated', 'season.rolled_over', 'profile.saved', 'roster.imported', 'profile.archived', 'formation.saved', 'fixture.saved', 'fixture.status_changed', 'fixture.response_recorded', 'fixture.selection_saved', 'fixture.attendance_recorded', 'fixture.prepared', 'match_plan.saved', 'match_plan.applied', 'match_plan.cleared', 'training.series_created', 'training.series_updated', 'training.series_cancelled', 'training.saved', 'training.status_changed', 'training.response_recorded', 'training.attendance_recorded'];
+    const types = ['club.updated', 'team.updated', 'season.rolled_over', 'profile.saved', 'roster.imported', 'profile.archived', 'formation.saved', 'position.saved', 'position.archived', 'lineup_template.saved', 'lineup_template.archived', 'lineup_template.applied', 'lineup_template.cleared', 'fixture.saved', 'fixture.status_changed', 'fixture.response_recorded', 'fixture.selection_saved', 'fixture.attendance_recorded', 'fixture.prepared', 'match_plan.saved', 'match_plan.applied', 'match_plan.cleared', 'training.series_created', 'training.series_updated', 'training.series_cancelled', 'training.saved', 'training.status_changed', 'training.response_recorded', 'training.attendance_recorded'];
     if (!command || !types.includes(command.type)) bad('Unsupported preparation command.');
     if (command.type === 'season.rolled_over') throw new AccessError('SEASON_ASSIGNMENT_REQUIRED', 503, 'A connected new season requires approved manager/player assignments and explicit spectator renewal. The local rehearsal supports rollover; this service will not save an inaccessible new season or silently copy authority.');
     if (command.type === 'club.updated') {
       assertTeamRole(principal, this.memberships(), teamId, seasonId, ['administrator'], this.now());
       assertAdultAuthority(principal, true, this.now());
     }
+    if (command.type === 'fixture.saved') assertFixtureNotDeleted(previous, command.fixture.id);
+    else if ('fixtureId' in command && typeof command.fixtureId === 'string') assertFixtureNotDeleted(previous, command.fixtureId);
     const protectedFixtureIds: string[] = [];
-    if (command.type === 'match_plan.applied') {
-      const match = this.database.prepare('SELECT state_json FROM matches WHERE id=? AND team_id=? AND season_id=?').get(command.fixtureId, teamId, seasonId) as { state_json: string } | undefined;
-      if (match) {
-        const accepted = JSON.parse(match.state_json) as MatchState;
-        if (accepted.status !== 'preparation' || accepted.revision !== 0 || this.database.prepare('SELECT match_id FROM controller_grants WHERE match_id=?').get(command.fixtureId) || this.database.prepare('SELECT event_id FROM events WHERE match_id=? LIMIT 1').get(command.fixtureId)) protectedFixtureIds.push(command.fixtureId);
-      }
+    if (['match_plan.applied', 'match_plan.cleared', 'lineup_template.applied', 'lineup_template.cleared', 'fixture.status_changed'].includes(command.type) && 'fixtureId' in command && typeof command.fixtureId === 'string') {
+      if (this.protectedScheduleFixtures(teamId, seasonId).includes(command.fixtureId)) protectedFixtureIds.push(command.fixtureId);
+      if (protectedFixtureIds.length && ['fixture.status_changed', 'match_plan.cleared'].includes(command.type)) throw new AccessError('MATCH_HISTORY_EXISTS', 409, 'This game has recording authority or saved match history. Preserve its schedule and recorded snapshot.');
     }
     const state = reducePreparation(previous, command, { nowMs: this.now(), protectedFixtureIds });
     if (command.type === 'fixture.prepared') {
@@ -864,6 +909,20 @@ export class DevelopmentStore {
     return { principal, memberships: this.memberships(), nowMs: this.now(), requestedRole: viewer.actor, state: this.document<RecordsState>(teamId, seasonId, 'records'), preparation: this.document<PreparationState>(teamId, seasonId, 'preparation'), acceptedMatches: rows.map(row => ({ teamId, seasonId, match: JSON.parse(row.state_json) as MatchState, sharingPolicy: JSON.parse(row.sharing_policy_json) as SharingPolicy })),community:{accountId:principal.accountId,teamId,seasonId,audience:viewer.actor,playerId:viewer.playerId??null,revision:community.revision,view:{allowed:filtered.allowed,matches:filtered.matches,gallery:filtered.gallery}} };
   }
   records(principal: Principal, teamId: string, seasonId: string, role?: string): Record<string, unknown> { return recordsServiceView(this.recordsContext(principal, teamId, seasonId, role)); }
+  playerStats(principal: Principal, teamId: string, seasonId: string, role?: string): PlayerStatsDto {
+    if (!role || !['manager', 'administrator', 'player'].includes(role)) throw new AccessError('NOT_FOUND', 404, 'Choose the current staff or own-player statistics context.');
+    const memberships = currentMemberships(principal, this.memberships(), this.now()).filter(member => member.teamId === teamId && member.seasonId === seasonId);
+    assertTeamRole(principal, memberships, teamId, seasonId, [role as 'manager' | 'administrator' | 'player'], this.now());
+    if (role !== 'player') assertAdultAuthority(principal, role === 'administrator', this.now());
+    const bindings = memberships.filter(member => member.role === 'player').map(member => member.playerId);
+    if (role === 'player' && (new Set(bindings).size !== 1 || !bindings[0])) throw new AccessError('NOT_FOUND', 404, 'The current own-player statistics binding is unavailable.');
+    const preparation = this.document<PreparationState>(teamId, seasonId, 'preparation');
+    const rows = this.database.prepare('SELECT state_json,sharing_policy_json FROM matches WHERE team_id=? AND season_id=? ORDER BY id').all(teamId, seasonId) as { state_json: string; sharing_policy_json: string }[];
+    const formation = preparation.formations.find(item => item.format === preparation.team.defaultPitchPlaces);
+    const source = playerStatsSourceFromRecords({ state: this.document<RecordsState>(teamId, seasonId, 'records'), acceptedMatches: rows.map(row => ({ teamId, seasonId, match: JSON.parse(row.state_json) as MatchState, sharingPolicy: JSON.parse(row.sharing_policy_json) as SharingPolicy })), positions: positionCatalogueFor(preparation), formation: formation ? { id: formation.id, label: formation.name, slots: formation.slots.map(slot => ({ id: slot.id, positionCode: slot.position, label: slot.label, x: slot.x, y: slot.y })) } : null });
+    const viewer = { role: role as 'manager' | 'administrator' | 'player', teamId, seasonId, ...(role === 'player' ? { playerId: bindings[0]! } : {}) };
+    const dto = projectPlayerStats(source, viewer); assertPlayerStatsDto(dto, viewer); return dto;
+  }
   recordsExport(principal: Principal, teamId: string, seasonId: string, request: RecordsExportRequest, role?: string): ReturnType<typeof recordsServiceExport> { return recordsServiceExport({ ...this.recordsContext(principal, teamId, seasonId, role), request }); }
   recordsCommand(principal: Principal, teamId: string, seasonId: string, command: RecordsServiceCommand, role?: string): Record<string, unknown> {
     const state = applyRecordsServiceCommand({ ...this.recordsContext(principal, teamId, seasonId, role), command });

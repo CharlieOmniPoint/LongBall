@@ -1,4 +1,4 @@
-import { REVIEW_STATUS_REQUEST } from './review-entry.mjs';
+import { REVIEW_STATUS_REQUEST, openWorkspaceTab } from './review-entry.mjs';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { existsSync, createWriteStream } from 'node:fs';
@@ -55,7 +55,7 @@ try {
       await page.getByTestId('workspace-context-ready').waitFor();
       if (role === 'administrator') {
         await page.getByTestId('workspace-tab-clubs').waitFor();
-        await page.getByTestId('workspace-tab-people').click();
+        await openWorkspaceTab(page, 'people');
         await page.getByTestId('connected-staff').waitFor();
         assert.equal(await page.getByTestId('workspace-tab-controller').count(), 0);
         assert.equal(await page.getByTestId('workspace-tab-reports').count(), 0);
@@ -66,8 +66,9 @@ try {
         await page.getByTestId('preparation-create-event').waitFor();
         assert.equal(await page.getByTestId('workspace-tab-people').count(), 0);
       } else {
-        await page.getByTestId(role === 'player' ? 'workspace-player-home' : 'workspace-match-centre').waitFor();
-        await page.getByTestId('workspace-tab-centre').waitFor();
+        await page.getByTestId(role === 'player' ? 'workspace-player-home' : 'team-overview').waitFor();
+        await openWorkspaceTab(page, 'centre');
+        await page.getByTestId('workspace-match-centre').waitFor();
         assert.equal(await page.getByTestId('workspace-tab-controller').count(), 0);
         assert.equal(await page.getByTestId('workspace-tab-people').count(), 0);
         assert(!requests.some(request => /\/download(?:\?|$)/.test(request.path)), `${role} entry loaded a private match stream`);

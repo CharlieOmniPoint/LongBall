@@ -133,7 +133,7 @@ describe.skipIf(!configured)('API04 encrypted export repository with actual rest
       expect((await preceding.query("SELECT to_regclass('longball.report_exports')::text AS relation")).rows[0]?.relation).toBeNull();
       expect(String((await preceding.query("SELECT pg_get_functiondef('longball.claim_due_job(text,bigint,text)'::regprocedure) AS definition")).rows[0]?.definition)).not.toContain('report.export');
       await preceding.query('DROP FUNCTION purge_report_exports()');await preceding.migrate();await preceding.migrate();
-      expect((await preceding.query('SELECT version FROM schema_migrations ORDER BY version')).rows.map(row=>row.version)).toEqual([2,3,4,5,6,7,8,9,10,11,12,13,14,15,16]);
+      expect((await preceding.query('SELECT version FROM schema_migrations ORDER BY version')).rows.map(row=>row.version)).toEqual([2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]);
       expect((await preceding.query('SELECT id,state_json,config_json,sharing_policy_json FROM matches ORDER BY id')).rows).toEqual(domainBefore);
       expect((await preceding.query("SELECT relrowsecurity AS rls FROM pg_class WHERE oid='longball.report_exports'::regclass")).rows[0]?.rls).toBe(true);
     }finally{await preceding.close();await admin.query(`DROP DATABASE "${upgradeDatabase}" WITH (FORCE)`);}

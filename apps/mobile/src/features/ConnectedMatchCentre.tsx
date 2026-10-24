@@ -9,6 +9,7 @@ import {
 import { Button, Card, Notice, Pill } from "../ui";
 import { typography } from "../ui/tokens";
 import { ReportCommunityCard } from "./ReportCommunityCard";
+import { formatUkDate, formatUkDateTime } from "@longball/application/uk-display";
 
 export interface ConnectedMatchCentreDto {
   matchId: string;
@@ -75,26 +76,27 @@ export function ConnectedMatchCentre({
   onLoadMore?: () => void;
 }) {
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [openDetails, setOpenDetails] = useState<string | null>(null);
   return (
     <View style={{ gap: 12 }} testID="workspace-match-centre">
       <Card>
         <Text style={typography.section}>Match centre</Text>
         <Text style={typography.body}>
-          These are accepted service updates. A recorder may have newer events
-          waiting on its phone.
+          Shared match updates. The match recorder may have newer changes waiting to sync.
         </Text>
         <Button
-          label="Refresh accepted match updates"
+          label="Refresh match updates"
+          compact
           variant="secondary"
           disabled={busy}
           onPress={onRefresh}
         />
       </Card>
       {!matches.length && (
-        <Notice>
-          No accepted match updates are available in this authorised team and
-          season. Historical summaries remain in permitted reports.
-        </Notice>
+        <Card>
+          <Notice>No match updates are available for this team and season.</Notice>
+          <Button label="Open earlier results" variant="secondary" disabled={busy} onPress={onReports} />
+        </Card>
       )}
       {matches.map((match) => {
         if (
@@ -151,20 +153,17 @@ export function ConnectedMatchCentre({
                   "Team match"}
               </Text>
               <Text style={typography.muted}>
-                {match.fixture?.playedDate ??
+                {formatUkDate(match.fixture?.playedDate ??
                   match.playedDate ??
                   (manager
                     ? match.state?.config.fixture?.playedDate
-                    : undefined) ??
-                  "Date unavailable"}{" "}
+                    : undefined))}{" "}
                 · {status.replaceAll("_", " ")}
               </Text>
               {(match.sharingRestricted && !manager) ||
               details?.status === "withheld" ? (
                 <Notice tone="warning">
-                  Scores and derived results are not shared for this
-                  competition. An invitation does not override the applicable
-                  sharing policy.
+                  Scores and results are not shared for this competition.
                 </Notice>
               ) : (
                 <>
@@ -189,21 +188,19 @@ export function ConnectedMatchCentre({
                 {active ? fresh ? "Last accepted update" : "Updates delayed" : status === "completed" ? "Full time" : status === "abandoned" ? "Abandoned" : "Awaiting kickoff"}
               </Pill>
               <Text style={typography.muted}>
-                Recorder last synchronised:{" "}
+                Last shared update:{" "}
                 {match.lastRecorderSyncAt === null
                   ? "Not recorded"
-                  : new Date(match.lastRecorderSyncAt).toLocaleString("en-GB", {
-                      timeZone: "Europe/London",
-                    })}{" "}
-                · revision {match.revision}
+                  : formatUkDateTime(match.lastRecorderSyncAt)} · Europe/London
               </Text>
-              {details?.status === "available" ? (
+              {!active && <Button compact label={openDetails === match.matchId ? "Hide match details" : "Show match details"} testID={`match-centre-toggle-details-${match.matchId}`} variant="quiet" disabled={busy} onPress={() => setOpenDetails(current => current === match.matchId ? null : match.matchId)} />}
+              {(active || openDetails === match.matchId) && (details?.status === "available" ? (
                 <>
                   <Text style={typography.section}>Goal events</Text>
                   <Text style={typography.muted}>
                     {details.recordMode === "historical_summary"
                       ? "Historical summary · only supplied goal details are recorded."
-                      : "Accepted match events · ordered by half and active time."}
+                      : "Recorded goals in match order."}
                     {details.detailCompleteness === "review_required"
                       ? " These records require review."
                       : ""}
@@ -263,8 +260,7 @@ export function ConnectedMatchCentre({
                 </>
               ) : details?.status === "withheld" ? (
                 <Notice>
-                  Competition policy withholds this match’s goal events, award
-                  and contextual photos.
+                  Goal details, the award and match photos are not shared for this competition.
                 </Notice>
               ) : (
                 <Notice>
@@ -272,28 +268,27 @@ export function ConnectedMatchCentre({
                     ? "The match and report updates differ. Refresh before reviewing goal events, the award or album."
                     : status === "preparation"
                       ? "Goal events and the final award become available after recorded play. No match report has been recorded yet."
-                      : "Goal, award and album details are unavailable in this current permitted report. Refresh to check the latest records."}
+                      : "Goal, award and album details are unavailable. Refresh to check the latest records."}
                 </Notice>
-              )}
+              ))}
               {own && (
                 <>
                   <Text style={typography.label}>My recorded game</Text>
                   <Text style={typography.body}>
                     Attendance: {own.attendance.replaceAll("_", " ")} · playing
-                    time {time(own.playingMs)} through the last accepted
-                    boundary.
+                    time {time(own.playingMs)} at the last shared update.
                   </Text>
                   <Text style={typography.muted}>
-                    {own.completeness.replaceAll("_", " ")}. The service does
-                    not extrapolate this phone’s live clock.
+                    {own.completeness.replaceAll("_", " ")}. Playing time updates when the recorder syncs.
                   </Text>
                   <Button
                     label={
                       expanded === match.matchId
-                        ? "Hide my accepted intervals"
-                        : "Show my accepted intervals"
+                        ? "Hide my playing-time details"
+                        : "Show my playing-time details"
                     }
                     variant="quiet"
+                    compact
                     onPress={() =>
                       setExpanded((value) =>
                         value === match.matchId ? null : match.matchId,
@@ -315,9 +310,10 @@ export function ConnectedMatchCentre({
                 label={
                   audience === "player"
                     ? "Open my reports"
-                    : "Open permitted team reports"
+                    : "Open match report"
                 }
                 variant="secondary"
+                compact
                 disabled={busy}
                 testID={`match-centre-open-report-${match.matchId}`}
                 onPress={() =>
@@ -329,19 +325,16 @@ export function ConnectedMatchCentre({
         );
       })}
       <Button
-        label="Open published game albums"
+        label="Open game photos"
+        compact
         variant="quiet"
         disabled={busy}
         onPress={onPhotos}
       />
       {audience === "spectator" && (
-        <Notice>
-          Spectator access includes permitted team updates and published photos.
-          Named attendance, minutes, private submissions and ballots stay
-          outside this view.
-        </Notice>
+        <Text style={typography.muted}>Your view includes shared match updates and published photos. Player attendance, minutes, submissions and votes stay private.</Text>
       )}
-      {hasMore && onLoadMore && <Button label={loadingMore ? "Loading accepted matches…" : "Load more accepted matches"} testID="match-centre-load-more" variant="secondary" disabled={busy || loadingMore} onPress={onLoadMore} />}
+      {hasMore && onLoadMore && <Button label={loadingMore ? "Loading matches…" : "Load more matches"} testID="match-centre-load-more" variant="secondary" disabled={busy || loadingMore} onPress={onLoadMore} />}
     </View>
   );
 }

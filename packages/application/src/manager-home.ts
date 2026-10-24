@@ -1,6 +1,6 @@
 import type { MatchState } from '../../domain/src/types';
 import type { getCommunityView } from './community';
-import { positionCodes, type PreparationFixture, type PreparationState } from './preparation';
+import { activePositionCodes, type PreparationFixture, type PreparationState } from './preparation';
 import type { selectSeasonResults } from './records';
 
 export type ManagerHomeResults = Pick<ReturnType<typeof selectSeasonResults>, 'teamId' | 'seasonId' | 'visibilityScope' | 'rows'>;
@@ -91,7 +91,8 @@ export function selectManagerHome(input: { state: PreparationState; records: Man
     .reduce((sum, item) => sum + missingAttendance(item.selectedProfileIds, item.attendance), 0);
   const trainingCheckInsDue = state.training.filter(item => item.seasonId === seasonId && item.status === 'held')
     .reduce((sum, item) => sum + missingAttendance(item.expectedProfileIds, item.attendance), 0);
-  const missingPreferences = activePlayers.filter(item => item.preferences.length !== 3 || new Set(item.preferences).size !== 3 || item.preferences.some(position => !positionCodes.includes(position))).length;
+  const activePositions = activePositionCodes(state);
+  const missingPreferences = activePlayers.filter(item => item.preferences.length !== 3 || new Set(item.preferences).size !== 3 || item.preferences.some(position => !activePositions.includes(position))).length;
   const recent = recentResults(records?.results.rows ?? [], today);
   const latestDay = recent[0]?.playedDate;
   const latestDayRows = latestDay ? recent.filter(item => item.playedDate === latestDay) : [];

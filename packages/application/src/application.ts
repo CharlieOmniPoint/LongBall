@@ -70,7 +70,7 @@ export function fixtureMatchConfig(
     pitchPlaces: snapshot.fixture.format,
     plannedHalfDurationMs: snapshot.fixture.plannedHalfDurationMs,
     fixedKeeperId: keepers.length === 1 ? keepers[0].playerId : null,
-    ...(snapshot.matchPlanDraft ? { initialPolicyProposal: snapshot.matchPlanDraft.settings, initialLineupProposal: snapshot.matchPlanDraft.allocations.map(row => ({ ...row })) } : {}),
+    ...(snapshot.matchPlanDraft ? { initialPolicyProposal: snapshot.matchPlanDraft.settings, initialLineupProposal: snapshot.matchPlanDraft.allocations.map(row => ({ ...row })) } : snapshot.lineupTemplateDraft ? { initialLineupProposal: snapshot.lineupTemplateDraft.allocations.map(row => ({ ...row })) } : {}),
     initialAttendance: { ...snapshot.attendance },
     slots: snapshot.formation.slots.map((slot) => ({
       slotId: slot.id,

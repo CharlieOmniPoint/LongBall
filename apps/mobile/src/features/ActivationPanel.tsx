@@ -1,3 +1,4 @@
+import { formatUkDateTime } from '@longball/application/uk-display';
 import { useEffect, useRef, useState } from "react";
 import { Platform, StyleSheet, Text, TextInput, View } from "react-native";
 import * as WebBrowser from "expo-web-browser";
@@ -421,7 +422,7 @@ function ActivationPanelContent({
                     {issue.token}
                   </Text>
                   <Text style={styles.body}>
-                    Expires {new Date(issue.expiresAt).toISOString()} ·
+                    Expires {formatUkDateTime(issue.expiresAt)} ·
                     experiment policy {issue.policyVersion}
                   </Text>
                   <Button

@@ -1,3 +1,4 @@
+import { formatUkDateTime } from '@longball/application/uk-display';
 import { Text, View } from 'react-native';
 import type { ReportCommunityComposition } from '@longball/application/report-community';
 import { Button, Card, Notice, Pill, typography } from '../ui';
@@ -17,7 +18,7 @@ export function ReportCommunityCard({ matchId, value, onOpenAlbum, disabled = fa
       {award ? <>
         <Text style={typography.body} testID="report-community-award">{award.result === 'no_valid_votes' ? 'No valid votes' : `${award.winnerLabels.length > 1 ? 'Joint winners' : 'Winner'}: ${award.winnerLabels.join(' · ')}`}</Text>
         <Pill tone={award.deadlineMissed ? 'warning' : 'brand'}>{award.deadlineMissed ? 'Finalised after the original deadline' : 'Final award recorded'}</Pill>
-        <Text style={typography.muted}>Finalised {new Date(award.finalisedAtMs).toLocaleString('en-GB', { timeZone: 'Europe/London' })} · original result deadline {new Date(award.finalisationDeadlineAtMs).toLocaleString('en-GB', { timeZone: 'Europe/London' })} Europe/London.</Text>
+        <Text style={typography.muted}>Finalised {formatUkDateTime(award.finalisedAtMs)} · original result deadline {formatUkDateTime(award.finalisationDeadlineAtMs)} Europe/London.</Text>
       </> : <Text style={typography.body}>No final award recorded.</Text>}
       <Text style={typography.section}>Published game album</Text>
       <Text style={typography.body} testID="report-community-album">{album ? `${album.photoCount} published ${album.photoCount === 1 ? 'photo' : 'photos'} visible in this view.` : 'No published album reference recorded.'}</Text>

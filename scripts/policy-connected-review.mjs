@@ -64,7 +64,7 @@ async function open(prepared = false) {
     await page.getByLabel('Connected match identifier', { exact: true }).fill(matchId);
   } else {
     await openWorkspaceTab(page, 'schedule');
-    await page.getByRole('button', { name: 'Open fixture Maple FC, 2026-10-24', exact: true }).click();
+    await page.getByRole('button', { name: 'Open fixture Maple FC, 24/10/26', exact: true }).click();
     await page.getByTestId('preparation-open-match').click();
   }
   await page.getByTestId('connected-match-countdown').or(page.getByTestId('recording-acquire')).first().waitFor();

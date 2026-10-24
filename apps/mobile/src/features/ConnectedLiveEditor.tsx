@@ -28,6 +28,7 @@ import { colors, typography } from "../ui/tokens";
 import { formatTime } from "../useMatch";
 import { LiveEventsPanel } from "./LiveEventsPanel";
 import { reviewPreparedMatchPlanLineup } from '@longball/application/match-plans';
+import { autoFillMatchLineup } from '@longball/application/lineup-autofill';
 
 export interface ConnectedLiveEditorProps {
   match: MatchState;
@@ -504,12 +505,26 @@ export function ConnectedLiveEditor(props: ConnectedLiveEditorProps) {
                   ? "Prepare the saved formation"
                   : "Review a lineup change"}
               </Text>
-              {props.match.status === 'preparation' && reusableProposal && <View style={styles.stack}><Notice>Saved match-plan proposal. Actual check-in is still required; reviewing this draft never puts an absent player on the pitch.</Notice>{reusableProposalError && <Text style={typography.muted}>{reusableProposalError}</Text>}<Button label="Review saved match-plan lineup" disabled={busy || Boolean(reusableProposalError)} onPress={() => { try { const reviewed = reviewPreparedMatchPlanLineup(current.current.match); setLineupDraft({ matchId: current.current.match.config.matchId, ...reviewed }); setSelectedSlot(null); } catch (cause) { setSaveError(cause instanceof Error ? cause.message : 'The saved proposal is no longer applicable.'); } }} /></View>}
+              {props.match.status === 'preparation' && reusableProposal && <View style={styles.stack}><Notice>Saved starting-lineup proposal. Actual check-in is still required; reviewing this draft never puts an absent player on the pitch.</Notice>{reusableProposalError && <Text style={typography.muted}>{reusableProposalError}</Text>}<Button label="Review saved starting lineup" disabled={busy || Boolean(reusableProposalError)} onPress={() => { try { const reviewed = reviewPreparedMatchPlanLineup(current.current.match); setLineupDraft({ matchId: current.current.match.config.matchId, ...reviewed }); setSelectedSlot(null); } catch (cause) { setSaveError(cause instanceof Error ? cause.message : 'The saved proposal is no longer applicable.'); } }} /></View>}
               <Text style={typography.muted}>
                 {preparation
                   ? "Assign the actual present players to the saved places. Kickoff commits the staged lineup."
                   : "Draft a complete batch. Confirm only when the changes actually happen; the clock continues while you review."}
               </Text>
+              <Button
+                label={dirty ? "Replace draft with best-fit available players" : "Auto-fill available players"}
+                testID="lineup-auto-fill"
+                variant="secondary"
+                disabled={busy || Boolean(props.clock?.recoveryRequired)}
+                onPress={() => {
+                  const match = current.current.match;
+                  const result = autoFillMatchLineup(match);
+                  if (result.status === 'infeasible') { setSaveError(result.reason); return; }
+                  setLineupDraft({ matchId: match.config.matchId, sourceRevision: match.revision, lineup: result.allocations });
+                  setSelectedSlot(null); setSaveError(null);
+                }}
+              />
+              <Text style={typography.muted}>Auto-fill uses actual present, available players and their saved approved positions. It opens a draft for review; it does not record a change or start a half.</Text>
               {suggestedDraft && (
                 <View style={styles.stack}>
                   <Notice

@@ -10,6 +10,7 @@ import type {
   PreparationState,
   PreparedFixtureSnapshot,
 } from "./preparation";
+import { assertActiveFormationPositions } from './position-catalogue';
 
 /** A reusable proposal: no policy version, clock boundary, authority or acknowledgement is copied. */
 export type MatchPlanSettings = MatchPolicyProposal;
@@ -166,6 +167,7 @@ function validateProposal(
   allocations: Allocation[],
   settings: MatchPlanSettings,
 ) {
+  assertActiveFormationPositions(state, formation);
   assert(
     formation.format === fixture.format &&
       formation.slots.length === fixture.format &&

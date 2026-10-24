@@ -1,9 +1,6 @@
 import { useState } from "react";
 import { Text, View } from "react-native";
-import {
-  positionCodes,
-  type FormationSlot,
-} from "@longball/application/preparation";
+import { type FormationSlot } from "@longball/application/preparation";
 import { normalisedPitchPoint } from "@longball/application/preparation-presentation";
 import { Button, Notice, Pitch, typography } from "../ui";
 
@@ -12,19 +9,25 @@ export function FormationPositionEditor({
   slots,
   name,
   disabled,
+  positionOrder = ["GK", "CB", "LB", "RB", "CM", "LW", "RW", "ST"],
   onMove,
 }: {
   slots: FormationSlot[];
   name: string;
   disabled: boolean;
+  positionOrder?: string[];
   onMove: (slotId: string, point: { x: number; y: number }) => void;
 }) {
   const [chosen, setChosen] = useState<string | null>(null);
   const selected = slots.find((slot) => slot.id === chosen);
   const ordered = [...slots].sort(
     (a, b) =>
-      positionCodes.indexOf(a.position) - positionCodes.indexOf(b.position) ||
-      a.id.localeCompare(b.id),
+      (positionOrder.indexOf(a.position) < 0
+        ? positionOrder.length
+        : positionOrder.indexOf(a.position)) -
+        (positionOrder.indexOf(b.position) < 0
+          ? positionOrder.length
+          : positionOrder.indexOf(b.position)) || a.id.localeCompare(b.id),
   );
   const place = (point: { x: number; y: number } | null) => {
     if (!disabled && selected && point) onMove(selected.id, point);

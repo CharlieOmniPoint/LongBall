@@ -1,3 +1,4 @@
+import { formatUkDateTime } from '@longball/application/uk-display';
 import { useRef, useState } from "react";
 import { Text } from "react-native";
 import {
@@ -111,7 +112,7 @@ export function SpectatorActivationPanel({
         {info && <>
           <Text testID="activation-invitation-context">{invitationTeamLabel(info.context)} · {info.context.clubName} · {info.context.seasonLabel ?? 'Season label unavailable'}</Text>
           <Text>Invited by: {info.context.inviterLabel}</Text>
-          <Text>Link expires {new Date(info.expiresAt).toLocaleString()}.</Text>
+          <Text>Link expires {formatUkDateTime(info.expiresAt)}.</Text>
           <Text selectable>References: team {info.teamId} · season {info.seasonId}</Text>
         </>}
         {notice && <Notice>{notice}</Notice>}

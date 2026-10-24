@@ -1,6 +1,13 @@
 /** Exact pinned discovery endpoint with only its bounded public cache-busting key. */
 export const REVIEW_STATUS_REQUEST = /^https:\/\/raw\.githubusercontent\.com\/CharlieOmniPoint\/LongBall\/preview\/longball-m0\/preview-status\.json\?reviewCheck=\d{1,16}-\d{1,9}$(?![\s\S])/;
 
+/** Expected visible UK calendar label; inputs retain the API's ISO storage format. */
+export function reviewDateLabel(iso) {
+  if (typeof iso !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(iso) || !Number.isFinite(Date.parse(`${iso}T12:00:00Z`)) || new Date(`${iso}T12:00:00Z`).toISOString().slice(0, 10) !== iso) throw new Error('Review selectors require a valid recorded calendar date.');
+  const [year, month, day] = iso.split('-');
+  return `${day}/${month}/${year.slice(-2)}`;
+}
+
 /** Select the fictional account explicitly whenever the entry screen is shown. */
 export async function enterFictionalReview(page, role = 'manager', destination = 'local') {
   const welcome = page.getByTestId('welcome-review');

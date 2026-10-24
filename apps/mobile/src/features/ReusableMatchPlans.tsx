@@ -117,12 +117,12 @@ export function ReusableMatchPlans({
   return (
     <Card>
       <View style={{ gap: 12 }} testID="reusable-match-plans">
-        <Text style={typography.section}>Reusable match plans</Text>
+        <Text style={typography.section}>Advanced match plans</Text>
         <Text style={typography.body}>
-          Save a named starting-lineup and proposed settings from reviewed
+          Optionally save a starting lineup with proposed match settings from reviewed
           preparation. Copy them into another unplayed fixture only after
           reviewing its current selected players. Replies, check-in and recorded
-          matches are never copied.
+          matches are never copied. For a simple lineup without policy settings, use Saved player setups.
         </Text>
         {error && <Notice tone="error">{error}</Notice>}
         {notice && <Notice>{notice}</Notice>}

@@ -26,7 +26,7 @@ export function generatedFictionalImage(): LocalUploadImage {
   return {
     bytes: decodeBase64(fictionalPng),
     mimeType: "image/png",
-    label: "Generated demo pitch colour PNG · no people",
+    label: "Generated pitch colour PNG · no people",
     uri: `data:image/png;base64,${fictionalPng}`,
   };
 }

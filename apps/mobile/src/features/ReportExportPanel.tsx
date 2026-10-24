@@ -1,3 +1,4 @@
+import { formatUkDate, formatUkDateTime } from '@longball/application/uk-display';
 import { useEffect, useRef, useState } from 'react';
 import { AppState, Platform, Text, View } from 'react-native';
 import type { Role } from '@longball/application/access';
@@ -12,7 +13,7 @@ interface Attempt { request: ReportExportRequest; projectionVersion: number; key
 const labels: Record<Kind, string> = { season_results: 'Season report', match_summary: 'Match report', own_participation: 'My participation', team_participation: 'Team participation', attendance: 'Attendance' };
 const statusLabels = { queued: 'Queued', working: 'Preparing report', ready: 'Ready to download', failed: 'Could not prepare report', expired: 'Export expired' };
 const foregroundNow = () => Platform.OS === 'web' ? typeof document !== 'undefined' && document.visibilityState !== 'hidden' : AppState.currentState === 'active';
-const when = (value: string) => new Date(value).toLocaleString('en-GB', { timeZone: 'Europe/London' });
+const when = formatUkDateTime;
 const message = (cause: unknown) => cause instanceof Error ? cause.message : 'The export request could not complete.';
 
 /** A queued job never downloads automatically. The original request/key survive an uncertain response. */
@@ -82,7 +83,7 @@ export function ReportExportPanel(props: {
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
         {kinds.map(choice => <Button key={choice} label={labels[choice]} variant={kind === choice ? 'primary' : 'secondary'} disabled={disabled || uncertain} onPress={() => setKind(choice)} />)}
       </View>
-      {kind === 'match_summary' && permittedMatches.map(report => <Button key={report.matchId} label={`${report.opponent ?? 'Team match'} · ${report.playedDate ?? 'Date not recorded'}`} variant={matchId === report.matchId ? 'primary' : 'secondary'} disabled={disabled || uncertain} onPress={() => setMatchId(report.matchId)} />)}
+      {kind === 'match_summary' && permittedMatches.map(report => <Button key={report.matchId} label={`${report.opponent ?? 'Team match'} · ${report.playedDate ? formatUkDate(report.playedDate) : 'Date not recorded'}`} variant={matchId === report.matchId ? 'primary' : 'secondary'} disabled={disabled || uncertain} onPress={() => setMatchId(report.matchId)} />)}
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
         <Button label="Export permitted JSON" testID="records-export-json" variant="secondary" disabled={disabled || uncertain || matchMissing || !['season_results', 'match_summary'].includes(kind)} onPress={() => { void perform(async signal => { const result = await props.onLegacyJson({ kind: kind === 'match_summary' ? 'match' : 'season', format: 'json', ...(kind === 'match_summary' && matchId ? { matchId } : {}), expectedProjectionVersion: props.projectionVersion }, signal); if (!signal.aborted && mounted.current) setFeedback(result); }); }} />
         <Button label="Prepare permitted CSV" testID="records-export-csv" disabled={disabled || uncertain || matchMissing} onPress={() => prepare('csv')} />

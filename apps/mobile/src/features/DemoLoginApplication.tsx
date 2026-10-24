@@ -24,6 +24,7 @@ export function DemoLoginApplication({ onBack, onNavigationGuardChange }: {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [displayRole, setDisplayRole] = useState<WorkspaceBinding['role'] | null>(null);
   const [foreground, setForeground] = useState(isForeground);
   const [accessCheck, setAccessCheck] = useState<'ready' | 'checking' | 'failed'>('ready');
   const operation = useRef<AbortController | null>(null);
@@ -41,7 +42,7 @@ export function DemoLoginApplication({ onBack, onNavigationGuardChange }: {
 
   const closeSession = useCallback((expected: DemoLoginSession, notice: string) => {
     if (sessionRef.current !== expected) return false;
-    sessionRef.current = null; selectedScope.current = null; deadline.current = null; generation.current += 1;
+    sessionRef.current = null; selectedScope.current = null; setDisplayRole(null); deadline.current = null; generation.current += 1;
     resumeOperation.current?.abort(); resumeOperation.current = null;
     setSession(null); setPasscode(''); setError(null); setMessage(notice); setAccessCheck('ready');
     onNavigationGuardChange?.(null);
@@ -72,7 +73,7 @@ export function DemoLoginApplication({ onBack, onNavigationGuardChange }: {
       if (resumeOperation.current === controller) resumeOperation.current = null;
     }
   }, [closeSession, sessionHasExpired]);
-  const authorityScopeChanged = useCallback((scope: WorkspaceBinding | null) => { selectedScope.current = scope; }, []);
+  const authorityScopeChanged = useCallback((scope: WorkspaceBinding | null) => { selectedScope.current = scope; setDisplayRole(scope?.role ?? null); }, []);
 
   useEffect(() => {
     mounted.current = true;
@@ -147,14 +148,14 @@ export function DemoLoginApplication({ onBack, onNavigationGuardChange }: {
     return (
       <View style={styles.root} testID="demo-signed-in">
         <View style={[styles.sessionBar, { paddingTop: insets.top }]}>
-          <Text style={[typography.muted, styles.flex]}>Roma U10 · Demo</Text>
-          <Button label="Sign out" testID="demo-sign-out" variant="quiet" onPress={finishSignOut} />
+          <View style={styles.flex}><Pill tone="muted">{({manager:"Manager",administrator:"Administrator",player:"Player",spectator:"Spectator"})[displayRole ?? session.role]}</Pill></View>
+          <Button label="Sign out" accessibilityLabel="Sign out" icon="logout" iconOnly compact testID="demo-sign-out" variant="quiet" onPress={finishSignOut} />
         </View>
         {!ready && <View style={styles.cover} testID="demo-session-cover" accessibilityLiveRegion="polite">
           <Card>
-            <Text accessibilityRole="header" style={typography.section}>Confirming demo access</Text>
+            <Text accessibilityRole="header" style={typography.section}>Confirming access</Text>
             {!foreground ? <Text style={typography.body}>Your team view is hidden while the app is in the background.</Text> : accessCheck === 'failed' ? <>
-              <Notice tone="error">Current demo access could not be confirmed. Check your connection and retry.</Notice>
+              <Notice tone="error">Current access could not be confirmed. Check your connection and retry.</Notice>
               <Button label="Retry access check" testID="demo-session-retry" onPress={() => { void checkCurrentAccess(); }} />
             </> : <View style={styles.progress}><ActivityIndicator color={colors.brand} /><Text style={typography.body}>Checking your current access…</Text></View>}
           </Card>
@@ -177,7 +178,7 @@ export function DemoLoginApplication({ onBack, onNavigationGuardChange }: {
     <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.page, { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 24 }]} testID="demo-login-screen">
       <View style={styles.column}>
         <LongBallWordmark />
-        <Pill tone="muted">ROMA U10 · DEMO</Pill>
+        <Pill tone="muted">ROMA U10</Pill>
         <Text accessibilityRole="header" style={typography.title}>Welcome back</Text>
         <Text style={typography.body}>Sign in to see your team, fixtures and match day.</Text>
         <Card>

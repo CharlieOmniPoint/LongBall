@@ -7,6 +7,7 @@ import {
 } from "@longball/application/player-home";
 import type { AvailabilityResponse } from "@longball/application/preparation";
 import type { getCommunityView } from "@longball/application/community";
+import { formatUkDate, formatUkDateTime } from "@longball/application/uk-display";
 import { Button, Card, Notice, Pill } from "../ui";
 import { colors, typography } from "../ui/tokens";
 
@@ -40,14 +41,7 @@ const responses = {
   no_reply: "No reply yet",
 };
 function dateLabel(date: string | null): string {
-  return date
-    ? new Intl.DateTimeFormat("en-GB", {
-        weekday: "short",
-        day: "numeric",
-        month: "short",
-        timeZone: "UTC",
-      }).format(new Date(`${date}T12:00:00Z`))
-    : "Date to confirm";
+  return formatUkDate(date);
 }
 /** UI05 consumes only the current player's authorised service views. */
 export function ConnectedPlayerHome(props: ConnectedPlayerHomeProps) {
@@ -55,8 +49,7 @@ export function ConnectedPlayerHome(props: ConnectedPlayerHomeProps) {
   if (!home.ownAvailable)
     return (
       <Notice>
-        Your current player assignment could not be verified in this home view.
-        Refresh your workspace before opening private details.
+        Your player access could not be confirmed. Refresh your team view.
       </Notice>
     );
   const event = home.next;
@@ -68,6 +61,7 @@ export function ConnectedPlayerHome(props: ConnectedPlayerHomeProps) {
         </Text>
         <Button
           label="My profile"
+          compact
           variant="quiet"
           icon="users"
           onPress={props.onOpenProfile}
@@ -96,6 +90,7 @@ export function ConnectedPlayerHome(props: ConnectedPlayerHomeProps) {
                   <Button
                     key={response}
                     label={responses[response]}
+                    compact
                     variant={
                       event.response === response ? "primary" : "secondary"
                     }
@@ -107,15 +102,13 @@ export function ConnectedPlayerHome(props: ConnectedPlayerHomeProps) {
               )}
             </View>
             <Text style={typography.muted}>
-              Your reply is availability. Selection and actual attendance are
-              recorded separately.
+              Your reply does not select the squad or record attendance.
             </Text>
           </>
         ) : home.needsOrdering ? (
           <>
             <Notice>
-              The recorded dates or times do not establish one next event. Check
-              your schedule.
+              Check your schedule: the next event’s date or time needs confirming.
             </Notice>
             {home.nextCandidates.map((item) => (
               <Text key={`${item.kind}:${item.id}`} style={typography.body}>
@@ -136,6 +129,7 @@ export function ConnectedPlayerHome(props: ConnectedPlayerHomeProps) {
         )}
         <Button
           label="Open my schedule"
+          compact
           icon="calendar"
           variant="quiet"
           testID="player-home-schedule"
@@ -159,8 +153,8 @@ export function ConnectedPlayerHome(props: ConnectedPlayerHomeProps) {
               {home.liveMatch.lastRecorderSyncAt !== null && props.nowMs >= home.liveMatch.lastRecorderSyncAt && props.nowMs - home.liveMatch.lastRecorderSyncAt <= 15_000 ? "Last accepted update" : "Updates delayed"}
             </Pill>
             <Text style={typography.muted}>
-              Recorder last synchronised: {home.liveMatch.lastRecorderSyncAt === null ? "Not recorded" : new Date(home.liveMatch.lastRecorderSyncAt).toLocaleString("en-GB", { timeZone: "Europe/London" })} Europe/London.
-              The recording phone may have newer events.
+              Last shared update: {formatUkDateTime(home.liveMatch.lastRecorderSyncAt)} · Europe/London.
+              The match recorder may have newer changes.
             </Text>
           </>
         ) : home.multipleActiveMatches ? (
@@ -175,6 +169,7 @@ export function ConnectedPlayerHome(props: ConnectedPlayerHomeProps) {
         )}
         <Button
           label="Open my game"
+          compact
           icon="ball"
           variant="secondary"
           testID="player-home-game"
@@ -196,13 +191,13 @@ export function ConnectedPlayerHome(props: ConnectedPlayerHomeProps) {
                 : "Choose player of the match"
             }
             icon="trophy"
+            compact
             variant="secondary"
             testID="player-home-vote"
             onPress={props.onOpenVote}
           />
           <Text style={typography.muted}>
-            Review and confirm on the next screen. Your vote counts only after
-            the service accepts it before the cutoff.
+            Your private choice counts once saved before voting closes.
           </Text>
         </Card>
       )}
@@ -237,11 +232,12 @@ export function ConnectedPlayerHome(props: ConnectedPlayerHomeProps) {
             )}
             {home.award.deadlineAtMs !== null && (
               <Text style={typography.muted}>
-                Original result deadline: {new Date(home.award.deadlineAtMs).toLocaleString("en-GB", { timeZone: "Europe/London" })} Europe/London.
+                Result due: {formatUkDateTime(home.award.deadlineAtMs)} · Europe/London.
               </Text>
             )}
             <Button
               label="View match award"
+              compact
               variant="secondary"
               icon="trophy"
               testID="player-home-award-open"
@@ -264,6 +260,7 @@ export function ConnectedPlayerHome(props: ConnectedPlayerHomeProps) {
             )}
             <Button
               label="Open this game’s photos"
+              compact
               icon="photo"
               variant="quiet"
               testID="player-home-album"

@@ -1,3 +1,4 @@
+import { formatUkDateTime } from '@longball/application/uk-display';
 import { useEffect, useRef, useState } from "react";
 import { StyleSheet, Switch, Text, TextInput, View } from "react-native";
 import { randomUUID } from "expo-crypto";
@@ -31,7 +32,7 @@ export interface ConnectedInvitationsPanelProps {
   }) => void | Promise<void>;
   onRetainedChange?: (retained: boolean, scopeKey: string) => void;
 }
-const when = (value: string) => new Date(value).toLocaleString();
+const when = formatUkDateTime;
 const hoursValue = (value: string): number | null => {
   if (!/^(?:[1-9]|[1-3][0-9]|4[0-8])$/.test(value)) return null;
   return Number(value);

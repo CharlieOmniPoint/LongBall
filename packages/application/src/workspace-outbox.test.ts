@@ -287,3 +287,92 @@ describe('protected workspace acknowledgement outbox', () => {
     expect(enqueueWorkspaceRequest(createWorkspaceOutbox(adminBinding), adminBinding, configuration, now).pending).not.toBeNull();
   });
 });
+
+describe('protected scheduled-game and private-feedback request routes', () => {
+  const adult: Principal = { ...principal, identityClassification: 'adult_individual', adultVerified: true, strongAuth: true };
+  const schedule = { path: '/v1/teams/roma-u10/scheduled-games?seasonId=2026-27', key: 'schedule-request-001', label: 'Scheduled game change', body: { command: { id: 'schedule-request-001', type: 'fixture.deleted', fixtureId: 'future-game', expectedRevision: 17, reason: 'Reviewed duplicate fixture', confirm: true } } };
+  const feedback = { path: '/v1/teams/roma-u10/match-feedback?seasonId=2026-27', key: 'feedback-request-001', label: 'Match feedback', body: { command: { id: 'feedback-request-001', type: 'feedback.saved', matchId: 'completed-game', expectedRevision: 2, rating: 4, text: 'Original private note 🙂' } } };
+  const adultAuthorization = (role: 'manager' | 'administrator'): WorkspaceOutboxAuthorization => ({ ...auth, binding: { ...binding, role, playerId: null }, principal: adult, memberships: [{ ...memberships[0], role, playerId: undefined }] });
+
+  it('retains exact native scheduled-game requests across uncertain receipt, reopen and a new scope generation', () => {
+    for (const role of ['manager', 'administrator'] as const) {
+      const authorization = adultAuthorization(role), owner = authorization.binding;
+      const pending = enqueueWorkspaceRequest(createWorkspaceOutbox(owner), owner, schedule, now);
+      const uncertain = reopened(recordWorkspaceOutcome(pending, schedule.key, { kind: 'unconfirmed', reason: 'network' }, now + 1));
+      validateWorkspaceOutbox(uncertain);
+      const replay = authorizeWorkspaceReplay(uncertain, { ...authorization, binding: { ...owner, generation: 99 }, nowMs: now + 2 });
+      expect(replay.bodyJson).toBe(JSON.stringify(schedule.body)); expect(replay.key).toBe(schedule.key);
+      expect(JSON.parse(replay.bodyJson).command).toMatchObject({ expectedRevision: 17, fixtureId: 'future-game', type: 'fixture.deleted' });
+      expect(uncertain.pending?.bodyJson).toBe(pending.pending?.bodyJson);
+      expect(() => authorizeWorkspaceReplay(uncertain, { ...authorization, binding: { ...owner, seasonId: '2027-28' } })).toThrow();
+      expect(() => authorizeWorkspaceReplay(uncertain, { ...authorization, memberships: [] })).toThrow();
+      const oldAdult = { ...authorization, principal: { ...adult, authenticatedAt: now - 300_001 } };
+      if (role === 'administrator') expect(() => authorizeWorkspaceReplay(uncertain, oldAdult)).toThrow('Recent');
+      else expect(authorizeWorkspaceReplay(uncertain, oldAdult).key).toBe(schedule.key);
+    }
+  });
+
+  it('retains a private feedback note and original CAS for explicit native retry without granting acceptance', () => {
+    const pending = enqueueWorkspaceRequest(createWorkspaceOutbox(binding), binding, feedback, now);
+    const uncertain = recordWorkspaceOutcome(pending, feedback.key, { kind: 'unconfirmed', reason: 'access', httpStatus: 403 }, now + 1);
+    const restored = reopened(uncertain), before = JSON.stringify(restored);
+    const retry = authorizeWorkspaceReplay(restored, { ...auth, binding: { ...binding, generation: 9 }, nowMs: now + 2 });
+    expect(retry).toMatchObject({ key: feedback.key, status: 'access_blocked', bodyJson: JSON.stringify(feedback.body) });
+    expect(JSON.parse(retry.bodyJson).command.expectedRevision).toBe(2);
+    expect(JSON.stringify(restored)).toBe(before); expect(restored.lastSettled).toBeNull();
+    for (const changes of [{ memberships: [] }, { memberships: [{ ...memberships[0], playerId: 'player-02' }] }, { memberships: [...memberships, { ...memberships[0], playerId: 'player-02' }] }, { binding: { ...binding, playerId: 'player-02' } }, { session: { ...session, locked: true } }]) expect(() => authorizeWorkspaceReplay(restored, { ...auth, ...changes })).toThrow();
+    expect(JSON.stringify(restored)).toBe(before);
+  });
+
+  it('allows only manager/admin scheduling and own-player feedback without widening private preparation', () => {
+    for (const role of ['player', 'spectator'] as const) {
+      const owner = { ...binding, role, playerId: role === 'player' ? binding.playerId : null };
+      expect(() => enqueueWorkspaceRequest(createWorkspaceOutbox(owner), owner, schedule, now)).toThrow();
+    }
+    for (const role of ['manager', 'administrator', 'spectator'] as const) {
+      const owner = { ...binding, role, playerId: null };
+      expect(() => enqueueWorkspaceRequest(createWorkspaceOutbox(owner), owner, feedback, now)).toThrow();
+    }
+    const admin = adultAuthorization('administrator').binding;
+    expect(() => enqueueWorkspaceRequest(createWorkspaceOutbox(admin), admin, { ...schedule, path: '/v1/teams/roma-u10/preparation?seasonId=2026-27' }, now)).toThrow();
+    for (const changes of [{ path: schedule.path + '&role=manager' }, { path: schedule.path.replace('roma-u10', 'other-team') }, { path: schedule.path.replace('2026-27', 'other-season') }]) expect(() => enqueueWorkspaceRequest(createWorkspaceOutbox(admin), admin, { ...schedule, ...changes }, now)).toThrow();
+  });
+
+  it('validates exact command shapes and rejects restored route/type/player/key substitution', () => {
+    const manager = adultAuthorization('manager').binding;
+    for (const changes of [{ confirm: false }, { reason: 'no' }, { type: 'fixture.saved' }, { playerId: 'other-player' }, { expectedRevision: -1 }, { id: 'another-idempotency-key' }]) expect(() => enqueueWorkspaceRequest(createWorkspaceOutbox(manager), manager, { ...schedule, body: { command: { ...schedule.body.command, ...changes } } }, now)).toThrow();
+    for (const changes of [{ rating: 6 }, { text: '🙂'.repeat(257) }, { playerId: 'other-player' }, { type: 'own.preferences_saved' }, { expectedRevision: -1 }, { id: 'another-idempotency-key' }]) expect(() => enqueueWorkspaceRequest(createWorkspaceOutbox(binding), binding, { ...feedback, body: { command: { ...feedback.body.command, ...changes } } }, now)).toThrow();
+    const queuedFeedback = enqueueWorkspaceRequest(createWorkspaceOutbox(binding), binding, feedback, now);
+    for (const patch of [{ path: '/v1/teams/roma-u10/community?seasonId=2026-27' }, { bodyJson: JSON.stringify({ command: { ...feedback.body.command, playerId: 'other-player' } }) }, { key: 'changed-retained-key' }]) expect(() => validateWorkspaceOutbox({ ...queuedFeedback, pending: { ...queuedFeedback.pending!, ...patch } })).toThrow();
+    const queuedSchedule = enqueueWorkspaceRequest(createWorkspaceOutbox(manager), manager, schedule, now);
+    expect(() => validateWorkspaceOutbox({ ...queuedSchedule, pending: { ...queuedSchedule.pending!, path: '/v1/teams/roma-u10/preparation?seasonId=2026-27' } })).toThrow();
+  });
+
+  it('keeps idempotent pending identity exact and requires a new reviewed identity after settlement', () => {
+    for (const [owner, input] of [[binding, feedback], [adultAuthorization('manager').binding, schedule]] as const) {
+      const pending = enqueueWorkspaceRequest(createWorkspaceOutbox(owner), owner, input, now);
+      expect(enqueueWorkspaceRequest(pending, { ...owner, generation: 2 }, input, now + 1)).toBe(pending);
+      const altered = { ...input, body: { command: { ...input.body.command, expectedRevision: 999 } } };
+      expect(() => enqueueWorkspaceRequest(pending, owner, altered, now + 1)).toThrow();
+      const settled = reopened(recordWorkspaceOutcome(pending, input.key, { kind: 'accepted', httpStatus: 200, serverRevision: 3 }, now + 2));
+      validateWorkspaceOutbox(settled); expect(settled.pending).toBeNull();
+      expect(settled.lastSettled?.request.bodyJson).toBe(JSON.stringify(input.body));
+      expect(() => enqueueWorkspaceRequest(settled, owner, input, now + 3)).toThrow();
+      const next = { ...input, key: `${input.key}-new`, body: { command: { ...input.body.command, id: `${input.key}-new`, expectedRevision: 3 } } };
+      expect(enqueueWorkspaceRequest(settled, owner, next, now + 3).pending?.bodyJson).toBe(JSON.stringify(next.body));
+    }
+  });
+
+  it('keeps saved-lineup and position commands on the manager preparation path', () => {
+    const manager = adultAuthorization('manager').binding;
+    for (const command of [
+      { id: 'template-command-001', type: 'lineup_template.archived', expectedRevision: 7, templateId: 'team-setup', expectedTemplateVersion: 2 },
+      { id: 'position-command-001', type: 'position.saved', expectedRevision: 7, position: { code: 'AM', label: 'Attacking midfield', active: true } },
+    ]) {
+      const input = { key: command.id, label: 'Preparation change', path: '/v1/teams/roma-u10/preparation?seasonId=2026-27', body: { command } };
+      expect(enqueueWorkspaceRequest(createWorkspaceOutbox(manager), manager, input, now).pending?.bodyJson).toBe(JSON.stringify(input.body));
+      expect(() => enqueueWorkspaceRequest(createWorkspaceOutbox(manager), manager, { ...input, path: schedule.path }, now)).toThrow();
+      expect(() => enqueueWorkspaceRequest(createWorkspaceOutbox(binding), binding, { ...input, path: feedback.path }, now)).toThrow();
+    }
+  });
+});

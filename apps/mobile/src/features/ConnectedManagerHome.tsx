@@ -1,3 +1,4 @@
+import { formatUkDate } from '@longball/application/uk-display';
 import { useEffect, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import type { PreparationState } from "@longball/application/preparation";
@@ -25,16 +26,7 @@ export interface ConnectedManagerHomeProps {
 }
 const plural = (count: number, one: string, many = `${one}s`) =>
   `${count} ${count === 1 ? one : many}`;
-function dateLabel(date: string | null): string {
-  if (!date) return "Date to confirm";
-  return new Intl.DateTimeFormat("en-GB", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    timeZone: "UTC",
-  }).format(new Date(`${date}T12:00:00Z`));
-}
+const dateLabel = formatUkDate;
 function EventSummary({
   event,
   compact = false,

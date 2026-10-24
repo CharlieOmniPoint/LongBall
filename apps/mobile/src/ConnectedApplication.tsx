@@ -11,6 +11,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   getConnectedSessionSummary,
+  signOutConnected,
   subscribeConnectedSessionChanges,
   type ConnectedSessionSummary,
 } from "./platform/auth/client";
@@ -421,6 +422,10 @@ export function ConnectedApplication({
             initialConnection={workspaceConnection}
             invitationDestination={invitation ?? undefined}
             onNavigationGuardChange={setNavigationGuard}
+            onSignOut={() => {
+              setAccount(true);
+              void signOutConnected().then(() => { setSession(null); setChildActivation(null); }).catch(() => setError('Sign-out could not finish. Your account is locked; retry from Account.'));
+            }}
             onLeaveWorkspace={onBackToWelcome}
             onOpenAccount={() => {
               setIntent("sign-in");

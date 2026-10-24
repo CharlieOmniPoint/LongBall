@@ -19,6 +19,7 @@ import { typography } from "../ui/tokens";
 import { ParticipationCard, RecordsScreens } from "./RecordsScreens";
 import type { ReportCommunityComposition } from "@longball/application/report-community";
 import { ReportCommunityCard } from "./ReportCommunityCard";
+import { formatUkDate, formatUkDateTime } from "@longball/application/uk-display";
 
 export interface ConnectedReportContext extends LiveMatchDetails {
   status: MatchState["status"];
@@ -130,20 +131,18 @@ export function ConnectedRecordsScreens({
     <View style={{ gap: 12 }} testID="workspace-reports">
       {manager && value.editableState && (
         <Card>
-          <Text style={typography.section}>Accepted match used by reports</Text>
+          <Text style={typography.section}>Match used by reports</Text>
           <Text style={typography.body}>
             {value.editableState.liveMatch.opponent} ·{" "}
-            {value.editableState.liveMatch.playedDate}
+            {formatUkDate(value.editableState.liveMatch.playedDate)}
           </Text>
           <Text style={typography.muted}>
-            Choose explicitly. Preparation does not silently switch report
-            context, and archive always uses the service’s accepted match
-            revision.
+            Choose the game to report on. Only shared, accepted match records are archived.
           </Text>
           {(value.contexts ?? []).map((context) => (
             <Button
               key={context.matchId}
-              label={`${context.opponent} · ${context.playedDate} · ${context.status.replaceAll("_", " ")}`}
+              label={`${context.opponent} · ${formatUkDate(context.playedDate)} · ${context.status.replaceAll("_", " ")}`}
               variant={
                 chosen?.matchId === context.matchId ? "primary" : "secondary"
               }
@@ -272,6 +271,8 @@ function ReadOnlyRecords({
   const [selected, setSelected] = useState<string | null>(
     initialMatchId ?? null,
   );
+  const [showRecordDetails, setShowRecordDetails] = useState(false);
+  const [expandedPlayer, setExpandedPlayer] = useState<string | null>(null);
   const report = value.matches.find((item) => item?.matchId === selected);
   const results = value.results;
   const duration = (ms: number) =>
@@ -288,8 +289,7 @@ function ReadOnlyRecords({
         <Card>
           <Text style={typography.section}>{teamLabel} records</Text>
           <Text style={typography.muted}>
-            {results.visibilityScope} · revision {results.projectionVersion} ·
-            last recorded {results.asOf ?? "not recorded"}
+            Last updated: {formatUkDateTime(results.asOf)} · Europe/London
           </Text>
           {results.suppressionReason ? (
             <Notice tone="warning">{results.suppressionReason}</Notice>
@@ -333,14 +333,15 @@ function ReadOnlyRecords({
           {results.rows.map((row) => (
             <View key={row.id} style={{ gap: 8 }}>
               <Text style={typography.label}>
-                {row.playedDate} · {row.opponent}
+                {formatUkDate(row.playedDate)} · {row.opponent}
               </Text>
               <Text style={typography.body}>
                 {score(row.finalScore)} · {row.outcome ?? row.status} ·{" "}
                 {row.detailCompleteness.replaceAll("_", " ")}
               </Text>
               <Button
-                label={`Read service report for ${row.opponent}`}
+                label={`Open report for ${row.opponent}`}
+                compact
                 variant="secondary"
                 onPress={() => setSelected(row.id)}
               />
@@ -355,14 +356,13 @@ function ReadOnlyRecords({
       )}
       {matchOnly && !report && (
         <Notice>
-          This match report is unavailable in the current authorised team and
-          season. Refresh the service views or choose another permitted record.
+          This report is unavailable for your current team and season. Refresh or choose another match.
         </Notice>
       )}
       {report && (
         <Card>
           <Text style={typography.section}>
-            {report.opponent} · {report.playedDate}
+            {report.opponent} · {formatUkDate(report.playedDate)}
           </Text>
           <Pill
             tone={
@@ -426,7 +426,8 @@ function ReadOnlyRecords({
                         .map(([position, ms]) => `${position} ${duration(ms)}`)
                         .join(" · ") || "Known zero-minute appearance"}
                     </Text>
-                    {row.intervals?.map((interval, index) => (
+                    {!!row.intervals?.length && <Button compact label={expandedPlayer === row.playerId ? "Hide playing-time details" : "Show playing-time details"} variant="quiet" onPress={() => setExpandedPlayer(current => current === row.playerId ? null : row.playerId)} />}
+                    {expandedPlayer === row.playerId && row.intervals?.map((interval, index) => (
                       <Text key={index} style={typography.muted}>
                         Half {interval.half} · {duration(interval.startMs)}–
                         {duration(interval.endMs)} ·{" "}
@@ -445,12 +446,11 @@ function ReadOnlyRecords({
             onOpenAlbum={onOpenAlbum}
             disabled={disabled}
           />
-          <Text style={typography.muted}>
-            Projection {report.projectionVersion} · record revision{" "}
-            {report.revision} · {report.policyId} v{report.policyVersion}
-          </Text>
+          <Button compact label={showRecordDetails ? "Hide record details" : "Show record details"} variant="quiet" onPress={() => setShowRecordDetails(current => !current)} />
+          {showRecordDetails && <Text style={typography.muted}>Record revision {report.revision} · report version {report.projectionVersion} · sharing rule {report.policyId} v{report.policyVersion}</Text>}
           <Button
-            label="Close service report"
+            label="Close match report"
+            compact
             variant="quiet"
             onPress={() => {
               setSelected(null);

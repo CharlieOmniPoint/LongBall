@@ -3,7 +3,7 @@ import { spawn } from 'node:child_process';
 import { existsSync, createWriteStream } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { chromium } from 'playwright';
-import { REVIEW_STATUS_REQUEST, enterFictionalReview, openWorkspaceTab } from './review-entry.mjs';
+import { REVIEW_STATUS_REQUEST, enterFictionalReview, openWorkspaceTab, reviewDateLabel } from './review-entry.mjs';
 
 const baseURL = process.env.LONGBALL_REVIEW_BASE_URL ?? 'http://127.0.0.1:4386';
 const apiURL = process.env.LONGBALL_TRAINING_REVIEW_API_URL ?? 'http://127.0.0.1:4387', tunnel = 'https://longball-training-review.trycloudflare.com';
@@ -32,7 +32,7 @@ try {
       await back.or(filter).first().waitFor();
       if (await back.isVisible()) await back.click();
       await filter.click();
-      await button(`Open training ${date}`).click();
+      await button(`Open training ${reviewDateLabel(date)}`).click();
     };
 
     const read = async () => mode === 'connected'
@@ -52,7 +52,7 @@ try {
       await page.getByLabel('Series training time (HH:MM)', { exact: true }).fill('18:30');
       await page.getByLabel('Series training venue', { exact: true }).fill('Fictional recurring practice');
       await page.getByTestId('training-series-review').click();
-      await page.getByText('2026-12-10 · 18:30', { exact: true }).waitFor();
+      await page.getByText('10/12/26 · 18:30', { exact: true }).waitFor();
       assert.equal((await read()).revision, before.revision, 'A preview must not persist the series.');
       await page.getByTestId('training-series-confirm').click();
       let state = await until(value => value.training.length === before.training.length + 3);

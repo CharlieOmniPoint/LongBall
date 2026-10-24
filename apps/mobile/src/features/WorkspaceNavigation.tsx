@@ -4,6 +4,9 @@ import { Icon, type IconName } from "../ui";
 import { colors } from "../ui/tokens";
 
 export type WorkspaceTab =
+  | "overview"
+  | "stats"
+  | "feedback"
   | "home"
   | "clubs"
   | "people"
@@ -25,17 +28,18 @@ const primary: Record<Role, readonly Item[]> = {
     { tab: "home", label: "Home", icon: "home" },
     { tab: "schedule", label: "Schedule", icon: "calendar" },
     { tab: "team", label: "Team", icon: "users" },
-    { tab: "reports", label: "Reports", icon: "chart" },
+    { tab: "stats", label: "Stats", icon: "chart" },
     { tab: "more", label: "More", icon: "more" },
   ],
   player: [
     { tab: "home", label: "Home", icon: "home" },
     { tab: "schedule", label: "Schedule", icon: "calendar" },
-    { tab: "centre", label: "My game", icon: "ball" },
+    { tab: "stats", label: "My Stats", icon: "chart" },
     { tab: "community", label: "Photos", icon: "photo" },
     { tab: "more", label: "More", icon: "more" },
   ],
   spectator: [
+    { tab: "overview", label: "Home", icon: "home" },
     { tab: "centre", label: "Scores", icon: "ball" },
     { tab: "reports", label: "Results", icon: "chart" },
     { tab: "community", label: "Photos", icon: "photo" },
@@ -44,9 +48,9 @@ const primary: Record<Role, readonly Item[]> = {
   administrator: [
     { tab: "clubs", label: "Clubs", icon: "shield" },
     { tab: "team", label: "Teams", icon: "users" },
-    { tab: "people", label: "People", icon: "users" },
-    { tab: "seasons", label: "Operations", icon: "calendar" },
-    { tab: "account", label: "Account", icon: "lock" },
+    { tab: "schedule", label: "Schedule", icon: "calendar" },
+    { tab: "stats", label: "Stats", icon: "chart" },
+    { tab: "more", label: "More", icon: "more" },
   ],
 };
 

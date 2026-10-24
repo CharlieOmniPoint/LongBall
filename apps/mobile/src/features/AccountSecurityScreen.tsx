@@ -1,3 +1,4 @@
+import { formatUkDateTime } from '@longball/application/uk-display';
 import { PushRegistrationPanel } from "./PushRegistrationPanel";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -383,11 +384,7 @@ export function AccountSecurityScreen({
               </Text>
               <Text style={s.small}>
                 Session expires{" "}
-                {new Intl.DateTimeFormat("en-GB", {
-                  timeZone: "Europe/London",
-                  dateStyle: "short",
-                  timeStyle: "short",
-                }).format(new Date(session.expiresAtMs))}
+                {formatUkDateTime(session.expiresAtMs)}
               </Text>
               <Text style={s.small}>
                 {session.storage === "secure-native"
@@ -737,14 +734,13 @@ export function AccountSecurityScreen({
       </Card>
       {onEnterFictionalReview && (
         <Card>
-          <Pill tone="muted">DEMO</Pill>
           <Text style={s.section}>Explore Roma U10</Text>
           <Text style={s.body}>
-            Try the sample team without a club account. Your real account
-            access stays separate.
+            Open Roma U10 without a club sign-in. This preview does not grant
+            access to your club account.
           </Text>
           <Button
-            label="Explore Roma U10 demo"
+            label="Explore Roma U10"
             variant="secondary"
             onPress={onEnterFictionalReview}
           />

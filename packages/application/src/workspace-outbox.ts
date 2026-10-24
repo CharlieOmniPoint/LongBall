@@ -1,6 +1,8 @@
 import { parseTeamPrivilegeCommand } from './team-privileges';
-import { assertAdultAuthority, assertTeamRole, type Membership, type Principal } from './access';
+import { assertAdultAuthority, assertTeamRole, currentMemberships, type Membership, type Principal } from './access';
 import { parseBrandingCommand } from './branding';
+import { parseScheduledGameCommand } from './fixture-management';
+import { parseMatchFeedbackCommand } from './match-feedback';
 import { workspaceBindingIsCurrent, workspaceSessionAllows, type WorkspaceBinding, type WorkspaceSessionAccess } from './workspace-boundary';
 
 /** Local acknowledgement uncertainty only. A queued vote is never a counted vote. */
@@ -90,15 +92,18 @@ function assertPath(path: unknown, value: WorkspaceOutboxScope): asserts path is
   assert(text(path, 2048));
   const prefix = `/v1/teams/${encodeURIComponent(value.teamId)}/`;
   const branding = ['club_logo', 'team_logo'].flatMap(kind => ['publish', 'remove'].map(action => `branding/${kind}/${action}`));
-  assert(['preparation', 'preparation/own', 'community', 'records', 'seasons', 'configuration', 'managers', 'managers/revoke', 'privileges', ...branding].some(section => path === `${prefix}${section}?seasonId=${encodeURIComponent(value.seasonId)}`));
+  assert(['preparation', 'preparation/own', 'community', 'records', 'seasons', 'configuration', 'managers', 'managers/revoke', 'privileges', 'scheduled-games', 'match-feedback', ...branding].some(section => path === `${prefix}${section}?seasonId=${encodeURIComponent(value.seasonId)}`));
   const staff = path.startsWith(`${prefix}managers?`) || path.startsWith(`${prefix}managers/revoke?`);
+  const scheduledGames = path.startsWith(`${prefix}scheduled-games?`), feedback = path.startsWith(`${prefix}match-feedback?`);
   const clubLogo = path.startsWith(`${prefix}branding/club_logo/`), teamLogo = path.startsWith(`${prefix}branding/team_logo/`);
   if (clubLogo) assert(value.role === 'administrator');
   if (teamLogo) assert(value.role === 'manager');
   if (staff) assert(value.role === 'administrator');
+  if (scheduledGames) assert(value.role === 'manager' || value.role === 'administrator');
+  if (feedback) assert(value.role === 'player');
   if(path.startsWith(`${prefix}privileges?`))assert(value.role==='manager');
-  if (value.role === 'administrator') assert(path.startsWith(`${prefix}configuration?`) || path.startsWith(`${prefix}seasons?`) || staff || clubLogo);
-  if (value.role === 'player') assert(path.startsWith(`${prefix}preparation/own?`) || path.startsWith(`${prefix}community?`));
+  if (value.role === 'administrator') assert(path.startsWith(`${prefix}configuration?`) || path.startsWith(`${prefix}seasons?`) || staff || clubLogo || scheduledGames);
+  if (value.role === 'player') assert(path.startsWith(`${prefix}preparation/own?`) || path.startsWith(`${prefix}community?`) || feedback);
   if (value.role === 'spectator') assert(path.startsWith(`${prefix}community?`));
 }
 function utf8Size(value: string): number {
@@ -156,6 +161,18 @@ function assertBrandingRequest(path: string, bodyJson: string, owner: WorkspaceO
   const parsed = parseBrandingCommand(command, assetKind);
   assert(parsed.type === (path.startsWith(`${prefix}${assetKind}/publish?`) ? 'logo.published' : 'logo.removed'));
 }
+function assertScheduledGameFeedbackRequest(path: string, bodyJson: string, owner: WorkspaceOutboxScope): void {
+  const prefix = `/v1/teams/${encodeURIComponent(owner.teamId)}/`;
+  const command = (JSON.parse(bodyJson) as { command: Record<string, unknown> }).command;
+  if (path.startsWith(`${prefix}scheduled-games?`)) {
+    assert(owner.role === 'manager' || owner.role === 'administrator');
+    parseScheduledGameCommand(command);
+  } else assert(command.type !== 'fixture.cancelled' && command.type !== 'fixture.deleted');
+  if (path.startsWith(`${prefix}match-feedback?`)) {
+    assert(owner.role === 'player');
+    parseMatchFeedbackCommand(command);
+  } else assert(command.type !== 'feedback.saved');
+}
 function validateRequest(value: unknown, owner: WorkspaceOutboxScope): asserts value is WorkspaceOutboxRequest {
   assert(record(value)); exactFields(value, ['path', 'key', 'bodyJson', 'label', 'createdAtMs', 'status', 'lastAttemptAtMs', 'lastFailure']); assertPath(value.path, owner);
   assert(key(value.key) && text(value.label, 100) && time(value.createdAtMs));
@@ -164,6 +181,7 @@ function validateRequest(value: unknown, owner: WorkspaceOutboxScope): asserts v
   assertStaffCommand(value.path, value.bodyJson, owner);
   assertBrandingRequest(value.path, value.bodyJson, owner);
   assertTeamPrivilegeRequest(value.path,value.bodyJson,owner);
+  assertScheduledGameFeedbackRequest(value.path, value.bodyJson, owner);
   assert(['awaiting_receipt', 'uncertain', 'access_blocked'].includes(value.status as string));
   assert(value.lastAttemptAtMs === null || time(value.lastAttemptAtMs));
   if (value.lastFailure !== null) {
@@ -205,6 +223,7 @@ export function enqueueWorkspaceRequest(state: WorkspaceOutboxState, binding: Wo
   assertStaffCommand(input.path, bodyJson, state.scope);
   assertBrandingRequest(input.path, bodyJson, state.scope);
   assertTeamPrivilegeRequest(input.path,bodyJson,state.scope);
+  assertScheduledGameFeedbackRequest(input.path, bodyJson, state.scope);
   if (state.pending) {
     assert(state.pending.key === input.key && state.pending.path === input.path && state.pending.bodyJson === bodyJson && state.pending.label === input.label);
     return state;
@@ -229,9 +248,13 @@ function assertWorkspaceRequestAuthority(state: WorkspaceOutboxState, auth: Work
   assert(state.pending && sameScope(state.scope, scope(auth.binding)) && time(auth.nowMs) && time(auth.verifiedAtMs));
   assert(auth.verifiedAtMs <= auth.nowMs && auth.nowMs - auth.verifiedAtMs <= 30_000);
   assert(workspaceBindingIsCurrent(auth.binding, auth.principal, auth.memberships, auth.nowMs));
-  if (['seasons', 'managers', 'managers/revoke'].some(section => state.pending!.path === `/v1/teams/${encodeURIComponent(state.scope.teamId)}/${section}?seasonId=${encodeURIComponent(state.scope.seasonId)}`)) {
+  if (['seasons', 'managers', 'managers/revoke', ...(state.scope.role === 'administrator' ? ['scheduled-games'] : [])].some(section => state.pending!.path === `/v1/teams/${encodeURIComponent(state.scope.teamId)}/${section}?seasonId=${encodeURIComponent(state.scope.seasonId)}`)) {
     assertTeamRole(auth.principal, auth.memberships, state.scope.teamId, state.scope.seasonId, ['administrator'], auth.nowMs);
     assertAdultAuthority(auth.principal, true, auth.nowMs);
+  }
+  if (state.pending!.path === `/v1/teams/${encodeURIComponent(state.scope.teamId)}/match-feedback?seasonId=${encodeURIComponent(state.scope.seasonId)}`) {
+    const currentPlayers = currentMemberships(auth.principal, auth.memberships, auth.nowMs).filter(member => member.accountId === state.scope.accountId && member.teamId === state.scope.teamId && member.seasonId === state.scope.seasonId && member.role === 'player');
+    assert(new Set(currentPlayers.map(member => member.playerId)).size === 1 && currentPlayers[0]?.playerId === state.scope.playerId);
   }
   if (!auth.synthetic) {
     assert(workspaceSessionAllows(auth.session, state.scope.apiBaseUrl, auth.nowMs));

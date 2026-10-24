@@ -1,3 +1,4 @@
+import { formatUkDateTime } from '@longball/application/uk-display';
 import { useState } from "react";
 import type { ManagerRosterDto } from "@longball/application/staff";
 import { Text, TextInput, View } from "react-native";
@@ -18,7 +19,7 @@ export type ConnectedStaffCommand = { id: string; expectedRevision: number } & (
 const date = (value: number | null) =>
   value === null
     ? "No recorded expiry"
-    : new Date(value).toLocaleString("en-GB", { timeZone: "Europe/London" });
+    : formatUkDateTime(value);
 export function ConnectedStaffPanel({
   value,
   disabled,
@@ -123,9 +124,7 @@ export function ConnectedStaffPanel({
         </Text>
         <Text style={typography.muted}>
           Current authorised roster ·{" "}
-          {new Date(value.asOf).toLocaleString("en-GB", {
-            timeZone: "Europe/London",
-          })}{" "}
+          {formatUkDateTime(value.asOf)}{" "}
           · revision {value.revision}
         </Text>
         {!value.canMutate && (

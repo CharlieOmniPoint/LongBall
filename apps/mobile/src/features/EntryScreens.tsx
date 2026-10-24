@@ -13,7 +13,6 @@ import {
   colors,
   Icon,
   Notice,
-  Pill,
   typography,
   type IconName,
 } from "../ui";
@@ -153,7 +152,7 @@ export function WelcomeScreen({
               {demoAccountLogin ? "Your team account" : "Your club account"}
             </Text>
             <Text style={typography.body}>
-              {demoAccountLogin ? "Sign in with your demo username and password to open your team space." : "Sign in to your club. Your access is assigned by the club after sign-in."}
+              {demoAccountLogin ? "Sign in with your username and password." : "Sign in to your club account."}
             </Text>
             <Button
               label="Sign in"
@@ -172,16 +171,14 @@ export function WelcomeScreen({
           </Card>
           {onReview && (
             <Card style={styles.reviewCard}>
-              <Pill tone="muted">DEMO</Pill>
               <Text style={typography.section} accessibilityRole="header">
                 Take a look around
               </Text>
               <Text style={typography.body}>
-                Explore a complete Roma U10 season with sample teams, players
-                and matches. No club account is needed.
+                Explore Roma U10’s teams, players and season on this device.
               </Text>
               <Button
-                label="Explore Roma U10 demo"
+                label="Explore Roma U10"
                 variant="secondary"
                 icon="arrow"
                 testID="welcome-review"
@@ -246,13 +243,11 @@ export function ReviewAccountScreen({
             />
           </View>
           <View style={styles.accountIntroduction}>
-            <Pill tone="muted">DEMO ROMA U10</Pill>
             <Text style={styles.accountTitle} accessibilityRole="header">
-              Choose your demo role
+              Explore Roma U10
             </Text>
             <Text style={typography.body}>
-              Try each view of Roma U10’s season. Demo roles let you test the
-              experience without a club account.
+              Choose a view of the season. These on-device previews do not sign you in.
             </Text>
           </View>
           <EntryStatus loading={loading} error={error} status={status} />

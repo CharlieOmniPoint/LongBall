@@ -1,3 +1,4 @@
+import { formatUkDateTime } from '@longball/application/uk-display';
 import { useState } from "react";
 import { StyleSheet, Text, TextInput, View } from "react-native";
 import type { acceptedMatchView } from "@longball/application/accepted-match-view";
@@ -106,7 +107,7 @@ export function AcceptedMatchView({
             </Notice>
             <Text style={typography.muted} testID="accepted-match-freshness">
               {view.downloadedAt
-                ? `Snapshot downloaded ${new Date(view.downloadedAt).toLocaleString("en-GB", { timeZone: "Europe/London" })} · Europe/London${view.downloadAgeMs === null ? "" : ` · ${Math.floor(view.downloadAgeMs / 1000)}s ago`}.`
+                ? `Snapshot downloaded ${formatUkDateTime(view.downloadedAt)} · Europe/London${view.downloadAgeMs === null ? "" : ` · ${Math.floor(view.downloadAgeMs / 1000)}s ago`}.`
                 : "Download time not recorded."}{" "}
               This can lag behind the recorder.
             </Text>

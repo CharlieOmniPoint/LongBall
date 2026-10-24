@@ -1,3 +1,4 @@
+import { formatUkDate } from '@longball/application/uk-display';
 import { useMemo, useState, type ReactNode } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import {
@@ -112,7 +113,7 @@ export function ConnectedAlbums(props: ConnectedAlbumsProps) {
         <View key={album.matchId} style={styles.album}>
           <Button
             testID={`album-game-${album.matchId}`}
-            label={`${album.playedDate ?? "Played date not recorded"} · ${album.label} · ${album.photoCount} ${album.photoCount === 1 ? "photo" : "photos"}${chosen?.matchId === album.matchId ? " · selected" : ""}`}
+            label={`${album.playedDate ? formatUkDate(album.playedDate) : "Played date not recorded"} · ${album.label} · ${album.photoCount} ${album.photoCount === 1 ? "photo" : "photos"}${chosen?.matchId === album.matchId ? " · selected" : ""}`}
             variant={
               chosen?.matchId === album.matchId ? "primary" : "secondary"
             }
@@ -131,7 +132,7 @@ export function ConnectedAlbums(props: ConnectedAlbumsProps) {
       {chosen && (
         <View style={styles.stack} testID="album-selected-game">
           <Pill tone="info">
-            {chosen.playedDate ?? "PLAYED DATE NOT RECORDED"} ·{" "}
+            {chosen.playedDate ? formatUkDate(chosen.playedDate) : "PLAYED DATE NOT RECORDED"} ·{" "}
             {chosen.photoCount} PUBLISHED{" "}
             {chosen.photoCount === 1 ? "PHOTO" : "PHOTOS"}
           </Pill>
@@ -189,7 +190,7 @@ export function ConnectedAlbums(props: ConnectedAlbumsProps) {
             >
               <Text style={typography.label}>
                 {chosen.label} ·{" "}
-                {chosen.playedDate ?? "Played date not recorded"}
+                {chosen.playedDate ? formatUkDate(chosen.playedDate) : "Played date not recorded"}
               </Text>
               <Text style={typography.body}>
                 {photo.caption || "No caption recorded"}

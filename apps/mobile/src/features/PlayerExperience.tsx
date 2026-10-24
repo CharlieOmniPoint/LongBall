@@ -1,8 +1,9 @@
+import { formatUkDate, formatUkSeasonLabel } from '@longball/application/uk-display';
 import { FixtureScheduleDetails } from "./FixtureScheduleDetails";
 import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import {
-  positionCodes,
+  activePositionCodes,
   type AvailabilityResponse,
   type PreparationCommand,
   type PreparationState,
@@ -138,7 +139,7 @@ export function PlayerExperience({
           (group) => (
             <View key={group.date ?? "undated"} style={styles.stack}>
               <Text accessibilityRole="header" style={styles.heading}>
-                {group.date ?? "Date not recorded"}
+                {group.date ? formatUkDate(group.date) : "Date not recorded"}
               </Text>
               {(view === "home" ? group.events.slice(0, 1) : group.events).map(
                 (fixture) => (
@@ -154,7 +155,7 @@ export function PlayerExperience({
                       {state.team.name} vs {fixture.opponent}
                     </Text>
                     <Text style={styles.body}>
-                      {fixture.playedDate} ·{" "}
+                      {formatUkDate(fixture.playedDate)} ·{" "}
                       {fixture.homeAway === "away" ? "Away" : "Home"}
                     </Text>
                     <Text style={styles.body}>
@@ -216,7 +217,7 @@ export function PlayerExperience({
         trainingGroups.map((group) => (
           <View key={group.date ?? "undated"} style={styles.stack}>
             <Text accessibilityRole="header" style={styles.heading}>
-              {group.date ?? "Date not recorded"}
+              {group.date ? formatUkDate(group.date) : "Date not recorded"}
             </Text>
             {group.events.map((session) => (
               <Card key={session.id}>
@@ -226,7 +227,7 @@ export function PlayerExperience({
                   Training · {session.status}
                 </Pill>
                 <Text style={styles.heading}>
-                  {session.date} · {session.time || "Time not recorded"}
+                  {formatUkDate(session.date)} · {session.time || "Time not recorded"}
                 </Text>
                 <Text style={styles.body}>{session.venue}</Text>
                 <Text style={styles.body}>
@@ -319,10 +320,7 @@ export function OwnProfile({
         <Text style={styles.heading}>{profile.displayName}</Text>
         <Text style={styles.body}>
           {state.team.name} {state.team.ageGroup} ·{" "}
-          {
-            state.seasons.find((season) => season.id === state.activeSeasonId)
-              ?.label
-          }
+          {formatUkSeasonLabel(state.seasons.find((season) => season.id === state.activeSeasonId)?.label ?? "")}
         </Text>
         <Notice>
           Preferences affect future preparation. A saved or running match keeps
@@ -335,7 +333,7 @@ export function OwnProfile({
               Choice {rank + 1} · {position}
             </Text>
             <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
-              {positionCodes.map((value) => (
+              {activePositionCodes(state).map((value) => (
                 <Button
                   key={value}
                   label={value}

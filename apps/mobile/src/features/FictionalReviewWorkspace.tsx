@@ -34,7 +34,7 @@ export function FictionalReviewWorkspace(
       } catch {
         if (active)
           setError(
-            "The demo match journal could not be opened. Existing saved records were retained.",
+            "The match journal could not be opened. Existing saved records were retained.",
           );
         if (opened) await opened.close().catch(() => undefined);
       }
@@ -51,7 +51,7 @@ export function FictionalReviewWorkspace(
           <>
             <Notice tone="error">{error}</Notice>
             <Button
-              label="Retry opening demo match records"
+              label="Retry opening match records"
               onPress={() => setAttempt((value) => value + 1)}
             />
           </>
@@ -59,7 +59,7 @@ export function FictionalReviewWorkspace(
           <>
             <ActivityIndicator color={colors.brand} />
             <Text style={typography.muted}>
-              Opening demo match records…
+              Opening match records…
             </Text>
           </>
         )}

@@ -1,28 +1,50 @@
-import { romaFixture } from '@longball/testing';
-import { applyTrainingSeries, type TrainingSeriesPayload } from './training-series';
+import { romaFixture } from "@longball/testing";
+import {
+  applyTrainingSeries,
+  type TrainingSeriesPayload,
+} from "./training-series";
+import {
+  activePositionCodes,
+  allowedProfilePosition,
+  archiveTeamPosition,
+  assertActiveFormationPositions,
+  CORE_POSITION_CODES,
+  defaultPositionCatalogue,
+  saveTeamPosition,
+  type TeamPosition,
+} from "./position-catalogue";
 
-import { applyMatchPlan, saveMatchPlan, validateFixtureMatchPlan, type FixtureMatchPlanDraft, type MatchPlanApplyInput, type MatchPlanContext, type MatchPlanSaveInput, type ReusableMatchPlan } from './match-plans';
+import {
+  applyMatchPlan,
+  saveMatchPlan,
+  validateFixtureMatchPlan,
+  type FixtureMatchPlanDraft,
+  type MatchPlanApplyInput,
+  type MatchPlanContext,
+  type MatchPlanSaveInput,
+  type ReusableMatchPlan,
+} from "./match-plans";
+import {
+  applyLineupTemplate,
+  archiveLineupTemplate,
+  saveLineupTemplate,
+  validateFixtureLineupTemplate,
+  type SavedLineupTemplate,
+  type FixtureLineupDraft,
+  type LineupTemplateSaveInput,
+  type LineupTemplateArchiveInput,
+  type LineupTemplateApplyInput,
+} from "./lineup-templates";
+export {
+  activePositionCodes,
+  assertActiveFormationPositions,
+  positionCatalogueFor,
+} from "./position-catalogue";
 /** Team preparation is a serializable local projection; authentication belongs to the application boundary. */
 export type LogoChoice = "roundel" | "shield" | "ball";
-export type PositionCode =
-  | "GK"
-  | "CB"
-  | "LB"
-  | "RB"
-  | "CM"
-  | "LW"
-  | "RW"
-  | "ST";
-export const positionCodes: PositionCode[] = [
-  "GK",
-  "CB",
-  "LB",
-  "RB",
-  "CM",
-  "LW",
-  "RW",
-  "ST",
-];
+export type PositionCode = string;
+/** Original defaults for legacy consumers. New choices use activePositionCodes(state). */
+export const positionCodes: PositionCode[] = [...CORE_POSITION_CODES];
 export type AvailabilityResponse =
   | "available"
   | "unavailable"
@@ -76,6 +98,7 @@ export interface FixtureDraft {
   plannedHalfDurationMs: number;
 }
 export interface PreparationFixture extends FixtureDraft {
+  lineupTemplateDraft?: FixtureLineupDraft;
   matchPlanDraft?: FixtureMatchPlanDraft;
   status: "scheduled" | "postponed" | "cancelled";
   selectedProfileIds: string[];
@@ -104,6 +127,7 @@ export interface PreparationTraining extends TrainingDraft {
   attendance: Record<string, PreparationAttendance>;
 }
 export interface PreparedFixtureSnapshot {
+  lineupTemplateDraft?: FixtureLineupDraft;
   matchPlanDraft?: FixtureMatchPlanDraft;
   id: string;
   fixtureId: string;
@@ -131,11 +155,13 @@ export interface PreparationState {
   activeSeasonId: string;
   seasons: PreparationSeason[];
   profiles: PlayerProfile[];
+  positionCatalogue?: TeamPosition[];
   formations: PreparationFormation[];
   fixtures: PreparationFixture[];
   training: PreparationTraining[];
   snapshots: PreparedFixtureSnapshot[];
   matchPlans?: ReusableMatchPlan[];
+  lineupTemplates?: SavedLineupTemplate[];
   appliedCommands: Record<string, string>;
   audit: { id: string; revision: number; type: string }[];
 }
@@ -161,6 +187,8 @@ export type PreparationCommand = PreparationCommandBase &
         copyPlayers: boolean;
         confirmSpectatorRenewal: true;
       }
+    | { type: "position.saved"; position: TeamPosition }
+    | { type: "position.archived"; code: string }
     | { type: "profile.saved"; profile: PlayerProfile }
     | {
         type: "roster.imported";
@@ -196,6 +224,10 @@ export type PreparationCommand = PreparationCommandBase &
         attendance: PreparationAttendance;
       }
     | { type: "fixture.prepared"; fixtureId: string; formationId: string }
+    | ({ type: "lineup_template.saved" } & LineupTemplateSaveInput)
+    | ({ type: "lineup_template.archived" } & LineupTemplateArchiveInput)
+    | ({ type: "lineup_template.applied" } & LineupTemplateApplyInput)
+    | { type: "lineup_template.cleared"; fixtureId: string }
     | TrainingSeriesPayload
     | ({ type: "match_plan.saved" } & MatchPlanSaveInput)
     | ({ type: "match_plan.applied" } & MatchPlanApplyInput)
@@ -318,15 +350,35 @@ function unique(ids: string[]) {
   );
 }
 
-function validateTraining(state: PreparationState, training: TrainingDraft): void {
+function validateTraining(
+  state: PreparationState,
+  training: TrainingDraft,
+): void {
   text(training.id, "Training identity", 150);
   dateInSeason(state, training.seasonId, training.date);
-  requireThat(validTime(training.time) && training.time !== null, "Use a 24-hour HH:MM training time.");
-  requireThat(typeof training.venue === "string" && training.venue.length <= 200, "Use a training venue of at most 200 characters.");
-  requireThat(training.recurrenceGroupId === null || typeof training.recurrenceGroupId === "string" && training.recurrenceGroupId.trim().length > 0 && training.recurrenceGroupId.length <= 150, "Use a valid training series identity.");
-  requireThat(Array.isArray(training.expectedProfileIds), "Choose the expected players explicitly.");
+  requireThat(
+    validTime(training.time) && training.time !== null,
+    "Use a 24-hour HH:MM training time.",
+  );
+  requireThat(
+    typeof training.venue === "string" && training.venue.length <= 200,
+    "Use a training venue of at most 200 characters.",
+  );
+  requireThat(
+    training.recurrenceGroupId === null ||
+      (typeof training.recurrenceGroupId === "string" &&
+        training.recurrenceGroupId.trim().length > 0 &&
+        training.recurrenceGroupId.length <= 150),
+    "Use a valid training series identity.",
+  );
+  requireThat(
+    Array.isArray(training.expectedProfileIds),
+    "Choose the expected players explicitly.",
+  );
   unique(training.expectedProfileIds);
-  training.expectedProfileIds.forEach(id => checkProfile(state, id, training.seasonId));
+  training.expectedProfileIds.forEach((id) =>
+    checkProfile(state, id, training.seasonId),
+  );
 }
 
 export function seasonBounds(startYear: number) {
@@ -420,14 +472,32 @@ export function prepareFixtureSnapshot(
     "Only a scheduled match can be prepared.",
   );
   activeSeason(state, fixture.seasonId);
-  if (fixture.matchPlanDraft && fixture.matchPlanDraft.formation.id === formationId) validateFixtureMatchPlan(state, fixture);
-  const formation = fixture.matchPlanDraft && fixture.matchPlanDraft.formation.id === formationId ? fixture.matchPlanDraft.formation : state.formations.find(
-    (item) => item.id === (formationId ?? `formation-${fixture.format}`),
-  );
+  if (
+    fixture.lineupTemplateDraft &&
+    fixture.lineupTemplateDraft.formation.id === formationId
+  )
+    validateFixtureLineupTemplate(state, fixture);
+  if (
+    fixture.matchPlanDraft &&
+    fixture.matchPlanDraft.formation.id === formationId
+  )
+    validateFixtureMatchPlan(state, fixture);
+  const formation =
+    fixture.lineupTemplateDraft &&
+    fixture.lineupTemplateDraft.formation.id === formationId
+      ? fixture.lineupTemplateDraft.formation
+      : fixture.matchPlanDraft &&
+          fixture.matchPlanDraft.formation.id === formationId
+        ? fixture.matchPlanDraft.formation
+        : state.formations.find(
+            (item) =>
+              item.id === (formationId ?? `formation-${fixture.format}`),
+          );
   requireThat(
     formation && formation.format === fixture.format,
     "Choose a saved formation for this match format.",
   );
+  assertActiveFormationPositions(state, formation);
   requireThat(
     fixture.selectedProfileIds.length >= fixture.format,
     "Select enough players for the match format.",
@@ -446,6 +516,7 @@ export function prepareFixtureSnapshot(
     history: _history,
     status: _status,
     matchPlanDraft: _planDraft,
+    lineupTemplateDraft: _lineupDraft,
     ...draft
   } = fixture;
   return clone({
@@ -463,7 +534,12 @@ export function prepareFixtureSnapshot(
         fixture.attendance[profile.id] ?? "not_recorded",
       ]),
     ),
-    ...(fixture.matchPlanDraft?.formation.id === formation.id ? { matchPlanDraft: fixture.matchPlanDraft } : {}),
+    ...(fixture.matchPlanDraft?.formation.id === formation.id
+      ? { matchPlanDraft: fixture.matchPlanDraft }
+      : {}),
+    ...(fixture.lineupTemplateDraft?.formation.id === formation.id
+      ? { lineupTemplateDraft: fixture.lineupTemplateDraft }
+      : {}),
   });
 }
 
@@ -521,7 +597,9 @@ function saveProfile(
   requireThat(
     profile.preferences.length === 3 &&
       new Set(profile.preferences).size === 3 &&
-      profile.preferences.every((position) => positionCodes.includes(position)),
+      profile.preferences.every((position) =>
+        allowedProfilePosition(state, position, existing?.preferences),
+      ),
     "Choose three different ranked positions.",
   );
   requireThat(
@@ -529,7 +607,7 @@ function saveProfile(
       new Set(profile.eligiblePositions).size ===
         profile.eligiblePositions.length &&
       profile.eligiblePositions.every((position) =>
-        positionCodes.includes(position),
+        allowedProfilePosition(state, position, existing?.eligiblePositions),
       ),
     "Choose distinct manager-approved eligible positions.",
   );
@@ -632,6 +710,12 @@ export function reducePreparation(
   const state = clone(previous);
   const revision = state.revision + 1;
   switch (command.type) {
+    case "position.saved":
+      state.positionCatalogue = saveTeamPosition(state, command.position);
+      break;
+    case "position.archived":
+      state.positionCatalogue = archiveTeamPosition(state, command.code);
+      break;
     case "club.updated":
       validateLogo(command.logo);
       state.club = {
@@ -737,9 +821,11 @@ export function reducePreparation(
         "A formation needs the chosen number of slots and exactly one goalkeeper.",
       );
       unique(formation.slots.map((slot) => slot.id));
+      assertActiveFormationPositions(state, formation);
       for (const slot of formation.slots) {
         requireThat(
-          slot.id.length > 0 && positionCodes.includes(slot.position),
+          slot.id.length > 0 &&
+            activePositionCodes(state).includes(slot.position),
           "Each slot needs an identity and position type.",
         );
         slot.label = text(slot.label, "Slot label", 16);
@@ -790,7 +876,9 @@ export function reducePreparation(
         selectedProfileIds: existing?.selectedProfileIds ?? [],
         responses: existing?.responses ?? {},
         attendance: existing?.attendance ?? {},
-        ...(existing?.matchPlanDraft ? { matchPlanDraft: existing.matchPlanDraft } : {}),
+        ...(existing?.matchPlanDraft
+          ? { matchPlanDraft: existing.matchPlanDraft }
+          : {}),
         history: [
           ...(existing?.history ?? []),
           {
@@ -872,24 +960,92 @@ export function reducePreparation(
     case "training.series_created":
     case "training.series_updated":
     case "training.series_cancelled": {
-      applyTrainingSeries(state, command, draft => validateTraining(state, draft));
+      applyTrainingSeries(state, command, (draft) =>
+        validateTraining(state, draft),
+      );
+      break;
+    }
+    case "lineup_template.saved":
+      state.lineupTemplates = [
+        ...(state.lineupTemplates ?? []),
+        saveLineupTemplate(state, command),
+      ];
+      break;
+    case "lineup_template.archived":
+      state.lineupTemplates = [
+        ...(state.lineupTemplates ?? []),
+        archiveLineupTemplate(state, command),
+      ];
+      break;
+    case "lineup_template.applied": {
+      const draft = applyLineupTemplate(state, command, context);
+      const fixture = state.fixtures.find(
+        (item) => item.id === command.fixtureId,
+      )!;
+      fixture.lineupTemplateDraft = draft;
+      fixture.selectedProfileIds = draft.selectedPlayerIds.map(
+        (playerId) =>
+          state.profiles.find(
+            (profile) =>
+              profile.playerId === playerId &&
+              profile.seasonId === fixture.seasonId &&
+              profile.active,
+          )!.id,
+      );
+      delete fixture.matchPlanDraft;
+      break;
+    }
+    case "lineup_template.cleared": {
+      const fixture = state.fixtures.find(
+        (item) => item.id === command.fixtureId,
+      );
+      requireThat(
+        fixture &&
+          fixture.seasonId === state.activeSeasonId &&
+          fixture.status === "scheduled",
+        "Choose a scheduled fixture in the current season.",
+      );
+      requireThat(
+        !context.protectedFixtureIds?.includes(fixture.id),
+        "A saved or recorded match keeps its prepared lineup.",
+      );
+      delete fixture.lineupTemplateDraft;
       break;
     }
     case "match_plan.saved": {
-      const { type: _type, id: _id, expectedRevision: _revision, ...input } = command;
+      const {
+        type: _type,
+        id: _id,
+        expectedRevision: _revision,
+        ...input
+      } = command;
       const plan = saveMatchPlan(state, input);
       state.matchPlans = [...(state.matchPlans ?? []), plan];
       break;
     }
     case "match_plan.applied": {
-      const { type: _type, id: _id, expectedRevision: _revision, ...input } = command;
+      const {
+        type: _type,
+        id: _id,
+        expectedRevision: _revision,
+        ...input
+      } = command;
       const draft = applyMatchPlan(state, input, context);
-      state.fixtures.find(item => item.id === command.fixtureId)!.matchPlanDraft = draft;
+      state.fixtures.find(
+        (item) => item.id === command.fixtureId,
+      )!.matchPlanDraft = draft;
+      delete state.fixtures.find((item) => item.id === command.fixtureId)!
+        .lineupTemplateDraft;
       break;
     }
     case "match_plan.cleared": {
-      const fixture = state.fixtures.find(item => item.id === command.fixtureId);
-      requireThat(fixture && fixture.seasonId === state.activeSeasonId, 'Choose a fixture in the current season.');
+      const fixture = state.fixtures.find(
+        (item) => item.id === command.fixtureId,
+      );
+      requireThat(
+        fixture && fixture.seasonId === state.activeSeasonId,
+        "Choose a fixture in the current season.",
+      );
       delete fixture.matchPlanDraft;
       break;
     }
@@ -993,11 +1149,15 @@ export function trainingAttendanceEvidence(state: PreparationState) {
   }));
 }
 
-export function createPreparationState(options: { demoScenario?: boolean } = {}): PreparationState {
+export function createPreparationState(
+  options: { demoScenario?: boolean } = {},
+): PreparationState {
   const seasonId = "synthetic-season-2026-27";
   const profiles: PlayerProfile[] = Array.from({ length: 13 }, (_, index) => {
     const number = String(index + 1).padStart(2, "0");
-    const details = romaFixture.profiles.find(profile => profile.playerId === `synthetic-player-${number}`)!;
+    const details = romaFixture.profiles.find(
+      (profile) => profile.playerId === `synthetic-player-${number}`,
+    )!;
     const preferences = [...details.preferences] as PositionCode[];
     return {
       id: `synthetic-player-${number}:${seasonId}`,
@@ -1012,32 +1172,96 @@ export function createPreparationState(options: { demoScenario?: boolean } = {})
       active: true,
     };
   });
-  const fixtures: PreparationFixture[] = romaFixture.fixtures.map((item, index) => {
-    const selected = options.demoScenario ? item.selectedPlayerIds.map(playerId => profiles.find(profile => profile.playerId === playerId)!) : profiles.slice(0, item.selectedCount);
-    const past = item.playedDate < romaFixture.demo.referenceDate;
-    return {
-      id: item.id, seasonId, opponent: item.opponent, playedDate: item.playedDate,
-      kickoff: item.kickoff, arrival: item.arrival, venue: item.venue,
-      homeAway: item.homeAway as PreparationFixture["homeAway"],
-      format: 7, plannedHalfDurationMs: 1_500_000,
-      status: item.status as PreparationFixture["status"],
-      selectedProfileIds: selected.map((profile) => profile.id),
-      responses: Object.fromEntries(profiles.flatMap((profile, playerIndex): [string, AvailabilityResponse][] => {
-        if (index === 0) return playerIndex < 9 ? [[profile.id, "available"]] : [];
-        if (past) return [[profile.id, selected.some(item => item.id === profile.id) ? "available" : "unavailable"]];
-        return playerIndex < 6 ? [[profile.id, "available"]] : playerIndex === 6 ? [[profile.id, "unsure"]] : playerIndex === 10 ? [[profile.id, "unavailable"]] : [];
-      })),
-      attendance: past ? Object.fromEntries(selected.map((profile) => [profile.id, "present"])) : {},
-      history: [{ revision: 0, action: "created", playedDate: item.playedDate, kickoff: item.kickoff, status: item.status as PreparationFixture["status"] }],
-    };
-  });
-  const training: PreparationTraining[] = romaFixture.training.map((item, sessionIndex) => ({
-    ...item, seasonId, recurrenceGroupId: "synthetic-thursday-training",
-    status: item.status as PreparationTraining["status"],
-    expectedProfileIds: profiles.map((profile) => profile.id),
-    responses: item.status === "held" ? Object.fromEntries(profiles.map((profile, index) => [profile.id, index === (sessionIndex + 3) % 13 ? "unavailable" : "available"])) : {},
-    attendance: item.status === "held" ? Object.fromEntries(profiles.map((profile, index) => [profile.id, index === (sessionIndex + 3) % 13 ? "absent" : "present"])) : {},
-  }));
+  const fixtures: PreparationFixture[] = romaFixture.fixtures.map(
+    (item, index) => {
+      const selected = options.demoScenario
+        ? item.selectedPlayerIds.map(
+            (playerId) =>
+              profiles.find((profile) => profile.playerId === playerId)!,
+          )
+        : profiles.slice(0, item.selectedCount);
+      const past = item.playedDate < romaFixture.demo.referenceDate;
+      return {
+        id: item.id,
+        seasonId,
+        opponent: item.opponent,
+        playedDate: item.playedDate,
+        kickoff: item.kickoff,
+        arrival: item.arrival,
+        venue: item.venue,
+        homeAway: item.homeAway as PreparationFixture["homeAway"],
+        format: 7,
+        plannedHalfDurationMs: 1_500_000,
+        status: item.status as PreparationFixture["status"],
+        selectedProfileIds: selected.map((profile) => profile.id),
+        responses: Object.fromEntries(
+          profiles.flatMap(
+            (profile, playerIndex): [string, AvailabilityResponse][] => {
+              if (index === 0)
+                return playerIndex < 9 ? [[profile.id, "available"]] : [];
+              if (past)
+                return [
+                  [
+                    profile.id,
+                    selected.some((item) => item.id === profile.id)
+                      ? "available"
+                      : "unavailable",
+                  ],
+                ];
+              return playerIndex < 6
+                ? [[profile.id, "available"]]
+                : playerIndex === 6
+                  ? [[profile.id, "unsure"]]
+                  : playerIndex === 10
+                    ? [[profile.id, "unavailable"]]
+                    : [];
+            },
+          ),
+        ),
+        attendance: past
+          ? Object.fromEntries(
+              selected.map((profile) => [profile.id, "present"]),
+            )
+          : {},
+        history: [
+          {
+            revision: 0,
+            action: "created",
+            playedDate: item.playedDate,
+            kickoff: item.kickoff,
+            status: item.status as PreparationFixture["status"],
+          },
+        ],
+      };
+    },
+  );
+  const training: PreparationTraining[] = romaFixture.training.map(
+    (item, sessionIndex) => ({
+      ...item,
+      seasonId,
+      recurrenceGroupId: "synthetic-thursday-training",
+      status: item.status as PreparationTraining["status"],
+      expectedProfileIds: profiles.map((profile) => profile.id),
+      responses:
+        item.status === "held"
+          ? Object.fromEntries(
+              profiles.map((profile, index) => [
+                profile.id,
+                index === (sessionIndex + 3) % 13 ? "unavailable" : "available",
+              ]),
+            )
+          : {},
+      attendance:
+        item.status === "held"
+          ? Object.fromEntries(
+              profiles.map((profile, index) => [
+                profile.id,
+                index === (sessionIndex + 3) % 13 ? "absent" : "present",
+              ]),
+            )
+          : {},
+    }),
+  );
   return {
     version: 1,
     synthetic: true,
@@ -1065,6 +1289,7 @@ export function createPreparationState(options: { demoScenario?: boolean } = {})
       },
     ],
     profiles,
+    positionCatalogue: defaultPositionCatalogue(),
     formations: Array.from({ length: 7 }, (_, index) =>
       defaultFormation(index + 5),
     ),

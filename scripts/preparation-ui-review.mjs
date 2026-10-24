@@ -4,7 +4,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { chromium } from 'playwright';
-import { enterFictionalReview } from './review-entry.mjs';
+import { enterFictionalReview, reviewDateLabel } from './review-entry.mjs';
 
 const baseURL = process.env.LONGBALL_REVIEW_BASE_URL ?? 'http://127.0.0.1:4177';
 const output = path.resolve(process.env.LONGBALL_REVIEW_OUTPUT_DIRECTORY ?? '.local/preparation-presentation');
@@ -59,11 +59,11 @@ try {
         await page.getByTestId('preparation-save').click();
         await until(page, state => state.preparation.fixtures.some(fixture => fixture.opponent === `${period} UI06 ${width}`), 'Saved dated fixture');
       }
-      await page.getByRole('button', { name: `Open fixture upcoming UI06 ${width}, ${dates.upcoming}`, exact: true }).waitFor();
-      assert.equal(await page.getByRole('button', { name: `Open fixture past UI06 ${width}, ${dates.past}`, exact: true }).count(), 0);
+      await page.getByRole('button', { name: `Open fixture upcoming UI06 ${width}, ${reviewDateLabel(dates.upcoming)}`, exact: true }).waitFor();
+      assert.equal(await page.getByRole('button', { name: `Open fixture past UI06 ${width}, ${reviewDateLabel(dates.past)}`, exact: true }).count(), 0);
       await radio(page, 'Schedule period: Past');
-      await page.getByRole('button', { name: `Open fixture past UI06 ${width}, ${dates.past}`, exact: true }).waitFor();
-      assert.equal(await page.getByRole('button', { name: `Open fixture upcoming UI06 ${width}, ${dates.upcoming}`, exact: true }).count(), 0);
+      await page.getByRole('button', { name: `Open fixture past UI06 ${width}, ${reviewDateLabel(dates.past)}`, exact: true }).waitFor();
+      assert.equal(await page.getByRole('button', { name: `Open fixture upcoming UI06 ${width}, ${reviewDateLabel(dates.upcoming)}`, exact: true }).count(), 0);
       assert.match(await page.locator('body').innerText(), /Time not recorded/);
       await radio(page, 'Event type: Training');
       await page.getByTestId('preparation-create-event').click();
@@ -71,7 +71,7 @@ try {
       await page.getByLabel('Training venue', { exact: true }).fill(`UI06 training ${width}`);
       await page.getByTestId('preparation-save').click();
       await until(page, state => state.preparation.training.some(training => training.venue === `UI06 training ${width}`), 'Saved past training');
-      await page.getByRole('button', { name: `Open training ${dates.past}`, exact: true }).waitFor();
+      await page.getByRole('button', { name: `Open training ${reviewDateLabel(dates.past)}`, exact: true }).waitFor();
 
       await button(page, 'More'); await button(page, 'Team and season settings');
       await button(page, 'Create formation template');

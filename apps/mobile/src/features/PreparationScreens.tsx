@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   Pressable,
   StyleSheet,
@@ -11,7 +11,8 @@ import {
   defaultFormation,
   effectiveLogo,
   goalkeeperChoice,
-  positionCodes,
+  activePositionCodes,
+  positionCatalogueFor,
   seasonPlayers,
   type AvailabilityResponse,
   type FixtureDraft,
@@ -25,7 +26,19 @@ import {
   type PreparationTraining,
   type TrainingDraft,
 } from "@longball/application/preparation";
-import { groupPreparationEvents, preparationEditorSaveRevision, retainedPreparationPlayers } from "@longball/application/preparation-presentation";
+import {
+  validPositionCode,
+  type TeamPosition,
+} from "@longball/application/position-catalogue";
+import {
+  formatUkDate,
+  formatUkSeasonLabel,
+} from "@longball/application/uk-display";
+import {
+  groupPreparationEvents,
+  preparationEditorSaveRevision,
+  retainedPreparationPlayers,
+} from "@longball/application/preparation-presentation";
 import { fixtureScheduleStatus } from "@longball/application/fixture-schedule-status";
 import { TrainingSeriesEditor } from "./TrainingSeriesEditor";
 import { RosterImportPanel } from "./RosterImportPanel";
@@ -37,11 +50,14 @@ import {
 import { deliverCalendarExport } from "../platform/calendar-export";
 import { FormationPositionEditor } from "./FormationPositionEditor";
 import { ReusableMatchPlans } from "./ReusableMatchPlans";
+import { SavedLineups } from "./SavedLineups";
 import { randomUUID } from "../platform/id";
 import { Button, Card, colors, Icon, Notice, Pill } from "../ui";
 
 export interface PreparationScreensProps {
   brandingPanel?: ReactNode;
+  renderScheduledGameManagement?: (fixtureId: string) => ReactNode;
+  initialFixtureId?: string;
   state: PreparationState;
   onChange: (command: PreparationCommand) => Promise<boolean> | boolean;
   view: "schedule" | "team" | "settings";
@@ -67,7 +83,7 @@ type Editor =
   | { type: "training"; value: TrainingDraft }
   | { type: "training_series"; value: TrainingDraft; mode: "create" | "manage" }
   | { type: "formation"; value: PreparationFormation }
-  | { type: "club" | "team" | "rollover" }
+  | { type: "club" | "team" | "rollover" | "positions" }
   | null;
 type OpenEditor = Exclude<Editor, null> & { sourceRevision: number };
 const responseOptions: { value: AvailabilityResponse; label: string }[] = [
@@ -87,12 +103,7 @@ function message(error: unknown) {
     : "This change could not be saved. Your draft is retained.";
 }
 function dateLabel(date: string) {
-  return new Intl.DateTimeFormat("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    timeZone: "Europe/London",
-  }).format(new Date(`${date}T12:00:00Z`));
+  return formatUkDate(date);
 }
 function todayInLondon() {
   const parts = new Intl.DateTimeFormat("en-GB", {
@@ -158,24 +169,38 @@ function PreparationContent({
   onPrepareChildActivation,
   brandingPanel,
   onExportCalendar,
+  renderScheduledGameManagement,
+  initialFixtureId,
 }: PreparationScreensProps) {
   const [observedAt] = useState(() => Date.now());
   const [editor, setOpenEditor] = useState<OpenEditor | null>(null);
-  const setEditor = (value: Editor) => setOpenEditor(value ? { ...value, sourceRevision: state.revision } : null);
+  const setEditor = (value: Editor) =>
+    setOpenEditor(value ? { ...value, sourceRevision: state.revision } : null);
   const [selectedEvent, setSelectedEvent] = useState<{
     kind: "match" | "training";
     id: string;
-  } | null>(null);
+  } | null>(() => initialFixtureId && state.fixtures.some(fixture => fixture.id === initialFixtureId && fixture.seasonId === state.activeSeasonId) ? {kind:'match',id:initialFixtureId} : null);
+  const routeScope = JSON.stringify([state.team.id,state.activeSeasonId]);
+  const previousRouteScope = useRef(routeScope), handledOverviewRoute = useRef<string|null>(null);
+  const routedFixtureExists = Boolean(initialFixtureId && state.fixtures.some(fixture => fixture.id === initialFixtureId && fixture.seasonId === state.activeSeasonId));
+  useEffect(() => {
+    if (previousRouteScope.current !== routeScope) { previousRouteScope.current=routeScope;setSelectedEvent(null); }
+    if (!initialFixtureId) { handledOverviewRoute.current=null;return; }
+    const route=JSON.stringify([routeScope,initialFixtureId]);
+    if (routedFixtureExists && handledOverviewRoute.current!==route) { handledOverviewRoute.current=route;setSelectedEvent({kind:'match',id:initialFixtureId}); }
+  },[routeScope,initialFixtureId,routedFixtureExists]);
   const [tab, setTab] = useState<"matches" | "training">("matches");
   const [period, setPeriod] = useState<"upcoming" | "past">("upcoming");
   const [localError, setLocalError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [squadTools, setSquadTools] = useState(false);
   const players = seasonPlayers(state);
   const season = state.seasons.find(
     (item) => item.id === state.activeSeasonId,
   )!;
   const disabled = busy || saving;
-  const editorSourceChanged = editor !== null && editor.sourceRevision !== state.revision;
+  const editorSourceChanged =
+    editor !== null && editor.sourceRevision !== state.revision;
   const formDisabled = disabled || editorSourceChanged;
   const scheduleGroups = groupPreparationEvents<
     PreparationFixture | PreparationTraining
@@ -199,9 +224,14 @@ function PreparationContent({
     setSaving(true);
     setLocalError(null);
     try {
-      const expectedRevision = closeEditor && editor
-        ? preparationEditorSaveRevision(editor.sourceRevision, state.revision, reviewed?.expectedRevision)
-        : reviewed?.expectedRevision ?? state.revision;
+      const expectedRevision =
+        closeEditor && editor
+          ? preparationEditorSaveRevision(
+              editor.sourceRevision,
+              state.revision,
+              reviewed?.expectedRevision,
+            )
+          : (reviewed?.expectedRevision ?? state.revision);
       const saved = await onChange({
         ...payload,
         id: reviewed?.id ?? randomUUID(),
@@ -263,7 +293,7 @@ function PreparationContent({
     <View style={s.stack}>
       <Text style={s.eyebrow}>
         {state.club.name.toUpperCase()} · {state.team.name.toUpperCase()}{" "}
-        {state.team.ageGroup} · {season.label}
+        {state.team.ageGroup} · {formatUkSeasonLabel(season.label)}
       </Text>
       <View style={s.between}>
         <Text accessibilityRole="header" style={s.title}>
@@ -276,12 +306,25 @@ function PreparationContent({
       )}
       {editor ? (
         <>
-          {editorSourceChanged && <>
-            <Notice tone="warning">Saved preparation changed while this form was open. Your draft is still here, but saving is blocked to protect newer changes. Copy any values you want to keep, then discard this draft and reopen the form to edit the latest saved values.</Notice>
-            <Button label="Discard draft and close" variant="secondary" onPress={close} testID="preparation-discard-stale-draft" />
-          </>}
+          {editorSourceChanged && (
+            <>
+              <Notice tone="warning">
+                Saved preparation changed while this form was open. Your draft
+                is still here, but saving is blocked to protect newer changes.
+                Copy any values you want to keep, then discard this draft and
+                reopen the form to edit the latest saved values.
+              </Notice>
+              <Button
+                label="Discard draft and close"
+                variant="secondary"
+                onPress={close}
+                testID="preparation-discard-stale-draft"
+              />
+            </>
+          )}
           {editor.type === "profile" && (
             <ProfileForm
+              state={state}
               profile={editor.value}
               disabled={formDisabled}
               onSubmit={(profile) =>
@@ -303,7 +346,11 @@ function PreparationContent({
           {editor.type === "training" && (
             <TrainingForm
               training={editor.value}
-              players={retainedPreparationPlayers(state, editor.value.seasonId, editor.value.expectedProfileIds)}
+              players={retainedPreparationPlayers(
+                state,
+                editor.value.seasonId,
+                editor.value.expectedProfileIds,
+              )}
               disabled={formDisabled}
               onSubmit={(training) =>
                 commit({ type: "training.saved", training }, true)
@@ -312,15 +359,36 @@ function PreparationContent({
             />
           )}
           {editor.type === "training_series" && (
-            <TrainingSeriesEditor state={state} training={editor.value} mode={editor.mode} disabled={disabled} sourceChanged={editorSourceChanged}
-              onSubmit={command => commit(command, true, command)} onClose={close} />
+            <TrainingSeriesEditor
+              state={state}
+              training={editor.value}
+              mode={editor.mode}
+              disabled={disabled}
+              sourceChanged={editorSourceChanged}
+              onSubmit={(command) => commit(command, true, command)}
+              onClose={close}
+            />
           )}
           {editor.type === "formation" && (
             <FormationForm
+              state={state}
               formation={editor.value}
               disabled={formDisabled}
               onSubmit={(formation) =>
                 commit({ type: "formation.saved", formation }, true)
+              }
+              onClose={close}
+            />
+          )}
+          {editor.type === "positions" && (
+            <PositionCatalogueForm
+              state={state}
+              disabled={formDisabled}
+              onSave={(position) =>
+                commit({ type: "position.saved", position }, true)
+              }
+              onArchive={(code) =>
+                commit({ type: "position.archived", code }, true)
               }
               onClose={close}
             />
@@ -362,13 +430,20 @@ function PreparationContent({
             onPress={() => setSelectedEvent(null)}
           />
           <FixtureDetail
+            scheduledGameManagement={renderScheduledGameManagement?.(
+              selectedFixture.id,
+            )}
             fixture={selectedFixture}
             state={state}
             disabled={disabled}
             completed={completedFixtureIds.has(selectedFixture.id)}
             accepted={acceptedFixtureIds.has(selectedFixture.id)}
             canLookUpSavedMatch={storage === "service"}
-            statusLabel={fixtureScheduleStatus(selectedFixture, completedFixtureIds, todayInLondon())}
+            statusLabel={fixtureScheduleStatus(
+              selectedFixture,
+              completedFixtureIds,
+              todayInLondon(),
+            )}
             onCommand={commit}
             onEdit={() =>
               setEditor({ type: "fixture", value: selectedFixture })
@@ -387,10 +462,23 @@ function PreparationContent({
           />
           <TrainingDetail
             training={selectedTraining}
-            players={retainedPreparationPlayers(state, selectedTraining.seasonId, selectedTraining.expectedProfileIds)}
+            players={retainedPreparationPlayers(
+              state,
+              selectedTraining.seasonId,
+              selectedTraining.expectedProfileIds,
+            )}
             disabled={disabled}
             onCommand={commit}
-            onEditSeries={selectedTraining.recurrenceGroupId ? () => setEditor({ type: "training_series", value: selectedTraining, mode: "manage" }) : undefined}
+            onEditSeries={
+              selectedTraining.recurrenceGroupId
+                ? () =>
+                    setEditor({
+                      type: "training_series",
+                      value: selectedTraining,
+                      mode: "manage",
+                    })
+                : undefined
+            }
             onEdit={() =>
               setEditor({ type: "training", value: selectedTraining })
             }
@@ -401,7 +489,21 @@ function PreparationContent({
           <Text style={s.muted}>
             Matches and training, with replies and attendance kept separate.
           </Text>
-          {tab === "training" && <Button label="Create weekly training series" testID="training-series-create" variant="secondary" disabled={disabled} onPress={() => setEditor({ type: "training_series", value: newTraining(), mode: "create" })} />}
+          {tab === "training" && (
+            <Button
+              label="Create weekly training series"
+              testID="training-series-create"
+              variant="secondary"
+              disabled={disabled}
+              onPress={() =>
+                setEditor({
+                  type: "training_series",
+                  value: newTraining(),
+                  mode: "create",
+                })
+              }
+            />
+          )}
 
           <CalendarExportPanel
             events={calendarEventsFromSchedule(state, season.id, observedAt)}
@@ -464,7 +566,7 @@ function PreparationContent({
                   <Pressable
                     key={event.id}
                     accessibilityRole="button"
-                    accessibilityLabel={`Open fixture ${event.opponent}, ${event.playedDate}`}
+                    accessibilityLabel={`Open fixture ${event.opponent}, ${dateLabel(event.playedDate)}`}
                     onPress={() =>
                       setSelectedEvent({ kind: "match", id: event.id })
                     }
@@ -479,7 +581,11 @@ function PreparationContent({
                             event.status === "scheduled" ? "brand" : "warning"
                           }
                         >
-                          {fixtureScheduleStatus(event, completedFixtureIds, todayInLondon())}
+                          {fixtureScheduleStatus(
+                            event,
+                            completedFixtureIds,
+                            todayInLondon(),
+                          )}
                         </Pill>
                       </View>
                       <Text style={s.section}>
@@ -508,7 +614,7 @@ function PreparationContent({
                   <Pressable
                     key={event.id}
                     accessibilityRole="button"
-                    accessibilityLabel={`Open training ${event.date}`}
+                    accessibilityLabel={`Open training ${dateLabel(event.date)}`}
                     onPress={() =>
                       setSelectedEvent({ kind: "training", id: event.id })
                     }
@@ -559,71 +665,40 @@ function PreparationContent({
             <Text style={s.muted}>{players.length} active players</Text>
             <Pill tone="muted">Season profiles</Pill>
           </View>
-          <Notice tone="info">
-            Preferences inform future plans. Saved match snapshots keep the
-            profiles used for that game.
-          </Notice>
-          <RosterImportPanel
+          <Text style={s.small}>
+            Preferences guide future plans. Saved match profiles stay unchanged.
+          </Text>
+          <SavedLineups
             state={state}
             busy={disabled}
-            onImport={(profiles) =>
-              commit({
-                type: "roster.imported",
-                profiles,
-                confirmNewPlayers: true,
-              })
-            }
+            onCommand={(command) => commit(command, false, command)}
           />
-          {players.map((profile) => (
-            <Card key={profile.id}>
-              <View style={s.row}>
-                <View
-                  style={[s.shirt, goalkeeperChoice(profile) > 0 && s.keeper]}
-                >
-                  <Text style={s.shirtText}>
-                    {profile.shirtNumber ?? profile.initials}
-                  </Text>
-                </View>
-                <View style={s.flex}>
-                  <Text style={s.section}>{profile.displayName}</Text>
-                  <Text style={s.small}>
-                    {profile.preferences.join(" → ")}
-                    {goalkeeperChoice(profile) > 0 ? " · Eligible keeper" : ""}
-                  </Text>
-                </View>
-              </View>
-              <Button
-                label={`Edit ${profile.displayName}`}
-                icon="settings"
-                variant="secondary"
-                onPress={() => setEditor({ type: "profile", value: profile })}
-              />
-              {onPrepareChildActivation && (
-                <Button
-                  label={`Prepare sign-in activation for ${profile.displayName}`}
-                  variant="secondary"
-                  disabled={disabled}
-                  onPress={() => onPrepareChildActivation(profile.playerId)}
-                />
-              )}
-              <Button
-                label={`Archive ${profile.displayName}`}
-                variant="quiet"
-                disabled={disabled}
-                onPress={() => {
-                  void commit({
-                    type: "profile.archived",
-                    profileId: profile.id,
-                  });
-                }}
-              />
-            </Card>
-          ))}
+          <Button
+            label={
+              squadTools ? "Hide squad tools" : "Squad tools and CSV import"
+            }
+            variant="quiet"
+            onPress={() => setSquadTools((value) => !value)}
+            testID="squad-tools-toggle"
+          />
+          {squadTools && (
+            <RosterImportPanel
+              state={state}
+              busy={disabled}
+              onImport={(profiles) =>
+                commit({
+                  type: "roster.imported",
+                  profiles,
+                  confirmNewPlayers: true,
+                })
+              }
+            />
+          )}
           <Button
             label={
               storage === "service"
                 ? "Add player profile"
-                : "Add demo player profile"
+                : "Add player profile"
             }
             icon="users"
             disabled={disabled}
@@ -639,13 +714,77 @@ function PreparationContent({
                   initials: "NP",
                   shirtNumber: null,
                   foot: "not_recorded",
-                  preferences: ["CM", "CB", "ST"],
-                  eligiblePositions: ["CB", "CM", "ST"],
+                  preferences: [
+                    ...new Set(
+                      ["CM", "CB", "ST", ...activePositionCodes(state)].filter(
+                        (code) => activePositionCodes(state).includes(code),
+                      ),
+                    ),
+                  ].slice(0, 3),
+                  eligiblePositions: [
+                    ...new Set(
+                      ["CM", "CB", "ST", ...activePositionCodes(state)].filter(
+                        (code) => activePositionCodes(state).includes(code),
+                      ),
+                    ),
+                  ].slice(0, 3),
                   active: true,
                 },
               });
             }}
           />
+          {players.map((profile) => (
+            <Card key={profile.id} style={s.compactCard}>
+              <View style={s.row}>
+                <View
+                  style={[s.shirt, goalkeeperChoice(profile) > 0 && s.keeper]}
+                >
+                  <Text style={s.shirtText}>
+                    {profile.shirtNumber ?? profile.initials}
+                  </Text>
+                </View>
+                <View style={s.flex}>
+                  <Text style={s.label}>{profile.displayName}</Text>
+                  <Text style={s.small}>
+                    {profile.preferences.join(" → ")}
+                    {goalkeeperChoice(profile) > 0 ? " · Eligible keeper" : ""}
+                  </Text>
+                </View>
+              </View>
+              <View style={s.actionPair}>
+                <Button
+                  label="Edit"
+                  accessibilityLabel={`Edit ${profile.displayName}`}
+                  icon="settings"
+                  variant="secondary"
+                  style={s.pairedAction}
+                  disabled={disabled}
+                  onPress={() => setEditor({ type: "profile", value: profile })}
+                />
+                <Button
+                  label="Archive"
+                  accessibilityLabel={`Archive ${profile.displayName}`}
+                  variant="quiet"
+                  style={s.pairedAction}
+                  disabled={disabled}
+                  onPress={() => {
+                    void commit({
+                      type: "profile.archived",
+                      profileId: profile.id,
+                    });
+                  }}
+                />
+              </View>
+              {squadTools && onPrepareChildActivation && (
+                <Button
+                  label={`Prepare sign-in activation for ${profile.displayName}`}
+                  variant="secondary"
+                  disabled={disabled}
+                  onPress={() => onPrepareChildActivation(profile.playerId)}
+                />
+              )}
+            </Card>
+          ))}
           <Text style={s.small}>
             A player profile does not create a sign-in account. Account
             activation is managed separately.
@@ -734,6 +873,19 @@ function PreparationContent({
               onPress={() => setEditor({ type: "team" })}
             />
           </Card>
+          <Card>
+            <Text style={s.section}>Team positions</Text>
+            <Text style={s.small}>
+              {activePositionCodes(state).join(" · ")}
+            </Text>
+            <Button
+              label="Manage team positions"
+              variant="secondary"
+              disabled={disabled}
+              onPress={() => setEditor({ type: "positions" })}
+              testID="team-positions-manage"
+            />
+          </Card>
           <Text style={s.section}>Reusable formations</Text>
           {[...state.formations]
             .sort((a, b) => a.format - b.format)
@@ -774,7 +926,7 @@ function PreparationContent({
           {state.seasons.map((item) => (
             <Card key={item.id}>
               <View style={s.between}>
-                <Text style={s.section}>{item.label}</Text>
+                <Text style={s.section}>{formatUkSeasonLabel(item.label)}</Text>
                 <Pill tone={item.id === season.id ? "brand" : "muted"}>
                   {item.id === season.id ? "Current" : "Retained"}
                 </Pill>
@@ -804,7 +956,7 @@ function PreparationContent({
       <Text style={s.footnote}>
         {storage === "service"
           ? "Service preparation · Europe/London · saved by the connected service."
-          : "Demo local preparation · Europe/London · changes are saved through the application journal."}
+          : "Local preparation · Europe/London · changes are saved through the application journal."}
       </Text>
     </View>
   );
@@ -816,12 +968,14 @@ function Field({
   onChange,
   numeric = false,
   placeholder,
+  disabled = false,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   numeric?: boolean;
   placeholder?: string;
+  disabled?: boolean;
 }) {
   return (
     <View style={s.field}>
@@ -829,6 +983,7 @@ function Field({
       <TextInput
         accessibilityLabel={label}
         value={value}
+        editable={!disabled}
         onChangeText={onChange}
         keyboardType={numeric ? "decimal-pad" : "default"}
         autoCapitalize="none"
@@ -1130,12 +1285,114 @@ function RolloverForm({
     </>
   );
 }
+function PositionCatalogueForm({
+  state,
+  disabled,
+  onSave,
+  onArchive,
+  onClose,
+}: {
+  state: PreparationState;
+  disabled: boolean;
+  onSave: (position: TeamPosition) => Promise<boolean>;
+  onArchive: (code: string) => Promise<boolean>;
+  onClose: () => void;
+}) {
+  const catalogue = positionCatalogueFor(state);
+  const [draft, setDraft] = useState<TeamPosition>({
+    code: "",
+    label: "",
+    active: true,
+  });
+  const [existing, setExisting] = useState(false);
+  return (
+    <View style={s.compactStack} testID="team-position-catalogue">
+      <Text style={s.section}>Team positions</Text>
+      <Text style={s.small}>
+        Use two-letter codes in profiles, formations and future lineups.
+        Inactive positions remain in saved history. Goalkeeper always stays
+        active.
+      </Text>
+      <Choice
+        label="Edit a team position"
+        value={draft.code}
+        disabled={disabled}
+        options={catalogue.map((position) => ({
+          value: position.code,
+          label: `${position.code}${position.active ? "" : " · inactive"}`,
+        }))}
+        onChange={(code) => {
+          setDraft({
+            ...catalogue.find((position) => position.code === code)!,
+          });
+          setExisting(true);
+        }}
+      />
+      <Button
+        label="Add a position"
+        variant="secondary"
+        disabled={disabled}
+        onPress={() => {
+          setDraft({ code: "", label: "", active: true });
+          setExisting(false);
+        }}
+      />
+      <Field
+        label="Two-letter position code"
+        value={draft.code}
+        disabled={disabled || existing}
+        onChange={(code) =>
+          setDraft((value) => ({ ...value, code: code.toUpperCase() }))
+        }
+      />
+      <Field
+        label="Position name"
+        value={draft.label}
+        disabled={disabled}
+        onChange={(label) => setDraft((value) => ({ ...value, label }))}
+      />
+      <Toggle
+        label="Active for future preparation"
+        value={draft.active}
+        disabled={disabled || draft.code === "GK"}
+        onChange={(active) => setDraft((value) => ({ ...value, active }))}
+      />
+      <FormActions
+        label={existing ? "Save position" : "Add team position"}
+        disabled={
+          disabled ||
+          !validPositionCode(draft.code) ||
+          !draft.label.trim() ||
+          (!existing &&
+            catalogue.some((position) => position.code === draft.code))
+        }
+        onSave={() => {
+          void onSave(draft);
+        }}
+        onClose={onClose}
+      />
+      {existing && draft.code !== "GK" && draft.active && (
+        <Button
+          label={`Make ${draft.code} inactive`}
+          variant="quiet"
+          disabled={disabled}
+          onPress={() => {
+            void onArchive(draft.code);
+          }}
+        />
+      )}
+    </View>
+  );
+}
+
 function ProfileForm({
+  state,
   profile,
   disabled,
   onSubmit,
   onClose,
 }: {
+  state: PreparationState;
   profile: PlayerProfile;
   disabled: boolean;
   onSubmit: (profile: PlayerProfile) => Promise<boolean>;
@@ -1149,101 +1406,172 @@ function ProfileForm({
   const [shirt, setShirt] = useState(
     profile.shirtNumber === null ? "" : String(profile.shirtNumber),
   );
+  const [section, setSection] = useState<"details" | "positions">("details");
+  const [rank, setRank] = useState("0");
+  const catalogue = positionCatalogueFor(state),
+    active = activePositionCodes(state);
   const change = <Key extends keyof PlayerProfile>(
     key: Key,
     value: PlayerProfile[Key],
   ) => setDraft((previous) => ({ ...previous, [key]: value }));
   return (
-    <>
-      <Field
-        label="Player display name"
-        value={draft.displayName}
-        onChange={(value) => change("displayName", value)}
-      />
-      <Field
-        label="Pitch initials or label (1–2 characters)"
-        value={draft.initials}
-        onChange={(value) => change("initials", value)}
-      />
-      <Field
-        label="Shirt number (blank if not recorded)"
-        numeric
-        value={shirt}
-        onChange={setShirt}
-      />
+    <View style={s.compactStack} testID="player-profile-editor">
       <Choice
-        label="Preferred foot"
-        value={draft.foot}
+        label="Player editor section"
+        value={section}
         options={[
-          { value: "not_recorded", label: "Not recorded" },
-          { value: "left", label: "Left" },
-          { value: "right", label: "Right" },
-          { value: "both", label: "Both" },
+          { value: "details", label: "Details" },
+          { value: "positions", label: "Positions" },
         ]}
-        onChange={(value) => change("foot", value)}
+        onChange={setSection}
+        disabled={disabled}
       />
-      {[0, 1, 2].map((index) => (
-        <Choice
-          key={index}
-          label={`Position preference ${index + 1}`}
-          value={draft.preferences[index]}
-          options={positionCodes.map((value) => ({ value, label: value }))}
-          onChange={(value) =>
-            change(
-              "preferences",
-              draft.preferences.map((position, rank) =>
-                rank === index ? value : position,
-              ),
-            )
-          }
-        />
-      ))}
-      <Text style={s.section}>Manager-approved eligibility</Text>
-      <Text style={s.small}>
-        A preference alone does not establish eligibility. First- or
-        second-choice GK also requires approved GK eligibility.
-      </Text>
-      <View style={s.choices}>
-        {positionCodes.map((position) => (
-          <Pressable
-            key={position}
-            accessibilityRole="checkbox"
-            accessibilityState={{
-              checked: draft.eligiblePositions.includes(position),
-            }}
-            aria-checked={draft.eligiblePositions.includes(position)}
-            accessibilityLabel={`Eligible for ${position}`}
-            style={[
-              s.choice,
-              draft.eligiblePositions.includes(position) && s.choiceSelected,
+      {section === "details" ? (
+        <>
+          <Field
+            label="Player display name"
+            value={draft.displayName}
+            disabled={disabled}
+            onChange={(value) => change("displayName", value)}
+          />
+          <View style={s.formColumns}>
+            <View style={s.formColumn}>
+              <Field
+                label="Pitch initials or label (1–2 characters)"
+                value={draft.initials}
+                disabled={disabled}
+                onChange={(value) => change("initials", value)}
+              />
+            </View>
+            <View style={s.formColumn}>
+              <Field
+                label="Shirt number (blank if not recorded)"
+                numeric
+                value={shirt}
+                disabled={disabled}
+                onChange={setShirt}
+              />
+            </View>
+          </View>
+          <Choice
+            label="Preferred foot"
+            value={draft.foot}
+            options={[
+              { value: "not_recorded", label: "Not recorded" },
+              { value: "left", label: "Left" },
+              { value: "right", label: "Right" },
+              { value: "both", label: "Both" },
             ]}
-            onPress={() =>
-              change(
-                "eligiblePositions",
-                draft.eligiblePositions.includes(position)
-                  ? draft.eligiblePositions.filter(
-                      (value) => value !== position,
-                    )
-                  : [...draft.eligiblePositions, position],
+            onChange={(value) => change("foot", value)}
+            disabled={disabled}
+          />
+        </>
+      ) : (
+        <>
+          <Choice
+            label="Editing ranked preference"
+            value={rank}
+            options={draft.preferences.map((position, index) => ({
+              value: String(index),
+              label: `${index + 1} · ${position}`,
+            }))}
+            onChange={setRank}
+            disabled={disabled}
+          />
+          <Choice
+            label={`Position preference ${Number(rank) + 1}`}
+            value={draft.preferences[Number(rank)]}
+            options={catalogue
+              .filter(
+                (position) =>
+                  position.active ||
+                  position.code === draft.preferences[Number(rank)],
               )
-            }
-          >
-            <Text
-              style={[
-                s.choiceText,
-                draft.eligiblePositions.includes(position) &&
-                  s.choiceSelectedText,
-              ]}
-            >
-              {position}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
-      <Notice tone="info">
-        These changes apply to future preparation. Saved match profiles and
-        previous seasons keep their original values.
-      </Notice>
+              .map((position) => ({
+                value: position.code,
+                label: `${position.code}${position.active ? "" : " · inactive"}`,
+              }))}
+            disabled={disabled}
+            onChange={(value) => {
+              const preferences = [...draft.preferences],
+                other = preferences.indexOf(value);
+              if (other >= 0) preferences[other] = preferences[Number(rank)];
+              preferences[Number(rank)] = value;
+              change("preferences", preferences);
+            }}
+          />
+          <View style={s.between}>
+            <Text style={s.label}>Manager-approved eligibility</Text>
+            <Button
+              label="Select all"
+              accessibilityLabel="Select all active eligible positions"
+              testID="profile-eligibility-select-all"
+              variant="quiet"
+              disabled={disabled}
+              onPress={() =>
+                change("eligiblePositions", [
+                  ...new Set([...draft.eligiblePositions, ...active]),
+                ])
+              }
+            />
+          </View>
+          <Text style={s.small}>
+            Preferences do not grant eligibility. GK needs approved eligibility
+            and a first or second preference.
+          </Text>
+          <View style={s.choices}>
+            {catalogue
+              .filter(
+                (position) =>
+                  position.active ||
+                  draft.eligiblePositions.includes(position.code),
+              )
+              .map((position) => (
+                <Pressable
+                  key={position.code}
+                  accessibilityRole="checkbox"
+                  accessibilityLabel={`Eligible for ${position.code}`}
+                  accessibilityState={{
+                    checked: draft.eligiblePositions.includes(position.code),
+                    disabled,
+                  }}
+                  aria-checked={draft.eligiblePositions.includes(position.code)}
+                  disabled={disabled}
+                  style={[
+                    s.choice,
+                    draft.eligiblePositions.includes(position.code) &&
+                      s.choiceSelected,
+                  ]}
+                  onPress={() =>
+                    change(
+                      "eligiblePositions",
+                      draft.eligiblePositions.includes(position.code)
+                        ? draft.eligiblePositions.filter(
+                            (value) => value !== position.code,
+                          )
+                        : [...draft.eligiblePositions, position.code],
+                    )
+                  }
+                >
+                  <Text
+                    style={[
+                      s.choiceText,
+                      draft.eligiblePositions.includes(position.code) &&
+                        s.choiceSelectedText,
+                    ]}
+                  >
+                    {position.code}
+                    {position.active ? "" : " · inactive"}
+                  </Text>
+                </Pressable>
+              ))}
+          </View>
+        </>
+      )}
+      <Text style={s.small}>
+        Changes apply to future preparation. Saved match profiles keep their
+        original values.
+      </Text>
       <FormActions
         disabled={disabled}
         onSave={() => {
@@ -1254,7 +1582,7 @@ function ProfileForm({
         }}
         onClose={onClose}
       />
-    </>
+    </View>
   );
 }
 function FixtureForm({
@@ -1380,30 +1708,59 @@ function TrainingForm({
         onChange={(venue) => setDraft((previous) => ({ ...previous, venue }))}
       />
       <Text style={s.section}>Expected players</Text>
-      {players.map((profile) => profile.active ? (
-        <Toggle
-          key={profile.id}
-          label={profile.displayName}
-          value={draft.expectedProfileIds.includes(profile.id)}
-          disabled={disabled}
-          onChange={(selected) =>
-            setDraft((previous) => ({
-              ...previous,
-              expectedProfileIds: selected
-                ? [...previous.expectedProfileIds, profile.id]
-                : previous.expectedProfileIds.filter((id) => id !== profile.id),
-            }))
-          }
-        />
-      ) : (
-        <Card key={profile.id}>
-          <View style={s.between}><Text style={s.body}>{profile.displayName}</Text><Pill>Archived</Pill></View>
-          {draft.expectedProfileIds.includes(profile.id) ? <>
-            <Text style={s.small}>Still expected in this saved occurrence. Remove this archived player before saving future training changes.</Text>
-            <Button label={`Remove ${profile.displayName} from expected players`} variant="secondary" disabled={disabled} onPress={() => setDraft(previous => ({ ...previous, expectedProfileIds: previous.expectedProfileIds.filter(id => id !== profile.id) }))} />
-          </> : <Text style={s.small}>Removed from the draft for this occurrence. Past attendance stays unchanged.</Text>}
-        </Card>
-      ))}
+      {players.map((profile) =>
+        profile.active ? (
+          <Toggle
+            key={profile.id}
+            label={profile.displayName}
+            value={draft.expectedProfileIds.includes(profile.id)}
+            disabled={disabled}
+            onChange={(selected) =>
+              setDraft((previous) => ({
+                ...previous,
+                expectedProfileIds: selected
+                  ? [...previous.expectedProfileIds, profile.id]
+                  : previous.expectedProfileIds.filter(
+                      (id) => id !== profile.id,
+                    ),
+              }))
+            }
+          />
+        ) : (
+          <Card key={profile.id}>
+            <View style={s.between}>
+              <Text style={s.body}>{profile.displayName}</Text>
+              <Pill>Archived</Pill>
+            </View>
+            {draft.expectedProfileIds.includes(profile.id) ? (
+              <>
+                <Text style={s.small}>
+                  Still expected in this saved occurrence. Remove this archived
+                  player before saving future training changes.
+                </Text>
+                <Button
+                  label={`Remove ${profile.displayName} from expected players`}
+                  variant="secondary"
+                  disabled={disabled}
+                  onPress={() =>
+                    setDraft((previous) => ({
+                      ...previous,
+                      expectedProfileIds: previous.expectedProfileIds.filter(
+                        (id) => id !== profile.id,
+                      ),
+                    }))
+                  }
+                />
+              </>
+            ) : (
+              <Text style={s.small}>
+                Removed from the draft for this occurrence. Past attendance
+                stays unchanged.
+              </Text>
+            )}
+          </Card>
+        ),
+      )}
       <Notice tone="info">
         This edits one occurrence. Other dates in the series remain unchanged.
       </Notice>
@@ -1419,11 +1776,13 @@ function TrainingForm({
   );
 }
 function FormationForm({
+  state,
   formation,
   disabled,
   onSubmit,
   onClose,
 }: {
+  state: PreparationState;
   formation: PreparationFormation;
   disabled: boolean;
   onSubmit: (
@@ -1470,11 +1829,23 @@ function FormationForm({
         }}
       />
       <FormationPositionEditor
+        positionOrder={positionCatalogueFor(state).map(
+          (position) => position.code,
+        )}
         slots={draft.slots}
         name={draft.name}
         disabled={disabled}
         onMove={(slotId, point) => changeSlot(slotId, point)}
       />
+      {draft.slots.some(
+        (slot) => !activePositionCodes(state).includes(slot.position),
+      ) && (
+        <Notice tone="warning">
+          This version uses an inactive position. Replace inactive slots with
+          active team positions before saving or preparing a new match. Saved
+          match versions stay unchanged.
+        </Notice>
+      )}
       <Button
         label={
           advanced
@@ -1499,7 +1870,16 @@ function FormationForm({
           <Choice
             label={`Position for ${slot.id}`}
             value={slot.position}
-            options={positionCodes.map((value) => ({ value, label: value }))}
+            options={positionCatalogueFor(state)
+              .filter(
+                (position) =>
+                  position.active || position.code === slot.position,
+              )
+              .map((position) => ({
+                value: position.code,
+                label: `${position.code}${position.active ? "" : " · inactive"}`,
+              }))}
+            disabled={disabled}
             onChange={(position) => changeSlot(slot.id, { position })}
           />
           {advanced && (
@@ -1541,6 +1921,7 @@ function FormationForm({
   );
 }
 function FixtureDetail({
+  scheduledGameManagement,
   fixture,
   state,
   disabled,
@@ -1553,10 +1934,15 @@ function FixtureDetail({
   canLookUpSavedMatch,
   statusLabel,
 }: {
+  scheduledGameManagement?: ReactNode;
   fixture: PreparationFixture;
   state: PreparationState;
   disabled: boolean;
-  onCommand: (payload: Payload, closeEditor?: boolean) => Promise<boolean>;
+  onCommand: (
+    payload: Payload,
+    closeEditor?: boolean,
+    reviewed?: { id: string; expectedRevision: number },
+  ) => Promise<boolean>;
   onEdit: () => void;
   onOpenMatch?: (fixtureId: string) => void;
   onOpenReport?: (fixtureId: string) => void;
@@ -1565,11 +1951,28 @@ function FixtureDetail({
   canLookUpSavedMatch: boolean;
   statusLabel: string;
 }) {
-  const players = retainedPreparationPlayers(state, fixture.seasonId, [...fixture.selectedProfileIds, ...Object.keys(fixture.responses), ...Object.keys(fixture.attendance)]);
-  const archivedSelected = players.filter(profile => !profile.active && fixture.selectedProfileIds.includes(profile.id));
+  const players = retainedPreparationPlayers(state, fixture.seasonId, [
+    ...fixture.selectedProfileIds,
+    ...Object.keys(fixture.responses),
+    ...Object.keys(fixture.attendance),
+  ]);
+  const archivedSelected = players.filter(
+    (profile) =>
+      !profile.active && fixture.selectedProfileIds.includes(profile.id),
+  );
   const scheduled = fixture.status === "scheduled" && !completed;
-  const [formationId, setFormationId] = useState(fixture.matchPlanDraft?.formation.id ?? `formation-${fixture.format}`);
-  const availableFormations = [...(fixture.matchPlanDraft ? [fixture.matchPlanDraft.formation] : []), ...state.formations];
+  const [formationId, setFormationId] = useState(
+    fixture.lineupTemplateDraft?.formation.id ??
+      fixture.matchPlanDraft?.formation.id ??
+      `formation-${fixture.format}`,
+  );
+  const availableFormations = [
+    ...(fixture.lineupTemplateDraft
+      ? [fixture.lineupTemplateDraft.formation]
+      : []),
+    ...(fixture.matchPlanDraft ? [fixture.matchPlanDraft.formation] : []),
+    ...state.formations,
+  ];
   const formation =
     availableFormations.find(
       (item) => item.id === formationId && item.format === fixture.format,
@@ -1581,7 +1984,9 @@ function FixtureDetail({
           <Text style={s.section}>
             {state.team.name} vs {fixture.opponent}
           </Text>
-          <Pill tone={scheduled || completed ? "brand" : "warning"}>{statusLabel}</Pill>
+          <Pill tone={scheduled || completed ? "brand" : "warning"}>
+            {statusLabel}
+          </Pill>
         </View>
         <Text style={s.muted}>
           {dateLabel(fixture.playedDate)} ·{" "}
@@ -1600,52 +2005,69 @@ function FixtureDetail({
             onPress={onEdit}
           />
         )}
-        {!completed && <View style={s.stack}>
-          {scheduled ? (
-            <>
+        {!completed && (
+          <View style={s.stack}>
+            {scheduled ? (
+              <>
+                <Button
+                  label="Postpone fixture"
+                  variant="quiet"
+                  disabled={disabled}
+                  onPress={() => {
+                    void onCommand({
+                      type: "fixture.status_changed",
+                      fixtureId: fixture.id,
+                      status: "postponed",
+                    });
+                  }}
+                />
+                {!scheduledGameManagement && (
+                  <Button
+                    label="Cancel fixture"
+                    variant="quiet"
+                    disabled={disabled}
+                    onPress={() => {
+                      void onCommand({
+                        type: "fixture.status_changed",
+                        fixtureId: fixture.id,
+                        status: "cancelled",
+                      });
+                    }}
+                  />
+                )}
+              </>
+            ) : (
               <Button
-                label="Postpone fixture"
-                variant="quiet"
+                label="Restore as scheduled"
+                variant="secondary"
                 disabled={disabled}
                 onPress={() => {
                   void onCommand({
                     type: "fixture.status_changed",
                     fixtureId: fixture.id,
-                    status: "postponed",
+                    status: "scheduled",
                   });
                 }}
               />
-              <Button
-                label="Cancel fixture"
-                variant="quiet"
-                disabled={disabled}
-                onPress={() => {
-                  void onCommand({
-                    type: "fixture.status_changed",
-                    fixtureId: fixture.id,
-                    status: "cancelled",
-                  });
-                }}
-              />
-            </>
-          ) : (
-            <Button
-              label="Restore as scheduled"
-              variant="secondary"
-              disabled={disabled}
-              onPress={() => {
-                void onCommand({
-                  type: "fixture.status_changed",
-                  fixtureId: fixture.id,
-                  status: "scheduled",
-                });
-              }}
-            />
-          )}
-        </View>}
+            )}
+          </View>
+        )}
       </Card>
-      {completed && <Notice>This match is completed. The Schedule selections, replies and check-in below use current season names. Open the match report for recorded attendance, play and corrections.</Notice>}
-      {completed && onOpenReport && <Button label="Open match report" disabled={disabled} onPress={() => onOpenReport(fixture.id)} />}
+      {scheduledGameManagement}
+      {completed && (
+        <Notice>
+          This match is completed. The Schedule selections, replies and check-in
+          below use current season names. Open the match report for recorded
+          attendance, play and corrections.
+        </Notice>
+      )}
+      {completed && onOpenReport && (
+        <Button
+          label="Open match report"
+          disabled={disabled}
+          onPress={() => onOpenReport(fixture.id)}
+        />
+      )}
       {!scheduled && !completed && (
         <Notice tone="warning">
           {fixture.status === "cancelled" ? "Cancelled" : "Postponed"} matches
@@ -1658,41 +2080,78 @@ function FixtureDetail({
         recorded separately.
       </Notice>
       <Text style={s.section}>
-        {completed ? "Schedule selections" : "Match squad"} · {fixture.selectedProfileIds.length} selected{completed ? " · current season names" : ""}
+        {completed ? "Schedule selections" : "Match squad"} ·{" "}
+        {fixture.selectedProfileIds.length} selected
+        {completed ? " · current season names" : ""}
       </Text>
-      {scheduled && archivedSelected.length > 0 && <>
-        <Notice tone="warning">Archived players are still selected: {archivedSelected.map(profile => profile.displayName).join(", ")}. Remove these selections before changing or preparing the current squad. Their past records stay unchanged.</Notice>
-        <Button
-          label={archivedSelected.length === 1 ? `Remove ${archivedSelected[0].displayName} from match squad` : `Remove ${archivedSelected.length} archived players from match squad`}
-          variant="secondary"
-          disabled={disabled}
-          onPress={() => { const archivedIds = new Set(archivedSelected.map(profile => profile.id)); void onCommand({ type: "fixture.selection_saved", fixtureId: fixture.id, selectedProfileIds: fixture.selectedProfileIds.filter(id => !archivedIds.has(id)) }); }}
-          testID="preparation-remove-archived-selection"
-        />
-      </>}
+      {scheduled && archivedSelected.length > 0 && (
+        <>
+          <Notice tone="warning">
+            Archived players are still selected:{" "}
+            {archivedSelected.map((profile) => profile.displayName).join(", ")}.
+            Remove these selections before changing or preparing the current
+            squad. Their past records stay unchanged.
+          </Notice>
+          <Button
+            label={
+              archivedSelected.length === 1
+                ? `Remove ${archivedSelected[0].displayName} from match squad`
+                : `Remove ${archivedSelected.length} archived players from match squad`
+            }
+            variant="secondary"
+            disabled={disabled}
+            onPress={() => {
+              const archivedIds = new Set(
+                archivedSelected.map((profile) => profile.id),
+              );
+              void onCommand({
+                type: "fixture.selection_saved",
+                fixtureId: fixture.id,
+                selectedProfileIds: fixture.selectedProfileIds.filter(
+                  (id) => !archivedIds.has(id),
+                ),
+              });
+            }}
+            testID="preparation-remove-archived-selection"
+          />
+        </>
+      )}
       {players.map((profile) => {
         const selected = fixture.selectedProfileIds.includes(profile.id);
         return (
           <Card key={profile.id}>
-            {profile.active ? <Toggle
-              label={`Select ${profile.displayName}`}
-              value={selected}
-              disabled={disabled || !scheduled || archivedSelected.length > 0}
-              onChange={(value) => {
-                void onCommand({
-                  type: "fixture.selection_saved",
-                  fixtureId: fixture.id,
-                  selectedProfileIds: value
-                    ? [...fixture.selectedProfileIds, profile.id]
-                    : fixture.selectedProfileIds.filter(
-                        (id) => id !== profile.id,
-                      ),
-                });
-              }}
-            /> : <>
-              <View style={s.between}><Text style={s.section}>{profile.displayName}</Text><Pill>Archived</Pill></View>
-              <Text style={s.small}>{selected ? completed ? "Selected in Schedule." : "Selected in the saved squad." : "Not selected. Saved replies and attendance are retained."}</Text>
-            </>}
+            {profile.active ? (
+              <Toggle
+                label={`Select ${profile.displayName}`}
+                value={selected}
+                disabled={disabled || !scheduled || archivedSelected.length > 0}
+                onChange={(value) => {
+                  void onCommand({
+                    type: "fixture.selection_saved",
+                    fixtureId: fixture.id,
+                    selectedProfileIds: value
+                      ? [...fixture.selectedProfileIds, profile.id]
+                      : fixture.selectedProfileIds.filter(
+                          (id) => id !== profile.id,
+                        ),
+                  });
+                }}
+              />
+            ) : (
+              <>
+                <View style={s.between}>
+                  <Text style={s.section}>{profile.displayName}</Text>
+                  <Pill>Archived</Pill>
+                </View>
+                <Text style={s.small}>
+                  {selected
+                    ? completed
+                      ? "Selected in Schedule."
+                      : "Selected in the saved squad."
+                    : "Not selected. Saved replies and attendance are retained."}
+                </Text>
+              </>
+            )}
             <Choice
               label={`${profile.displayName} availability reply`}
               value={fixture.responses[profile.id] ?? "no_reply"}
@@ -1728,10 +2187,25 @@ function FixtureDetail({
       })}
       {scheduled && onOpenMatch && (
         <>
-          {(accepted || canLookUpSavedMatch) && <>
-            <Notice>{accepted ? "This match has a saved squad, formation and player positions. Open the saved preparation to continue with them." : "If this fixture was already prepared on another device, open its saved preparation. Otherwise use Open match preparation below to prepare the current squad."} Once a manager has taken control, preparing current changes cannot replace the saved match.</Notice>
-            <Button label="Open saved match preparation" icon="play" variant="secondary" disabled={disabled} onPress={() => onOpenMatch(fixture.id)} testID="preparation-open-saved-match" />
-          </>}
+          {(accepted || canLookUpSavedMatch) && (
+            <>
+              <Notice>
+                {accepted
+                  ? "This match has a saved squad, formation and player positions. Open the saved preparation to continue with them."
+                  : "If this fixture was already prepared on another device, open its saved preparation. Otherwise use Open match preparation below to prepare the current squad."}{" "}
+                Once a manager has taken control, preparing current changes
+                cannot replace the saved match.
+              </Notice>
+              <Button
+                label="Open saved match preparation"
+                icon="play"
+                variant="secondary"
+                disabled={disabled}
+                onPress={() => onOpenMatch(fixture.id)}
+                testID="preparation-open-saved-match"
+              />
+            </>
+          )}
           <Choice
             label="Saved formation for this match"
             value={formation?.id ?? ""}
@@ -1762,7 +2236,42 @@ function FixtureDetail({
           />
         </>
       )}
-      {!completed && <ReusableMatchPlans key={fixture.id} state={state} fixture={fixture} busy={disabled} onCommand={async command => { const saved = await onCommand(command); if (saved && command.type === 'match_plan.applied') setFormationId(`match-plan:${command.planId}:${command.planVersion}`); if (saved && command.type === 'match_plan.cleared') setFormationId(`formation-${fixture.format}`); return saved; }} onPrepare={() => formation ? onCommand({ type: 'fixture.prepared', fixtureId: fixture.id, formationId: formation.id }) : Promise.resolve(false)} />}
+      {!completed && (
+        <SavedLineups
+          state={state}
+          fixture={fixture}
+          busy={disabled}
+          onCommand={(command) => onCommand(command, false, command)}
+          onApplied={setFormationId}
+        />
+      )}
+      {!completed && (
+        <ReusableMatchPlans
+          key={fixture.id}
+          state={state}
+          fixture={fixture}
+          busy={disabled}
+          onCommand={async (command) => {
+            const saved = await onCommand(command);
+            if (saved && command.type === "match_plan.applied")
+              setFormationId(
+                `match-plan:${command.planId}:${command.planVersion}`,
+              );
+            if (saved && command.type === "match_plan.cleared")
+              setFormationId(`formation-${fixture.format}`);
+            return saved;
+          }}
+          onPrepare={() =>
+            formation
+              ? onCommand({
+                  type: "fixture.prepared",
+                  fixtureId: fixture.id,
+                  formationId: formation.id,
+                })
+              : Promise.resolve(false)
+          }
+        />
+      )}
       <Text style={s.section}>Fixture history</Text>
       {fixture.history.map((item) => (
         <Text key={`${item.revision}-${item.action}`} style={s.small}>
@@ -1810,7 +2319,15 @@ function TrainingDetail({
             onPress={onEdit}
           />
         )}
-        {onEditSeries && <Button label="Edit or cancel scheduled series occurrences" testID="training-series-manage" variant="secondary" disabled={disabled} onPress={onEditSeries} />}
+        {onEditSeries && (
+          <Button
+            label="Edit or cancel scheduled series occurrences"
+            testID="training-series-manage"
+            variant="secondary"
+            disabled={disabled}
+            onPress={onEditSeries}
+          />
+        )}
         <Choice
           label="Occurrence status"
           value={training.status}
@@ -1840,12 +2357,17 @@ function TrainingDetail({
         .filter((profile) => training.expectedProfileIds.includes(profile.id))
         .map((profile) => (
           <Card key={profile.id}>
-            <View style={s.between}><Text style={s.section}>{profile.displayName}</Text>{!profile.active && <Pill>Archived</Pill>}</View>
+            <View style={s.between}>
+              <Text style={s.section}>{profile.displayName}</Text>
+              {!profile.active && <Pill>Archived</Pill>}
+            </View>
             <Choice
               label={`${profile.displayName} training reply`}
               value={training.responses[profile.id] ?? "no_reply"}
               options={responseOptions}
-              disabled={disabled || training.status === "cancelled" || !profile.active}
+              disabled={
+                disabled || training.status === "cancelled" || !profile.active
+              }
               onChange={(response) => {
                 void onCommand({
                   type: "training.response_recorded",
@@ -1859,7 +2381,9 @@ function TrainingDetail({
               label={`${profile.displayName} training attendance`}
               value={training.attendance[profile.id] ?? "not_recorded"}
               options={attendanceOptions}
-              disabled={disabled || training.status !== "held" || !profile.active}
+              disabled={
+                disabled || training.status !== "held" || !profile.active
+              }
               onChange={(attendance) => {
                 void onCommand({
                   type: "training.attendance_recorded",
@@ -1876,6 +2400,17 @@ function TrainingDetail({
 }
 
 const s = StyleSheet.create({
+  compactStack: { gap: 12 },
+  compactCard: { padding: 12, gap: 8 },
+  actionPair: { flexDirection: "row", gap: 8 },
+  pairedAction: {
+    flex: 1,
+    minHeight: 48,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+  },
+  formColumns: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
+  formColumn: { flexGrow: 1, flexBasis: 120, minWidth: 110 },
   stack: { gap: 16 },
   row: { flexDirection: "row", alignItems: "center", gap: 12 },
   between: {

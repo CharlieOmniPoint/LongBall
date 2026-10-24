@@ -1,5 +1,4 @@
 import {
-  positionCodes,
   type AvailabilityResponse,
   type PlayerProfile,
   type PreparationAttendance,
@@ -7,6 +6,11 @@ import {
   type PreparationSeason,
   type PreparationState,
 } from "./preparation";
+import {
+  positionCatalogueFor,
+  validPositionCatalogue,
+  type TeamPosition,
+} from "./position-catalogue";
 
 export type PlayerFixtureDetails = {
   arrival: string | null;
@@ -20,6 +24,7 @@ export type OwnPlayerPreparation = {
   team: { id: string; name: string; ageGroup: string };
   season: PreparationSeason;
   profile: PlayerProfile;
+  positionCatalogue?: TeamPosition[];
   fixtures: (PlayerFixtureDetails & {
     id: string;
     opponent: string;
@@ -73,6 +78,7 @@ export function projectOwnPlayerPreparation(
   return {
     kind: "player-preparation",
     revision: state.revision,
+    positionCatalogue: positionCatalogueFor(state),
     team: {
       id: state.team.id,
       name: state.team.name,
@@ -161,6 +167,9 @@ export function parseOwnPlayerPreparation(
       "profile",
       "fixtures",
       "training",
+      ...(object(value) && Object.hasOwn(value, "positionCatalogue")
+        ? ["positionCatalogue"]
+        : []),
     ]) ||
     value.kind !== "player-preparation" ||
     !Number.isSafeInteger(value.revision) ||
@@ -168,6 +177,14 @@ export function parseOwnPlayerPreparation(
   )
     return fail();
   const { team, season, profile } = value;
+  if (
+    Object.hasOwn(value, "positionCatalogue") &&
+    !validPositionCatalogue(value.positionCatalogue)
+  )
+    return fail();
+  const positions = positionCatalogueFor(
+    value as { positionCatalogue?: TeamPosition[] },
+  ).map((item) => item.code);
   if (
     !object(team) ||
     !exact(team, ["id", "name", "ageGroup"]) ||
@@ -220,8 +237,7 @@ export function parseOwnPlayerPreparation(
     !member(profile.foot, ["left", "right", "both", "not_recorded"]) ||
     ![profile.preferences, profile.eligiblePositions].every(
       (items) =>
-        Array.isArray(items) &&
-        items.every((item) => member(item, positionCodes)),
+        Array.isArray(items) && items.every((item) => member(item, positions)),
     )
   )
     return fail();

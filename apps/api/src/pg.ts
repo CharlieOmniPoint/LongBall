@@ -140,9 +140,9 @@ export class PgDatabase implements PgQuery {
   async migrate(): Promise<void> {
     if (this.migrationMode === 'verify') {
       const versions = await this.query<{ version: number }>('SELECT version FROM longball.schema_migrations ORDER BY version');
-      if (versions.rows.some(row => row.version > 16)) throw new Error('This PostgreSQL schema is newer than the application. Preserve it and use a compatible build.');
-      if (![2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16].every(version => versions.rows.some(row => row.version === version))) throw new Error('PostgreSQL migrations are required. Run the separate migrator before starting the runtime.');
-      const protectedTables = ['clubs','teams','team_seasons','game_contexts','accounts','memberships','matches','documents','devices','controller_grants','controller_history','events','streams','conflicting_submissions','transfers','clock_challenges','clock_mappings','reconciliation_proposals','audit','idempotency','privacy_requests','privacy_pending_keys','jobs','brand_assets','brand_slots','spectator_invitations','lb_spectator_activation_accounts','lb_spectator_activation_attempts','native_app_devices','team_privilege_states','team_privilege_decisions','push_registrations','report_exports'];
+      if (versions.rows.some(row => row.version > 20)) throw new Error('This PostgreSQL schema is newer than the application. Preserve it and use a compatible build.');
+      if (![2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20].every(version => versions.rows.some(row => row.version === version))) throw new Error('PostgreSQL migrations are required. Run the separate migrator before starting the runtime.');
+      const protectedTables = ['clubs','teams','team_seasons','game_contexts','accounts','memberships','matches','documents','devices','controller_grants','controller_history','events','streams','conflicting_submissions','transfers','clock_challenges','clock_mappings','reconciliation_proposals','audit','idempotency','privacy_requests','privacy_pending_keys','jobs','brand_assets','brand_slots','spectator_invitations','lb_spectator_activation_accounts','lb_spectator_activation_attempts','native_app_devices','team_privilege_states','team_privilege_decisions','push_registrations','report_exports','match_feedback','match_feedback_receipts'];
       const security = await this.query<{ relname: string; relrowsecurity: boolean; policies: number }>(`SELECT c.relname,c.relrowsecurity,(SELECT count(*)::integer FROM pg_catalog.pg_policy p WHERE p.polrelid=c.oid) AS policies FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='longball' AND c.relname=ANY($1::text[])`, [protectedTables]);
       if (security.rows.length !== protectedTables.length || security.rows.some(row => !row.relrowsecurity || row.policies < 1)) throw new Error('PostgreSQL row security is missing. Run the separate migrator before starting runtime.');
       return;
@@ -162,12 +162,16 @@ export class PgDatabase implements PgQuery {
     const pushRegistrationMigration = await readFile(new URL('../migrations/postgresql/014_push_registrations.sql', import.meta.url), 'utf8');
     const privilegeAuditClockMigration = await readFile(new URL('../migrations/postgresql/015_team_privilege_audit_clock.sql', import.meta.url), 'utf8');
     const reportExportsMigration = await readFile(new URL('../migrations/postgresql/016_report_exports.sql', import.meta.url), 'utf8');
+    const feedbackMigration = await readFile(new URL('../migrations/postgresql/017_match_feedback.sql', import.meta.url), 'utf8');
+    const scheduledGamesMigration = await readFile(new URL('../migrations/postgresql/018_scheduled_games.sql', import.meta.url), 'utf8');
+    const playerStatsMigration = await readFile(new URL('../migrations/postgresql/019_player_stats.sql', import.meta.url), 'utf8');
+    const teamOverviewMigration = await readFile(new URL('../migrations/postgresql/020_team_overview.sql', import.meta.url), 'utf8');
     await this.transaction(async () => {
       const schema = await this.query<{ namespace: string | null }>("SELECT to_regnamespace('longball')::text AS namespace");
       if (!schema.rows[0]?.namespace) await this.query('CREATE SCHEMA longball');
       await this.query('CREATE TABLE IF NOT EXISTS longball.schema_migrations(version integer PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())');
       const versions = await this.query<{ version: number }>('SELECT version FROM longball.schema_migrations ORDER BY version');
-      if (versions.rows.some(row => row.version > 16)) throw new Error('This PostgreSQL schema is newer than the application. Preserve it and use a compatible build.');
+      if (versions.rows.some(row => row.version > 20)) throw new Error('This PostgreSQL schema is newer than the application. Preserve it and use a compatible build.');
       if (!versions.rows.some(row => row.version === 2)) {
         await this.query(migration);
         await this.query('INSERT INTO longball.schema_migrations(version) VALUES(2)');
@@ -186,6 +190,10 @@ export class PgDatabase implements PgQuery {
       if (!versions.rows.some(row => row.version === 14)) { await this.query(pushRegistrationMigration); await this.query('INSERT INTO longball.schema_migrations(version) VALUES(14)'); }
       if (!versions.rows.some(row => row.version === 15)) { await this.query(privilegeAuditClockMigration); await this.query('INSERT INTO longball.schema_migrations(version) VALUES(15)'); }
       if (!versions.rows.some(row => row.version === 16)) { await this.query(reportExportsMigration); await this.query('INSERT INTO longball.schema_migrations(version) VALUES(16)'); }
+      if (!versions.rows.some(row => row.version === 17)) { await this.query(feedbackMigration); await this.query('INSERT INTO longball.schema_migrations(version) VALUES(17)'); }
+      if (!versions.rows.some(row => row.version === 18)) { await this.query(scheduledGamesMigration); await this.query('INSERT INTO longball.schema_migrations(version) VALUES(18)'); }
+      if (!versions.rows.some(row => row.version === 19)) { await this.query(playerStatsMigration); await this.query('INSERT INTO longball.schema_migrations(version) VALUES(19)'); }
+      if (!versions.rows.some(row => row.version === 20)) { await this.query(teamOverviewMigration); await this.query('INSERT INTO longball.schema_migrations(version) VALUES(20)'); }
     });
   }
   async close(): Promise<void> { await this.pool.end(); }

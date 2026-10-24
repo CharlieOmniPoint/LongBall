@@ -1,3 +1,4 @@
+import { formatUkDateTime } from '@longball/application/uk-display';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import * as Crypto from 'expo-crypto';
@@ -420,7 +421,7 @@ function ConnectedRehearsal({ connection, journal, physicalDeviceId, matchId, co
       <Text style={typography.muted}>A downloaded UTC timestamp is only an observation. This exchange measures server-time bounds against the phone’s current continuous clock. It does not pause play or block offline event capture. A reboot, controller change or uncertain clock needs a new exchange. A new mapping applies to future events; already queued full-time records keep their original evidence.</Text>
       {connection.mode === 'synthetic' && <Button label={fictionalClockAcknowledged ? 'Demo session-clock experiment acknowledged' : 'Acknowledge demo session-clock experiment'} variant="secondary" onPress={() => setFictionalClockAcknowledged(value => !value)} />}
       <Button label="Establish continuous server-time evidence" testID="clock-exchange" variant="secondary" disabled={busy || !editable || connection.mode === 'synthetic' && !fictionalClockAcknowledged} onPress={() => { void run(exchangeClock); }} />
-      {clockMapping && clockMapping.controllerEpoch === epoch && clockMapping.continuityId === sample.sessionId && <Notice>Exchange received under {clockMapping.policyId}; server validity ends {new Date(clockMapping.validUntilMs).toISOString()}. Finish-time acceptance is checked by the service. This evidence does not approve competition sharing or award policy.</Notice>}
+      {clockMapping && clockMapping.controllerEpoch === epoch && clockMapping.continuityId === sample.sessionId && <Notice>Exchange received under {clockMapping.policyId}; server validity ends {formatUkDateTime(clockMapping.validUntilMs)}. Finish-time acceptance is checked by the service. This evidence does not approve competition sharing or award policy.</Notice>}
       <Button label="Read service quarantine" variant="secondary" disabled={busy || !current} onPress={() => { void run(async () => { const result = await client.quarantine(matchId); setQuarantineCount(result.items.length); }); }} />
       {quarantineCount !== null && <Text style={typography.muted}>{quarantineCount} retained service quarantine records. Review requires an authorised manager; no branch is discarded.</Text>}
       {rejected.map(entry => <Notice key={entry.envelope.eventId} tone="warning">Sequence {entry.envelope.clientSequence}: {entry.reason ?? 'requires review'}</Notice>)}

@@ -1,3 +1,4 @@
+import { formatUkDate } from '@longball/application/uk-display';
 import { useState } from 'react';
 import { Switch, Text, TextInput, View } from 'react-native';
 import { reducePreparation, type PreparationCommand, type PreparationState, type TrainingDraft } from '@longball/application/preparation';
@@ -47,7 +48,7 @@ export function TrainingSeriesEditor({ state, training, mode, disabled, sourceCh
     {error && <Notice tone="error">{error}</Notice>}
     {preview ? <>
       <Notice tone="warning">Review every listed date before confirming. {preview.type === 'training.series_cancelled' ? 'These scheduled occurrences will be cancelled.' : 'These occurrences will use the time, venue and expected players shown.'} Replies and actual attendance are retained.</Notice>
-      {previewRows.map(item => <Card key={item.id}><Text style={typography.body}>{item.date} · {preview.type === 'training.series_created' ? item.time : preview.type === 'training.series_updated' ? preview.changes.time : item.time}</Text><Text style={typography.muted}>{preview.type === 'training.series_updated' ? preview.changes.venue || 'Venue not recorded' : item.venue || 'Venue not recorded'}</Text></Card>)}
+      {previewRows.map(item => <Card key={item.id}><Text style={typography.body}>{formatUkDate(item.date)} · {preview.type === 'training.series_created' ? item.time : preview.type === 'training.series_updated' ? preview.changes.time : item.time}</Text><Text style={typography.muted}>{preview.type === 'training.series_updated' ? preview.changes.venue || 'Venue not recorded' : item.venue || 'Venue not recorded'}</Text></Card>)}
       {preview.type !== 'training.series_cancelled' && <Text style={typography.body}>Expected players: {players.filter(item => (preview.type === 'training.series_created' ? preview.occurrences[0].expectedProfileIds : preview.changes.expectedProfileIds).includes(item.id)).map(item => item.displayName).join(', ') || 'None selected'}.</Text>}
       {stale && <Notice tone="error">The saved team records changed after this preview. Go back and review the current dates again.</Notice>}
       <Button testID="training-series-confirm" label={`Confirm ${previewRows.length} ${preview.type === 'training.series_cancelled' ? 'cancellations' : 'training occurrences'}`} disabled={disabled || stale || sourceChanged} onPress={() => { void onSubmit(preview); }} />
@@ -61,7 +62,7 @@ export function TrainingSeriesEditor({ state, training, mode, disabled, sourceCh
         <Text style={typography.body}>{scheduled.length} scheduled occurrences. Each occurrence keeps its existing date and identity.</Text>
         <Button label="Edit scheduled occurrences" variant={action === 'edit' ? 'primary' : 'secondary'} disabled={disabled} onPress={() => setAction('edit')} />
         <Button label="Cancel scheduled occurrences" variant={action === 'cancel' ? 'primary' : 'secondary'} disabled={disabled} onPress={() => setAction('cancel')} />
-        {series.filter(item => item.status !== 'scheduled').map(item => <Text key={item.id} style={typography.muted}>{item.date} · {item.time} · {item.status} — unchanged</Text>)}
+        {series.filter(item => item.status !== 'scheduled').map(item => <Text key={item.id} style={typography.muted}>{formatUkDate(item.date)} · {item.time} · {item.status} — unchanged</Text>)}
       </>}
       {(mode === 'create' || action === 'edit') && <>
         <SeriesField label="Series training time (HH:MM)" value={draft.time} disabled={disabled} onChange={time => setDraft(previous => ({ ...previous, time }))} />

@@ -399,7 +399,7 @@ try {
       await page.getByTestId('preparation-save').click();
       let prep = await poll(() => json(primaryAPI, scoped('preparation')), value => value.fixtures?.some(item => item.opponent === 'Connected Birch rehearsal'), 'Fixture persisted in service');
       const fixture = prep.fixtures.find(item => item.opponent === 'Connected Birch rehearsal');
-      await button(page, 'Open fixture Connected Birch rehearsal, 2026-11-07'); await button(page, 'Edit or reschedule fixture');
+      await button(page, 'Open fixture Connected Birch rehearsal, 07/11/26'); await button(page, 'Edit or reschedule fixture');
       await input(page, 'Match date (YYYY-MM-DD)', '2026-11-14'); await page.getByTestId('preparation-save').click();
       prep = await poll(() => json(primaryAPI, scoped('preparation')), value => value.fixtures?.find(item => item.id === fixture.id)?.playedDate === '2026-11-14', 'Service fixture rescheduled with same identity');
       assert.equal(prep.fixtures.filter(item => item.id === fixture.id).length, 1);

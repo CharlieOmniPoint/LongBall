@@ -236,7 +236,7 @@ async function enter(account = "Alex Morgan · Manager", entry = baseURL) {
     await choices.waitFor();
     const managerChoice = choices.getByTestId(`workspace-context-manager-${teamId}-${seasonId}-none`);
     await managerChoice.waitFor();
-    assert.equal((await managerChoice.innerText()).trim(), "Open Manager · Roma U10 · 2026/27", "The choice uses fresh server-owned team and season display names.");
+    assert.equal((await managerChoice.innerText()).trim(), "Open Manager · Roma U10 · 26/27", "The choice uses fresh server-owned team and season display names with the short display year.");
     assert.match(await choices.innerText(), /Richmond Rovers/);
     assert.doesNotMatch(await managerChoice.innerText(), /synthetic-/);
     await managerChoice.scrollIntoViewIfNeeded();

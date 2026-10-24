@@ -1,3 +1,4 @@
+import { formatUkDate, formatUkSeasonLabel } from '@longball/application/uk-display';
 import { useState } from "react";
 import { Switch, Text, View } from "react-native";
 import type {
@@ -33,7 +34,7 @@ export function ConnectedSeasonRollover({
     return (
       <Card>
         <Pill>New season saved</Pill>
-        <Text style={typography.section}>{options.nextSeason.label}</Text>
+        <Text style={typography.section}>{formatUkSeasonLabel(options.nextSeason.label)}</Text>
         <Text style={typography.body}>
           The previous season’s records and match snapshots were preserved.
           Spectators receive no automatic new-season grant.
@@ -53,8 +54,8 @@ export function ConnectedSeasonRollover({
           Review explicit season assignments
         </Text>
         <Text style={typography.body}>
-          {options.nextSeason.label} · {options.nextSeason.startDate} to{" "}
-          {options.nextSeason.endDate}
+          {formatUkSeasonLabel(options.nextSeason.label)} · {formatUkDate(options.nextSeason.startDate)} to{" "}
+          {formatUkDate(options.nextSeason.endDate)}
         </Text>
         <Text style={typography.body}>
           Managers:{" "}
@@ -116,10 +117,10 @@ export function ConnectedSeasonRollover({
       <Card>
         <Text style={typography.section}>Prepare the next season</Text>
         <Text style={typography.body}>
-          From {options.sourceSeason.label} to {options.nextSeason.label}
+          From {options.sourceSeason.label} to {formatUkSeasonLabel(options.nextSeason.label)}
         </Text>
         <Text style={typography.muted}>
-          {options.nextSeason.startDate} to {options.nextSeason.endDate} ·
+          {formatUkDate(options.nextSeason.startDate)} to {formatUkDate(options.nextSeason.endDate)} ·
           September–August
         </Text>
         {options.existingNextSeasonId ? (

@@ -15,6 +15,8 @@ import { SpectatorInvitationService } from './invitation-service';
 import { PostgresInvitationRepository } from './postgres-invitation-repository';
 import { PostgresPushRepository } from './postgres-push-registrations';
 import { PushRegistrationService } from './push-registrations';
+import { MatchFeedbackRepository } from './match-feedback-repository';
+import { MatchFeedbackService } from './match-feedback-service';
 
 export async function createPostgresApi(options: ApiOptions & { connectionString: string; migrationMode?:'apply'|'verify'; seedSynthetic?:boolean; allowOwnerTestFixture?:true }) {
   assertDemoScenarioOptions(options);
@@ -34,6 +36,8 @@ export async function createPostgresApi(options: ApiOptions & { connectionString
     const push=new PushRegistrationService(new PostgresPushRepository(store.db),options,store.now);
     const exportsRepository=new ReportExportRepository(store);await exportsRepository.initialize();
     const reports=new ReportExportService(exportsRepository,store,options.reportExports,store.now);
-    return createRuntimeApi(options, store, port, media, activation,undefined,{branding,spectator,invitations,privileges,push,reports});
+    const feedbackRepository=new MatchFeedbackRepository(store,port);await feedbackRepository.initialize();
+    const feedback=new MatchFeedbackService(feedbackRepository);
+    return createRuntimeApi(options, store, port, media, activation,undefined,{branding,spectator,invitations,privileges,push,reports,feedback});
   } catch (error) { await store.close(); throw error; }
 }

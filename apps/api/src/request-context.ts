@@ -12,7 +12,7 @@ export interface DatabaseRequestScope {
   invitationTokenHash?: string;
 }
 const object = (value: unknown): value is Record<string,unknown> => Boolean(value && typeof value==='object'&&!Array.isArray(value));
-const opaque = (value:unknown):value is string => typeof value==='string'&&/^[A-Za-z0-9_-]{1,150}$/.test(value);
+const opaque = (value:unknown):value is string => typeof value==='string'&&/^[A-Za-z0-9_.:-]{1,150}$/.test(value);
 
 export function requestDatabaseScope(input:{method:string;parts:string[];seasonId:string;role?:string;body:Record<string,unknown>|null}):DatabaseRequestScope {
   const {method,parts,body}=input;
@@ -47,6 +47,10 @@ export function requestDatabaseScope(input:{method:string;parts:string[];seasonI
       }
       case 'configuration':scope.operation=method==='GET'?'configuration.read':'configuration.write';break;
       case 'seasons':scope.operation=method==='GET'?'season.options':'season.create';if(method==='POST'&&opaque(command?.idForSeason))scope.newSeasonId=command.idForSeason;break;
+      case 'team-overview':scope.operation=method==='GET'?'team_overview.read':'unavailable';break;
+      case 'scheduled-games':scope.operation=method==='GET'?'scheduled_games.read':method==='POST'?'scheduled_games.write':'unavailable';break;
+      case 'player-stats':scope.operation=method==='GET'?'stats.read':'unavailable';break;
+      case 'match-feedback':scope.operation=method==='GET'?'feedback.read':method==='POST'?'feedback.write':'unavailable';break;
       case 'preparation':scope.operation=`preparation.${parts[4]==='own'?'own.':''}${method==='GET'?'read':'write'}`;break;
       case 'records':scope.operation=method==='GET'?(parts[4]==='export'?'records.export':'records.read'):'records.write';break;
       case 'privileges':scope.operation=method==='GET'?(parts[4]==='own'?'privileges.own':'privileges.read'):'privileges.write';break;

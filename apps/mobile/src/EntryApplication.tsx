@@ -1,3 +1,4 @@
+import { formatUkDateTime } from '@longball/application/uk-display';
 import {
   useCallback,
   useEffect,
@@ -229,7 +230,7 @@ export function EntryApplication({
         ]}
       >
         <View style={s.column}>
-          <Pill tone="muted">ROMA U10 · DEMO</Pill>
+          <Pill tone="muted">ROMA U10</Pill>
           <Text accessibilityRole="header" style={typography.title}>
             Choose your team space
           </Text>
@@ -285,25 +286,18 @@ export function EntryApplication({
           {!reviewService ? (
             <View style={s.loading}>
               <ActivityIndicator color={colors.brand} />
-              <Text style={typography.muted}>Checking the connected demo…</Text>
+              <Text style={typography.muted}>Checking the connected workspace…</Text>
             </View>
           ) : reviewService.status === "available" ? (
             <>
               <Notice>
-                Changes in the connected demo are shared with other reviewers.
+                Changes in the connected workspace are shared with other reviewers.
                 This temporary session ends at{" "}
-                {new Date(reviewService.expiresAtMs).toLocaleString("en-GB", {
-                  timeZone: "Europe/London",
-                  day: "numeric",
-                  month: "short",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                  timeZoneName: "short",
-                })}
+                {formatUkDateTime(reviewService.expiresAtMs)}
                 .
               </Notice>
               <Button
-                label="Open connected demo"
+                label="Open connected workspace"
                 testID="review-open-connected"
                 onPress={() => {
                   setReviewInvitation(
@@ -320,7 +314,7 @@ export function EntryApplication({
           )}
           {reviewService?.status === "unavailable" && (
             <Button
-              label="Check connected demo again"
+              label="Check connected workspace again"
               variant="secondary"
               onPress={() => {
                 setReviewService(null);
@@ -329,7 +323,7 @@ export function EntryApplication({
             />
           )}
           <Button
-            label="Choose another demo role"
+            label="Choose another role"
             variant="quiet"
             onPress={() => setRoute("accounts")}
           />
@@ -364,7 +358,7 @@ export function EntryApplication({
             </Text>
             <Text style={typography.body}>
               {route === "privacy"
-                ? "The demo Roma U10 review is for adult feedback. Use sample information only. Changes in the local rehearsal stay on this device; connected review changes are shared with other reviewers."
+                ? "This Roma U10 workspace is for adult feedback. Do not enter real children’s personal information. Local changes stay on this device; connected changes are shared with other reviewers."
                 : "For a child’s invited player account, the authorised household completes activation. Child email is not required. An existing account can accept a spectator invitation after sign-in."}
             </Text>
             <Text style={typography.body}>

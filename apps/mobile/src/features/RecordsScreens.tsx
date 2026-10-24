@@ -26,6 +26,7 @@ import {
 } from "@longball/application/records";
 import { randomUUID } from "../platform/id";
 import { Button, Card, colors, Notice, Pill } from "../ui";
+import { formatUkDate, formatUkDateTime, formatUkSeasonLabel } from "@longball/application/uk-display";
 
 export interface RecordsScreensProps {
   state: RecordsState;
@@ -45,13 +46,7 @@ type Tab = "results" | "participation";
 type Editor = { record: MatchRecord | null };
 const scoreLabel = (score: RecordedScore | null) =>
   score ? `${score.for} – ${score.against}` : "Not recorded";
-const dateLabel = (date: string) =>
-  new Date(`${date}T12:00:00Z`).toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    timeZone: "Europe/London",
-  });
+const dateLabel = formatUkDate;
 const duration = (milliseconds: number) =>
   `${Math.floor(milliseconds / 60_000)}:${String(Math.floor((milliseconds % 60_000) / 1000)).padStart(2, "0")}`;
 const percent = (value: number | null) =>
@@ -74,7 +69,6 @@ export function RecordsScreens({
   playerId,
   busy = false,
   teamLabel = "Roma U10",
-  synthetic = true,
   service = false,
   renderMatchCommunity,
   initialMatchId,
@@ -213,10 +207,9 @@ export function RecordsScreens({
         <View style={s.grow}>
           <Text style={s.title}>Team records</Text>
           <Text style={s.muted}>
-            {teamLabel} · Season {state.seasonLabel}
+            {teamLabel} · Season {formatUkSeasonLabel(state.seasonLabel)}
           </Text>
         </View>
-        {synthetic && <Pill tone="muted">Sample data</Pill>}
       </View>
       <View style={s.row} accessibilityRole="tablist">
         <TabButton
@@ -337,7 +330,7 @@ export function RecordsScreens({
           {editable && (
             <Button
               label={
-                service ? "Add historical result to service" : "Add past result"
+                "Add past result"
               }
               testID="records-add-past"
               onPress={() => {
@@ -447,15 +440,8 @@ export function RecordsScreens({
             />
           )}
           <Text style={s.small}>
-            {service ? "Service" : "Local"} records revision{" "}
-            {results.projectionVersion} · Last recorded update{" "}
-            {results.asOf
-              ? new Date(results.asOf).toLocaleString("en-GB", {
-                  timeZone: "Europe/London",
-                })
-              : "not recorded"}
-            . Result sharing is manager-only until an applicable policy is
-            explicitly confirmed.
+            {service ? "Last updated" : "Saved on this device"}: {formatUkDateTime(results.asOf)} · Europe/London.
+            Results are shared only when the competition’s approved settings allow it.
           </Text>
         </>
       ) : (
@@ -694,6 +680,7 @@ function MatchDetail({
   disabled: boolean;
   renderCommunity?: (matchId: string) => ReactNode;
 }) {
+  const [showRecordDetails, setShowRecordDetails] = useState(false);
   const report = selectMatchReport(state, matchId, { actor, playerId }, match);
   if (!report)
     return (
@@ -866,21 +853,19 @@ function MatchDetail({
             <View style={s.stackSmall} key={entry.commandId}>
               <Text style={s.label}>
                 {entry.action.replaceAll(".", " ")} ·{" "}
-                {new Date(entry.at).toLocaleString("en-GB", {
-                  timeZone: "Europe/London",
-                })}
+                {formatUkDateTime(entry.at)}
               </Text>
               <Text style={s.body}>{entry.reason}</Text>
               {entry.before && (
                 <Text style={s.muted}>
-                  Previous: {entry.before.playedDate} · {entry.before.opponent}{" "}
+                  Previous: {formatUkDate(entry.before.playedDate)} · {entry.before.opponent}{" "}
                   · {scoreLabel(entry.before.finalScore)} · revision{" "}
                   {entry.before.revision}
                 </Text>
               )}
               {entry.after && (
                 <Text style={s.muted}>
-                  Recorded: {entry.after.playedDate} · {entry.after.opponent} ·{" "}
+                  Recorded: {formatUkDate(entry.after.playedDate)} · {entry.after.opponent} ·{" "}
                   {scoreLabel(entry.after.finalScore)} · revision{" "}
                   {entry.after.revision}
                 </Text>
@@ -890,19 +875,10 @@ function MatchDetail({
         </Card>
       )}
       <Text style={s.small}>
-        Projection {report.projectionVersion} · Record revision{" "}
-        {report.revision}
-        {report.sourceMatchRevision === null
-          ? ""
-          : ` · Source match revision ${report.sourceMatchRevision}`}{" "}
-        · As of{" "}
-        {report.asOf
-          ? new Date(report.asOf).toLocaleString("en-GB", {
-              timeZone: "Europe/London",
-            })
-          : "not recorded"}
-        . {report.policyId} v{report.policyVersion}.
+        Last updated: {formatUkDateTime(report.asOf)} · Europe/London.
       </Text>
+      <Button compact label={showRecordDetails ? "Hide record details" : "Show record details"} variant="quiet" onPress={() => setShowRecordDetails(current => !current)} />
+      {showRecordDetails && <Text style={s.small}>Record revision {report.revision} · report version {report.projectionVersion}{report.sourceMatchRevision === null ? '' : ` · source match revision ${report.sourceMatchRevision}`} · sharing rule {report.policyId} v{report.policyVersion}</Text>}
     </>
   );
 }
@@ -937,7 +913,6 @@ function ExceptionNote({
 
 function HistoricalEditor({
   teamLabel,
-  service,
   state,
   record,
   disabled,
@@ -1103,9 +1078,7 @@ function HistoricalEditor({
           label={
             record
               ? "Save correction"
-              : service
-                ? "Save historical result to service"
-                : "Save past result"
+              : "Save past result"
           }
           disabled={disabled}
           testID="records-past-save"
@@ -1130,7 +1103,7 @@ function HistoricalEditor({
   return (
     <View style={s.stack}>
       <Notice>
-        Season {state.seasonLabel} · {state.startsOn} to {state.endsOn}. Record
+        Season {formatUkSeasonLabel(state.seasonLabel)} · {formatUkDate(state.startsOn)} to {formatUkDate(state.endsOn)}. Record
         only what is known.
       </Notice>
       {error && <Notice tone="error">{error}</Notice>}

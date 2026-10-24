@@ -1,3 +1,4 @@
+import { formatUkDateTime } from '@longball/application/uk-display';
 import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import type {
@@ -425,7 +426,7 @@ function Request({ value }: { value: PrivacyRequestDto }) {
         Reference {value.requestId}
       </Text>
       <Text style={s.small}>
-        Recorded {new Date(value.createdAtMs).toISOString()}
+        Recorded {formatUkDateTime(value.createdAtMs)}
       </Text>
       <Text style={s.body}>
         {value.reviewStatus === "needs_scope"

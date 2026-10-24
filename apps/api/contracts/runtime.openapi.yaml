@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: LongBall implemented runtime extensions
-  version: 1.7.0
+  version: 1.8.0
   description: >-
     Runtime additions beside the unchanged supplied canonical contract. Server
     authorization, explicit policy decisions and native-device acceptance remain
@@ -1093,10 +1093,304 @@ paths:
           content: {image/png: {schema: {type: string, format: binary}}}
         '404': {$ref: '#/components/responses/Unavailable'}
 
+  /teams/{teamId}/scheduled-games:
+    parameters:
+      - {$ref: '#/components/parameters/TeamId'}
+      - {$ref: '#/components/parameters/SeasonId'}
+      - {name: X-Longball-Role, in: header, required: true, schema: {enum: [manager, administrator]}}
+    get:
+      operationId: readStaffScheduledGames
+      summary: Read fixture metadata and current cancellation/deletion capabilities
+      description: No roster, replies, attendance, private reasons or feedback enter this projection. A controller grant or any saved match history protects the game from both actions.
+      responses:
+        '200': {description: Current metadata-only schedule, content: {application/json: {schema: {$ref: '#/components/schemas/ScheduledGameManagement'}}}}
+        '404': {$ref: '#/components/responses/Unavailable'}
+    post:
+      operationId: manageUnplayedScheduledGame
+      summary: Explicitly cancel or delete an unplayed schedule item
+      description: Cancellation stays visible as Cancelled. Deletion removes the schedule item while retaining its private audited tombstone and canonical rows; this is not a privacy-erasure operation. Current role, revision and recording history are rechecked atomically against controller writes. Deleted identities cannot be recreated. Original event-contract and exact command-identity headers are required.
+      parameters:
+        - {$ref: '#/components/parameters/ContractVersion'}
+        - {$ref: '#/components/parameters/IdempotencyKey'}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {type: object, additionalProperties: false, required: [command], properties: {command: {$ref: '#/components/schemas/ScheduledGameCommand'}}}}}
+      responses:
+        '200': {description: Retained acknowledgement and current metadata-only schedule, content: {application/json: {schema: {$ref: '#/components/schemas/ScheduledGameManagement'}}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '404': {$ref: '#/components/responses/Unavailable'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /teams/{teamId}/player-stats:
+    parameters:
+      - {$ref: '#/components/parameters/TeamId'}
+      - {$ref: '#/components/parameters/SeasonId'}
+      - {name: X-Longball-Role, in: header, required: true, schema: {enum: [manager, administrator, player]}}
+    get:
+      operationId: readScopedPlayerStatistics
+      summary: Read staff aggregates or only the currently linked player's aggregates
+      description: Spectators are denied. Administrators use a narrow database projection; existing private records, preparation and feedback access is not widened. Accepted checkpoints override older archived revisions once per game. Unknown or reviewed detail stays explicit; no scheduled duration becomes actual participation. No attendance, RSVP, injury, preferences or private feedback is returned.
+      responses:
+        '200': {description: Exact own-player or team aggregate projection, content: {application/json: {schema: {$ref: '#/components/schemas/PlayerStatistics'}}}}
+        '404': {$ref: '#/components/responses/Unavailable'}
+  /teams/{teamId}/match-feedback:
+    parameters:
+      - {$ref: '#/components/parameters/TeamId'}
+      - {$ref: '#/components/parameters/SeasonId'}
+      - {name: X-Longball-Role, in: header, required: true, schema: {enum: [manager, player]}}
+    get:
+      operationId: readPrivatePostGameFeedback
+      summary: Read own private feedback or assigned-manager feedback
+      description: Other players never receive another child's notes. Administrators and spectators are denied. Private feedback uses separate storage and is absent from team statistics, community and report exports.
+      responses:
+        '200': {description: Current private feedback and authoritative edit-window status, content: {application/json: {schema: {$ref: '#/components/schemas/PrivateMatchFeedback'}}}}
+        '404': {$ref: '#/components/responses/Unavailable'}
+    post:
+      operationId: saveOwnPrivatePostGameFeedback
+      summary: Save the current linked player's rating and optional note
+      description: Requires positive accepted participation and a verified original completion. Editing closes exclusively at midnight Europe/London on that completion day, including DST. Receipt replay does not submit a new edit or extend the original window. The durable command ID must equal Idempotency-Key; submitted player/account IDs are rejected.
+      parameters:
+        - {name: X-Longball-Role, in: header, required: true, schema: {const: player}}
+        - {$ref: '#/components/parameters/ContractVersion'}
+        - {$ref: '#/components/parameters/IdempotencyKey'}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {type: object, additionalProperties: false, required: [command], properties: {command: {$ref: '#/components/schemas/PrivateMatchFeedbackCommand'}}}}}
+      responses:
+        '200': {description: Durable actor-bound feedback receipt, content: {application/json: {schema: {$ref: '#/components/schemas/PrivateMatchFeedbackReceipt'}}}}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '404': {$ref: '#/components/responses/Unavailable'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /teams/{teamId}/team-overview:
+    parameters:
+      - {$ref: '#/components/parameters/TeamId'}
+      - {$ref: '#/components/parameters/SeasonId'}
+      - {name: X-Longball-Role, in: header, required: true, schema: {enum: [manager, administrator, player, spectator]}}
+    get:
+      operationId: readCurrentPublicTeamOverview
+      summary: Read current team and safe fixture metadata for all assigned roles
+      description: Spectator access requires a current live grant. Includes saved unprepared fixtures; accepted match status overrides scheduled metadata without overriding explicit cancellation/postponement. Deleted tombstones are excluded. No roster, score, attendance, replies, feedback or raw preparation documents are returned.
+      responses:
+        '200': {description: Current safe team metadata, content: {application/json: {schema: {$ref: '#/components/schemas/TeamOverview'}}}}
+        '404': {$ref: '#/components/responses/Unavailable'}
+
 components:
   securitySchemes:
     bearerAuth: {type: http, scheme: bearer, bearerFormat: JWT}
   schemas:
+    ScheduledGameCommand:
+      type: object
+      additionalProperties: false
+      required: [id, expectedRevision, fixtureId, type, reason, confirm]
+      properties:
+        id: {$ref: '#/components/schemas/Identifier'}
+        expectedRevision: {type: integer, minimum: 0}
+        fixtureId: {$ref: '#/components/schemas/Identifier'}
+        type: {enum: [fixture.cancelled, fixture.deleted]}
+        reason: {type: string, minLength: 5, maxLength: 500}
+        confirm: {const: true}
+    ScheduledGameMetadata:
+      type: object
+      additionalProperties: false
+      required: [id, seasonId, opponent, playedDate, kickoff, arrival, venue, homeAway, format, plannedHalfDurationMs, status, canCancel, canDelete, blockedReason]
+      properties:
+        id: {$ref: '#/components/schemas/Identifier'}
+        seasonId: {$ref: '#/components/schemas/Identifier'}
+        opponent: {type: string}
+        playedDate: {type: string, format: date}
+        kickoff: {type: [string, 'null']}
+        arrival: {type: [string, 'null']}
+        venue: {type: string}
+        homeAway: {enum: [home, away]}
+        format: {type: integer, minimum: 5, maximum: 11}
+        plannedHalfDurationMs: {type: integer, minimum: 1}
+        status: {enum: [scheduled, postponed, cancelled]}
+        canCancel: {type: boolean}
+        canDelete: {type: boolean}
+        blockedReason: {enum: [recording_exists, null]}
+    ScheduledGameManagement:
+      type: object
+      additionalProperties: false
+      required: [kind, teamId, seasonId, revision, teamName, fixtures]
+      properties:
+        kind: {const: scheduled-game-management}
+        teamId: {$ref: '#/components/schemas/Identifier'}
+        seasonId: {$ref: '#/components/schemas/Identifier'}
+        revision: {type: integer, minimum: 0}
+        teamName: {type: string}
+        fixtures: {type: array, items: {$ref: '#/components/schemas/ScheduledGameMetadata'}}
+    TeamOverview:
+      type: object
+      additionalProperties: false
+      required: [kind, teamId, seasonId, team, games]
+      properties:
+        kind: {const: team-overview}
+        teamId: {$ref: '#/components/schemas/Identifier'}
+        seasonId: {$ref: '#/components/schemas/Identifier'}
+        team:
+          type: object
+          additionalProperties: false
+          required: [name, ageGroup, clubName, seasonLabel]
+          properties: {name: {type: string}, ageGroup: {type: string}, clubName: {type: string}, seasonLabel: {type: string}}
+        games:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [id, opponent, playedDate, kickoff, venue, status, active]
+            properties:
+              id: {$ref: '#/components/schemas/Identifier'}
+              opponent: {type: string}
+              playedDate: {type: string, description: 'ISO calendar date; empty string explicitly represents an unknown date'}
+              kickoff: {type: [string, 'null']}
+              venue: {type: [string, 'null']}
+              status: {enum: [scheduled, preparation, postponed, cancelled, first_half_running, first_half_paused, half_time, second_half_running, second_half_paused, completed, abandoned]}
+              active: {type: boolean}
+    StatisticPosition:
+      type: object
+      additionalProperties: false
+      required: [code, label, playingMs, percentage]
+      properties:
+        code: {type: string}
+        label: {type: string}
+        playingMs: {type: integer, minimum: 0}
+        percentage: {type: [number, 'null'], minimum: 0, maximum: 100}
+    PlayerStatisticRow:
+      type: object
+      additionalProperties: false
+      required: [playerId, label, knownPlayingMs, knownAppearances, knownGoals, knownOwnGoals, positions, unknownPositionMs, coverage]
+      properties:
+        playerId: {$ref: '#/components/schemas/Identifier'}
+        label: {type: string}
+        knownPlayingMs: {type: integer, minimum: 0}
+        knownAppearances: {type: integer, minimum: 0}
+        knownGoals: {type: integer, minimum: 0}
+        knownOwnGoals: {type: integer, minimum: 0}
+        positions: {type: array, items: {$ref: '#/components/schemas/StatisticPosition'}}
+        unknownPositionMs: {type: integer, minimum: 0}
+        coverage:
+          type: object
+          additionalProperties: false
+          required: [recordedMatches, playingTimeKnownMatches, playingTimeUnknownMatches, reviewRequiredMatches, scoringCompleteMatches, scoringPartialMatches, scoringUnknownMatches]
+          properties:
+            recordedMatches: {type: integer, minimum: 0}
+            playingTimeKnownMatches: {type: integer, minimum: 0}
+            playingTimeUnknownMatches: {type: integer, minimum: 0}
+            reviewRequiredMatches: {type: integer, minimum: 0}
+            scoringCompleteMatches: {type: integer, minimum: 0}
+            scoringPartialMatches: {type: integer, minimum: 0}
+            scoringUnknownMatches: {type: integer, minimum: 0}
+    StatisticScope:
+      type: object
+      additionalProperties: false
+      required: [clubId, teamId, seasonId, seasonLabel, projectionVersion, asOf]
+      properties:
+        clubId: {$ref: '#/components/schemas/Identifier'}
+        teamId: {$ref: '#/components/schemas/Identifier'}
+        seasonId: {$ref: '#/components/schemas/Identifier'}
+        seasonLabel: {type: string}
+        projectionVersion: {type: integer, minimum: 0}
+        asOf: {type: [string, 'null'], format: date-time}
+    PlayerStatistics:
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required: [kind, scope, player]
+          properties:
+            kind: {const: own-player-stats}
+            scope: {$ref: '#/components/schemas/StatisticScope'}
+            player: {$ref: '#/components/schemas/PlayerStatisticRow'}
+        - type: object
+          additionalProperties: false
+          required: [kind, scope, players, team, formation]
+          properties:
+            kind: {const: team-player-stats}
+            scope: {$ref: '#/components/schemas/StatisticScope'}
+            players: {type: array, items: {$ref: '#/components/schemas/PlayerStatisticRow'}}
+            team:
+              type: object
+              additionalProperties: false
+              required: [knownPlayingMs, positions, unknownPositionMs]
+              properties:
+                knownPlayingMs: {type: integer, minimum: 0}
+                positions: {type: array, items: {$ref: '#/components/schemas/StatisticPosition'}}
+                unknownPositionMs: {type: integer, minimum: 0}
+            formation:
+              type: [object, 'null']
+              additionalProperties: false
+              required: [id, label, slots]
+              properties:
+                id: {type: string}
+                label: {type: string}
+                slots:
+                  type: array
+                  items:
+                    type: object
+                    additionalProperties: false
+                    required: [id, positionCode, label, x, y]
+                    properties: {id: {type: string}, positionCode: {type: string}, label: {type: string}, x: {type: number, minimum: 0, maximum: 1}, y: {type: number, minimum: 0, maximum: 1}}
+    PrivateMatchFeedbackCommand:
+      type: object
+      additionalProperties: false
+      required: [id, type, matchId, expectedRevision, rating, text]
+      properties:
+        id: {$ref: '#/components/schemas/Identifier'}
+        type: {const: feedback.saved}
+        matchId: {$ref: '#/components/schemas/Identifier'}
+        expectedRevision: {type: integer, minimum: 0}
+        rating: {type: integer, minimum: 1, maximum: 5}
+        text: {type: [string, 'null'], maxLength: 256}
+    PrivateMatchFeedbackReceipt:
+      type: object
+      additionalProperties: false
+      required: [kind, commandId, teamId, seasonId, matchId, revision]
+      properties:
+        kind: {const: match-feedback-receipt}
+        commandId: {$ref: '#/components/schemas/Identifier'}
+        teamId: {$ref: '#/components/schemas/Identifier'}
+        seasonId: {$ref: '#/components/schemas/Identifier'}
+        matchId: {$ref: '#/components/schemas/Identifier'}
+        revision: {type: integer, minimum: 1}
+    PrivateMatchFeedbackEntry:
+      type: object
+      additionalProperties: false
+      required: [playerId, playerLabel, rating, text, revision, createdAtMs, updatedAtMs]
+      properties:
+        playerId: {$ref: '#/components/schemas/Identifier'}
+        playerLabel: {type: string}
+        rating: {type: integer, minimum: 1, maximum: 5}
+        text: {type: [string, 'null'], maxLength: 256}
+        revision: {type: integer, minimum: 1}
+        createdAtMs: {type: integer, minimum: 0}
+        updatedAtMs: {type: integer, minimum: 0}
+    PrivateMatchFeedback:
+      type: object
+      additionalProperties: false
+      required: [kind, accountId, playerId, teamId, seasonId, audience, serverNowMs, matches]
+      properties:
+        kind: {const: match-feedback}
+        accountId: {$ref: '#/components/schemas/Identifier'}
+        playerId: {type: [string, 'null']}
+        teamId: {$ref: '#/components/schemas/Identifier'}
+        seasonId: {$ref: '#/components/schemas/Identifier'}
+        audience: {enum: [manager, player]}
+        serverNowMs: {type: integer, minimum: 0}
+        matches:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [matchId, label, playedDate, completedAtMs, closesAtMs, status, eligible, canEdit, own]
+            properties:
+              matchId: {$ref: '#/components/schemas/Identifier'}
+              label: {type: string}
+              playedDate: {type: [string, 'null'], format: date}
+              completedAtMs: {type: [integer, 'null'], minimum: 0}
+              closesAtMs: {type: [integer, 'null'], minimum: 0}
+              status: {enum: [open, closed, review_required]}
+              eligible: {type: boolean}
+              canEdit: {type: boolean}
+              own: {oneOf: [{$ref: '#/components/schemas/PrivateMatchFeedbackEntry'}, {type: 'null'}]}
+              entries: {type: array, items: {$ref: '#/components/schemas/PrivateMatchFeedbackEntry'}, description: Assigned-manager projection only; never present in a player view}
     NamedWorkspaceMembership:
       type: object
       additionalProperties: false

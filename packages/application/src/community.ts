@@ -901,10 +901,10 @@ export function createCommunityState(nowMs = Date.now(), options: { demoScenario
   // A deliberately public sample illustration, plus one private player item,
   // makes both the gallery and moderation journey reviewable without child photos.
   state.photos.push({ id: 'synthetic-published-pitch', matchId: match.id, teamId, seasonId, uploaderAccountId: 'synthetic-account-manager', uploaderRole: 'manager',
-    currentRevision: 1, publishedRevision: 1, removedAtMs: null, revisions: [{ version: 1, art: 'pitch', caption: 'Matchday at Rovers Sports Ground · sample illustration',
+    currentRevision: 1, publishedRevision: 1, removedAtMs: null, revisions: [{ version: 1, art: 'pitch', caption: 'Matchday at Rovers Sports Ground · illustration',
       status: 'published', createdAtMs: fullTime, reviewedAtMs: fullTime, reviewerAccountId: 'synthetic-account-manager', rejectionReason: null, processing: 'synthetic_derivative_ready' }] });
   state.photos.push({ id: 'synthetic-pending-ball', matchId: match.id, teamId, seasonId, uploaderAccountId: 'synthetic-account-player-01', uploaderRole: 'player',
-    currentRevision: 1, publishedRevision: null, removedAtMs: null, revisions: [{ version: 1, art: 'ball', caption: 'Saturday football · sample illustration awaiting review',
+    currentRevision: 1, publishedRevision: null, removedAtMs: null, revisions: [{ version: 1, art: 'ball', caption: 'Saturday football · illustration awaiting review',
       status: 'pending', createdAtMs: fullTime, reviewedAtMs: null, reviewerAccountId: null, rejectionReason: null, processing: 'synthetic_derivative_ready' }] });
   if (options.demoScenario) {
     state.matches = createDemoCompletedMatches().map((completed): CommunityMatch => ({

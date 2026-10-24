@@ -1,3 +1,4 @@
+import { formatUkDate, formatUkSeasonLabel } from '@longball/application/uk-display';
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -616,7 +617,7 @@ function LongBall({ initialRole, onLeaveReview, onSignIn, invitationDestination 
       </Text>
       <Text style={s.muted}>
         {fixture
-          ? `${fixture.playedDate} · ${fixture.kickoff ?? "Time not recorded"} · ${fixture.homeAway}`
+          ? `${formatUkDate(fixture.playedDate)} · ${fixture.kickoff ?? "Time not recorded"} · ${fixture.homeAway}`
           : "Sat 24 Oct · 10:00 · Home"}
       </Text>
     </View>
@@ -689,10 +690,10 @@ function LongBall({ initialRole, onLeaveReview, onSignIn, invitationDestination 
             ))}
           </View>
           <View style={s.reviewNote}>
-            <Pill tone="muted">ROMA U10 · DEMO</Pill>
+            <Pill tone="muted">ROMA U10</Pill>
             <Text style={s.small}>
               Shared interface and match rules with the native app. Browser
-              storage is for demo review. Native device checks remain open.
+              storage stays on this device. Native device checks remain open.
             </Text>
           </View>
         </View>
@@ -729,7 +730,6 @@ function LongBall({ initialRole, onLeaveReview, onSignIn, invitationDestination 
                   <Icon name="left" size={23} />
                   <Text style={s.label}>Back to team</Text>
                 </Pressable>
-                <Pill tone="muted">Demo</Pill>
               </View>
             ) : (
               <View style={s.header}>
@@ -745,16 +745,16 @@ function LongBall({ initialRole, onLeaveReview, onSignIn, invitationDestination 
                     </Text>
                     <Text style={s.footnote}>
                       {app?.preparation.club.name ?? "Richmond Rovers"} ·{" "}
-                      {app?.preparation.seasons.find(
+                      {formatUkSeasonLabel(app?.preparation.seasons.find(
                         (season) =>
                           season.id === app.preparation.activeSeasonId,
-                      )?.label ?? "26/27"}
+                      )?.label ?? "26/27")}
                     </Text>
                   </View>
                 </View>
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel="Change demo account"
+                  accessibilityLabel="Change account"
                   onPress={leaveReview}
                   disabled={application.busy || model.pendingRetry || busy}
                   style={[s.brand, { minHeight: 48 }]}
@@ -853,7 +853,7 @@ function LongBall({ initialRole, onLeaveReview, onSignIn, invitationDestination 
                         </View>
                         <Text style={s.date}>
                           {fixture
-                            ? `${fixture.playedDate} · ${fixture.kickoff ?? "Time TBC"}`
+                            ? `${formatUkDate(fixture.playedDate)} · ${fixture.kickoff ?? "Time TBC"}`
                             : "SAT 24 OCT · 10:00"}
                         </Text>
                       </View>
@@ -1363,7 +1363,7 @@ function LongBall({ initialRole, onLeaveReview, onSignIn, invitationDestination 
                     </>
                   )}
                   <Text style={s.footnote}>
-                    Local demo controller · no server connection configured
+                    Local controller · no server connection configured
                   </Text>
                 </>
               )}
@@ -1459,7 +1459,7 @@ function LongBall({ initialRole, onLeaveReview, onSignIn, invitationDestination 
                       const summary = composeReportCommunity(report, actor.accountId, { accountId: actor.accountId, teamId: actor.teamId, seasonId: actor.seasonId, audience: actor.role, playerId: actor.playerId ?? null, revision: app.community.revision, view: localCommunityView });
                       return <ReportCommunityCard matchId={matchId} value={summary} onOpenAlbum={selectedMatchId => {
                         try {
-                          if (!localAlbumScope) throw new Error('Choose the current demo team context.');
+                          if (!localAlbumScope) throw new Error('Choose the current team context.');
                           setLocalAlbumSelection(selectAlbum(localAlbumScope, localCommunityView.matches, selectedMatchId, localCommunityView.allowed));
                           navigate('photos');
                         } catch (failure) { setLocalError(failure instanceof Error ? failure.message : 'This game album is unavailable in the current view.'); }
@@ -1470,7 +1470,7 @@ function LongBall({ initialRole, onLeaveReview, onSignIn, invitationDestination 
               {screen === "account" && (
                 <>
                   <Button
-                    label="Switch demo account"
+                    label="Switch account"
                     variant="secondary"
                     onPress={leaveReview}
                   />
@@ -1522,9 +1522,9 @@ function LongBall({ initialRole, onLeaveReview, onSignIn, invitationDestination 
                     More
                   </Text>
                   <Card>
-                    <Text style={s.section}>Explore the demo</Text>
+                    <Text style={s.section}>Review a role</Text>
                     <Text style={s.small}>
-                      Explore separate sample accounts. Real access requires
+                      Role previews do not grant account access. Club access requires
                       verified sign-in and server permissions.
                     </Text>
                     {(["manager", "player", "spectator"] as const).map(
@@ -1636,7 +1636,7 @@ function LongBall({ initialRole, onLeaveReview, onSignIn, invitationDestination 
               )}
               {screen === "lab" && role === "manager" && (
                 <>
-                  <Text style={s.eyebrow}>DEMO DEVELOPMENT BUILD</Text>
+                  <Text style={s.eyebrow}>DEVICE CHECKS</Text>
                   <Text accessibilityRole="header" style={s.title}>
                     Feasibility lab
                   </Text>
@@ -1649,7 +1649,7 @@ function LongBall({ initialRole, onLeaveReview, onSignIn, invitationDestination 
                       Storage:{" "}
                       {model.diagnostics?.mode === "encrypted-native"
                         ? "SQLCipher journal"
-                        : "Demo browser storage"}
+                        : "Browser storage"}
                     </Text>
                     <Text style={s.body}>
                       Saved records: {model.diagnostics?.savedCount ?? 0}
@@ -1742,9 +1742,6 @@ function LongBall({ initialRole, onLeaveReview, onSignIn, invitationDestination 
                       </Text>
                     ))}
                   </Card>
-                  <Text style={s.footnote}>
-                    Demo environment · Sample team information only.
-                  </Text>
                 </>
               )}
             </ScrollView>

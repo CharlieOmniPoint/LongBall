@@ -17,7 +17,7 @@ try {
     page.setDefaultTimeout(20_000); page.on('pageerror', error => errors.push(error.message));
     try {
       await page.goto(baseURL, { waitUntil: 'networkidle' }); await enterFictionalReview(page); await page.getByTestId('prepare-match').waitFor();
-      await click(page, 'Schedule'); await click(page, 'Open fixture Maple FC, 2026-10-24');
+      await click(page, 'Schedule'); await click(page, 'Open fixture Maple FC, 24/10/26');
       await click(page, 'Save a reusable match plan from this fixture'); await click(page, 'Save preparation for match-plan review');
       let app = await until(page, value => value.preparation.snapshots.length > 0, 'Source preparation saved'); const snapshot = structuredClone(app.preparation.snapshots.at(-1)), originalSnapshots = structuredClone(app.preparation.snapshots);
       await page.getByLabel('Reusable plan name', { exact: true }).fill(`Phone template ${width}`);
@@ -32,7 +32,7 @@ try {
       await click(page, 'Back to schedule'); await page.getByTestId('preparation-create-event').click();
       await page.getByLabel('Opposition', { exact: true }).fill(`Template target ${width}`); await page.getByLabel('Match date (YYYY-MM-DD)', { exact: true }).fill('2026-11-14'); await page.getByTestId('preparation-save').click();
       app = await until(page, value => value.preparation.fixtures.some(row => row.opponent === `Template target ${width}`), 'Destination fixture saved'); const destination = app.preparation.fixtures.find(row => row.opponent === `Template target ${width}`);
-      await click(page, `Open fixture Template target ${width}, 2026-11-14`);
+      await click(page, `Open fixture Template target ${width}, 14/11/26`);
       for (const profile of snapshot.profiles) { await page.getByRole('switch', { name: `Select ${profile.displayName}`, exact: true }).click(); await until(page, value => value.preparation.fixtures.find(row => row.id === destination.id).selectedProfileIds.includes(profile.id), 'Destination explicit selection saved'); }
       app = await application(page); const beforeTarget = structuredClone(app.preparation.fixtures.find(row => row.id === destination.id));
       await click(page, `Preview Phone template ${width} for this fixture`); await page.getByTestId('match-plan-apply-preview').waitFor();

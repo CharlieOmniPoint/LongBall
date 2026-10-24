@@ -413,7 +413,7 @@ function BrandLogosContent(props: BrandLogosProps) {
                 </Notice>
                 {synthetic ? (
                   <Button
-                    label="Choose generated demo logo PNG"
+                    label="Choose generated logo PNG"
                     testID="brand-generated-image"
                     variant="secondary"
                     disabled={locked}

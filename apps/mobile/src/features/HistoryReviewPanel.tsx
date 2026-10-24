@@ -1,3 +1,4 @@
+import { formatUkDateTime } from '@longball/application/uk-display';
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { StyleSheet, Text, TextInput, View } from "react-native";
 import {
@@ -837,7 +838,7 @@ export function HistoryReviewPanel(props: Props) {
               {acceptedEventId === item.eventId && (
                 <Text selectable style={typography.muted}>
                   Actor {item.actorId ?? "not recorded"} · entered{" "}
-                  {new Date(item.recordedAtMs).toISOString()}
+                  {formatUkDateTime(item.recordedAtMs)}
                   {"\n"}Event {item.eventId}
                   {item.targetEventId
                     ? `\nCompensates ${item.targetEventId}`

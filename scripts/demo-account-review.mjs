@@ -9,7 +9,7 @@ import path from 'node:path';
 import { spawn, execFileSync } from 'node:child_process';
 import { DatabaseSync } from 'node:sqlite';
 import { chromium } from 'playwright';
-import { openWorkspaceTab } from './review-entry.mjs';
+import { openWorkspaceTab, reviewDateLabel } from './review-entry.mjs';
 
 /** Real built clients/API/worker, isolated generated credentials, and loopback-only transport. */
 const output = path.resolve('.local/quality/demo-account-review');
@@ -246,8 +246,9 @@ async function login(state, account) {
   await page.getByTestId('demo-passcode').fill(account.passcode);
   await page.getByTestId('demo-login-submit').click();
   await page.getByTestId('demo-signed-in').waitFor({ timeout: 25000 });
-  const ready = { manager: 'Next event', administrator: 'View assigned teams', player: 'Your team, Oliver Bennett', spectator: 'Match centre' };
-  await page.getByText(ready[account.role], { exact: true }).first().waitFor({ timeout: 20000 });
+  const ready = { manager: 'Next event', administrator: 'View assigned teams', player: 'Your team, Oliver Bennett' };
+  if (account.role === 'spectator') await page.getByTestId('team-overview').waitFor({ timeout: 20000 });
+  else await page.getByText(ready[account.role], { exact: true }).first().waitFor({ timeout: 20000 });
   check(state.currentSession?.accountId === account.accountId, 'The service must bind the generated account to its preauthorised identity.');
   check(await page.getByTestId('demo-passcode').count() === 0, 'A signed-in workspace must remove the passcode form.');
 }
@@ -351,7 +352,7 @@ async function checkStoredCredentials(page) {
 }
 async function exportReports(state) {
   const { page } = state, token = state.currentSession.accessToken;
-  await page.getByRole('tab', { name: 'Reports', exact: true }).click();
+  await openWorkspaceTab(page, 'reports');
   await selectedWorkspaceTab(page, 'reports');
   await page.getByTestId('records-export-panel').waitFor();
   const records = await currentJson(token, `/v1/teams/${teamId}/records?seasonId=${seasonId}`);
@@ -425,7 +426,9 @@ async function openDemo(state, account) {
   await login(state, account);
 }
 async function selectedWorkspaceTab(page, tab) {
-  const target = page.getByTestId('workspace-primary-navigation').getByTestId(`workspace-tab-${tab}`);
+  const navigation = page.getByTestId('workspace-primary-navigation');
+  const direct = navigation.getByTestId(`workspace-tab-${tab}`);
+  const target = await direct.count() ? direct : navigation.getByTestId('workspace-tab-more');
   await target.waitFor();
   check(await target.getAttribute('aria-selected') === 'true', 'The current workspace navigation tab must expose its selected state to browser assistive technology.');
 }
@@ -433,7 +436,7 @@ async function managerDetailRegression(state, preparation, fixtureId) {
   const { page } = state;
   await openWorkspaceTab(page, 'schedule');
   const fixture = preparation.fixtures.find(item => item.id === fixtureId);
-  await page.getByRole('button', { name: `Open fixture ${fixture.opponent}, ${fixture.playedDate}`, exact: true }).click();
+  await page.getByRole('button', { name: `Open fixture ${fixture.opponent}, ${reviewDateLabel(fixture.playedDate)}`, exact: true }).click();
   for (const profileId of fixture.selectedProfileIds.slice(0, 2)) {
     const profile = preparation.profiles.find(item => item.id === profileId);
     const saved = page.waitForResponse(response => /\/preparation$/.test(new URL(response.url()).pathname) && response.request().method() === 'POST');
@@ -626,7 +629,7 @@ async function archivedFutureRegression(state) {
   await page.getByTestId('workspace-back-to-team').click();
   await refreshManagerViews(page);
   await openWorkspaceTab(page, 'schedule');
-  await page.getByRole('button', { name: `Open fixture ${fixture.opponent}, ${fixture.playedDate}`, exact: true }).click();
+  await page.getByRole('button', { name: `Open fixture ${fixture.opponent}, ${reviewDateLabel(fixture.playedDate)}`, exact: true }).click();
   const remove = page.getByRole('button', { name: `Remove ${profile.displayName} from match squad`, exact: true });
   await remove.waitFor();
   check(await page.getByText('Archived', { exact: true }).count() > 0, 'A retained archived selection must remain visible rather than silently disappearing.');
@@ -641,7 +644,7 @@ async function archivedFutureRegression(state) {
 
   await page.getByRole('button', { name: 'Back to schedule', exact: true }).click();
   await page.getByRole('radio', { name: 'Event type: Training', exact: true }).click();
-  await page.getByRole('button', { name: `Open training ${occurrence.date}`, exact: true }).click();
+  await page.getByRole('button', { name: `Open training ${reviewDateLabel(occurrence.date)}`, exact: true }).click();
   await page.getByRole('button', { name: 'Edit this occurrence', exact: true }).click();
   await page.getByRole('button', { name: `Remove ${profile.displayName} from expected players`, exact: true }).click();
   const occurrenceSaved = page.waitForResponse(response => /\/preparation$/.test(new URL(response.url()).pathname) && response.request().method() === 'POST');
@@ -653,7 +656,7 @@ async function archivedFutureRegression(state) {
   assert.deepEqual(current.training.filter(item => item.status !== 'scheduled'), retainedHistory, 'Editing a future training occurrence must retain held/cancelled history exactly.');
 
   await page.getByRole('button', { name: 'Back to schedule', exact: true }).click();
-  await page.getByRole('button', { name: `Open training ${seriesOccurrence.date}`, exact: true }).click();
+  await page.getByRole('button', { name: `Open training ${reviewDateLabel(seriesOccurrence.date)}`, exact: true }).click();
   await page.getByTestId('training-series-manage').click();
   await page.getByRole('button', { name: `Remove ${profile.displayName} from series expected players`, exact: true }).click();
   await page.getByTestId('training-series-review').click();
@@ -671,7 +674,7 @@ async function archivedFutureRegression(state) {
   }
   await page.getByRole('button', { name: 'Back to schedule', exact: true }).click();
   await page.getByRole('radio', { name: 'Schedule period: Past', exact: true }).click();
-  await page.getByRole('button', { name: `Open training ${held.date}`, exact: true }).click();
+  await page.getByRole('button', { name: `Open training ${reviewDateLabel(held.date)}`, exact: true }).click();
   await page.getByText(profile.displayName, { exact: true }).waitFor();
   check(await page.getByText('Archived', { exact: true }).count() > 0 && await page.getByRole('radio', { name: `${profile.displayName} training attendance: Present`, exact: true }).isDisabled(), 'Past training must retain the archived player and read-only historical attendance.');
   await page.getByTestId('workspace-return-to-match').click();
@@ -751,7 +754,7 @@ async function managerMatchday(accounts, databasePath) {
     await page.getByTestId('workspace-back-to-team').click();
     await refreshManagerViews(page);
     await openWorkspaceTab(page, 'schedule');
-    await page.getByRole('button', { name: 'Open fixture Maple FC, 2026-10-24', exact: true }).click();
+    await page.getByRole('button', { name: 'Open fixture Maple FC, 24/10/26', exact: true }).click();
     const postsBeforeOpen = manager.preparationPosts;
     await page.getByTestId('preparation-open-saved-match').click();
     await page.getByText('Recording on this phone', { exact: true }).waitFor();
@@ -764,6 +767,8 @@ async function managerMatchday(accounts, databasePath) {
     await archivedFutureRegression(manager);
 
     await openDemo(viewer, accounts.find(item => item.role === 'spectator'));
+    await openWorkspaceTab(viewer.page, 'centre');
+    await selectedWorkspaceTab(viewer.page, 'centre');
     const sharedCard = viewer.page.getByTestId(`match-centre-game-${matchId}`);
     await sharedCard.getByText('0 – 0', { exact: true }).waitFor();
     await page.getByTestId('open-goal').click();

@@ -33,6 +33,10 @@ import { SqliteInvitationRepository } from './invitation-repository';
 import { PushRegistrationService,pushRevision,type PushOptions } from './push-registrations';
 import { SqlitePushRepository } from './sqlite-push-registrations';
 import { DemoSessions, type DemoAccountOptions } from './demo-sessions';
+import { MatchFeedbackRepository } from './match-feedback-repository';
+import { MatchFeedbackService } from './match-feedback-service';
+import { parseMatchFeedbackCommand } from '../../../packages/application/src/match-feedback';
+import { parseScheduledGameCommand, type FixtureManagementRole } from '../../../packages/application/src/fixture-management';
 
 export interface ApiOptions extends PushOptions {
   databasePath: string;
@@ -118,13 +122,15 @@ export function createApi(options:ApiOptions) {
  const repository=new SqliteInvitationRepository(source,runtime.store);
  const exportsRepository=new ReportExportRepository(source,runtime.store.transaction);
  const reports=new ReportExportService(exportsRepository,source,options.reportExports,now);
- const ready=runtime.serialize(async()=>{await repository.initialize();await exportsRepository.initialize();});void ready.catch(()=>undefined);
+ const feedbackRepository=new MatchFeedbackRepository(source,runtime.store);
+ const feedback=new MatchFeedbackService(feedbackRepository);
+ const ready=runtime.serialize(async()=>{await repository.initialize();await exportsRepository.initialize();await feedbackRepository.initialize();});void ready.catch(()=>undefined);
  const invitations=new SpectatorInvitationService({...options,repository,now});
  const privileges=new TeamPrivilegeService(new SqliteTeamPrivilegeRepository(source,runtime.store),now);
  const push=new PushRegistrationService(new SqlitePushRepository(source.database,runtime.store.transaction),options,now);
- return createRuntimeApi(options,source,runtime.store,media,activation,work=>ready.then(()=>runtime.serialize(work)),{branding,invitations,privileges,push,reports});
+ return createRuntimeApi(options,source,runtime.store,media,activation,work=>ready.then(()=>runtime.serialize(work)),{branding,invitations,privileges,push,reports,feedback});
 }
-export function createRuntimeApi<T>(options:ApiOptions,source:T,store:RuntimeStore,media:RuntimeMedia,activation:RuntimeActivation,serialize:<R>(work:()=>Promise<R>)=>Promise<R> = work=>work(),services:{branding?:BrandMediaService;spectator?:RuntimeSpectatorActivation;invitations?:SpectatorInvitationService;privileges?:TeamPrivilegeService;push?:PushRegistrationService;reports?:ReportExportService}={}) {
+export function createRuntimeApi<T>(options:ApiOptions,source:T,store:RuntimeStore,media:RuntimeMedia,activation:RuntimeActivation,serialize:<R>(work:()=>Promise<R>)=>Promise<R> = work=>work(),services:{branding?:BrandMediaService;spectator?:RuntimeSpectatorActivation;invitations?:SpectatorInvitationService;privileges?:TeamPrivilegeService;push?:PushRegistrationService;reports?:ReportExportService;feedback?:MatchFeedbackService}={}) {
  const now=options.now??Date.now;
  assertDemoScenarioOptions(options);
  const demoSessions=options.demoAccounts?new DemoSessions(options.demoAccounts,now):null;
@@ -325,6 +331,10 @@ const windows = new Map<string, {
                         const club=(body!.command as PreparationCommand|undefined)?.type==='club.updated';
                         assertTeamRole(principal,await store.memberships(),parts[2],seasonId,club?['administrator']:['administrator','manager'],now());assertAdultAuthority(principal,club,now());
                     }
+                    else if(parts[3]==='scheduled-games'){
+                        if(role!=='manager'&&role!=='administrator')throw new AccessError('NOT_FOUND',404,'Choose the current staff schedule context.');
+                        assertTeamRole(principal,await store.memberships(),parts[2],seasonId,[role],now());assertAdultAuthority(principal,role==='administrator',now());
+                    }
                     else if(parts[3]==='branding'){
                         const context=await store.brandingContext(principal,parts[2],seasonId,role);
                         assertBrandAuthority(context.context,(body!.command as {kind:'club_logo'|'team_logo'}).kind);
@@ -425,7 +435,31 @@ const windows = new Map<string, {
             }
             else if (parts[0] === 'v1' && parts[1] === 'teams' && parts[2]) {
                 const teamId = parts[2];
-                if(parts[3]==='privileges'){
+                if(parts[3]==='scheduled-games'&&parts.length===4){
+                    if(role!=='manager'&&role!=='administrator')throw new AccessError('NOT_FOUND',404,'Choose the current staff schedule context.');
+                    const selected=role as FixtureManagementRole;
+                    if(request.method==='GET')result=await store.scheduledGames(principal,teamId,seasonId,selected);
+                    else if(request.method==='POST'){
+                        if(Object.keys(body!).length!==1||!Object.hasOwn(body!,'command'))throw new AccessError('INVALID_REQUEST',400,'Use only the captured scheduled-game command.');
+                        const command=parseScheduledGameCommand(body!.command);if(command.id!==requireContract())throw new AccessError('INVALID_REQUEST',400,'Use the captured command identity.');
+                        result=await mutate(url.pathname,()=>store.scheduledGameCommand(principal,teamId,seasonId,command,selected));
+                    }else throw new AccessError('NOT_FOUND',404,'The requested schedule operation is unavailable.');
+                }
+                else if(parts[3]==='team-overview'&&parts.length===4&&request.method==='GET')result=await store.teamOverview(principal,teamId,seasonId,role);
+                else if(parts[3]==='player-stats'&&parts.length===4&&request.method==='GET')result=await store.playerStats(principal,teamId,seasonId,role);
+                else if(parts[3]==='match-feedback'&&parts.length===4){
+                    if(role!=='manager'&&role!=='player')throw new AccessError('NOT_FOUND',404,'The requested private feedback is unavailable.');
+                    const feedback=services.feedback;if(!feedback)throw new AccessError('FEEDBACK_UNAVAILABLE',503,'Private match feedback is unavailable.');
+                    const session={principal,teamId,seasonId,role};
+                    if(request.method==='GET')result=await feedback.view(session);
+                    else if(request.method==='POST'){
+                        if(role!=='player')throw new AccessError('NOT_FOUND',404,'Only the currently linked player can submit their own feedback.');
+                        if(Object.keys(body!).length!==1||!Object.hasOwn(body!,'command'))throw new AccessError('INVALID_REQUEST',400,'Use only the captured private feedback command.');
+                        const command=parseMatchFeedbackCommand(body!.command);if(command.id!==requireContract())throw new AccessError('INVALID_REQUEST',400,'Use the captured command identity.');
+                        result=await feedback.command(session,command);
+                    }else throw new AccessError('NOT_FOUND',404,'The requested private feedback operation is unavailable.');
+                }
+                else if(parts[3]==='privileges'){
                     const session={principal,teamId,seasonId,role};
                     if(request.method==='GET'&&parts.length===4)result=await privilegeService().view(session);
                     else if(request.method==='GET'&&parts[4]==='own'&&parts.length===5)result=await privilegeService().own(session);

@@ -1,3 +1,15 @@
+import { visibleScheduledMatches } from '@longball/application/scheduled-match-visibility';
+import { assertTeamOverviewDto, type TeamOverviewDto } from '@longball/application/team-overview-service';
+import { formatUkDate, formatUkDateTime, formatUkSeasonLabel } from '@longball/application/uk-display';
+import { assertPlayerStatsDto, type PlayerStatsDto } from '@longball/application/player-stats';
+import { assertMatchFeedbackView, type MatchFeedbackView, type MatchFeedbackCommand } from '@longball/application/match-feedback';
+import { assertScheduledGameManagementDto, type ScheduledGameManagementDto, type ScheduledGameCommand } from '@longball/application/fixture-management';
+import { PlayerStats } from './PlayerStats';
+import { TeamStats } from './TeamStats';
+import { MatchFeedback } from './MatchFeedback';
+import { ScheduledGameManagement } from './ScheduledGameManagement';
+import { TeamOverview } from './TeamOverview';
+import { selectTeamOverviewGame, teamOverviewLondonDate, type TeamOverviewGame } from '@longball/application/team-overview';
 import { demoAccountLabels } from '@longball/testing';
 import {
   parseOwnPlayerPreparation,
@@ -27,6 +39,7 @@ import {
 } from "react";
 import {
   AppState,
+  Pressable,
   Image,
   Platform,
   ScrollView,
@@ -64,7 +77,7 @@ import type {
   getCommunityView,
 } from "@longball/application/community";
 import {
-  positionCodes,
+  activePositionCodes,
   type AvailabilityResponse,
   type PlayerProfile,
   type PreparationCommand,
@@ -223,6 +236,8 @@ export interface ConnectedWorkspaceProps {
   };
   initialRole?: Role;
   onLeaveWorkspace?: () => void;
+  /** Immediate account sign-out remains available while ordinary navigation is guarded. */
+  onSignOut?: () => void;
   onOpenAccount?: () => void;
   /** Keeps the workspace mounted while an exit warning or a retained capability is reviewed. */
   onNavigationGuardChange?: (
@@ -301,7 +316,7 @@ const failureText = (error: unknown) =>
 // Service handlers read fresh authority time after awaited network/vault work.
 const serviceActionTime = () => Date.now();
 const dateTime = (ms: number | null) =>
-  ms === null ? "Not established" : new Date(ms).toLocaleString("en-GB");
+  ms === null ? "Not established" : formatUkDateTime(ms);
 
 async function contextPreferenceStorageKey(api: string, principal: Principal) {
   const namespace = workspaceContextPreferenceKey(api, principal);
@@ -480,7 +495,7 @@ export function ConnectedWorkspace(props: ConnectedWorkspaceProps) {
             </Notice>
           ) : allowSynthetic ? (
             <>
-              <Pill tone="warning">DEMO ACCOUNTS</Pill>
+              <Pill tone="muted">REVIEW ACCOUNTS</Pill>
               <Text style={typography.muted}>
                 These selectors work only on an API explicitly running demo
                 authentication. They do not authenticate a person or provide
@@ -788,6 +803,12 @@ function WorkspaceSession({
     useState<BoundWorkspaceValue<OwnTeamPrivileges> | null>(null);
   const [teamPrivilegesCache, setTeamPrivileges] =
     useState<BoundWorkspaceValue<TeamPrivilegesView> | null>(null);
+  const [teamOverviewCache, setTeamOverview] = useState<BoundWorkspaceValue<TeamOverviewDto> | null>(null);
+  const [statsCache, setStats] = useState<BoundWorkspaceValue<PlayerStatsDto> | null>(null);
+  const [feedbackCache, setFeedback] = useState<BoundWorkspaceValue<MatchFeedbackView> | null>(null);
+  const [scheduledGamesCache, setScheduledGames] = useState<BoundWorkspaceValue<ScheduledGameManagementDto> | null>(null);
+  const [selectedOverviewGameId, setSelectedOverviewGameId] = useState<string | null>(null);
+  const [selectedStatsPlayerId, setSelectedStatsPlayerId] = useState<string | undefined>();
   const [matchesCache, setMatches] = useState<BoundWorkspaceValue<
     MatchListPage<ConnectedMatchCentreDto>
   > | null>(null);
@@ -873,6 +894,7 @@ function WorkspaceSession({
     invalidateRequests();
     setIdentity(null);
     setBinding(null);
+    setTeamOverview(null); setStats(null); setFeedback(null); setScheduledGames(null); setSelectedStatsPlayerId(undefined); setSelectedOverviewGameId(null);
     setPreparation(null);
     setOwn(null);
     setRecords(null);
@@ -1118,6 +1140,10 @@ function WorkspaceSession({
     authorityScopeChanged?.(authorityScope);
     return () => authorityScopeChanged?.(null);
   }, [authorityScope, authorityScopeChanged]);
+  const teamOverview = readWorkspaceValue(teamOverviewCache, expectedBinding, identity?.principal ?? null, identity?.memberships ?? [], membershipTime);
+  const stats = readWorkspaceValue(statsCache, expectedBinding, identity?.principal ?? null, identity?.memberships ?? [], membershipTime);
+  const feedback = readWorkspaceValue(feedbackCache, expectedBinding, identity?.principal ?? null, identity?.memberships ?? [], membershipTime);
+  const scheduledGames = readWorkspaceValue(scheduledGamesCache, expectedBinding, identity?.principal ?? null, identity?.memberships ?? [], membershipTime);
   const preparation = readWorkspaceValue(
     preparationCache,
     expectedBinding,
@@ -1176,7 +1202,7 @@ function WorkspaceSession({
     sharedRefreshCache, expectedBinding, identity?.principal ?? null,
     identity?.memberships ?? [], membershipTime,
   );
-  const matches = matchList ? mergeSharedMatchViews(matchList.items, refreshedMatches ?? []) : null;
+  const matches = matchList ? visibleScheduledMatches(mergeSharedMatchViews(matchList.items, refreshedMatches ?? []), teamOverview) : null;
   const completedFixtureIds = acceptedCompletedFixtureIds(matches, { teamId, seasonId });
   const acceptedFixtureIds = new Set((matches ?? []).filter(match => match.teamId === teamId && match.seasonId === seasonId).map(match => match.matchId));
   const seasonOptions = readWorkspaceValue(
@@ -1527,7 +1553,7 @@ function WorkspaceSession({
         isAdministrator
           ? "clubs"
           : chosen.role === "spectator"
-            ? "centre"
+            ? "overview"
             : "home",
       );
       initialRoute.current = true;
@@ -1547,6 +1573,7 @@ function WorkspaceSession({
     refreshingBinding.current = null;
     setBinding(ticket);
     const retain = <T,>(cached: BoundWorkspaceValue<T> | null) => rebindWorkspaceRefresh(cached, previousBinding, ticket, nextIdentity.principal, nextIdentity.memberships, serviceActionTime());
+    setTeamOverview(retain); setStats(retain); setFeedback(retain); setScheduledGames(retain);
     setPreparation(retain); setOwn(retain); setRecords(retain); setCommunity(retain);
     setOwnPrivileges(retain); setTeamPrivileges(retain); setMatches(retain);
     setSeasons(retain); setConfiguration(retain); setStaff(retain); setBranding(retain);
@@ -1790,6 +1817,28 @@ function WorkspaceSession({
           })
           .catch((cause) => readFault("Own preparation", cause, true)),
       );
+    tasks.push(client.request<unknown>(scopedPath('team-overview')).then(async value => {
+      assertTeamOverviewDto(value, {teamId:ticket.teamId,seasonId:ticket.seasonId});
+      const attached = await attach(value); if (attached) setTeamOverview(attached);
+    }).catch(cause => readFault('Team overview',cause,true)));
+    if (isManager || isAdministrator || isPlayer) tasks.push(
+      client.request<unknown>(scopedPath('player-stats')).then(async value => {
+        assertPlayerStatsDto(value, { role: chosen.role, teamId: ticket.teamId, seasonId: ticket.seasonId, ...(isPlayer ? { playerId: ticket.playerId ?? '' } : {}) });
+        const attached = await attach(value); if (attached) setStats(attached);
+      }).catch(cause => readFault('Player statistics', cause, true)),
+    );
+    if (isManager || isPlayer) tasks.push(
+      client.request<unknown>(scopedPath('match-feedback')).then(async value => {
+        assertMatchFeedbackView(value, { accountId: ticket.accountId, teamId: ticket.teamId, seasonId: ticket.seasonId, role: isManager ? 'manager' : 'player', ...(isPlayer ? { playerId: ticket.playerId ?? '' } : {}) });
+        const attached = await attach(value); if (attached) setFeedback(attached);
+      }).catch(cause => readFault('Match feedback', cause, true)),
+    );
+    if (isManager || isAdministrator) tasks.push(
+      client.request<unknown>(scopedPath('scheduled-games')).then(async value => {
+        assertScheduledGameManagementDto(value, { teamId: ticket.teamId, seasonId: ticket.seasonId });
+        const attached = await attach(value); if (attached) setScheduledGames(attached);
+      }).catch(cause => readFault('Scheduled games', cause, true)),
+    );
     await Promise.all(tasks);
     if (await stillCurrent()) { setErrors(faults); setRefreshRequired(preparationRefreshFailed); if (!preparationRefreshFailed) setRefreshSuggested(false); }
   }, [
@@ -1830,7 +1879,7 @@ function WorkspaceSession({
   // reload preparation forms or replace the paginated history/cursor while polling.
   const sharedRefreshEnabled = Boolean(props.active !== false && expectedBinding && membership &&
     (membership.role === "player" || membership.role === "spectator" || membership.role === "manager" && tab === "centre") &&
-    ["home", "centre", "reports", "community"].includes(tab) &&
+    ["home", "overview", "centre", "reports", "community"].includes(tab) &&
     !busy && !pending && !loadingMoreMatches && !uploadRetained && !brandRetained && !invitationHeld?.active);
   const sharedRefreshKey = expectedBinding ? JSON.stringify(expectedBinding) : null;
   useEffect(() => {
@@ -1864,14 +1913,16 @@ function WorkspaceSession({
         sharedRefreshRef.current = next.matches;
         setSharedRefreshCache(next.matches);
         if (!related || lock.current) return;
-        const [report, social] = await Promise.all([
+        const [report, social, overview] = await Promise.all([
           client.request<RecordsDto>(scoped("records"), { signal }),
           client.request<CommunityDto>(scoped("community"), { signal }),
+          client.request<unknown>(scoped("team-overview"), { signal }),
         ]);
         if (signal.aborted || !sameWorkspaceBinding(ticket, liveBinding.current) || !await sessionCurrent()) return;
         if (report.results.visibilityScope !== ticket.role || report.results.teamId !== ticket.teamId || report.results.seasonId !== ticket.seasonId ||
           (ticket.role !== "manager" && (report.editableState || report.activeMatch)))
           throw new Error("The refreshed report differs from the selected role or team. The last confirmed view is retained.");
+        assertTeamOverviewDto(overview,{teamId:ticket.teamId,seasonId:ticket.seasonId});
         const attach = <T,>(value: T) => attachWorkspaceValue(ticket, liveBinding.current, next.identity.principal, next.identity.memberships, serviceActionTime(), value);
         const recordsUpdate = attach({
           revision: report.revision, results: report.results, participation: report.participation, matches: report.matches,
@@ -1879,9 +1930,12 @@ function WorkspaceSession({
           playerLabels: report.playerLabels,
         });
         const communityUpdate = attach(social);
+        const overviewUpdate = attach(overview);
+        const visibleRefresh = attach(visibleScheduledMatches(next.matches.value,overview));
+        if (overviewUpdate && visibleRefresh) { setTeamOverview(overviewUpdate); sharedRefreshRef.current = visibleRefresh; setSharedRefreshCache(visibleRefresh); }
         if (recordsUpdate && communityUpdate) { setRecords(recordsUpdate); setCommunity(communityUpdate); }
         const history = await refreshSharedHistoryPage(ticket,
-          mergeSharedMatchViews(matchList?.items ?? [], next.matches.value),
+          visibleScheduledMatches(mergeSharedMatchViews(matchList?.items ?? [], next.matches.value),overview),
           sameWorkspaceBinding(ticket, sharedHistoryCursor.current?.binding ?? null) ? sharedHistoryCursor.current!.cursor : null,
           next.identity, {
             me: (requestSignal) => client.request<Identity>("/v1/me", { signal: requestSignal }),
@@ -2220,7 +2274,9 @@ function WorkspaceSession({
       | SeasonRolloverCommand
       | ConnectedStaffCommand
       | BrandingCommand
-      | TeamPrivilegeCommand,
+      | TeamPrivilegeCommand
+      | MatchFeedbackCommand
+      | ScheduledGameCommand,
     label: string,
   ): Promise<boolean> => {
     if (
@@ -2374,7 +2430,8 @@ function WorkspaceSession({
       setUploadRetained(false);
       invalidateRequests();
       setBinding(null);
-      setPreparation(null);
+      setTeamOverview(null); setStats(null); setFeedback(null); setScheduledGames(null); setSelectedStatsPlayerId(undefined); setSelectedOverviewGameId(null);
+    setPreparation(null);
       setOwn(null);
       setRecords(null);
       setCommunity(null);
@@ -2396,7 +2453,7 @@ function WorkspaceSession({
         role === "administrator"
           ? "clubs"
           : role === "spectator"
-            ? "centre"
+            ? "overview"
             : "home",
       );
     });
@@ -2601,6 +2658,17 @@ function WorkspaceSession({
         authorised branding view.
       </Notice>
     );
+  const overviewTeamLabel = preparation ? `${preparation.team.name} ${preparation.team.ageGroup}` : own ? `${own.team.name} ${own.team.ageGroup}` : configuration ? `${configuration.team.name} ${configuration.team.ageGroup}` : branding ? `${branding.team.name} ${branding.team.ageGroup}`.trim() : community?.teamLabel ?? selectedContext?.teamLabel ?? 'Your team';
+  const overviewGames: TeamOverviewGame[] = teamOverview?.games ?? [];
+  const selectedOverviewGame = overviewGames.find(game => game.id === selectedOverviewGameId);
+  const openOverviewGame = (id: string) => guardNavigation(() => {
+    setSelectedOverviewGameId(id);
+    if (manager) {
+      if (props.journal && props.deviceId && preparation?.snapshots.some(snapshot => snapshot.fixtureId === id)) { setServiceMatchId(id); setMatchFocused(true); setTab('controller'); }
+      else setTab('schedule');
+    } else if (administrator) setTab('schedule');
+    else setTab('centre');
+  });
   const focusedMatch = Boolean(props.initialConnection && manager && tab === "controller" && matchFocused);
   return (
     <WorkspaceFrame fullScreen={Boolean(props.initialConnection)} fixedMatch={focusedMatch} resetKey={tab} footer={
@@ -2621,6 +2689,7 @@ function WorkspaceSession({
                 else {
                   if (value === "community")
                     setCommunityInitialSection("photos");
+                  setSelectedOverviewGameId(null);
                   setTab(value);
                 }
               }
@@ -2632,23 +2701,19 @@ function WorkspaceSession({
       <Card style={{ padding: focusedMatch ? 2 : 12 }}>
         {focusedMatch && (
           <View style={s.row} testID="workspace-match-header">
-            <Button label="Back to team" accessibilityLabel="Back to team; clock continues" testID="workspace-back-to-team" variant="quiet" icon="left" style={{ flex: 1, paddingHorizontal: 4 }} disabled={disabled} onPress={() => setTab("home")} />
+            <Text testID="workspace-current-role" style={[typography.muted,{fontWeight:"700",color:colors.brand}]}>Manager</Text>
+            <Button label="Back to team" accessibilityLabel="Back to team; clock continues" testID="workspace-back-to-team" variant="quiet" icon="left" style={{ flex: 1, paddingHorizontal: 4 }} disabled={disabled} onPress={() => setTab("overview")} />
             <Button label="Account" accessibilityLabel="Account and security" testID="workspace-match-account" variant="quiet" icon="lock" style={{ flex: 1, paddingHorizontal: 4 }} onPress={() => guardNavigation(props.onOpenAccount ?? (() => setTab("account")))} />
+            {props.onSignOut && <Button label="Sign out" compact icon="logout" iconOnly variant="quiet" testID="workspace-sign-out" onPress={props.onSignOut} />}
           </View>
         )}
         {!focusedMatch && manager && matchFocused && serviceMatchId && (
           <Button label="Return to selected match" testID="workspace-return-to-match" variant="secondary" disabled={disabled} onPress={() => setTab("controller")} />
         )}
         {!focusedMatch && <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-          {branding && brandClient && brandScopeKey && (
-            <AuthenticatedBrandBadge
-              client={brandClient}
-              reference={branding.effective.logo}
-              scopeKey={brandScopeKey}
-              assertAccess={assertBrandAccess}
-              label={`${branding.team.name} team badge`}
-            />
-          )}
+          <Pressable accessibilityRole="button" accessibilityLabel="Open team overview" testID="workspace-team-overview" disabled={disabled} onPress={() => guardNavigation(() => setTab('overview'))} style={{minWidth:44,minHeight:44,alignItems:'center',justifyContent:'center'}}>
+            {branding && brandClient && brandScopeKey ? <AuthenticatedBrandBadge client={brandClient} reference={branding.effective.logo} scopeKey={brandScopeKey} assertAccess={assertBrandAccess} label={`${branding.team.name} team badge`} /> : <Text style={[typography.section,{color:colors.brand}]}>RU</Text>}
+          </Pressable>
           <View style={{ flex: 1, gap: 2 }}>
             <Text style={typography.section}>
               {selectedContext
@@ -2666,25 +2731,20 @@ function WorkspaceSession({
                   : "Checking your account…"}
             </Text>
             {selectedContext && (
-              <Text style={typography.muted}>
+              <Text testID="workspace-current-role" style={[typography.muted, {fontWeight:"700", color:colors.brand}]}>
                 {selectedContext.roleLabel} ·{" "}
-                {own?.season?.label ??
+                {formatUkSeasonLabel(own?.season?.label ??
                   preparation?.seasons.find((item) => item.id === seasonId)
                     ?.label ??
                   configuration?.seasons.find((item) => item.id === seasonId)
                     ?.label ??
                   community?.seasonLabel ??
-                  selectedContext.seasonLabel}
+                  selectedContext.seasonLabel)}
               </Text>
             )}
-            <Text
-              style={{ fontSize: 10, lineHeight: 14, color: colors.inkMuted }}
-            >
-              {connection.mode === "synthetic"
-                ? "DEMO"
-                : "CONNECTED SERVICE"}
-            </Text>
+
           </View>
+          {props.onSignOut && <Button label="Sign out" icon="logout" iconOnly compact testID="workspace-sign-out" variant="quiet" onPress={props.onSignOut} />}
         </View>}
         {!focusedMatch && selectedContext && contextChoices.length > 1 && (
           <Button
@@ -2950,39 +3010,37 @@ function WorkspaceSession({
           />
         )}
       </Card>
+      {tab === 'overview' && selectedContext && (teamOverview ? <TeamOverview team={teamOverview.team} games={overviewGames} nowMs={membershipTime} busy={disabled} onOpenGame={openOverviewGame} onRefresh={() => { void reload(); }} /> : <Notice>Your team overview is loading. Refresh your team view if it remains unavailable.</Notice>)}
+      {tab === 'stats' && (manager || administrator || membership?.role === 'player') && <View style={s.stack}><Button label="Refresh stats" compact variant="quiet" disabled={disabled} onPress={() => {void reload();}} />{stats ? stats.kind === 'own-player-stats' ? <PlayerStats value={stats} teamLabel={overviewTeamLabel} /> : <TeamStats value={stats} teamLabel={overviewTeamLabel} selectedPlayerId={selectedStatsPlayerId} onSelectPlayer={setSelectedStatsPlayerId} /> : <Notice>Your statistics are loading. Refresh your team view if they remain unavailable.</Notice>}</View>}
+      {tab === 'feedback' && (manager || membership?.role === 'player') && (feedback ? <MatchFeedback value={feedback} disabled={disabled} onSave={manager ? undefined : command => mutate('match-feedback',command,'Match feedback')} onRefresh={reload} /> : <Notice>Match feedback is loading. Refresh your team view if it remains unavailable.</Notice>)}
       {tab === "more" && expectedBinding && (
         <Card>
           <View style={s.stack} testID="workspace-more-panel">
             <Text accessibilityRole="header" style={typography.section}>
               More
             </Text>
-            {(manager
-              ? [
-                  ["centre", "Match centre"],
-                  ["community", "Photos and player of the match"],
-                  ["settings", "Team settings"],
-                  ["seasons", "Seasons"],
-                  ["invitations", "Invitations"],
-                  ["privileges", "Upload and invitation privileges"],
-                  ...(props.journal && props.deviceId
-                    ? [["controller", "Match recording"]]
-                    : []),
-                ]
-              : [
-                  ["team", "My profile"],
-                  ["reports", "My reports"],
-                  ["invitations", "Invitations"],
-                ]
+            {(manager ? [
+              ["overview", "Team overview"], ["centre", "Match centre"], ["reports", "Team records"], ["feedback", "Player feedback"],
+              ["community", "Photos and player of the match"], ["settings", "Team settings"], ["seasons", "Seasons"],
+              ["invitations", "Invitations"], ["privileges", "Upload and invitation privileges"],
+              ...(props.journal && props.deviceId ? [["controller", "Match recording"]] : []),
+            ] : administrator ? [
+              ["overview", "Team overview"], ["people", "People"], ["seasons", "Seasons"], ["settings", "Club and team settings"],
+            ] : membership?.role === 'player' ? [
+              ["overview", "Team overview"], ["centre", "My game"], ["feedback", "My match feedback"], ["team", "My profile"], ["reports", "My reports"], ["invitations", "Invitations"],
+            ] : [["overview", "Team overview"]]
             ).map(([value, label]) => (
               <Button
                 key={value}
                 label={label}
                 testID={`workspace-tab-${value}`}
+                compact
                 variant="secondary"
                 disabled={disabled}
                 onPress={() => {
                   if (value === "community")
                     setCommunityInitialSection("photos");
+                  setSelectedOverviewGameId(null);
                   setTab(value as Tab);
                 }}
               />
@@ -3050,7 +3108,7 @@ function WorkspaceSession({
             displayName={own.profile.displayName}
             onOpenSchedule={() => setTab("schedule")}
             onOpenProfile={() => setTab("team")}
-            onOpenGame={() => setTab("centre")}
+            onOpenGame={() => { const selected = selectTeamOverviewGame(overviewGames, teamOverviewLondonDate(membershipTime)).game; if (selected) openOverviewGame(selected.id); else setTab('centre'); }}
             onOpenVote={() => {
               setCommunityInitialSection("awards");
               setTab("community");
@@ -3097,6 +3155,10 @@ function WorkspaceSession({
             }
           />
         )}
+      {tab === 'home' && membership?.role === 'player' && <View style={s.row}>
+        <Button label="My Stats" compact icon="chart" variant="secondary" testID="player-home-my-stats" style={{flex:1}} disabled={disabled} onPress={() => setTab('stats')} />
+        <Button label="Match feedback" compact icon="ball" variant="secondary" testID="player-home-feedback" style={{flex:1}} disabled={disabled} onPress={() => setTab('feedback')} />
+      </View>}
       {tab === "home" && membership?.role === "player" && !own && (
         <Notice>
           {busy
@@ -3188,13 +3250,22 @@ function WorkspaceSession({
           )}
         </Card>
       )}
+      {tab === 'centre' && selectedOverviewGameId && membership?.role !== 'administrator' && <Card>
+        {selectedOverviewGame && !matches?.some(match => match.matchId === selectedOverviewGameId) && <>
+          <Text style={typography.section}>{selectedOverviewGame.opponent}</Text>
+          <Text style={typography.body}>{formatUkDate(selectedOverviewGame.playedDate)} · {selectedOverviewGame.kickoff ?? 'Time to confirm'}</Text>
+          <Text style={typography.muted}>{selectedOverviewGame.venue ?? 'Venue to confirm'}</Text>
+          <Notice>The game is scheduled. Match updates will appear when recording begins.</Notice>
+        </>}
+        <Button label="All games" compact variant="quiet" testID="workspace-all-games" disabled={disabled} onPress={() => setSelectedOverviewGameId(null)} />
+      </Card>}
       {tab === "centre" &&
         membership &&
         membership.role !== "administrator" &&
         (matches ? (
           <ConnectedMatchCentre
-            matches={matches}
-            hasMore={Boolean(matchList?.nextCursor)}
+            matches={selectedOverviewGameId ? matches.filter(match => match.matchId === selectedOverviewGameId) : matches}
+            hasMore={!selectedOverviewGameId && Boolean(matchList?.nextCursor)}
             loadingMore={loadingMoreMatches}
             onLoadMore={() => { void loadMoreMatches(); }}
             reportView={records}
@@ -3228,7 +3299,9 @@ function WorkspaceSession({
           </Notice>
         ))}
       {(tab === "schedule" || tab === "team" || tab === "settings") &&
-        (administrator && configuration ? (
+        (administrator && tab === "schedule" ? (
+          scheduledGames ? <ScheduledGameManagement value={scheduledGames} fixtureId={selectedOverviewGameId ?? undefined} busy={disabled} onCommand={command => mutate("scheduled-games", command, "Scheduled game change")} /> : <Notice>Scheduled games are loading. Refresh your team view if they remain unavailable.</Notice>
+        ) : administrator && configuration ? (
           <ConnectedClubConfiguration
             key={`${absoluteApi}:${identity?.principal.accountId}:${teamId}:${seasonId}`}
             value={configuration}
@@ -3250,6 +3323,8 @@ function WorkspaceSession({
           />
         ) : manager && preparation ? (
           <PreparationScreens
+            initialFixtureId={selectedOverviewGameId ?? undefined}
+            renderScheduledGameManagement={fixtureId => scheduledGames ? <ScheduledGameManagement value={scheduledGames} fixtureId={fixtureId} busy={disabled} onCommand={command => mutate("scheduled-games", command, "Scheduled game change")} /> : null}
             storage="service"
             completedFixtureIds={completedFixtureIds}
             acceptedFixtureIds={acceptedFixtureIds}
@@ -3329,7 +3404,7 @@ function WorkspaceSession({
                   );
                 else
                   setNotice(
-                    `New season ${seasonOptions.nextSeason.label} was saved. Your account was not assigned a role there; source-season access remains separate.`,
+                    `New season ${formatUkSeasonLabel(seasonOptions.nextSeason.label)} was saved. Your account was not assigned a role there; source-season access remains separate.`,
                   );
               }
               return saved;
@@ -3472,7 +3547,7 @@ function WorkspaceSession({
               .map((fixture) => (
                 <Button
                   key={fixture.id}
-                  label={`Control ${fixture.opponent} · ${fixture.playedDate}`}
+                  label={`Control ${fixture.opponent} · ${formatUkDate(fixture.playedDate)}`}
                   variant={
                     serviceMatchId === fixture.id ? "primary" : "secondary"
                   }
@@ -3538,6 +3613,7 @@ function OwnPreparation({
     setPreferenceAck(null);
   }
   if (nextPreferenceDraft !== preferenceDraft) setPreferenceDraft(nextPreferenceDraft);
+  const [preferenceRank, setPreferenceRank] = useState(0);
   const preferences = preferenceDraft.value;
   const preferencesNeedReview = revisionedValueNeedsReview(preferenceDraft);
   const command = (payload: OwnPayload, expectedRevision = value.revision) =>
@@ -3555,6 +3631,7 @@ function OwnPreparation({
         <Button
           key={option}
           label={responseLabels[option]}
+          compact
           variant={response === option ? "primary" : "secondary"}
           disabled={disabled}
           onPress={() => save(option)}
@@ -3589,7 +3666,7 @@ function OwnPreparation({
         {fixture.homeAway === "away" ? "Away to" : "Home v"} {fixture.opponent}
       </Text>
       <Text style={typography.muted}>
-        {fixture.playedDate} · {fixture.venue || "Location not recorded"} ·{" "}
+        {formatUkDate(fixture.playedDate)} · {fixture.venue || "Location not recorded"} ·{" "}
         {fixtureScheduleStatus(fixture, completedFixtureIds, today)}
       </Text>
       <FixtureScheduleDetails fixture={fixture} />
@@ -3614,7 +3691,7 @@ function OwnPreparation({
   );
   const trainingCard = (training: OwnPreparationDto["training"][number]) => (
     <Card key={training.id}>
-      <Text style={typography.section}>Training · {training.date}</Text>
+      <Text style={typography.section}>Training · {formatUkDate(training.date)}</Text>
       <Text style={typography.muted}>
         {training.time ?? "Time to confirm"} · {training.venue} ·{" "}
         {training.status}
@@ -3648,7 +3725,7 @@ function OwnPreparation({
             {value.profile.displayName} · my preferences
           </Text>
           <Text style={typography.muted}>
-            {value.team.name} {value.team.ageGroup} · {value.season.label}
+            {value.team.name} {value.team.ageGroup} · {formatUkSeasonLabel(value.season.label)}
           </Text>
           <Text style={typography.body}>
             Shirt {value.profile.shirtNumber ?? "not recorded"} · preferred
@@ -3656,42 +3733,21 @@ function OwnPreparation({
             positions:{" "}
             {value.profile.eligiblePositions.join(", ") || "not recorded"}.
           </Text>
-          <Text style={typography.body}>
-            Choose three distinct positions in order. Goalkeeper eligibility is
-            approved separately by a manager. Changes apply to future
-            preparation; existing match snapshots retain their original profile
-            and lineup.
-          </Text>
-          {preferences.map((selected, rank) => (
-            <View style={s.stack} key={rank}>
-              <Text style={typography.label}>
-                {["First", "Second", "Backup"][rank]} position
-              </Text>
-              <View style={s.row}>
-                {positionCodes.map((position) => (
-                  <Button
-                    key={position}
-                    label={position}
-                    variant={selected === position ? "primary" : "secondary"}
-                    disabled={disabled}
-                    onPress={() =>
-                      setPreferenceDraft(current => ({ ...current, value:
-                          current.value.map((item, index) =>
-                            index === rank ? position : item,
-                          ) as PlayerProfile["preferences"] }))
-                    }
-                  />
-                ))}
-              </View>
-            </View>
-          ))}
+          <Text style={typography.body}>Choose your first, second and backup positions. Your manager confirms eligibility.</Text>
+          <View style={s.row}>
+            {preferences.map((selected, rank) => <Button key={rank} label={`${['First','Second','Backup'][rank]} · ${selected}`} compact testID={`own-preference-rank-${rank}`} variant={preferenceRank === rank ? 'primary' : 'secondary'} style={{flex:1,minWidth:74}} disabled={disabled} onPress={() => setPreferenceRank(rank)} />)}
+          </View>
+          <Text style={typography.label}>Choose {['first','second','backup'][preferenceRank]} position</Text>
+          <View style={s.row}>
+            {activePositionCodes(value).map(position => <Button key={position} label={position} compact testID={`own-preference-position-${position}`} accessibilityLabel={`${position}${preferences[preferenceRank] === position ? ', selected' : ''}`} variant={preferences[preferenceRank] === position ? 'primary' : 'secondary'} style={{minWidth:48}} disabled={disabled} onPress={() => setPreferenceDraft(current => ({...current,value:current.value.map((item,index) => index === preferenceRank ? position : item) as PlayerProfile['preferences']}))} />)}
+          </View>
           {preferencesNeedReview && <>
             <Notice tone="warning">Your player record changed while you were editing. Your draft preferences are retained. Review the current service choices before saving.</Notice>
             <Text style={typography.body}>Current preferences: {value.profile.preferences.join(' · ')}</Text>
             <Button label="I have reviewed the latest preferences; keep my draft" variant="secondary" disabled={disabled} onPress={() => setPreferenceDraft(current => reviewRevisionedValueDraft(current))} />
           </>}
           <Button
-            label="Save my position preferences to service"
+            label="Save preferences"
             disabled={disabled || preferencesNeedReview || new Set(preferences).size !== 3}
             onPress={() => {
               void command({ type: "own.preferences_saved", preferences }, preferenceDraft.expectedRevision).then(saved => {
@@ -3711,11 +3767,7 @@ function OwnPreparation({
             busy={disabled}
             onExport={onExportCalendar}
           />
-          <Notice>
-            Your reply, the manager’s selection and actual attendance are
-            separate records. Your account can change its own reply; attendance
-            is recorded by the manager.
-          </Notice>
+          <Text style={typography.muted}>Reply for yourself. Your manager confirms the squad and attendance.</Text>
           <View style={s.row}>
             {(["upcoming", "past"] as const).map((period) => (
               <Button
@@ -3752,7 +3804,7 @@ function OwnPreparation({
               testID={`own-schedule-group-${group.date ?? "undated"}`}
             >
               <Text accessibilityRole="header" style={typography.section}>
-                {group.date ?? "Date to confirm"}
+                {formatUkDate(group.date)}
               </Text>
               {group.date === null && (
                 <Text style={typography.muted}>

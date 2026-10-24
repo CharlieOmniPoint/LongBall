@@ -68,7 +68,7 @@ try {
   assert.equal(await page.getByTestId('recording-acquire').isDisabled(), true, 'The separately created unprepared fixture must not claim recording authority');
   checks.push('A separate fixture created through actual preparation commands, with no prepared formation/player snapshot, has no canonical match, refuses HTTP controller claim, and keeps the UI recording claim disabled. Prepared Maple remains the positive matchday fixture.');
   await openWorkspaceTab(page, 'schedule');
-  await page.getByRole('button', { name: 'Open fixture Maple FC, 2026-10-24', exact: true }).click();
+  await page.getByRole('button', { name: 'Open fixture Maple FC, 24/10/26', exact: true }).click();
   await page.getByTestId('preparation-open-match').click();
   await page.getByTestId('recording-acquire').waitFor();
   await page.getByTestId('workspace-match-header').waitFor();
@@ -146,6 +146,7 @@ try {
   await viewer.route(`${tunnel}/**`, async route => { const response = await route.fetch({ url: api + route.request().url().slice(tunnel.length) }); await route.fulfill({ response, headers: { ...response.headers(), 'access-control-allow-origin': new URL(baseURL).origin } }); });
   await viewer.goto(baseURL, { waitUntil: 'networkidle' });
   await enterFictionalReview(viewer, 'spectator', 'connected');
+  await openWorkspaceTab(viewer, 'centre');
   const sharedCard = viewer.getByTestId(`match-centre-game-${matchId}`);
   await sharedCard.getByText('0 – 0', { exact: true }).waitFor();
   await page.getByTestId('open-goal').click();
