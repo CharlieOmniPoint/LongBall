@@ -78,6 +78,8 @@ jobs:
           assert marker["state"] == "ready" and marker["sourceRevision"] == request["backendTransportCommit"]
           expiry = datetime.datetime.fromisoformat(marker["expiresAt"].replace("Z", "+00:00"))
           assert expiry > datetime.datetime.now(datetime.timezone.utc)
+          runtime = github("/actions/runs/" + marker["runUrl"].rsplit("/", 1)[-1])
+          assert runtime["status"] == "in_progress" and runtime["conclusion"] is None
           with open(os.environ["GITHUB_OUTPUT"], "a") as output:
               output.write("frontend=" + request["frontendSourceCommit"] + "\n")
               output.write("backend=" + request["backendSourceCommit"] + "\n")
@@ -123,6 +125,10 @@ jobs:
           marker = json.loads(current_file("preview-status.json"))
           assert marker["state"] == "ready" and marker["sourceRevision"] == request["backendTransportCommit"]
           assert datetime.datetime.fromisoformat(marker["expiresAt"].replace("Z", "+00:00")) > datetime.datetime.now(datetime.timezone.utc)
+          runtime_request = urllib.request.Request("https://api.github.com/repos/" + os.environ["GITHUB_REPOSITORY"] + "/actions/runs/" + marker["runUrl"].rsplit("/", 1)[-1], headers={"Authorization": "Bearer " + os.environ["GH_TOKEN"], "Accept": "application/vnd.github+json"})
+          with urllib.request.urlopen(runtime_request, timeout=30) as reply:
+              runtime = json.load(reply)
+          assert runtime["status"] == "in_progress" and runtime["conclusion"] is None
           site = Path("frontend-pages")
           assert not any(path.is_symlink() for path in site.rglob("*"))
           assert sum(path.stat().st_size for path in site.rglob("*") if path.is_file()) < 50_000_000
