@@ -23,6 +23,12 @@
       "hash": "a6ae89c7f706d4349bbfcb8409e1c72a3222726640695c04739e20d38b7d9abd",
       "salt": "jPgkxdLEmdvWqDHrqMhSd3_ffwrQh9P_",
       "username": "roma.spectator"
+    },
+    {
+      "accountId": "synthetic-account-club-admin",
+      "hash": "f7afab0f9919f6f3feb929755221beb8b15c1f445cb3588845524781dc2b5298",
+      "salt": "nUi24Bsu9P4crUS3pkPoGA",
+      "username": "roma.clubadmin"
     }
   ],
   "sessionTtlSeconds": 21600,

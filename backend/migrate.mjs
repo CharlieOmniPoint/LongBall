@@ -116,6 +116,7 @@ function projectOwnPlayerPreparation(state, profile, seasonId) {
       displayName: profile.displayName,
       initials: profile.initials,
       shirtNumber: profile.shirtNumber,
+      ...profile.faPlayerId !== void 0 ? { faPlayerId: profile.faPlayerId } : {},
       foot: profile.foot,
       preferences: [...profile.preferences],
       eligiblePositions: [...profile.eligiblePositions],
@@ -208,7 +209,7 @@ function assertCanAssignManager(actor, target, memberships, teamId, seasonId, no
   assertTeamRole(actor, memberships, teamId, seasonId, ["administrator"], now);
   assertAdultAuthority(actor, true, now);
   assertAdultAuthority(target, false, now);
-  const managers = memberships.filter((item) => item.teamId === teamId && item.role === "manager" && item.revokedAt == null && (item.expiresAt == null || item.expiresAt > now));
+  const managers = memberships.filter((item) => item.teamId === teamId && item.role === "manager" && !item.administrativeInheritance && item.revokedAt == null && (item.expiresAt == null || item.expiresAt > now));
   if (!managers.some((item) => item.accountId === target.accountId) && new Set(managers.map((item) => item.accountId)).size >= 4) {
     throw new AccessError("MANAGER_LIMIT", 409, "A team can have at most four active managers, including administrators who also manage.");
   }
@@ -2042,9 +2043,9 @@ var PgDatabase = class {
   async migrate() {
     if (this.migrationMode === "verify") {
       const versions = await this.query("SELECT version FROM longball.schema_migrations ORDER BY version");
-      if (versions.rows.some((row) => row.version > 20)) throw new Error("This PostgreSQL schema is newer than the application. Preserve it and use a compatible build.");
-      if (![2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20].every((version2) => versions.rows.some((row) => row.version === version2))) throw new Error("PostgreSQL migrations are required. Run the separate migrator before starting the runtime.");
-      const protectedTables = ["clubs", "teams", "team_seasons", "game_contexts", "accounts", "memberships", "matches", "documents", "devices", "controller_grants", "controller_history", "events", "streams", "conflicting_submissions", "transfers", "clock_challenges", "clock_mappings", "reconciliation_proposals", "audit", "idempotency", "privacy_requests", "privacy_pending_keys", "jobs", "brand_assets", "brand_slots", "spectator_invitations", "lb_spectator_activation_accounts", "lb_spectator_activation_attempts", "native_app_devices", "team_privilege_states", "team_privilege_decisions", "push_registrations", "report_exports", "match_feedback", "match_feedback_receipts"];
+      if (versions.rows.some((row) => row.version > 24)) throw new Error("This PostgreSQL schema is newer than the application. Preserve it and use a compatible build.");
+      if (![2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24].every((version2) => versions.rows.some((row) => row.version === version2))) throw new Error("PostgreSQL migrations are required. Run the separate migrator before starting the runtime.");
+      const protectedTables = ["clubs", "teams", "team_seasons", "game_contexts", "accounts", "memberships", "matches", "documents", "devices", "controller_grants", "controller_history", "events", "streams", "conflicting_submissions", "transfers", "clock_challenges", "clock_mappings", "reconciliation_proposals", "audit", "idempotency", "privacy_requests", "privacy_pending_keys", "jobs", "brand_assets", "brand_slots", "spectator_invitations", "lb_spectator_activation_accounts", "lb_spectator_activation_attempts", "native_app_devices", "team_privilege_states", "team_privilege_decisions", "push_registrations", "report_exports", "match_feedback", "match_feedback_receipts", "administration_grants", "administrative_memberships", "team_documents", "opposition_reviews", "opposition_review_receipts", "spectator_pin_credentials", "invite_requests"];
       const security = await this.query(`SELECT c.relname,c.relrowsecurity,(SELECT count(*)::integer FROM pg_catalog.pg_policy p WHERE p.polrelid=c.oid) AS policies FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='longball' AND c.relname=ANY($1::text[])`, [protectedTables]);
       if (security.rows.length !== protectedTables.length || security.rows.some((row) => !row.relrowsecurity || row.policies < 1)) throw new Error("PostgreSQL row security is missing. Run the separate migrator before starting runtime.");
       return;
@@ -2068,12 +2069,16 @@ var PgDatabase = class {
     const scheduledGamesMigration = await readFile(new URL("../migrations/postgresql/018_scheduled_games.sql", import.meta.url), "utf8");
     const playerStatsMigration = await readFile(new URL("../migrations/postgresql/019_player_stats.sql", import.meta.url), "utf8");
     const teamOverviewMigration = await readFile(new URL("../migrations/postgresql/020_team_overview.sql", import.meta.url), "utf8");
+    const administrationMigration = await readFile(new URL("../migrations/postgresql/021_club_administration.sql", import.meta.url), "utf8");
+    const teamDocumentsMigration = await readFile(new URL("../migrations/postgresql/022_team_documents.sql", import.meta.url), "utf8");
+    const oppositionReviewsMigration = await readFile(new URL("../migrations/postgresql/023_opposition_reviews.sql", import.meta.url), "utf8");
+    const spectatorAccessMigration = await readFile(new URL("../migrations/postgresql/024_spectator_access.sql", import.meta.url), "utf8");
     await this.transaction(async () => {
       const schema = await this.query("SELECT to_regnamespace('longball')::text AS namespace");
       if (!schema.rows[0]?.namespace) await this.query("CREATE SCHEMA longball");
       await this.query("CREATE TABLE IF NOT EXISTS longball.schema_migrations(version integer PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())");
       const versions = await this.query("SELECT version FROM longball.schema_migrations ORDER BY version");
-      if (versions.rows.some((row) => row.version > 20)) throw new Error("This PostgreSQL schema is newer than the application. Preserve it and use a compatible build.");
+      if (versions.rows.some((row) => row.version > 24)) throw new Error("This PostgreSQL schema is newer than the application. Preserve it and use a compatible build.");
       if (!versions.rows.some((row) => row.version === 2)) {
         await this.query(migration);
         await this.query("INSERT INTO longball.schema_migrations(version) VALUES(2)");
@@ -2149,6 +2154,22 @@ var PgDatabase = class {
       if (!versions.rows.some((row) => row.version === 20)) {
         await this.query(teamOverviewMigration);
         await this.query("INSERT INTO longball.schema_migrations(version) VALUES(20)");
+      }
+      if (!versions.rows.some((row) => row.version === 21)) {
+        await this.query(administrationMigration);
+        await this.query("INSERT INTO longball.schema_migrations(version) VALUES(21)");
+      }
+      if (!versions.rows.some((row) => row.version === 22)) {
+        await this.query(teamDocumentsMigration);
+        await this.query("INSERT INTO longball.schema_migrations(version) VALUES(22)");
+      }
+      if (!versions.rows.some((row) => row.version === 23)) {
+        await this.query(oppositionReviewsMigration);
+        await this.query("INSERT INTO longball.schema_migrations(version) VALUES(23)");
+      }
+      if (!versions.rows.some((row) => row.version === 24)) {
+        await this.query(spectatorAccessMigration);
+        await this.query("INSERT INTO longball.schema_migrations(version) VALUES(24)");
       }
     });
   }
@@ -3389,6 +3410,8 @@ function saveProfile(state, source2) {
     ),
     "That player already has a profile in this season."
   );
+  if (profile.faPlayerId !== void 0)
+    profile.faPlayerId = normaliseFaPlayerId(profile.faPlayerId);
   profile.displayName = text(profile.displayName, "Display name", 60);
   requireThat3(
     typeof profile.initials === "string" && /^[A-Za-z0-9]{1,2}$/.test(profile.initials),
@@ -3433,7 +3456,7 @@ function validateRosterImport(state, profiles) {
   const candidate = clone(state);
   return Array.from(profiles).map((profile) => {
     requireThat3(
-      profile && typeof profile === "object" && Object.keys(profile).length === 10 && Object.keys(profile).every(
+      profile && typeof profile === "object" && (Object.keys(profile).length === 10 || Object.keys(profile).length === 11 && Object.hasOwn(profile, "faPlayerId")) && Object.keys(profile).every(
         (key) => [
           "id",
           "playerId",
@@ -3441,6 +3464,7 @@ function validateRosterImport(state, profiles) {
           "displayName",
           "initials",
           "shirtNumber",
+          "faPlayerId",
           "foot",
           "preferences",
           "eligiblePositions",
@@ -3474,6 +3498,81 @@ function validateRosterImport(state, profiles) {
     );
     return saveProfile(candidate, profile);
   });
+}
+function normaliseFaPlayerId(value) {
+  if (value === null || value === "") return null;
+  requireThat3(
+    typeof value === "string" && /^[0-9]{1,20}$/.test(value.trim()),
+    "Use an FA player ID of up to 20 digits, or leave it blank."
+  );
+  return value.trim();
+}
+function validateRosterProformaImport(state, profiles) {
+  requireThat3(
+    Array.isArray(profiles) && profiles.length > 0 && profiles.length <= 200,
+    "Import between one and 200 player rows."
+  );
+  const ids = /* @__PURE__ */ new Set(), players = /* @__PURE__ */ new Set();
+  for (const profile of profiles) {
+    requireThat3(
+      profile && typeof profile === "object" && !Array.isArray(profile),
+      "Use a valid player profile."
+    );
+    requireThat3(
+      Object.keys(profile).every(
+        (key) => [
+          "id",
+          "playerId",
+          "seasonId",
+          "displayName",
+          "initials",
+          "shirtNumber",
+          "faPlayerId",
+          "foot",
+          "preferences",
+          "eligiblePositions",
+          "active"
+        ].includes(key)
+      ),
+      "Use only the documented proforma fields."
+    );
+    requireThat3(
+      profile.active === true && profile.seasonId === state.activeSeasonId,
+      "Import active players into the current season only."
+    );
+    requireThat3(
+      !ids.has(profile.id) && !players.has(profile.playerId),
+      "Each player may appear only once in a proforma."
+    );
+    ids.add(profile.id);
+    players.add(profile.playerId);
+    for (const value of [profile.id, profile.playerId])
+      requireThat3(
+        typeof value === "string" && /^[A-Za-z0-9_.:-]{1,150}$/.test(value),
+        "Use a valid opaque player/profile identity."
+      );
+    const byId = state.profiles.find((item) => item.id === profile.id);
+    const byPlayer = state.profiles.find(
+      (item) => item.playerId === profile.playerId && item.seasonId === state.activeSeasonId
+    );
+    if (byId || byPlayer)
+      requireThat3(
+        byId && byPlayer && byId.id === byPlayer.id && byId.playerId === profile.playerId && byId.seasonId === state.activeSeasonId && byId.active,
+        "An existing player must retain their downloaded profile and player identities."
+      );
+    else
+      requireThat3(
+        !state.profiles.some((item) => item.playerId === profile.playerId),
+        "A new row cannot adopt a player identity from another season."
+      );
+    requireThat3(
+      Array.isArray(profile.preferences) && Array.isArray(profile.eligiblePositions),
+      "Provide preferences and eligible positions."
+    );
+  }
+  const candidate = clone(state);
+  candidate.profiles = candidate.profiles.filter((item) => !ids.has(item.id));
+  return profiles.map((profile) => saveProfile(candidate, profile));
 }
 function reducePreparation(previous, command, context = {}) {
   requireThat3(
@@ -3509,6 +3608,39 @@ function reducePreparation(previous, command, context = {}) {
         logo: command.logo
       };
       break;
+    case "team.league_updated":
+      requireThat3(
+        typeof command.league === "string" && command.league.trim().length <= 120 && !/[\u0000-\u001f]/.test(command.league),
+        "Use a league name of at most 120 characters, or leave it blank."
+      );
+      state.team.league = command.league.trim();
+      break;
+    case "team.alerts_updated": {
+      const settings = command.substitutionAlerts;
+      requireThat3(
+        settings && typeof settings === "object" && Object.keys(settings).length === 3 && typeof settings.enabled === "boolean" && Number.isInteger(settings.leadSeconds) && settings.leadSeconds >= 0 && settings.leadSeconds <= 300 && Number.isFinite(settings.volume) && settings.volume >= 0 && settings.volume <= 1,
+        "Use substitution alert lead time from zero to 300 seconds and volume from zero to 100%."
+      );
+      state.substitutionAlerts = {
+        enabled: settings.enabled,
+        leadSeconds: settings.leadSeconds,
+        volume: settings.volume
+      };
+      break;
+    }
+    case "roster.proforma_imported": {
+      requireThat3(
+        command.confirmChanges === true,
+        "Review and confirm all new and updated player rows."
+      );
+      const imported = validateRosterProformaImport(state, command.profiles);
+      const ids = new Set(imported.map((profile) => profile.id));
+      state.profiles = [
+        ...state.profiles.filter((profile) => !ids.has(profile.id)),
+        ...imported
+      ];
+      break;
+    }
     case "team.updated":
       validateLogo(command.logo);
       validateFormat(command.defaultPitchPlaces);
@@ -4521,6 +4653,7 @@ function applyCommunityCommand(state, actor, command, nowMs) {
       const time3 = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
       requireRule(preferences.quietStart === null && preferences.quietEnd === null || typeof preferences.quietStart === "string" && typeof preferences.quietEnd === "string" && time3.test(preferences.quietStart) && time3.test(preferences.quietEnd), "invalid", "Use HH:MM for both quiet-hour boundaries, or leave both empty.");
       requireRule(preferences.quietStart === null || preferences.quietStart !== preferences.quietEnd, "invalid", "Quiet hours need distinct boundaries; use channel switches to pause all day.");
+      requireRule(preferences.followedPlayerId === void 0 || preferences.followedPlayerId === null || /^[A-Za-z0-9_-]{1,150}$/.test(preferences.followedPlayerId), "invalid", "Choose a current team player.");
       next.preferences[actor.accountId] = { ...preferences };
       break;
     }
@@ -4619,7 +4752,7 @@ function getCommunityView(state, actor, nowMs) {
     accountLabel: person.label,
     memberships: state.memberships.filter((item) => item.accountId === actor.accountId).map((item) => ({ ...item })),
     preferences: { ...state.preferences[actor.accountId] ?? defaultCommunityPreferences() },
-    invitations: allowed && actor.role !== "spectator" ? scoped(state.invitations).filter((item) => actor.role === "manager" || item.inviterAccountId === actor.accountId).map((item) => ({ ...publicInvitation(item, nowMs), reviewCode: item.credential?.kind === "fictional_review" && state.synthetic === true ? item.credential.code : void 0 })) : [],
+    invitations: allowed ? scoped(state.invitations).filter((item) => actor.role === "manager" || item.inviterAccountId === actor.accountId).map((item) => ({ ...publicInvitation(item, nowMs), reviewCode: item.credential?.kind === "fictional_review" && state.synthetic === true ? item.credential.code : void 0 })) : [],
     grants: allowed && actor.role === "manager" ? scoped(state.grants).map((item) => ({ ...item, accountLabel: labelForAccount(state, item.accountId) })) : [],
     matches: allowed ? scoped(state.matches).map((match) => {
       const share = sharedAllowed(state, actor, match);
@@ -4855,7 +4988,8 @@ var communityPreferencesRule = { accepts: (value) => communityObjectShape(value,
   awards: communityBoolean,
   photos: communityBoolean,
   quietStart: communityNullable(communityText(5)),
-  quietEnd: communityNullable(communityText(5))
+  quietEnd: communityNullable(communityText(5)),
+  followedPlayerId: communityOptional(communityNullable(communityId))
 }) };
 var communityCommandFields = {
   "invite.created": { invitationId: communityId, reviewCode: communityText(128), expiresAtMs: communityInteger() },
@@ -5522,7 +5656,7 @@ function verifiedAdult(account2) {
   return account2.status === "active" && account2.identityClassification === "adult_individual" && account2.adultVerified && account2.strongAuthEnrolled;
 }
 function activeManagers(context) {
-  return [...new Set(context.memberships.filter((item) => item.teamId === context.records.teamId && item.role === "manager" && current(item, context.nowMs) && context.accounts.find((account2) => account2.accountId === item.accountId)?.status !== "disabled").map((item) => item.accountId))];
+  return [...new Set(context.memberships.filter((item) => item.teamId === context.records.teamId && item.role === "manager" && !item.administrativeInheritance && current(item, context.nowMs) && context.accounts.find((account2) => account2.accountId === item.accountId)?.status !== "disabled").map((item) => item.accountId))];
 }
 function seasonAccessEndsAtMs(startYear) {
   const midnightUtc = Date.UTC(startYear + 1, 8, 1);
@@ -5565,7 +5699,7 @@ function configurationServiceView(input) {
 }
 function applyConfigurationServiceCommand(input) {
   const { principal, memberships, preparation, seasonId, nowMs, command } = input;
-  requireThat4(command?.type === "club.updated" || command?.type === "team.updated", "Configuration accepts only club or team settings.");
+  requireThat4(command?.type === "club.updated" || command?.type === "team.updated" || command?.type === "team.league_updated" || command?.type === "team.alerts_updated", "Configuration accepts only club or team settings.");
   assertTeamRole(principal, memberships, preparation.team.id, seasonId, command.type === "club.updated" ? ["administrator"] : ["administrator", "manager"], nowMs);
   assertAdultAuthority(principal, command.type === "club.updated", nowMs);
   return reducePreparation(preparation, command);
@@ -5595,8 +5729,8 @@ function planSeasonRollover(context) {
   for (const assignment of command.playerAssignments) requireThat4(validId2(assignment.accountId) && validId2(assignment.playerId) && options.playerCandidates.some((item) => item.accountId === assignment.accountId && item.playerId === assignment.playerId), "New player membership must preserve the source account/player binding. Use activation for new identity links.");
   const season = { id: command.idForSeason, startYear: command.startYear, ...seasonBounds(command.startYear), spectatorRenewalRequired: true };
   const newMemberships = [
-    ...command.managerAccountIds.map((accountId) => ({ accountId, teamId: records.teamId, seasonId: season.id, role: "manager" })),
-    ...command.administratorAccountIds.map((accountId) => ({ accountId, teamId: records.teamId, seasonId: season.id, role: "administrator" })),
+    ...command.managerAccountIds.map((accountId) => ({ accountId, teamId: records.teamId, seasonId: season.id, role: "manager", ...context.memberships.some((m) => m.accountId === accountId && m.teamId === records.teamId && m.seasonId === old.id && m.role === "manager" && m.administrativeInheritance) ? { administrativeInheritance: true } : {} })),
+    ...command.administratorAccountIds.map((accountId) => ({ accountId, teamId: records.teamId, seasonId: season.id, role: "administrator", ...context.memberships.some((m) => m.accountId === accountId && m.teamId === records.teamId && m.seasonId === old.id && m.role === "administrator" && m.administrativeInheritance) ? { administrativeInheritance: true } : {} })),
     ...command.playerAssignments.map((item) => ({ ...item, teamId: records.teamId, seasonId: season.id, role: "player" }))
   ];
   const sourceProfiles = preparation.profiles.filter((profile) => profile.seasonId === old.id && profile.active);
@@ -6408,8 +6542,8 @@ function managerRoster(input) {
   assertAdultAuthority(principal, false, nowMs);
   if (!Number.isSafeInteger(input.revision) || input.revision < 0 || !Number.isSafeInteger(nowMs) || nowMs < 0) throw new Error("Use the authoritative staff revision and current service time.");
   const associated = new Set(memberships.filter((item) => item.teamId === teamId && current2(item, nowMs)).map((item) => item.accountId));
-  const liveManagers = memberships.filter((item) => item.teamId === teamId && item.role === "manager" && current2(item, nowMs));
-  const managers = memberships.filter((item) => item.teamId === teamId && item.seasonId === seasonId && item.role === "manager").map((item) => {
+  const liveManagers = memberships.filter((item) => item.teamId === teamId && item.role === "manager" && !item.administrativeInheritance && current2(item, nowMs));
+  const managers = memberships.filter((item) => item.teamId === teamId && item.seasonId === seasonId && item.role === "manager" && !item.administrativeInheritance).map((item) => {
     const account2 = accounts.find((account3) => account3.accountId === item.accountId);
     return {
       accountId: item.accountId,
@@ -6656,6 +6790,32 @@ function fixtureRecordingUnavailable(state, fixtureId) {
   return fixtureWasDeleted(state, fixtureId) || Boolean(fixture && fixture.status !== "scheduled");
 }
 
+// packages/application/src/goalkeeper-clean-sheets.ts
+function goalkeeperCleanSheetOutcomes(input) {
+  const validMs = (value) => Number.isSafeInteger(value) && value >= 0;
+  const keepers = [...new Set(input.intervals.filter((row) => row.state === "playing" && row.position === "GK" && row.endMs > row.startMs).map((row) => row.playerId))];
+  const valid = input.completed && !input.reviewRequired && validMs(input.activeDurationMs) && input.activeDurationMs > 0 && input.recordedOppositionScore === input.oppositionGoals.length && input.intervals.every((row) => validMs(row.startMs) && validMs(row.endMs) && row.endMs >= row.startMs && row.endMs <= input.activeDurationMs) && input.oppositionGoals.every((goal) => goal.atMs !== null && validMs(goal.atMs) && goal.atMs <= input.activeDurationMs);
+  if (!valid) return keepers.map((playerId) => ({ playerId, outcome: "unknown" }));
+  const stints = keepers.flatMap((playerId) => {
+    const rows = input.intervals.filter((row) => row.playerId === playerId && row.state === "playing" && row.position === "GK" && row.endMs > row.startMs).sort((a, b) => a.startMs - b.startMs);
+    const merged = [];
+    for (const row of rows) {
+      const last = merged.at(-1);
+      if (last && row.startMs <= last.endMs) last.endMs = Math.max(last.endMs, row.endMs);
+      else merged.push({ playerId, startMs: row.startMs, endMs: row.endMs });
+    }
+    return merged;
+  });
+  const conceded = /* @__PURE__ */ new Set(), uncertain = /* @__PURE__ */ new Set();
+  for (const goal of input.oppositionGoals) {
+    const candidates = [...new Set(stints.filter((row) => row.startMs <= goal.atMs && row.endMs >= goal.atMs).map((row) => row.playerId))];
+    if (candidates.length === 1) conceded.add(candidates[0]);
+    else if (candidates.length > 1) for (const playerId of candidates) uncertain.add(playerId);
+    else for (const playerId of keepers) uncertain.add(playerId);
+  }
+  return keepers.map((playerId) => ({ playerId, outcome: conceded.has(playerId) ? "conceded" : uncertain.has(playerId) ? "unknown" : "clean_sheet" }));
+}
+
 // packages/application/src/player-stats.ts
 function denied() {
   throw new AccessError(
@@ -6684,6 +6844,14 @@ function cleanEvidence(record) {
       isOwnGoal: goal.isOwnGoal,
       scorerPlayerId: goal.scorerPlayerId
     })),
+    goalkeeperOutcomes: record.recordMode === "detailed_live" && record.participation?.every((row) => Array.isArray(row.intervals)) ? goalkeeperCleanSheetOutcomes({
+      completed: record.status === "completed",
+      reviewRequired: record.detailCompleteness !== "complete",
+      activeDurationMs: record.actualActiveDurationMs ?? 0,
+      intervals: record.participation.flatMap((row) => row.intervals.map((interval) => ({ ...interval, playerId: row.playerId }))),
+      oppositionGoals: record.goals.filter((goal) => goal.beneficiary === "opposition").map((goal) => ({ atMs: goal.half !== null && goal.halfElapsedMs !== null ? goal.halfElapsedMs + (goal.half === 2 ? Math.max(0, ...record.participation.flatMap((row) => row.intervals.filter((interval) => interval.half === 1).map((interval) => interval.endMs))) : 0) : null })),
+      recordedOppositionScore: record.finalScore?.against ?? null
+    }) : record.goalkeeperOutcomes?.map((row) => ({ ...row })),
     participation: record.participation?.map((row) => ({
       playerId: row.playerId,
       playedMs: row.playedMs,
@@ -6734,6 +6902,14 @@ function playerStatsSourceFromRecords(input) {
         isOwnGoal: goal.isOwnGoal,
         scorerPlayerId: goal.scorerPlayerId
       })),
+      goalkeeperOutcomes: goalkeeperCleanSheetOutcomes({
+        completed: match.status === "completed",
+        reviewRequired: match.recoveryRequired || match.schemaVersion !== 2,
+        activeDurationMs: match.matchActiveMs,
+        intervals: match.intervals,
+        oppositionGoals: goalRecords(match).filter((goal) => !goal.voided && goal.beneficiary === "opposition").map((goal) => ({ atMs: goal.effective.matchElapsedMs })),
+        recordedOppositionScore: match.score.against
+      }),
       participation: playerMinutes(match, sample).map((row) => ({
         playerId: row.playerId,
         playedMs: row.playingMs,
@@ -6817,9 +6993,14 @@ function projectPlayerStats(source2, viewer) {
       scoringPartialMatches: 0,
       scoringUnknownMatches: 0
     };
-    let knownPlayingMs2 = 0, knownAppearances = 0, knownGoals = 0, knownOwnGoals = 0, unknownPositionMs = 0;
+    let knownPlayingMs2 = 0, knownAppearances = 0, knownGoals = 0, knownOwnGoals = 0, knownCleanSheets = 0, goalkeepingReviewedMatches = 0, goalkeepingUnknownMatches = 0, unknownPositionMs = 0;
     const positionMs2 = /* @__PURE__ */ Object.create(null);
     for (const record of records) {
+      const goalkeeper = record.goalkeeperOutcomes?.find((row) => row.playerId === player.id);
+      if (goalkeeper && goalkeeper.outcome !== "unknown") {
+        goalkeepingReviewedMatches++;
+        knownCleanSheets += Number(goalkeeper.outcome === "clean_sheet");
+      } else if (goalkeeper || !record.participation || record.participation.some((row) => row.playerId === player.id && (row.positionMs.GK ?? 0) > 0)) goalkeepingUnknownMatches++;
       if (record.detailCompleteness === "review_required") {
         coverage.reviewRequiredMatches++;
         coverage.playingTimeUnknownMatches++;
@@ -6868,6 +7049,9 @@ function projectPlayerStats(source2, viewer) {
       knownAppearances,
       knownGoals,
       knownOwnGoals,
+      knownCleanSheets,
+      goalkeepingReviewedMatches,
+      goalkeepingUnknownMatches,
       positions: positionsFor(positionMs2, knownPlayingMs2, source2.positions),
       unknownPositionMs,
       coverage
@@ -6931,10 +7115,13 @@ function assertPlayerStatsDto(value, viewer) {
       "knownAppearances",
       "knownGoals",
       "knownOwnGoals",
+      "knownCleanSheets",
+      "goalkeepingReviewedMatches",
+      "goalkeepingUnknownMatches",
       "positions",
       "unknownPositionMs",
       "coverage"
-    ]) || !text2(item.playerId) || !text2(item.label) || !number(item.knownAppearances) || !number(item.knownGoals) || !number(item.knownOwnGoals) || !object4(item.coverage))
+    ]) || !text2(item.playerId) || !text2(item.label) || !number(item.knownAppearances) || !number(item.knownGoals) || !number(item.knownOwnGoals) || !number(item.knownCleanSheets) || !number(item.goalkeepingReviewedMatches) || !number(item.goalkeepingUnknownMatches) || item.knownCleanSheets > item.goalkeepingReviewedMatches || !object4(item.coverage))
       return false;
     const coverage = item.coverage;
     const fields5 = [
@@ -7140,6 +7327,11 @@ var PostgresStore = class _PostgresStore {
       await this.saveDocument(SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId, "preparation", preparation);
       await this.saveDocument(SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId, "community", community);
       await this.saveDocument(SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId, "records", createRecordsSeed(options));
+      if (options.demoSharing) {
+        await add2("synthetic-account-club-admin", "adult_individual", true);
+        await this.execute("INSERT INTO administration_grants(account_id,scope_key,level,club_id) VALUES('synthetic-account-admin','*','super',NULL),('synthetic-account-club-admin','synthetic-richmond-rovers','club','synthetic-richmond-rovers')");
+        await this.execute("SELECT longball.sync_administrative_memberships()");
+      }
       if (options.demoSharing) for (const match of community.matches) {
         const key = `award:${SYNTHETIC_IDS.teamId}:${SYNTHETIC_IDS.seasonId}:${match.id}:${match.voteCutoffAtMs}`;
         await this.execute("INSERT INTO jobs(id,business_key,kind,payload_json,due_at) VALUES($1,$2,$3,$4,$5) ON CONFLICT(business_key) DO NOTHING", [randomUUID2(), key, "award.finalise", JSON.stringify({ teamId: SYNTHETIC_IDS.teamId, seasonId: SYNTHETIC_IDS.seasonId, matchId: match.id }), match.voteCutoffAtMs]);
@@ -7153,7 +7345,9 @@ var PostgresStore = class _PostgresStore {
     const account2 = await this.one("SELECT * FROM accounts WHERE issuer=$1 AND subject=$2", [identity.issuer, identity.subject]);
     if (!account2 || account2.status !== "active")
       throw new AccessError("ACCOUNT_UNAVAILABLE", 403, "The account is not active for this service.");
-    return { accountId: account2.id, issuer: account2.issuer, subject: account2.subject, identityClassification: account2.classification, adultVerified: Boolean(account2.adult_verified), strongAuth: identity.strongAuth, authenticatedAt: identity.authenticatedAt, status: account2.status };
+    const authority = await this.one("SELECT longball.administration_scope($1) AS value", [account2.id]);
+    const administration = authority?.value ? typeof authority.value === "string" ? JSON.parse(authority.value) : authority.value : void 0;
+    return { accountId: account2.id, issuer: account2.issuer, subject: account2.subject, identityClassification: account2.classification, adultVerified: Boolean(account2.adult_verified), strongAuth: identity.strongAuth, authenticatedAt: identity.authenticatedAt, status: account2.status, ...administration ? { administration } : {} };
   }
   async memberships(accountId, scope) {
     const values = [], predicates = [];
@@ -7165,8 +7359,8 @@ var PostgresStore = class _PostgresStore {
       values.push(scope.teamId, scope.seasonId);
       predicates.push(`m.team_id=$${values.length - 1}`, `m.season_id=$${values.length}`);
     }
-    const rows = await this.many("SELECT m.*,CASE WHEN m.role='spectator' THEN longball.spectator_grant_active(m.account_id,m.club_id,m.team_id,m.season_id) ELSE true END AS grant_active FROM memberships m" + (predicates.length ? " WHERE " + predicates.join(" AND ") : ""), values);
-    return rows.map((row) => ({ accountId: row.account_id, teamId: row.team_id, seasonId: row.season_id, role: row.role, playerId: row.player_id ?? void 0, expiresAt: row.expires_at, revokedAt: row.role === "spectator" && !row.grant_active ? row.revoked_at ?? Math.max(1, this.now()) : row.revoked_at }));
+    const rows = await this.many("SELECT m.*,EXISTS(SELECT 1 FROM administrative_memberships am WHERE am.account_id=m.account_id AND am.team_id=m.team_id AND am.season_id=m.season_id AND am.role=m.role) administrative_inheritance,CASE WHEN m.role='spectator' THEN longball.spectator_grant_active(m.account_id,m.club_id,m.team_id,m.season_id) ELSE true END AS grant_active FROM memberships m" + (predicates.length ? " WHERE " + predicates.join(" AND ") : ""), values);
+    return rows.map((row) => ({ accountId: row.account_id, teamId: row.team_id, seasonId: row.season_id, role: row.role, playerId: row.player_id ?? void 0, expiresAt: row.expires_at, revokedAt: row.role === "spectator" && !row.grant_active ? row.revoked_at ?? Math.max(1, this.now()) : row.revoked_at, ...row.administrative_inheritance ? { administrativeInheritance: true } : {} }));
   }
   async myMemberships(principal) {
     return currentMemberships(principal, await this.memberships(principal.accountId), this.now());
@@ -7733,12 +7927,13 @@ var PostgresStore = class _PostgresStore {
   }
   async configurationCommand(principal, teamId, seasonId, command, role) {
     await this.configuration(principal, teamId, seasonId, role);
-    if (!command || !["club.updated", "team.updated"].includes(command.type))
+    if (!command || !["club.updated", "team.updated", "team.league_updated", "team.alerts_updated"].includes(command.type))
       bad("Only club or team configuration can be changed in this context.");
     if (role && command.type === "club.updated" && role !== "administrator")
       throw new AccessError("NOT_FOUND", 404, "Choose the current administrator context to administer the club.");
     const state = applyConfigurationServiceCommand({ principal, memberships: await this.memberships(), preparation: await this.document(teamId, seasonId, "preparation"), seasonId, nowMs: this.now(), command });
     await this.saveDocument(teamId, seasonId, "preparation", state);
+    if (command.type === "club.updated") await this.execute("SELECT longball.sync_club_configuration($1,$2)", [teamId, seasonId]);
     await this.audit(principal, command.type, teamId, "administrator_configuration_accepted");
     return await this.configuration(principal, teamId, seasonId, role);
   }
@@ -7771,11 +7966,12 @@ var PostgresStore = class _PostgresStore {
     const destination = plan.preparation.seasons.find((item) => item.id === plan.receipt.seasonId);
     if (!team || !destination) throw new AccessError("NOT_FOUND", 404, "The authorised team season is unavailable.");
     await this.execute("INSERT INTO team_seasons(club_id,team_id,season_id,label,start_year,start_date,end_date) VALUES($1,$2,$3,$4,$5,$6,$7)", [team.club_id, teamId, destination.id, destination.label, destination.startYear, destination.startDate, destination.endDate]);
-    for (const member of plan.memberships)
+    for (const member of plan.memberships.filter((item) => !item.administrativeInheritance))
       await this.execute("INSERT INTO memberships(account_id,team_id,season_id,role,player_id,expires_at,revoked_at) VALUES($1,$2,$3,$4,$5,$6,$7)", [member.accountId, member.teamId, member.seasonId, member.role, member.playerId ?? null, member.expiresAt ?? null, member.revokedAt ?? null]);
     await this.saveDocument(teamId, plan.receipt.seasonId, "preparation", plan.preparation);
     await this.saveDocument(teamId, plan.receipt.seasonId, "records", plan.records);
     await this.saveDocument(teamId, plan.receipt.seasonId, "community", plan.community);
+    await this.execute("SELECT longball.inherit_administration_for_season($1,$2)", [teamId, plan.receipt.seasonId]);
     await this.audit(principal, "season.created_from_explicit_assignments", plan.receipt.seasonId, "accepted_no_spectator_renewal");
     return plan.receipt;
   }
@@ -7806,7 +8002,7 @@ var PostgresStore = class _PostgresStore {
   }
   async preparationCommand(principal, teamId, seasonId, command) {
     const previous = await this.preparation(principal, teamId, seasonId);
-    const types2 = ["club.updated", "team.updated", "season.rolled_over", "profile.saved", "roster.imported", "profile.archived", "formation.saved", "position.saved", "position.archived", "lineup_template.saved", "lineup_template.archived", "lineup_template.applied", "lineup_template.cleared", "fixture.saved", "fixture.status_changed", "fixture.response_recorded", "fixture.selection_saved", "fixture.attendance_recorded", "fixture.prepared", "match_plan.saved", "match_plan.applied", "match_plan.cleared", "training.series_created", "training.series_updated", "training.series_cancelled", "training.saved", "training.status_changed", "training.response_recorded", "training.attendance_recorded"];
+    const types2 = ["club.updated", "team.updated", "season.rolled_over", "profile.saved", "roster.imported", "roster.proforma_imported", "team.league_updated", "team.alerts_updated", "profile.archived", "formation.saved", "position.saved", "position.archived", "lineup_template.saved", "lineup_template.archived", "lineup_template.applied", "lineup_template.cleared", "fixture.saved", "fixture.status_changed", "fixture.response_recorded", "fixture.selection_saved", "fixture.attendance_recorded", "fixture.prepared", "match_plan.saved", "match_plan.applied", "match_plan.cleared", "training.series_created", "training.series_updated", "training.series_cancelled", "training.saved", "training.status_changed", "training.response_recorded", "training.attendance_recorded"];
     if (!command || !types2.includes(command.type))
       bad("Unsupported preparation command.");
     if (command.type === "season.rolled_over")
@@ -7845,9 +8041,10 @@ var PostgresStore = class _PostgresStore {
         }
       }
     }
-    if (command.type.startsWith("training.") || command.type.startsWith("profile.") || command.type.startsWith("fixture.") || command.type === "roster.imported")
+    if (command.type.startsWith("training.") || command.type.startsWith("profile.") || command.type.startsWith("fixture.") || command.type === "roster.imported" || command.type === "roster.proforma_imported")
       await this.projectPreparationRecords(teamId, seasonId, state, command.id);
     await this.saveDocument(teamId, seasonId, "preparation", state);
+    if (command.type === "club.updated") await this.execute("SELECT longball.sync_club_configuration($1,$2)", [teamId, seasonId]);
     await this.audit(principal, command.type, teamId, "accepted");
     if (command.type === "fixture.saved")
       await this.enqueueNotifications(teamId, seasonId, "schedule", command.fixture.id, command.id);
@@ -7874,9 +8071,9 @@ var PostgresStore = class _PostgresStore {
   }
   async ownPreparationCommand(principal, teamId, seasonId, command) {
     const membership = assertTeamRole(principal, await this.memberships(), teamId, seasonId, ["player"], this.now());
-    if (!command || !validId3(command.id) || !nonnegative3(command.expectedRevision) || !["own.preferences_saved", "own.fixture_response_recorded", "own.training_response_recorded"].includes(command.type))
+    if (!command || !validId3(command.id) || !nonnegative3(command.expectedRevision) || !["own.preferences_saved", "own.fa_id_saved", "own.fixture_response_recorded", "own.training_response_recorded"].includes(command.type))
       bad("A valid own-player command and source revision are required.");
-    const allowed = command.type === "own.preferences_saved" ? ["id", "expectedRevision", "type", "preferences"] : command.type === "own.fixture_response_recorded" ? ["id", "expectedRevision", "type", "fixtureId", "response"] : ["id", "expectedRevision", "type", "trainingId", "response"];
+    const allowed = command.type === "own.preferences_saved" ? ["id", "expectedRevision", "type", "preferences"] : command.type === "own.fa_id_saved" ? ["id", "expectedRevision", "type", "faPlayerId"] : command.type === "own.fixture_response_recorded" ? ["id", "expectedRevision", "type", "fixtureId", "response"] : ["id", "expectedRevision", "type", "trainingId", "response"];
     if (Object.keys(command).some((key) => !allowed.includes(key)))
       bad("Own-player commands cannot change another profile or manager-controlled fields.");
     const state = await this.document(teamId, seasonId, "preparation");
@@ -7895,7 +8092,7 @@ var PostgresStore = class _PostgresStore {
       }
     }
     const base = { id: command.id, expectedRevision: command.expectedRevision };
-    const bound = command.type === "own.preferences_saved" ? { ...base, type: "profile.saved", profile: { ...profile, preferences: command.preferences } } : command.type === "own.fixture_response_recorded" ? { ...base, type: "fixture.response_recorded", fixtureId: command.fixtureId, profileId: profile.id, response: command.response } : { ...base, type: "training.response_recorded", trainingId: command.trainingId, profileId: profile.id, response: command.response };
+    const bound = command.type === "own.preferences_saved" ? { ...base, type: "profile.saved", profile: { ...profile, preferences: command.preferences } } : command.type === "own.fa_id_saved" ? { ...base, type: "profile.saved", profile: { ...profile, faPlayerId: command.faPlayerId } } : command.type === "own.fixture_response_recorded" ? { ...base, type: "fixture.response_recorded", fixtureId: command.fixtureId, profileId: profile.id, response: command.response } : { ...base, type: "training.response_recorded", trainingId: command.trainingId, profileId: profile.id, response: command.response };
     const updated = reducePreparation(state, bound);
     await this.saveDocument(teamId, seasonId, "preparation", updated);
     await this.audit(principal, command.type, teamId, "accepted");
@@ -9552,17 +9749,22 @@ async function applyRuntimeGrants(database, roles = { apiRole: "longball_api", w
     await database.query(`GRANT USAGE ON SCHEMA longball TO ${api},${worker}`);
     await database.query(`REVOKE ALL ON ALL TABLES IN SCHEMA longball FROM ${api},${worker}`);
     await database.query(`REVOKE ALL ON ALL FUNCTIONS IN SCHEMA longball FROM PUBLIC,${api},${worker}`);
-    const apiTables = ["clubs", "teams", "team_seasons", "game_contexts", "accounts", "memberships", "matches", "documents", "devices", "controller_grants", "controller_history", "events", "streams", "conflicting_submissions", "transfers", "clock_challenges", "clock_mappings", "reconciliation_proposals", "audit", "idempotency", "privacy_requests", "privacy_pending_keys", "jobs", "media_uploads", "lb_activation_children", "lb_activation_issues", "lb_activation_tokens", "lb_activation_verification_requests", "brand_assets", "brand_slots", "spectator_invitations", "lb_spectator_activation_accounts", "lb_spectator_activation_attempts", "native_app_devices", "team_privilege_states", "team_privilege_decisions", "push_registrations", "report_exports", "match_feedback"];
+    const apiTables = ["clubs", "teams", "team_seasons", "game_contexts", "accounts", "memberships", "matches", "documents", "devices", "controller_grants", "controller_history", "events", "streams", "conflicting_submissions", "transfers", "clock_challenges", "clock_mappings", "reconciliation_proposals", "audit", "idempotency", "privacy_requests", "privacy_pending_keys", "jobs", "media_uploads", "lb_activation_children", "lb_activation_issues", "lb_activation_tokens", "lb_activation_verification_requests", "brand_assets", "brand_slots", "spectator_invitations", "lb_spectator_activation_accounts", "lb_spectator_activation_attempts", "native_app_devices", "team_privilege_states", "team_privilege_decisions", "push_registrations", "report_exports", "match_feedback", "team_documents", "opposition_reviews"];
     await database.query(`GRANT SELECT,INSERT,UPDATE ON ${apiTables.map((table) => `longball.${table}`).join(",")} TO ${api}`);
     await database.query(`GRANT SELECT,INSERT ON longball.match_feedback_receipts TO ${api}`);
+    await database.query(`GRANT SELECT ON longball.administrative_memberships TO ${api},${worker}`);
+    await database.query(`GRANT SELECT,INSERT ON longball.opposition_review_receipts TO ${api}`);
+    await database.query(`GRANT SELECT,UPDATE ON longball.invite_requests TO ${api}`);
+    await database.query(`GRANT EXECUTE ON FUNCTION longball.team_document_staff(text,text),longball.opposition_completed_games(text,text),longball.spectator_pin_preview(text,bigint),longball.spectator_pin_register(text,text,text,text,text,text,bigint),longball.spectator_pin_credential(text),longball.spectator_pin_login_attempt(text,boolean,bigint),longball.spectator_invite_directory(),longball.spectator_connection_catalog(text,text),longball.spectator_invite_request(text,text,text,text,text,text,text,bigint) TO ${api}`);
     await database.query(`GRANT EXECUTE ON FUNCTION longball.feedback_player(text,text,text,text,text),longball.feedback_reader(text,text,text,text,text) TO ${api}`);
     await database.query(`GRANT EXECUTE ON FUNCTION longball.scheduled_games(text,text),longball.manage_scheduled_game(text,text,jsonb),longball.admin_player_stats_source(text,text),longball.team_overview_source(text,text) TO ${api}`);
     await database.query(`GRANT SELECT ON longball.schema_migrations,longball.media_schema_migrations,longball.lb_activation_schema TO ${api},${worker}`);
     await database.query(`REVOKE UPDATE ON longball.events,longball.audit,longball.controller_history,longball.reconciliation_proposals,longball.clock_mappings,longball.team_privilege_decisions FROM ${api}`);
     await database.query(`GRANT SELECT ON longball.clubs,longball.teams,longball.team_seasons,longball.game_contexts,longball.accounts,longball.memberships,longball.matches TO ${worker}`);
+    await database.query(`GRANT EXECUTE ON FUNCTION longball.administration_scope(text) TO ${worker}`);
     await database.query(`GRANT SELECT,INSERT,UPDATE ON longball.jobs,longball.documents TO ${worker}`);
     await database.query(`GRANT SELECT,UPDATE ON longball.report_exports TO ${worker}`);
-    const helpers = ["runtime_purpose()", "context_json()", "context_now()", "actor_valid()", "context_matches(text,text,text)", "actor_role(text,text,text)", "actor_admin(text,text,text)", "actor_manager(text,text,text)", "invite_capability(text,text,text)", "worker_job_valid(text,text,text)", "worker_kind()", "worker_account(text,text,text,text)", "spectator_grant_active(text,text,text,text)", "activation_account(text,boolean)", "spectator_activation_account(text,boolean)", "invitation_live(text,text)", "account_visible(text)", "document_write(text,text,text,text)", "worker_match(text,text,text,text)", "report_export_actor(text,text,text,text,text,text)", "report_export_worker(text,text,text,text,text)"];
+    const helpers = ["runtime_purpose()", "context_json()", "context_now()", "actor_valid()", "context_matches(text,text,text)", "actor_role(text,text,text)", "actor_admin(text,text,text)", "actor_manager(text,text,text)", "inherited_admin_manager(text,text,text)", "invite_capability(text,text,text)", "worker_job_valid(text,text,text)", "worker_kind()", "worker_account(text,text,text,text)", "spectator_grant_active(text,text,text,text)", "activation_account(text,boolean)", "spectator_activation_account(text,boolean)", "invitation_live(text,text)", "account_visible(text)", "document_write(text,text,text,text)", "worker_match(text,text,text,text)", "report_export_actor(text,text,text,text,text,text)", "report_export_worker(text,text,text,text,text)"];
     await database.query(`GRANT EXECUTE ON FUNCTION ${helpers.map((name) => `longball.${name}`).join(",")} TO ${api},${worker}`);
     await database.query(`GRANT EXECUTE ON FUNCTION longball.media_completion_write(text,text,text,text) TO ${api},${worker}`);
     await database.query(`GRANT EXECUTE ON FUNCTION longball.media_gallery_allowed(text,integer,text,text,text,text,text) TO ${api}`);
@@ -9571,6 +9773,7 @@ async function applyRuntimeGrants(database, roles = { apiRole: "longball_api", w
     await database.query(`GRANT EXECUTE ON FUNCTION longball.invitation_live(text,text),longball.invitation_preflight(text),longball.invitation_accept_scope(text),longball.spectator_activation_account(text,boolean) TO ${api}`);
     await database.query(`GRANT EXECUTE ON FUNCTION longball.invitation_preview_context(text) TO ${api}`);
     await database.query(`GRANT EXECUTE ON FUNCTION longball.workspace_membership_names() TO ${api}`);
+    await database.query(`GRANT EXECUTE ON FUNCTION longball.inherited_admin_manager(text,text,text),longball.sync_club_configuration(text,text),longball.inherit_administration_for_season(text,text),longball.administration_scope(text),longball.administration_directory(),longball.administration_command(jsonb,text,jsonb),longball.club_report(text) TO ${api}`);
     await database.query(`GRANT EXECUTE ON FUNCTION longball.report_export_source(text,text) TO ${api}`);
     await database.query(`GRANT EXECUTE ON FUNCTION longball.report_export_current(text) TO ${api},${worker}`);
     await database.query(`GRANT EXECUTE ON FUNCTION longball.purge_report_exports() TO ${worker}`);

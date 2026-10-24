@@ -58652,7 +58652,7 @@ function assertCanAssignManager(actor, target, memberships, teamId, seasonId, no
   assertTeamRole(actor, memberships, teamId, seasonId, ["administrator"], now);
   assertAdultAuthority(actor, true, now);
   assertAdultAuthority(target, false, now);
-  const managers = memberships.filter((item) => item.teamId === teamId && item.role === "manager" && item.revokedAt == null && (item.expiresAt == null || item.expiresAt > now));
+  const managers = memberships.filter((item) => item.teamId === teamId && item.role === "manager" && !item.administrativeInheritance && item.revokedAt == null && (item.expiresAt == null || item.expiresAt > now));
   if (!managers.some((item) => item.accountId === target.accountId) && new Set(managers.map((item) => item.accountId)).size >= 4) {
     throw new AccessError("MANAGER_LIMIT", 409, "A team can have at most four active managers, including administrators who also manage.");
   }
@@ -58707,6 +58707,624 @@ function filterMatchForPrincipal(input) {
 // apps/api/src/report-export-repository.ts
 import { createHash as createHash5, randomBytes as randomBytes3 } from "node:crypto";
 import { performance } from "node:perf_hooks";
+
+// fixtures/roma.synthetic.json
+var roma_synthetic_default = {
+  synthetic: true,
+  teamId: "synthetic-roma-u10",
+  season: "2026/27",
+  timeZone: "Europe/London",
+  pitchPlaces: 7,
+  plannedHalfDurationMs: 15e5,
+  players: [
+    {
+      id: "synthetic-player-01",
+      displayName: "Oliver Bennett",
+      available: true,
+      goalkeeperChoice: 1
+    },
+    {
+      id: "synthetic-player-02",
+      displayName: "Noah Patel",
+      available: true,
+      goalkeeperChoice: 0
+    },
+    {
+      id: "synthetic-player-03",
+      displayName: "Leo Martin",
+      available: true,
+      goalkeeperChoice: 0
+    },
+    {
+      id: "synthetic-player-04",
+      displayName: "Theo Clarke",
+      available: true,
+      goalkeeperChoice: 0
+    },
+    {
+      id: "synthetic-player-05",
+      displayName: "Oscar Evans",
+      available: true,
+      goalkeeperChoice: 0
+    },
+    {
+      id: "synthetic-player-06",
+      displayName: "Ethan Brooks",
+      available: true,
+      goalkeeperChoice: 0
+    },
+    {
+      id: "synthetic-player-07",
+      displayName: "Jack Turner",
+      available: true,
+      goalkeeperChoice: 0
+    },
+    {
+      id: "synthetic-player-08",
+      displayName: "Freddie Lewis",
+      available: true,
+      goalkeeperChoice: 0
+    },
+    {
+      id: "synthetic-player-09",
+      displayName: "Arthur James",
+      available: true,
+      goalkeeperChoice: 0
+    },
+    {
+      id: "synthetic-player-10",
+      displayName: "Lucas Wilson",
+      available: false,
+      goalkeeperChoice: 0
+    },
+    {
+      id: "synthetic-player-11",
+      displayName: "Muhammad Khan",
+      available: false,
+      goalkeeperChoice: 0
+    },
+    {
+      id: "synthetic-player-12",
+      displayName: "Archie Green",
+      available: false,
+      goalkeeperChoice: 0
+    },
+    {
+      id: "synthetic-player-13",
+      displayName: "George Taylor",
+      available: false,
+      goalkeeperChoice: 0
+    }
+  ],
+  demo: {
+    name: "Roma autumn matchdays",
+    generated: true,
+    description: "Simulated club, players and matchdays for testing. No real people, photographs or contact details.",
+    referenceDate: "2026-10-22"
+  },
+  club: {
+    id: "synthetic-richmond-rovers",
+    name: "Richmond Rovers"
+  },
+  team: {
+    name: "Roma",
+    ageGroup: "U10"
+  },
+  opponents: [
+    {
+      id: "demo-maple",
+      name: "Maple FC",
+      venue: "Maple Sports Ground \xB7 Pitch 1"
+    },
+    {
+      id: "demo-oak",
+      name: "Oak FC",
+      venue: "Oak Meadow \xB7 Junior pitch"
+    },
+    {
+      id: "demo-hill",
+      name: "Hill FC",
+      venue: "Hill Park \xB7 Pitch 3"
+    },
+    {
+      id: "demo-willow",
+      name: "Willow FC",
+      venue: "Willow Playing Fields \xB7 Pitch 2"
+    },
+    {
+      id: "demo-cedar",
+      name: "Cedar Athletic",
+      venue: "Cedar Lane Sports Ground"
+    }
+  ],
+  fixtures: [
+    {
+      id: "synthetic-roma-maple-2026-10-24",
+      opponent: "Maple FC",
+      playedDate: "2026-10-24",
+      kickoff: "10:00",
+      arrival: "09:30",
+      venue: "Rovers Sports Ground \xB7 Pitch 2",
+      homeAway: "home",
+      status: "scheduled",
+      selectedCount: 9,
+      selectedPlayerIds: [
+        "synthetic-player-01",
+        "synthetic-player-02",
+        "synthetic-player-03",
+        "synthetic-player-04",
+        "synthetic-player-05",
+        "synthetic-player-06",
+        "synthetic-player-07",
+        "synthetic-player-08",
+        "synthetic-player-09"
+      ],
+      demoPhase: "scheduled",
+      fixtureClass: "development"
+    },
+    {
+      id: "synthetic-roma-oak-2026-10-31",
+      opponent: "Oak FC",
+      playedDate: "2026-10-31",
+      kickoff: "10:30",
+      arrival: "10:00",
+      venue: "Oak Meadow \xB7 Junior pitch",
+      homeAway: "away",
+      status: "scheduled",
+      selectedCount: 9,
+      selectedPlayerIds: [
+        "synthetic-player-01",
+        "synthetic-player-02",
+        "synthetic-player-03",
+        "synthetic-player-04",
+        "synthetic-player-05",
+        "synthetic-player-06",
+        "synthetic-player-07",
+        "synthetic-player-08",
+        "synthetic-player-09"
+      ],
+      demoPhase: "scheduled",
+      fixtureClass: "development"
+    },
+    {
+      id: "synthetic-history-oak",
+      opponent: "Oak FC",
+      playedDate: "2026-10-10",
+      kickoff: "10:30",
+      arrival: "10:00",
+      venue: "Oak Meadow \xB7 Junior pitch",
+      homeAway: "away",
+      status: "scheduled",
+      selectedCount: 9,
+      selectedPlayerIds: [
+        "synthetic-player-01",
+        "synthetic-player-02",
+        "synthetic-player-03",
+        "synthetic-player-04",
+        "synthetic-player-05",
+        "synthetic-player-06",
+        "synthetic-player-07",
+        "synthetic-player-08",
+        "synthetic-player-09"
+      ],
+      demoPhase: "completed",
+      fixtureClass: "friendly",
+      result: {
+        halfTime: {
+          for: 1,
+          against: 1
+        },
+        final: {
+          for: 2,
+          against: 2
+        },
+        halfMinutes: 25
+      }
+    },
+    {
+      id: "synthetic-history-hill",
+      opponent: "Hill FC",
+      playedDate: "2026-10-17",
+      kickoff: "09:30",
+      arrival: "09:00",
+      venue: "Rovers Sports Ground \xB7 Pitch 2",
+      homeAway: "home",
+      status: "scheduled",
+      selectedCount: 9,
+      selectedPlayerIds: [
+        "synthetic-player-01",
+        "synthetic-player-02",
+        "synthetic-player-03",
+        "synthetic-player-04",
+        "synthetic-player-05",
+        "synthetic-player-10",
+        "synthetic-player-11",
+        "synthetic-player-12",
+        "synthetic-player-13"
+      ],
+      demoPhase: "completed",
+      fixtureClass: "development",
+      result: {
+        halfTime: {
+          for: 1,
+          against: 1
+        },
+        final: {
+          for: 3,
+          against: 1
+        },
+        halfMinutes: 25
+      }
+    }
+  ],
+  training: [
+    {
+      id: "synthetic-training-1",
+      date: "2026-10-22",
+      time: "18:00",
+      venue: "Rovers Sports Ground \xB7 Training area",
+      status: "scheduled"
+    },
+    {
+      id: "synthetic-training-2",
+      date: "2026-10-29",
+      time: "18:00",
+      venue: "Rovers Sports Ground \xB7 Training area",
+      status: "scheduled"
+    },
+    {
+      id: "synthetic-training-2026-11-05",
+      date: "2026-11-05",
+      time: "18:00",
+      venue: "Rovers Sports Ground \xB7 Training area",
+      status: "scheduled"
+    },
+    {
+      id: "synthetic-training-2026-10-01",
+      date: "2026-10-01",
+      time: "18:00",
+      venue: "Rovers Sports Ground \xB7 Training area",
+      status: "held"
+    },
+    {
+      id: "synthetic-training-2026-10-08",
+      date: "2026-10-08",
+      time: "18:00",
+      venue: "Rovers Sports Ground \xB7 Training area",
+      status: "held"
+    },
+    {
+      id: "synthetic-training-2026-10-15",
+      date: "2026-10-15",
+      time: "18:00",
+      venue: "Rovers Sports Ground \xB7 Training area",
+      status: "held"
+    },
+    {
+      id: "synthetic-training-2026-09-24",
+      date: "2026-09-24",
+      time: "18:00",
+      venue: "Rovers Sports Ground \xB7 Training area",
+      status: "cancelled"
+    }
+  ],
+  profiles: [
+    {
+      playerId: "synthetic-player-01",
+      initials: "OB",
+      shirtNumber: 1,
+      foot: "right",
+      preferences: [
+        "GK",
+        "CM",
+        "CB"
+      ],
+      eligiblePositions: [
+        "GK",
+        "CB",
+        "ST"
+      ]
+    },
+    {
+      playerId: "synthetic-player-02",
+      initials: "NP",
+      shirtNumber: 2,
+      foot: "right",
+      preferences: [
+        "CB",
+        "CM",
+        "ST"
+      ],
+      eligiblePositions: [
+        "CB",
+        "LB",
+        "RB",
+        "CM",
+        "LW",
+        "RW",
+        "ST"
+      ]
+    },
+    {
+      playerId: "synthetic-player-03",
+      initials: "LM",
+      shirtNumber: 3,
+      foot: "left",
+      preferences: [
+        "CB",
+        "CM",
+        "ST"
+      ],
+      eligiblePositions: [
+        "CB",
+        "LB",
+        "RB",
+        "CM",
+        "LW",
+        "RW",
+        "ST"
+      ]
+    },
+    {
+      playerId: "synthetic-player-04",
+      initials: "TC",
+      shirtNumber: 4,
+      foot: "both",
+      preferences: [
+        "CM",
+        "CB",
+        "ST"
+      ],
+      eligiblePositions: [
+        "CB",
+        "LB",
+        "RB",
+        "CM",
+        "LW",
+        "RW",
+        "ST"
+      ]
+    },
+    {
+      playerId: "synthetic-player-05",
+      initials: "OE",
+      shirtNumber: 5,
+      foot: "left",
+      preferences: [
+        "LW",
+        "CM",
+        "CB"
+      ],
+      eligiblePositions: [
+        "CB",
+        "LB",
+        "RB",
+        "CM",
+        "LW",
+        "RW",
+        "ST"
+      ]
+    },
+    {
+      playerId: "synthetic-player-06",
+      initials: "EB",
+      shirtNumber: 6,
+      foot: "right",
+      preferences: [
+        "RW",
+        "CM",
+        "CB"
+      ],
+      eligiblePositions: [
+        "CB",
+        "LB",
+        "RB",
+        "CM",
+        "LW",
+        "RW",
+        "ST"
+      ]
+    },
+    {
+      playerId: "synthetic-player-07",
+      initials: "JT",
+      shirtNumber: 7,
+      foot: "right",
+      preferences: [
+        "ST",
+        "CM",
+        "CB"
+      ],
+      eligiblePositions: [
+        "CB",
+        "LB",
+        "RB",
+        "CM",
+        "LW",
+        "RW",
+        "ST"
+      ]
+    },
+    {
+      playerId: "synthetic-player-08",
+      initials: "FL",
+      shirtNumber: 8,
+      foot: "left",
+      preferences: [
+        "LW",
+        "CM",
+        "CB"
+      ],
+      eligiblePositions: [
+        "CB",
+        "LB",
+        "RB",
+        "CM",
+        "LW",
+        "RW",
+        "ST"
+      ]
+    },
+    {
+      playerId: "synthetic-player-09",
+      initials: "AJ",
+      shirtNumber: 9,
+      foot: "right",
+      preferences: [
+        "RW",
+        "CM",
+        "CB"
+      ],
+      eligiblePositions: [
+        "CB",
+        "LB",
+        "RB",
+        "CM",
+        "LW",
+        "RW",
+        "ST"
+      ]
+    },
+    {
+      playerId: "synthetic-player-10",
+      initials: "LW",
+      shirtNumber: 10,
+      foot: "both",
+      preferences: [
+        "CM",
+        "CB",
+        "ST"
+      ],
+      eligiblePositions: [
+        "CB",
+        "LB",
+        "RB",
+        "CM",
+        "LW",
+        "RW",
+        "ST"
+      ]
+    },
+    {
+      playerId: "synthetic-player-11",
+      initials: "MK",
+      shirtNumber: 11,
+      foot: "right",
+      preferences: [
+        "CB",
+        "CM",
+        "ST"
+      ],
+      eligiblePositions: [
+        "CB",
+        "LB",
+        "RB",
+        "CM",
+        "LW",
+        "RW",
+        "ST"
+      ]
+    },
+    {
+      playerId: "synthetic-player-12",
+      initials: "AG",
+      shirtNumber: 12,
+      foot: "left",
+      preferences: [
+        "ST",
+        "CM",
+        "CB"
+      ],
+      eligiblePositions: [
+        "CB",
+        "LB",
+        "RB",
+        "CM",
+        "LW",
+        "RW",
+        "ST"
+      ]
+    },
+    {
+      playerId: "synthetic-player-13",
+      initials: "GT",
+      shirtNumber: 13,
+      foot: "right",
+      preferences: [
+        "CM",
+        "CB",
+        "ST"
+      ],
+      eligiblePositions: [
+        "CB",
+        "LB",
+        "RB",
+        "CM",
+        "LW",
+        "RW",
+        "ST"
+      ]
+    }
+  ]
+};
+
+// packages/testing/src/index.ts
+var romaFixture = roma_synthetic_default;
+var demoAccountLabels = {
+  "synthetic-account-manager": "Alex Morgan",
+  "synthetic-account-manager-2": "Priya Shah",
+  "synthetic-account-manager-3": "Dan Foster",
+  "synthetic-account-manager-4": "Chris Lewis",
+  "synthetic-account-manager-5": "Nicky Hughes",
+  "synthetic-account-admin": "Sam Taylor",
+  "synthetic-account-spectator": "Jamie Bennett",
+  "synthetic-account-invitee": "Casey Bennett",
+  "synthetic-account-other-manager": "Robin Ellis",
+  ...Object.fromEntries(roma_synthetic_default.players.map((player) => [`synthetic-account-player-${player.id.slice(-2)}`, player.displayName]))
+};
+
+// packages/application/src/training-series.ts
+var maximumTrainingOccurrences = 52;
+function requireThat(condition, message) {
+  if (!condition) throw new Error(message);
+}
+function trainingSeriesOccurrences(state, seasonId, recurrenceGroupId) {
+  requireThat(typeof recurrenceGroupId === "string" && recurrenceGroupId.trim().length > 0 && recurrenceGroupId.length <= 150, "A stable training series identity is required.");
+  requireThat(seasonId === state.activeSeasonId, "Choose the current season before editing a training series.");
+  const occurrences = state.training.filter((item) => item.recurrenceGroupId === recurrenceGroupId);
+  requireThat(occurrences.every((item) => item.seasonId === seasonId), "The training series belongs to a different season.");
+  return [...occurrences].sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time) || a.id.localeCompare(b.id));
+}
+function applyTrainingSeries(state, command, validate) {
+  requireThat(command.confirmOccurrences === true, "Review and explicitly confirm the listed training occurrences.");
+  const series = trainingSeriesOccurrences(state, command.seasonId, command.recurrenceGroupId);
+  if (command.type === "training.series_created") {
+    requireThat(series.length === 0, "That training series already exists; use its scheduled-occurrence editor.");
+    requireThat(Array.isArray(command.occurrences) && command.occurrences.length >= 2 && command.occurrences.length <= maximumTrainingOccurrences, "A series needs between 2 and 52 explicit occurrences.");
+    const ids = /* @__PURE__ */ new Set(), dates = /* @__PURE__ */ new Set();
+    for (const draft of command.occurrences) {
+      requireThat(draft.seasonId === command.seasonId && draft.recurrenceGroupId === command.recurrenceGroupId, "Every occurrence must belong to the confirmed series and season.");
+      requireThat(!ids.has(draft.id) && !state.training.some((item) => item.id === draft.id), "Each occurrence must have a new stable identity.");
+      requireThat(!dates.has(draft.date), "Each series occurrence must have a distinct calendar date.");
+      validate(draft);
+      ids.add(draft.id);
+      dates.add(draft.date);
+    }
+    state.training.push(...command.occurrences.map((draft) => ({ ...draft, expectedProfileIds: [...draft.expectedProfileIds], status: "scheduled", responses: {}, attendance: {} })));
+    return;
+  }
+  const scheduled = series.filter((item) => item.status === "scheduled");
+  requireThat(Array.isArray(command.occurrenceIds) && command.occurrenceIds.length > 0 && command.occurrenceIds.length <= maximumTrainingOccurrences && new Set(command.occurrenceIds).size === command.occurrenceIds.length, "Review a nonempty list of distinct scheduled occurrences.");
+  requireThat(command.occurrenceIds.length === scheduled.length && scheduled.every((item) => command.occurrenceIds.includes(item.id)), "The scheduled series changed; review its exact occurrence list again. Held and cancelled occurrences cannot be edited as scheduled sessions.");
+  if (command.type === "training.series_updated") {
+    for (const occurrence of scheduled) validate({ ...occurrence, ...command.changes });
+    const ids = new Set(command.occurrenceIds);
+    state.training = state.training.map((item) => ids.has(item.id) ? { ...item, time: command.changes.time, venue: command.changes.venue, expectedProfileIds: [...command.changes.expectedProfileIds] } : item);
+  } else {
+    const ids = new Set(command.occurrenceIds);
+    state.training = state.training.map((item) => ids.has(item.id) ? { ...item, status: "cancelled" } : item);
+  }
+}
 
 // packages/application/src/position-catalogue.ts
 var CORE_POSITION_CODES = [
@@ -58790,634 +59408,6 @@ function allowedProfilePosition(source2, code2, retained = []) {
   return validPositionCode(code2) && positionCatalogueFor(source2).some(
     (item) => item.code === code2 && (item.active || retained.includes(code2))
   );
-}
-
-// packages/application/src/player-preparation.ts
-var time = (value) => typeof value === "string" && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value);
-var format = (value) => Number.isInteger(value) && Number(value) >= 5 && Number(value) <= 11;
-var half = (value) => Number.isSafeInteger(value) && Number(value) > 0 && Number(value) % 1e3 === 0;
-function projectOwnPlayerPreparation(state, profile, seasonId) {
-  const season = state.seasons.find((item) => item.id === seasonId);
-  if (!season || !profile.active || profile.seasonId !== seasonId || !state.profiles.some(
-    (item) => item.id === profile.id && item.playerId === profile.playerId && item.seasonId === seasonId && item.active
-  ))
-    throw new Error("The authorised own-player preparation is unavailable.");
-  return {
-    kind: "player-preparation",
-    revision: state.revision,
-    positionCatalogue: positionCatalogueFor(state),
-    team: {
-      id: state.team.id,
-      name: state.team.name,
-      ageGroup: state.team.ageGroup
-    },
-    season: {
-      id: season.id,
-      label: season.label,
-      startYear: season.startYear,
-      startDate: season.startDate,
-      endDate: season.endDate,
-      spectatorRenewalRequired: true
-    },
-    profile: {
-      id: profile.id,
-      playerId: profile.playerId,
-      seasonId: profile.seasonId,
-      displayName: profile.displayName,
-      initials: profile.initials,
-      shirtNumber: profile.shirtNumber,
-      foot: profile.foot,
-      preferences: [...profile.preferences],
-      eligiblePositions: [...profile.eligiblePositions],
-      active: profile.active
-    },
-    fixtures: state.fixtures.filter((item) => item.seasonId === seasonId).map((item) => ({
-      id: item.id,
-      opponent: item.opponent,
-      playedDate: item.playedDate,
-      kickoff: time(item.kickoff) ? item.kickoff : null,
-      arrival: time(item.arrival) ? item.arrival : null,
-      venue: item.venue,
-      homeAway: item.homeAway,
-      status: item.status,
-      format: format(item.format) ? item.format : null,
-      plannedHalfDurationMs: half(item.plannedHalfDurationMs) ? item.plannedHalfDurationMs : null,
-      response: item.responses[profile.id] ?? "no_reply",
-      selected: item.selectedProfileIds.includes(profile.id),
-      attendance: item.attendance[profile.id] ?? "not_recorded"
-    })),
-    training: state.training.filter((item) => item.seasonId === seasonId).map((item) => ({
-      id: item.id,
-      date: item.date,
-      time: time(item.time) ? item.time : null,
-      venue: item.venue,
-      status: item.status,
-      expected: item.expectedProfileIds.includes(profile.id),
-      response: item.responses[profile.id] ?? "no_reply",
-      attendance: item.attendance[profile.id] ?? "not_recorded"
-    }))
-  };
-}
-
-// packages/application/src/uk-display.ts
-var UK_TIME_ZONE = "Europe/London";
-function londonDateKey(now) {
-  const parts = new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: UK_TIME_ZONE }).formatToParts(new Date(now));
-  const part = (kind) => parts.find((item) => item.type === kind).value;
-  return `${part("year")}-${part("month")}-${part("day")}`;
-}
-
-// packages/application/src/fixture-response-window.ts
-function canPlayerReplyToFixture(fixture, nowMs, context = {}) {
-  if (fixture.status !== "scheduled" || !Number.isSafeInteger(nowMs) || nowMs < 0 || !Number.isFinite(new Date(nowMs).getTime())) return false;
-  if (context.recordedStatus != null && context.recordedStatus !== "preparation") return false;
-  const date = fixture.playedDate;
-  if (typeof date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(date) || date.startsWith("0000-")) return false;
-  const parsed = /* @__PURE__ */ new Date(`${date}T00:00:00Z`);
-  if (!Number.isFinite(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== date) return false;
-  return date >= londonDateKey(nowMs);
-}
-
-// apps/api/src/match-pagination.ts
-import { createHash } from "node:crypto";
-import { Buffer as Buffer2 } from "node:buffer";
-var invalid = () => {
-  throw new AccessError("INVALID_PAGE", 400, "Use the original cursor for this account, team, season and selected role, with a page limit from 1 to 100.");
-};
-var validId = (value) => typeof value === "string" && value.length >= 1;
-function matchPageAudience(principal, memberships, teamId, seasonId, requestedRole, nowMs) {
-  const available2 = currentMemberships(principal, memberships, nowMs).filter((item) => item.teamId === teamId && item.seasonId === seasonId && ["manager", "player", "spectator"].includes(item.role));
-  const chosen = requestedRole ? available2.find((item) => item.role === requestedRole) : available2.find((item) => item.role === "manager") ?? available2.find((item) => item.role === "player") ?? available2[0];
-  if (!chosen) throw new AccessError("NOT_FOUND", 404, "The requested object is unavailable.");
-  if (chosen.role === "manager") assertAdultAuthority(principal, false, nowMs);
-  return chosen;
-}
-var binding = (scope) => createHash("sha256").update(JSON.stringify(["longball.matches.id-asc.v1", scope.principal.accountId, scope.principal.issuer, scope.principal.subject, scope.teamId, scope.seasonId, scope.role, scope.playerId, ...scope.status === "active" ? ["active"] : []])).digest("base64url");
-function matchPageCursor(scope, afterId) {
-  if (!validId(afterId)) invalid();
-  return Buffer2.from(JSON.stringify({ version: 1, binding: binding(scope), afterId })).toString("base64url");
-}
-function matchPagePosition(scope, query) {
-  if (!Number.isSafeInteger(query.limit) || query.limit < 1 || query.limit > 100) invalid();
-  if (query.status !== void 0 && query.status !== "active" || query.status !== scope.status) invalid();
-  if (query.cursor === null) return null;
-  try {
-    if (!/^[A-Za-z0-9_-]+$/.test(query.cursor)) invalid();
-    const bytes = Buffer2.from(query.cursor, "base64url");
-    if (bytes.toString("base64url") !== query.cursor) invalid();
-    const cursor = JSON.parse(bytes.toString("utf8"));
-    if (!cursor || typeof cursor !== "object" || Array.isArray(cursor) || Object.keys(cursor).sort().join(",") !== "afterId,binding,version" || cursor.version !== 1 || cursor.binding !== binding(scope) || !validId(cursor.afterId)) invalid();
-    return cursor.afterId;
-  } catch {
-    return invalid();
-  }
-}
-
-// apps/api/src/offline-bundle.ts
-import { randomUUID } from "node:crypto";
-
-// node_modules/.pnpm/@noble+hashes@2.4.0/node_modules/@noble/hashes/_u64.js
-var fromNumH = (n) => n / 2 ** 32 | 0;
-var fromNumL = (n) => n >>> 0;
-function setU64FromNum(view, byteOffset, n, isLE) {
-  const h = fromNumH(n);
-  const l = fromNumL(n);
-  view.setUint32(byteOffset, isLE ? l : h, isLE);
-  view.setUint32(byteOffset + 4, isLE ? h : l, isLE);
-}
-
-// node_modules/.pnpm/@noble+hashes@2.4.0/node_modules/@noble/hashes/utils.js
-function isBytes(a) {
-  return a instanceof Uint8Array || ArrayBuffer.isView(a) && a.constructor.name === "Uint8Array" && "BYTES_PER_ELEMENT" in a && a.BYTES_PER_ELEMENT === 1;
-}
-var atitle = (title) => title ? `"${title}" ` : "";
-function anumber(n, title = "") {
-  if (typeof n !== "number")
-    throw new TypeError(atitle(title) + "expected number, got " + typeof n);
-  if (!Number.isSafeInteger(n) || n < 0)
-    throw new RangeError(atitle(title) + "expected integer >= 0, got " + n);
-  return n;
-}
-function abytes(value, length, title = "") {
-  if (isBytes(value) && (length === void 0 || value.length === length))
-    return value;
-  if (length !== void 0)
-    anumber(length, "length");
-  const bytes = isBytes(value);
-  const ofLen = length !== void 0 ? ` of length ${length}` : "";
-  const got = bytes ? `length=${value.length}` : `type=${typeof value}`;
-  const message = atitle(title) + "expected Uint8Array" + ofLen + ", got " + got;
-  if (!bytes)
-    throw new TypeError(message);
-  throw new RangeError(message);
-}
-var aobject = (value, label2) => {
-  if (value === null || typeof value !== "object" || Array.isArray(value))
-    throw new TypeError((label2 === "object" ? "" : `"${label2}" `) + "expected object, got type=" + typeof value);
-};
-var aopts = (value, label2) => {
-  aobject(value, label2);
-  const proto = Object.getPrototypeOf(value);
-  if (proto !== Object.prototype && proto !== null)
-    throw new TypeError(`"${label2}" expected plain object`);
-  if (Object.hasOwn(value, "__proto__"))
-    throw new TypeError(`"${label2}.__proto__" is not allowed`);
-};
-function aexists(instance, checkFinished = true) {
-  if (instance.destroyed)
-    throw new Error("hash was destroyed");
-  if (checkFinished && instance.finished)
-    throw new Error("digest() was already called");
-}
-function aoutput(out, instance) {
-  abytes(out, void 0, "output");
-  const min = instance.outputLen;
-  if (!(out.length >= min)) {
-    throw new RangeError('"output" expected length >= ' + min);
-  }
-}
-function clean(...arrays) {
-  for (let i = 0; i < arrays.length; i++) {
-    arrays[i].fill(0);
-  }
-}
-function createView(arr) {
-  return new DataView(arr.buffer, arr.byteOffset, arr.byteLength);
-}
-function rotr(word, shift) {
-  return word << 32 - shift | word >>> shift;
-}
-function checkOpts(defaults, opts, title = "opts") {
-  aopts(defaults, "defaults");
-  if (opts !== void 0)
-    aopts(opts, title);
-  const merged = Object.assign(/* @__PURE__ */ Object.create(null), defaults, opts);
-  return merged;
-}
-function createHasher(hashCons, info = {}) {
-  if (typeof hashCons !== "function")
-    throw new TypeError('"hashCons" expected function, got type=' + typeof hashCons);
-  info = checkOpts({}, info, "info");
-  const hashC = (msg, opts) => hashCons(opts).update(msg).digest();
-  const tmp = hashCons(void 0);
-  hashC.outputLen = tmp.outputLen;
-  hashC.blockLen = tmp.blockLen;
-  hashC.canXOF = tmp.canXOF;
-  hashC.create = (opts) => hashCons(opts);
-  Object.assign(hashC, info);
-  return Object.freeze(hashC);
-}
-var oidNist = (suffix) => ({
-  // Current NIST hashAlgs suffixes used here fit in one DER subidentifier octet.
-  // Larger suffix values would need base-128 OID encoding and a different length byte.
-  oid: Uint8Array.from([6, 9, 96, 134, 72, 1, 101, 3, 4, 2, suffix])
-});
-
-// node_modules/.pnpm/@noble+hashes@2.4.0/node_modules/@noble/hashes/_md.js
-function Chi(a, b, c) {
-  return a & b ^ ~a & c;
-}
-function Maj(a, b, c) {
-  return a & b ^ a & c ^ b & c;
-}
-var HashMD = class {
-  blockLen;
-  outputLen;
-  canXOF = false;
-  padOffset;
-  isLE;
-  // For partial updates less than block size
-  buffer;
-  view;
-  finished = false;
-  length = 0;
-  pos = 0;
-  destroyed = false;
-  constructor(blockLen, outputLen, padOffset, isLE) {
-    this.blockLen = blockLen;
-    this.outputLen = outputLen;
-    this.padOffset = padOffset;
-    this.isLE = isLE;
-    this.buffer = new Uint8Array(blockLen);
-    this.view = createView(this.buffer);
-  }
-  update(data) {
-    aexists(this);
-    abytes(data);
-    const { view, buffer, blockLen } = this;
-    const len = data.length;
-    let processed = false;
-    for (let pos = 0; pos < len; ) {
-      const take = Math.min(blockLen - this.pos, len - pos);
-      if (take === blockLen) {
-        const dataView = createView(data);
-        for (; blockLen <= len - pos; pos += blockLen)
-          this.process(dataView, pos);
-        processed = true;
-        continue;
-      }
-      buffer.set(pos === 0 && take === len ? data : data.subarray(pos, pos + take), this.pos);
-      this.pos += take;
-      pos += take;
-      if (this.pos === blockLen) {
-        this.process(view, 0);
-        this.pos = 0;
-        processed = true;
-      }
-    }
-    this.length += data.length;
-    if (processed)
-      this.roundClean();
-    return this;
-  }
-  digestInto(out) {
-    aexists(this);
-    aoutput(out, this);
-    this.finished = true;
-    const { buffer, view, blockLen, isLE } = this;
-    let { pos } = this;
-    buffer[pos++] = 128;
-    buffer.fill(0, pos);
-    if (this.padOffset > blockLen - pos) {
-      this.process(view, 0);
-      buffer.fill(0);
-    }
-    setU64FromNum(view, blockLen - 8, this.length * 8, isLE);
-    this.process(view, 0);
-    this.roundClean();
-    const oview = out === buffer ? view : createView(out);
-    const len = this.outputLen;
-    const outLen = len / 4;
-    const state = this.get();
-    if (len % 4 || outLen > state.length)
-      throw new Error("invalid outputLen");
-    for (let i = 0; i < outLen; i++)
-      oview.setUint32(4 * i, state[i], isLE);
-  }
-  digest() {
-    const { buffer, outputLen } = this;
-    this.digestInto(buffer);
-    const res = buffer.slice(0, outputLen);
-    this.destroy();
-    return res;
-  }
-  _cloneIntoMeta(to) {
-    const { buffer, length, finished, destroyed, pos } = this;
-    to.destroyed = destroyed;
-    to.finished = finished;
-    to.length = length;
-    to.pos = pos;
-    if (pos)
-      to.buffer.set(buffer);
-    return to;
-  }
-  clone() {
-    return this._cloneInto();
-  }
-};
-var SHA256_IV = /* @__PURE__ */ Uint32Array.from([
-  1779033703,
-  3144134277,
-  1013904242,
-  2773480762,
-  1359893119,
-  2600822924,
-  528734635,
-  1541459225
-]);
-
-// node_modules/.pnpm/@noble+hashes@2.4.0/node_modules/@noble/hashes/sha2.js
-var SHA256_K = /* @__PURE__ */ Uint32Array.from([
-  1116352408,
-  1899447441,
-  3049323471,
-  3921009573,
-  961987163,
-  1508970993,
-  2453635748,
-  2870763221,
-  3624381080,
-  310598401,
-  607225278,
-  1426881987,
-  1925078388,
-  2162078206,
-  2614888103,
-  3248222580,
-  3835390401,
-  4022224774,
-  264347078,
-  604807628,
-  770255983,
-  1249150122,
-  1555081692,
-  1996064986,
-  2554220882,
-  2821834349,
-  2952996808,
-  3210313671,
-  3336571891,
-  3584528711,
-  113926993,
-  338241895,
-  666307205,
-  773529912,
-  1294757372,
-  1396182291,
-  1695183700,
-  1986661051,
-  2177026350,
-  2456956037,
-  2730485921,
-  2820302411,
-  3259730800,
-  3345764771,
-  3516065817,
-  3600352804,
-  4094571909,
-  275423344,
-  430227734,
-  506948616,
-  659060556,
-  883997877,
-  958139571,
-  1322822218,
-  1537002063,
-  1747873779,
-  1955562222,
-  2024104815,
-  2227730452,
-  2361852424,
-  2428436474,
-  2756734187,
-  3204031479,
-  3329325298
-]);
-var SHA256_W = /* @__PURE__ */ new Uint32Array(64);
-var SHA2_32B = class extends HashMD {
-  // We cannot use array here since array allows indexing by variable
-  // which means optimizer/compiler cannot use registers.
-  // Numeric initializers matter: starting the fields as `undefined` changes
-  // V8's field representation and makes sha256 3x slower (measured).
-  A = 0;
-  B = 0;
-  C = 0;
-  D = 0;
-  E = 0;
-  F = 0;
-  G = 0;
-  H = 0;
-  constructor(outputLen, IV) {
-    super(64, outputLen, 8, false);
-    this.A = IV[0] | 0;
-    this.B = IV[1] | 0;
-    this.C = IV[2] | 0;
-    this.D = IV[3] | 0;
-    this.E = IV[4] | 0;
-    this.F = IV[5] | 0;
-    this.G = IV[6] | 0;
-    this.H = IV[7] | 0;
-  }
-  get() {
-    const { A, B, C, D, E, F, G, H } = this;
-    return [A, B, C, D, E, F, G, H];
-  }
-  // prettier-ignore
-  set(A, B, C, D, E, F, G, H) {
-    this.A = A | 0;
-    this.B = B | 0;
-    this.C = C | 0;
-    this.D = D | 0;
-    this.E = E | 0;
-    this.F = F | 0;
-    this.G = G | 0;
-    this.H = H | 0;
-  }
-  _cloneInto(to) {
-    (to ||= new this.constructor()).set(...this.get());
-    return this._cloneIntoMeta(to);
-  }
-  process(view, offset) {
-    for (let i = 0; i < 16; i++, offset += 4)
-      SHA256_W[i] = view.getUint32(offset, false);
-    for (let i = 16; i < 64; i++) {
-      const W15 = SHA256_W[i - 15];
-      const W2 = SHA256_W[i - 2];
-      const s0 = rotr(W15, 7) ^ rotr(W15, 18) ^ W15 >>> 3;
-      const s1 = rotr(W2, 17) ^ rotr(W2, 19) ^ W2 >>> 10;
-      SHA256_W[i] = s1 + SHA256_W[i - 7] + s0 + SHA256_W[i - 16] | 0;
-    }
-    let { A, B, C, D, E, F, G, H } = this;
-    for (let i = 0; i < 64; i++) {
-      const sigma1 = rotr(E, 6) ^ rotr(E, 11) ^ rotr(E, 25);
-      const T1 = H + sigma1 + Chi(E, F, G) + SHA256_K[i] + SHA256_W[i] | 0;
-      const sigma0 = rotr(A, 2) ^ rotr(A, 13) ^ rotr(A, 22);
-      const T2 = sigma0 + Maj(A, B, C) | 0;
-      H = G;
-      G = F;
-      F = E;
-      E = D + T1 | 0;
-      D = C;
-      C = B;
-      B = A;
-      A = T1 + T2 | 0;
-    }
-    A = A + this.A | 0;
-    B = B + this.B | 0;
-    C = C + this.C | 0;
-    D = D + this.D | 0;
-    E = E + this.E | 0;
-    F = F + this.F | 0;
-    G = G + this.G | 0;
-    H = H + this.H | 0;
-    this.set(A, B, C, D, E, F, G, H);
-  }
-  roundClean() {
-    clean(SHA256_W);
-  }
-  destroy() {
-    this.destroyed = true;
-    this.set(0, 0, 0, 0, 0, 0, 0, 0);
-    clean(this.buffer);
-  }
-};
-var _SHA256 = class extends SHA2_32B {
-  constructor() {
-    super(32, SHA256_IV);
-  }
-};
-var sha256 = /* @__PURE__ */ createHasher(
-  () => new _SHA256(),
-  /* @__PURE__ */ oidNist(1)
-);
-
-// packages/application/src/offline-bundle.ts
-var OFFLINE_SNAPSHOT_SCHEMA = 1;
-var OFFLINE_CHECKSUM_SERIALIZATION = "longball.canonical-json/1";
-var MAX_OFFLINE_EVENTS = 1e4;
-function* canonicalTokens(value) {
-  const ancestors = /* @__PURE__ */ new Set();
-  function* encode(input, depth) {
-    if (depth > 100) throw new Error("Offline snapshot nesting exceeds the supported bound.");
-    if (input === null || typeof input === "string" || typeof input === "boolean") {
-      yield JSON.stringify(input);
-      return;
-    }
-    if (typeof input === "number" && Number.isFinite(input)) {
-      yield JSON.stringify(input);
-      return;
-    }
-    if (typeof input !== "object" || !input || ancestors.has(input) || ![Object.prototype, null, Array.prototype].includes(Object.getPrototypeOf(input))) throw new Error("Offline snapshot must contain finite JSON values only.");
-    ancestors.add(input);
-    try {
-      if (Object.getOwnPropertySymbols(input).length) throw new Error("Offline snapshot cannot contain symbolic fields.");
-      const descriptors = Object.getOwnPropertyDescriptors(input);
-      if (Array.isArray(input)) {
-        if (Object.keys(input).length !== input.length || Object.entries(descriptors).some(([key, item]) => key !== "length" && (!("value" in item) || !item.enumerable)) || Array.from({ length: input.length }, (_, index) => index).some((index) => !Object.hasOwn(input, index))) throw new Error("Offline snapshot arrays must be dense JSON arrays.");
-        yield "[";
-        for (let index = 0; index < input.length; index++) {
-          if (index) yield ",";
-          yield* encode(input[index], depth + 1);
-        }
-        yield "]";
-        return;
-      }
-      if (Object.values(descriptors).some((item) => !("value" in item) || !item.enumerable)) throw new Error("Offline snapshot cannot contain accessors or hidden fields.");
-      yield "{";
-      let separator = "";
-      for (const key of Object.keys(input).sort()) {
-        yield separator;
-        separator = ",";
-        yield JSON.stringify(key);
-        yield ":";
-        yield* encode(descriptors[key].value, depth + 1);
-      }
-      yield "}";
-    } finally {
-      ancestors.delete(input);
-    }
-  }
-  yield* encode(value, 0);
-}
-function canonicalOfflineJson(value) {
-  return Array.from(canonicalTokens(value)).join("");
-}
-function offlineUtf8(value) {
-  let length = 0;
-  for (const character of value) {
-    const code2 = character.codePointAt(0);
-    length += code2 < 128 ? 1 : code2 < 2048 ? 2 : code2 < 65536 ? 3 : 4;
-  }
-  const bytes = new Uint8Array(length);
-  let offset = 0;
-  for (const character of value) {
-    const code2 = character.codePointAt(0);
-    if (code2 < 128) bytes[offset++] = code2;
-    else if (code2 < 2048) {
-      bytes[offset++] = 192 | code2 >> 6;
-      bytes[offset++] = 128 | code2 & 63;
-    } else if (code2 < 65536) {
-      bytes[offset++] = 224 | code2 >> 12;
-      bytes[offset++] = 128 | code2 >> 6 & 63;
-      bytes[offset++] = 128 | code2 & 63;
-    } else {
-      bytes[offset++] = 240 | code2 >> 18;
-      bytes[offset++] = 128 | code2 >> 12 & 63;
-      bytes[offset++] = 128 | code2 >> 6 & 63;
-      bytes[offset++] = 128 | code2 & 63;
-    }
-  }
-  return bytes;
-}
-function offlineChecksum(payload) {
-  const hash = sha256.create();
-  let chunk = "";
-  for (const token of canonicalTokens(payload)) {
-    chunk += token;
-    if (chunk.length >= 16384) {
-      hash.update(offlineUtf8(chunk));
-      chunk = "";
-    }
-  }
-  if (chunk) hash.update(offlineUtf8(chunk));
-  return Array.from(hash.digest(), (byte) => byte.toString(16).padStart(2, "0")).join("");
-}
-function sealOfflineSnapshot(payload) {
-  const unsigned = { ...payload };
-  delete unsigned.checksumSha256;
-  return { ...unsigned, checksumSha256: offlineChecksum(unsigned) };
-}
-var natural = (value) => Number.isSafeInteger(value) && Number(value) >= 0;
-var identifier = (value) => typeof value === "string" && /^[A-Za-z0-9_.:-]{1,150}$/.test(value);
-var iso = (value) => typeof value === "string" && Number.isFinite(Date.parse(value)) && new Date(value).toISOString() === value;
-var equal = (left, right) => canonicalOfflineJson(left) === canonicalOfflineJson(right);
-var only = (value, fields4) => Object.keys(value).every((key) => fields4.includes(key));
-function assertOfflineSnapshot(download, scope) {
-  const fail5 = () => {
-    throw new Error("Offline snapshot is incomplete, inconsistent or unsupported. Existing journal retained; download a fresh verified bundle.");
-  };
-  if (!download || download.snapshotSchemaVersion !== OFFLINE_SNAPSHOT_SCHEMA || download.checksumSerialization !== OFFLINE_CHECKSUM_SERIALIZATION || !identifier(download.bundleId) || !identifier(download.teamId) || !identifier(download.seasonId) || scope.teamId !== void 0 && scope.teamId !== download.teamId || scope.seasonId !== void 0 && scope.seasonId !== download.seasonId || download.deviceId !== scope.deviceId || download.matchId !== scope.matchId || !iso(download.downloadedAt) || !/^[0-9a-f]{64}$/.test(download.checksumSha256 ?? "")) fail5();
-  if (!only(download, ["contractVersion", "schemaVersion", "engineVersion", "bundleId", "snapshotSchemaVersion", "checksumSerialization", "checksumSha256", "matchId", "teamId", "seasonId", "deviceId", "state", "acceptedRevision", "deviceCheckpoint", "controller", "publication", "acceptedEvents", "controllerTransitions", "downloadedAt", "clockAnchor", "syntheticOnly"]) || download.controller && !only(download.controller, ["epoch", "account_id", "device_id", "frozen"])) fail5();
-  if (!Array.isArray(download.acceptedEvents) || !Array.isArray(download.controllerTransitions) || download.acceptedEvents.length > MAX_OFFLINE_EVENTS || download.controllerTransitions.length > MAX_OFFLINE_EVENTS) fail5();
-  const { checksumSha256, ...payload } = download;
-  if (offlineChecksum(payload) !== checksumSha256) fail5();
-  const state = download.state;
-  if (!state?.config || state.config.matchId !== scope.matchId || !natural(state.revision) || state.revision !== download.acceptedRevision || !Array.isArray(state.config.players) || state.config.players.length > 100 || !Array.isArray(state.config.selectedPlayerIds) || state.config.selectedPlayerIds.length > 100 || new Set(state.config.players.map((player) => player.id)).size !== state.config.players.length || state.config.fixture && (state.config.fixture.teamId !== download.teamId || state.config.fixture.seasonId !== download.seasonId)) fail5();
-  if (!only(state.config, ["matchId", "players", "selectedPlayerIds", "pitchPlaces", "plannedHalfDurationMs", "fixedKeeperId", "initialPolicyProposal", "initialLineupProposal", "initialAttendance", "slots", "fixture", "profileSnapshot"]) || state.config.players.some((player) => !only(player, ["id", "displayName", "goalkeeperChoice", "positionPreferences", "profileVersion", "available"])) || state.config.profileSnapshot?.some((profile) => !only(profile, ["playerId", "preferences", "eligiblePositions", "initials"]))) fail5();
-  if (!download.publication || !Object.hasOwn(download.publication, "fixtureClass") || !Object.hasOwn(download.publication, "classificationVersion") || !Object.hasOwn(download.publication, "resultPolicy") || !download.publication.sharingPolicy || typeof download.publication.sharingPolicy.shareScores !== "boolean" || typeof download.publication.sharingPolicy.shareDerivedResults !== "boolean") fail5();
-  if (!Array.isArray(download.acceptedEvents) || !Array.isArray(download.controllerTransitions) || download.acceptedEvents.length > MAX_OFFLINE_EVENTS || download.controllerTransitions.length > MAX_OFFLINE_EVENTS || download.acceptedEvents.length !== state.revision) fail5();
-  const ids = /* @__PURE__ */ new Set();
-  for (const [index, record] of download.acceptedEvents.entries()) {
-    const event = record.event;
-    if (record.serverSequence !== index + 1 || !iso(record.receivedAt) || !event || event.matchId !== scope.matchId || event.baseRevision !== index || !identifier(event.eventId) || !identifier(event.deviceId) || !natural(event.clientSequence) || event.clientSequence < 1 || !natural(event.controllerEpoch) || event.controllerEpoch < 1 || !event.engineVersion || event.command?.id !== event.eventId || ids.has(event.eventId)) fail5();
-    ids.add(event.eventId);
-  }
-  if (state.eventHistory && (state.eventHistory.length !== download.acceptedEvents.length || !state.eventHistory.every((event, index) => event.id === download.acceptedEvents[index].event.eventId && equal({ ...download.acceptedEvents[index].event.command, ...event.actorId === void 0 ? {} : { actorId: event.actorId } }, event)))) fail5();
-  const checkpoint = download.deviceCheckpoint;
-  if (!checkpoint || !natural(checkpoint.clientSequence) || !(checkpoint.previousEventId === null || identifier(checkpoint.previousEventId)) || checkpoint.clientSequence === 0 !== (checkpoint.previousEventId === null)) fail5();
-  for (const record of download.acceptedEvents) if (record.event.deviceId === scope.deviceId && record.event.clientSequence > checkpoint.clientSequence) fail5();
-  for (const transition of download.controllerTransitions) if (!identifier(transition.id) || !natural(transition.epoch) || transition.epoch < 1 || !identifier(transition.actorId) || !identifier(transition.toDevice) || !(transition.fromDevice === null || identifier(transition.fromDevice)) || !iso(transition.createdAt) || typeof transition.kind !== "string" || !(transition.reason === null || typeof transition.reason === "string")) fail5();
-  if (!download.clockAnchor || download.clockAnchor.serverTime !== download.downloadedAt || download.clockAnchor.quality !== "observation_only" || download.clockAnchor.continuousMappingEstablished !== false || typeof download.syntheticOnly !== "boolean") fail5();
 }
 
 // packages/domain/src/live-events.ts
@@ -60466,686 +60456,6 @@ function currentTargets(state, sample) {
   return calculateTargets(projected.targetIntervals, state.config.selectedPlayerIds);
 }
 
-// apps/api/src/offline-bundle.ts
-function offlinePublication(matchId, sharingPolicy, records) {
-  const result = records?.results.find((item) => item.id === matchId);
-  const policy = result?.publication;
-  return {
-    fixtureClass: result?.fixtureClass ?? (records?.liveMatch.matchId === matchId ? records.liveMatch.fixtureClass : null),
-    classificationVersion: result?.classificationVersion ?? null,
-    resultPolicy: policy ? { id: policy.id, version: policy.version, fixtureClass: policy.fixtureClass, confirmed: policy.confirmed, confirmationReference: policy.confirmationReference, allowedRoles: [...policy.allowedRoles] } : null,
-    sharingPolicy: { version: sharingPolicy.version, approvedBy: sharingPolicy.approvedBy, approvedAt: sharingPolicy.approvedAt, shareScores: sharingPolicy.shareScores, shareDerivedResults: sharingPolicy.shareDerivedResults }
-  };
-}
-function buildOfflineDownload(input) {
-  if (input.events.length > MAX_OFFLINE_EVENTS || input.transitions.length > MAX_OFFLINE_EVENTS) throw new AccessError("OFFLINE_BUNDLE_UNSUPPORTED", 422, "The pilot requires complete accepted/control history within 10000 records in each stream. Nothing was truncated.");
-  const downloadedAt = new Date(input.nowMs).toISOString();
-  const controllerTransitions = input.transitions.map((row) => ({ id: row.id, epoch: row.epoch, actorId: row.actor_id, fromDevice: row.from_device, toDevice: row.to_device, kind: row.kind, reason: row.reason, createdAt: new Date(row.created_at).toISOString() }));
-  try {
-    const bundle = sealOfflineSnapshot({
-      contractVersion: "longball.events/1.1",
-      schemaVersion: 1,
-      engineVersion: ENGINE_VERSION,
-      bundleId: randomUUID(),
-      snapshotSchemaVersion: OFFLINE_SNAPSHOT_SCHEMA,
-      checksumSerialization: OFFLINE_CHECKSUM_SERIALIZATION,
-      matchId: input.matchId,
-      teamId: input.teamId,
-      seasonId: input.seasonId,
-      deviceId: input.deviceId,
-      state: input.state,
-      acceptedRevision: input.state.revision,
-      deviceCheckpoint: input.checkpoint,
-      controller: input.controller,
-      publication: input.publication,
-      acceptedEvents: input.events.map((row) => ({ serverSequence: row.revision, receivedAt: new Date(row.received_at).toISOString(), event: JSON.parse(row.envelope_json) })),
-      controllerTransitions,
-      downloadedAt,
-      clockAnchor: { serverTime: downloadedAt, quality: "observation_only", continuousMappingEstablished: false },
-      syntheticOnly: input.syntheticOnly
-    });
-    assertOfflineSnapshot(bundle, input);
-    return bundle;
-  } catch {
-    throw new AccessError("OFFLINE_BUNDLE_UNSUPPORTED", 422, "The complete snapshot failed structural or full-history validation. The previous device bundle remains usable; no partial replacement was returned.");
-  }
-}
-
-// apps/api/src/store.ts
-import { createHash as createHash2, randomBytes, randomUUID as randomUUID2 } from "node:crypto";
-import { chmodSync, mkdirSync } from "node:fs";
-import { dirname } from "node:path";
-import { backup, DatabaseSync } from "node:sqlite";
-
-// apps/api/src/team-privilege-schema.ts
-var SQLITE_TEAM_PRIVILEGES_DDL = `
-CREATE TABLE team_privilege_states(team_id TEXT PRIMARY KEY REFERENCES teams(id),revision INTEGER NOT NULL CHECK(revision>=0),state_json TEXT NOT NULL CHECK(json_valid(state_json)));
-CREATE TABLE team_privilege_decisions(team_id TEXT NOT NULL REFERENCES teams(id),revision INTEGER NOT NULL CHECK(revision>0),command_id TEXT NOT NULL,actor_id TEXT NOT NULL REFERENCES accounts(id),target_account_id TEXT NOT NULL REFERENCES accounts(id),privilege TEXT NOT NULL CHECK(privilege IN('uploads','invitations')),suspended INTEGER NOT NULL CHECK(suspended IN(0,1)),reason_code TEXT NOT NULL CHECK(length(reason_code) BETWEEN 1 AND 80),private_note TEXT CHECK(length(private_note)<=1000),created_at INTEGER NOT NULL,PRIMARY KEY(team_id,revision),UNIQUE(team_id,actor_id,command_id));
-INSERT INTO team_privilege_states(team_id,revision,state_json) SELECT id,0,json_object('schemaVersion',1,'teamId',id,'revision',0,'restrictions',json('[]')) FROM teams;
-CREATE TRIGGER team_privileges_new_team AFTER INSERT ON teams BEGIN INSERT INTO team_privilege_states(team_id,revision,state_json) VALUES(NEW.id,0,json_object('schemaVersion',1,'teamId',NEW.id,'revision',0,'restrictions',json('[]'))); END;
-CREATE TRIGGER team_privilege_state_identity BEFORE UPDATE ON team_privilege_states WHEN NEW.team_id<>OLD.team_id OR NEW.revision<>OLD.revision+1 OR json_extract(NEW.state_json,'$.teamId')<>NEW.team_id OR json_extract(NEW.state_json,'$.revision')<>NEW.revision BEGIN SELECT RAISE(ABORT,'Invalid team privilege revision'); END;
-CREATE TRIGGER team_privilege_decision_immutable_update BEFORE UPDATE ON team_privilege_decisions BEGIN SELECT RAISE(ABORT,'Immutable team privilege decision'); END;
-CREATE TRIGGER team_privilege_decision_immutable_delete BEFORE DELETE ON team_privilege_decisions BEGIN SELECT RAISE(ABORT,'Immutable team privilege decision'); END;
-`;
-
-// fixtures/roma.synthetic.json
-var roma_synthetic_default = {
-  synthetic: true,
-  teamId: "synthetic-roma-u10",
-  season: "2026/27",
-  timeZone: "Europe/London",
-  pitchPlaces: 7,
-  plannedHalfDurationMs: 15e5,
-  players: [
-    {
-      id: "synthetic-player-01",
-      displayName: "Oliver Bennett",
-      available: true,
-      goalkeeperChoice: 1
-    },
-    {
-      id: "synthetic-player-02",
-      displayName: "Noah Patel",
-      available: true,
-      goalkeeperChoice: 0
-    },
-    {
-      id: "synthetic-player-03",
-      displayName: "Leo Martin",
-      available: true,
-      goalkeeperChoice: 0
-    },
-    {
-      id: "synthetic-player-04",
-      displayName: "Theo Clarke",
-      available: true,
-      goalkeeperChoice: 0
-    },
-    {
-      id: "synthetic-player-05",
-      displayName: "Oscar Evans",
-      available: true,
-      goalkeeperChoice: 0
-    },
-    {
-      id: "synthetic-player-06",
-      displayName: "Ethan Brooks",
-      available: true,
-      goalkeeperChoice: 0
-    },
-    {
-      id: "synthetic-player-07",
-      displayName: "Jack Turner",
-      available: true,
-      goalkeeperChoice: 0
-    },
-    {
-      id: "synthetic-player-08",
-      displayName: "Freddie Lewis",
-      available: true,
-      goalkeeperChoice: 0
-    },
-    {
-      id: "synthetic-player-09",
-      displayName: "Arthur James",
-      available: true,
-      goalkeeperChoice: 0
-    },
-    {
-      id: "synthetic-player-10",
-      displayName: "Lucas Wilson",
-      available: false,
-      goalkeeperChoice: 0
-    },
-    {
-      id: "synthetic-player-11",
-      displayName: "Muhammad Khan",
-      available: false,
-      goalkeeperChoice: 0
-    },
-    {
-      id: "synthetic-player-12",
-      displayName: "Archie Green",
-      available: false,
-      goalkeeperChoice: 0
-    },
-    {
-      id: "synthetic-player-13",
-      displayName: "George Taylor",
-      available: false,
-      goalkeeperChoice: 0
-    }
-  ],
-  demo: {
-    name: "Roma autumn matchdays",
-    generated: true,
-    description: "Simulated club, players and matchdays for testing. No real people, photographs or contact details.",
-    referenceDate: "2026-10-22"
-  },
-  club: {
-    id: "synthetic-richmond-rovers",
-    name: "Richmond Rovers"
-  },
-  team: {
-    name: "Roma",
-    ageGroup: "U10"
-  },
-  opponents: [
-    {
-      id: "demo-maple",
-      name: "Maple FC",
-      venue: "Maple Sports Ground \xB7 Pitch 1"
-    },
-    {
-      id: "demo-oak",
-      name: "Oak FC",
-      venue: "Oak Meadow \xB7 Junior pitch"
-    },
-    {
-      id: "demo-hill",
-      name: "Hill FC",
-      venue: "Hill Park \xB7 Pitch 3"
-    },
-    {
-      id: "demo-willow",
-      name: "Willow FC",
-      venue: "Willow Playing Fields \xB7 Pitch 2"
-    },
-    {
-      id: "demo-cedar",
-      name: "Cedar Athletic",
-      venue: "Cedar Lane Sports Ground"
-    }
-  ],
-  fixtures: [
-    {
-      id: "synthetic-roma-maple-2026-10-24",
-      opponent: "Maple FC",
-      playedDate: "2026-10-24",
-      kickoff: "10:00",
-      arrival: "09:30",
-      venue: "Rovers Sports Ground \xB7 Pitch 2",
-      homeAway: "home",
-      status: "scheduled",
-      selectedCount: 9,
-      selectedPlayerIds: [
-        "synthetic-player-01",
-        "synthetic-player-02",
-        "synthetic-player-03",
-        "synthetic-player-04",
-        "synthetic-player-05",
-        "synthetic-player-06",
-        "synthetic-player-07",
-        "synthetic-player-08",
-        "synthetic-player-09"
-      ],
-      demoPhase: "scheduled",
-      fixtureClass: "development"
-    },
-    {
-      id: "synthetic-roma-oak-2026-10-31",
-      opponent: "Oak FC",
-      playedDate: "2026-10-31",
-      kickoff: "10:30",
-      arrival: "10:00",
-      venue: "Oak Meadow \xB7 Junior pitch",
-      homeAway: "away",
-      status: "scheduled",
-      selectedCount: 9,
-      selectedPlayerIds: [
-        "synthetic-player-01",
-        "synthetic-player-02",
-        "synthetic-player-03",
-        "synthetic-player-04",
-        "synthetic-player-05",
-        "synthetic-player-06",
-        "synthetic-player-07",
-        "synthetic-player-08",
-        "synthetic-player-09"
-      ],
-      demoPhase: "scheduled",
-      fixtureClass: "development"
-    },
-    {
-      id: "synthetic-history-oak",
-      opponent: "Oak FC",
-      playedDate: "2026-10-10",
-      kickoff: "10:30",
-      arrival: "10:00",
-      venue: "Oak Meadow \xB7 Junior pitch",
-      homeAway: "away",
-      status: "scheduled",
-      selectedCount: 9,
-      selectedPlayerIds: [
-        "synthetic-player-01",
-        "synthetic-player-02",
-        "synthetic-player-03",
-        "synthetic-player-04",
-        "synthetic-player-05",
-        "synthetic-player-06",
-        "synthetic-player-07",
-        "synthetic-player-08",
-        "synthetic-player-09"
-      ],
-      demoPhase: "completed",
-      fixtureClass: "friendly",
-      result: {
-        halfTime: {
-          for: 1,
-          against: 1
-        },
-        final: {
-          for: 2,
-          against: 2
-        },
-        halfMinutes: 25
-      }
-    },
-    {
-      id: "synthetic-history-hill",
-      opponent: "Hill FC",
-      playedDate: "2026-10-17",
-      kickoff: "09:30",
-      arrival: "09:00",
-      venue: "Rovers Sports Ground \xB7 Pitch 2",
-      homeAway: "home",
-      status: "scheduled",
-      selectedCount: 9,
-      selectedPlayerIds: [
-        "synthetic-player-01",
-        "synthetic-player-02",
-        "synthetic-player-03",
-        "synthetic-player-04",
-        "synthetic-player-05",
-        "synthetic-player-10",
-        "synthetic-player-11",
-        "synthetic-player-12",
-        "synthetic-player-13"
-      ],
-      demoPhase: "completed",
-      fixtureClass: "development",
-      result: {
-        halfTime: {
-          for: 1,
-          against: 1
-        },
-        final: {
-          for: 3,
-          against: 1
-        },
-        halfMinutes: 25
-      }
-    }
-  ],
-  training: [
-    {
-      id: "synthetic-training-1",
-      date: "2026-10-22",
-      time: "18:00",
-      venue: "Rovers Sports Ground \xB7 Training area",
-      status: "scheduled"
-    },
-    {
-      id: "synthetic-training-2",
-      date: "2026-10-29",
-      time: "18:00",
-      venue: "Rovers Sports Ground \xB7 Training area",
-      status: "scheduled"
-    },
-    {
-      id: "synthetic-training-2026-11-05",
-      date: "2026-11-05",
-      time: "18:00",
-      venue: "Rovers Sports Ground \xB7 Training area",
-      status: "scheduled"
-    },
-    {
-      id: "synthetic-training-2026-10-01",
-      date: "2026-10-01",
-      time: "18:00",
-      venue: "Rovers Sports Ground \xB7 Training area",
-      status: "held"
-    },
-    {
-      id: "synthetic-training-2026-10-08",
-      date: "2026-10-08",
-      time: "18:00",
-      venue: "Rovers Sports Ground \xB7 Training area",
-      status: "held"
-    },
-    {
-      id: "synthetic-training-2026-10-15",
-      date: "2026-10-15",
-      time: "18:00",
-      venue: "Rovers Sports Ground \xB7 Training area",
-      status: "held"
-    },
-    {
-      id: "synthetic-training-2026-09-24",
-      date: "2026-09-24",
-      time: "18:00",
-      venue: "Rovers Sports Ground \xB7 Training area",
-      status: "cancelled"
-    }
-  ],
-  profiles: [
-    {
-      playerId: "synthetic-player-01",
-      initials: "OB",
-      shirtNumber: 1,
-      foot: "right",
-      preferences: [
-        "GK",
-        "CM",
-        "CB"
-      ],
-      eligiblePositions: [
-        "GK",
-        "CB",
-        "ST"
-      ]
-    },
-    {
-      playerId: "synthetic-player-02",
-      initials: "NP",
-      shirtNumber: 2,
-      foot: "right",
-      preferences: [
-        "CB",
-        "CM",
-        "ST"
-      ],
-      eligiblePositions: [
-        "CB",
-        "LB",
-        "RB",
-        "CM",
-        "LW",
-        "RW",
-        "ST"
-      ]
-    },
-    {
-      playerId: "synthetic-player-03",
-      initials: "LM",
-      shirtNumber: 3,
-      foot: "left",
-      preferences: [
-        "CB",
-        "CM",
-        "ST"
-      ],
-      eligiblePositions: [
-        "CB",
-        "LB",
-        "RB",
-        "CM",
-        "LW",
-        "RW",
-        "ST"
-      ]
-    },
-    {
-      playerId: "synthetic-player-04",
-      initials: "TC",
-      shirtNumber: 4,
-      foot: "both",
-      preferences: [
-        "CM",
-        "CB",
-        "ST"
-      ],
-      eligiblePositions: [
-        "CB",
-        "LB",
-        "RB",
-        "CM",
-        "LW",
-        "RW",
-        "ST"
-      ]
-    },
-    {
-      playerId: "synthetic-player-05",
-      initials: "OE",
-      shirtNumber: 5,
-      foot: "left",
-      preferences: [
-        "LW",
-        "CM",
-        "CB"
-      ],
-      eligiblePositions: [
-        "CB",
-        "LB",
-        "RB",
-        "CM",
-        "LW",
-        "RW",
-        "ST"
-      ]
-    },
-    {
-      playerId: "synthetic-player-06",
-      initials: "EB",
-      shirtNumber: 6,
-      foot: "right",
-      preferences: [
-        "RW",
-        "CM",
-        "CB"
-      ],
-      eligiblePositions: [
-        "CB",
-        "LB",
-        "RB",
-        "CM",
-        "LW",
-        "RW",
-        "ST"
-      ]
-    },
-    {
-      playerId: "synthetic-player-07",
-      initials: "JT",
-      shirtNumber: 7,
-      foot: "right",
-      preferences: [
-        "ST",
-        "CM",
-        "CB"
-      ],
-      eligiblePositions: [
-        "CB",
-        "LB",
-        "RB",
-        "CM",
-        "LW",
-        "RW",
-        "ST"
-      ]
-    },
-    {
-      playerId: "synthetic-player-08",
-      initials: "FL",
-      shirtNumber: 8,
-      foot: "left",
-      preferences: [
-        "LW",
-        "CM",
-        "CB"
-      ],
-      eligiblePositions: [
-        "CB",
-        "LB",
-        "RB",
-        "CM",
-        "LW",
-        "RW",
-        "ST"
-      ]
-    },
-    {
-      playerId: "synthetic-player-09",
-      initials: "AJ",
-      shirtNumber: 9,
-      foot: "right",
-      preferences: [
-        "RW",
-        "CM",
-        "CB"
-      ],
-      eligiblePositions: [
-        "CB",
-        "LB",
-        "RB",
-        "CM",
-        "LW",
-        "RW",
-        "ST"
-      ]
-    },
-    {
-      playerId: "synthetic-player-10",
-      initials: "LW",
-      shirtNumber: 10,
-      foot: "both",
-      preferences: [
-        "CM",
-        "CB",
-        "ST"
-      ],
-      eligiblePositions: [
-        "CB",
-        "LB",
-        "RB",
-        "CM",
-        "LW",
-        "RW",
-        "ST"
-      ]
-    },
-    {
-      playerId: "synthetic-player-11",
-      initials: "MK",
-      shirtNumber: 11,
-      foot: "right",
-      preferences: [
-        "CB",
-        "CM",
-        "ST"
-      ],
-      eligiblePositions: [
-        "CB",
-        "LB",
-        "RB",
-        "CM",
-        "LW",
-        "RW",
-        "ST"
-      ]
-    },
-    {
-      playerId: "synthetic-player-12",
-      initials: "AG",
-      shirtNumber: 12,
-      foot: "left",
-      preferences: [
-        "ST",
-        "CM",
-        "CB"
-      ],
-      eligiblePositions: [
-        "CB",
-        "LB",
-        "RB",
-        "CM",
-        "LW",
-        "RW",
-        "ST"
-      ]
-    },
-    {
-      playerId: "synthetic-player-13",
-      initials: "GT",
-      shirtNumber: 13,
-      foot: "right",
-      preferences: [
-        "CM",
-        "CB",
-        "ST"
-      ],
-      eligiblePositions: [
-        "CB",
-        "LB",
-        "RB",
-        "CM",
-        "LW",
-        "RW",
-        "ST"
-      ]
-    }
-  ]
-};
-
-// packages/testing/src/index.ts
-var romaFixture = roma_synthetic_default;
-var demoAccountLabels = {
-  "synthetic-account-manager": "Alex Morgan",
-  "synthetic-account-manager-2": "Priya Shah",
-  "synthetic-account-manager-3": "Dan Foster",
-  "synthetic-account-manager-4": "Chris Lewis",
-  "synthetic-account-manager-5": "Nicky Hughes",
-  "synthetic-account-admin": "Sam Taylor",
-  "synthetic-account-spectator": "Jamie Bennett",
-  "synthetic-account-invitee": "Casey Bennett",
-  "synthetic-account-other-manager": "Robin Ellis",
-  ...Object.fromEntries(roma_synthetic_default.players.map((player) => [`synthetic-account-player-${player.id.slice(-2)}`, player.displayName]))
-};
-
-// packages/application/src/training-series.ts
-var maximumTrainingOccurrences = 52;
-function requireThat(condition, message) {
-  if (!condition) throw new Error(message);
-}
-function trainingSeriesOccurrences(state, seasonId, recurrenceGroupId) {
-  requireThat(typeof recurrenceGroupId === "string" && recurrenceGroupId.trim().length > 0 && recurrenceGroupId.length <= 150, "A stable training series identity is required.");
-  requireThat(seasonId === state.activeSeasonId, "Choose the current season before editing a training series.");
-  const occurrences = state.training.filter((item) => item.recurrenceGroupId === recurrenceGroupId);
-  requireThat(occurrences.every((item) => item.seasonId === seasonId), "The training series belongs to a different season.");
-  return [...occurrences].sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time) || a.id.localeCompare(b.id));
-}
-function applyTrainingSeries(state, command, validate) {
-  requireThat(command.confirmOccurrences === true, "Review and explicitly confirm the listed training occurrences.");
-  const series = trainingSeriesOccurrences(state, command.seasonId, command.recurrenceGroupId);
-  if (command.type === "training.series_created") {
-    requireThat(series.length === 0, "That training series already exists; use its scheduled-occurrence editor.");
-    requireThat(Array.isArray(command.occurrences) && command.occurrences.length >= 2 && command.occurrences.length <= maximumTrainingOccurrences, "A series needs between 2 and 52 explicit occurrences.");
-    const ids = /* @__PURE__ */ new Set(), dates = /* @__PURE__ */ new Set();
-    for (const draft of command.occurrences) {
-      requireThat(draft.seasonId === command.seasonId && draft.recurrenceGroupId === command.recurrenceGroupId, "Every occurrence must belong to the confirmed series and season.");
-      requireThat(!ids.has(draft.id) && !state.training.some((item) => item.id === draft.id), "Each occurrence must have a new stable identity.");
-      requireThat(!dates.has(draft.date), "Each series occurrence must have a distinct calendar date.");
-      validate(draft);
-      ids.add(draft.id);
-      dates.add(draft.date);
-    }
-    state.training.push(...command.occurrences.map((draft) => ({ ...draft, expectedProfileIds: [...draft.expectedProfileIds], status: "scheduled", responses: {}, attendance: {} })));
-    return;
-  }
-  const scheduled = series.filter((item) => item.status === "scheduled");
-  requireThat(Array.isArray(command.occurrenceIds) && command.occurrenceIds.length > 0 && command.occurrenceIds.length <= maximumTrainingOccurrences && new Set(command.occurrenceIds).size === command.occurrenceIds.length, "Review a nonempty list of distinct scheduled occurrences.");
-  requireThat(command.occurrenceIds.length === scheduled.length && scheduled.every((item) => command.occurrenceIds.includes(item.id)), "The scheduled series changed; review its exact occurrence list again. Held and cancelled occurrences cannot be edited as scheduled sessions.");
-  if (command.type === "training.series_updated") {
-    for (const occurrence of scheduled) validate({ ...occurrence, ...command.changes });
-    const ids = new Set(command.occurrenceIds);
-    state.training = state.training.map((item) => ids.has(item.id) ? { ...item, time: command.changes.time, venue: command.changes.venue, expectedProfileIds: [...command.changes.expectedProfileIds] } : item);
-  } else {
-    const ids = new Set(command.occurrenceIds);
-    state.training = state.training.map((item) => ids.has(item.id) ? { ...item, status: "cancelled" } : item);
-  }
-}
-
 // packages/application/src/match-plans.ts
 var copy = (value) => JSON.parse(JSON.stringify(value));
 function assert(value, message) {
@@ -61757,6 +61067,8 @@ function saveProfile(state, source2) {
     ),
     "That player already has a profile in this season."
   );
+  if (profile.faPlayerId !== void 0)
+    profile.faPlayerId = normaliseFaPlayerId(profile.faPlayerId);
   profile.displayName = text(profile.displayName, "Display name", 60);
   requireThat3(
     typeof profile.initials === "string" && /^[A-Za-z0-9]{1,2}$/.test(profile.initials),
@@ -61801,7 +61113,7 @@ function validateRosterImport(state, profiles) {
   const candidate = clone(state);
   return Array.from(profiles).map((profile) => {
     requireThat3(
-      profile && typeof profile === "object" && Object.keys(profile).length === 10 && Object.keys(profile).every(
+      profile && typeof profile === "object" && (Object.keys(profile).length === 10 || Object.keys(profile).length === 11 && Object.hasOwn(profile, "faPlayerId")) && Object.keys(profile).every(
         (key) => [
           "id",
           "playerId",
@@ -61809,6 +61121,7 @@ function validateRosterImport(state, profiles) {
           "displayName",
           "initials",
           "shirtNumber",
+          "faPlayerId",
           "foot",
           "preferences",
           "eligiblePositions",
@@ -61842,6 +61155,81 @@ function validateRosterImport(state, profiles) {
     );
     return saveProfile(candidate, profile);
   });
+}
+function normaliseFaPlayerId(value) {
+  if (value === null || value === "") return null;
+  requireThat3(
+    typeof value === "string" && /^[0-9]{1,20}$/.test(value.trim()),
+    "Use an FA player ID of up to 20 digits, or leave it blank."
+  );
+  return value.trim();
+}
+function validateRosterProformaImport(state, profiles) {
+  requireThat3(
+    Array.isArray(profiles) && profiles.length > 0 && profiles.length <= 200,
+    "Import between one and 200 player rows."
+  );
+  const ids = /* @__PURE__ */ new Set(), players = /* @__PURE__ */ new Set();
+  for (const profile of profiles) {
+    requireThat3(
+      profile && typeof profile === "object" && !Array.isArray(profile),
+      "Use a valid player profile."
+    );
+    requireThat3(
+      Object.keys(profile).every(
+        (key) => [
+          "id",
+          "playerId",
+          "seasonId",
+          "displayName",
+          "initials",
+          "shirtNumber",
+          "faPlayerId",
+          "foot",
+          "preferences",
+          "eligiblePositions",
+          "active"
+        ].includes(key)
+      ),
+      "Use only the documented proforma fields."
+    );
+    requireThat3(
+      profile.active === true && profile.seasonId === state.activeSeasonId,
+      "Import active players into the current season only."
+    );
+    requireThat3(
+      !ids.has(profile.id) && !players.has(profile.playerId),
+      "Each player may appear only once in a proforma."
+    );
+    ids.add(profile.id);
+    players.add(profile.playerId);
+    for (const value of [profile.id, profile.playerId])
+      requireThat3(
+        typeof value === "string" && /^[A-Za-z0-9_.:-]{1,150}$/.test(value),
+        "Use a valid opaque player/profile identity."
+      );
+    const byId = state.profiles.find((item) => item.id === profile.id);
+    const byPlayer = state.profiles.find(
+      (item) => item.playerId === profile.playerId && item.seasonId === state.activeSeasonId
+    );
+    if (byId || byPlayer)
+      requireThat3(
+        byId && byPlayer && byId.id === byPlayer.id && byId.playerId === profile.playerId && byId.seasonId === state.activeSeasonId && byId.active,
+        "An existing player must retain their downloaded profile and player identities."
+      );
+    else
+      requireThat3(
+        !state.profiles.some((item) => item.playerId === profile.playerId),
+        "A new row cannot adopt a player identity from another season."
+      );
+    requireThat3(
+      Array.isArray(profile.preferences) && Array.isArray(profile.eligiblePositions),
+      "Provide preferences and eligible positions."
+    );
+  }
+  const candidate = clone(state);
+  candidate.profiles = candidate.profiles.filter((item) => !ids.has(item.id));
+  return profiles.map((profile) => saveProfile(candidate, profile));
 }
 function reducePreparation(previous, command, context = {}) {
   requireThat3(
@@ -61877,6 +61265,39 @@ function reducePreparation(previous, command, context = {}) {
         logo: command.logo
       };
       break;
+    case "team.league_updated":
+      requireThat3(
+        typeof command.league === "string" && command.league.trim().length <= 120 && !/[\u0000-\u001f]/.test(command.league),
+        "Use a league name of at most 120 characters, or leave it blank."
+      );
+      state.team.league = command.league.trim();
+      break;
+    case "team.alerts_updated": {
+      const settings = command.substitutionAlerts;
+      requireThat3(
+        settings && typeof settings === "object" && Object.keys(settings).length === 3 && typeof settings.enabled === "boolean" && Number.isInteger(settings.leadSeconds) && settings.leadSeconds >= 0 && settings.leadSeconds <= 300 && Number.isFinite(settings.volume) && settings.volume >= 0 && settings.volume <= 1,
+        "Use substitution alert lead time from zero to 300 seconds and volume from zero to 100%."
+      );
+      state.substitutionAlerts = {
+        enabled: settings.enabled,
+        leadSeconds: settings.leadSeconds,
+        volume: settings.volume
+      };
+      break;
+    }
+    case "roster.proforma_imported": {
+      requireThat3(
+        command.confirmChanges === true,
+        "Review and confirm all new and updated player rows."
+      );
+      const imported = validateRosterProformaImport(state, command.profiles);
+      const ids = new Set(imported.map((profile) => profile.id));
+      state.profiles = [
+        ...state.profiles.filter((profile) => !ids.has(profile.id)),
+        ...imported
+      ];
+      break;
+    }
     case "team.updated":
       validateLogo(command.logo);
       validateFormat(command.defaultPitchPlaces);
@@ -62482,778 +61903,6 @@ function createDemoCompletedMatches() {
   });
 }
 
-// packages/application/src/invitation-credentials.ts
-var validTime2 = (value) => Number.isSafeInteger(value) && value >= 0;
-function publicInvitation(invite, nowMs) {
-  if (!validTime2(nowMs))
-    throw new Error("A valid invitation observation is required.");
-  const legacy = !invite.credential || invite.credential.kind === "legacy_retired";
-  const state = invite.revokedAtMs !== null ? "revoked" : invite.acceptedBy !== null ? "accepted" : legacy ? "requires_reissue" : invite.expiresAtMs <= nowMs ? "expired" : "pending";
-  return {
-    id: invite.id,
-    teamId: invite.teamId,
-    seasonId: invite.seasonId,
-    inviterAccountId: invite.inviterAccountId,
-    createdAtMs: invite.createdAtMs,
-    expiresAtMs: invite.expiresAtMs,
-    acceptedBy: invite.acceptedBy,
-    acceptedAtMs: invite.acceptedAtMs,
-    revokedAtMs: invite.revokedAtMs,
-    reissuedFromInvitationId: invite.reissuedFromInvitationId ?? null,
-    state,
-    requiresReissue: !invite.credential ? invite.acceptedBy === null && invite.revokedAtMs === null : invite.credential.kind === "legacy_retired" && invite.credential.requiresReissue
-  };
-}
-
-// packages/application/src/community.ts
-var CommunityError = class extends Error {
-  constructor(code2, message) {
-    super(message);
-    this.code = code2;
-    this.name = "CommunityError";
-  }
-  code;
-};
-function requireRule(condition, code2, message) {
-  if (!condition) throw new CommunityError(code2, message);
-}
-function validTime3(value) {
-  return Number.isSafeInteger(value) && value >= 0;
-}
-function unique2(values) {
-  return new Set(values).size === values.length;
-}
-function account(state, actor) {
-  const found = state.accounts.find((item) => item.id === actor.accountId);
-  requireRule(found, "forbidden", "The account is not recognised.");
-  return found;
-}
-function communityCanAccess(state, actor, nowMs) {
-  const person = state.accounts.find((item) => item.id === actor.accountId);
-  if (!person) return false;
-  if (actor.role === "spectator") return state.grants.some((grant) => grant.accountId === actor.accountId && grant.teamId === actor.teamId && grant.seasonId === actor.seasonId && grant.revokedAtMs === null && grant.startsAtMs <= nowMs && nowMs < grant.expiresAtMs);
-  if (actor.role === "manager" && (person.classification !== "adult_individual" || !person.adultVerified)) return false;
-  const memberships = state.memberships.filter((member) => member.active && member.accountId === actor.accountId && member.teamId === actor.teamId && member.seasonId === actor.seasonId && member.role === actor.role);
-  if (actor.role === "player") return memberships.length === 1 && memberships[0].playerId === actor.playerId;
-  return memberships.length > 0;
-}
-function assertAccess(state, actor, nowMs) {
-  requireRule(communityCanAccess(state, actor, nowMs), "forbidden", "Team access is unavailable or the season grant has expired. Other account memberships remain intact.");
-}
-function assertManager(state, actor, nowMs) {
-  assertAccess(state, actor, nowMs);
-  requireRule(actor.role === "manager", "forbidden", "Only an assigned verified adult manager can do this.");
-}
-function scopedMatch(state, actor, id2) {
-  const match = state.matches.find((item) => item.id === id2);
-  requireRule(match && match.teamId === actor.teamId && match.seasonId === actor.seasonId, "forbidden", "That match is outside this team and season.");
-  return match;
-}
-function scopedPhoto(state, actor, id2) {
-  const photo = state.photos.find((item) => item.id === id2);
-  requireRule(photo && photo.teamId === actor.teamId && photo.seasonId === actor.seasonId, "forbidden", "That photo is outside this team and season.");
-  return photo;
-}
-function currentPhoto(photo, version2) {
-  if (version2 !== void 0) requireRule(version2 === photo.currentRevision, "conflict", "This photo changed. Review its current revision before continuing.");
-  requireRule(photo.removedAtMs === null, "closed", "This photo has been removed.");
-  const revision = photo.revisions.find((item) => item.version === photo.currentRevision);
-  requireRule(revision, "invalid", "The photo revision is missing.");
-  return revision;
-}
-function labelForPlayer(state, playerId) {
-  const membership = state.memberships.find((item) => item.playerId === playerId);
-  return state.accounts.find((item) => item.id === membership?.accountId)?.label ?? "Player";
-}
-function labelForAccount(state, accountId) {
-  return state.accounts.find((item) => item.id === accountId)?.label ?? "Team member";
-}
-function sharedAllowed(state, actor, match) {
-  return actor.role === "manager" || state.synthetic && match.sharing === "fictional_review_only";
-}
-function eligibleVoter(match, playerId) {
-  return Boolean(playerId && match.selectedPlayerIds.includes(playerId) && match.presentPlayerIds.includes(playerId));
-}
-function latestBallots(state, matchId) {
-  const latest2 = /* @__PURE__ */ new Map();
-  for (const ballot of state.ballots) if (ballot.matchId === matchId) {
-    const previous = latest2.get(ballot.voterPlayerId);
-    if (!previous || ballot.revision > previous.revision) latest2.set(ballot.voterPlayerId, ballot);
-  }
-  return [...latest2.values()];
-}
-function sealAward(state, match, nowMs) {
-  requireRule(match.voteCutoffAtMs !== null && match.finalisationDeadlineAtMs !== null, "invalid", "The award timing evidence is missing.");
-  const counts = /* @__PURE__ */ new Map();
-  for (const ballot of latestBallots(state, match.id)) if ((ballot.receivedAtMs < match.voteCutoffAtMs || match.cutoffSource === "manager_early_close" && ballot.receivedAtMs === match.voteCutoffAtMs) && eligibleVoter(match, ballot.voterPlayerId) && ballot.voterPlayerId !== ballot.candidatePlayerId && match.playedPlayerIds.includes(ballot.candidatePlayerId)) {
-    counts.set(ballot.candidatePlayerId, (counts.get(ballot.candidatePlayerId) ?? 0) + 1);
-  }
-  const highest = Math.max(0, ...counts.values());
-  const winners = [...counts].filter(([, count]) => count === highest).map(([id2]) => id2).sort();
-  state.awards.push({
-    matchId: match.id,
-    winnerPlayerIds: winners,
-    result: highest === 0 ? "no_valid_votes" : "winners",
-    voteCutoffAtMs: match.voteCutoffAtMs,
-    finalisationDeadlineAtMs: match.finalisationDeadlineAtMs,
-    finalisedAtMs: nowMs,
-    deadlineMissed: nowMs > match.finalisationDeadlineAtMs
-  });
-}
-function validateArt(art, caption) {
-  requireRule(["pitch", "ball", "cones"].includes(art), "invalid", "Choose a demo review illustration. Arbitrary URLs and raw image uploads are not supported here.");
-  requireRule(typeof caption === "string" && caption.trim().length <= 160, "invalid", "Keep the caption within 160 characters.");
-}
-function defaultCommunityPreferences() {
-  return { schedule: true, match: true, awards: true, photos: true, quietStart: null, quietEnd: null };
-}
-function applyCommunityCommand(state, actor, command, nowMs) {
-  requireRule(validTime3(nowMs), "invalid", "A valid receipt time is required.");
-  account(state, actor);
-  requireRule(command.id.trim(), "invalid", "A command identity is required.");
-  const fingerprint = JSON.stringify([actor, command]);
-  const prior = state.appliedCommands[command.id];
-  if (prior !== void 0) {
-    requireRule(prior === fingerprint, "conflict", "This command identity was already used for different content.");
-    return state;
-  }
-  requireRule(command.expectedRevision === void 0 || command.expectedRevision === state.revision, "conflict", "Community records changed. Reload the saved record before retrying.");
-  const next = JSON.parse(JSON.stringify(state));
-  const personal = ["preferences.changed", "privacy.drafted", "privacy.cancelled"].includes(command.type) || command.type === "uploader.hidden" && !command.hidden;
-  if (!personal && command.type !== "invite.accepted") assertAccess(next, actor, nowMs);
-  switch (command.type) {
-    case "invite.created": {
-      requireRule(next.synthetic === true, "forbidden", "Review codes are available only in the local demo journey.");
-      requireRule(actor.role !== "spectator", "forbidden", "Spectators cannot invite other spectators.");
-      const season = next.seasons.find((item) => item.id === actor.seasonId && item.teamId === actor.teamId);
-      requireRule(season, "invalid", "The team season is missing.");
-      requireRule(validTime3(command.expiresAtMs) && nowMs < command.expiresAtMs && command.expiresAtMs <= season.accessEndsAtMs, "invalid", "Choose an invitation expiry after now and before the season ends.");
-      requireRule(command.reviewCode.trim().length >= 6 && !next.invitations.some((item) => item.reviewCode === command.reviewCode || item.id === command.invitationId), "invalid", "The demo invitation identity/code must be unique.");
-      next.invitations.push({
-        id: command.invitationId,
-        teamId: actor.teamId,
-        seasonId: actor.seasonId,
-        inviterAccountId: actor.accountId,
-        reviewCode: command.reviewCode,
-        credential: { kind: "fictional_review", version: 1, code: command.reviewCode },
-        createdAtMs: nowMs,
-        expiresAtMs: command.expiresAtMs,
-        acceptedBy: null,
-        acceptedAtMs: null,
-        revokedAtMs: null,
-        reissuedFromInvitationId: null
-      });
-      break;
-    }
-    case "invite.accepted": {
-      requireRule(next.synthetic === true, "forbidden", "Review codes are available only in the local demo journey.");
-      const invite = next.invitations.find((item) => item.credential?.kind === "fictional_review" && item.credential.code === command.reviewCode && item.reviewCode === command.reviewCode);
-      requireRule(invite && invite.teamId === actor.teamId && invite.seasonId === actor.seasonId, "forbidden", "That invitation is not valid for this team and season.");
-      requireRule(invite.revokedAtMs === null && invite.acceptedBy === null, "closed", "That invitation has already been accepted or revoked.");
-      requireRule(nowMs < invite.expiresAtMs, "expired", "This invitation has expired. Ask for a new individual invitation.");
-      const season = next.seasons.find((item) => item.id === invite.seasonId && item.teamId === invite.teamId);
-      requireRule(season && nowMs < season.accessEndsAtMs, "expired", "The invited season has ended. Renewal is explicit.");
-      invite.acceptedBy = actor.accountId;
-      invite.acceptedAtMs = nowMs;
-      next.grants.push({
-        id: `grant:${invite.id}`,
-        invitationId: invite.id,
-        accountId: actor.accountId,
-        teamId: invite.teamId,
-        seasonId: invite.seasonId,
-        startsAtMs: nowMs,
-        expiresAtMs: season.accessEndsAtMs,
-        revokedAtMs: null
-      });
-      break;
-    }
-    case "invite.revoked": {
-      assertManager(next, actor, nowMs);
-      const invite = next.invitations.find((item) => item.id === command.invitationId && item.teamId === actor.teamId && item.seasonId === actor.seasonId);
-      requireRule(invite, "forbidden", "That invitation is outside this team and season.");
-      invite.revokedAtMs = nowMs;
-      for (const grant of next.grants) if (grant.invitationId === invite.id) grant.revokedAtMs = nowMs;
-      break;
-    }
-    case "grant.revoked": {
-      assertManager(next, actor, nowMs);
-      const grant = next.grants.find((item) => item.id === command.grantId && item.teamId === actor.teamId && item.seasonId === actor.seasonId);
-      requireRule(grant, "forbidden", "That grant is outside this team and season.");
-      grant.revokedAtMs = nowMs;
-      break;
-    }
-    case "match.registered": {
-      assertManager(next, actor, nowMs);
-      const match = command.match;
-      requireRule(match.teamId === actor.teamId && match.seasonId === actor.seasonId, "forbidden", "A match must belong to the active team and season.");
-      requireRule(!next.matches.some((item) => item.id === match.id), "conflict", "This match is already registered. A corrected finish requires an audited exception process and never reopens an award.");
-      requireRule(validTime3(match.playedAtMs) && unique2(match.selectedPlayerIds) && unique2(match.presentPlayerIds) && unique2(match.playedPlayerIds), "invalid", "The match evidence is invalid.");
-      requireRule(match.presentPlayerIds.every((id2) => match.selectedPlayerIds.includes(id2)) && match.playedPlayerIds.every((id2) => match.presentPlayerIds.includes(id2)), "invalid", "Played and present evidence must belong to the selected squad.");
-      requireRule(match.selectedPlayerIds.every((id2) => next.memberships.some((member) => member.playerId === id2 && member.teamId === actor.teamId && member.seasonId === actor.seasonId)), "invalid", "Every selected player needs a membership in this team and season.");
-      requireRule(match.actualFullTimeAtMs === null || validTime3(match.actualFullTimeAtMs) && match.actualFullTimeAtMs <= nowMs, "invalid", "Actual full time cannot be in the future.");
-      next.matches.push({
-        ...match,
-        voteCutoffAtMs: null,
-        cutoffSource: "unresolved",
-        finalisationDeadlineAtMs: match.actualFullTimeAtMs === null ? null : match.actualFullTimeAtMs + 36e5
-      });
-      break;
-    }
-    case "award.cutoffConfigured": {
-      assertManager(next, actor, nowMs);
-      const match = scopedMatch(next, actor, command.matchId);
-      requireRule(match.actualFullTimeAtMs !== null && match.finishQuality === "trusted", "policy_needed", "Trustworthy original full-time evidence is required first.");
-      requireRule(!next.awards.some((item) => item.matchId === match.id) && match.cutoffSource === "unresolved", "closed", "A configured/closed award cannot be reopened by changing its cutoff.");
-      requireRule(Number.isSafeInteger(command.minutesAfterFullTime) && command.minutesAfterFullTime > 0 && command.minutesAfterFullTime < 60, "invalid", "Choose an explicit demo cutoff from 1 to 59 minutes. This does not approve a production default.");
-      match.voteCutoffAtMs = match.actualFullTimeAtMs + command.minutesAfterFullTime * 6e4;
-      match.cutoffSource = "explicit_fictional_setting";
-      break;
-    }
-    case "ballot.cast": {
-      const match = scopedMatch(next, actor, command.matchId);
-      requireRule(actor.role === "player" && eligibleVoter(match, actor.playerId), "forbidden", "Only a present selected player may cast their own ballot. Parent use shares the same account and vote.");
-      requireRule(sharedAllowed(next, actor, match), "policy_needed", "This match award is not shared under the current competition policy.");
-      requireRule(match.finishQuality === "trusted", "policy_needed", "The finish/eligibility evidence requires review before voting.");
-      requireRule(!next.awards.some((item) => item.matchId === match.id), "closed", "Voting is closed.");
-      if (match.actualFullTimeAtMs !== null) {
-        requireRule(match.voteCutoffAtMs !== null, "policy_needed", "The automatic ballot cutoff is unresolved (Q15). A manager must set an explicit demo cutoff or close deliberately.");
-        requireRule(nowMs < match.voteCutoffAtMs && nowMs < match.finalisationDeadlineAtMs, "closed", "Voting is closed at its original cutoff, even if finalisation is delayed.");
-      }
-      requireRule(command.candidatePlayerId !== actor.playerId && match.playedPlayerIds.includes(command.candidatePlayerId), "invalid", "Choose a teammate who actually played. Self-votes are not permitted.");
-      const revisions = next.ballots.filter((item) => item.matchId === match.id && item.voterPlayerId === actor.playerId);
-      next.ballots.push({
-        id: command.id,
-        matchId: match.id,
-        voterAccountId: actor.accountId,
-        voterPlayerId: actor.playerId,
-        candidatePlayerId: command.candidatePlayerId,
-        receivedAtMs: nowMs,
-        revision: revisions.length + 1
-      });
-      break;
-    }
-    case "award.finalised": {
-      assertManager(next, actor, nowMs);
-      const match = scopedMatch(next, actor, command.matchId);
-      requireRule(match.actualFullTimeAtMs !== null && match.finalisationDeadlineAtMs !== null && nowMs >= match.actualFullTimeAtMs, "invalid", "A manager may close only after actual full time.");
-      requireRule(match.finishQuality === "trusted", "policy_needed", "Contradictory or uncertain finish/eligibility evidence blocks finalisation. Retain it for audited review.");
-      requireRule(!next.awards.some((item) => item.matchId === match.id), "closed", "This final award is already sealed. Report edits never reopen it.");
-      if (match.voteCutoffAtMs === null || nowMs < match.voteCutoffAtMs) {
-        match.voteCutoffAtMs = Math.min(nowMs, match.finalisationDeadlineAtMs);
-        match.cutoffSource = "manager_early_close";
-      }
-      sealAward(next, match, nowMs);
-      break;
-    }
-    case "photo.submitted": {
-      requireRule(actor.role !== "spectator", "forbidden", "Spectators cannot upload photos.");
-      const match = scopedMatch(next, actor, command.matchId);
-      requireRule(command.policyAcknowledged === true, "invalid", "Review the photo policy before submission.");
-      validateArt(command.art, command.caption);
-      requireRule(!next.photos.some((item) => item.id === command.photoId), "conflict", "That photo identity is already in use.");
-      next.photos.push({
-        id: command.photoId,
-        matchId: match.id,
-        teamId: match.teamId,
-        seasonId: match.seasonId,
-        uploaderAccountId: actor.accountId,
-        uploaderRole: actor.role,
-        currentRevision: 1,
-        publishedRevision: null,
-        removedAtMs: null,
-        revisions: [{
-          version: 1,
-          art: command.art,
-          caption: command.caption.trim(),
-          status: actor.role === "player" ? "pending" : "draft",
-          createdAtMs: nowMs,
-          reviewedAtMs: null,
-          reviewerAccountId: null,
-          rejectionReason: null,
-          processing: "synthetic_derivative_ready"
-        }]
-      });
-      break;
-    }
-    case "photo.revised": {
-      const photo = scopedPhoto(next, actor, command.photoId);
-      currentPhoto(photo, command.sourceRevision);
-      requireRule(photo.uploaderAccountId === actor.accountId && actor.role === photo.uploaderRole, "forbidden", "Only the uploader may revise their submission.");
-      requireRule(command.policyAcknowledged === true, "invalid", "Review the photo policy before resubmission.");
-      validateArt(command.art, command.caption);
-      photo.currentRevision += 1;
-      photo.revisions.push({
-        version: photo.currentRevision,
-        art: command.art,
-        caption: command.caption.trim(),
-        status: actor.role === "player" ? "pending" : "draft",
-        createdAtMs: nowMs,
-        reviewedAtMs: null,
-        reviewerAccountId: null,
-        rejectionReason: null,
-        processing: "synthetic_derivative_ready"
-      });
-      break;
-    }
-    case "photo.reviewed": {
-      assertManager(next, actor, nowMs);
-      const photo = scopedPhoto(next, actor, command.photoId);
-      const revision = currentPhoto(photo, command.sourceRevision);
-      requireRule(photo.uploaderRole === "player" && revision.status === "pending", "invalid", "Only a current pending player submission enters this review queue.");
-      requireRule(photo.uploaderAccountId !== actor.accountId, "forbidden", "A conflicted reviewer cannot approve their own submission.");
-      requireRule(command.decision !== "reject" || Boolean(command.reason?.trim()), "invalid", "Give a private reason for rejection.");
-      revision.status = command.decision === "approve" ? "published" : "rejected";
-      revision.reviewedAtMs = nowMs;
-      revision.reviewerAccountId = actor.accountId;
-      revision.rejectionReason = command.decision === "reject" ? command.reason.trim().slice(0, 240) : null;
-      if (command.decision === "approve") photo.publishedRevision = revision.version;
-      break;
-    }
-    case "photo.published": {
-      assertManager(next, actor, nowMs);
-      const photo = scopedPhoto(next, actor, command.photoId);
-      const revision = currentPhoto(photo, command.sourceRevision);
-      requireRule(photo.uploaderAccountId === actor.accountId && photo.uploaderRole === "manager" && revision.status === "draft", "forbidden", "Managers explicitly publish their own current draft; player photos need review.");
-      requireRule(command.policyAcknowledged === true, "invalid", "Review the exact photo and content policy before Publish.");
-      revision.status = "published";
-      revision.reviewedAtMs = nowMs;
-      revision.reviewerAccountId = actor.accountId;
-      photo.publishedRevision = revision.version;
-      break;
-    }
-    case "photo.withdrawn": {
-      const photo = scopedPhoto(next, actor, command.photoId);
-      const revision = currentPhoto(photo, command.sourceRevision);
-      requireRule(photo.uploaderAccountId === actor.accountId, "forbidden", "Only the uploader can withdraw a submission.");
-      requireRule(revision.status === "pending" || revision.status === "draft", "closed", "Only an unpublished submission can be withdrawn.");
-      revision.status = "withdrawn";
-      break;
-    }
-    case "photo.removed": {
-      assertManager(next, actor, nowMs);
-      const photo = scopedPhoto(next, actor, command.photoId);
-      currentPhoto(photo);
-      photo.removedAtMs = nowMs;
-      photo.publishedRevision = null;
-      break;
-    }
-    case "concern.submitted": {
-      requireRule(!next.concerns.some((item) => item.id === command.concernId), "conflict", "That concern reference is already used.");
-      let uploaderAccountId;
-      let photoRevision = null;
-      if (command.targetType === "photo") {
-        const photo = scopedPhoto(next, actor, command.targetId);
-        const decision = authorizeCommunityMedia(next, actor, photo.id, nowMs);
-        requireRule(decision.allowed, "forbidden", "Only a photo you may view can be reported here.");
-        photoRevision = decision.revision.version;
-        uploaderAccountId = photo.uploaderAccountId;
-      } else {
-        requireRule(next.photos.some((photo) => photo.uploaderAccountId === command.targetId && authorizeCommunityMedia(next, actor, photo.id, nowMs).allowed), "forbidden", "Report an uploader through a photo you may view.");
-        uploaderAccountId = command.targetId;
-      }
-      requireRule(command.explanation.length <= 500, "invalid", "Keep the explanation under 500 characters and avoid unnecessary personal details.");
-      next.concerns.push({
-        id: command.concernId,
-        teamId: actor.teamId,
-        seasonId: actor.seasonId,
-        reporterAccountId: actor.accountId,
-        targetType: command.targetType,
-        targetId: command.targetId,
-        photoRevision,
-        uploaderAccountId,
-        category: command.category,
-        explanation: command.explanation.trim(),
-        status: next.memberships.some((item) => item.accountId === uploaderAccountId && item.role === "manager" && item.active && item.teamId === actor.teamId) ? "escalation_required" : "submitted",
-        createdAtMs: nowMs
-      });
-      break;
-    }
-    case "concern.updated": {
-      assertManager(next, actor, nowMs);
-      const concern = next.concerns.find((item) => item.id === command.concernId && item.teamId === actor.teamId && item.seasonId === actor.seasonId);
-      requireRule(concern && concern.uploaderAccountId !== actor.accountId && concern.status !== "escalation_required", "forbidden", "A conflicted manager cannot review this concern. Operator escalation is required.");
-      concern.status = command.status;
-      break;
-    }
-    case "uploader.hidden": {
-      requireRule(command.uploaderAccountId !== actor.accountId && next.accounts.some((item) => item.id === command.uploaderAccountId), "invalid", "Choose a different uploader.");
-      const alreadyHidden = next.hiddenUploaders.some((item) => item.accountId === actor.accountId && item.uploaderAccountId === command.uploaderAccountId);
-      requireRule(alreadyHidden || command.hidden && next.photos.some((photo) => photo.uploaderAccountId === command.uploaderAccountId && authorizeCommunityMedia(next, actor, photo.id, nowMs).allowed), "forbidden", "Choose an uploader through a published photo you may view.");
-      next.hiddenUploaders = next.hiddenUploaders.filter((item) => !(item.accountId === actor.accountId && item.uploaderAccountId === command.uploaderAccountId));
-      if (command.hidden) next.hiddenUploaders.push({ accountId: actor.accountId, uploaderAccountId: command.uploaderAccountId });
-      break;
-    }
-    case "preferences.changed": {
-      const preferences = command.preferences;
-      requireRule(["schedule", "match", "awards", "photos"].every((key) => typeof preferences[key] === "boolean"), "invalid", "Notification choices must be on or off.");
-      const time3 = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
-      requireRule(preferences.quietStart === null && preferences.quietEnd === null || typeof preferences.quietStart === "string" && typeof preferences.quietEnd === "string" && time3.test(preferences.quietStart) && time3.test(preferences.quietEnd), "invalid", "Use HH:MM for both quiet-hour boundaries, or leave both empty.");
-      requireRule(preferences.quietStart === null || preferences.quietStart !== preferences.quietEnd, "invalid", "Quiet hours need distinct boundaries; use channel switches to pause all day.");
-      next.preferences[actor.accountId] = { ...preferences };
-      break;
-    }
-    case "privacy.drafted": {
-      requireRule(!next.privacyRequests.some((item) => item.id === command.requestId), "conflict", "That request reference is already used.");
-      next.privacyRequests.push({
-        id: command.requestId,
-        accountId: actor.accountId,
-        type: command.requestType,
-        status: "verification_needed",
-        createdAtMs: nowMs,
-        delivery: "local_draft"
-      });
-      break;
-    }
-    case "privacy.cancelled": {
-      const request = next.privacyRequests.find((item) => item.id === command.requestId && item.accountId === actor.accountId);
-      requireRule(request, "forbidden", "That request belongs to another account.");
-      requireRule(request.status === "verification_needed", "closed", "That draft is already cancelled.");
-      request.status = "cancelled";
-      break;
-    }
-    default: {
-      const exhaustive = command;
-      throw new CommunityError("invalid", `Unsupported community action: ${String(exhaustive.type)}`);
-    }
-  }
-  next.revision += 1;
-  next.appliedCommands[command.id] = fingerprint;
-  next.audit.push({ id: command.id, actorAccountId: actor.accountId, action: command.type, atMs: nowMs, origin: "account" });
-  return next;
-}
-function finalizeDueCommunityAwards(state, nowMs) {
-  requireRule(validTime3(nowMs), "invalid", "A valid worker receipt time is required.");
-  const due = state.matches.filter((match) => match.finishQuality === "trusted" && match.actualFullTimeAtMs !== null && match.voteCutoffAtMs !== null && match.cutoffSource !== "unresolved" && nowMs >= match.voteCutoffAtMs && !state.awards.some((award) => award.matchId === match.id));
-  if (due.length === 0) return state;
-  const next = JSON.parse(JSON.stringify(state));
-  for (const source2 of due) {
-    const match = next.matches.find((item) => item.id === source2.id);
-    sealAward(next, match, nowMs);
-    next.audit.push({
-      id: `worker:award-finalise:${match.id}:${match.voteCutoffAtMs}`,
-      actorAccountId: null,
-      action: "award.finalised",
-      atMs: nowMs,
-      origin: "award_worker"
-    });
-  }
-  next.revision += 1;
-  return next;
-}
-function authorizeCommunityMedia(state, actor, photoId, nowMs, mode = "gallery", requestedRevision) {
-  if (!communityCanAccess(state, actor, nowMs)) return { allowed: false, reason: "Access unavailable or expired" };
-  const photo = state.photos.find((item) => item.id === photoId && item.teamId === actor.teamId && item.seasonId === actor.seasonId);
-  if (!photo || photo.removedAtMs !== null) return { allowed: false, reason: "Photo unavailable" };
-  const match = state.matches.find((item) => item.id === photo.matchId);
-  if (!match) return { allowed: false, reason: "Photo context unavailable" };
-  const number = mode === "gallery" ? photo.publishedRevision : photo.currentRevision;
-  if (number === null || requestedRevision !== void 0 && number !== requestedRevision) return { allowed: false, reason: "Photo revision is not available to this audience" };
-  const revision = photo.revisions.find((item) => item.version === number);
-  if (!revision) return { allowed: false, reason: "Photo revision unavailable" };
-  if (mode === "gallery") {
-    if (revision.status !== "published" || !sharedAllowed(state, actor, match)) return { allowed: false, reason: "Publication policy does not permit this photo" };
-    if (state.hiddenUploaders.some((item) => item.accountId === actor.accountId && item.uploaderAccountId === photo.uploaderAccountId)) return { allowed: false, reason: "Uploader hidden for this gallery" };
-  } else if (mode === "own") {
-    if (photo.uploaderAccountId !== actor.accountId || !["pending", "draft", "published"].includes(revision.status)) return { allowed: false, reason: "This submission is private" };
-  } else if (actor.role !== "manager" || photo.uploaderRole !== "player" || revision.status !== "pending") return { allowed: false, reason: "Review permission required" };
-  return { allowed: true, revision: { ...revision }, photo: { id: photo.id, matchId: photo.matchId, uploaderAccountId: photo.uploaderAccountId }, cacheControl: "private, no-store" };
-}
-function getCommunityView(state, actor, nowMs) {
-  const allowed = communityCanAccess(state, actor, nowMs);
-  const season = state.seasons.find((item) => item.id === actor.seasonId && item.teamId === actor.teamId);
-  const person = account(state, actor);
-  const scoped = (items) => items.filter((item) => item.teamId === actor.teamId && item.seasonId === actor.seasonId);
-  const gallery = allowed ? scoped(state.photos).flatMap((photo) => {
-    const decision = authorizeCommunityMedia(state, actor, photo.id, nowMs);
-    if (!decision.allowed) return [];
-    const match = state.matches.find((item) => item.id === photo.matchId);
-    return [{
-      id: photo.id,
-      matchId: photo.matchId,
-      matchLabel: match.label,
-      playedAtMs: match.playedAtMs,
-      uploaderAccountId: photo.uploaderAccountId,
-      uploaderLabel: labelForAccount(state, photo.uploaderAccountId),
-      version: decision.revision.version,
-      art: decision.revision.art,
-      caption: decision.revision.caption
-    }];
-  }).sort((a, b) => b.playedAtMs - a.playedAtMs || a.id.localeCompare(b.id)) : [];
-  return {
-    allowed,
-    accessMessage: allowed ? null : "Team access has expired or is unavailable. Ask for a new invitation; unrelated account memberships are unchanged.",
-    teamLabel: season?.teamLabel ?? "Team",
-    seasonLabel: season?.label ?? "Season",
-    accountLabel: person.label,
-    memberships: state.memberships.filter((item) => item.accountId === actor.accountId).map((item) => ({ ...item })),
-    preferences: { ...state.preferences[actor.accountId] ?? defaultCommunityPreferences() },
-    invitations: allowed && actor.role !== "spectator" ? scoped(state.invitations).filter((item) => actor.role === "manager" || item.inviterAccountId === actor.accountId).map((item) => ({ ...publicInvitation(item, nowMs), reviewCode: item.credential?.kind === "fictional_review" && state.synthetic === true ? item.credential.code : void 0 })) : [],
-    grants: allowed && actor.role === "manager" ? scoped(state.grants).map((item) => ({ ...item, accountLabel: labelForAccount(state, item.accountId) })) : [],
-    matches: allowed ? scoped(state.matches).map((match) => {
-      const share = sharedAllowed(state, actor, match);
-      const award = state.awards.find((item) => item.matchId === match.id);
-      const own = actor.role === "player" ? latestBallots(state, match.id).find((item) => item.voterAccountId === actor.accountId && item.voterPlayerId === actor.playerId) : null;
-      const mayVote = share && actor.role === "player" && eligibleVoter(match, actor.playerId) && match.finishQuality === "trusted" && !award && (match.actualFullTimeAtMs === null || match.voteCutoffAtMs !== null && nowMs < match.voteCutoffAtMs && nowMs < match.finalisationDeadlineAtMs);
-      return {
-        id: match.id,
-        label: share ? match.label : "Match context withheld by competition policy",
-        playedAtMs: share ? match.playedAtMs : null,
-        sharingAllowed: share,
-        fullTimeAtMs: share ? match.actualFullTimeAtMs : null,
-        finishQuality: match.finishQuality,
-        cutoffAtMs: share ? match.voteCutoffAtMs : null,
-        cutoffSource: match.cutoffSource,
-        deadlineAtMs: share ? match.finalisationDeadlineAtMs : null,
-        mayVote,
-        ownChoice: own?.candidatePlayerId ?? null,
-        candidates: mayVote ? match.playedPlayerIds.filter((id2) => id2 !== actor.playerId).map((id2) => ({ id: id2, label: labelForPlayer(state, id2) })) : [],
-        award: share && award ? { ...award, winnerLabels: award.winnerPlayerIds.map((id2) => labelForPlayer(state, id2)) } : null
-      };
-    }) : [],
-    gallery,
-    submissions: allowed && actor.role !== "spectator" ? scoped(state.photos).filter((item) => item.uploaderAccountId === actor.accountId).map((photo) => {
-      const revision = photo.revisions.find((item) => item.version === photo.currentRevision);
-      return {
-        id: photo.id,
-        matchId: photo.matchId,
-        version: photo.currentRevision,
-        status: photo.removedAtMs !== null ? "removed" : revision.status,
-        art: photo.removedAtMs !== null || ["rejected", "withdrawn"].includes(revision.status) ? null : revision.art,
-        caption: revision.caption,
-        rejectionReason: revision.rejectionReason,
-        previousPublishedVersion: photo.publishedRevision !== photo.currentRevision ? photo.publishedRevision : null
-      };
-    }) : [],
-    reviewQueue: allowed && actor.role === "manager" ? scoped(state.photos).flatMap((photo) => {
-      const decision = authorizeCommunityMedia(state, actor, photo.id, nowMs, "review");
-      return decision.allowed ? [{
-        id: photo.id,
-        version: decision.revision.version,
-        art: decision.revision.art,
-        caption: decision.revision.caption,
-        uploaderLabel: labelForAccount(state, photo.uploaderAccountId)
-      }] : [];
-    }) : [],
-    ownConcerns: state.concerns.filter((item) => item.reporterAccountId === actor.accountId).map((item) => ({ id: item.id, status: item.status, targetType: item.targetType, createdAtMs: item.createdAtMs })),
-    reviewConcerns: allowed && actor.role === "manager" ? scoped(state.concerns).filter((item) => item.uploaderAccountId !== actor.accountId && item.status !== "escalation_required").map((item) => ({ id: item.id, targetType: item.targetType, targetId: item.targetId, category: item.category, explanation: item.explanation, status: item.status })) : [],
-    hiddenUploaders: state.hiddenUploaders.filter((item) => item.accountId === actor.accountId).map((item) => ({ id: item.uploaderAccountId, label: labelForAccount(state, item.uploaderAccountId) })),
-    privacyRequests: state.privacyRequests.filter((item) => item.accountId === actor.accountId).map((item) => ({ ...item }))
-  };
-}
-function createCommunityState(nowMs = Date.now(), options = {}) {
-  const teamId = "synthetic-roma-u10";
-  const seasonId = "synthetic-season-2026-27";
-  const playerIds = Array.from({ length: 13 }, (_, index) => `synthetic-player-${String(index + 1).padStart(2, "0")}`);
-  const accounts = [
-    { id: "synthetic-account-manager", label: demoAccountLabels["synthetic-account-manager"], classification: "adult_individual", adultVerified: true },
-    ...playerIds.map((id2, index) => ({ id: `synthetic-account-player-${String(index + 1).padStart(2, "0")}`, label: romaFixture.players[index].displayName, classification: "child_shared", adultVerified: false })),
-    { id: "synthetic-account-spectator", label: demoAccountLabels["synthetic-account-spectator"], classification: "spectator", adultVerified: false },
-    { id: "synthetic-account-invitee", label: demoAccountLabels["synthetic-account-invitee"], classification: "spectator", adultVerified: false }
-  ];
-  const memberships = [
-    { accountId: accounts[0].id, teamId, seasonId, role: "manager", active: true },
-    ...playerIds.map((playerId, index) => ({ accountId: accounts[index + 1].id, playerId, teamId, seasonId, role: "player", active: true }))
-  ];
-  const fullTime = Math.max(0, nowMs - 6e5);
-  const match = {
-    id: "synthetic-community-willow",
-    teamId,
-    seasonId,
-    label: "Roma v Willow FC \xB7 Practice match",
-    playedAtMs: Math.max(0, fullTime - 36e5),
-    selectedPlayerIds: playerIds.slice(0, 9),
-    presentPlayerIds: playerIds.slice(0, 9),
-    playedPlayerIds: playerIds.slice(0, 9),
-    actualFullTimeAtMs: fullTime,
-    finishQuality: "trusted",
-    voteCutoffAtMs: null,
-    cutoffSource: "unresolved",
-    finalisationDeadlineAtMs: fullTime + 36e5,
-    sharing: "fictional_review_only",
-    policyVersion: 1
-  };
-  let state = {
-    schemaVersion: 1,
-    synthetic: true,
-    revision: 0,
-    accounts,
-    memberships,
-    seasons: [{ id: seasonId, teamId, label: "2026/27", teamLabel: "Roma U10", accessEndsAtMs: Date.parse("2027-08-31T23:00:00Z") }],
-    invitations: [],
-    grants: [{
-      id: "synthetic-demo-grant",
-      invitationId: "synthetic-seeded-invitation",
-      accountId: "synthetic-account-spectator",
-      teamId,
-      seasonId,
-      startsAtMs: Math.max(0, nowMs - 864e5),
-      expiresAtMs: Date.parse("2027-08-31T23:00:00Z"),
-      revokedAtMs: null
-    }],
-    matches: [match],
-    ballots: [],
-    awards: [],
-    photos: [],
-    concerns: [],
-    hiddenUploaders: [],
-    preferences: {},
-    privacyRequests: [],
-    audit: [],
-    appliedCommands: {}
-  };
-  state.photos.push({
-    id: "synthetic-published-pitch",
-    matchId: match.id,
-    teamId,
-    seasonId,
-    uploaderAccountId: "synthetic-account-manager",
-    uploaderRole: "manager",
-    currentRevision: 1,
-    publishedRevision: 1,
-    removedAtMs: null,
-    revisions: [{
-      version: 1,
-      art: "pitch",
-      caption: "Matchday at Rovers Sports Ground \xB7 illustration",
-      status: "published",
-      createdAtMs: fullTime,
-      reviewedAtMs: fullTime,
-      reviewerAccountId: "synthetic-account-manager",
-      rejectionReason: null,
-      processing: "synthetic_derivative_ready"
-    }]
-  });
-  state.photos.push({
-    id: "synthetic-pending-ball",
-    matchId: match.id,
-    teamId,
-    seasonId,
-    uploaderAccountId: "synthetic-account-player-01",
-    uploaderRole: "player",
-    currentRevision: 1,
-    publishedRevision: null,
-    removedAtMs: null,
-    revisions: [{
-      version: 1,
-      art: "ball",
-      caption: "Saturday football \xB7 illustration awaiting review",
-      status: "pending",
-      createdAtMs: fullTime,
-      reviewedAtMs: null,
-      reviewerAccountId: null,
-      rejectionReason: null,
-      processing: "synthetic_derivative_ready"
-    }]
-  });
-  if (options.demoScenario) {
-    state.matches = createDemoCompletedMatches().map((completed) => ({
-      id: completed.config.matchId,
-      teamId,
-      seasonId,
-      label: `Roma ${completed.config.fixture.homeAway === "home" ? "v" : "at"} ${completed.config.fixture.opponent}`,
-      playedAtMs: Date.parse(`${completed.config.fixture.playedDate}T${completed.config.fixture.kickoff}:00+01:00`),
-      selectedPlayerIds: [...completed.config.selectedPlayerIds],
-      presentPlayerIds: [...completed.config.selectedPlayerIds],
-      playedPlayerIds: [...completed.config.selectedPlayerIds],
-      actualFullTimeAtMs: completed.completedAtMs,
-      // Explicitly generated timing evidence for this isolated demo only.
-      finishQuality: "trusted",
-      voteCutoffAtMs: completed.completedAtMs + 45 * 6e4,
-      cutoffSource: "explicit_fictional_setting",
-      finalisationDeadlineAtMs: completed.completedAtMs + 60 * 6e4,
-      sharing: "fictional_review_only",
-      policyVersion: 1
-    })).sort((left, right) => right.playedAtMs - left.playedAtMs);
-    const latest2 = state.matches[0];
-    state.photos = state.photos.map((photo) => ({
-      ...photo,
-      matchId: latest2.id,
-      revisions: photo.revisions.map((revision) => ({
-        ...revision,
-        createdAtMs: latest2.actualFullTimeAtMs + 5 * 6e4,
-        reviewedAtMs: revision.reviewedAtMs === null ? null : latest2.actualFullTimeAtMs + 10 * 6e4
-      }))
-    }));
-    for (const completed of [...state.matches].sort((left, right) => left.playedAtMs - right.playedAtMs)) {
-      for (const playerId of completed.selectedPlayerIds) {
-        const suffix = playerId.slice(-2), candidatePlayerId = playerId === completed.selectedPlayerIds[1] ? completed.selectedPlayerIds[2] : completed.selectedPlayerIds[1];
-        state = applyCommunityCommand(
-          state,
-          { role: "player", accountId: `synthetic-account-player-${suffix}`, playerId, teamId, seasonId },
-          { id: `${completed.id}-demo-vote-${suffix}`, type: "ballot.cast", matchId: completed.id, candidatePlayerId },
-          completed.actualFullTimeAtMs + 10 * 6e4
-        );
-      }
-      state = finalizeDueCommunityAwards(state, completed.voteCutoffAtMs + 6e4);
-    }
-  }
-  return state;
-}
-function communityObjectShape(value, fields4) {
-  if (value === null || typeof value !== "object" || Array.isArray(value)) return false;
-  const object5 = value;
-  return Object.keys(object5).every((key) => Object.hasOwn(fields4, key)) && Object.entries(fields4).every(([key, rule]) => Object.hasOwn(object5, key) ? rule.accepts(object5[key]) : Boolean(rule.optional));
-}
-var communityText = (maximum, nonempty = true) => ({ accepts: (value) => typeof value === "string" && value.length <= maximum && (!nonempty || value.trim().length > 0) });
-var communityInteger = (minimum = 0) => ({ accepts: (value) => typeof value === "number" && Number.isSafeInteger(value) && value >= minimum });
-var communityEnum = (...values) => ({ accepts: (value) => typeof value === "string" && values.includes(value) });
-var communityTrue = { accepts: (value) => value === true };
-var communityBoolean = { accepts: (value) => typeof value === "boolean" };
-var communityNullable = (rule) => ({ accepts: (value) => value === null || rule.accepts(value) });
-var communityOptional = (rule) => ({ ...rule, optional: true });
-var communityId = communityText(200);
-var communityIds = { accepts: (value) => Array.isArray(value) && value.length <= 1e3 && value.every((item) => communityId.accepts(item)) };
-var communityMatchRule = { accepts: (value) => communityObjectShape(value, {
-  id: communityId,
-  teamId: communityId,
-  seasonId: communityId,
-  label: communityText(200),
-  playedAtMs: communityInteger(),
-  selectedPlayerIds: communityIds,
-  presentPlayerIds: communityIds,
-  playedPlayerIds: communityIds,
-  actualFullTimeAtMs: communityNullable(communityInteger()),
-  finishQuality: communityEnum("trusted", "review_required", "conflicted"),
-  sharing: communityEnum("manager_only", "fictional_review_only"),
-  policyVersion: communityInteger(1)
-}) };
-var communityPreferencesRule = { accepts: (value) => communityObjectShape(value, {
-  schedule: communityBoolean,
-  match: communityBoolean,
-  awards: communityBoolean,
-  photos: communityBoolean,
-  quietStart: communityNullable(communityText(5)),
-  quietEnd: communityNullable(communityText(5))
-}) };
-var communityCommandFields = {
-  "invite.created": { invitationId: communityId, reviewCode: communityText(128), expiresAtMs: communityInteger() },
-  "invite.accepted": { reviewCode: communityText(128) },
-  "invite.revoked": { invitationId: communityId },
-  "grant.revoked": { grantId: communityId },
-  "match.registered": { match: communityMatchRule },
-  "award.cutoffConfigured": { matchId: communityId, minutesAfterFullTime: communityInteger(1) },
-  "ballot.cast": { matchId: communityId, candidatePlayerId: communityId },
-  "award.finalised": { matchId: communityId },
-  "photo.submitted": { photoId: communityId, matchId: communityId, art: communityEnum("pitch", "ball", "cones"), caption: communityText(160, false), policyAcknowledged: communityTrue },
-  "photo.revised": { photoId: communityId, sourceRevision: communityInteger(1), art: communityEnum("pitch", "ball", "cones"), caption: communityText(160, false), policyAcknowledged: communityTrue },
-  "photo.reviewed": { photoId: communityId, sourceRevision: communityInteger(1), decision: communityEnum("approve", "reject"), reason: communityOptional(communityText(240)) },
-  "photo.published": { photoId: communityId, sourceRevision: communityInteger(1), policyAcknowledged: communityTrue },
-  "photo.withdrawn": { photoId: communityId, sourceRevision: communityInteger(1) },
-  "photo.removed": { photoId: communityId },
-  "concern.submitted": {
-    concernId: communityId,
-    targetType: communityEnum("photo", "uploader"),
-    targetId: communityId,
-    category: communityEnum("privacy", "inappropriate", "other"),
-    explanation: communityText(500, false)
-  },
-  "concern.updated": { concernId: communityId, status: communityEnum("under_review", "resolved") },
-  "uploader.hidden": { uploaderAccountId: communityId, hidden: communityBoolean },
-  "preferences.changed": { preferences: communityPreferencesRule },
-  "privacy.drafted": { requestId: communityId, requestType: communityEnum("export", "delete_global_account") },
-  "privacy.cancelled": { requestId: communityId }
-};
-
 // packages/application/src/records.ts
 function clone2(value) {
   return JSON.parse(JSON.stringify(value));
@@ -63794,6 +62443,1509 @@ function selectMatchReport(state, matchId, viewer, currentMatch = null) {
   };
 }
 
+// packages/application/src/invitation-credentials.ts
+var validTime2 = (value) => Number.isSafeInteger(value) && value >= 0;
+function publicInvitation(invite, nowMs) {
+  if (!validTime2(nowMs))
+    throw new Error("A valid invitation observation is required.");
+  const legacy = !invite.credential || invite.credential.kind === "legacy_retired";
+  const state = invite.revokedAtMs !== null ? "revoked" : invite.acceptedBy !== null ? "accepted" : legacy ? "requires_reissue" : invite.expiresAtMs <= nowMs ? "expired" : "pending";
+  return {
+    id: invite.id,
+    teamId: invite.teamId,
+    seasonId: invite.seasonId,
+    inviterAccountId: invite.inviterAccountId,
+    createdAtMs: invite.createdAtMs,
+    expiresAtMs: invite.expiresAtMs,
+    acceptedBy: invite.acceptedBy,
+    acceptedAtMs: invite.acceptedAtMs,
+    revokedAtMs: invite.revokedAtMs,
+    reissuedFromInvitationId: invite.reissuedFromInvitationId ?? null,
+    state,
+    requiresReissue: !invite.credential ? invite.acceptedBy === null && invite.revokedAtMs === null : invite.credential.kind === "legacy_retired" && invite.credential.requiresReissue
+  };
+}
+
+// packages/application/src/community.ts
+var CommunityError = class extends Error {
+  constructor(code2, message) {
+    super(message);
+    this.code = code2;
+    this.name = "CommunityError";
+  }
+  code;
+};
+function requireRule(condition, code2, message) {
+  if (!condition) throw new CommunityError(code2, message);
+}
+function validTime3(value) {
+  return Number.isSafeInteger(value) && value >= 0;
+}
+function unique2(values) {
+  return new Set(values).size === values.length;
+}
+function account(state, actor) {
+  const found = state.accounts.find((item) => item.id === actor.accountId);
+  requireRule(found, "forbidden", "The account is not recognised.");
+  return found;
+}
+function communityCanAccess(state, actor, nowMs) {
+  const person = state.accounts.find((item) => item.id === actor.accountId);
+  if (!person) return false;
+  if (actor.role === "spectator") return state.grants.some((grant) => grant.accountId === actor.accountId && grant.teamId === actor.teamId && grant.seasonId === actor.seasonId && grant.revokedAtMs === null && grant.startsAtMs <= nowMs && nowMs < grant.expiresAtMs);
+  if (actor.role === "manager" && (person.classification !== "adult_individual" || !person.adultVerified)) return false;
+  const memberships = state.memberships.filter((member) => member.active && member.accountId === actor.accountId && member.teamId === actor.teamId && member.seasonId === actor.seasonId && member.role === actor.role);
+  if (actor.role === "player") return memberships.length === 1 && memberships[0].playerId === actor.playerId;
+  return memberships.length > 0;
+}
+function assertAccess(state, actor, nowMs) {
+  requireRule(communityCanAccess(state, actor, nowMs), "forbidden", "Team access is unavailable or the season grant has expired. Other account memberships remain intact.");
+}
+function assertManager(state, actor, nowMs) {
+  assertAccess(state, actor, nowMs);
+  requireRule(actor.role === "manager", "forbidden", "Only an assigned verified adult manager can do this.");
+}
+function scopedMatch(state, actor, id2) {
+  const match = state.matches.find((item) => item.id === id2);
+  requireRule(match && match.teamId === actor.teamId && match.seasonId === actor.seasonId, "forbidden", "That match is outside this team and season.");
+  return match;
+}
+function scopedPhoto(state, actor, id2) {
+  const photo = state.photos.find((item) => item.id === id2);
+  requireRule(photo && photo.teamId === actor.teamId && photo.seasonId === actor.seasonId, "forbidden", "That photo is outside this team and season.");
+  return photo;
+}
+function currentPhoto(photo, version2) {
+  if (version2 !== void 0) requireRule(version2 === photo.currentRevision, "conflict", "This photo changed. Review its current revision before continuing.");
+  requireRule(photo.removedAtMs === null, "closed", "This photo has been removed.");
+  const revision = photo.revisions.find((item) => item.version === photo.currentRevision);
+  requireRule(revision, "invalid", "The photo revision is missing.");
+  return revision;
+}
+function labelForPlayer(state, playerId) {
+  const membership = state.memberships.find((item) => item.playerId === playerId);
+  return state.accounts.find((item) => item.id === membership?.accountId)?.label ?? "Player";
+}
+function labelForAccount(state, accountId) {
+  return state.accounts.find((item) => item.id === accountId)?.label ?? "Team member";
+}
+function sharedAllowed(state, actor, match) {
+  return actor.role === "manager" || state.synthetic && match.sharing === "fictional_review_only";
+}
+function eligibleVoter(match, playerId) {
+  return Boolean(playerId && match.selectedPlayerIds.includes(playerId) && match.presentPlayerIds.includes(playerId));
+}
+function latestBallots(state, matchId) {
+  const latest2 = /* @__PURE__ */ new Map();
+  for (const ballot of state.ballots) if (ballot.matchId === matchId) {
+    const previous = latest2.get(ballot.voterPlayerId);
+    if (!previous || ballot.revision > previous.revision) latest2.set(ballot.voterPlayerId, ballot);
+  }
+  return [...latest2.values()];
+}
+function sealAward(state, match, nowMs) {
+  requireRule(match.voteCutoffAtMs !== null && match.finalisationDeadlineAtMs !== null, "invalid", "The award timing evidence is missing.");
+  const counts = /* @__PURE__ */ new Map();
+  for (const ballot of latestBallots(state, match.id)) if ((ballot.receivedAtMs < match.voteCutoffAtMs || match.cutoffSource === "manager_early_close" && ballot.receivedAtMs === match.voteCutoffAtMs) && eligibleVoter(match, ballot.voterPlayerId) && ballot.voterPlayerId !== ballot.candidatePlayerId && match.playedPlayerIds.includes(ballot.candidatePlayerId)) {
+    counts.set(ballot.candidatePlayerId, (counts.get(ballot.candidatePlayerId) ?? 0) + 1);
+  }
+  const highest = Math.max(0, ...counts.values());
+  const winners = [...counts].filter(([, count]) => count === highest).map(([id2]) => id2).sort();
+  state.awards.push({
+    matchId: match.id,
+    winnerPlayerIds: winners,
+    result: highest === 0 ? "no_valid_votes" : "winners",
+    voteCutoffAtMs: match.voteCutoffAtMs,
+    finalisationDeadlineAtMs: match.finalisationDeadlineAtMs,
+    finalisedAtMs: nowMs,
+    deadlineMissed: nowMs > match.finalisationDeadlineAtMs
+  });
+}
+function validateArt(art, caption) {
+  requireRule(["pitch", "ball", "cones"].includes(art), "invalid", "Choose a demo review illustration. Arbitrary URLs and raw image uploads are not supported here.");
+  requireRule(typeof caption === "string" && caption.trim().length <= 160, "invalid", "Keep the caption within 160 characters.");
+}
+function defaultCommunityPreferences() {
+  return { schedule: true, match: true, awards: true, photos: true, quietStart: null, quietEnd: null };
+}
+function applyCommunityCommand(state, actor, command, nowMs) {
+  requireRule(validTime3(nowMs), "invalid", "A valid receipt time is required.");
+  account(state, actor);
+  requireRule(command.id.trim(), "invalid", "A command identity is required.");
+  const fingerprint = JSON.stringify([actor, command]);
+  const prior = state.appliedCommands[command.id];
+  if (prior !== void 0) {
+    requireRule(prior === fingerprint, "conflict", "This command identity was already used for different content.");
+    return state;
+  }
+  requireRule(command.expectedRevision === void 0 || command.expectedRevision === state.revision, "conflict", "Community records changed. Reload the saved record before retrying.");
+  const next = JSON.parse(JSON.stringify(state));
+  const personal = ["preferences.changed", "privacy.drafted", "privacy.cancelled"].includes(command.type) || command.type === "uploader.hidden" && !command.hidden;
+  if (!personal && command.type !== "invite.accepted") assertAccess(next, actor, nowMs);
+  switch (command.type) {
+    case "invite.created": {
+      requireRule(next.synthetic === true, "forbidden", "Review codes are available only in the local demo journey.");
+      requireRule(actor.role !== "spectator", "forbidden", "Spectators cannot invite other spectators.");
+      const season = next.seasons.find((item) => item.id === actor.seasonId && item.teamId === actor.teamId);
+      requireRule(season, "invalid", "The team season is missing.");
+      requireRule(validTime3(command.expiresAtMs) && nowMs < command.expiresAtMs && command.expiresAtMs <= season.accessEndsAtMs, "invalid", "Choose an invitation expiry after now and before the season ends.");
+      requireRule(command.reviewCode.trim().length >= 6 && !next.invitations.some((item) => item.reviewCode === command.reviewCode || item.id === command.invitationId), "invalid", "The demo invitation identity/code must be unique.");
+      next.invitations.push({
+        id: command.invitationId,
+        teamId: actor.teamId,
+        seasonId: actor.seasonId,
+        inviterAccountId: actor.accountId,
+        reviewCode: command.reviewCode,
+        credential: { kind: "fictional_review", version: 1, code: command.reviewCode },
+        createdAtMs: nowMs,
+        expiresAtMs: command.expiresAtMs,
+        acceptedBy: null,
+        acceptedAtMs: null,
+        revokedAtMs: null,
+        reissuedFromInvitationId: null
+      });
+      break;
+    }
+    case "invite.accepted": {
+      requireRule(next.synthetic === true, "forbidden", "Review codes are available only in the local demo journey.");
+      const invite = next.invitations.find((item) => item.credential?.kind === "fictional_review" && item.credential.code === command.reviewCode && item.reviewCode === command.reviewCode);
+      requireRule(invite && invite.teamId === actor.teamId && invite.seasonId === actor.seasonId, "forbidden", "That invitation is not valid for this team and season.");
+      requireRule(invite.revokedAtMs === null && invite.acceptedBy === null, "closed", "That invitation has already been accepted or revoked.");
+      requireRule(nowMs < invite.expiresAtMs, "expired", "This invitation has expired. Ask for a new individual invitation.");
+      const season = next.seasons.find((item) => item.id === invite.seasonId && item.teamId === invite.teamId);
+      requireRule(season && nowMs < season.accessEndsAtMs, "expired", "The invited season has ended. Renewal is explicit.");
+      invite.acceptedBy = actor.accountId;
+      invite.acceptedAtMs = nowMs;
+      next.grants.push({
+        id: `grant:${invite.id}`,
+        invitationId: invite.id,
+        accountId: actor.accountId,
+        teamId: invite.teamId,
+        seasonId: invite.seasonId,
+        startsAtMs: nowMs,
+        expiresAtMs: season.accessEndsAtMs,
+        revokedAtMs: null
+      });
+      break;
+    }
+    case "invite.revoked": {
+      assertManager(next, actor, nowMs);
+      const invite = next.invitations.find((item) => item.id === command.invitationId && item.teamId === actor.teamId && item.seasonId === actor.seasonId);
+      requireRule(invite, "forbidden", "That invitation is outside this team and season.");
+      invite.revokedAtMs = nowMs;
+      for (const grant of next.grants) if (grant.invitationId === invite.id) grant.revokedAtMs = nowMs;
+      break;
+    }
+    case "grant.revoked": {
+      assertManager(next, actor, nowMs);
+      const grant = next.grants.find((item) => item.id === command.grantId && item.teamId === actor.teamId && item.seasonId === actor.seasonId);
+      requireRule(grant, "forbidden", "That grant is outside this team and season.");
+      grant.revokedAtMs = nowMs;
+      break;
+    }
+    case "match.registered": {
+      assertManager(next, actor, nowMs);
+      const match = command.match;
+      requireRule(match.teamId === actor.teamId && match.seasonId === actor.seasonId, "forbidden", "A match must belong to the active team and season.");
+      requireRule(!next.matches.some((item) => item.id === match.id), "conflict", "This match is already registered. A corrected finish requires an audited exception process and never reopens an award.");
+      requireRule(validTime3(match.playedAtMs) && unique2(match.selectedPlayerIds) && unique2(match.presentPlayerIds) && unique2(match.playedPlayerIds), "invalid", "The match evidence is invalid.");
+      requireRule(match.presentPlayerIds.every((id2) => match.selectedPlayerIds.includes(id2)) && match.playedPlayerIds.every((id2) => match.presentPlayerIds.includes(id2)), "invalid", "Played and present evidence must belong to the selected squad.");
+      requireRule(match.selectedPlayerIds.every((id2) => next.memberships.some((member) => member.playerId === id2 && member.teamId === actor.teamId && member.seasonId === actor.seasonId)), "invalid", "Every selected player needs a membership in this team and season.");
+      requireRule(match.actualFullTimeAtMs === null || validTime3(match.actualFullTimeAtMs) && match.actualFullTimeAtMs <= nowMs, "invalid", "Actual full time cannot be in the future.");
+      next.matches.push({
+        ...match,
+        voteCutoffAtMs: null,
+        cutoffSource: "unresolved",
+        finalisationDeadlineAtMs: match.actualFullTimeAtMs === null ? null : match.actualFullTimeAtMs + 36e5
+      });
+      break;
+    }
+    case "award.cutoffConfigured": {
+      assertManager(next, actor, nowMs);
+      const match = scopedMatch(next, actor, command.matchId);
+      requireRule(match.actualFullTimeAtMs !== null && match.finishQuality === "trusted", "policy_needed", "Trustworthy original full-time evidence is required first.");
+      requireRule(!next.awards.some((item) => item.matchId === match.id) && match.cutoffSource === "unresolved", "closed", "A configured/closed award cannot be reopened by changing its cutoff.");
+      requireRule(Number.isSafeInteger(command.minutesAfterFullTime) && command.minutesAfterFullTime > 0 && command.minutesAfterFullTime < 60, "invalid", "Choose an explicit demo cutoff from 1 to 59 minutes. This does not approve a production default.");
+      match.voteCutoffAtMs = match.actualFullTimeAtMs + command.minutesAfterFullTime * 6e4;
+      match.cutoffSource = "explicit_fictional_setting";
+      break;
+    }
+    case "ballot.cast": {
+      const match = scopedMatch(next, actor, command.matchId);
+      requireRule(actor.role === "player" && eligibleVoter(match, actor.playerId), "forbidden", "Only a present selected player may cast their own ballot. Parent use shares the same account and vote.");
+      requireRule(sharedAllowed(next, actor, match), "policy_needed", "This match award is not shared under the current competition policy.");
+      requireRule(match.finishQuality === "trusted", "policy_needed", "The finish/eligibility evidence requires review before voting.");
+      requireRule(!next.awards.some((item) => item.matchId === match.id), "closed", "Voting is closed.");
+      if (match.actualFullTimeAtMs !== null) {
+        requireRule(match.voteCutoffAtMs !== null, "policy_needed", "The automatic ballot cutoff is unresolved (Q15). A manager must set an explicit demo cutoff or close deliberately.");
+        requireRule(nowMs < match.voteCutoffAtMs && nowMs < match.finalisationDeadlineAtMs, "closed", "Voting is closed at its original cutoff, even if finalisation is delayed.");
+      }
+      requireRule(command.candidatePlayerId !== actor.playerId && match.playedPlayerIds.includes(command.candidatePlayerId), "invalid", "Choose a teammate who actually played. Self-votes are not permitted.");
+      const revisions = next.ballots.filter((item) => item.matchId === match.id && item.voterPlayerId === actor.playerId);
+      next.ballots.push({
+        id: command.id,
+        matchId: match.id,
+        voterAccountId: actor.accountId,
+        voterPlayerId: actor.playerId,
+        candidatePlayerId: command.candidatePlayerId,
+        receivedAtMs: nowMs,
+        revision: revisions.length + 1
+      });
+      break;
+    }
+    case "award.finalised": {
+      assertManager(next, actor, nowMs);
+      const match = scopedMatch(next, actor, command.matchId);
+      requireRule(match.actualFullTimeAtMs !== null && match.finalisationDeadlineAtMs !== null && nowMs >= match.actualFullTimeAtMs, "invalid", "A manager may close only after actual full time.");
+      requireRule(match.finishQuality === "trusted", "policy_needed", "Contradictory or uncertain finish/eligibility evidence blocks finalisation. Retain it for audited review.");
+      requireRule(!next.awards.some((item) => item.matchId === match.id), "closed", "This final award is already sealed. Report edits never reopen it.");
+      if (match.voteCutoffAtMs === null || nowMs < match.voteCutoffAtMs) {
+        match.voteCutoffAtMs = Math.min(nowMs, match.finalisationDeadlineAtMs);
+        match.cutoffSource = "manager_early_close";
+      }
+      sealAward(next, match, nowMs);
+      break;
+    }
+    case "photo.submitted": {
+      requireRule(actor.role !== "spectator", "forbidden", "Spectators cannot upload photos.");
+      const match = scopedMatch(next, actor, command.matchId);
+      requireRule(command.policyAcknowledged === true, "invalid", "Review the photo policy before submission.");
+      validateArt(command.art, command.caption);
+      requireRule(!next.photos.some((item) => item.id === command.photoId), "conflict", "That photo identity is already in use.");
+      next.photos.push({
+        id: command.photoId,
+        matchId: match.id,
+        teamId: match.teamId,
+        seasonId: match.seasonId,
+        uploaderAccountId: actor.accountId,
+        uploaderRole: actor.role,
+        currentRevision: 1,
+        publishedRevision: null,
+        removedAtMs: null,
+        revisions: [{
+          version: 1,
+          art: command.art,
+          caption: command.caption.trim(),
+          status: actor.role === "player" ? "pending" : "draft",
+          createdAtMs: nowMs,
+          reviewedAtMs: null,
+          reviewerAccountId: null,
+          rejectionReason: null,
+          processing: "synthetic_derivative_ready"
+        }]
+      });
+      break;
+    }
+    case "photo.revised": {
+      const photo = scopedPhoto(next, actor, command.photoId);
+      currentPhoto(photo, command.sourceRevision);
+      requireRule(photo.uploaderAccountId === actor.accountId && actor.role === photo.uploaderRole, "forbidden", "Only the uploader may revise their submission.");
+      requireRule(command.policyAcknowledged === true, "invalid", "Review the photo policy before resubmission.");
+      validateArt(command.art, command.caption);
+      photo.currentRevision += 1;
+      photo.revisions.push({
+        version: photo.currentRevision,
+        art: command.art,
+        caption: command.caption.trim(),
+        status: actor.role === "player" ? "pending" : "draft",
+        createdAtMs: nowMs,
+        reviewedAtMs: null,
+        reviewerAccountId: null,
+        rejectionReason: null,
+        processing: "synthetic_derivative_ready"
+      });
+      break;
+    }
+    case "photo.reviewed": {
+      assertManager(next, actor, nowMs);
+      const photo = scopedPhoto(next, actor, command.photoId);
+      const revision = currentPhoto(photo, command.sourceRevision);
+      requireRule(photo.uploaderRole === "player" && revision.status === "pending", "invalid", "Only a current pending player submission enters this review queue.");
+      requireRule(photo.uploaderAccountId !== actor.accountId, "forbidden", "A conflicted reviewer cannot approve their own submission.");
+      requireRule(command.decision !== "reject" || Boolean(command.reason?.trim()), "invalid", "Give a private reason for rejection.");
+      revision.status = command.decision === "approve" ? "published" : "rejected";
+      revision.reviewedAtMs = nowMs;
+      revision.reviewerAccountId = actor.accountId;
+      revision.rejectionReason = command.decision === "reject" ? command.reason.trim().slice(0, 240) : null;
+      if (command.decision === "approve") photo.publishedRevision = revision.version;
+      break;
+    }
+    case "photo.published": {
+      assertManager(next, actor, nowMs);
+      const photo = scopedPhoto(next, actor, command.photoId);
+      const revision = currentPhoto(photo, command.sourceRevision);
+      requireRule(photo.uploaderAccountId === actor.accountId && photo.uploaderRole === "manager" && revision.status === "draft", "forbidden", "Managers explicitly publish their own current draft; player photos need review.");
+      requireRule(command.policyAcknowledged === true, "invalid", "Review the exact photo and content policy before Publish.");
+      revision.status = "published";
+      revision.reviewedAtMs = nowMs;
+      revision.reviewerAccountId = actor.accountId;
+      photo.publishedRevision = revision.version;
+      break;
+    }
+    case "photo.withdrawn": {
+      const photo = scopedPhoto(next, actor, command.photoId);
+      const revision = currentPhoto(photo, command.sourceRevision);
+      requireRule(photo.uploaderAccountId === actor.accountId, "forbidden", "Only the uploader can withdraw a submission.");
+      requireRule(revision.status === "pending" || revision.status === "draft", "closed", "Only an unpublished submission can be withdrawn.");
+      revision.status = "withdrawn";
+      break;
+    }
+    case "photo.removed": {
+      assertManager(next, actor, nowMs);
+      const photo = scopedPhoto(next, actor, command.photoId);
+      currentPhoto(photo);
+      photo.removedAtMs = nowMs;
+      photo.publishedRevision = null;
+      break;
+    }
+    case "concern.submitted": {
+      requireRule(!next.concerns.some((item) => item.id === command.concernId), "conflict", "That concern reference is already used.");
+      let uploaderAccountId;
+      let photoRevision = null;
+      if (command.targetType === "photo") {
+        const photo = scopedPhoto(next, actor, command.targetId);
+        const decision = authorizeCommunityMedia(next, actor, photo.id, nowMs);
+        requireRule(decision.allowed, "forbidden", "Only a photo you may view can be reported here.");
+        photoRevision = decision.revision.version;
+        uploaderAccountId = photo.uploaderAccountId;
+      } else {
+        requireRule(next.photos.some((photo) => photo.uploaderAccountId === command.targetId && authorizeCommunityMedia(next, actor, photo.id, nowMs).allowed), "forbidden", "Report an uploader through a photo you may view.");
+        uploaderAccountId = command.targetId;
+      }
+      requireRule(command.explanation.length <= 500, "invalid", "Keep the explanation under 500 characters and avoid unnecessary personal details.");
+      next.concerns.push({
+        id: command.concernId,
+        teamId: actor.teamId,
+        seasonId: actor.seasonId,
+        reporterAccountId: actor.accountId,
+        targetType: command.targetType,
+        targetId: command.targetId,
+        photoRevision,
+        uploaderAccountId,
+        category: command.category,
+        explanation: command.explanation.trim(),
+        status: next.memberships.some((item) => item.accountId === uploaderAccountId && item.role === "manager" && item.active && item.teamId === actor.teamId) ? "escalation_required" : "submitted",
+        createdAtMs: nowMs
+      });
+      break;
+    }
+    case "concern.updated": {
+      assertManager(next, actor, nowMs);
+      const concern = next.concerns.find((item) => item.id === command.concernId && item.teamId === actor.teamId && item.seasonId === actor.seasonId);
+      requireRule(concern && concern.uploaderAccountId !== actor.accountId && concern.status !== "escalation_required", "forbidden", "A conflicted manager cannot review this concern. Operator escalation is required.");
+      concern.status = command.status;
+      break;
+    }
+    case "uploader.hidden": {
+      requireRule(command.uploaderAccountId !== actor.accountId && next.accounts.some((item) => item.id === command.uploaderAccountId), "invalid", "Choose a different uploader.");
+      const alreadyHidden = next.hiddenUploaders.some((item) => item.accountId === actor.accountId && item.uploaderAccountId === command.uploaderAccountId);
+      requireRule(alreadyHidden || command.hidden && next.photos.some((photo) => photo.uploaderAccountId === command.uploaderAccountId && authorizeCommunityMedia(next, actor, photo.id, nowMs).allowed), "forbidden", "Choose an uploader through a published photo you may view.");
+      next.hiddenUploaders = next.hiddenUploaders.filter((item) => !(item.accountId === actor.accountId && item.uploaderAccountId === command.uploaderAccountId));
+      if (command.hidden) next.hiddenUploaders.push({ accountId: actor.accountId, uploaderAccountId: command.uploaderAccountId });
+      break;
+    }
+    case "preferences.changed": {
+      const preferences = command.preferences;
+      requireRule(["schedule", "match", "awards", "photos"].every((key) => typeof preferences[key] === "boolean"), "invalid", "Notification choices must be on or off.");
+      const time3 = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
+      requireRule(preferences.quietStart === null && preferences.quietEnd === null || typeof preferences.quietStart === "string" && typeof preferences.quietEnd === "string" && time3.test(preferences.quietStart) && time3.test(preferences.quietEnd), "invalid", "Use HH:MM for both quiet-hour boundaries, or leave both empty.");
+      requireRule(preferences.quietStart === null || preferences.quietStart !== preferences.quietEnd, "invalid", "Quiet hours need distinct boundaries; use channel switches to pause all day.");
+      requireRule(preferences.followedPlayerId === void 0 || preferences.followedPlayerId === null || /^[A-Za-z0-9_-]{1,150}$/.test(preferences.followedPlayerId), "invalid", "Choose a current team player.");
+      next.preferences[actor.accountId] = { ...preferences };
+      break;
+    }
+    case "privacy.drafted": {
+      requireRule(!next.privacyRequests.some((item) => item.id === command.requestId), "conflict", "That request reference is already used.");
+      next.privacyRequests.push({
+        id: command.requestId,
+        accountId: actor.accountId,
+        type: command.requestType,
+        status: "verification_needed",
+        createdAtMs: nowMs,
+        delivery: "local_draft"
+      });
+      break;
+    }
+    case "privacy.cancelled": {
+      const request = next.privacyRequests.find((item) => item.id === command.requestId && item.accountId === actor.accountId);
+      requireRule(request, "forbidden", "That request belongs to another account.");
+      requireRule(request.status === "verification_needed", "closed", "That draft is already cancelled.");
+      request.status = "cancelled";
+      break;
+    }
+    default: {
+      const exhaustive = command;
+      throw new CommunityError("invalid", `Unsupported community action: ${String(exhaustive.type)}`);
+    }
+  }
+  next.revision += 1;
+  next.appliedCommands[command.id] = fingerprint;
+  next.audit.push({ id: command.id, actorAccountId: actor.accountId, action: command.type, atMs: nowMs, origin: "account" });
+  return next;
+}
+function finalizeDueCommunityAwards(state, nowMs) {
+  requireRule(validTime3(nowMs), "invalid", "A valid worker receipt time is required.");
+  const due = state.matches.filter((match) => match.finishQuality === "trusted" && match.actualFullTimeAtMs !== null && match.voteCutoffAtMs !== null && match.cutoffSource !== "unresolved" && nowMs >= match.voteCutoffAtMs && !state.awards.some((award) => award.matchId === match.id));
+  if (due.length === 0) return state;
+  const next = JSON.parse(JSON.stringify(state));
+  for (const source2 of due) {
+    const match = next.matches.find((item) => item.id === source2.id);
+    sealAward(next, match, nowMs);
+    next.audit.push({
+      id: `worker:award-finalise:${match.id}:${match.voteCutoffAtMs}`,
+      actorAccountId: null,
+      action: "award.finalised",
+      atMs: nowMs,
+      origin: "award_worker"
+    });
+  }
+  next.revision += 1;
+  return next;
+}
+function authorizeCommunityMedia(state, actor, photoId, nowMs, mode = "gallery", requestedRevision) {
+  if (!communityCanAccess(state, actor, nowMs)) return { allowed: false, reason: "Access unavailable or expired" };
+  const photo = state.photos.find((item) => item.id === photoId && item.teamId === actor.teamId && item.seasonId === actor.seasonId);
+  if (!photo || photo.removedAtMs !== null) return { allowed: false, reason: "Photo unavailable" };
+  const match = state.matches.find((item) => item.id === photo.matchId);
+  if (!match) return { allowed: false, reason: "Photo context unavailable" };
+  const number = mode === "gallery" ? photo.publishedRevision : photo.currentRevision;
+  if (number === null || requestedRevision !== void 0 && number !== requestedRevision) return { allowed: false, reason: "Photo revision is not available to this audience" };
+  const revision = photo.revisions.find((item) => item.version === number);
+  if (!revision) return { allowed: false, reason: "Photo revision unavailable" };
+  if (mode === "gallery") {
+    if (revision.status !== "published" || !sharedAllowed(state, actor, match)) return { allowed: false, reason: "Publication policy does not permit this photo" };
+    if (state.hiddenUploaders.some((item) => item.accountId === actor.accountId && item.uploaderAccountId === photo.uploaderAccountId)) return { allowed: false, reason: "Uploader hidden for this gallery" };
+  } else if (mode === "own") {
+    if (photo.uploaderAccountId !== actor.accountId || !["pending", "draft", "published"].includes(revision.status)) return { allowed: false, reason: "This submission is private" };
+  } else if (actor.role !== "manager" || photo.uploaderRole !== "player" || revision.status !== "pending") return { allowed: false, reason: "Review permission required" };
+  return { allowed: true, revision: { ...revision }, photo: { id: photo.id, matchId: photo.matchId, uploaderAccountId: photo.uploaderAccountId }, cacheControl: "private, no-store" };
+}
+function getCommunityView(state, actor, nowMs) {
+  const allowed = communityCanAccess(state, actor, nowMs);
+  const season = state.seasons.find((item) => item.id === actor.seasonId && item.teamId === actor.teamId);
+  const person = account(state, actor);
+  const scoped = (items) => items.filter((item) => item.teamId === actor.teamId && item.seasonId === actor.seasonId);
+  const gallery = allowed ? scoped(state.photos).flatMap((photo) => {
+    const decision = authorizeCommunityMedia(state, actor, photo.id, nowMs);
+    if (!decision.allowed) return [];
+    const match = state.matches.find((item) => item.id === photo.matchId);
+    return [{
+      id: photo.id,
+      matchId: photo.matchId,
+      matchLabel: match.label,
+      playedAtMs: match.playedAtMs,
+      uploaderAccountId: photo.uploaderAccountId,
+      uploaderLabel: labelForAccount(state, photo.uploaderAccountId),
+      version: decision.revision.version,
+      art: decision.revision.art,
+      caption: decision.revision.caption
+    }];
+  }).sort((a, b) => b.playedAtMs - a.playedAtMs || a.id.localeCompare(b.id)) : [];
+  return {
+    allowed,
+    accessMessage: allowed ? null : "Team access has expired or is unavailable. Ask for a new invitation; unrelated account memberships are unchanged.",
+    teamLabel: season?.teamLabel ?? "Team",
+    seasonLabel: season?.label ?? "Season",
+    accountLabel: person.label,
+    memberships: state.memberships.filter((item) => item.accountId === actor.accountId).map((item) => ({ ...item })),
+    preferences: { ...state.preferences[actor.accountId] ?? defaultCommunityPreferences() },
+    invitations: allowed ? scoped(state.invitations).filter((item) => actor.role === "manager" || item.inviterAccountId === actor.accountId).map((item) => ({ ...publicInvitation(item, nowMs), reviewCode: item.credential?.kind === "fictional_review" && state.synthetic === true ? item.credential.code : void 0 })) : [],
+    grants: allowed && actor.role === "manager" ? scoped(state.grants).map((item) => ({ ...item, accountLabel: labelForAccount(state, item.accountId) })) : [],
+    matches: allowed ? scoped(state.matches).map((match) => {
+      const share = sharedAllowed(state, actor, match);
+      const award = state.awards.find((item) => item.matchId === match.id);
+      const own = actor.role === "player" ? latestBallots(state, match.id).find((item) => item.voterAccountId === actor.accountId && item.voterPlayerId === actor.playerId) : null;
+      const mayVote = share && actor.role === "player" && eligibleVoter(match, actor.playerId) && match.finishQuality === "trusted" && !award && (match.actualFullTimeAtMs === null || match.voteCutoffAtMs !== null && nowMs < match.voteCutoffAtMs && nowMs < match.finalisationDeadlineAtMs);
+      return {
+        id: match.id,
+        label: share ? match.label : "Match context withheld by competition policy",
+        playedAtMs: share ? match.playedAtMs : null,
+        sharingAllowed: share,
+        fullTimeAtMs: share ? match.actualFullTimeAtMs : null,
+        finishQuality: match.finishQuality,
+        cutoffAtMs: share ? match.voteCutoffAtMs : null,
+        cutoffSource: match.cutoffSource,
+        deadlineAtMs: share ? match.finalisationDeadlineAtMs : null,
+        mayVote,
+        ownChoice: own?.candidatePlayerId ?? null,
+        candidates: mayVote ? match.playedPlayerIds.filter((id2) => id2 !== actor.playerId).map((id2) => ({ id: id2, label: labelForPlayer(state, id2) })) : [],
+        award: share && award ? { ...award, winnerLabels: award.winnerPlayerIds.map((id2) => labelForPlayer(state, id2)) } : null
+      };
+    }) : [],
+    gallery,
+    submissions: allowed && actor.role !== "spectator" ? scoped(state.photos).filter((item) => item.uploaderAccountId === actor.accountId).map((photo) => {
+      const revision = photo.revisions.find((item) => item.version === photo.currentRevision);
+      return {
+        id: photo.id,
+        matchId: photo.matchId,
+        version: photo.currentRevision,
+        status: photo.removedAtMs !== null ? "removed" : revision.status,
+        art: photo.removedAtMs !== null || ["rejected", "withdrawn"].includes(revision.status) ? null : revision.art,
+        caption: revision.caption,
+        rejectionReason: revision.rejectionReason,
+        previousPublishedVersion: photo.publishedRevision !== photo.currentRevision ? photo.publishedRevision : null
+      };
+    }) : [],
+    reviewQueue: allowed && actor.role === "manager" ? scoped(state.photos).flatMap((photo) => {
+      const decision = authorizeCommunityMedia(state, actor, photo.id, nowMs, "review");
+      return decision.allowed ? [{
+        id: photo.id,
+        version: decision.revision.version,
+        art: decision.revision.art,
+        caption: decision.revision.caption,
+        uploaderLabel: labelForAccount(state, photo.uploaderAccountId)
+      }] : [];
+    }) : [],
+    ownConcerns: state.concerns.filter((item) => item.reporterAccountId === actor.accountId).map((item) => ({ id: item.id, status: item.status, targetType: item.targetType, createdAtMs: item.createdAtMs })),
+    reviewConcerns: allowed && actor.role === "manager" ? scoped(state.concerns).filter((item) => item.uploaderAccountId !== actor.accountId && item.status !== "escalation_required").map((item) => ({ id: item.id, targetType: item.targetType, targetId: item.targetId, category: item.category, explanation: item.explanation, status: item.status })) : [],
+    hiddenUploaders: state.hiddenUploaders.filter((item) => item.accountId === actor.accountId).map((item) => ({ id: item.uploaderAccountId, label: labelForAccount(state, item.uploaderAccountId) })),
+    privacyRequests: state.privacyRequests.filter((item) => item.accountId === actor.accountId).map((item) => ({ ...item }))
+  };
+}
+function createCommunityState(nowMs = Date.now(), options = {}) {
+  const teamId = "synthetic-roma-u10";
+  const seasonId = "synthetic-season-2026-27";
+  const playerIds = Array.from({ length: 13 }, (_, index) => `synthetic-player-${String(index + 1).padStart(2, "0")}`);
+  const accounts = [
+    { id: "synthetic-account-manager", label: demoAccountLabels["synthetic-account-manager"], classification: "adult_individual", adultVerified: true },
+    ...playerIds.map((id2, index) => ({ id: `synthetic-account-player-${String(index + 1).padStart(2, "0")}`, label: romaFixture.players[index].displayName, classification: "child_shared", adultVerified: false })),
+    { id: "synthetic-account-spectator", label: demoAccountLabels["synthetic-account-spectator"], classification: "spectator", adultVerified: false },
+    { id: "synthetic-account-invitee", label: demoAccountLabels["synthetic-account-invitee"], classification: "spectator", adultVerified: false }
+  ];
+  const memberships = [
+    { accountId: accounts[0].id, teamId, seasonId, role: "manager", active: true },
+    ...playerIds.map((playerId, index) => ({ accountId: accounts[index + 1].id, playerId, teamId, seasonId, role: "player", active: true }))
+  ];
+  const fullTime = Math.max(0, nowMs - 6e5);
+  const match = {
+    id: "synthetic-community-willow",
+    teamId,
+    seasonId,
+    label: "Roma v Willow FC \xB7 Practice match",
+    playedAtMs: Math.max(0, fullTime - 36e5),
+    selectedPlayerIds: playerIds.slice(0, 9),
+    presentPlayerIds: playerIds.slice(0, 9),
+    playedPlayerIds: playerIds.slice(0, 9),
+    actualFullTimeAtMs: fullTime,
+    finishQuality: "trusted",
+    voteCutoffAtMs: null,
+    cutoffSource: "unresolved",
+    finalisationDeadlineAtMs: fullTime + 36e5,
+    sharing: "fictional_review_only",
+    policyVersion: 1
+  };
+  let state = {
+    schemaVersion: 1,
+    synthetic: true,
+    revision: 0,
+    accounts,
+    memberships,
+    seasons: [{ id: seasonId, teamId, label: "2026/27", teamLabel: "Roma U10", accessEndsAtMs: Date.parse("2027-08-31T23:00:00Z") }],
+    invitations: [],
+    grants: [{
+      id: "synthetic-demo-grant",
+      invitationId: "synthetic-seeded-invitation",
+      accountId: "synthetic-account-spectator",
+      teamId,
+      seasonId,
+      startsAtMs: Math.max(0, nowMs - 864e5),
+      expiresAtMs: Date.parse("2027-08-31T23:00:00Z"),
+      revokedAtMs: null
+    }],
+    matches: [match],
+    ballots: [],
+    awards: [],
+    photos: [],
+    concerns: [],
+    hiddenUploaders: [],
+    preferences: {},
+    privacyRequests: [],
+    audit: [],
+    appliedCommands: {}
+  };
+  state.photos.push({
+    id: "synthetic-published-pitch",
+    matchId: match.id,
+    teamId,
+    seasonId,
+    uploaderAccountId: "synthetic-account-manager",
+    uploaderRole: "manager",
+    currentRevision: 1,
+    publishedRevision: 1,
+    removedAtMs: null,
+    revisions: [{
+      version: 1,
+      art: "pitch",
+      caption: "Matchday at Rovers Sports Ground \xB7 illustration",
+      status: "published",
+      createdAtMs: fullTime,
+      reviewedAtMs: fullTime,
+      reviewerAccountId: "synthetic-account-manager",
+      rejectionReason: null,
+      processing: "synthetic_derivative_ready"
+    }]
+  });
+  state.photos.push({
+    id: "synthetic-pending-ball",
+    matchId: match.id,
+    teamId,
+    seasonId,
+    uploaderAccountId: "synthetic-account-player-01",
+    uploaderRole: "player",
+    currentRevision: 1,
+    publishedRevision: null,
+    removedAtMs: null,
+    revisions: [{
+      version: 1,
+      art: "ball",
+      caption: "Saturday football \xB7 illustration awaiting review",
+      status: "pending",
+      createdAtMs: fullTime,
+      reviewedAtMs: null,
+      reviewerAccountId: null,
+      rejectionReason: null,
+      processing: "synthetic_derivative_ready"
+    }]
+  });
+  if (options.demoScenario) {
+    state.matches = createDemoCompletedMatches().map((completed) => ({
+      id: completed.config.matchId,
+      teamId,
+      seasonId,
+      label: `Roma ${completed.config.fixture.homeAway === "home" ? "v" : "at"} ${completed.config.fixture.opponent}`,
+      playedAtMs: Date.parse(`${completed.config.fixture.playedDate}T${completed.config.fixture.kickoff}:00+01:00`),
+      selectedPlayerIds: [...completed.config.selectedPlayerIds],
+      presentPlayerIds: [...completed.config.selectedPlayerIds],
+      playedPlayerIds: [...completed.config.selectedPlayerIds],
+      actualFullTimeAtMs: completed.completedAtMs,
+      // Explicitly generated timing evidence for this isolated demo only.
+      finishQuality: "trusted",
+      voteCutoffAtMs: completed.completedAtMs + 45 * 6e4,
+      cutoffSource: "explicit_fictional_setting",
+      finalisationDeadlineAtMs: completed.completedAtMs + 60 * 6e4,
+      sharing: "fictional_review_only",
+      policyVersion: 1
+    })).sort((left, right) => right.playedAtMs - left.playedAtMs);
+    const latest2 = state.matches[0];
+    state.photos = state.photos.map((photo) => ({
+      ...photo,
+      matchId: latest2.id,
+      revisions: photo.revisions.map((revision) => ({
+        ...revision,
+        createdAtMs: latest2.actualFullTimeAtMs + 5 * 6e4,
+        reviewedAtMs: revision.reviewedAtMs === null ? null : latest2.actualFullTimeAtMs + 10 * 6e4
+      }))
+    }));
+    for (const completed of [...state.matches].sort((left, right) => left.playedAtMs - right.playedAtMs)) {
+      for (const playerId of completed.selectedPlayerIds) {
+        const suffix = playerId.slice(-2), candidatePlayerId = playerId === completed.selectedPlayerIds[1] ? completed.selectedPlayerIds[2] : completed.selectedPlayerIds[1];
+        state = applyCommunityCommand(
+          state,
+          { role: "player", accountId: `synthetic-account-player-${suffix}`, playerId, teamId, seasonId },
+          { id: `${completed.id}-demo-vote-${suffix}`, type: "ballot.cast", matchId: completed.id, candidatePlayerId },
+          completed.actualFullTimeAtMs + 10 * 6e4
+        );
+      }
+      state = finalizeDueCommunityAwards(state, completed.voteCutoffAtMs + 6e4);
+    }
+  }
+  return state;
+}
+function communityObjectShape(value, fields4) {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) return false;
+  const object5 = value;
+  return Object.keys(object5).every((key) => Object.hasOwn(fields4, key)) && Object.entries(fields4).every(([key, rule]) => Object.hasOwn(object5, key) ? rule.accepts(object5[key]) : Boolean(rule.optional));
+}
+var communityText = (maximum, nonempty = true) => ({ accepts: (value) => typeof value === "string" && value.length <= maximum && (!nonempty || value.trim().length > 0) });
+var communityInteger = (minimum = 0) => ({ accepts: (value) => typeof value === "number" && Number.isSafeInteger(value) && value >= minimum });
+var communityEnum = (...values) => ({ accepts: (value) => typeof value === "string" && values.includes(value) });
+var communityTrue = { accepts: (value) => value === true };
+var communityBoolean = { accepts: (value) => typeof value === "boolean" };
+var communityNullable = (rule) => ({ accepts: (value) => value === null || rule.accepts(value) });
+var communityOptional = (rule) => ({ ...rule, optional: true });
+var communityId = communityText(200);
+var communityIds = { accepts: (value) => Array.isArray(value) && value.length <= 1e3 && value.every((item) => communityId.accepts(item)) };
+var communityMatchRule = { accepts: (value) => communityObjectShape(value, {
+  id: communityId,
+  teamId: communityId,
+  seasonId: communityId,
+  label: communityText(200),
+  playedAtMs: communityInteger(),
+  selectedPlayerIds: communityIds,
+  presentPlayerIds: communityIds,
+  playedPlayerIds: communityIds,
+  actualFullTimeAtMs: communityNullable(communityInteger()),
+  finishQuality: communityEnum("trusted", "review_required", "conflicted"),
+  sharing: communityEnum("manager_only", "fictional_review_only"),
+  policyVersion: communityInteger(1)
+}) };
+var communityPreferencesRule = { accepts: (value) => communityObjectShape(value, {
+  schedule: communityBoolean,
+  match: communityBoolean,
+  awards: communityBoolean,
+  photos: communityBoolean,
+  quietStart: communityNullable(communityText(5)),
+  quietEnd: communityNullable(communityText(5)),
+  followedPlayerId: communityOptional(communityNullable(communityId))
+}) };
+var communityCommandFields = {
+  "invite.created": { invitationId: communityId, reviewCode: communityText(128), expiresAtMs: communityInteger() },
+  "invite.accepted": { reviewCode: communityText(128) },
+  "invite.revoked": { invitationId: communityId },
+  "grant.revoked": { grantId: communityId },
+  "match.registered": { match: communityMatchRule },
+  "award.cutoffConfigured": { matchId: communityId, minutesAfterFullTime: communityInteger(1) },
+  "ballot.cast": { matchId: communityId, candidatePlayerId: communityId },
+  "award.finalised": { matchId: communityId },
+  "photo.submitted": { photoId: communityId, matchId: communityId, art: communityEnum("pitch", "ball", "cones"), caption: communityText(160, false), policyAcknowledged: communityTrue },
+  "photo.revised": { photoId: communityId, sourceRevision: communityInteger(1), art: communityEnum("pitch", "ball", "cones"), caption: communityText(160, false), policyAcknowledged: communityTrue },
+  "photo.reviewed": { photoId: communityId, sourceRevision: communityInteger(1), decision: communityEnum("approve", "reject"), reason: communityOptional(communityText(240)) },
+  "photo.published": { photoId: communityId, sourceRevision: communityInteger(1), policyAcknowledged: communityTrue },
+  "photo.withdrawn": { photoId: communityId, sourceRevision: communityInteger(1) },
+  "photo.removed": { photoId: communityId },
+  "concern.submitted": {
+    concernId: communityId,
+    targetType: communityEnum("photo", "uploader"),
+    targetId: communityId,
+    category: communityEnum("privacy", "inappropriate", "other"),
+    explanation: communityText(500, false)
+  },
+  "concern.updated": { concernId: communityId, status: communityEnum("under_review", "resolved") },
+  "uploader.hidden": { uploaderAccountId: communityId, hidden: communityBoolean },
+  "preferences.changed": { preferences: communityPreferencesRule },
+  "privacy.drafted": { requestId: communityId, requestType: communityEnum("export", "delete_global_account") },
+  "privacy.cancelled": { requestId: communityId }
+};
+
+// apps/api/src/club-administration.ts
+var ADMINISTRATION_SQLITE_DDL = `
+CREATE TABLE IF NOT EXISTS administration_grants(account_id TEXT NOT NULL REFERENCES accounts(id),scope_key TEXT NOT NULL,level TEXT NOT NULL CHECK(level IN('super','club')),club_id TEXT,PRIMARY KEY(account_id,scope_key),CHECK((level='super' AND club_id IS NULL AND scope_key='*') OR (level='club' AND club_id=scope_key)));
+CREATE TABLE IF NOT EXISTS administrative_memberships(account_id TEXT NOT NULL,team_id TEXT NOT NULL,season_id TEXT NOT NULL,role TEXT NOT NULL,PRIMARY KEY(account_id,team_id,season_id,role),FOREIGN KEY(account_id,team_id,season_id,role) REFERENCES memberships(account_id,team_id,season_id,role) ON DELETE CASCADE);
+CREATE TABLE IF NOT EXISTS directory_clubs(id TEXT PRIMARY KEY,name TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS directory_teams(team_id TEXT PRIMARY KEY REFERENCES teams(id),club_id TEXT NOT NULL REFERENCES directory_clubs(id),age_group TEXT NOT NULL);
+`;
+function sqliteAdministration(source2, accountId) {
+  const grants = source2.database.prepare(
+    "SELECT level,club_id FROM administration_grants WHERE account_id=?"
+  ).all(accountId);
+  return !grants.length ? void 0 : {
+    level: grants.some((g) => g.level === "super") ? "super" : "club",
+    clubIds: grants.flatMap((g) => g.club_id ? [g.club_id] : [])
+  };
+}
+function syncSqliteAdministration(source2) {
+  const db = source2.database;
+  db.exec(
+    `DELETE FROM memberships WHERE EXISTS(SELECT 1 FROM administrative_memberships a WHERE a.account_id=memberships.account_id AND a.team_id=memberships.team_id AND a.season_id=memberships.season_id AND a.role=memberships.role);`
+  );
+  const desired = db.prepare(
+    `SELECT DISTINCT g.account_id,d.team_id,d.season_id,r.role FROM administration_grants g JOIN (SELECT DISTINCT team_id,season_id FROM documents) d JOIN directory_teams t ON t.team_id=d.team_id JOIN (SELECT 'administrator' role UNION ALL SELECT 'manager')r WHERE g.level='super' OR g.club_id=t.club_id`
+  ).all();
+  for (const row of desired) {
+    const result = db.prepare(
+      "INSERT INTO memberships(account_id,team_id,season_id,role) VALUES(?,?,?,?) ON CONFLICT(account_id,team_id,season_id,role) DO NOTHING"
+    ).run(row.account_id, row.team_id, row.season_id, row.role);
+    if (result.changes)
+      db.prepare(
+        "INSERT INTO administrative_memberships(account_id,team_id,season_id,role) VALUES(?,?,?,?)"
+      ).run(row.account_id, row.team_id, row.season_id, row.role);
+  }
+  db.exec(
+    `UPDATE controller_grants SET frozen=1 WHERE NOT EXISTS(SELECT 1 FROM memberships m WHERE m.account_id=controller_grants.account_id AND m.team_id=(SELECT team_id FROM matches WHERE id=controller_grants.match_id) AND m.season_id=(SELECT season_id FROM matches WHERE id=controller_grants.match_id) AND m.role='manager' AND m.revoked_at IS NULL AND (m.expires_at IS NULL OR m.expires_at>${source2.now()}));`
+  );
+}
+
+// packages/application/src/player-preparation.ts
+var time = (value) => typeof value === "string" && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value);
+var format = (value) => Number.isInteger(value) && Number(value) >= 5 && Number(value) <= 11;
+var half = (value) => Number.isSafeInteger(value) && Number(value) > 0 && Number(value) % 1e3 === 0;
+function projectOwnPlayerPreparation(state, profile, seasonId) {
+  const season = state.seasons.find((item) => item.id === seasonId);
+  if (!season || !profile.active || profile.seasonId !== seasonId || !state.profiles.some(
+    (item) => item.id === profile.id && item.playerId === profile.playerId && item.seasonId === seasonId && item.active
+  ))
+    throw new Error("The authorised own-player preparation is unavailable.");
+  return {
+    kind: "player-preparation",
+    revision: state.revision,
+    positionCatalogue: positionCatalogueFor(state),
+    team: {
+      id: state.team.id,
+      name: state.team.name,
+      ageGroup: state.team.ageGroup
+    },
+    season: {
+      id: season.id,
+      label: season.label,
+      startYear: season.startYear,
+      startDate: season.startDate,
+      endDate: season.endDate,
+      spectatorRenewalRequired: true
+    },
+    profile: {
+      id: profile.id,
+      playerId: profile.playerId,
+      seasonId: profile.seasonId,
+      displayName: profile.displayName,
+      initials: profile.initials,
+      shirtNumber: profile.shirtNumber,
+      ...profile.faPlayerId !== void 0 ? { faPlayerId: profile.faPlayerId } : {},
+      foot: profile.foot,
+      preferences: [...profile.preferences],
+      eligiblePositions: [...profile.eligiblePositions],
+      active: profile.active
+    },
+    fixtures: state.fixtures.filter((item) => item.seasonId === seasonId).map((item) => ({
+      id: item.id,
+      opponent: item.opponent,
+      playedDate: item.playedDate,
+      kickoff: time(item.kickoff) ? item.kickoff : null,
+      arrival: time(item.arrival) ? item.arrival : null,
+      venue: item.venue,
+      homeAway: item.homeAway,
+      status: item.status,
+      format: format(item.format) ? item.format : null,
+      plannedHalfDurationMs: half(item.plannedHalfDurationMs) ? item.plannedHalfDurationMs : null,
+      response: item.responses[profile.id] ?? "no_reply",
+      selected: item.selectedProfileIds.includes(profile.id),
+      attendance: item.attendance[profile.id] ?? "not_recorded"
+    })),
+    training: state.training.filter((item) => item.seasonId === seasonId).map((item) => ({
+      id: item.id,
+      date: item.date,
+      time: time(item.time) ? item.time : null,
+      venue: item.venue,
+      status: item.status,
+      expected: item.expectedProfileIds.includes(profile.id),
+      response: item.responses[profile.id] ?? "no_reply",
+      attendance: item.attendance[profile.id] ?? "not_recorded"
+    }))
+  };
+}
+
+// packages/application/src/uk-display.ts
+var UK_TIME_ZONE = "Europe/London";
+function londonDateKey(now) {
+  const parts = new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: UK_TIME_ZONE }).formatToParts(new Date(now));
+  const part = (kind) => parts.find((item) => item.type === kind).value;
+  return `${part("year")}-${part("month")}-${part("day")}`;
+}
+
+// packages/application/src/fixture-response-window.ts
+function canPlayerReplyToFixture(fixture, nowMs, context = {}) {
+  if (fixture.status !== "scheduled" || !Number.isSafeInteger(nowMs) || nowMs < 0 || !Number.isFinite(new Date(nowMs).getTime())) return false;
+  if (context.recordedStatus != null && context.recordedStatus !== "preparation") return false;
+  const date = fixture.playedDate;
+  if (typeof date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(date) || date.startsWith("0000-")) return false;
+  const parsed = /* @__PURE__ */ new Date(`${date}T00:00:00Z`);
+  if (!Number.isFinite(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== date) return false;
+  return date >= londonDateKey(nowMs);
+}
+
+// apps/api/src/match-pagination.ts
+import { createHash } from "node:crypto";
+import { Buffer as Buffer2 } from "node:buffer";
+var invalid = () => {
+  throw new AccessError("INVALID_PAGE", 400, "Use the original cursor for this account, team, season and selected role, with a page limit from 1 to 100.");
+};
+var validId = (value) => typeof value === "string" && value.length >= 1;
+function matchPageAudience(principal, memberships, teamId, seasonId, requestedRole, nowMs) {
+  const available2 = currentMemberships(principal, memberships, nowMs).filter((item) => item.teamId === teamId && item.seasonId === seasonId && ["manager", "player", "spectator"].includes(item.role));
+  const chosen = requestedRole ? available2.find((item) => item.role === requestedRole) : available2.find((item) => item.role === "manager") ?? available2.find((item) => item.role === "player") ?? available2[0];
+  if (!chosen) throw new AccessError("NOT_FOUND", 404, "The requested object is unavailable.");
+  if (chosen.role === "manager") assertAdultAuthority(principal, false, nowMs);
+  return chosen;
+}
+var binding = (scope) => createHash("sha256").update(JSON.stringify(["longball.matches.id-asc.v1", scope.principal.accountId, scope.principal.issuer, scope.principal.subject, scope.teamId, scope.seasonId, scope.role, scope.playerId, ...scope.status === "active" ? ["active"] : []])).digest("base64url");
+function matchPageCursor(scope, afterId) {
+  if (!validId(afterId)) invalid();
+  return Buffer2.from(JSON.stringify({ version: 1, binding: binding(scope), afterId })).toString("base64url");
+}
+function matchPagePosition(scope, query) {
+  if (!Number.isSafeInteger(query.limit) || query.limit < 1 || query.limit > 100) invalid();
+  if (query.status !== void 0 && query.status !== "active" || query.status !== scope.status) invalid();
+  if (query.cursor === null) return null;
+  try {
+    if (!/^[A-Za-z0-9_-]+$/.test(query.cursor)) invalid();
+    const bytes = Buffer2.from(query.cursor, "base64url");
+    if (bytes.toString("base64url") !== query.cursor) invalid();
+    const cursor = JSON.parse(bytes.toString("utf8"));
+    if (!cursor || typeof cursor !== "object" || Array.isArray(cursor) || Object.keys(cursor).sort().join(",") !== "afterId,binding,version" || cursor.version !== 1 || cursor.binding !== binding(scope) || !validId(cursor.afterId)) invalid();
+    return cursor.afterId;
+  } catch {
+    return invalid();
+  }
+}
+
+// apps/api/src/offline-bundle.ts
+import { randomUUID } from "node:crypto";
+
+// node_modules/.pnpm/@noble+hashes@2.4.0/node_modules/@noble/hashes/_u64.js
+var fromNumH = (n) => n / 2 ** 32 | 0;
+var fromNumL = (n) => n >>> 0;
+function setU64FromNum(view, byteOffset, n, isLE) {
+  const h = fromNumH(n);
+  const l = fromNumL(n);
+  view.setUint32(byteOffset, isLE ? l : h, isLE);
+  view.setUint32(byteOffset + 4, isLE ? h : l, isLE);
+}
+
+// node_modules/.pnpm/@noble+hashes@2.4.0/node_modules/@noble/hashes/utils.js
+function isBytes(a) {
+  return a instanceof Uint8Array || ArrayBuffer.isView(a) && a.constructor.name === "Uint8Array" && "BYTES_PER_ELEMENT" in a && a.BYTES_PER_ELEMENT === 1;
+}
+var atitle = (title) => title ? `"${title}" ` : "";
+function anumber(n, title = "") {
+  if (typeof n !== "number")
+    throw new TypeError(atitle(title) + "expected number, got " + typeof n);
+  if (!Number.isSafeInteger(n) || n < 0)
+    throw new RangeError(atitle(title) + "expected integer >= 0, got " + n);
+  return n;
+}
+function abytes(value, length, title = "") {
+  if (isBytes(value) && (length === void 0 || value.length === length))
+    return value;
+  if (length !== void 0)
+    anumber(length, "length");
+  const bytes = isBytes(value);
+  const ofLen = length !== void 0 ? ` of length ${length}` : "";
+  const got = bytes ? `length=${value.length}` : `type=${typeof value}`;
+  const message = atitle(title) + "expected Uint8Array" + ofLen + ", got " + got;
+  if (!bytes)
+    throw new TypeError(message);
+  throw new RangeError(message);
+}
+var aobject = (value, label2) => {
+  if (value === null || typeof value !== "object" || Array.isArray(value))
+    throw new TypeError((label2 === "object" ? "" : `"${label2}" `) + "expected object, got type=" + typeof value);
+};
+var aopts = (value, label2) => {
+  aobject(value, label2);
+  const proto = Object.getPrototypeOf(value);
+  if (proto !== Object.prototype && proto !== null)
+    throw new TypeError(`"${label2}" expected plain object`);
+  if (Object.hasOwn(value, "__proto__"))
+    throw new TypeError(`"${label2}.__proto__" is not allowed`);
+};
+function aexists(instance, checkFinished = true) {
+  if (instance.destroyed)
+    throw new Error("hash was destroyed");
+  if (checkFinished && instance.finished)
+    throw new Error("digest() was already called");
+}
+function aoutput(out, instance) {
+  abytes(out, void 0, "output");
+  const min = instance.outputLen;
+  if (!(out.length >= min)) {
+    throw new RangeError('"output" expected length >= ' + min);
+  }
+}
+function clean(...arrays) {
+  for (let i = 0; i < arrays.length; i++) {
+    arrays[i].fill(0);
+  }
+}
+function createView(arr) {
+  return new DataView(arr.buffer, arr.byteOffset, arr.byteLength);
+}
+function rotr(word, shift) {
+  return word << 32 - shift | word >>> shift;
+}
+function checkOpts(defaults, opts, title = "opts") {
+  aopts(defaults, "defaults");
+  if (opts !== void 0)
+    aopts(opts, title);
+  const merged = Object.assign(/* @__PURE__ */ Object.create(null), defaults, opts);
+  return merged;
+}
+function createHasher(hashCons, info = {}) {
+  if (typeof hashCons !== "function")
+    throw new TypeError('"hashCons" expected function, got type=' + typeof hashCons);
+  info = checkOpts({}, info, "info");
+  const hashC = (msg, opts) => hashCons(opts).update(msg).digest();
+  const tmp = hashCons(void 0);
+  hashC.outputLen = tmp.outputLen;
+  hashC.blockLen = tmp.blockLen;
+  hashC.canXOF = tmp.canXOF;
+  hashC.create = (opts) => hashCons(opts);
+  Object.assign(hashC, info);
+  return Object.freeze(hashC);
+}
+var oidNist = (suffix) => ({
+  // Current NIST hashAlgs suffixes used here fit in one DER subidentifier octet.
+  // Larger suffix values would need base-128 OID encoding and a different length byte.
+  oid: Uint8Array.from([6, 9, 96, 134, 72, 1, 101, 3, 4, 2, suffix])
+});
+
+// node_modules/.pnpm/@noble+hashes@2.4.0/node_modules/@noble/hashes/_md.js
+function Chi(a, b, c) {
+  return a & b ^ ~a & c;
+}
+function Maj(a, b, c) {
+  return a & b ^ a & c ^ b & c;
+}
+var HashMD = class {
+  blockLen;
+  outputLen;
+  canXOF = false;
+  padOffset;
+  isLE;
+  // For partial updates less than block size
+  buffer;
+  view;
+  finished = false;
+  length = 0;
+  pos = 0;
+  destroyed = false;
+  constructor(blockLen, outputLen, padOffset, isLE) {
+    this.blockLen = blockLen;
+    this.outputLen = outputLen;
+    this.padOffset = padOffset;
+    this.isLE = isLE;
+    this.buffer = new Uint8Array(blockLen);
+    this.view = createView(this.buffer);
+  }
+  update(data) {
+    aexists(this);
+    abytes(data);
+    const { view, buffer, blockLen } = this;
+    const len = data.length;
+    let processed = false;
+    for (let pos = 0; pos < len; ) {
+      const take = Math.min(blockLen - this.pos, len - pos);
+      if (take === blockLen) {
+        const dataView = createView(data);
+        for (; blockLen <= len - pos; pos += blockLen)
+          this.process(dataView, pos);
+        processed = true;
+        continue;
+      }
+      buffer.set(pos === 0 && take === len ? data : data.subarray(pos, pos + take), this.pos);
+      this.pos += take;
+      pos += take;
+      if (this.pos === blockLen) {
+        this.process(view, 0);
+        this.pos = 0;
+        processed = true;
+      }
+    }
+    this.length += data.length;
+    if (processed)
+      this.roundClean();
+    return this;
+  }
+  digestInto(out) {
+    aexists(this);
+    aoutput(out, this);
+    this.finished = true;
+    const { buffer, view, blockLen, isLE } = this;
+    let { pos } = this;
+    buffer[pos++] = 128;
+    buffer.fill(0, pos);
+    if (this.padOffset > blockLen - pos) {
+      this.process(view, 0);
+      buffer.fill(0);
+    }
+    setU64FromNum(view, blockLen - 8, this.length * 8, isLE);
+    this.process(view, 0);
+    this.roundClean();
+    const oview = out === buffer ? view : createView(out);
+    const len = this.outputLen;
+    const outLen = len / 4;
+    const state = this.get();
+    if (len % 4 || outLen > state.length)
+      throw new Error("invalid outputLen");
+    for (let i = 0; i < outLen; i++)
+      oview.setUint32(4 * i, state[i], isLE);
+  }
+  digest() {
+    const { buffer, outputLen } = this;
+    this.digestInto(buffer);
+    const res = buffer.slice(0, outputLen);
+    this.destroy();
+    return res;
+  }
+  _cloneIntoMeta(to) {
+    const { buffer, length, finished, destroyed, pos } = this;
+    to.destroyed = destroyed;
+    to.finished = finished;
+    to.length = length;
+    to.pos = pos;
+    if (pos)
+      to.buffer.set(buffer);
+    return to;
+  }
+  clone() {
+    return this._cloneInto();
+  }
+};
+var SHA256_IV = /* @__PURE__ */ Uint32Array.from([
+  1779033703,
+  3144134277,
+  1013904242,
+  2773480762,
+  1359893119,
+  2600822924,
+  528734635,
+  1541459225
+]);
+
+// node_modules/.pnpm/@noble+hashes@2.4.0/node_modules/@noble/hashes/sha2.js
+var SHA256_K = /* @__PURE__ */ Uint32Array.from([
+  1116352408,
+  1899447441,
+  3049323471,
+  3921009573,
+  961987163,
+  1508970993,
+  2453635748,
+  2870763221,
+  3624381080,
+  310598401,
+  607225278,
+  1426881987,
+  1925078388,
+  2162078206,
+  2614888103,
+  3248222580,
+  3835390401,
+  4022224774,
+  264347078,
+  604807628,
+  770255983,
+  1249150122,
+  1555081692,
+  1996064986,
+  2554220882,
+  2821834349,
+  2952996808,
+  3210313671,
+  3336571891,
+  3584528711,
+  113926993,
+  338241895,
+  666307205,
+  773529912,
+  1294757372,
+  1396182291,
+  1695183700,
+  1986661051,
+  2177026350,
+  2456956037,
+  2730485921,
+  2820302411,
+  3259730800,
+  3345764771,
+  3516065817,
+  3600352804,
+  4094571909,
+  275423344,
+  430227734,
+  506948616,
+  659060556,
+  883997877,
+  958139571,
+  1322822218,
+  1537002063,
+  1747873779,
+  1955562222,
+  2024104815,
+  2227730452,
+  2361852424,
+  2428436474,
+  2756734187,
+  3204031479,
+  3329325298
+]);
+var SHA256_W = /* @__PURE__ */ new Uint32Array(64);
+var SHA2_32B = class extends HashMD {
+  // We cannot use array here since array allows indexing by variable
+  // which means optimizer/compiler cannot use registers.
+  // Numeric initializers matter: starting the fields as `undefined` changes
+  // V8's field representation and makes sha256 3x slower (measured).
+  A = 0;
+  B = 0;
+  C = 0;
+  D = 0;
+  E = 0;
+  F = 0;
+  G = 0;
+  H = 0;
+  constructor(outputLen, IV) {
+    super(64, outputLen, 8, false);
+    this.A = IV[0] | 0;
+    this.B = IV[1] | 0;
+    this.C = IV[2] | 0;
+    this.D = IV[3] | 0;
+    this.E = IV[4] | 0;
+    this.F = IV[5] | 0;
+    this.G = IV[6] | 0;
+    this.H = IV[7] | 0;
+  }
+  get() {
+    const { A, B, C, D, E, F, G, H } = this;
+    return [A, B, C, D, E, F, G, H];
+  }
+  // prettier-ignore
+  set(A, B, C, D, E, F, G, H) {
+    this.A = A | 0;
+    this.B = B | 0;
+    this.C = C | 0;
+    this.D = D | 0;
+    this.E = E | 0;
+    this.F = F | 0;
+    this.G = G | 0;
+    this.H = H | 0;
+  }
+  _cloneInto(to) {
+    (to ||= new this.constructor()).set(...this.get());
+    return this._cloneIntoMeta(to);
+  }
+  process(view, offset) {
+    for (let i = 0; i < 16; i++, offset += 4)
+      SHA256_W[i] = view.getUint32(offset, false);
+    for (let i = 16; i < 64; i++) {
+      const W15 = SHA256_W[i - 15];
+      const W2 = SHA256_W[i - 2];
+      const s0 = rotr(W15, 7) ^ rotr(W15, 18) ^ W15 >>> 3;
+      const s1 = rotr(W2, 17) ^ rotr(W2, 19) ^ W2 >>> 10;
+      SHA256_W[i] = s1 + SHA256_W[i - 7] + s0 + SHA256_W[i - 16] | 0;
+    }
+    let { A, B, C, D, E, F, G, H } = this;
+    for (let i = 0; i < 64; i++) {
+      const sigma1 = rotr(E, 6) ^ rotr(E, 11) ^ rotr(E, 25);
+      const T1 = H + sigma1 + Chi(E, F, G) + SHA256_K[i] + SHA256_W[i] | 0;
+      const sigma0 = rotr(A, 2) ^ rotr(A, 13) ^ rotr(A, 22);
+      const T2 = sigma0 + Maj(A, B, C) | 0;
+      H = G;
+      G = F;
+      F = E;
+      E = D + T1 | 0;
+      D = C;
+      C = B;
+      B = A;
+      A = T1 + T2 | 0;
+    }
+    A = A + this.A | 0;
+    B = B + this.B | 0;
+    C = C + this.C | 0;
+    D = D + this.D | 0;
+    E = E + this.E | 0;
+    F = F + this.F | 0;
+    G = G + this.G | 0;
+    H = H + this.H | 0;
+    this.set(A, B, C, D, E, F, G, H);
+  }
+  roundClean() {
+    clean(SHA256_W);
+  }
+  destroy() {
+    this.destroyed = true;
+    this.set(0, 0, 0, 0, 0, 0, 0, 0);
+    clean(this.buffer);
+  }
+};
+var _SHA256 = class extends SHA2_32B {
+  constructor() {
+    super(32, SHA256_IV);
+  }
+};
+var sha256 = /* @__PURE__ */ createHasher(
+  () => new _SHA256(),
+  /* @__PURE__ */ oidNist(1)
+);
+
+// packages/application/src/offline-bundle.ts
+var OFFLINE_SNAPSHOT_SCHEMA = 1;
+var OFFLINE_CHECKSUM_SERIALIZATION = "longball.canonical-json/1";
+var MAX_OFFLINE_EVENTS = 1e4;
+function* canonicalTokens(value) {
+  const ancestors = /* @__PURE__ */ new Set();
+  function* encode(input, depth) {
+    if (depth > 100) throw new Error("Offline snapshot nesting exceeds the supported bound.");
+    if (input === null || typeof input === "string" || typeof input === "boolean") {
+      yield JSON.stringify(input);
+      return;
+    }
+    if (typeof input === "number" && Number.isFinite(input)) {
+      yield JSON.stringify(input);
+      return;
+    }
+    if (typeof input !== "object" || !input || ancestors.has(input) || ![Object.prototype, null, Array.prototype].includes(Object.getPrototypeOf(input))) throw new Error("Offline snapshot must contain finite JSON values only.");
+    ancestors.add(input);
+    try {
+      if (Object.getOwnPropertySymbols(input).length) throw new Error("Offline snapshot cannot contain symbolic fields.");
+      const descriptors = Object.getOwnPropertyDescriptors(input);
+      if (Array.isArray(input)) {
+        if (Object.keys(input).length !== input.length || Object.entries(descriptors).some(([key, item]) => key !== "length" && (!("value" in item) || !item.enumerable)) || Array.from({ length: input.length }, (_, index) => index).some((index) => !Object.hasOwn(input, index))) throw new Error("Offline snapshot arrays must be dense JSON arrays.");
+        yield "[";
+        for (let index = 0; index < input.length; index++) {
+          if (index) yield ",";
+          yield* encode(input[index], depth + 1);
+        }
+        yield "]";
+        return;
+      }
+      if (Object.values(descriptors).some((item) => !("value" in item) || !item.enumerable)) throw new Error("Offline snapshot cannot contain accessors or hidden fields.");
+      yield "{";
+      let separator = "";
+      for (const key of Object.keys(input).sort()) {
+        yield separator;
+        separator = ",";
+        yield JSON.stringify(key);
+        yield ":";
+        yield* encode(descriptors[key].value, depth + 1);
+      }
+      yield "}";
+    } finally {
+      ancestors.delete(input);
+    }
+  }
+  yield* encode(value, 0);
+}
+function canonicalOfflineJson(value) {
+  return Array.from(canonicalTokens(value)).join("");
+}
+function offlineUtf8(value) {
+  let length = 0;
+  for (const character of value) {
+    const code2 = character.codePointAt(0);
+    length += code2 < 128 ? 1 : code2 < 2048 ? 2 : code2 < 65536 ? 3 : 4;
+  }
+  const bytes = new Uint8Array(length);
+  let offset = 0;
+  for (const character of value) {
+    const code2 = character.codePointAt(0);
+    if (code2 < 128) bytes[offset++] = code2;
+    else if (code2 < 2048) {
+      bytes[offset++] = 192 | code2 >> 6;
+      bytes[offset++] = 128 | code2 & 63;
+    } else if (code2 < 65536) {
+      bytes[offset++] = 224 | code2 >> 12;
+      bytes[offset++] = 128 | code2 >> 6 & 63;
+      bytes[offset++] = 128 | code2 & 63;
+    } else {
+      bytes[offset++] = 240 | code2 >> 18;
+      bytes[offset++] = 128 | code2 >> 12 & 63;
+      bytes[offset++] = 128 | code2 >> 6 & 63;
+      bytes[offset++] = 128 | code2 & 63;
+    }
+  }
+  return bytes;
+}
+function offlineChecksum(payload) {
+  const hash = sha256.create();
+  let chunk = "";
+  for (const token of canonicalTokens(payload)) {
+    chunk += token;
+    if (chunk.length >= 16384) {
+      hash.update(offlineUtf8(chunk));
+      chunk = "";
+    }
+  }
+  if (chunk) hash.update(offlineUtf8(chunk));
+  return Array.from(hash.digest(), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+function sealOfflineSnapshot(payload) {
+  const unsigned = { ...payload };
+  delete unsigned.checksumSha256;
+  return { ...unsigned, checksumSha256: offlineChecksum(unsigned) };
+}
+var natural = (value) => Number.isSafeInteger(value) && Number(value) >= 0;
+var identifier = (value) => typeof value === "string" && /^[A-Za-z0-9_.:-]{1,150}$/.test(value);
+var iso = (value) => typeof value === "string" && Number.isFinite(Date.parse(value)) && new Date(value).toISOString() === value;
+var equal = (left, right) => canonicalOfflineJson(left) === canonicalOfflineJson(right);
+var only = (value, fields4) => Object.keys(value).every((key) => fields4.includes(key));
+function assertOfflineSnapshot(download, scope) {
+  const fail5 = () => {
+    throw new Error("Offline snapshot is incomplete, inconsistent or unsupported. Existing journal retained; download a fresh verified bundle.");
+  };
+  if (!download || download.snapshotSchemaVersion !== OFFLINE_SNAPSHOT_SCHEMA || download.checksumSerialization !== OFFLINE_CHECKSUM_SERIALIZATION || !identifier(download.bundleId) || !identifier(download.teamId) || !identifier(download.seasonId) || scope.teamId !== void 0 && scope.teamId !== download.teamId || scope.seasonId !== void 0 && scope.seasonId !== download.seasonId || download.deviceId !== scope.deviceId || download.matchId !== scope.matchId || !iso(download.downloadedAt) || !/^[0-9a-f]{64}$/.test(download.checksumSha256 ?? "")) fail5();
+  if (!only(download, ["contractVersion", "schemaVersion", "engineVersion", "bundleId", "snapshotSchemaVersion", "checksumSerialization", "checksumSha256", "matchId", "teamId", "seasonId", "deviceId", "state", "acceptedRevision", "deviceCheckpoint", "controller", "publication", "acceptedEvents", "controllerTransitions", "downloadedAt", "clockAnchor", "syntheticOnly"]) || download.controller && !only(download.controller, ["epoch", "account_id", "device_id", "frozen"])) fail5();
+  if (!Array.isArray(download.acceptedEvents) || !Array.isArray(download.controllerTransitions) || download.acceptedEvents.length > MAX_OFFLINE_EVENTS || download.controllerTransitions.length > MAX_OFFLINE_EVENTS) fail5();
+  const { checksumSha256, ...payload } = download;
+  if (offlineChecksum(payload) !== checksumSha256) fail5();
+  const state = download.state;
+  if (!state?.config || state.config.matchId !== scope.matchId || !natural(state.revision) || state.revision !== download.acceptedRevision || !Array.isArray(state.config.players) || state.config.players.length > 100 || !Array.isArray(state.config.selectedPlayerIds) || state.config.selectedPlayerIds.length > 100 || new Set(state.config.players.map((player) => player.id)).size !== state.config.players.length || state.config.fixture && (state.config.fixture.teamId !== download.teamId || state.config.fixture.seasonId !== download.seasonId)) fail5();
+  if (!only(state.config, ["matchId", "players", "selectedPlayerIds", "pitchPlaces", "plannedHalfDurationMs", "fixedKeeperId", "initialPolicyProposal", "initialLineupProposal", "initialAttendance", "slots", "fixture", "profileSnapshot"]) || state.config.players.some((player) => !only(player, ["id", "displayName", "goalkeeperChoice", "positionPreferences", "profileVersion", "available"])) || state.config.profileSnapshot?.some((profile) => !only(profile, ["playerId", "preferences", "eligiblePositions", "initials"]))) fail5();
+  if (!download.publication || !Object.hasOwn(download.publication, "fixtureClass") || !Object.hasOwn(download.publication, "classificationVersion") || !Object.hasOwn(download.publication, "resultPolicy") || !download.publication.sharingPolicy || typeof download.publication.sharingPolicy.shareScores !== "boolean" || typeof download.publication.sharingPolicy.shareDerivedResults !== "boolean") fail5();
+  if (!Array.isArray(download.acceptedEvents) || !Array.isArray(download.controllerTransitions) || download.acceptedEvents.length > MAX_OFFLINE_EVENTS || download.controllerTransitions.length > MAX_OFFLINE_EVENTS || download.acceptedEvents.length !== state.revision) fail5();
+  const ids = /* @__PURE__ */ new Set();
+  for (const [index, record] of download.acceptedEvents.entries()) {
+    const event = record.event;
+    if (record.serverSequence !== index + 1 || !iso(record.receivedAt) || !event || event.matchId !== scope.matchId || event.baseRevision !== index || !identifier(event.eventId) || !identifier(event.deviceId) || !natural(event.clientSequence) || event.clientSequence < 1 || !natural(event.controllerEpoch) || event.controllerEpoch < 1 || !event.engineVersion || event.command?.id !== event.eventId || ids.has(event.eventId)) fail5();
+    ids.add(event.eventId);
+  }
+  if (state.eventHistory && (state.eventHistory.length !== download.acceptedEvents.length || !state.eventHistory.every((event, index) => event.id === download.acceptedEvents[index].event.eventId && equal({ ...download.acceptedEvents[index].event.command, ...event.actorId === void 0 ? {} : { actorId: event.actorId } }, event)))) fail5();
+  const checkpoint = download.deviceCheckpoint;
+  if (!checkpoint || !natural(checkpoint.clientSequence) || !(checkpoint.previousEventId === null || identifier(checkpoint.previousEventId)) || checkpoint.clientSequence === 0 !== (checkpoint.previousEventId === null)) fail5();
+  for (const record of download.acceptedEvents) if (record.event.deviceId === scope.deviceId && record.event.clientSequence > checkpoint.clientSequence) fail5();
+  for (const transition of download.controllerTransitions) if (!identifier(transition.id) || !natural(transition.epoch) || transition.epoch < 1 || !identifier(transition.actorId) || !identifier(transition.toDevice) || !(transition.fromDevice === null || identifier(transition.fromDevice)) || !iso(transition.createdAt) || typeof transition.kind !== "string" || !(transition.reason === null || typeof transition.reason === "string")) fail5();
+  if (!download.clockAnchor || download.clockAnchor.serverTime !== download.downloadedAt || download.clockAnchor.quality !== "observation_only" || download.clockAnchor.continuousMappingEstablished !== false || typeof download.syntheticOnly !== "boolean") fail5();
+}
+
+// apps/api/src/offline-bundle.ts
+function offlinePublication(matchId, sharingPolicy, records) {
+  const result = records?.results.find((item) => item.id === matchId);
+  const policy = result?.publication;
+  return {
+    fixtureClass: result?.fixtureClass ?? (records?.liveMatch.matchId === matchId ? records.liveMatch.fixtureClass : null),
+    classificationVersion: result?.classificationVersion ?? null,
+    resultPolicy: policy ? { id: policy.id, version: policy.version, fixtureClass: policy.fixtureClass, confirmed: policy.confirmed, confirmationReference: policy.confirmationReference, allowedRoles: [...policy.allowedRoles] } : null,
+    sharingPolicy: { version: sharingPolicy.version, approvedBy: sharingPolicy.approvedBy, approvedAt: sharingPolicy.approvedAt, shareScores: sharingPolicy.shareScores, shareDerivedResults: sharingPolicy.shareDerivedResults }
+  };
+}
+function buildOfflineDownload(input) {
+  if (input.events.length > MAX_OFFLINE_EVENTS || input.transitions.length > MAX_OFFLINE_EVENTS) throw new AccessError("OFFLINE_BUNDLE_UNSUPPORTED", 422, "The pilot requires complete accepted/control history within 10000 records in each stream. Nothing was truncated.");
+  const downloadedAt = new Date(input.nowMs).toISOString();
+  const controllerTransitions = input.transitions.map((row) => ({ id: row.id, epoch: row.epoch, actorId: row.actor_id, fromDevice: row.from_device, toDevice: row.to_device, kind: row.kind, reason: row.reason, createdAt: new Date(row.created_at).toISOString() }));
+  try {
+    const bundle = sealOfflineSnapshot({
+      contractVersion: "longball.events/1.1",
+      schemaVersion: 1,
+      engineVersion: ENGINE_VERSION,
+      bundleId: randomUUID(),
+      snapshotSchemaVersion: OFFLINE_SNAPSHOT_SCHEMA,
+      checksumSerialization: OFFLINE_CHECKSUM_SERIALIZATION,
+      matchId: input.matchId,
+      teamId: input.teamId,
+      seasonId: input.seasonId,
+      deviceId: input.deviceId,
+      state: input.state,
+      acceptedRevision: input.state.revision,
+      deviceCheckpoint: input.checkpoint,
+      controller: input.controller,
+      publication: input.publication,
+      acceptedEvents: input.events.map((row) => ({ serverSequence: row.revision, receivedAt: new Date(row.received_at).toISOString(), event: JSON.parse(row.envelope_json) })),
+      controllerTransitions,
+      downloadedAt,
+      clockAnchor: { serverTime: downloadedAt, quality: "observation_only", continuousMappingEstablished: false },
+      syntheticOnly: input.syntheticOnly
+    });
+    assertOfflineSnapshot(bundle, input);
+    return bundle;
+  } catch {
+    throw new AccessError("OFFLINE_BUNDLE_UNSUPPORTED", 422, "The complete snapshot failed structural or full-history validation. The previous device bundle remains usable; no partial replacement was returned.");
+  }
+}
+
+// apps/api/src/store.ts
+import { createHash as createHash2, randomBytes, randomUUID as randomUUID2 } from "node:crypto";
+import { chmodSync, mkdirSync } from "node:fs";
+import { dirname } from "node:path";
+import { backup, DatabaseSync } from "node:sqlite";
+
+// apps/api/src/team-privilege-schema.ts
+var SQLITE_TEAM_PRIVILEGES_DDL = `
+CREATE TABLE team_privilege_states(team_id TEXT PRIMARY KEY REFERENCES teams(id),revision INTEGER NOT NULL CHECK(revision>=0),state_json TEXT NOT NULL CHECK(json_valid(state_json)));
+CREATE TABLE team_privilege_decisions(team_id TEXT NOT NULL REFERENCES teams(id),revision INTEGER NOT NULL CHECK(revision>0),command_id TEXT NOT NULL,actor_id TEXT NOT NULL REFERENCES accounts(id),target_account_id TEXT NOT NULL REFERENCES accounts(id),privilege TEXT NOT NULL CHECK(privilege IN('uploads','invitations')),suspended INTEGER NOT NULL CHECK(suspended IN(0,1)),reason_code TEXT NOT NULL CHECK(length(reason_code) BETWEEN 1 AND 80),private_note TEXT CHECK(length(private_note)<=1000),created_at INTEGER NOT NULL,PRIMARY KEY(team_id,revision),UNIQUE(team_id,actor_id,command_id));
+INSERT INTO team_privilege_states(team_id,revision,state_json) SELECT id,0,json_object('schemaVersion',1,'teamId',id,'revision',0,'restrictions',json('[]')) FROM teams;
+CREATE TRIGGER team_privileges_new_team AFTER INSERT ON teams BEGIN INSERT INTO team_privilege_states(team_id,revision,state_json) VALUES(NEW.id,0,json_object('schemaVersion',1,'teamId',NEW.id,'revision',0,'restrictions',json('[]'))); END;
+CREATE TRIGGER team_privilege_state_identity BEFORE UPDATE ON team_privilege_states WHEN NEW.team_id<>OLD.team_id OR NEW.revision<>OLD.revision+1 OR json_extract(NEW.state_json,'$.teamId')<>NEW.team_id OR json_extract(NEW.state_json,'$.revision')<>NEW.revision BEGIN SELECT RAISE(ABORT,'Invalid team privilege revision'); END;
+CREATE TRIGGER team_privilege_decision_immutable_update BEFORE UPDATE ON team_privilege_decisions BEGIN SELECT RAISE(ABORT,'Immutable team privilege decision'); END;
+CREATE TRIGGER team_privilege_decision_immutable_delete BEFORE DELETE ON team_privilege_decisions BEGIN SELECT RAISE(ABORT,'Immutable team privilege decision'); END;
+`;
+
 // packages/application/src/sync.ts
 function effectiveEventTime(previous, next, event) {
   if (event.type === "policy.changed") return { ...event.effective };
@@ -63890,7 +64042,7 @@ function verifiedAdult(account2) {
   return account2.status === "active" && account2.identityClassification === "adult_individual" && account2.adultVerified && account2.strongAuthEnrolled;
 }
 function activeManagers(context) {
-  return [...new Set(context.memberships.filter((item) => item.teamId === context.records.teamId && item.role === "manager" && current(item, context.nowMs) && context.accounts.find((account2) => account2.accountId === item.accountId)?.status !== "disabled").map((item) => item.accountId))];
+  return [...new Set(context.memberships.filter((item) => item.teamId === context.records.teamId && item.role === "manager" && !item.administrativeInheritance && current(item, context.nowMs) && context.accounts.find((account2) => account2.accountId === item.accountId)?.status !== "disabled").map((item) => item.accountId))];
 }
 function seasonAccessEndsAtMs(startYear) {
   const midnightUtc = Date.UTC(startYear + 1, 8, 1);
@@ -63933,7 +64085,7 @@ function configurationServiceView(input) {
 }
 function applyConfigurationServiceCommand(input) {
   const { principal, memberships, preparation, seasonId, nowMs, command } = input;
-  requireThat4(command?.type === "club.updated" || command?.type === "team.updated", "Configuration accepts only club or team settings.");
+  requireThat4(command?.type === "club.updated" || command?.type === "team.updated" || command?.type === "team.league_updated" || command?.type === "team.alerts_updated", "Configuration accepts only club or team settings.");
   assertTeamRole(principal, memberships, preparation.team.id, seasonId, command.type === "club.updated" ? ["administrator"] : ["administrator", "manager"], nowMs);
   assertAdultAuthority(principal, command.type === "club.updated", nowMs);
   return reducePreparation(preparation, command);
@@ -63963,8 +64115,8 @@ function planSeasonRollover(context) {
   for (const assignment of command.playerAssignments) requireThat4(validId2(assignment.accountId) && validId2(assignment.playerId) && options.playerCandidates.some((item) => item.accountId === assignment.accountId && item.playerId === assignment.playerId), "New player membership must preserve the source account/player binding. Use activation for new identity links.");
   const season = { id: command.idForSeason, startYear: command.startYear, ...seasonBounds(command.startYear), spectatorRenewalRequired: true };
   const newMemberships = [
-    ...command.managerAccountIds.map((accountId) => ({ accountId, teamId: records.teamId, seasonId: season.id, role: "manager" })),
-    ...command.administratorAccountIds.map((accountId) => ({ accountId, teamId: records.teamId, seasonId: season.id, role: "administrator" })),
+    ...command.managerAccountIds.map((accountId) => ({ accountId, teamId: records.teamId, seasonId: season.id, role: "manager", ...context.memberships.some((m) => m.accountId === accountId && m.teamId === records.teamId && m.seasonId === old.id && m.role === "manager" && m.administrativeInheritance) ? { administrativeInheritance: true } : {} })),
+    ...command.administratorAccountIds.map((accountId) => ({ accountId, teamId: records.teamId, seasonId: season.id, role: "administrator", ...context.memberships.some((m) => m.accountId === accountId && m.teamId === records.teamId && m.seasonId === old.id && m.role === "administrator" && m.administrativeInheritance) ? { administrativeInheritance: true } : {} })),
     ...command.playerAssignments.map((item) => ({ ...item, teamId: records.teamId, seasonId: season.id, role: "player" }))
   ];
   const sourceProfiles = preparation.profiles.filter((profile) => profile.seasonId === old.id && profile.active);
@@ -64906,8 +65058,8 @@ function managerRoster(input) {
   assertAdultAuthority(principal, false, nowMs);
   if (!Number.isSafeInteger(input.revision) || input.revision < 0 || !Number.isSafeInteger(nowMs) || nowMs < 0) throw new Error("Use the authoritative staff revision and current service time.");
   const associated = new Set(memberships.filter((item) => item.teamId === teamId && current2(item, nowMs)).map((item) => item.accountId));
-  const liveManagers = memberships.filter((item) => item.teamId === teamId && item.role === "manager" && current2(item, nowMs));
-  const managers = memberships.filter((item) => item.teamId === teamId && item.seasonId === seasonId && item.role === "manager").map((item) => {
+  const liveManagers = memberships.filter((item) => item.teamId === teamId && item.role === "manager" && !item.administrativeInheritance && current2(item, nowMs));
+  const managers = memberships.filter((item) => item.teamId === teamId && item.seasonId === seasonId && item.role === "manager" && !item.administrativeInheritance).map((item) => {
     const account2 = accounts.find((account3) => account3.accountId === item.accountId);
     return {
       accountId: item.accountId,
@@ -65226,6 +65378,32 @@ function applyScheduledGameCommand(previous, input, context) {
   return state;
 }
 
+// packages/application/src/goalkeeper-clean-sheets.ts
+function goalkeeperCleanSheetOutcomes(input) {
+  const validMs = (value) => Number.isSafeInteger(value) && value >= 0;
+  const keepers = [...new Set(input.intervals.filter((row) => row.state === "playing" && row.position === "GK" && row.endMs > row.startMs).map((row) => row.playerId))];
+  const valid = input.completed && !input.reviewRequired && validMs(input.activeDurationMs) && input.activeDurationMs > 0 && input.recordedOppositionScore === input.oppositionGoals.length && input.intervals.every((row) => validMs(row.startMs) && validMs(row.endMs) && row.endMs >= row.startMs && row.endMs <= input.activeDurationMs) && input.oppositionGoals.every((goal) => goal.atMs !== null && validMs(goal.atMs) && goal.atMs <= input.activeDurationMs);
+  if (!valid) return keepers.map((playerId) => ({ playerId, outcome: "unknown" }));
+  const stints = keepers.flatMap((playerId) => {
+    const rows = input.intervals.filter((row) => row.playerId === playerId && row.state === "playing" && row.position === "GK" && row.endMs > row.startMs).sort((a, b) => a.startMs - b.startMs);
+    const merged = [];
+    for (const row of rows) {
+      const last = merged.at(-1);
+      if (last && row.startMs <= last.endMs) last.endMs = Math.max(last.endMs, row.endMs);
+      else merged.push({ playerId, startMs: row.startMs, endMs: row.endMs });
+    }
+    return merged;
+  });
+  const conceded = /* @__PURE__ */ new Set(), uncertain = /* @__PURE__ */ new Set();
+  for (const goal of input.oppositionGoals) {
+    const candidates = [...new Set(stints.filter((row) => row.startMs <= goal.atMs && row.endMs >= goal.atMs).map((row) => row.playerId))];
+    if (candidates.length === 1) conceded.add(candidates[0]);
+    else if (candidates.length > 1) for (const playerId of candidates) uncertain.add(playerId);
+    else for (const playerId of keepers) uncertain.add(playerId);
+  }
+  return keepers.map((playerId) => ({ playerId, outcome: conceded.has(playerId) ? "conceded" : uncertain.has(playerId) ? "unknown" : "clean_sheet" }));
+}
+
 // packages/application/src/player-stats.ts
 function denied() {
   throw new AccessError(
@@ -65254,6 +65432,14 @@ function cleanEvidence(record) {
       isOwnGoal: goal.isOwnGoal,
       scorerPlayerId: goal.scorerPlayerId
     })),
+    goalkeeperOutcomes: record.recordMode === "detailed_live" && record.participation?.every((row) => Array.isArray(row.intervals)) ? goalkeeperCleanSheetOutcomes({
+      completed: record.status === "completed",
+      reviewRequired: record.detailCompleteness !== "complete",
+      activeDurationMs: record.actualActiveDurationMs ?? 0,
+      intervals: record.participation.flatMap((row) => row.intervals.map((interval) => ({ ...interval, playerId: row.playerId }))),
+      oppositionGoals: record.goals.filter((goal) => goal.beneficiary === "opposition").map((goal) => ({ atMs: goal.half !== null && goal.halfElapsedMs !== null ? goal.halfElapsedMs + (goal.half === 2 ? Math.max(0, ...record.participation.flatMap((row) => row.intervals.filter((interval) => interval.half === 1).map((interval) => interval.endMs))) : 0) : null })),
+      recordedOppositionScore: record.finalScore?.against ?? null
+    }) : record.goalkeeperOutcomes?.map((row) => ({ ...row })),
     participation: record.participation?.map((row) => ({
       playerId: row.playerId,
       playedMs: row.playedMs,
@@ -65304,6 +65490,14 @@ function playerStatsSourceFromRecords(input) {
         isOwnGoal: goal.isOwnGoal,
         scorerPlayerId: goal.scorerPlayerId
       })),
+      goalkeeperOutcomes: goalkeeperCleanSheetOutcomes({
+        completed: match.status === "completed",
+        reviewRequired: match.recoveryRequired || match.schemaVersion !== 2,
+        activeDurationMs: match.matchActiveMs,
+        intervals: match.intervals,
+        oppositionGoals: goalRecords(match).filter((goal) => !goal.voided && goal.beneficiary === "opposition").map((goal) => ({ atMs: goal.effective.matchElapsedMs })),
+        recordedOppositionScore: match.score.against
+      }),
       participation: playerMinutes(match, sample).map((row) => ({
         playerId: row.playerId,
         playedMs: row.playingMs,
@@ -65387,9 +65581,14 @@ function projectPlayerStats(source2, viewer) {
       scoringPartialMatches: 0,
       scoringUnknownMatches: 0
     };
-    let knownPlayingMs2 = 0, knownAppearances = 0, knownGoals = 0, knownOwnGoals = 0, unknownPositionMs = 0;
+    let knownPlayingMs2 = 0, knownAppearances = 0, knownGoals = 0, knownOwnGoals = 0, knownCleanSheets = 0, goalkeepingReviewedMatches = 0, goalkeepingUnknownMatches = 0, unknownPositionMs = 0;
     const positionMs2 = /* @__PURE__ */ Object.create(null);
     for (const record of records) {
+      const goalkeeper = record.goalkeeperOutcomes?.find((row) => row.playerId === player.id);
+      if (goalkeeper && goalkeeper.outcome !== "unknown") {
+        goalkeepingReviewedMatches++;
+        knownCleanSheets += Number(goalkeeper.outcome === "clean_sheet");
+      } else if (goalkeeper || !record.participation || record.participation.some((row) => row.playerId === player.id && (row.positionMs.GK ?? 0) > 0)) goalkeepingUnknownMatches++;
       if (record.detailCompleteness === "review_required") {
         coverage.reviewRequiredMatches++;
         coverage.playingTimeUnknownMatches++;
@@ -65438,6 +65637,9 @@ function projectPlayerStats(source2, viewer) {
       knownAppearances,
       knownGoals,
       knownOwnGoals,
+      knownCleanSheets,
+      goalkeepingReviewedMatches,
+      goalkeepingUnknownMatches,
       positions: positionsFor(positionMs2, knownPlayingMs2, source2.positions),
       unknownPositionMs,
       coverage
@@ -65501,10 +65703,13 @@ function assertPlayerStatsDto(value, viewer) {
       "knownAppearances",
       "knownGoals",
       "knownOwnGoals",
+      "knownCleanSheets",
+      "goalkeepingReviewedMatches",
+      "goalkeepingUnknownMatches",
       "positions",
       "unknownPositionMs",
       "coverage"
-    ]) || !text2(item.playerId) || !text2(item.label) || !number(item.knownAppearances) || !number(item.knownGoals) || !number(item.knownOwnGoals) || !object5(item.coverage))
+    ]) || !text2(item.playerId) || !text2(item.label) || !number(item.knownAppearances) || !number(item.knownGoals) || !number(item.knownOwnGoals) || !number(item.knownCleanSheets) || !number(item.goalkeepingReviewedMatches) || !number(item.goalkeepingUnknownMatches) || item.knownCleanSheets > item.goalkeepingReviewedMatches || !object5(item.coverage))
       return false;
     const coverage = item.coverage;
     const fields4 = [
@@ -65641,7 +65846,7 @@ var DevelopmentStore = class {
   migrate() {
     this.transaction(() => {
       const version2 = Number(this.database.prepare("PRAGMA user_version").get().user_version);
-      if (version2 > 10) throw new Error("This store version is newer than this application; preserve it and use a compatible build.");
+      if (version2 > 11) throw new Error("This store version is newer than this application; preserve it and use a compatible build.");
       if (version2 === 0) this.database.exec(`
       CREATE TABLE accounts(id TEXT PRIMARY KEY,issuer TEXT NOT NULL,subject TEXT NOT NULL,classification TEXT NOT NULL CHECK(classification IN ('child_shared','adult_individual','unclassified')),adult_verified INTEGER NOT NULL DEFAULT 0,status TEXT NOT NULL DEFAULT 'active',UNIQUE(issuer,subject));
       CREATE TABLE teams(id TEXT PRIMARY KEY,name TEXT NOT NULL);
@@ -65692,6 +65897,7 @@ var DevelopmentStore = class {
       PRAGMA user_version=8;`);
       if (version2 < 9) this.database.exec(SQLITE_TEAM_PRIVILEGES_DDL + "PRAGMA user_version=9;");
       if (version2 < 10) this.database.exec(PUSH_SQLITE_MIGRATION + "PRAGMA user_version=10;");
+      if (version2 < 11) this.database.exec(ADMINISTRATION_SQLITE_DDL + "PRAGMA user_version=11;");
     });
   }
   async backup(destination) {
@@ -65754,6 +65960,13 @@ var DevelopmentStore = class {
       this.saveDocument(SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId, "preparation", preparation);
       this.saveDocument(SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId, "community", community);
       this.saveDocument(SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId, "records", createRecordsSeed(options));
+      if (options.demoSharing) {
+        add2("synthetic-account-club-admin", "adult_individual", true);
+        this.database.prepare("INSERT INTO directory_clubs(id,name) VALUES(?,?),(?,?)").run("synthetic-richmond-rovers", "Richmond Rovers", "synthetic-other-club", "Brookfield Juniors");
+        this.database.prepare("INSERT INTO directory_teams(team_id,club_id,age_group) VALUES(?,?,?),(?,?,?)").run(SYNTHETIC_IDS.teamId, "synthetic-richmond-rovers", "U10", "synthetic-other-team", "synthetic-other-club", "U11");
+        this.database.prepare("INSERT INTO administration_grants(account_id,scope_key,level,club_id) VALUES('synthetic-account-admin','*','super',NULL),('synthetic-account-club-admin','synthetic-richmond-rovers','club','synthetic-richmond-rovers')").run();
+        syncSqliteAdministration(this);
+      }
       if (options.demoSharing) for (const match of community.matches) {
         const key = `award:${SYNTHETIC_IDS.teamId}:${SYNTHETIC_IDS.seasonId}:${match.id}:${match.voteCutoffAtMs}`;
         this.database.prepare("INSERT INTO jobs(id,business_key,kind,payload_json,due_at) VALUES(?,?,?,?,?) ON CONFLICT(business_key) DO NOTHING").run(randomUUID2(), key, "award.finalise", JSON.stringify({ teamId: SYNTHETIC_IDS.teamId, seasonId: SYNTHETIC_IDS.seasonId, matchId: match.id }), match.voteCutoffAtMs);
@@ -65766,10 +65979,10 @@ var DevelopmentStore = class {
   principal(identity) {
     const account2 = this.database.prepare("SELECT * FROM accounts WHERE issuer=? AND subject=?").get(identity.issuer, identity.subject);
     if (!account2 || account2.status !== "active") throw new AccessError("ACCOUNT_UNAVAILABLE", 403, "The account is not active for this service.");
-    return { accountId: account2.id, issuer: account2.issuer, subject: account2.subject, identityClassification: account2.classification, adultVerified: Boolean(account2.adult_verified), strongAuth: identity.strongAuth, authenticatedAt: identity.authenticatedAt, status: account2.status };
+    return { accountId: account2.id, issuer: account2.issuer, subject: account2.subject, identityClassification: account2.classification, adultVerified: Boolean(account2.adult_verified), strongAuth: identity.strongAuth, authenticatedAt: identity.authenticatedAt, status: account2.status, ...sqliteAdministration(this, account2.id) ? { administration: sqliteAdministration(this, account2.id) } : {} };
   }
   memberships() {
-    const rows = this.database.prepare("SELECT * FROM memberships").all().map((row) => ({ accountId: row.account_id, teamId: row.team_id, seasonId: row.season_id, role: row.role, playerId: row.player_id ?? void 0, expiresAt: row.expires_at, revokedAt: row.revoked_at }));
+    const rows = this.database.prepare("SELECT m.*,EXISTS(SELECT 1 FROM administrative_memberships am WHERE am.account_id=m.account_id AND am.team_id=m.team_id AND am.season_id=m.season_id AND am.role=m.role) administrative_inheritance FROM memberships m").all().map((row) => ({ accountId: row.account_id, teamId: row.team_id, seasonId: row.season_id, role: row.role, playerId: row.player_id ?? void 0, expiresAt: row.expires_at, revokedAt: row.revoked_at, ...row.administrative_inheritance ? { administrativeInheritance: true } : {} }));
     const communities = this.database.prepare("SELECT team_id,season_id,value_json FROM documents WHERE kind='community'").all().map((row) => ({ ...row, state: JSON.parse(row.value_json) }));
     return rows.map((row) => {
       if (row.role !== "spectator") return row;
@@ -66139,7 +66352,7 @@ var DevelopmentStore = class {
     if (expectedRevision !== void 0 && (!nonnegative3(expectedRevision) || expectedRevision !== this.staffRevision(teamId, seasonId))) throw new AccessError("STALE_REVISION", 409, "Refresh the current staff assignments before changing them.");
     const account2 = this.database.prepare("SELECT * FROM accounts WHERE id=?").get(accountId);
     if (!account2) throw new AccessError("NOT_FOUND", 404, "The requested object is unavailable.");
-    const target = { accountId: account2.id, issuer: account2.issuer, subject: account2.subject, identityClassification: account2.classification, adultVerified: !!account2.adult_verified, strongAuth: !!account2.strong_auth_enrolled, authenticatedAt: this.now(), status: account2.status };
+    const target = { accountId: account2.id, issuer: account2.issuer, subject: account2.subject, identityClassification: account2.classification, adultVerified: !!account2.adult_verified, strongAuth: !!account2.strong_auth_enrolled, authenticatedAt: this.now(), status: account2.status, ...sqliteAdministration(this, account2.id) ? { administration: sqliteAdministration(this, account2.id) } : {} };
     assertCanAssignManager(actor, target, this.memberships(), teamId, seasonId, this.now());
     const alreadyActive = this.memberships().some((item) => item.accountId === accountId && item.teamId === teamId && item.seasonId === seasonId && item.role === "manager" && item.revokedAt == null && (item.expiresAt == null || item.expiresAt > this.now()));
     if (!alreadyActive) {
@@ -66277,12 +66490,23 @@ var DevelopmentStore = class {
   }
   configurationCommand(principal, teamId, seasonId, command, role) {
     this.configuration(principal, teamId, seasonId, role);
-    if (!command || !["club.updated", "team.updated"].includes(command.type)) bad("Only club or team configuration can be changed in this context.");
+    if (!command || !["club.updated", "team.updated", "team.league_updated", "team.alerts_updated"].includes(command.type)) bad("Only club or team configuration can be changed in this context.");
     if (role && command.type === "club.updated" && role !== "administrator") throw new AccessError("NOT_FOUND", 404, "Choose the current administrator context to administer the club.");
     const state = applyConfigurationServiceCommand({ principal, memberships: this.memberships(), preparation: this.document(teamId, seasonId, "preparation"), seasonId, nowMs: this.now(), command });
     this.saveDocument(teamId, seasonId, "preparation", state);
+    if (command.type === "club.updated") this.syncClubConfiguration(teamId, seasonId);
     this.audit(principal, command.type, teamId, "administrator_configuration_accepted");
     return this.configuration(principal, teamId, seasonId, role);
+  }
+  syncClubConfiguration(teamId, seasonId) {
+    const current3 = this.document(teamId, seasonId, "preparation");
+    this.database.prepare("UPDATE directory_clubs SET name=? WHERE id=?").run(current3.club.name, current3.club.id);
+    const documents = this.database.prepare("SELECT team_id,season_id,value_json FROM documents WHERE kind='preparation' AND json_extract(value_json,'$.club.id')=? AND json_extract(value_json,'$.club.name')<>?").all(current3.club.id, current3.club.name);
+    for (const row of documents) {
+      const value = JSON.parse(row.value_json);
+      const updated = { ...value, revision: value.revision + 1, club: { ...value.club, name: current3.club.name } };
+      this.saveDocument(row.team_id, row.season_id, "preparation", updated);
+    }
   }
   seasonContext(principal, teamId, seasonId) {
     const community = this.communityState(teamId, seasonId);
@@ -66307,10 +66531,11 @@ var DevelopmentStore = class {
     const context = this.seasonContext(principal, teamId, seasonId);
     const plan = planSeasonRollover({ ...context, command });
     if (this.database.prepare("SELECT kind FROM documents WHERE team_id=? AND season_id=? LIMIT 1").get(teamId, plan.receipt.seasonId)) throw new AccessError("SEASON_EXISTS", 409, "That destination season already has saved documents.");
-    for (const member of plan.memberships) this.database.prepare("INSERT INTO memberships(account_id,team_id,season_id,role,player_id,expires_at,revoked_at) VALUES(?,?,?,?,?,?,?)").run(member.accountId, member.teamId, member.seasonId, member.role, member.playerId ?? null, member.expiresAt ?? null, member.revokedAt ?? null);
+    for (const member of plan.memberships.filter((item) => !item.administrativeInheritance)) this.database.prepare("INSERT INTO memberships(account_id,team_id,season_id,role,player_id,expires_at,revoked_at) VALUES(?,?,?,?,?,?,?)").run(member.accountId, member.teamId, member.seasonId, member.role, member.playerId ?? null, member.expiresAt ?? null, member.revokedAt ?? null);
     this.saveDocument(teamId, plan.receipt.seasonId, "preparation", plan.preparation);
     this.saveDocument(teamId, plan.receipt.seasonId, "records", plan.records);
     this.saveDocument(teamId, plan.receipt.seasonId, "community", plan.community);
+    syncSqliteAdministration(this);
     this.audit(principal, "season.created_from_explicit_assignments", plan.receipt.seasonId, "accepted_no_spectator_renewal");
     return plan.receipt;
   }
@@ -66336,7 +66561,7 @@ var DevelopmentStore = class {
   }
   preparationCommand(principal, teamId, seasonId, command) {
     const previous = this.preparation(principal, teamId, seasonId);
-    const types2 = ["club.updated", "team.updated", "season.rolled_over", "profile.saved", "roster.imported", "profile.archived", "formation.saved", "position.saved", "position.archived", "lineup_template.saved", "lineup_template.archived", "lineup_template.applied", "lineup_template.cleared", "fixture.saved", "fixture.status_changed", "fixture.response_recorded", "fixture.selection_saved", "fixture.attendance_recorded", "fixture.prepared", "match_plan.saved", "match_plan.applied", "match_plan.cleared", "training.series_created", "training.series_updated", "training.series_cancelled", "training.saved", "training.status_changed", "training.response_recorded", "training.attendance_recorded"];
+    const types2 = ["club.updated", "team.updated", "season.rolled_over", "profile.saved", "roster.imported", "roster.proforma_imported", "team.league_updated", "team.alerts_updated", "profile.archived", "formation.saved", "position.saved", "position.archived", "lineup_template.saved", "lineup_template.archived", "lineup_template.applied", "lineup_template.cleared", "fixture.saved", "fixture.status_changed", "fixture.response_recorded", "fixture.selection_saved", "fixture.attendance_recorded", "fixture.prepared", "match_plan.saved", "match_plan.applied", "match_plan.cleared", "training.series_created", "training.series_updated", "training.series_cancelled", "training.saved", "training.status_changed", "training.response_recorded", "training.attendance_recorded"];
     if (!command || !types2.includes(command.type)) bad("Unsupported preparation command.");
     if (command.type === "season.rolled_over") throw new AccessError("SEASON_ASSIGNMENT_REQUIRED", 503, "A connected new season requires approved manager/player assignments and explicit spectator renewal. The local rehearsal supports rollover; this service will not save an inaccessible new season or silently copy authority.");
     if (command.type === "club.updated") {
@@ -66369,8 +66594,9 @@ var DevelopmentStore = class {
         }
       }
     }
-    if (command.type.startsWith("training.") || command.type.startsWith("profile.") || command.type.startsWith("fixture.") || command.type === "roster.imported") this.projectPreparationRecords(teamId, seasonId, state, command.id);
+    if (command.type.startsWith("training.") || command.type.startsWith("profile.") || command.type.startsWith("fixture.") || command.type === "roster.imported" || command.type === "roster.proforma_imported") this.projectPreparationRecords(teamId, seasonId, state, command.id);
     this.saveDocument(teamId, seasonId, "preparation", state);
+    if (command.type === "club.updated") this.syncClubConfiguration(teamId, seasonId);
     this.audit(principal, command.type, teamId, "accepted");
     if (command.type === "fixture.saved") this.enqueueNotifications(teamId, seasonId, "schedule", command.fixture.id, command.id);
     else if (command.type === "fixture.status_changed" || command.type === "fixture.selection_saved") this.enqueueNotifications(teamId, seasonId, "schedule", command.fixtureId, command.id);
@@ -66390,8 +66616,8 @@ var DevelopmentStore = class {
   }
   ownPreparationCommand(principal, teamId, seasonId, command) {
     const membership = assertTeamRole(principal, this.memberships(), teamId, seasonId, ["player"], this.now());
-    if (!command || !validId3(command.id) || !nonnegative3(command.expectedRevision) || !["own.preferences_saved", "own.fixture_response_recorded", "own.training_response_recorded"].includes(command.type)) bad("A valid own-player command and source revision are required.");
-    const allowed = command.type === "own.preferences_saved" ? ["id", "expectedRevision", "type", "preferences"] : command.type === "own.fixture_response_recorded" ? ["id", "expectedRevision", "type", "fixtureId", "response"] : ["id", "expectedRevision", "type", "trainingId", "response"];
+    if (!command || !validId3(command.id) || !nonnegative3(command.expectedRevision) || !["own.preferences_saved", "own.fa_id_saved", "own.fixture_response_recorded", "own.training_response_recorded"].includes(command.type)) bad("A valid own-player command and source revision are required.");
+    const allowed = command.type === "own.preferences_saved" ? ["id", "expectedRevision", "type", "preferences"] : command.type === "own.fa_id_saved" ? ["id", "expectedRevision", "type", "faPlayerId"] : command.type === "own.fixture_response_recorded" ? ["id", "expectedRevision", "type", "fixtureId", "response"] : ["id", "expectedRevision", "type", "trainingId", "response"];
     if (Object.keys(command).some((key) => !allowed.includes(key))) bad("Own-player commands cannot change another profile or manager-controlled fields.");
     const state = this.document(teamId, seasonId, "preparation");
     const profiles = state.profiles.filter((profile2) => profile2.playerId === membership.playerId && profile2.seasonId === seasonId && profile2.active);
@@ -66408,7 +66634,7 @@ var DevelopmentStore = class {
       }
     }
     const base = { id: command.id, expectedRevision: command.expectedRevision };
-    const bound = command.type === "own.preferences_saved" ? { ...base, type: "profile.saved", profile: { ...profile, preferences: command.preferences } } : command.type === "own.fixture_response_recorded" ? { ...base, type: "fixture.response_recorded", fixtureId: command.fixtureId, profileId: profile.id, response: command.response } : { ...base, type: "training.response_recorded", trainingId: command.trainingId, profileId: profile.id, response: command.response };
+    const bound = command.type === "own.preferences_saved" ? { ...base, type: "profile.saved", profile: { ...profile, preferences: command.preferences } } : command.type === "own.fa_id_saved" ? { ...base, type: "profile.saved", profile: { ...profile, faPlayerId: command.faPlayerId } } : command.type === "own.fixture_response_recorded" ? { ...base, type: "fixture.response_recorded", fixtureId: command.fixtureId, profileId: profile.id, response: command.response } : { ...base, type: "training.response_recorded", trainingId: command.trainingId, profileId: profile.id, response: command.response };
     const updated = reducePreparation(state, bound);
     this.saveDocument(teamId, seasonId, "preparation", updated);
     this.audit(principal, command.type, teamId, "accepted");
@@ -66673,9 +66899,9 @@ var PgDatabase = class {
   async migrate() {
     if (this.migrationMode === "verify") {
       const versions = await this.query("SELECT version FROM longball.schema_migrations ORDER BY version");
-      if (versions.rows.some((row) => row.version > 20)) throw new Error("This PostgreSQL schema is newer than the application. Preserve it and use a compatible build.");
-      if (![2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20].every((version2) => versions.rows.some((row) => row.version === version2))) throw new Error("PostgreSQL migrations are required. Run the separate migrator before starting the runtime.");
-      const protectedTables = ["clubs", "teams", "team_seasons", "game_contexts", "accounts", "memberships", "matches", "documents", "devices", "controller_grants", "controller_history", "events", "streams", "conflicting_submissions", "transfers", "clock_challenges", "clock_mappings", "reconciliation_proposals", "audit", "idempotency", "privacy_requests", "privacy_pending_keys", "jobs", "brand_assets", "brand_slots", "spectator_invitations", "lb_spectator_activation_accounts", "lb_spectator_activation_attempts", "native_app_devices", "team_privilege_states", "team_privilege_decisions", "push_registrations", "report_exports", "match_feedback", "match_feedback_receipts"];
+      if (versions.rows.some((row) => row.version > 24)) throw new Error("This PostgreSQL schema is newer than the application. Preserve it and use a compatible build.");
+      if (![2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24].every((version2) => versions.rows.some((row) => row.version === version2))) throw new Error("PostgreSQL migrations are required. Run the separate migrator before starting the runtime.");
+      const protectedTables = ["clubs", "teams", "team_seasons", "game_contexts", "accounts", "memberships", "matches", "documents", "devices", "controller_grants", "controller_history", "events", "streams", "conflicting_submissions", "transfers", "clock_challenges", "clock_mappings", "reconciliation_proposals", "audit", "idempotency", "privacy_requests", "privacy_pending_keys", "jobs", "brand_assets", "brand_slots", "spectator_invitations", "lb_spectator_activation_accounts", "lb_spectator_activation_attempts", "native_app_devices", "team_privilege_states", "team_privilege_decisions", "push_registrations", "report_exports", "match_feedback", "match_feedback_receipts", "administration_grants", "administrative_memberships", "team_documents", "opposition_reviews", "opposition_review_receipts", "spectator_pin_credentials", "invite_requests"];
       const security = await this.query(`SELECT c.relname,c.relrowsecurity,(SELECT count(*)::integer FROM pg_catalog.pg_policy p WHERE p.polrelid=c.oid) AS policies FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='longball' AND c.relname=ANY($1::text[])`, [protectedTables]);
       if (security.rows.length !== protectedTables.length || security.rows.some((row) => !row.relrowsecurity || row.policies < 1)) throw new Error("PostgreSQL row security is missing. Run the separate migrator before starting runtime.");
       return;
@@ -66699,12 +66925,16 @@ var PgDatabase = class {
     const scheduledGamesMigration = await readFile(new URL("../migrations/postgresql/018_scheduled_games.sql", import.meta.url), "utf8");
     const playerStatsMigration = await readFile(new URL("../migrations/postgresql/019_player_stats.sql", import.meta.url), "utf8");
     const teamOverviewMigration = await readFile(new URL("../migrations/postgresql/020_team_overview.sql", import.meta.url), "utf8");
+    const administrationMigration = await readFile(new URL("../migrations/postgresql/021_club_administration.sql", import.meta.url), "utf8");
+    const teamDocumentsMigration = await readFile(new URL("../migrations/postgresql/022_team_documents.sql", import.meta.url), "utf8");
+    const oppositionReviewsMigration = await readFile(new URL("../migrations/postgresql/023_opposition_reviews.sql", import.meta.url), "utf8");
+    const spectatorAccessMigration = await readFile(new URL("../migrations/postgresql/024_spectator_access.sql", import.meta.url), "utf8");
     await this.transaction(async () => {
       const schema = await this.query("SELECT to_regnamespace('longball')::text AS namespace");
       if (!schema.rows[0]?.namespace) await this.query("CREATE SCHEMA longball");
       await this.query("CREATE TABLE IF NOT EXISTS longball.schema_migrations(version integer PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())");
       const versions = await this.query("SELECT version FROM longball.schema_migrations ORDER BY version");
-      if (versions.rows.some((row) => row.version > 20)) throw new Error("This PostgreSQL schema is newer than the application. Preserve it and use a compatible build.");
+      if (versions.rows.some((row) => row.version > 24)) throw new Error("This PostgreSQL schema is newer than the application. Preserve it and use a compatible build.");
       if (!versions.rows.some((row) => row.version === 2)) {
         await this.query(migration);
         await this.query("INSERT INTO longball.schema_migrations(version) VALUES(2)");
@@ -66780,6 +67010,22 @@ var PgDatabase = class {
       if (!versions.rows.some((row) => row.version === 20)) {
         await this.query(teamOverviewMigration);
         await this.query("INSERT INTO longball.schema_migrations(version) VALUES(20)");
+      }
+      if (!versions.rows.some((row) => row.version === 21)) {
+        await this.query(administrationMigration);
+        await this.query("INSERT INTO longball.schema_migrations(version) VALUES(21)");
+      }
+      if (!versions.rows.some((row) => row.version === 22)) {
+        await this.query(teamDocumentsMigration);
+        await this.query("INSERT INTO longball.schema_migrations(version) VALUES(22)");
+      }
+      if (!versions.rows.some((row) => row.version === 23)) {
+        await this.query(oppositionReviewsMigration);
+        await this.query("INSERT INTO longball.schema_migrations(version) VALUES(23)");
+      }
+      if (!versions.rows.some((row) => row.version === 24)) {
+        await this.query(spectatorAccessMigration);
+        await this.query("INSERT INTO longball.schema_migrations(version) VALUES(24)");
       }
     });
   }
@@ -66942,6 +67188,11 @@ var PostgresStore = class _PostgresStore {
       await this.saveDocument(SYNTHETIC_IDS2.teamId, SYNTHETIC_IDS2.seasonId, "preparation", preparation);
       await this.saveDocument(SYNTHETIC_IDS2.teamId, SYNTHETIC_IDS2.seasonId, "community", community);
       await this.saveDocument(SYNTHETIC_IDS2.teamId, SYNTHETIC_IDS2.seasonId, "records", createRecordsSeed(options));
+      if (options.demoSharing) {
+        await add2("synthetic-account-club-admin", "adult_individual", true);
+        await this.execute("INSERT INTO administration_grants(account_id,scope_key,level,club_id) VALUES('synthetic-account-admin','*','super',NULL),('synthetic-account-club-admin','synthetic-richmond-rovers','club','synthetic-richmond-rovers')");
+        await this.execute("SELECT longball.sync_administrative_memberships()");
+      }
       if (options.demoSharing) for (const match of community.matches) {
         const key = `award:${SYNTHETIC_IDS2.teamId}:${SYNTHETIC_IDS2.seasonId}:${match.id}:${match.voteCutoffAtMs}`;
         await this.execute("INSERT INTO jobs(id,business_key,kind,payload_json,due_at) VALUES($1,$2,$3,$4,$5) ON CONFLICT(business_key) DO NOTHING", [randomUUID3(), key, "award.finalise", JSON.stringify({ teamId: SYNTHETIC_IDS2.teamId, seasonId: SYNTHETIC_IDS2.seasonId, matchId: match.id }), match.voteCutoffAtMs]);
@@ -66955,7 +67206,9 @@ var PostgresStore = class _PostgresStore {
     const account2 = await this.one("SELECT * FROM accounts WHERE issuer=$1 AND subject=$2", [identity.issuer, identity.subject]);
     if (!account2 || account2.status !== "active")
       throw new AccessError("ACCOUNT_UNAVAILABLE", 403, "The account is not active for this service.");
-    return { accountId: account2.id, issuer: account2.issuer, subject: account2.subject, identityClassification: account2.classification, adultVerified: Boolean(account2.adult_verified), strongAuth: identity.strongAuth, authenticatedAt: identity.authenticatedAt, status: account2.status };
+    const authority = await this.one("SELECT longball.administration_scope($1) AS value", [account2.id]);
+    const administration = authority?.value ? typeof authority.value === "string" ? JSON.parse(authority.value) : authority.value : void 0;
+    return { accountId: account2.id, issuer: account2.issuer, subject: account2.subject, identityClassification: account2.classification, adultVerified: Boolean(account2.adult_verified), strongAuth: identity.strongAuth, authenticatedAt: identity.authenticatedAt, status: account2.status, ...administration ? { administration } : {} };
   }
   async memberships(accountId, scope) {
     const values = [], predicates = [];
@@ -66967,8 +67220,8 @@ var PostgresStore = class _PostgresStore {
       values.push(scope.teamId, scope.seasonId);
       predicates.push(`m.team_id=$${values.length - 1}`, `m.season_id=$${values.length}`);
     }
-    const rows = await this.many("SELECT m.*,CASE WHEN m.role='spectator' THEN longball.spectator_grant_active(m.account_id,m.club_id,m.team_id,m.season_id) ELSE true END AS grant_active FROM memberships m" + (predicates.length ? " WHERE " + predicates.join(" AND ") : ""), values);
-    return rows.map((row) => ({ accountId: row.account_id, teamId: row.team_id, seasonId: row.season_id, role: row.role, playerId: row.player_id ?? void 0, expiresAt: row.expires_at, revokedAt: row.role === "spectator" && !row.grant_active ? row.revoked_at ?? Math.max(1, this.now()) : row.revoked_at }));
+    const rows = await this.many("SELECT m.*,EXISTS(SELECT 1 FROM administrative_memberships am WHERE am.account_id=m.account_id AND am.team_id=m.team_id AND am.season_id=m.season_id AND am.role=m.role) administrative_inheritance,CASE WHEN m.role='spectator' THEN longball.spectator_grant_active(m.account_id,m.club_id,m.team_id,m.season_id) ELSE true END AS grant_active FROM memberships m" + (predicates.length ? " WHERE " + predicates.join(" AND ") : ""), values);
+    return rows.map((row) => ({ accountId: row.account_id, teamId: row.team_id, seasonId: row.season_id, role: row.role, playerId: row.player_id ?? void 0, expiresAt: row.expires_at, revokedAt: row.role === "spectator" && !row.grant_active ? row.revoked_at ?? Math.max(1, this.now()) : row.revoked_at, ...row.administrative_inheritance ? { administrativeInheritance: true } : {} }));
   }
   async myMemberships(principal) {
     return currentMemberships(principal, await this.memberships(principal.accountId), this.now());
@@ -67535,12 +67788,13 @@ var PostgresStore = class _PostgresStore {
   }
   async configurationCommand(principal, teamId, seasonId, command, role) {
     await this.configuration(principal, teamId, seasonId, role);
-    if (!command || !["club.updated", "team.updated"].includes(command.type))
+    if (!command || !["club.updated", "team.updated", "team.league_updated", "team.alerts_updated"].includes(command.type))
       bad2("Only club or team configuration can be changed in this context.");
     if (role && command.type === "club.updated" && role !== "administrator")
       throw new AccessError("NOT_FOUND", 404, "Choose the current administrator context to administer the club.");
     const state = applyConfigurationServiceCommand({ principal, memberships: await this.memberships(), preparation: await this.document(teamId, seasonId, "preparation"), seasonId, nowMs: this.now(), command });
     await this.saveDocument(teamId, seasonId, "preparation", state);
+    if (command.type === "club.updated") await this.execute("SELECT longball.sync_club_configuration($1,$2)", [teamId, seasonId]);
     await this.audit(principal, command.type, teamId, "administrator_configuration_accepted");
     return await this.configuration(principal, teamId, seasonId, role);
   }
@@ -67573,11 +67827,12 @@ var PostgresStore = class _PostgresStore {
     const destination = plan.preparation.seasons.find((item) => item.id === plan.receipt.seasonId);
     if (!team || !destination) throw new AccessError("NOT_FOUND", 404, "The authorised team season is unavailable.");
     await this.execute("INSERT INTO team_seasons(club_id,team_id,season_id,label,start_year,start_date,end_date) VALUES($1,$2,$3,$4,$5,$6,$7)", [team.club_id, teamId, destination.id, destination.label, destination.startYear, destination.startDate, destination.endDate]);
-    for (const member of plan.memberships)
+    for (const member of plan.memberships.filter((item) => !item.administrativeInheritance))
       await this.execute("INSERT INTO memberships(account_id,team_id,season_id,role,player_id,expires_at,revoked_at) VALUES($1,$2,$3,$4,$5,$6,$7)", [member.accountId, member.teamId, member.seasonId, member.role, member.playerId ?? null, member.expiresAt ?? null, member.revokedAt ?? null]);
     await this.saveDocument(teamId, plan.receipt.seasonId, "preparation", plan.preparation);
     await this.saveDocument(teamId, plan.receipt.seasonId, "records", plan.records);
     await this.saveDocument(teamId, plan.receipt.seasonId, "community", plan.community);
+    await this.execute("SELECT longball.inherit_administration_for_season($1,$2)", [teamId, plan.receipt.seasonId]);
     await this.audit(principal, "season.created_from_explicit_assignments", plan.receipt.seasonId, "accepted_no_spectator_renewal");
     return plan.receipt;
   }
@@ -67608,7 +67863,7 @@ var PostgresStore = class _PostgresStore {
   }
   async preparationCommand(principal, teamId, seasonId, command) {
     const previous = await this.preparation(principal, teamId, seasonId);
-    const types2 = ["club.updated", "team.updated", "season.rolled_over", "profile.saved", "roster.imported", "profile.archived", "formation.saved", "position.saved", "position.archived", "lineup_template.saved", "lineup_template.archived", "lineup_template.applied", "lineup_template.cleared", "fixture.saved", "fixture.status_changed", "fixture.response_recorded", "fixture.selection_saved", "fixture.attendance_recorded", "fixture.prepared", "match_plan.saved", "match_plan.applied", "match_plan.cleared", "training.series_created", "training.series_updated", "training.series_cancelled", "training.saved", "training.status_changed", "training.response_recorded", "training.attendance_recorded"];
+    const types2 = ["club.updated", "team.updated", "season.rolled_over", "profile.saved", "roster.imported", "roster.proforma_imported", "team.league_updated", "team.alerts_updated", "profile.archived", "formation.saved", "position.saved", "position.archived", "lineup_template.saved", "lineup_template.archived", "lineup_template.applied", "lineup_template.cleared", "fixture.saved", "fixture.status_changed", "fixture.response_recorded", "fixture.selection_saved", "fixture.attendance_recorded", "fixture.prepared", "match_plan.saved", "match_plan.applied", "match_plan.cleared", "training.series_created", "training.series_updated", "training.series_cancelled", "training.saved", "training.status_changed", "training.response_recorded", "training.attendance_recorded"];
     if (!command || !types2.includes(command.type))
       bad2("Unsupported preparation command.");
     if (command.type === "season.rolled_over")
@@ -67647,9 +67902,10 @@ var PostgresStore = class _PostgresStore {
         }
       }
     }
-    if (command.type.startsWith("training.") || command.type.startsWith("profile.") || command.type.startsWith("fixture.") || command.type === "roster.imported")
+    if (command.type.startsWith("training.") || command.type.startsWith("profile.") || command.type.startsWith("fixture.") || command.type === "roster.imported" || command.type === "roster.proforma_imported")
       await this.projectPreparationRecords(teamId, seasonId, state, command.id);
     await this.saveDocument(teamId, seasonId, "preparation", state);
+    if (command.type === "club.updated") await this.execute("SELECT longball.sync_club_configuration($1,$2)", [teamId, seasonId]);
     await this.audit(principal, command.type, teamId, "accepted");
     if (command.type === "fixture.saved")
       await this.enqueueNotifications(teamId, seasonId, "schedule", command.fixture.id, command.id);
@@ -67676,9 +67932,9 @@ var PostgresStore = class _PostgresStore {
   }
   async ownPreparationCommand(principal, teamId, seasonId, command) {
     const membership = assertTeamRole(principal, await this.memberships(), teamId, seasonId, ["player"], this.now());
-    if (!command || !validId4(command.id) || !nonnegative4(command.expectedRevision) || !["own.preferences_saved", "own.fixture_response_recorded", "own.training_response_recorded"].includes(command.type))
+    if (!command || !validId4(command.id) || !nonnegative4(command.expectedRevision) || !["own.preferences_saved", "own.fa_id_saved", "own.fixture_response_recorded", "own.training_response_recorded"].includes(command.type))
       bad2("A valid own-player command and source revision are required.");
-    const allowed = command.type === "own.preferences_saved" ? ["id", "expectedRevision", "type", "preferences"] : command.type === "own.fixture_response_recorded" ? ["id", "expectedRevision", "type", "fixtureId", "response"] : ["id", "expectedRevision", "type", "trainingId", "response"];
+    const allowed = command.type === "own.preferences_saved" ? ["id", "expectedRevision", "type", "preferences"] : command.type === "own.fa_id_saved" ? ["id", "expectedRevision", "type", "faPlayerId"] : command.type === "own.fixture_response_recorded" ? ["id", "expectedRevision", "type", "fixtureId", "response"] : ["id", "expectedRevision", "type", "trainingId", "response"];
     if (Object.keys(command).some((key) => !allowed.includes(key)))
       bad2("Own-player commands cannot change another profile or manager-controlled fields.");
     const state = await this.document(teamId, seasonId, "preparation");
@@ -67697,7 +67953,7 @@ var PostgresStore = class _PostgresStore {
       }
     }
     const base = { id: command.id, expectedRevision: command.expectedRevision };
-    const bound = command.type === "own.preferences_saved" ? { ...base, type: "profile.saved", profile: { ...profile, preferences: command.preferences } } : command.type === "own.fixture_response_recorded" ? { ...base, type: "fixture.response_recorded", fixtureId: command.fixtureId, profileId: profile.id, response: command.response } : { ...base, type: "training.response_recorded", trainingId: command.trainingId, profileId: profile.id, response: command.response };
+    const bound = command.type === "own.preferences_saved" ? { ...base, type: "profile.saved", profile: { ...profile, preferences: command.preferences } } : command.type === "own.fa_id_saved" ? { ...base, type: "profile.saved", profile: { ...profile, faPlayerId: command.faPlayerId } } : command.type === "own.fixture_response_recorded" ? { ...base, type: "fixture.response_recorded", fixtureId: command.fixtureId, profileId: profile.id, response: command.response } : { ...base, type: "training.response_recorded", trainingId: command.trainingId, profileId: profile.id, response: command.response };
     const updated = reducePreparation(state, bound);
     await this.saveDocument(teamId, seasonId, "preparation", updated);
     await this.audit(principal, command.type, teamId, "accepted");
