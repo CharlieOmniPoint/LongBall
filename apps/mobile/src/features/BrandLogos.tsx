@@ -1,5 +1,12 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { Image, Platform, StyleSheet, Switch, Text, View } from "react-native";
+import {
+  Image,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import * as Crypto from "expo-crypto";
 import type {
   BrandingCommand,
@@ -48,6 +55,43 @@ const writable = (value: BrandingDto, kind: BrandKind) =>
   kind === "club_logo" ? value.canWriteClub : value.canWriteTeam;
 const slot = (value: BrandingDto, kind: BrandKind) =>
   kind === "club_logo" ? value.club : value.team;
+function LogoAcknowledgement({
+  label,
+  accessibilityLabel,
+  value,
+  onValueChange,
+  disabled,
+}: {
+  label: string;
+  accessibilityLabel: string;
+  value: boolean;
+  onValueChange: (value: boolean) => void;
+  disabled: boolean;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="switch"
+      accessibilityLabel={accessibilityLabel}
+      accessibilityState={{ checked: value, disabled }}
+      aria-checked={value}
+      aria-disabled={disabled}
+      disabled={disabled}
+      onPress={() => onValueChange(!value)}
+      style={[styles.acknowledgement, disabled && styles.disabled]}
+    >
+      <Text style={[typography.body, styles.flex]}>{label}</Text>
+      <View
+        accessible={false}
+        aria-hidden
+        style={[styles.toggleTrack, value && styles.toggleSelected]}
+      >
+        <View
+          style={[styles.toggleThumb, value && styles.toggleThumbSelected]}
+        />
+      </View>
+    </Pressable>
+  );
+}
 export function BrandLogos(props: BrandLogosProps) {
   return <BrandLogosContent key={props.scopeKey} {...props} />;
 }
@@ -305,18 +349,13 @@ function BrandLogosContent(props: BrandLogosProps) {
                       : value.team.name}
                     .
                   </Text>
-                  <View style={styles.row}>
-                    <Text style={[typography.body, styles.flex]}>
-                      I reviewed this exact processed logo and confirm the right
-                      to use it.
-                    </Text>
-                    <Switch
-                      accessibilityLabel="Logo rights and exact revision reviewed"
-                      value={rights}
-                      onValueChange={setRights}
-                      disabled={locked}
-                    />
-                  </View>
+                  <LogoAcknowledgement
+                    label="I reviewed this exact processed logo and confirm the right to use it."
+                    accessibilityLabel="Logo rights and exact revision reviewed"
+                    value={rights}
+                    onValueChange={setRights}
+                    disabled={locked}
+                  />
                   <Text style={typography.muted}>
                     Publishing changes only this owning logo reference. It does
                     not publish a game photo or grant another role.
@@ -465,17 +504,13 @@ function BrandLogosContent(props: BrandLogosProps) {
                     </Text>
                   </>
                 )}
-                <View style={styles.row}>
-                  <Text style={[typography.body, styles.flex]}>
-                    I checked this logo image and the upload rules.
-                  </Text>
-                  <Switch
-                    accessibilityLabel="Logo upload policy acknowledgement"
-                    value={acknowledged}
-                    onValueChange={setAcknowledged}
-                    disabled={locked}
-                  />
-                </View>
+                <LogoAcknowledgement
+                  label="I checked this logo image and the upload rules."
+                  accessibilityLabel="Logo upload policy acknowledgement"
+                  value={acknowledged}
+                  onValueChange={setAcknowledged}
+                  disabled={locked}
+                />
                 <Button
                   label="Upload logo privately for processing"
                   testID="brand-upload"
@@ -661,6 +696,30 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   flex: { flex: 1, minWidth: 140 },
+  acknowledgement: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    minHeight: 44,
+    minWidth: 44,
+    paddingVertical: 6,
+  },
+  disabled: { opacity: 0.5 },
+  toggleTrack: {
+    width: 40,
+    height: 24,
+    padding: 2,
+    borderRadius: 12,
+    backgroundColor: colors.controlBorder,
+  },
+  toggleSelected: { backgroundColor: colors.brand },
+  toggleThumb: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: "#fff",
+  },
+  toggleThumbSelected: { alignSelf: "flex-end" },
   preview: {
     width: "100%",
     height: 150,

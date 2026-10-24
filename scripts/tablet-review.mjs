@@ -163,7 +163,7 @@ async function geometry(state, label) {
   const result = await state.page.evaluate(() => {
     const visible = element => { const rect = element.getBoundingClientRect(), style = getComputedStyle(element); return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden' && element.getClientRects().length > 0 && !element.closest('[aria-hidden="true"]'); };
     const named = element => element.getAttribute('aria-label') || element.getAttribute('data-testid') || element.textContent?.trim().slice(0, 60) || element.tagName;
-    const targets = [...document.querySelectorAll('button,[role="button"],[role="checkbox"],[role="tab"],input:not([type="hidden"]),textarea')].filter(element => visible(element) && !element.disabled && element.getAttribute('aria-disabled') !== 'true');
+    const targets = [...document.querySelectorAll('button,[role="button"],[role="checkbox"],[role="switch"],[role="tab"],input:not([type="hidden"]),textarea')].filter(element => visible(element) && !element.disabled && element.getAttribute('aria-disabled') !== 'true');
     const undersized = targets.flatMap(element => { const rect = element.getBoundingClientRect(); return rect.width < 43.5 || rect.height < 43.5 ? [{ label: named(element), width: rect.width, height: rect.height }] : []; });
     const fonts = [...document.querySelectorAll('div,span,input,textarea,button')].filter(element => visible(element) && ([...element.childNodes].some(node => node.nodeType === Node.TEXT_NODE && node.textContent.trim()) || element.matches('input,textarea'))).flatMap(element => {
       const style = getComputedStyle(element), family = style.fontFamily.toLowerCase().split(',').map(value => value.trim().replaceAll('"', '').replaceAll("'", ''));
