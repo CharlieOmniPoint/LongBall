@@ -1,9 +1,9 @@
 {
-  "state": "ready",
-  "url": "https://nose-tale-office-holly.trycloudflare.com",
-  "sourceRevision": "2fd2fe8ee8107b589ff462b0351c50db4a4e533e",
-  "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40034161171",
-  "startedAt": "2026-10-23T22:35:29Z",
-  "expiresAt": "2026-10-24T03:35:29Z",
+  "state": "starting",
+  "url": "",
+  "sourceRevision": "c8400d2db240770c5f93669322fe33b6ce0ffeb7",
+  "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40085713495",
+  "startedAt": "2026-10-24T10:26:01Z",
+  "expiresAt": "",
   "audience": "LongBall demo review with simulated Roma U10 teams and matches"
 }
