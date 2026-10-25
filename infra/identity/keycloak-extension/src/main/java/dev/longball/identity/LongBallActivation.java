@@ -40,10 +40,12 @@ import org.keycloak.models.ClientModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.KeycloakSessionFactory;
 import org.keycloak.models.RealmModel;
+import org.keycloak.models.PasswordPolicy;
 import org.keycloak.models.UserModel;
 import org.keycloak.models.credential.PasswordCredentialModel;
 import org.keycloak.models.credential.RecoveryAuthnCodesCredentialModel;
 import org.keycloak.models.jpa.entities.UserEntity;
+import org.keycloak.models.jpa.entities.RealmEntity;
 import org.keycloak.protocol.oidc.OIDCLoginProtocol;
 import org.keycloak.protocol.oidc.utils.RedirectUtils;
 import org.keycloak.services.Urls;
@@ -153,16 +155,62 @@ public final class LongBallActivation implements RealmResourceProviderFactory {
       if (auth == null || auth.user().getServiceAccountClientLink() == null || role == null
           || !auth.user().hasRole(role) || !"longball-activation-service".equals(auth.token().getIssuedFor())) throw denied(403);
     }
+    @POST @Path("sign-in-rules")
+    public Map<String, Object> signInRules(Map<String, Object> input) {
+      service(); fields(input, "revision", "rules");
+      Object revisionValue = input.get("revision");
+      if (!(revisionValue instanceof Number number) || number.doubleValue() != number.longValue()
+          || number.longValue() < 0 || number.longValue() > 9007199254740991L) throw denied(400);
+      long revision = number.longValue();
+      LongBallSignInRules.Rules rules;
+      try { rules = LongBallSignInRules.parse(input.get("rules")); }
+      catch (IllegalArgumentException error) { throw denied(400); }
+      RealmModel realm = session.getContext().getRealm();
+      // Serialise realm policy writes even when the provider runs on multiple nodes.
+      var entities = session.getProvider(JpaConnectionProvider.class).getEntityManager();
+      RealmEntity entity = entities.find(RealmEntity.class, realm.getId(), LockModeType.PESSIMISTIC_WRITE);
+      if (entity == null) throw denied(503);
+      // The request's RealmModel may have come from the distributed cache before
+      // the lock. Read revision and source policy from the refreshed locked row.
+      entities.refresh(entity, LockModeType.PESSIMISTIC_WRITE);
+      List<Object[]> stored = entities.createQuery(
+          "SELECT a.name,a.value FROM RealmAttributeEntity a WHERE a.realm.id=:id AND a.name IN :names", Object[].class)
+        .setParameter("id", realm.getId())
+        .setParameter("names", Set.of(LongBallSignInRules.PREFIX + "revision", LongBallSignInRules.PREFIX + "fingerprint"))
+        .setHint("jakarta.persistence.cache.retrieveMode", jakarta.persistence.CacheRetrieveMode.BYPASS)
+        .getResultList();
+      String revisionText = stored.stream().filter(attribute -> (LongBallSignInRules.PREFIX + "revision").equals(attribute[0]))
+        .map(attribute -> (String) attribute[1]).findFirst().orElse(null);
+      String fingerprint = stored.stream().filter(attribute -> (LongBallSignInRules.PREFIX + "fingerprint").equals(attribute[0]))
+        .map(attribute -> (String) attribute[1]).findFirst().orElse(null);
+      if (!LongBallSignInRules.acceptsRevision(revision, rules, revisionText, fingerprint)) throw denied(409);
+      rules.store(realm);
+      // Keep independently configured hashing/history/breach rules. These managed clauses
+      // are replaced by the exact LongBall policy so Super Admin's settings are effective.
+      String sourcePolicy = entity.getPasswordPolicy();
+      PasswordPolicy.Builder policy = sourcePolicy == null || sourcePolicy.isBlank()
+        ? PasswordPolicy.build() : PasswordPolicy.parse(session, sourcePolicy).toBuilder();
+      for (String managed : List.of("length", "maxLength", "upperCase", "lowerCase", "digits", "specialChars", "notUsername", "notContainsUsername")) policy.remove(managed);
+      policy.put(LongBallSignInRules.POLICY, null);
+      realm.setPasswordPolicy(policy.build(session));
+      realm.setAttribute(LongBallSignInRules.PREFIX + "revision", Long.toString(revision));
+      realm.setAttribute(LongBallSignInRules.PREFIX + "fingerprint", rules.toString());
+      if (!realm.getPasswordPolicy().getPolicies().contains(LongBallSignInRules.POLICY)) throw denied(503);
+      return Map.of("revision", revision, "enforced", true);
+    }
     @POST @Path("pending")
     public Map<String, Object> pending(Map<String, Object> input) {
       service(); fields(input, "operationId", "accountId", "username", "classification", "emailRequired");
       String accountId = value(input, "accountId"), username = value(input, "username"), classification = value(input, "classification");
       try { UUID.fromString(accountId); } catch (IllegalArgumentException error) { throw denied(400); }
       if (!value(input, "operationId").equals("pending:" + accountId) || !Set.of("child_shared", "unclassified").contains(classification)
-          || !Boolean.FALSE.equals(input.get("emailRequired")) || !username.matches("LB[A-HJ-NP-Z2-9]{12}")) throw denied(400);
+          || !Boolean.FALSE.equals(input.get("emailRequired"))) throw denied(400);
       RealmModel realm = session.getContext().getRealm();
       UserModel user = session.users().getUserByUsername(realm, username);
       if (user == null) {
+        LongBallSignInRules.Rules rules = realm.getAttribute(LongBallSignInRules.PREFIX + "revision") == null
+          ? LongBallSignInRules.defaults() : LongBallSignInRules.read(realm);
+        if (!rules.usernameAllowed(username)) throw denied(400);
         if (session.users().getUserById(realm, accountId) != null) throw denied(409);
         user = session.users().addUser(realm, accountId, username, false, false);
         user.setEnabled(false); user.setSingleAttribute(ACCOUNT, accountId);
@@ -261,7 +309,7 @@ public final class LongBallActivation implements RealmResourceProviderFactory {
   }
   public static final class PasswordAction extends UpdatePassword {
     @Override public String getId() { return PASSWORD; }
-    @Override public String getDisplayText() { return "LongBall activation password (fictional trial)"; }
+    @Override public String getDisplayText() { return "LongBall account password"; }
     @Override public RequiredActionProvider create(KeycloakSession session) { return this; }
     @Override public void evaluateTriggers(RequiredActionContext context) { }
     @Override public void requiredActionChallenge(RequiredActionContext context) { active(context.getSession(), context.getAuthenticationSession()); super.requiredActionChallenge(context); }
@@ -269,14 +317,14 @@ public final class LongBallActivation implements RealmResourceProviderFactory {
   }
   public static final class RecoveryAction extends RecoveryAuthnCodesAction {
     @Override public String getId() { return RECOVERY; }
-    @Override public String getDisplayText() { return "LongBall activation recovery codes (fictional trial)"; }
+    @Override public String getDisplayText() { return "LongBall recovery codes"; }
     @Override public RequiredActionProvider create(KeycloakSession session) { return this; }
     @Override public void requiredActionChallenge(RequiredActionContext context) { active(context.getSession(), context.getAuthenticationSession()); super.requiredActionChallenge(context); }
     @Override public void processAction(RequiredActionContext context) { active(context.getSession(), context.getAuthenticationSession()); super.processAction(context); }
   }
   public static final class FinishAction implements RequiredActionProvider, RequiredActionFactory {
     @Override public String getId() { return FINISH; }
-    @Override public String getDisplayText() { return "Finish LongBall activation (fictional trial)"; }
+    @Override public String getDisplayText() { return "Finish LongBall activation"; }
     @Override public RequiredActionProvider create(KeycloakSession session) { return this; }
     @Override public void init(Config.Scope config) { }
     @Override public void postInit(KeycloakSessionFactory factory) { }

@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: LongBall implemented runtime extensions
-  version: 1.9.0
+  version: 1.10.0
   description: >-
     Runtime additions beside the unchanged supplied canonical contract. Server
     authorization, explicit policy decisions and native-device acceptance remain
@@ -1176,6 +1176,98 @@ paths:
         '200': {description: Current safe team metadata, content: {application/json: {schema: {$ref: '#/components/schemas/TeamOverview'}}}}
         '404': {$ref: '#/components/responses/Unavailable'}
 
+  /sign-in-rules:
+    get:
+      operationId: readApplicationSignInRules
+      summary: Read the application-wide rules for choosing new usernames and credentials
+      security: []
+      description: >-
+        Public, non-personal policy metadata for account entry. Returns no account names,
+        credentials, verifiers, membership information or username-availability directory.
+        Rules govern newly chosen usernames, passwords and spectator passcodes across the
+        application; existing logins retain their established credentials. Spectator PINs
+        remain exactly four digits and never grant Player or staff authority. Password
+        enforcement depends on the explicitly reported configured-provider status.
+      responses:
+        '200':
+          description: Current rules and provider confirmation state; private, no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SignInRulesDto'
+        '503':
+          description: SIGN_IN_RULES_UNAVAILABLE; current persisted rules could not be established
+          content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}
+  /administration/sign-in-rules:
+    get:
+      operationId: readAdministrativeSignInRules
+      summary: Read sign-in rules as a currently authorized Super Admin
+      description: >-
+        Rechecks the server-owned Super Admin grant, active verified adult identity and
+        recent stronger authentication. Club Admin, Manager, Player and Spectator roles
+        cannot obtain this administrative view by supplying a role header. The DTO contains
+        the same non-personal rule metadata available to account entry.
+      responses:
+        '200':
+          description: Current authorized rules; private, no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SignInRulesDto'
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403':
+          description: ADULT_AUTHORITY_REQUIRED or RECENT_AUTHENTICATION_REQUIRED
+          content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}
+        '404': {$ref: '#/components/responses/Unavailable'}
+        '503':
+          description: SIGN_IN_RULES_UNAVAILABLE; current persisted rules could not be established
+          content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}
+    post:
+      operationId: saveApplicationSignInRules
+      summary: Save the application-wide rules as a Super Admin
+      description: >-
+        Requires a current Super Admin grant and recent stronger verified-adult
+        authentication, checked again before replaying an idempotent receipt. Supply the
+        reviewed expectedRevision, including zero for the initial rules. A stale revision
+        is rejected. The exact request uses a stable Idempotency-Key; different content
+        with the same key is rejected. A configured password provider must confirm the
+        requested revision before the application commits it; unavailable or unsupported
+        enforcement fails closed. With no provider configured, new spectator registration
+        uses the saved username/PIN rules and provider status remains not_configured.
+        Existing accounts, configured demo credentials and current sessions are not renamed,
+        reset, revoked or revalidated against newly selected creation rules. Four-digit
+        spectator PINs remain separate from Player and staff password credentials.
+      parameters:
+      - $ref: '#/components/parameters/ContractVersion'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignInRulesInput'
+      responses:
+        '200':
+          description: Saved revision and current provider state; private, no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SignInRulesDto'
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403':
+          description: ADULT_AUTHORITY_REQUIRED or RECENT_AUTHENTICATION_REQUIRED
+          content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}
+        '404': {$ref: '#/components/responses/Unavailable'}
+        '409':
+          description: SIGN_IN_RULES_CONFLICT, contract-version mismatch or idempotency key reused with different content
+          content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}
+        '415':
+          description: JSON_REQUIRED; use application/json
+          content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}
+        '503':
+          description: SIGN_IN_RULES_UNAVAILABLE or SIGN_IN_RULES_PROVIDER_UNAVAILABLE; no application rule revision was committed
+          content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}
   /administration:
     get:
       operationId: readClubAdministration
@@ -1445,8 +1537,10 @@ paths:
       summary: Redeem a scoped invitation and set a spectator username and PIN
       security: []
       description: Anonymous capability redemption accepts exactly four fields; requestId is a stable body identity
-        and event mutation headers are not used. A live invitation, unique username and nontrivial four-digit passcode
-        are required. Salted scrypt verifiers are stored, not PIN plaintext. This creates an unclassified spectator
+        and event mutation headers are not used. A live invitation, unique username and exactly four decimal passcode
+        digits are required. The current application sign-in rules govern new username length/characters and whether
+        easily guessed PINs are refused; this check occurs on the server even if a client has stale rule metadata.
+        Salted scrypt verifiers are stored, not PIN plaintext. This creates an unclassified spectator
         identity and exactly the invitation membership; it never creates adult, manager or player authority. The first
         successful response creates an in-memory session.
       requestBody:
@@ -1702,6 +1796,127 @@ components:
   securitySchemes:
     bearerAuth: {type: http, scheme: bearer, bearerFormat: JWT or opaque session}
   schemas:
+    SignInRules:
+      type: object
+      additionalProperties: false
+      required: [username, password, spectatorPin]
+      description: >-
+        Creation/change rules shared by all account types. The server reserves managed
+        usernames case-insensitively across teams and credential routes. Team-based initial
+        suggestions use the team name, first name and surname initial, for example
+        Roma.SebL, with a suffix for known duplicate claims. Existing usernames and
+        credentials are grandfathered, including configured demo logins.
+      properties:
+        username: {$ref: '#/components/schemas/UsernameSignInRules'}
+        password: {$ref: '#/components/schemas/PasswordSignInRules'}
+        spectatorPin: {$ref: '#/components/schemas/SpectatorPinSignInRules'}
+    UsernameSignInRules:
+      type: object
+      additionalProperties: false
+      required: [minLength, maxLength, allowNumbers, allowSeparators]
+      description: >-
+        Newly chosen usernames use ASCII letters and optionally numbers and dot,
+        underscore or dash separators. They start with a letter or number. Length
+        limits are inclusive; maxLength must be at least minLength and at least eight.
+        Username matching and duplicate reservation are case-insensitive. These limits
+        do not invalidate established login names.
+      properties:
+        minLength: {type: integer, minimum: 3, maximum: 32, default: 3}
+        maxLength: {type: integer, minimum: 8, maximum: 40, default: 40}
+        allowNumbers: {type: boolean, default: true}
+        allowSeparators: {type: boolean, default: true}
+      allOf:
+      - {if: {properties: {minLength: {minimum: 9}}}, then: {properties: {maxLength: {minimum: 9}}}}
+      - {if: {properties: {minLength: {minimum: 10}}}, then: {properties: {maxLength: {minimum: 10}}}}
+      - {if: {properties: {minLength: {minimum: 11}}}, then: {properties: {maxLength: {minimum: 11}}}}
+      - {if: {properties: {minLength: {minimum: 12}}}, then: {properties: {maxLength: {minimum: 12}}}}
+      - {if: {properties: {minLength: {minimum: 13}}}, then: {properties: {maxLength: {minimum: 13}}}}
+      - {if: {properties: {minLength: {minimum: 14}}}, then: {properties: {maxLength: {minimum: 14}}}}
+      - {if: {properties: {minLength: {minimum: 15}}}, then: {properties: {maxLength: {minimum: 15}}}}
+      - {if: {properties: {minLength: {minimum: 16}}}, then: {properties: {maxLength: {minimum: 16}}}}
+      - {if: {properties: {minLength: {minimum: 17}}}, then: {properties: {maxLength: {minimum: 17}}}}
+      - {if: {properties: {minLength: {minimum: 18}}}, then: {properties: {maxLength: {minimum: 18}}}}
+      - {if: {properties: {minLength: {minimum: 19}}}, then: {properties: {maxLength: {minimum: 19}}}}
+      - {if: {properties: {minLength: {minimum: 20}}}, then: {properties: {maxLength: {minimum: 20}}}}
+      - {if: {properties: {minLength: {minimum: 21}}}, then: {properties: {maxLength: {minimum: 21}}}}
+      - {if: {properties: {minLength: {minimum: 22}}}, then: {properties: {maxLength: {minimum: 22}}}}
+      - {if: {properties: {minLength: {minimum: 23}}}, then: {properties: {maxLength: {minimum: 23}}}}
+      - {if: {properties: {minLength: {minimum: 24}}}, then: {properties: {maxLength: {minimum: 24}}}}
+      - {if: {properties: {minLength: {minimum: 25}}}, then: {properties: {maxLength: {minimum: 25}}}}
+      - {if: {properties: {minLength: {minimum: 26}}}, then: {properties: {maxLength: {minimum: 26}}}}
+      - {if: {properties: {minLength: {minimum: 27}}}, then: {properties: {maxLength: {minimum: 27}}}}
+      - {if: {properties: {minLength: {minimum: 28}}}, then: {properties: {maxLength: {minimum: 28}}}}
+      - {if: {properties: {minLength: {minimum: 29}}}, then: {properties: {maxLength: {minimum: 29}}}}
+      - {if: {properties: {minLength: {minimum: 30}}}, then: {properties: {maxLength: {minimum: 30}}}}
+      - {if: {properties: {minLength: {minimum: 31}}}, then: {properties: {maxLength: {minimum: 31}}}}
+      - {if: {properties: {minLength: {minimum: 32}}}, then: {properties: {maxLength: {minimum: 32}}}}
+    PasswordSignInRules:
+      type: object
+      additionalProperties: false
+      required: [minLength, requireUppercase, requireLowercase, requireNumber, requireSymbol, disallowUsername]
+      description: >-
+        Rules for newly chosen provider passwords across Player and staff accounts.
+        Password entry remains with the configured provider; this endpoint neither
+        receives passwords nor resets existing credentials. Passwords have an absolute
+        upper limit of 128 characters. Provider confirmation is reported separately.
+      properties:
+        minLength: {type: integer, minimum: 8, maximum: 64, default: 12}
+        requireUppercase: {type: boolean, default: true}
+        requireLowercase: {type: boolean, default: true}
+        requireNumber: {type: boolean, default: true}
+        requireSymbol: {type: boolean, default: true}
+        disallowUsername:
+          type: boolean
+          default: true
+          description: A newly chosen password must not contain the username, compared case-insensitively.
+    SpectatorPinSignInRules:
+      type: object
+      additionalProperties: false
+      required: [blockSimpleCodes]
+      description: >-
+        Spectator-only passcodes remain exactly four decimal digits. This setting
+        governs newly chosen PINs; it does not grant Player or staff authority or
+        revalidate existing spectator logins. Bounded attempts and durable lockout
+        remain separate and cannot be disabled by this setting.
+      properties:
+        blockSimpleCodes:
+          type: boolean
+          default: true
+          description: Refuse repeated digits, ascending/descending sequences, repeated pairs and the maintained easily-guessed code list.
+    SignInRulesDto:
+      type: object
+      additionalProperties: false
+      required: [kind, revision, rules, provider]
+      properties:
+        kind: {const: sign-in-rules}
+        revision: {type: integer, minimum: 0, maximum: 9007199254740991}
+        rules: {$ref: '#/components/schemas/SignInRules'}
+        provider:
+          type: object
+          additionalProperties: false
+          required: [status, detail]
+          properties:
+            status:
+              enum: [applied, not_configured, pending]
+              description: >-
+                applied means the configured provider confirmed this persisted revision;
+                not_configured means no password provider is connected and only local
+                creation rules can be enforced; pending means the configured provider
+                has not confirmed the current persisted revision. Existing logins remain
+                valid in every state. A provider confirmation is required before a new
+                provider identity or credential-setup flow may proceed.
+            detail: {type: string, maxLength: 500, description: Non-personal explanation of the current enforcement state}
+    SignInRulesInput:
+      type: object
+      additionalProperties: false
+      required: [expectedRevision, rules]
+      properties:
+        expectedRevision:
+          type: integer
+          minimum: 0
+          maximum: 9007199254740991
+          description: The exact revision reviewed by the Super Admin; zero is the initial application rule revision.
+        rules: {$ref: '#/components/schemas/SignInRules'}
     AdministrationScope:
       type: object
       additionalProperties: false
@@ -2325,46 +2540,16 @@ components:
     NewSpectatorPin:
       allOf:
       - $ref: '#/components/schemas/SpectatorPin'
-      - not:
-          anyOf:
-          - pattern: ^(\d)\1\1\1$
-          - pattern: ^(\d\d)\1$
-          - pattern: ^(\d)\1(\d)\2$
-          - enum:
-            - '0123'
-            - '0852'
-            - '0987'
-            - '1004'
-            - '1098'
-            - '1234'
-            - '1313'
-            - '2000'
-            - '2001'
-            - '2020'
-            - '2109'
-            - '2345'
-            - '2580'
-            - '3210'
-            - '3456'
-            - '4321'
-            - '4567'
-            - '5432'
-            - '5678'
-            - '6543'
-            - '6789'
-            - '6969'
-            - '7654'
-            - '7890'
-            - '8765'
-            - '8901'
-            - '9012'
-            - '9876'
-      description: Four digits; repeated digits/pairs, ascending/descending wrapping sequences and listed easily guessed
-        patterns are refused. Never grants player, manager or administrative authority.
+      description: Exactly four decimal digits. When the current application sign-in rules have spectatorPin.blockSimpleCodes
+        enabled, the server also refuses repeated digits/pairs, ascending/descending wrapping sequences and its maintained
+        list of easily guessed codes. That dynamic rule cannot be inferred from this request body alone. Existing spectator
+        logins are not revalidated against newly selected creation rules. Never grants player, manager or administrative authority.
     SpectatorUsernameInput:
       type: string
       pattern: ^\s*[A-Za-z0-9][A-Za-z0-9._-]{2,39}\s*$
-      description: Trimmed and lowercased by the server; the resulting username has 3 to 40 allowed characters.
+      description: Trimmed and lowercased by the server; the resulting username has 3 to 40 allowed characters. New registrations
+        additionally follow the current application sign-in rules, including selected length/number/separator limits and
+        case-insensitive global reservation. Existing logins retain their established names.
     SpectatorRegistrationInput:
       type: object
       additionalProperties: false

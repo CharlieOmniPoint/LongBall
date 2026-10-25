@@ -1,0 +1,12 @@
+$ vitest run
+
+ RUN  v5.0.5 /workspace/LongBall
+
+
+ Test Files  113 passed (113)
+      Tests  932 passed (932)
+   Start at  12:22:07
+   Duration  103.55s (tests 62%, import 23%, transform 10%, worker 4%)
+
+    Isolate  113 workers spawned · ~1.06s startup each (spawn + environment, per file)
+             at least ~58.56s faster with isolate: false — reuses workers across files instead of one per file

@@ -1,4 +1,5 @@
 import type { ActivationProvider } from "./activation";
+import { parseSignInRules } from "../../../packages/application/src/identity-policy";
 
 /** Server-only adapter for the pinned, explicit fictional Keycloak extension trial. */
 export interface KeycloakActivationProviderOptions {
@@ -125,6 +126,15 @@ export function createKeycloakActivationProvider(
   const provider: ActivationProvider = {
     issuer: issuer.href,
     credentialSetupOrigins: [issuer.origin],
+    async applySignInRules(input) {
+      if (!Number.isSafeInteger(input.revision) || input.revision < 0)
+        unavailable();
+      const rules = parseSignInRules(input.rules);
+      const value = await call("sign-in-rules", { revision: input.revision, rules });
+      if (value.revision !== input.revision || value.enforced !== true)
+        unavailable();
+      return { revision: input.revision, enforced: true };
+    },
     async provisionPending(input) {
       const value = await call("pending", input);
       if (

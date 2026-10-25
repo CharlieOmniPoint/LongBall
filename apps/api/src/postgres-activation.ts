@@ -5,6 +5,9 @@ import {
   type Principal,
 } from "../../../packages/application/src/access";
 import type { PostgresStore } from "./postgres-store";
+import { suggestInitialUsername, type SignInRules } from "../../../packages/application/src/identity-policy";
+import { ensureProviderSignInRules } from "./sign-in-rules";
+import { installPostgresChildUsernameRegistry, isUsernameCollision, usernameAllocationUnavailable } from "./username-registry";
 import {
   installActivationSecurity,
   verifyActivationSecurity,
@@ -18,6 +21,7 @@ export interface ActivationPolicy {
 export interface ActivationProvider {
   issuer: string;
   credentialSetupOrigins: readonly string[];
+  applySignInRules?(input: { revision: number; rules: SignInRules }): Promise<{ revision: number; enforced: true }>;
   /** Idempotent by operationId; creates a disabled username-only child, never adopts another user. */
   provisionPending(input: {
     operationId: string;
@@ -187,11 +191,6 @@ function fingerprint(actor: string, input: object): string {
     ]),
   );
 }
-function username(): string {
-  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  // A mask is unbiased for this 32-symbol alphabet.
-  return `LB${Array.from(randomBytes(12), (byte) => alphabet[byte & 31]).join("")}`;
-}
 /** Async PostgreSQL activation repository; provider operations remain outside committed transactions. */
 export class PostgresActivationService {
   async ownsActivationToken(token: string, activationId?: string): Promise<boolean> {
@@ -292,6 +291,7 @@ export class PostgresActivationService {
         );
       if (version?.version === 2) {
         await verifyActivationSecurity(this.store.db);
+        await installPostgresChildUsernameRegistry(this.store);
         return;
       }
       if (!version)
@@ -325,6 +325,7 @@ CREATE TRIGGER lb_activation_immutable_child BEFORE UPDATE OF classification ON 
       await this.store.execute(
         "UPDATE lb_activation_schema SET version=2 WHERE singleton=1",
       );
+      await installPostgresChildUsernameRegistry(this.store);
     });
   }
   private async manager(
@@ -417,6 +418,7 @@ CREATE TRIGGER lb_activation_immutable_child BEFORE UPDATE OF classification ON 
     )
       invalid();
     const signature = fingerprint(principal.accountId, input);
+    const signInRules = await ensureProviderSignInRules(this.store, provider);
     const candidateAccountId = randomUUID();
     const row = await this.withProvisionedAccount(candidateAccountId, () =>
       this.store.transaction(async () => {
@@ -429,9 +431,8 @@ CREATE TRIGGER lb_activation_immutable_child BEFORE UPDATE OF classification ON 
           if (existing.request_signature !== signature) conflict();
           return existing;
         }
-        const profile = (
-          await this.store.preparation(principal, input.teamId, input.seasonId)
-        ).profiles.find(
+        const preparation = await this.store.preparation(principal, input.teamId, input.seasonId);
+        const profile = preparation.profiles.find(
           (item) =>
             item.playerId === input.playerId &&
             item.seasonId === input.seasonId &&
@@ -459,23 +460,6 @@ CREATE TRIGGER lb_activation_immutable_child BEFORE UPDATE OF classification ON 
             "This player already has an account assignment. Use the verified exact-account linking process.",
           );
         const accountId = candidateAccountId;
-        let chosen = username();
-        for (
-          let tries = 0;
-          await this.store.one(
-            "SELECT 1 FROM lb_activation_children WHERE lower(username)=lower($1)",
-            [chosen],
-          );
-          tries++
-        ) {
-          if (tries >= 10)
-            throw new AccessError(
-              "IDENTITY_ALLOCATION_UNAVAILABLE",
-              503,
-              "A unique username could not be allocated.",
-            );
-          chosen = username();
-        }
         await this.store.execute(
           "INSERT INTO accounts(id,issuer,subject,classification,adult_verified,strong_auth_enrolled,status) VALUES($1,$2,$3,$4,0,0,$5)",
           [
@@ -486,20 +470,23 @@ CREATE TRIGGER lb_activation_immutable_child BEFORE UPDATE OF classification ON 
             "disabled",
           ],
         );
-        await this.store.execute(
-          "INSERT INTO lb_activation_children(account_id,username,team_id,season_id,player_id,request_id,request_signature,state,created_by,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,'provisioning',$8,$9)",
-          [
-            accountId,
-            chosen,
-            input.teamId,
-            input.seasonId,
-            input.playerId,
-            input.requestId,
-            signature,
-            principal.accountId,
-            this.store.now(),
-          ],
-        );
+        const collisions: string[] = [];
+        while (true) {
+          const chosen = suggestInitialUsername(preparation.team.name, profile.displayName, collisions, signInRules.rules);
+          await this.store.execute("SAVEPOINT username_candidate");
+          try {
+            await this.store.execute("INSERT INTO lb_activation_children(account_id,username,team_id,season_id,player_id,request_id,request_signature,state,created_by,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,'provisioning',$8,$9)",
+              [accountId, chosen, input.teamId, input.seasonId, input.playerId, input.requestId, signature, principal.accountId, this.store.now()]);
+            await this.store.execute("RELEASE SAVEPOINT username_candidate");
+            break;
+          } catch (error) {
+            await this.store.execute("ROLLBACK TO SAVEPOINT username_candidate");
+            await this.store.execute("RELEASE SAVEPOINT username_candidate");
+            if (!isUsernameCollision(error)) throw error;
+            collisions.push(chosen);
+            if (collisions.length >= 100) usernameAllocationUnavailable();
+          }
+        }
         await this.store.execute(
           "INSERT INTO memberships(account_id,team_id,season_id,role,player_id) VALUES($1,$2,$3,'player',$4)",
           [accountId, input.teamId, input.seasonId, input.playerId],
@@ -829,6 +816,7 @@ CREATE TRIGGER lb_activation_immutable_child BEFORE UPDATE OF classification ON 
       );
       return { token, child };
     });
+    await ensureProviderSignInRules(this.store, provider);
     const result = await this.providerCall(() =>
       provider.beginCredentialSetup({
         operationId: `activation:${reserved.token.id}`,

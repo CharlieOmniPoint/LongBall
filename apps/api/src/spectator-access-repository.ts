@@ -13,6 +13,7 @@ import type {
 } from "../../../packages/application/src/spectator-pin";
 import type { DevelopmentStore } from "./store";
 import { PostgresStore } from "./postgres-store";
+import { initializeSqliteUsernameRegistry, isUsernameCollision } from "./username-registry";
 import type { RuntimeStore } from "./runtime-store";
 import { SqliteInvitationRepository } from "./invitation-repository";
 import type {
@@ -46,8 +47,10 @@ export class PersistedSpectatorAccessRepository
     private readonly source: DevelopmentStore | PostgresStore,
     private readonly runtime: RuntimeStore,
   ) {
-    if (!(source instanceof PostgresStore))
+    if (!(source instanceof PostgresStore)) {
       source.database.exec(SQLITE_SPECTATOR_ACCESS_DDL);
+      initializeSqliteUsernameRegistry(source);
+    }
   }
   private sqlite(): DevelopmentStore {
     if (this.source instanceof PostgresStore) throw new Error("SQLITE_ONLY");
@@ -222,7 +225,7 @@ export class PersistedSpectatorAccessRepository
         return { accountId: input.accountId };
       });
     } catch (error) {
-      if (
+      if (isUsernameCollision(error) || (
         error &&
         typeof error === "object" &&
         "code" in error &&
@@ -230,7 +233,7 @@ export class PersistedSpectatorAccessRepository
           (error.code === "ERR_SQLITE_ERROR" &&
             error instanceof Error &&
             /UNIQUE constraint/.test(error.message)))
-      )
+      ))
         return conflict();
       throw error;
     }

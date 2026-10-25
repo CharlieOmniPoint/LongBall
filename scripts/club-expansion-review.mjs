@@ -21,7 +21,7 @@ const statusPath = '/CharlieOmniPoint/LongBall/preview/longball-m0/preview-statu
 const teamId = 'synthetic-roma-u10', seasonId = 'synthetic-season-2026-27', clubId = 'synthetic-richmond-rovers';
 const contract = 'longball.events/1.1';
 const secrets = new Set(), children = [], states = [], windows = new Map(), tokenAccounts = new Map();
-const report = { startedAt: new Date().toISOString(), scope: 'Fresh SQLite API, separate actual report worker, compiled connected browser clients; only discovery and transport origins are rerouted to loopback. No fabricated feature DTOs.', checks: [], failures: [], httpFailures: [], apiWindows: [], passed: false, nativeDeviceEvidence: false, paidServicesProvisioned: false };
+const report = { startedAt: new Date().toISOString(), scope: 'Fresh SQLite API, separate actual report worker, compiled connected browser clients; only discovery and transport origins are rerouted to loopback. No fabricated feature DTOs.', transportBridge: { loopbackConnectionHeader: 'close', automaticRetries: 0, scope: 'The test bridge uses separate loopback connections to isolate functional UI checks from the Playwright APIRequestContext socket pool. Production connection pooling is not certified here.' }, checks: [], failures: [], httpFailures: [], transportErrors: [], browserCancellations: [], apiWindows: [], passed: false, nativeDeviceEvidence: false, paidServicesProvisioned: false };
 let browser, privateDirectory, base, stage = 'preconditions', diagnostics = '';
 const check = (value, message) => assert(value, message);
 const digest = value => createHash('sha256').update(value).digest('hex');
@@ -75,25 +75,41 @@ async function api(token, route, { role = 'manager', body, method = body ? 'POST
 const scope = (leaf, team = teamId, season = seasonId) => `/v1/teams/${team}/${leaf}?seasonId=${season}`;
 async function makePage(width = 390) {
   const context = await browser.newContext({ viewport: { width, height: 844 }, acceptDownloads: true, reducedMotion: 'reduce' });
-  const page = await context.newPage(), state = { page, context, session: null, pageErrors: [], closed: false, registrations: 0 };
+  const page = await context.newPage(), state = { page, context, session: null, pageErrors: [], reactKeyWarnings: 0, closed: false, registrations: 0 };
   states.push(state); page.setDefaultTimeout(20_000);
   page.on('pageerror', error => state.pageErrors.push(safe(error.message)));
+  page.on('console', message => {
+    if (!['error', 'warning'].includes(message.type())) return;
+    if (/Encountered two children with the same key|Each child in a list should have a unique ["']?key["']?|duplicate (?:component|child|sibling) key/i.test(message.text())) {
+      state.reactKeyWarnings++;
+      // React diagnostics may include user content; retain a fixed description only.
+      state.pageErrors.push('React reported duplicate or missing component keys.');
+    }
+  });
   await context.route('**/*', async route => {
-    const request = route.request(), url = new URL(request.url());
+    const request = route.request(), url = new URL(request.url()), requestStage = stage, requestStartedAtMs = Date.now();
     if (url.origin === base) return route.continue();
     if (url.origin === 'https://raw.githubusercontent.com' && url.pathname === statusPath) return route.fulfill({ contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': base, 'Cache-Control': 'no-store' }, body: JSON.stringify({ state: 'ready', url: virtualApi, sourceRevision: report.source.gitHead, startedAt: new Date(Date.now() - 60_000).toISOString(), expiresAt: new Date(Date.now() + 3_600_000).toISOString() }) });
     if (url.origin !== virtualApi) return route.abort();
     const token = request.headers().authorization?.replace(/^Bearer\s+/i, ''); if (token) secrets.add(token);
     observe(token, request.method());
     try {
-      const response = await route.fetch({ url: base + url.pathname + url.search, maxRedirects: 0 });
+      const response = await route.fetch({ url: base + url.pathname + url.search, headers: { ...request.headers(), connection: 'close' }, maxRedirects: 0 });
       if (['/v1/demo/sessions', '/v1/spectator-access/register', '/v1/spectator-access/login'].includes(url.pathname) && request.method() === 'POST' && response.ok()) {
         const session = await response.json(); secrets.add(session.accessToken); tokenAccounts.set(session.accessToken, session.accountId); state.session = session;
       }
       if (url.pathname === '/v1/spectator-access/register' && request.method() === 'POST') state.registrations++;
       if (response.status() >= 400) { const value = await response.json().catch(() => ({})); report.httpFailures.push({ stage, route: url.pathname, method: request.method(), status: response.status(), code: value.code ?? null, fromBrowser: true }); }
       await route.fulfill({ response });
-    } catch (error) { if (!state.closed && !/closed|disposed|abort|cancel/i.test(String(error.message))) state.pageErrors.push(safe(error.message)); await route.abort().catch(() => {}); }
+    } catch (error) {
+      const browserFailure = request.failure()?.errorText ?? null;
+      if (browserFailure === 'net::ERR_ABORTED') report.browserCancellations.push({ stage: requestStage, route: url.pathname, method: request.method(), browserFailure });
+      else if (!state.closed && !/closed|disposed|abort|cancel/i.test(String(error.message))) {
+        report.transportErrors.push({ stage: requestStage, completedAtStage: stage, route: url.pathname, method: request.method(), startedAtMs: requestStartedAtMs, failedAtMs: Date.now(), contextClosed: state.closed, browserFailure, error: safe(error.message.split('\n')[0]) });
+        state.pageErrors.push(safe(`${error.message}\nBrowser request failure: ${browserFailure ?? 'not reported'}`));
+      }
+      await route.abort().catch(() => {});
+    }
   });
   return state;
 }
@@ -176,12 +192,63 @@ async function rosterAndDocuments(account) {
 async function administration(superAccount, clubAccount) {
   const admin = await openDemo(superAccount, 1024), { page } = admin, token = admin.session.accessToken;
   await openWorkspaceTab(page, 'clubs'); await page.getByTestId('club-administration').waitFor(); const colour = await page.getByTestId('admin-create-club').evaluate(node => getComputedStyle(node).backgroundColor); check(colour === 'rgb(113, 58, 162)', 'SuperAdmin primary actions must use purple.');
+  const policyRoute = '/v1/administration/sign-in-rules', originalPolicy = await api(token, policyRoute, { role: 'administrator' });
+  await page.getByTestId('sign-in-rules-toggle').click(); await page.getByLabel('Minimum password length', { exact: true }).waitFor();
+  const policySwitchColours = await page.getByRole('switch', { name: 'Require an uppercase letter', exact: true }).evaluate(node => [...node.parentElement.children].filter(child => child.tagName === 'DIV').map(child => getComputedStyle(child).backgroundColor));
+  check(policySwitchColours.filter(colour => colour === 'rgb(113, 58, 162)').length === 2, 'Super Admin enabled policy switch track and thumb must use purple.');
+  check(await page.getByLabel('Minimum password length', { exact: true }).inputValue() === String(originalPolicy.rules.password.minLength), 'The global policy form must load the persisted password rules.');
+  await page.getByLabel('Minimum password length', { exact: true }).fill('7'); await page.getByTestId('sign-in-rules-save').click();
+  await page.getByTestId('application-sign-in-rules').getByText('Use the documented sign-in rules and supported lengths.', { exact: true }).waitFor();
+  check((await api(token, policyRoute, { role: 'administrator' })).revision === originalPolicy.revision, 'Invalid password lengths must never change the saved policy.');
+  const changedMinimum = originalPolicy.rules.password.minLength === 14 ? 15 : 14;
+  await page.getByLabel('Minimum password length', { exact: true }).fill(String(changedMinimum));
+  let lostPolicyReceipt = false; const policyRequestKeys = [];
+  await page.route('**/v1/administration/sign-in-rules', async route => {
+    const request = route.request();
+    if (request.method() !== 'POST') return route.fallback();
+    policyRequestKeys.push(request.headers()['idempotency-key']);
+    if (lostPolicyReceipt) return route.fallback();
+    lostPolicyReceipt = true;
+    observe(token, 'POST');
+    const response = await fetch(base + policyRoute, { method: 'POST', headers: request.headers(), body: request.postData(), signal: AbortSignal.timeout(10000) });
+    check(response.status === 200, 'The isolated service must commit the policy before simulating a lost receipt.');
+    await route.abort('failed');
+  });
+  await page.getByTestId('sign-in-rules-save').click();
+  await page.getByText('The service has not confirmed this update. Retry the same update when connected.', { exact: true }).waitFor();
+  check(await page.getByRole('button', { name: 'View assigned teams', exact: true }).isDisabled(), 'An unconfirmed policy update must hold navigation so its original payload and key remain available.');
+  check(!await page.getByLabel('Minimum password length', { exact: true }).isEditable(), 'Do not allow editing a policy with an unknown saved outcome.');
+  await saved(page, () => page.getByTestId('sign-in-rules-save').click(), 'sign-in-rules');
+  await page.unroute('**/v1/administration/sign-in-rules');
+  check(policyRequestKeys.length === 2 && policyRequestKeys[0] && policyRequestKeys[0] === policyRequestKeys[1], 'Retry must reuse the original policy idempotency key.');
+  const changedPolicy = await api(token, policyRoute, { role: 'administrator' });
+  check(changedPolicy.revision === originalPolicy.revision + 1 && changedPolicy.rules.password.minLength === changedMinimum, 'Super Admin must save an actual revisioned application-wide policy.');
+  await openWorkspaceTab(page, 'team'); await openWorkspaceTab(page, 'clubs'); await page.getByTestId('sign-in-rules-toggle').click();
+  await page.waitForFunction(min => document.querySelector('[aria-label="Minimum password length"]')?.value === String(min), changedMinimum);
+  await api(token, policyRoute, { role: 'administrator', body: { expectedRevision: changedPolicy.revision, rules: originalPolicy.rules } });
+  await page.getByRole('button', { name: 'Reload current rules', exact: true }).click();
+  await page.waitForFunction(min => document.querySelector('[aria-label="Minimum password length"]')?.value === String(min), originalPolicy.rules.password.minLength);
+  await page.setViewportSize({ width: 390, height: 844 });
+  const phoneRulesReload = page.waitForResponse(response => new URL(response.url()).pathname === policyRoute && response.request().method() === 'GET');
+  await page.getByRole('button', { name: 'Reload current rules', exact: true }).click(); check((await phoneRulesReload).status() === 200, 'Phone policy controls must reload actual saved rules.');
+  await page.waitForFunction(min => document.querySelector('[aria-label="Minimum password length"]')?.value === String(min), originalPolicy.rules.password.minLength);
+  await page.getByLabel('Minimum password length', { exact: true }).scrollIntoViewIfNeeded();
+  const phonePolicyInput = await page.getByLabel('Minimum password length', { exact: true }).boundingBox();
+  check(phonePolicyInput && phonePolicyInput.x >= 0 && phonePolicyInput.x + phonePolicyInput.width <= 390, 'Phone policy inputs must stay inside the390px viewport.');
+  check(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), 'The phone global policy form must not overflow horizontally.');
+  await screenshot(admin, 'super-admin-sign-in-rules-390'); await page.setViewportSize({ width: 1024, height: 844 });
+  report.signInRules = { superAdminLoadedSavedAndRemounted: true, superAdminEnabledPolicyTogglesPurple: true, invalidLengthsRefused: true, versionIncremented: true, lostReceiptRetainedNavigationAndExactKey: true, originalPolicyRestored: true, phone390ReloadAndNoOverflow: true, providerStatus: changedPolicy.provider.status };
+  report.checks.push('Super Admin edits persisted application sign-in rules, invalid lengths are refused, remount reloads the changed version, and the original rules are explicitly restored.');
   await page.getByLabel('New club name').fill('Harbour Athletic'); await saved(page, () => page.getByTestId('admin-create-club').click(), 'administration');
   await page.getByRole('button', { name: 'Harbour Athletic', exact: true }).click(); await page.getByLabel('New team name').fill('Harbour Youth'); await page.getByLabel('New team age group').fill('U21'); await page.getByLabel('New team format').fill('11');
   await saved(page, () => page.getByTestId('admin-create-team').click(), 'administration'); const directory = await api(token, '/v1/administration', { role: 'administrator' }), harbour = directory.clubs.find(item => item.name === 'Harbour Athletic'), team = directory.teams.find(item => item.name === 'Harbour Youth');
   check(harbour && team?.clubId === harbour.id, 'SuperAdmin must create a real club and its scoped team.'); const empty = await api(token, scope('preparation', team.id, team.seasonId)); check(empty.profiles.length === 0 && empty.fixtures.length === 0 && empty.training.length === 0, 'New teams must start empty without leaking Roma data.'); await screenshot(admin, 'super-admin-purple-tablet');
   await changeWorkspaceContext(page, 'manager', { teamId: team.id, seasonId: team.seasonId }); await createInvite(admin, team.id, team.seasonId);
   const club = await openDemo(clubAccount), clubToken = club.session.accessToken; await openWorkspaceTab(club.page, 'clubs'); await club.page.getByTestId('club-administration').waitFor();
+  check(await club.page.getByTestId('application-sign-in-rules').count() === 0, 'Club Admin must not see application-wide sign-in policy controls.');
+  await api(clubToken, policyRoute, { role: 'administrator', expected: 404 });
+  await api(clubToken, policyRoute, { role: 'administrator', expected: 404, body: { expectedRevision: originalPolicy.revision, rules: originalPolicy.rules } });
+  report.signInRules.clubAdminReadAndWriteDenied = true;
   check(await club.page.getByTestId('admin-create-club').count() === 0, 'Club Admin must not see global club creation.'); await api(clubToken, '/v1/administration', { role: 'administrator', body: { command: { type: 'club.create', name: 'Forbidden club' } }, expected: 404 });
   await api(clubToken, `/v1/clubs/${harbour.id}/reports`, { role: 'administrator', expected: 404 }); await api(clubToken, scope('preparation', team.id, team.seasonId), { expected: 404 });
   await club.page.getByLabel('New team name').fill('Roma Falcons'); await club.page.getByLabel('New team age group').fill('U12'); await club.page.getByLabel('New team format').fill('9'); await saved(club.page, () => club.page.getByTestId('admin-create-team').click(), 'administration');
@@ -208,8 +275,12 @@ async function invitationsAndPlayers(accounts, clubState, falcons) {
   await Promise.all([manager.page.waitForResponse(r => /\/invite-requests\/[^/]+\/decision$/.test(new URL(r.url()).pathname) && r.request().method() === 'POST'), manager.page.getByRole('button', { name: 'Mark Taylor Harper handled', exact: true }).click()]);
   check((await api(managerToken, scope('invite-requests'))).some(item => item.name === 'Taylor Harper' && item.status === 'handled'), 'Staff decision must persist against the actual request.');
   stage = 'Spectator invitation registration and weak PIN';
-  const joined = await makePage(320), joinedUsername = `review-${randomBytes(5).toString('hex')}`, pin = '4729'; secrets.add(joinedUsername); secrets.add(pin);
+  const joined = await makePage(320), joinedUsername = 'Roma.SebL', pin = '4729'; secrets.add(joinedUsername); secrets.add(pin);
   await joined.page.goto(invitation.shareUrl, { waitUntil: 'networkidle' }); await joined.page.getByTestId('welcome-spectator').click(); await joined.page.getByTestId('spectator-pin-context').waitFor(); check((await joined.page.getByTestId('spectator-pin-context').innerText()).includes('Roma'), 'Invitation join must show the actual bound club/team context.');
+  await joined.page.getByTestId('spectator-signup-name').fill('Seb Lawler'); check(await joined.page.getByTestId('spectator-pin-username').inputValue() === joinedUsername, 'New invited users get the initial team.firstnameSurnameInitial suggestion Roma.SebL.');
+  await joined.page.getByTestId('spectator-pin-username').fill('Roma.SebL2'); await joined.page.getByTestId('spectator-signup-name').fill('Max Holland'); check(await joined.page.getByTestId('spectator-pin-username').inputValue() === 'Roma.SebL2', 'Changing a name must preserve an explicitly edited username.');
+  await joined.page.getByTestId('spectator-use-suggested-username').click(); check(await joined.page.getByTestId('spectator-pin-username').inputValue() === 'Roma.MaxH', 'A user can restore the current team-based username suggestion.');
+  await joined.page.getByTestId('spectator-signup-name').fill('Seb Lawler'); check(await joined.page.getByTestId('spectator-pin-username').inputValue() === joinedUsername, 'The final editable suggestion must follow the named user.');
   await joined.page.getByTestId('spectator-pin-username').fill(joinedUsername); await joined.page.getByTestId('spectator-pin-passcode').fill('1111'); await joined.page.getByTestId('spectator-pin-confirmation').fill('1111'); await joined.page.getByTestId('spectator-pin-submit').click(); check(joined.registrations === 0 && await joined.page.getByTestId('demo-signed-in').count() === 0, 'Weak PIN must be blocked before account registration.');
   await joined.page.getByTestId('spectator-pin-passcode').fill(pin); await joined.page.getByTestId('spectator-pin-confirmation').fill(pin); await joined.page.getByTestId('spectator-pin-submit').click(); await joined.page.getByTestId('demo-signed-in').waitFor(); await selectWorkspaceContext(joined.page, 'spectator');
   await openWorkspaceTab(joined.page, 'account'); const connection = joined.page.getByTestId('spectator-player-connection'); await connection.waitFor(); await Promise.all([joined.page.waitForResponse(r => new URL(r.url()).pathname.endsWith('/spectator-connections') && r.request().method() === 'POST'), connection.getByRole('button', { name: 'Thomas Arnold', exact: true }).click()]); const ownConnection = await api(joined.session.accessToken, scope('spectator-connections'), { role: 'spectator' }); check(ownConnection.followedPlayerId === 'synthetic-player-01', 'Spectator chooses an account-owned player connection.');
@@ -229,7 +300,7 @@ async function invitationsAndPlayers(accounts, clubState, falcons) {
   await openWorkspaceTab(manager.page, 'opposition'); await manager.page.getByTestId('opposition-reviews').waitFor(); await manager.page.getByTestId('opposition-rating-4').click(); await manager.page.getByTestId('opposition-note').fill('Well organised defence; useful challenge for passing practice.'); await saved(manager.page, () => manager.page.getByTestId('opposition-save').click(), 'opposition-reviews');
   const reviews = await api(managerToken, scope('opposition-reviews')); check(reviews.games.some(item => item.review?.rating === 4), 'Opposition notes must reach actual completed-game persistence.');
   await openWorkspaceTab(player.page, 'more'); await Promise.all([player.page.waitForResponse(r => new URL(r.url()).pathname.endsWith('/opposition-reviews') && r.request().method() === 'GET'), player.page.getByRole('button', { name: 'Refresh service views', exact: true }).click()]); await openWorkspaceTab(player.page, 'opposition'); await player.page.getByText('Well organised defence; useful challenge for passing practice.', { exact: true }).waitFor(); check(await player.page.getByTestId('opposition-save').count() === 0, 'Player reads completed opposition notes without edit authority.');
-  report.invitations = { managerIssuedScopedLink: true, locallyRenderedQr: true, emailComposerOptionPresentNotSent: true, weakPinBlockedBeforePost: true, registeredPinAccount: true, signOutReturnsOrdinaryPinForm: true, persistedPinLogin: true, spectatorBlue: true, spectatorInvitesEnabled: true, secondTeamAcceptedWithoutNewAccount: true, playerFollowPreferenceRetained: true, playerInvitesEnabled: true, anonymousRequestVisibleToStaff: true, ownFaIdSaved: true, oppositionManagerWritePlayerReadSpectatorDenied: true, privateTeamSheetSpectatorDenied: true };
+  report.invitations = { managerIssuedScopedLink: true, locallyRenderedQr: true, emailComposerOptionPresentNotSent: true, teamBasedUsernameSuggested: true, manualUsernameEditPreservedAndSuggestionRestored: true, weakPinBlockedBeforePost: true, registeredPinAccount: true, signOutReturnsOrdinaryPinForm: true, persistedMixedCaseUsernamePinLogin: true, spectatorBlue: true, spectatorInvitesEnabled: true, secondTeamAcceptedWithoutNewAccount: true, playerFollowPreferenceRetained: true, playerInvitesEnabled: true, anonymousRequestVisibleToStaff: true, ownFaIdSaved: true, oppositionManagerWritePlayerReadSpectatorDenied: true, privateTeamSheetSpectatorDenied: true };
   report.checks.push('Scoped invitation QR creates a four-digit PIN spectator after weak-code refusal, supports logout/relogin and a second team with retained player connection; Player/Spectator both issue invitations.');
   report.checks.push('Staff sees anonymous requests; Manager opposition notes persist and are Player-read-only/Spectator-denied; Player saves own FA ID and neither nonstaff role exposes Manager alert controls.');
   await close(manager); await close(player); await close(multi); await close(clubState);
@@ -254,7 +325,7 @@ try {
   stage = 'Manager roster, league and PDF'; await rosterAndDocuments(accounts.manager3);
   stage = 'SuperAdmin and ClubAdmin club scopes'; const { club, falcons } = await administration(accounts.super, accounts.club);
   stage = 'invitations, PIN accounts, player and spectator boundaries'; await invitationsAndPlayers(accounts, club, falcons);
-  check(states.every(state => state.pageErrors.length === 0), 'No connected expansion journey may produce a browser runtime error.'); check(!report.httpFailures.some(failure => failure.status === 429), 'Do not weaken or exhaust account rate limits.'); check(!report.httpFailures.some(failure => failure.fromBrowser), 'Connected journeys must not silently depend on browser API failures.');
+  check(states.every(state => state.pageErrors.length === 0), 'No connected expansion journey may produce a browser runtime or unexpected transport error.'); check(!report.httpFailures.some(failure => failure.status === 429), 'Do not weaken or exhaust account rate limits.'); check(!report.httpFailures.some(failure => failure.fromBrowser), 'Connected journeys must not silently depend on browser API failures.');
   check(digest(await readFile(apiBundle)) === report.source.apiBundleSha256 && digest(await readFile(workerBundle)) === report.source.workerBundleSha256 && digest(await readFile(path.join(webRoot, scriptPath.replace(/^\//, '')))) === report.source.webJavaScriptSha256 && digest(await readFile(new URL(import.meta.url))) === report.source.harnessSha256, 'API, worker, browser and harness bytes must stay unchanged during the review.'); report.artifactsStableBeforeAfter = true;
   report.apiRateLimitsUnchanged = { ordinary: 120, mutations: 60 }; report.audioHardwareBoundary = 'No hardware sound, OS volume, background delivery or native installation is claimed. Active-match countdown needs separate actual matchday evidence.';
   report.passed = true;
@@ -269,6 +340,7 @@ finally {
   for (const child of [...children].reverse()) { if (child.exitCode !== null || child.signalCode !== null) continue; child.kill('SIGTERM'); for (let i = 0; i < 30 && child.exitCode === null && child.signalCode === null; i++) await delay(100); if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL'); }
   if (privateDirectory) await rm(privateDirectory, { recursive: true, force: true });
   report.completedAt = new Date().toISOString();
+  report.reactKeyWarnings = states.reduce((total, state) => total + state.reactKeyWarnings, 0);
   await mkdir(output, { recursive: true }); await writeFile(path.join(output, 'report.json'), safe(JSON.stringify(report, null, 2), Infinity)+'\n');
 }
 console.log(JSON.stringify({ passed: report.passed, checks: report.checks.length, failures: report.failures, report: '.local/quality/club-expansion-review/report.json' }));

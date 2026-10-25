@@ -8,7 +8,6 @@ import {
 import { AccessError } from "../../../packages/application/src/access";
 import {
   normalizedSpectatorUsername,
-  spectatorPinProblem,
   type InviteDirectoryTeam,
   type InviteRequest,
   type InviteRequestInput,
@@ -16,6 +15,7 @@ import {
 import type { InvitationContext } from "../../../packages/application/src/invitation-context";
 import { invitationVerifier } from "./invitation-service";
 import type { VerifiedIdentity } from "./oidc";
+import { DEFAULT_SIGN_IN_RULES, pinProblem, usernameProblem, type SignInRules } from "../../../packages/application/src/identity-policy";
 
 export interface SpectatorAccessPreview {
   invitationId: string;
@@ -138,6 +138,7 @@ export class SpectatorAccessService {
     readonly repository: SpectatorAccessRepository,
     private readonly now: () => number = Date.now,
     options: { isolatedDemo?: true } = {},
+    private readonly rules: () => Promise<SignInRules> = async () => DEFAULT_SIGN_IN_RULES,
   ) {
     if (options.isolatedDemo && process.env.NODE_ENV === "production")
       throw new Error(
@@ -240,7 +241,10 @@ export class SpectatorAccessService {
         "Use a username of 3–40 letters, numbers, dots, underscores or dashes.",
       );
     }
-    const problem = spectatorPinProblem(value.passcode);
+    const rules = await this.rules();
+    const nameProblem = usernameProblem(username, rules);
+    if (nameProblem) bad(nameProblem);
+    const problem = pinProblem(value.passcode, rules);
     if (problem) bad(problem);
     const tokenHash = invitationVerifier(value.token);
     await this.repository.preview(tokenHash, this.now());

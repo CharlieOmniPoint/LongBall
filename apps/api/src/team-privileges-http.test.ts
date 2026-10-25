@@ -1175,7 +1175,7 @@ for (const kind of ["SQLite", "PostgreSQL"] as const)
               "SELECT version FROM schema_migrations ORDER BY version",
             ),
           ).toEqual(
-            Array.from({ length: 24 }, (_, index) => ({ version: index + 2 })),
+            Array.from({ length: 26 }, (_, index) => ({ version: index + 2 })),
           );
           expect(await snapshot()).toEqual(before);
           await owner.migrate();

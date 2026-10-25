@@ -1,10 +1,16 @@
-import { formatUkSeasonLabel } from '@longball/application/uk-display';
+import { formatUkSeasonLabel } from "@longball/application/uk-display";
 import { useEffect, useRef, useState } from "react";
 import { AppState, Text, TextInput, View } from "react-native";
-import { spectatorPinProblem } from "@longball/application/spectator-pin";
+import {
+  pinProblem,
+  suggestInitialUsername,
+  usernameProblem,
+  type SignInRules,
+} from "@longball/application/identity-policy";
 import { invitationTeamLabel } from "@longball/application/invitation-context";
 import {
   previewSpectatorInvite,
+  loadSpectatorSignInRules,
   signInSpectatorPin,
   type SpectatorInvitePreview,
 } from "../platform/spectator-access-client";
@@ -33,10 +39,13 @@ function SpectatorPinSession({
   onBack,
 }: SpectatorPinEntryProps) {
   const [register, setRegister] = useState(Boolean(invitation)),
+    [fullName, setFullName] = useState(""),
     [username, setUsername] = useState(""),
+    [usernameEdited, setUsernameEdited] = useState(false),
     [pin, setPin] = useState(""),
     [confirmation, setConfirmation] = useState(""),
     [preview, setPreview] = useState<SpectatorInvitePreview | null>(null),
+    [rules, setRules] = useState<SignInRules | null>(null),
     [busy, setBusy] = useState(false),
     [error, setError] = useState<string | null>(null);
   const operation = useRef<AbortController | null>(null),
@@ -62,14 +71,20 @@ function SpectatorPinSession({
     if (!invitationCode) return;
     const controller = new AbortController();
     operation.current = controller;
-    void previewSpectatorInvite(apiBaseUrl, invitationCode, controller.signal)
-      .then((value) => {
-        if (mounted.current && !controller.signal.aborted) setPreview(value);
+    void Promise.all([
+      previewSpectatorInvite(apiBaseUrl, invitationCode, controller.signal),
+      loadSpectatorSignInRules(apiBaseUrl, controller.signal),
+    ])
+      .then(([value, currentRules]) => {
+        if (mounted.current && !controller.signal.aborted) {
+          setPreview(value);
+          setRules(currentRules);
+        }
       })
       .catch(() => {
         if (mounted.current && !controller.signal.aborted)
           setError(
-            "The invitation could not be reviewed. Ask for a current link, or sign in to your existing account.",
+            "The invitation and current sign-in rules could not be reviewed. Ask for a current link, or sign in to your existing account.",
           );
       })
       .finally(() => {
@@ -77,21 +92,28 @@ function SpectatorPinSession({
       });
     return () => controller.abort();
   }, [apiBaseUrl, invitationCode]);
+  const suggestion =
+    preview && rules && fullName.trim()
+      ? suggestInitialUsername(preview.context.teamName, fullName, [], rules)
+      : "";
+  const enteredUsername =
+    register && !usernameEdited && suggestion ? suggestion : username;
   const submit = async () => {
     if (operation.current || busy) return;
     setError(null);
     if (register) {
-      const problem = spectatorPinProblem(pin);
+      if (!preview || !rules) {
+        setError("Review a current team invitation and sign-in rules first.");
+        return;
+      }
+      const problem =
+        usernameProblem(enteredUsername, rules) || pinProblem(pin, rules);
       if (problem) {
         setError(problem);
         return;
       }
       if (pin !== confirmation) {
         setError("The two passcodes do not match.");
-        return;
-      }
-      if (!preview) {
-        setError("Review a current team invitation first.");
         return;
       }
     }
@@ -104,11 +126,12 @@ function SpectatorPinSession({
     try {
       const session = await signInSpectatorPin({
         apiBaseUrl,
-        username,
+        username: enteredUsername,
         passcode: submittedPin,
         register,
         token: invitation?.code,
         requestId: requestId.current,
+        ...(register && rules ? { rules } : {}),
         signal: controller.signal,
       });
       if (mounted.current && !controller.signal.aborted) onSignedIn(session);
@@ -140,17 +163,52 @@ function SpectatorPinSession({
       {preview && (
         <Text style={typography.body} testID="spectator-pin-context">
           {preview.context.clubName} · {invitationTeamLabel(preview.context)} ·{" "}
-          {preview.context.seasonLabel ? formatUkSeasonLabel(preview.context.seasonLabel) : ''}
+          {preview.context.seasonLabel
+            ? formatUkSeasonLabel(preview.context.seasonLabel)
+            : ""}
         </Text>
       )}
       <Text style={typography.body}>
         {register
-          ? "Choose a username and a four-digit passcode. Avoid repeated digits, sequences and repeated pairs."
+          ? `Choose a username and a four-digit passcode.${rules?.spectatorPin.blockSimpleCodes ? " Avoid repeated digits, sequences and repeated pairs." : ""}`
           : "Enter your username and four-digit passcode. Your invited teams will appear after sign-in."}
       </Text>
+      {register && (
+        <>
+          <TextInput
+            value={fullName}
+            onChangeText={setFullName}
+            placeholder="Your name (optional)"
+            accessibilityLabel="Your name for username suggestion"
+            autoCapitalize="words"
+            autoCorrect={false}
+            maxLength={100}
+            editable={!busy}
+            style={input}
+            testID="spectator-signup-name"
+          />
+          <Text style={typography.muted}>
+            Your name suggests a username such as Roma.SebL. You can edit it
+            below.
+          </Text>
+          {suggestion && usernameEdited && enteredUsername !== suggestion && (
+            <Button
+              compact
+              variant="quiet"
+              label={`Use ${suggestion}`}
+              disabled={busy}
+              onPress={() => setUsernameEdited(false)}
+              testID="spectator-use-suggested-username"
+            />
+          )}
+        </>
+      )}
       <TextInput
-        value={username}
-        onChangeText={setUsername}
+        value={enteredUsername}
+        onChangeText={(value) => {
+          setUsername(value);
+          setUsernameEdited(true);
+        }}
         placeholder="Username"
         accessibilityLabel="Spectator username"
         autoCapitalize="none"
@@ -160,6 +218,13 @@ function SpectatorPinSession({
         style={input}
         testID="spectator-pin-username"
       />
+      {register && (
+        <Text style={typography.muted}>
+          Usernames ignore capitals. If a name is already taken, add
+          {rules?.username.allowNumbers ? " a number" : " another letter"} or
+          choose another name.
+        </Text>
+      )}
       <TextInput
         value={pin}
         onChangeText={(value) => setPin(value.replace(/\D/g, "").slice(0, 4))}
@@ -200,9 +265,9 @@ function SpectatorPinSession({
         testID="spectator-pin-submit"
         disabled={
           busy ||
-          !username.trim() ||
+          !enteredUsername.trim() ||
           pin.length !== 4 ||
-          (register && (!preview || confirmation.length !== 4))
+          (register && (!preview || !rules || confirmation.length !== 4))
         }
         onPress={() => {
           void submit();
@@ -218,6 +283,8 @@ function SpectatorPinSession({
           variant="quiet"
           disabled={busy}
           onPress={() => {
+            setUsername(enteredUsername);
+            setUsernameEdited(true);
             setRegister(!register);
             setError(null);
             setPin("");

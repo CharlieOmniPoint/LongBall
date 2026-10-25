@@ -12,6 +12,7 @@ import { randomBytes, randomUUID } from "node:crypto";
 import { PostgresStore, SYNTHETIC_IDS } from "./postgres-store";
 import { PostgresActivationService } from "./postgres-activation";
 import type { ActivationProvider } from "./activation";
+import { reserveConfiguredUsernames } from "./username-registry";
 
 const databaseUrl = process.env.LONGBALL_POSTGRES_TEST_URL;
 describe.skipIf(!databaseUrl)("actual PostgreSQL activation repository", () => {
@@ -33,6 +34,7 @@ describe.skipIf(!databaseUrl)("actual PostgreSQL activation repository", () => {
   const cancelled = new Set<string>();
   const provider: ActivationProvider = {
     issuer: "https://fixture-identity.example.invalid/realms/longball",
+    applySignInRules: async ({revision}: {revision:number}) => ({revision,enforced:true as const}),
     credentialSetupOrigins: ["https://fixture-identity.example.invalid"],
     async provisionPending(input) {
       let user = users.get(input.operationId);
@@ -90,7 +92,7 @@ describe.skipIf(!databaseUrl)("actual PostgreSQL activation repository", () => {
       strongAuth: true,
       authenticatedAt: clock,
     });
-  async function input() {
+  async function input(displayName = "Fictional Roma activation fixture") {
     const principal = await manager();
     const state = await store.preparation(
       principal,
@@ -112,7 +114,7 @@ describe.skipIf(!databaseUrl)("actual PostgreSQL activation repository", () => {
             id: randomUUID(),
             playerId,
             shirtNumber: null,
-            displayName: "Fictional Roma activation fixture",
+            displayName,
           },
         },
       ),
@@ -173,6 +175,18 @@ describe.skipIf(!databaseUrl)("actual PostgreSQL activation repository", () => {
         [pending.accountId],
       ),
     ).rejects.toMatchObject({ code: "23514" });
+  });
+  it("reserves a global case-insensitive team username without adopting the configured account that owns the base name", async () => {
+    const activation = await service();
+    await reserveConfiguredUsernames(store, [{ username: "ROMA.SEBL", accountId: "synthetic-account-manager" }]);
+    await reserveConfiguredUsernames(store, [{ username: "r".repeat(64), accountId: "synthetic-account-manager" }]);
+    const request = await input("Seb Lawler");
+    const child = await activation.createPendingChild(await manager(), request);
+    expect(child.username).toBe("Roma.SebL2");
+    expect(child.accountId).not.toBe("synthetic-account-manager");
+    expect(await store.one("SELECT account_id FROM global_usernames WHERE normalized_username='roma.sebl'")).toMatchObject({ account_id: "synthetic-account-manager" });
+    expect(await store.one("SELECT account_id FROM global_usernames WHERE normalized_username='roma.sebl2'")).toMatchObject({ account_id: child.accountId });
+    expect(await activation.createPendingChild(await manager(), request)).toEqual(child);
   });
   it("verifies the migrated feature inside an actual read-only PostgreSQL transaction without runtime DDL", async () => {
     const verifier = await PostgresStore.open(featureDatabaseUrl, () => clock, {

@@ -19,4 +19,8 @@ describe('UK display calendar', () => {
     expect(formatUkDate(null)).toBe('Date to confirm');
     expect(formatUkDateTime('invalid')).toBe('Time to confirm');
   });
+  it('can show seconds for a refresh receipt while retaining London daylight-saving rules', () => {
+    expect(formatUkDateTime('2026-07-01T12:34:56Z', { seconds: true })).toBe('01/07/26, 13:34:56');
+    expect(formatUkDateTime('2026-12-01T12:34:56Z', { seconds: true })).toBe('01/12/26, 12:34:56');
+  });
 });

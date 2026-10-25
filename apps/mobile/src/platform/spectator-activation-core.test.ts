@@ -24,6 +24,11 @@ describe('server-bound invitation preflight display context', () => {
   });
 });
 describe("invitation provider setup metadata", () => {
+  it("accepts a team-based username while retaining trusted provider and activation marker checks", () => {
+    expect(parseInvitationProviderSetup({ ...body(), username: "Roma.SebL2" }, config, 0).username).toBe("Roma.SebL2");
+    for (const username of ["person@example.test", "../person", "Roma Person", "ab", "x".repeat(41)])
+      expect(() => parseInvitationProviderSetup({ ...body(), username }, config, 0)).toThrow();
+  });
   it("strips the sole nonsecret attempt marker before opening the configured provider", () => {
     const parsed = parseInvitationProviderSetup(body(), config, 0);
     expect(parsed.activationId).toBe(id);

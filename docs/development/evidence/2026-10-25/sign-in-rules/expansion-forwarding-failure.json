@@ -1,0 +1,205 @@
+{
+  "startedAt": "2026-10-25T12:45:50.768Z",
+  "scope": "Fresh SQLite API, separate actual report worker, compiled connected browser clients; only discovery and transport origins are rerouted to loopback. No fabricated feature DTOs.",
+  "checks": [
+    "Anonymous320px Player request selects real club/team and persists a pending request without creating account access.",
+    "Manager types4-4-2 and3-2-1, saves real revisioned formations, sees positions-only pitch, rejects wrong totals, and chooses available-squad65/35 advice.",
+    "Manager saves free-text league/FA ID, downloads genuine XLS, edits/reimports existing+new players with identities retained, and uploads/downloads an identical protected PDF.",
+    "Super Admin edits persisted application sign-in rules, invalid lengths are refused, remount reloads the changed version, and the original rules are explicitly restored.",
+    "SuperAdmin purple UI creates club/team with no Roma leakage; ClubAdmin has real cross-club denials, own-team creation, report age filtering/sorting and inherited Manager scope switching.",
+    "Scoped invitation QR creates a four-digit PIN spectator after weak-code refusal, supports logout/relogin and a second team with retained player connection; Player/Spectator both issue invitations.",
+    "Staff sees anonymous requests; Manager opposition notes persist and are Player-read-only/Spectator-denied; Player saves own FA ID and neither nonstaff role exposes Manager alert controls."
+  ],
+  "failures": [
+    {
+      "stage": "Manager protected opposition write and Player read",
+      "message": "No connected expansion journey may produce a browser runtime or unexpected transport error.",
+      "name": "AssertionError"
+    }
+  ],
+  "httpFailures": [
+    {
+      "stage": "SuperAdmin and ClubAdmin club scopes",
+      "route": "/v1/administration/sign-in-rules",
+      "method": "GET",
+      "status": 404,
+      "code": "NOT_FOUND",
+      "expected": true
+    },
+    {
+      "stage": "SuperAdmin and ClubAdmin club scopes",
+      "route": "/v1/administration/sign-in-rules",
+      "method": "POST",
+      "status": 404,
+      "code": "NOT_FOUND",
+      "expected": true
+    },
+    {
+      "stage": "SuperAdmin and ClubAdmin club scopes",
+      "route": "/v1/administration",
+      "method": "POST",
+      "status": 404,
+      "code": "NOT_FOUND",
+      "expected": true
+    },
+    {
+      "stage": "SuperAdmin and ClubAdmin club scopes",
+      "route": "/v1/clubs/eb493f36-af5e-436d-b6b1-b70f58169af3/reports",
+      "method": "GET",
+      "status": 404,
+      "code": "NOT_FOUND",
+      "expected": true
+    },
+    {
+      "stage": "SuperAdmin and ClubAdmin club scopes",
+      "route": "/v1/teams/0b021943-93e5-409e-9209-f74152480b4f/preparation",
+      "method": "GET",
+      "status": 404,
+      "code": "NOT_FOUND",
+      "expected": true
+    },
+    {
+      "stage": "Spectator invitation registration and weak PIN",
+      "route": "/v1/teams/synthetic-roma-u10/opposition-reviews",
+      "method": "GET",
+      "status": 404,
+      "code": "NOT_FOUND",
+      "expected": true
+    },
+    {
+      "stage": "Spectator invitation registration and weak PIN",
+      "route": "/v1/teams/synthetic-roma-u10/team-sheet",
+      "method": "GET",
+      "status": 404,
+      "code": "NOT_FOUND",
+      "expected": true
+    }
+  ],
+  "browserCancellations": [],
+  "apiWindows": [
+    {
+      "accountId": "synthetic-account-manager-2",
+      "started": 1792932364892,
+      "attempts": 66,
+      "mutations": 3
+    },
+    {
+      "accountId": "synthetic-account-manager-3",
+      "started": 1792932373548,
+      "attempts": 84,
+      "mutations": 4
+    },
+    {
+      "accountId": "synthetic-account-manager-3",
+      "started": 1792932434789,
+      "attempts": 59,
+      "mutations": 4
+    },
+    {
+      "accountId": "synthetic-account-admin",
+      "started": 1792932438431,
+      "attempts": 79,
+      "mutations": 6
+    },
+    {
+      "accountId": "synthetic-account-club-admin",
+      "started": 1792932446366,
+      "attempts": 64,
+      "mutations": 4
+    },
+    {
+      "accountId": "fa02f26b-fa50-4348-812d-6c0270ca125f",
+      "started": 1792932456710,
+      "attempts": 55,
+      "mutations": 5
+    },
+    {
+      "accountId": "synthetic-account-player-01",
+      "started": 1792932466335,
+      "attempts": 52,
+      "mutations": 2
+    }
+  ],
+  "passed": false,
+  "nativeDeviceEvidence": false,
+  "paidServicesProvisioned": false,
+  "source": {
+    "gitHead": "f893c485b9b967733616028d1444ef11f7e4a4c8",
+    "workingTreeDirty": true,
+    "harnessSha256": "62f1ac52fd540fbc524a4968d48e5883bc2f57598326f88423f18154f79550c4",
+    "webIndexSha256": "82709ec7e3157afe20a40cbdd9fab381995090738a2665d92a22cca9195b3a84",
+    "webJavaScriptSha256": "015e62a362e1aff4434698cc32dd81f131d69ca64dfbaa952dcbf3ce2444f7af",
+    "apiBundleSha256": "6fd9d2fb48efd5ae40f83dbb87b0c390f66fa0d0b81958aef193613714e16617",
+    "workerBundleSha256": "d6285b7dfbfb58896d1cea034823a6762915bb7c3a3b0be636eadda7fd95c63d"
+  },
+  "formations": {
+    "format11Saved": true,
+    "invalidTotalBlocked": true,
+    "format7Versioned": true,
+    "playerTextAbsent": true,
+    "availableSquadAdviceChosen": true,
+    "receivedActualSave": true
+  },
+  "roster": {
+    "actualOleXlsBytes": 37888,
+    "downloadedSha256": "5424f4f03ba1124ff5c4d7ae4a54b9bf4b25f3d36ee584f12cac2f4efa2d0379",
+    "updatedExistingIdentity": true,
+    "newProfiles": 1,
+    "managerFaIdPersisted": true,
+    "optionalLeaguePersisted": true,
+    "pdfRoundTripExact": true,
+    "managerAudioSettingsPersisted": true
+  },
+  "signInRules": {
+    "superAdminLoadedSavedAndRemounted": true,
+    "superAdminEnabledPolicyTogglesPurple": true,
+    "invalidLengthsRefused": true,
+    "versionIncremented": true,
+    "lostReceiptRetainedNavigationAndExactKey": true,
+    "originalPolicyRestored": true,
+    "phone390ReloadAndNoOverflow": true,
+    "providerStatus": "not_configured",
+    "clubAdminReadAndWriteDenied": true
+  },
+  "administration": {
+    "superPurple": true,
+    "clubCreated": true,
+    "teamCreatedEmpty": true,
+    "superInheritedManagerInvites": true,
+    "clubCreationDenied": true,
+    "crossClubReportAndManagerDenied": true,
+    "clubTeamCreated": true,
+    "reportAgeFilterAndSort": true,
+    "inheritedManagerScopeSelected": true
+  },
+  "invitations": {
+    "managerIssuedScopedLink": true,
+    "locallyRenderedQr": true,
+    "emailComposerOptionPresentNotSent": true,
+    "teamBasedUsernameSuggested": true,
+    "manualUsernameEditPreservedAndSuggestionRestored": true,
+    "weakPinBlockedBeforePost": true,
+    "registeredPinAccount": true,
+    "signOutReturnsOrdinaryPinForm": true,
+    "persistedMixedCaseUsernamePinLogin": true,
+    "spectatorBlue": true,
+    "spectatorInvitesEnabled": true,
+    "secondTeamAcceptedWithoutNewAccount": true,
+    "playerFollowPreferenceRetained": true,
+    "playerInvitesEnabled": true,
+    "anonymousRequestVisibleToStaff": true,
+    "ownFaIdSaved": true,
+    "oppositionManagerWritePlayerReadSpectatorDenied": true,
+    "privateTeamSheetSpectatorDenied": true
+  },
+  "processDiagnostic": "LongBall API http://127.0.0.1:44007 · isolated fictional authentication · fictional SQLite store\n{\"worker\":\"longball-fictional\",\"completed\":2,\"retried\":0,\"failed\":0,\"notifications\":{\"accepted\":0,\"blocked\":0,\"retried\":0,\"suppressed\":0,\"reviewRequired\":0,\"failed\":0},\"exports\":{\"completed\":0,\"retried\":0,\"failed\":0,\"expired\":0}}\n",
+  "pageErrors": [
+    "route.fetch: read ECONNRESET\nCall log:\n\u001b[2m  - → GET http://localhost:44007/v1/teams/0496cbc5-3dc8-4f65-b25e-b7590c71fa0e/scheduled-games?seasonId=season-2026-2027\u001b[22m\n\u001b[2m    - user-agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36\u001b[22m\n\u001b[2m    - accept: application/json\u001b[22m\n\u001b[2m    - accept-encoding: gzip,deflate,br\u001b[22m\n\u001b[2m    - authorization: Bearer [redacted]    - origin: http://localhost:44007\u001b[22m\n\u001b[2m    - referer: http://localhost:44007/\u001b[22m\n\u001b[2m    - sec-ch-ua: \"Not A(Brand\";v=\"99\", \"Chromium\";v=\"154\"\u001b[22m\n\u001b[2m    - sec-ch-ua-mobile: ?0\u001b[22m\n\u001b[2m    - sec-ch-ua-platform: \"Linux\"\u001b[22m\n\u001b[2m    - x-longball-role: manager\u001b[22m\n\nBrowser request failure: not reported",
+    "route.fetch: read ECONNRESET\nCall log:\n\u001b[2m  - → GET http://localhost:44007/v1/teams/0496cbc5-3dc8-4f65-b25e-b7590c71fa0e/match-feedback?seasonId=season-2026-2027\u001b[22m\n\u001b[2m    - user-agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36\u001b[22m\n\u001b[2m    - accept: application/json\u001b[22m\n\u001b[2m    - accept-encoding: gzip,deflate,br\u001b[22m\n\u001b[2m    - authorization: Bearer [redacted]    - origin: http://localhost:44007\u001b[22m\n\u001b[2m    - referer: http://localhost:44007/\u001b[22m\n\u001b[2m    - sec-ch-ua: \"Not A(Brand\";v=\"99\", \"Chromium\";v=\"154\"\u001b[22m\n\u001b[2m    - sec-ch-ua-mobile: ?0\u001b[22m\n\u001b[2m    - sec-ch-ua-platform: \"Linux\"\u001b[22m\n\u001b[2m    - x-longball-role: manager\u001b[22m\n\nBrowser request failure: not reported",
+    "route.fetch: read ECONNRESET\nCall log:\n\u001b[2m  - → GET http://localhost:44007/v1/teams/0496cbc5-3dc8-4f65-b25e-b7590c71fa0e/opposition-reviews?seasonId=season-2026-2027\u001b[22m\n\u001b[2m    - user-agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36\u001b[22m\n\u001b[2m    - accept: application/json\u001b[22m\n\u001b[2m    - accept-encoding: gzip,deflate,br\u001b[22m\n\u001b[2m    - authorization: Bearer [redacted]    - origin: http://localhost:44007\u001b[22m\n\u001b[2m    - referer: http://localhost:44007/\u001b[22m\n\u001b[2m    - sec-ch-ua: \"Not A(Brand\";v=\"99\", \"Chromium\";v=\"154\"\u001b[22m\n\u001b[2m    - sec-ch-ua-mobile: ?0\u001b[22m\n\u001b[2m    - sec-ch-ua-platform: \"Linux\"\u001b[22m\n\u001b[2m    - x-longball-role: manager\u001b[22m\n\nBrowser request failure: not reported",
+    "route.fetch: read ECONNRESET\nCall log:\n\u001b[2m  - → GET http://localhost:44007/v1/teams/0496cbc5-3dc8-4f65-b25e-b7590c71fa0e/player-stats?seasonId=season-2026-2027\u001b[22m\n\u001b[2m    - user-agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36\u001b[22m\n\u001b[2m    - accept: application/json\u001b[22m\n\u001b[2m    - accept-encoding: gzip,deflate,br\u001b[22m\n\u001b[2m    - authorization: Bearer [redacted]    - origin: http://localhost:44007\u001b[22m\n\u001b[2m    - referer: http://localhost:44007/\u001b[22m\n\u001b[2m    - sec-ch-ua: \"Not A(Brand\";v=\"99\", \"Chromium\";v=\"154\"\u001b[22m\n\u001b[2m    - sec-ch-ua-mobile: ?0\u001b[22m\n\u001b[2m    - sec-ch-ua-platform: \"Linux\"\u001b[22m\n\u001b[2m    - x-longball-role: manager\u001b[22m\n\nBrowser request failure: not reported"
+  ],
+  "failureWorkspaces": [],
+  "completedAt": "2026-10-25T12:47:53.117Z",
+  "reactKeyWarnings": 0
+}

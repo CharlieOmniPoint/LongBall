@@ -1,0 +1,168 @@
+{
+  "scope": "Built demo-login web application with fresh SQLite API and separate report worker; virtual discovery/API requests rerouted only to loopback.",
+  "roles": [
+    {
+      "role": "manager",
+      "width": 390,
+      "assignedWorkspace": true,
+      "noOverflow": true,
+      "signedOut": true,
+      "revokedTokenRefused": true,
+      "pageErrors": []
+    },
+    {
+      "role": "administrator",
+      "width": 390,
+      "assignedWorkspace": true,
+      "noOverflow": true,
+      "signedOut": true,
+      "revokedTokenRefused": true,
+      "pageErrors": []
+    },
+    {
+      "role": "player",
+      "width": 390,
+      "assignedWorkspace": true,
+      "noOverflow": true,
+      "signedOut": true,
+      "revokedTokenRefused": true,
+      "pageErrors": []
+    }
+  ],
+  "checks": [
+    "Credential/header/key redaction is checked before any diagnostic can be retained.",
+    "Wrong password is refused; empty sign-in stays disabled and the passcode is cleared.",
+    "Browser visibility lifecycle covers the private DOM, waits for actual /v1/me, and restores the same mounted workspace.",
+    "A controlled foreground503 keeps private views covered; explicit retry rechecks the real service and restores the same DOM.",
+    "Separate worker prepares actual PDF/CSV; browser saves and parses protected artifacts at the current report revision.",
+    "Top Sign out closes private views and revokes the session while foreground access checking is stalled.",
+    "A real server-side account disablement closes private views on resume; a fresh login works after independent reactivation."
+  ],
+  "failures": [
+    {
+      "stage": "spectator 390px",
+      "name": "TimeoutError",
+      "message": "page.waitForFunction: Timeout 30000ms exceeded."
+    }
+  ],
+  "passed": false,
+  "loginAttempts": 6,
+  "apiRequestWindows": [
+    {
+      "accountId": "synthetic-account-manager-2",
+      "startedAtMs": 1792931174032,
+      "startedAt": "2026-10-25T12:26:14.032Z",
+      "observedAttempts": 62,
+      "observedMutations": 2,
+      "scope": "Actual attempted loopback requests in a local sixty-second observation window; pre-authority denials can make this an upper bound on server counts."
+    },
+    {
+      "accountId": "synthetic-account-admin",
+      "startedAtMs": 1792931229124,
+      "startedAt": "2026-10-25T12:27:09.124Z",
+      "observedAttempts": 25,
+      "observedMutations": 0,
+      "scope": "Actual attempted loopback requests in a local sixty-second observation window; pre-authority denials can make this an upper bound on server counts."
+    },
+    {
+      "accountId": "synthetic-account-player-01",
+      "startedAtMs": 1792931241618,
+      "startedAt": "2026-10-25T12:27:21.618Z",
+      "observedAttempts": 30,
+      "observedMutations": 0,
+      "scope": "Actual attempted loopback requests in a local sixty-second observation window; pre-authority denials can make this an upper bound on server counts."
+    },
+    {
+      "accountId": "synthetic-account-spectator",
+      "startedAtMs": 1792931250938,
+      "startedAt": "2026-10-25T12:27:30.938Z",
+      "observedAttempts": 14,
+      "observedMutations": 0,
+      "scope": "Actual attempted loopback requests in a local sixty-second observation window; pre-authority denials can make this an upper bound on server counts."
+    }
+  ],
+  "apiBudgetWaits": [],
+  "httpFailures": [
+    {
+      "stage": "manager 390px",
+      "accountId": "pre-session",
+      "method": "POST",
+      "pathname": "/v1/demo/sessions",
+      "status": 401,
+      "code": "INVALID_DEMO_CREDENTIALS",
+      "controlled": false
+    },
+    {
+      "stage": "manager 390px",
+      "accountId": "synthetic-account-manager-2",
+      "method": "GET",
+      "pathname": "/v1/me",
+      "status": 503,
+      "code": "STORAGE_UNAVAILABLE",
+      "controlled": true
+    },
+    {
+      "stage": "player 390px",
+      "accountId": "synthetic-account-player-01",
+      "method": "GET",
+      "pathname": "/v1/me",
+      "status": 403,
+      "code": "ACCOUNT_UNAVAILABLE",
+      "controlled": false
+    }
+  ],
+  "nativeDeviceEvidence": false,
+  "paidServicesProvisioned": false,
+  "source": {
+    "gitHead": "f893c485b9b967733616028d1444ef11f7e4a4c8",
+    "workingTreeDirty": true,
+    "harnessSha256": "3aea11129435be187b7aacda0ea781170a6cb6c40a67ed4acaaff1609a013ec0",
+    "webIndexSha256": "aa826a51bbce51efcb3d6ac22e80112459f82813869b386534b079ba8164cb03",
+    "webJavaScriptSha256": "b4419e05c4dd63b8876aa14d2a1885d244c8f1a73457c3328b2c0ed2463a5a59",
+    "apiBundleSha256": "a02083ef9ac75b45f50b20c29a7f6304588ef93f7ac979480a3172bb4a6b78ef",
+    "workerBundleSha256": "d6285b7dfbfb58896d1cea034823a6762915bb7c3a3b0be636eadda7fd95c63d"
+  },
+  "apiContractVersion": "longball.events/1.1",
+  "exports": {
+    "pdf": {
+      "bytes": 22163,
+      "sha256": "752d2738fb3007cf9a76577d12f1723ec76a9ee87d9b6476cb291167d1b72b69",
+      "status": 200,
+      "noStore": true,
+      "pages": 3,
+      "readableLabels": {
+        "Roma U10": true,
+        "Oak FC": true,
+        "Hill FC": true
+      }
+    },
+    "csv": {
+      "bytes": 9264,
+      "sha256": "a6afcc1a401f2736cdb60a62b059df2fc61f102244d6095bf2b54a3bb69b4668",
+      "status": 200,
+      "noStore": true,
+      "rows": 169,
+      "header": [
+        "section",
+        "field",
+        "value"
+      ],
+      "projectionVersion": 0
+    }
+  },
+  "browserStoreInspections": 3,
+  "playerHistoricSchedule": [
+    {
+      "width": 390,
+      "historicGames": 3,
+      "upcomingGames": 1,
+      "everyHistoricalReplyActionAbsent": true,
+      "recordedReplyAndAttendanceRetained": true,
+      "upcomingReplyActionsRetained": true,
+      "navigationPosts": 0,
+      "servicePreparationUnchanged": true
+    }
+  ],
+  "failureWorkspaces": [],
+  "processDiagnostic": "LongBall API http://127.0.0.1:44455 · isolated fictional authentication · fictional SQLite store\n{\"worker\":\"longball-fictional\",\"completed\":2,\"retried\":0,\"failed\":0,\"notifications\":{\"accepted\":0,\"blocked\":0,\"retried\":0,\"suppressed\":0,\"reviewRequired\":0,\"failed\":0},\"exports\":{\"completed\":0,\"retried\":0,\"failed\":0,\"expired\":0}}\n{\"worker\":\"longball-fictional\",\"completed\":0,\"retried\":0,\"failed\":0,\"notifications\":{\"accepted\":0,\"blocked\":0,\"retried\":0,\"suppressed\":0,\"reviewRequired\":0,\"failed\":0},\"exports\":{\"completed\":1,\"retried\":0,\"failed\":0,\"expired\":0}}\n{\"worker\":\"longball-fictional\",\"completed\":0,\"retried\":0,\"failed\":0,\"notifications\":{\"accepted\":0,\"blocked\":0,\"retried\":0,\"suppressed\":0,\"reviewRequired\":0,\"failed\":0},\"exports\":{\"completed\":1,\"retried\":0,\"failed\":0,\"expired\":0}}\n"
+}

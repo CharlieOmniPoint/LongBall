@@ -1,3 +1,5 @@
+import { loadSignInRules, ensureProviderSignInRules } from './sign-in-rules';
+import { reserveConfiguredUsernames } from './username-registry';
 import { SpectatorAccessService } from './spectator-access';
 import { PersistedSpectatorAccessRepository } from './spectator-access-repository';
 import { TeamDocumentService } from './team-document-service';
@@ -33,9 +35,10 @@ export async function createPostgresApi(options: ApiOptions & { connectionString
     if (options.syntheticAuth&&options.seedSynthetic!==false) await store.seedSynthetic({demoSharing:options.demoScenario===true});
     const media = await PgMediaService.open({ directory: options.mediaDirectory ?? join(dirname(options.databasePath), 'media'), database: store.db, scanner: options.mediaScanner, now: options.now });
     const activation = await new PostgresActivationService({ store, provider: options.activationProvider, policy: options.activationPolicy }).initialize();
+    await reserveConfiguredUsernames(store,options.demoAccounts?.accounts??[]);
     const port: RuntimeStore = store;
     const branding=createBrandMedia(options,port,new PostgresBrandRepository(store.db));
-    const spectator=new SpectatorActivationService({repository:new PostgresSpectatorActivationRepository(store),provider:options.activationProvider,policy:options.activationPolicy,now:store.now});
+    const spectator=new SpectatorActivationService({repository:new PostgresSpectatorActivationRepository(store),provider:options.activationProvider,policy:options.activationPolicy,now:store.now,ensureSignInRules:()=>ensureProviderSignInRules(store,options.activationProvider)});
     const invitations=new SpectatorInvitationService({...options,repository:new PostgresInvitationRepository(store),now:store.now});
     const privileges=new TeamPrivilegeService(new PostgresTeamPrivilegeRepository(store),store.now);
     const push=new PushRegistrationService(new PostgresPushRepository(store.db),options,store.now);
@@ -45,7 +48,7 @@ export async function createPostgresApi(options: ApiOptions & { connectionString
     const feedback=new MatchFeedbackService(feedbackRepository);
     const teamDocuments=new TeamDocumentService(store,port);await teamDocuments.initialize();
     const oppositionRepository=new OppositionReviewRepository(store,port);await oppositionRepository.initialize();const opposition=new OppositionReviewService(oppositionRepository);
-    const spectatorAccess=new SpectatorAccessService(new PersistedSpectatorAccessRepository(store,port),store.now,options.demoScenario===true&&options.syntheticAuth===true?{isolatedDemo:true}:undefined);
+    const spectatorAccess=new SpectatorAccessService(new PersistedSpectatorAccessRepository(store,port),store.now,options.demoScenario===true&&options.syntheticAuth===true?{isolatedDemo:true}:undefined,async()=>(await loadSignInRules(store)).rules);
     return createRuntimeApi(options, store, port, media, activation,undefined,{branding,spectator,invitations,privileges,push,reports,feedback,teamDocuments,opposition,spectatorAccess});
   } catch (error) { await store.close(); throw error; }
 }

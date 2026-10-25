@@ -6,6 +6,12 @@ import {
   type InviteRequestInput,
 } from "@longball/application/spectator-pin";
 import { parseInvitationContext } from "@longball/application/invitation-context";
+import {
+  parseSignInRules,
+  pinProblem,
+  usernameProblem,
+  type SignInRules,
+} from "@longball/application/identity-policy";
 import { WIRE_CONTRACT_VERSION } from "@longball/application/sync";
 import type { DemoLoginSession } from "./demo-login";
 import { verifyDemoSession } from "./demo-login";
@@ -70,6 +76,31 @@ export interface SpectatorInvitePreview {
   expiresAt: string;
   context: ReturnType<typeof parseInvitationContext>;
 }
+/** Public rules contain no account directory or credential material. */
+export async function loadSpectatorSignInRules(
+  apiBaseUrl: string,
+  signal?: AbortSignal,
+  fetchRequest?: typeof fetch,
+): Promise<SignInRules> {
+  const value = await spectatorAccessRequest(
+    apiBaseUrl,
+    "sign-in-rules",
+    undefined,
+    { signal, fetch: fetchRequest },
+  );
+  if (
+    !object(value) ||
+    value.kind !== "sign-in-rules" ||
+    !Number.isSafeInteger(value.revision) ||
+    Number(value.revision) < 0
+  )
+    throw new Error("The current sign-in rules could not be verified.");
+  try {
+    return parseSignInRules(value.rules);
+  } catch {
+    throw new Error("The current sign-in rules could not be verified.");
+  }
+}
 export async function previewSpectatorInvite(
   apiBaseUrl: string,
   token: string,
@@ -102,12 +133,16 @@ export async function signInSpectatorPin(input: {
   token?: string;
   register?: boolean;
   requestId?: string;
+  rules?: SignInRules;
   signal: AbortSignal;
   fetch?: typeof fetch;
 }): Promise<DemoLoginSession> {
   const username = normalizedSpectatorUsername(input.username);
   if (input.register) {
-    const problem = spectatorPinProblem(input.passcode);
+    const problem = input.rules
+      ? usernameProblem(username, input.rules) ||
+        pinProblem(input.passcode, input.rules)
+      : spectatorPinProblem(input.passcode);
     if (problem) throw new Error(problem);
     if (!input.token)
       throw new Error("Use the invitation link to create an account.");

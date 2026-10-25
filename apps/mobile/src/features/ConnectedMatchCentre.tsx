@@ -47,6 +47,10 @@ const time = (value: number) =>
 export function ConnectedMatchCentre({
   matches,
   observedAtMs,
+  lastCheckedAtMs = null,
+  refreshing = false,
+  autoRefreshEnabled = false,
+  refreshDelayed = false,
   audience,
   onRefresh,
   onReports,
@@ -62,6 +66,10 @@ export function ConnectedMatchCentre({
 }: {
   matches: ConnectedMatchCentreDto[];
   observedAtMs: number;
+  lastCheckedAtMs?: number | null;
+  refreshing?: boolean;
+  autoRefreshEnabled?: boolean;
+  refreshDelayed?: boolean;
   audience: ConnectedMatchCentreDto["audience"];
   onRefresh: () => void;
   onReports: () => void;
@@ -84,11 +92,20 @@ export function ConnectedMatchCentre({
         <Text style={typography.body}>
           Shared match updates. The match recorder may have newer changes waiting to sync.
         </Text>
+        <Text style={typography.muted} testID="match-centre-last-checked">
+          {lastCheckedAtMs === null ? "Not checked yet" : `Last checked: ${formatUkDateTime(lastCheckedAtMs, { seconds: true })} · UK time`}
+          {refreshing ? " · Refreshing…" : refreshDelayed ? " · Connection delayed" : ""}
+        </Text>
+        <Text style={typography.muted} testID="match-centre-auto-refresh">
+          {autoRefreshEnabled
+            ? "Checks automatically every 2 minutes, or every few seconds during a live game."
+            : "Automatic checks pause while this view is inactive or a change needs attention."}
+        </Text>
         <Button
-          label="Refresh match updates"
+          label={refreshing ? "Refreshing match updates…" : "Refresh match updates"}
           compact
           variant="secondary"
-          disabled={busy}
+          disabled={busy || refreshing}
           onPress={onRefresh}
         />
       </Card>

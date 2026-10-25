@@ -8,11 +8,11 @@ export function formatUkDate(value: string | null | undefined): string {
   return new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: '2-digit', year: '2-digit', timeZone: UK_TIME_ZONE }).format(date);
 }
 
-export function formatUkDateTime(value: string | number | null | undefined): string {
+export function formatUkDateTime(value: string | number | null | undefined, options?: { seconds?: boolean }): string {
   if (value == null) return 'Time to confirm';
   const date = new Date(value);
   if (!Number.isFinite(date.getTime())) return 'Time to confirm';
-  return new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: UK_TIME_ZONE }).format(date);
+  return new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit', ...(options?.seconds ? { second: '2-digit' as const } : {}), hourCycle: 'h23', timeZone: UK_TIME_ZONE }).format(date);
 }
 
 export function formatUkSeasonLabel(value: string): string {

@@ -368,7 +368,7 @@ for (const backend of ["sqlite", "postgres"] as const)
 describe.skipIf(!configured)(
   "inherited Manager authority append-only PostgreSQL migration",
   () => {
-    it("upgrades the actual preceding schema24 in place, preserves domain bytes and controller state, and verifies schema25 before runtime acceptance", async () => {
+    it("upgrades the actual preceding schema24 in place, preserves domain bytes and controller state, and verifies the current schema before runtime acceptance", async () => {
       const test = await fixture("postgres");
       try {
         const owner = test.owner!;
@@ -382,12 +382,20 @@ describe.skipIf(!configured)(
             )
           ).status,
         ).toBe(200);
-        // Reconstruct exactly the preceding version: 025 introduces this policy only.
+        // Remove the appended features to reconstruct the actual preceding schema24.
+        // Their separate data is absent from the domain-byte/controller snapshot.
         await owner.transaction(async () => {
           await owner.execute(
             "DROP POLICY appointed_manager_updates ON memberships",
           );
-          await owner.execute("DELETE FROM schema_migrations WHERE version=25");
+          await owner.execute("DROP TRIGGER IF EXISTS spectator_provider_global_username ON lb_spectator_activation_accounts");
+          await owner.execute("DROP TRIGGER IF EXISTS spectator_pin_global_username ON spectator_pin_credentials");
+          await owner.execute("DROP TRIGGER IF EXISTS child_global_username ON lb_activation_children");
+          await owner.execute("DROP FUNCTION claim_configured_demo_username(text,text),install_child_username_registry(),global_username_claim(),claim_global_username(text,text)");
+          await owner.execute("DROP TABLE global_usernames");
+          await owner.execute("DROP FUNCTION sign_in_rules_read(),sign_in_rules_lock(),sign_in_rules_save(bigint,jsonb,bigint),sign_in_rules_provider_confirm(bigint)");
+          await owner.execute("DROP TABLE application_sign_in_rules");
+          await owner.execute("DELETE FROM schema_migrations WHERE version>=25");
         });
         const before = await test.snapshot();
         expect(
@@ -410,7 +418,7 @@ describe.skipIf(!configured)(
               "SELECT version FROM schema_migrations ORDER BY version",
             )
           ).map((r) => r.version),
-        ).toEqual(Array.from({ length: 24 }, (_, i) => i + 2));
+        ).toEqual(Array.from({ length: 26 }, (_, i) => i + 2));
         const policy = await owner.one(
           "SELECT polpermissive FROM pg_policy WHERE polname='appointed_manager_updates' AND polrelid='longball.memberships'::regclass",
         );

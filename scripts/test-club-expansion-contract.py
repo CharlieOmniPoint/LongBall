@@ -42,9 +42,13 @@ denied('ClubAdministrationInput', {'command': team, 'principal': {'administratio
 token = 'A' * 43  # Format-only test value; this is no issued credential.
 registration = {'token': token, 'username': 'review.guest', 'passcode': '4836', 'requestId': 'register-one'}
 accepted('SpectatorRegistrationInput', registration)
-for pin in ['1111', '0000', '1234', '4321', '7890', '9012', '0987', '1212', '1122', '2580', '2001', '0852', '123', '12345', 'abcd', '１２３４', '١٢٣٤']:
+for pin in ['123', '12345', 'abcd', '１２３４', '١٢٣٤', '4836\n', '4836\r\n']:
     denied('SpectatorRegistrationInput', {**registration, 'passcode': pin})
-for pin in ['4836', '7942', '6309', '0486']:
+# The wire shape is always exactly four ASCII digits. Whether a newly chosen
+# weak code is refused depends on the persisted Super Admin policy, exercised by
+# the service/client tests. Its default remains to refuse these simple choices.
+for pin in ['4836', '7942', '6309', '0486', '1111', '0000', '1234', '4321',
+            '7890', '9012', '0987', '1212', '1122', '2580', '2001', '0852']:
     accepted('SpectatorRegistrationInput', {**registration, 'passcode': pin})
 for patch in [{'role': 'manager'}, {'clubId': 'other-club'}, {'teamId': 'other-team'}, {'accountId': 'someone-else'}, {'verifier': 'caller-value'}, {'salt': 'caller-value'}]:
     denied('SpectatorRegistrationInput', {**registration, **patch})

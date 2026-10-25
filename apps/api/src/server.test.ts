@@ -117,7 +117,7 @@ describe('provider activation HTTP boundary', () => {
   it('runs the isolated provider port without caching a secret or creating a session from activation', async () => {
     const subject = randomUUID(); const flows = new Map<string, { flowId: string; expiresAt: number }>();
     const provider: ActivationProvider = {
-      issuer: 'https://identity.example.invalid/realms/fictional', credentialSetupOrigins: ['https://identity.example.invalid'],
+      issuer: 'https://identity.example.invalid/realms/fictional', applySignInRules: async ({revision}: {revision:number}) => ({revision,enforced:true as const}), credentialSetupOrigins: ['https://identity.example.invalid'],
       async provisionPending(input) { return { issuer: provider.issuer, subject, username: input.username, pending: true, credentialConfigured: false }; },
       async beginCredentialSetup(input) { const flow = { flowId: 'fictional-provider-flow', expiresAt: input.expiresAt }; flows.set(input.operationId, flow); return { ...flow, setupUrl: 'https://identity.example.invalid/credential-setup' }; },
       async cancelCredentialSetup(input) { flows.delete(input.operationId); },

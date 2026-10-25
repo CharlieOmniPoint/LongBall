@@ -1,3 +1,5 @@
+import { SignInRulesService, loadSignInRules } from './sign-in-rules';
+import { reserveConfiguredUsernames } from './username-registry';
 import { SpectatorAccessService } from './spectator-access';
 import { PersistedSpectatorAccessRepository } from './spectator-access-repository';
 import { TeamDocumentService } from './team-document-service';
@@ -132,8 +134,8 @@ export function createApi(options:ApiOptions) {
  const feedback=new MatchFeedbackService(feedbackRepository);
  const teamDocuments=new TeamDocumentService(source,runtime.store);
  const oppositionRepository=new OppositionReviewRepository(source,runtime.store);const opposition=new OppositionReviewService(oppositionRepository);
- const spectatorAccess=new SpectatorAccessService(new PersistedSpectatorAccessRepository(source,runtime.store),now,options.demoScenario===true&&options.syntheticAuth===true?{isolatedDemo:true}:undefined);
- const ready=runtime.serialize(async()=>{await repository.initialize();await exportsRepository.initialize();await feedbackRepository.initialize();await teamDocuments.initialize();await oppositionRepository.initialize();});void ready.catch(()=>undefined);
+ const spectatorAccess=new SpectatorAccessService(new PersistedSpectatorAccessRepository(source,runtime.store),now,options.demoScenario===true&&options.syntheticAuth===true?{isolatedDemo:true}:undefined,async()=>(await loadSignInRules(source)).rules);
+ const ready=runtime.serialize(async()=>{await repository.initialize();await reserveConfiguredUsernames(source,options.demoAccounts?.accounts??[]);await loadSignInRules(source);await exportsRepository.initialize();await feedbackRepository.initialize();await teamDocuments.initialize();await oppositionRepository.initialize();});void ready.catch(()=>undefined);
  const invitations=new SpectatorInvitationService({...options,repository,now});
  const privileges=new TeamPrivilegeService(new SqliteTeamPrivilegeRepository(source,runtime.store),now);
  const push=new PushRegistrationService(new SqlitePushRepository(source.database,runtime.store.transaction),options,now);
@@ -141,6 +143,7 @@ export function createApi(options:ApiOptions) {
 }
 export function createRuntimeApi<T>(options:ApiOptions,source:T,store:RuntimeStore,media:RuntimeMedia,activation:RuntimeActivation,serialize:<R>(work:()=>Promise<R>)=>Promise<R> = work=>work(),services:{branding?:BrandMediaService;spectator?:RuntimeSpectatorActivation;invitations?:SpectatorInvitationService;privileges?:TeamPrivilegeService;push?:PushRegistrationService;reports?:ReportExportService;feedback?:MatchFeedbackService;teamDocuments?:TeamDocumentService;opposition?:OppositionReviewService;spectatorAccess?:SpectatorAccessService}={}) {
  const now=options.now??Date.now;
+ const signInRules=new SignInRulesService(source as DevelopmentStore | import('./postgres-store').PostgresStore,options.activationProvider);
  assertDemoScenarioOptions(options);
  const demoSessions=options.demoAccounts?new DemoSessions(options.demoAccounts,now):null;
  const privilegeService=()=>{if(!services.privileges)throw new AccessError('TEAM_PRIVILEGES_UNAVAILABLE',503,'Current team privileges are unavailable.');return services.privileges;};
@@ -193,6 +196,7 @@ const windows = new Map<string, {
                 response(reply, 200, { status: 'ok', service: 'longball-api', contractVersion: EVENT_CONTRACT_VERSION, backend: source instanceof DevelopmentStore ? 'fictional-sqlite' : 'postgresql', syntheticOnly: Boolean(options.syntheticAuth), demoScenario: options.demoScenario === true, ...(demoSessions?{demoAccountLogin:true}:{}) }, requestId);
                 return;
             }
+            if(url.pathname==='/v1/sign-in-rules'&&request.method==='GET'){response(reply,200,await signInRules.view(),requestId);return;}
             if (staticRoot && parts[0] !== 'v1' && ['GET', 'HEAD'].includes(request.method ?? '')) {
                 if (parts.some(part => part.startsWith('.') || part.includes('/') || part.includes('\\')))
                     throw new AccessError('NOT_FOUND', 404, 'The requested object is unavailable.');
@@ -384,6 +388,8 @@ const windows = new Map<string, {
             const administration=new ClubAdministrationService(source as DevelopmentStore | import('./postgres-store').PostgresStore);
             if (request.method === 'GET' && url.pathname === '/v1/me')
                 result = { accountId: principal.accountId, identityClassification: principal.identityClassification, principal, memberships: (await store.workspaceMemberships(principal)), serverTime: new Date(now()).toISOString(), syntheticOnly: Boolean(options.syntheticAuth) };
+            else if(url.pathname==='/v1/administration/sign-in-rules'&&request.method==='GET')result=await signInRules.adminView(principal);
+            else if(url.pathname==='/v1/administration/sign-in-rules'&&request.method==='POST')result=await mutate(url.pathname,()=>signInRules.save(principal,body),()=>signInRules.authorize(principal));
             else if(url.pathname==='/v1/administration'&&request.method==='GET')result=await administration.view(principal);
             else if(url.pathname==='/v1/administration'&&request.method==='POST'){
                 if(Object.keys(body!).length!==1||!Object.hasOwn(body!,'command'))throw new AccessError('INVALID_REQUEST',400,'Use only the captured club administration command.');

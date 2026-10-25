@@ -103,7 +103,7 @@ async function availablePort() {
   return port;
 }
 async function awaitHealthy(child) {
-  for (let attempt = 0; attempt < 100; attempt++) {
+  for (let attempt = 0; attempt < 300; attempt++) {
     if (child.exitCode !== null || child.signalCode !== null) throw new Error('The isolated API exited before becoming ready.');
     if (!child.qaApiReady) { await delay(100); continue; }
     try {
@@ -744,13 +744,13 @@ async function playerReplyRegression(account, managerAccount) {
     const current = accepted.fixtures.find(item => item.id === fixtureId);
     check(current.response === 'unsure' && current.attendance === previous.attendance && current.selected === previous.selected, 'Own RSVP must change only the current player reply, retaining selection and actual attendance.');
     check(await fixture.evaluate(node => node.dataset.qaRetainedReply === 'same-selected-match') && await page.getByTestId(/^own-schedule-event-training-/).count() === 0, 'Accepted own-reply refresh must retain the mounted match card and Matches filter.');
-    check(state.errors.length === 0 && state.routes.length === 0, 'Player RSVP regression must have no runtime or transport errors.');
+    check(state.errors.length === 0 && state.routes.length === 0, 'Player RSVP regression must have no runtime or transport errors: ' + sanitise(JSON.stringify({ runtime: state.errors, transport: state.routes, requestFailures: state.requestFailures })));
     await playerSummaryProjection(state, fixtureId);
     await checkStoredCredentials(page);
     await logout(state);
     report.playerReply = { accepted: 'unsure', actualAttendanceUnchanged: true, selectionUnchanged: true, matchFilterRetained: true, matchCardRetained: true, signedOut: true };
     checks.push('Player upcoming RSVP is accepted without changing actual attendance or manager selection; accepted refresh retains the same match card, Matches filter and usable Schedule.');
-  } finally { state.closed = true; await state.context.close(); }
+  } catch (error) { await retainFailureWorkspace(state); throw error; } finally { state.closed = true; await state.context.close(); }
 }
 async function refreshManagerViews(page) {
   await openWorkspaceTab(page, 'more');
@@ -1030,6 +1030,8 @@ async function managerMatchday(accounts, databasePath) {
     await selectedWorkspaceTab(viewer.page, 'centre');
     const sharedCard = viewer.page.getByTestId(`match-centre-game-${matchId}`);
     await sharedCard.getByText('0 – 0', { exact: true }).waitFor();
+    await viewer.page.getByText(/^Last checked:/).waitFor();
+    await viewer.page.getByText(/every few seconds during a live game/).waitFor();
     await page.getByTestId('open-goal').click();
     await button('Penalty').click();
     const captured = await page.getByText(/^Effective time: half /).innerText();
@@ -1077,7 +1079,31 @@ async function managerMatchday(accounts, databasePath) {
   }
 }
 
-const watchdog = setTimeout(() => { void browser?.close().catch(() => undefined); for (const child of children) child.kill('SIGTERM'); }, 240000);
+async function checkIdleMatchRefresh(state) {
+  const { page } = state;
+  const receipt = page.getByTestId('match-centre-last-checked');
+  await page.getByText('Checks automatically every 2 minutes, or every few seconds during a live game.', { exact: true }).waitFor();
+  await page.waitForFunction(() => /^Last checked: .*UK time$/.test(document.querySelector('[data-testid="match-centre-last-checked"]')?.textContent ?? ''));
+  const initial = await receipt.innerText();
+  await page.clock.runFor(120_001);
+  await page.waitForFunction(previous => {
+    const text = document.querySelector('[data-testid="match-centre-last-checked"]')?.textContent ?? '';
+    return /^Last checked: .*UK time$/.test(text) && text !== previous;
+  }, initial);
+  const accepted = await receipt.innerText();
+  state.scopedReadReplyOnce = { path: '/matches', status: 503 };
+  await page.clock.runFor(120_001);
+  await page.getByText('Updates are delayed. Your last confirmed view is retained while the connection is retried.', { exact: true }).waitFor();
+  check((await receipt.innerText()).replace(' · Connection delayed', '') === accepted, 'A failed automatic match read must retain its successful refresh receipt.');
+  await page.getByRole('button', { name: 'Refresh match updates', exact: true }).click();
+  await page.waitForFunction(previous => {
+    const text = document.querySelector('[data-testid="match-centre-last-checked"]')?.textContent ?? '';
+    return /^Last checked: .*UK time$/.test(text) && text !== previous;
+  }, accepted);
+  checks.push('Idle Match Centre refreshes after two minutes, visibly records a successful UK-time receipt, retains that receipt on a controlled503, and recovers with manual refresh.');
+}
+
+const watchdog = setTimeout(() => { void browser?.close().catch(() => undefined); for (const child of children) child.kill('SIGTERM'); }, 420000);
 watchdog.unref();
 try {
   // This directory contains only this runner's generated report and signed-in images.
@@ -1180,6 +1206,7 @@ try {
       if (account.role === 'spectator') {
         await openWorkspaceTab(page, 'centre');
         await selectedWorkspaceTab(page, 'centre');
+        if (width === 390) await checkIdleMatchRefresh(state);
       }
       check(state.errors.length === 0 && state.routes.length === 0, 'The assigned role journey must not have runtime or transport errors.');
       await checkStoredCredentials(page);

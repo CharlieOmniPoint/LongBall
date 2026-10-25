@@ -38,7 +38,7 @@ export function parseInvitationProviderSetup(
     typeof body.accountId !== "string" ||
     !/^[0-9a-f-]{36}$/i.test(body.accountId) ||
     typeof body.username !== "string" ||
-    !/^LB[A-HJ-NP-Z2-9]{12}$/.test(body.username) ||
+    !/^[A-Za-z0-9][A-Za-z0-9._-]{2,39}$/.test(body.username) ||
     typeof body.identityActionUrl !== "string" ||
     typeof body.expiresAt !== "string" ||
     !Number.isFinite(Date.parse(body.expiresAt)) ||

@@ -6,6 +6,7 @@ import { SubstitutionAlertSettings } from './SubstitutionAlertSettings';
 import { FaPlayerIdEditor } from './TeamDetailsEditors';
 import { TeamDocumentsPanel } from './TeamDocumentsPanel';
 import { ClubAdministration } from './ClubAdministration';
+import { SignInRulesPanel } from './SignInRulesPanel';
 import type { ClubAdministrationCommand, ClubAdministrationDto, ClubReportDto } from '@longball/application/club-administration';
 import { OppositionReviews } from './OppositionReviews';
 import { assertOppositionReviewView, type OppositionReviewView, type OppositionReviewCommand } from '@longball/application/opposition-review';
@@ -32,7 +33,7 @@ import {
 import { FixtureScheduleDetails } from "./FixtureScheduleDetails";
 import { acceptedCompletedFixtureIds, fixtureScheduleStatus } from "@longball/application/fixture-schedule-status";
 import { canPlayerReplyToFixture } from "@longball/application/fixture-response-window";
-import { startForegroundRefresh } from "@longball/application/foreground-refresh";
+import { SHARED_IDLE_REFRESH_MS, SHARED_MATCH_REFRESH_MS, startForegroundRefresh } from "@longball/application/foreground-refresh";
 import { isActiveSharedMatch, mergeSharedMatchViews, refreshSharedHistoryPage, refreshSharedMatchViews, SharedMatchRefreshAuthorityDenied } from "@longball/application/shared-match-refresh";
 import { continueMatchList, parseMatchListPage, MatchListAuthorityDenied, type MatchListPage } from '@longball/application/match-list';
 import { TeamPrivilegesPanel } from "./TeamPrivilegesPanel";
@@ -729,12 +730,19 @@ function WorkspaceSession({
   const brandRetainedRef = useRef(false),
     brandScopeRef = useRef<string | null>(null);
   const uploadRetainedRef = useRef(false);
+  const signInRulesRetainedRef = useRef(false);
+  const [signInRulesRetained, setSignInRulesRetained] = useState(false);
   const albumKeyRef = useRef<string | null>(null);
   const invitationAuthority = useRef<string | null>(null);
   const invitationHeldRef = useRef<{
     scopeKey: string;
     active: boolean;
   } | null>(null);
+  const onSignInRulesRetained = useCallback((active: boolean) => {
+    signInRulesRetainedRef.current = active;
+    setSignInRulesRetained(active);
+    onEphemeralRetainedChange?.(active || brandRetainedRef.current || uploadRetainedRef.current || Boolean(invitationHeldRef.current?.active), retainedOwner);
+  }, [onEphemeralRetainedChange, retainedOwner]);
 
   const [membershipTime, setMembershipTime] = useState(Date.now);
   const [scopeChoice, setScopeChoice] = useState<{
@@ -780,6 +788,7 @@ function WorkspaceSession({
       privateCapability:
         brandRetainedRef.current ||
         uploadRetainedRef.current ||
+        signInRulesRetainedRef.current ||
         Boolean(invitationHeldRef.current?.active),
       busy: lock.current,
     });
@@ -825,6 +834,8 @@ function WorkspaceSession({
   const [sharedRefreshCache, setSharedRefreshCache] = useState<BoundWorkspaceValue<ConnectedMatchCentreDto[]> | null>(null);
   const sharedRefreshRef = useRef<BoundWorkspaceValue<ConnectedMatchCentreDto[]> | null>(null);
   const [sharedRefreshDelayed, setSharedRefreshDelayed] = useState(false);
+  const [matchCheckedCache, setMatchCheckedCache] = useState<BoundWorkspaceValue<number> | null>(null);
+  const [sharedRefreshInFlight, setSharedRefreshInFlight] = useState<WorkspaceBinding | null>(null);
   const sharedHistoryCursor = useRef<{ binding: WorkspaceBinding; cursor: string | null } | null>(null);
   const [seasonCache, setSeasons] =
     useState<BoundWorkspaceValue<ConnectedSeasonOptions> | null>(null);
@@ -843,6 +854,7 @@ function WorkspaceSession({
       onEphemeralRetainedChange?.(
         active ||
           uploadRetainedRef.current ||
+          signInRulesRetainedRef.current ||
           Boolean(
             invitationHeldRef.current?.active &&
               invitationHeldRef.current.scopeKey ===
@@ -865,6 +877,7 @@ function WorkspaceSession({
       onEphemeralRetainedChange?.(
         active ||
           brandRetainedRef.current ||
+          signInRulesRetainedRef.current ||
           Boolean(
             invitationHeldRef.current?.active &&
               invitationHeldRef.current.scopeKey ===
@@ -912,6 +925,9 @@ function WorkspaceSession({
     setTeamPrivileges(null);
     setMatches(null);
     setSharedRefreshCache(null);
+    setMatchCheckedCache(null);
+    setSharedRefreshInFlight(null);
+    setSharedRefreshDelayed(false);
     sharedRefreshRef.current = null;
     sharedHistoryCursor.current = null;
     setSeasons(null);
@@ -952,7 +968,7 @@ function WorkspaceSession({
       invitationHeldRef.current = next;
       setInvitationHeld(next);
       onEphemeralRetainedChange?.(
-        active || brandRetainedRef.current || uploadRetainedRef.current,
+        active || brandRetainedRef.current || uploadRetainedRef.current || signInRulesRetainedRef.current,
         retainedOwner,
       );
     },
@@ -1214,6 +1230,10 @@ function WorkspaceSession({
     sharedRefreshCache, expectedBinding, identity?.principal ?? null,
     identity?.memberships ?? [], membershipTime,
   );
+  const matchCheckedAtMs = readWorkspaceValue(
+    matchCheckedCache, expectedBinding, identity?.principal ?? null,
+    identity?.memberships ?? [], membershipTime,
+  );
   const matches = matchList ? visibleScheduledMatches(mergeSharedMatchViews(matchList.items, refreshedMatches ?? []), teamOverview) : null;
   const completedFixtureIds = acceptedCompletedFixtureIds(matches, { teamId, seasonId });
   const replyClosedFixtureIds = new Set([...completedFixtureIds, ...(records?.matches ?? []).flatMap(match =>
@@ -1335,13 +1355,14 @@ function WorkspaceSession({
   );
   useEffect(() => {
     onEphemeralRetainedChange?.(
-      uploadRetained || brandRetained || invitationRetained,
+      uploadRetained || brandRetained || invitationRetained || signInRulesRetained,
       retainedOwner,
     );
   }, [
     uploadRetained,
     brandRetained,
     invitationRetained,
+    signInRulesRetained,
     onEphemeralRetainedChange,
     retainedOwner,
   ]);
@@ -1596,6 +1617,9 @@ function WorkspaceSession({
     setOwnPrivileges(retain); setTeamPrivileges(retain); setMatches(retain);
     setSeasons(retain); setConfiguration(retain); setStaff(retain); setBranding(retain);
     setSharedRefreshCache(retain);
+    setMatchCheckedCache(retain);
+    setSharedRefreshDelayed(false);
+    setSharedRefreshInFlight(null);
     sharedRefreshRef.current = retain(sharedRefreshRef.current);
     sharedHistoryCursor.current = sameWorkspaceBinding(previousBinding, sharedHistoryCursor.current?.binding ?? null)
       ? { binding: ticket, cursor: sharedHistoryCursor.current!.cursor } : null;
@@ -1735,7 +1759,11 @@ function WorkspaceSession({
           .then(async (reply) => {
             const page = parseMatchListPage<ConnectedMatchCentreDto>(reply, ticket);
             const attached = await attach(page);
-            if (attached) setMatches(attached);
+            if (attached) {
+              setMatches(attached);
+              const checked = await attach(Date.now());
+              if (checked) setMatchCheckedCache(checked);
+            }
           })
           .catch((cause) => readFault("Matches", cause, true)),
       );
@@ -1920,55 +1948,66 @@ function WorkspaceSession({
       ? typeof document !== "undefined" && document.visibilityState !== "hidden"
       : AppState.currentState === "active";
     const refresh = startForegroundRefresh({
+      intervalMs: () => {
+        const refreshed = sameWorkspaceBinding(sharedRefreshRef.current?.binding ?? null, ticket) ? sharedRefreshRef.current!.value : [];
+        return mergeSharedMatchViews(matchList?.items ?? [], refreshed).some(isActiveSharedMatch) ? SHARED_MATCH_REFRESH_MS : SHARED_IDLE_REFRESH_MS;
+      },
       read: async (signal, related) => {
         if (lock.current || !sameWorkspaceBinding(ticket, liveBinding.current)) return;
-        let freshIdentity: Identity | null = null;
-        const previous = sameWorkspaceBinding(sharedRefreshRef.current?.binding ?? null, ticket)
-          ? sharedRefreshRef.current!.value
-          : (matchList?.items.filter(isActiveSharedMatch) ?? []);
-        const next = await refreshSharedMatchViews<ConnectedMatchCentreDto>(ticket, previous, {
-          me: async (requestSignal) => { freshIdentity = await client.request<Identity>("/v1/me", { signal: requestSignal }); return freshIdentity; },
-          request: (requestPath, requestSignal) => client.request<unknown>(requestPath, { signal: requestSignal }),
-          currentBinding: () => liveBinding.current, sessionCurrent,
-          now: serviceActionTime,
-        }, signal);
-        if (!next || signal.aborted || !sameWorkspaceBinding(ticket, liveBinding.current) || !await sessionCurrent()) return;
-        if (freshIdentity) setIdentity(freshIdentity);
-        sharedRefreshRef.current = next.matches;
-        setSharedRefreshCache(next.matches);
-        if (!related || lock.current) return;
-        const [report, social, overview] = await Promise.all([
-          client.request<RecordsDto>(scoped("records"), { signal }),
-          client.request<CommunityDto>(scoped("community"), { signal }),
-          client.request<unknown>(scoped("team-overview"), { signal }),
-        ]);
-        if (signal.aborted || !sameWorkspaceBinding(ticket, liveBinding.current) || !await sessionCurrent()) return;
-        if (report.results.visibilityScope !== ticket.role || report.results.teamId !== ticket.teamId || report.results.seasonId !== ticket.seasonId ||
-          (ticket.role !== "manager" && (report.editableState || report.activeMatch)))
-          throw new Error("The refreshed report differs from the selected role or team. The last confirmed view is retained.");
-        assertTeamOverviewDto(overview,{teamId:ticket.teamId,seasonId:ticket.seasonId});
-        const attach = <T,>(value: T) => attachWorkspaceValue(ticket, liveBinding.current, next.identity.principal, next.identity.memberships, serviceActionTime(), value);
-        const recordsUpdate = attach({
-          revision: report.revision, results: report.results, participation: report.participation, matches: report.matches,
-          ...(ticket.role === "manager" ? { editableState: report.editableState, activeMatch: report.activeMatch, contexts: report.contexts } : {}),
-          playerLabels: report.playerLabels,
-        });
-        const communityUpdate = attach(social);
-        const overviewUpdate = attach(overview);
-        const visibleRefresh = attach(visibleScheduledMatches(next.matches.value,overview));
-        if (overviewUpdate && visibleRefresh) { setTeamOverview(overviewUpdate); sharedRefreshRef.current = visibleRefresh; setSharedRefreshCache(visibleRefresh); }
-        if (recordsUpdate && communityUpdate) { setRecords(recordsUpdate); setCommunity(communityUpdate); }
-        const history = await refreshSharedHistoryPage(ticket,
-          visibleScheduledMatches(mergeSharedMatchViews(matchList?.items ?? [], next.matches.value),overview),
-          sameWorkspaceBinding(ticket, sharedHistoryCursor.current?.binding ?? null) ? sharedHistoryCursor.current!.cursor : null,
-          next.identity, {
-            me: (requestSignal) => client.request<Identity>("/v1/me", { signal: requestSignal }),
+        setSharedRefreshInFlight(ticket);
+        try {
+          let freshIdentity: Identity | null = null;
+          const previous = sameWorkspaceBinding(sharedRefreshRef.current?.binding ?? null, ticket)
+            ? sharedRefreshRef.current!.value
+            : (matchList?.items.filter(isActiveSharedMatch) ?? []);
+          const next = await refreshSharedMatchViews<ConnectedMatchCentreDto>(ticket, previous, {
+            me: async (requestSignal) => { freshIdentity = await client.request<Identity>("/v1/me", { signal: requestSignal }); return freshIdentity; },
             request: (requestPath, requestSignal) => client.request<unknown>(requestPath, { signal: requestSignal }),
-            currentBinding: () => liveBinding.current, sessionCurrent, now: serviceActionTime,
+            currentBinding: () => liveBinding.current, sessionCurrent,
+            now: serviceActionTime,
           }, signal);
-        if (history && !signal.aborted && sameWorkspaceBinding(ticket, liveBinding.current)) {
-          sharedHistoryCursor.current = { binding: ticket, cursor: history.nextCursor };
-          sharedRefreshRef.current = history.matches; setSharedRefreshCache(history.matches);
+          if (!next || signal.aborted || !sameWorkspaceBinding(ticket, liveBinding.current) || !await sessionCurrent()) return;
+          if (freshIdentity) setIdentity(freshIdentity);
+          sharedRefreshRef.current = next.matches;
+          setSharedRefreshCache(next.matches);
+          const checked = attachWorkspaceValue(ticket, liveBinding.current, next.identity.principal, next.identity.memberships, serviceActionTime(), Date.now());
+          if (checked) setMatchCheckedCache(checked);
+          if (!related || lock.current) return;
+          const [report, social, overview] = await Promise.all([
+            client.request<RecordsDto>(scoped("records"), { signal }),
+            client.request<CommunityDto>(scoped("community"), { signal }),
+            client.request<unknown>(scoped("team-overview"), { signal }),
+          ]);
+          if (signal.aborted || !sameWorkspaceBinding(ticket, liveBinding.current) || !await sessionCurrent()) return;
+          if (report.results.visibilityScope !== ticket.role || report.results.teamId !== ticket.teamId || report.results.seasonId !== ticket.seasonId ||
+            (ticket.role !== "manager" && (report.editableState || report.activeMatch)))
+            throw new Error("The refreshed report differs from the selected role or team. The last confirmed view is retained.");
+          assertTeamOverviewDto(overview,{teamId:ticket.teamId,seasonId:ticket.seasonId});
+          const attach = <T,>(value: T) => attachWorkspaceValue(ticket, liveBinding.current, next.identity.principal, next.identity.memberships, serviceActionTime(), value);
+          const recordsUpdate = attach({
+            revision: report.revision, results: report.results, participation: report.participation, matches: report.matches,
+            ...(ticket.role === "manager" ? { editableState: report.editableState, activeMatch: report.activeMatch, contexts: report.contexts } : {}),
+            playerLabels: report.playerLabels,
+          });
+          const communityUpdate = attach(social);
+          const overviewUpdate = attach(overview);
+          const visibleRefresh = attach(visibleScheduledMatches(next.matches.value,overview));
+          if (overviewUpdate && visibleRefresh) { setTeamOverview(overviewUpdate); sharedRefreshRef.current = visibleRefresh; setSharedRefreshCache(visibleRefresh); }
+          if (recordsUpdate && communityUpdate) { setRecords(recordsUpdate); setCommunity(communityUpdate); }
+          const history = await refreshSharedHistoryPage(ticket,
+            visibleScheduledMatches(mergeSharedMatchViews(matchList?.items ?? [], next.matches.value),overview),
+            sameWorkspaceBinding(ticket, sharedHistoryCursor.current?.binding ?? null) ? sharedHistoryCursor.current!.cursor : null,
+            next.identity, {
+              me: (requestSignal) => client.request<Identity>("/v1/me", { signal: requestSignal }),
+              request: (requestPath, requestSignal) => client.request<unknown>(requestPath, { signal: requestSignal }),
+              currentBinding: () => liveBinding.current, sessionCurrent, now: serviceActionTime,
+            }, signal);
+          if (history && !signal.aborted && sameWorkspaceBinding(ticket, liveBinding.current)) {
+            sharedHistoryCursor.current = { binding: ticket, cursor: history.nextCursor };
+            sharedRefreshRef.current = history.matches; setSharedRefreshCache(history.matches);
+          }
+        } finally {
+          if (!signal.aborted && sameWorkspaceBinding(ticket, liveBinding.current)) setSharedRefreshInFlight(null);
         }
       },
       onSuccess: () => setSharedRefreshDelayed(false),
@@ -1987,6 +2026,7 @@ function WorkspaceSession({
     if (Platform.OS === "web" && typeof document !== "undefined") document.addEventListener("visibilitychange", visibilityChanged);
     return () => {
       refresh.stop(); nativeSubscription.remove();
+      setSharedRefreshInFlight(current => sameWorkspaceBinding(current, ticket) ? null : current);
       if (Platform.OS === "web" && typeof document !== "undefined") document.removeEventListener("visibilitychange", visibilityChanged);
     };
     // The identity/ticket is rechecked on every accepted read. DTO refreshes never
@@ -2633,6 +2673,7 @@ function WorkspaceSession({
         currentOutbox.conflict));
   const disabled =
     disabledWithoutInvitation ||
+    signInRulesRetained ||
     invitationRetained ||
     Boolean(navigationReview);
   const activeController =
@@ -2713,6 +2754,7 @@ function WorkspaceSession({
               if (
                 !uploadRetainedRef.current &&
                 !brandRetainedRef.current &&
+                !signInRulesRetainedRef.current &&
                 !invitationIsRetained()
               ) {
                 if (value === "account" && props.onOpenAccount)
@@ -3009,6 +3051,7 @@ function WorkspaceSession({
       {tab === 'account' && membership?.role === 'spectator' && teamId && seasonId && <SpectatorConnection key={`${absoluteApi}:${identity?.principal.accountId}:${teamId}:${seasonId}`} baseUrl={connection.baseUrl || '/'} authenticatedFetch={authenticatedFetch} teamId={teamId} seasonId={seasonId} active={!disabledWithoutInvitation} assertCurrent={assertInvitationCurrent} />}
       {tab === 'formation' && manager && preparation && <FormationDesigner state={preparation} busy={disabled} onChange={command => mutate('preparation',command,'Formation')} />}
       {(tab === 'clubs' || tab === 'clubReports' || !selectedContext) && identity?.principal.administration && <ClubAdministration key={`${absoluteApi}:${identity.principal.accountId}`} principal={identity.principal} section={tab === "clubReports" ? "reports" : "all"} load={loadAdministration} save={saveAdministration} loadReport={loadClubReport} onChanged={load} />}
+      {tab === 'clubs' && identity?.principal.administration?.level === 'super' && <SignInRulesPanel key={`sign-in-rules:${absoluteApi}:${identity.principal.accountId}`} client={client} active={props.active !== false && !disabledWithoutInvitation} onRetainedChange={onSignInRulesRetained} />}
       {tab === 'opposition' && (manager || administrator || membership?.role==='player') && (opposition ? <OppositionReviews value={opposition} busy={disabled} onSave={manager || administrator ? command => mutate('opposition-reviews',command,'Opposition notes') : undefined} /> : <Notice>Opposition notes are loading. Refresh your team view if they remain unavailable.</Notice>)}
       {tab === 'overview' && selectedContext && (teamOverview ? <TeamOverview team={teamOverview.team} games={overviewGames} nowMs={membershipTime} busy={disabled} onOpenGame={openOverviewGame} onRefresh={() => { void reload(); }} /> : <Notice>Your team overview is loading. Refresh your team view if it remains unavailable.</Notice>)}
       {tab === 'stats' && (manager || administrator || membership?.role === 'player') && <View style={s.stack}><Button label="Refresh stats" compact variant="quiet" disabled={disabled} onPress={() => {void reload();}} />{stats ? stats.kind === 'own-player-stats' ? <PlayerStats value={stats} teamLabel={overviewTeamLabel} /> : <TeamStats value={stats} teamLabel={overviewTeamLabel} selectedPlayerId={selectedStatsPlayerId} onSelectPlayer={setSelectedStatsPlayerId} /> : <Notice>Your statistics are loading. Refresh your team view if they remain unavailable.</Notice>}</View>}
@@ -3276,6 +3319,10 @@ function WorkspaceSession({
                 : undefined
             }
             observedAtMs={membershipTime}
+            lastCheckedAtMs={matchCheckedAtMs}
+            refreshing={sameWorkspaceBinding(sharedRefreshInFlight, expectedBinding)}
+            autoRefreshEnabled={sharedRefreshEnabled}
+            refreshDelayed={sharedRefreshDelayed}
             audience={membership.role as ConnectedMatchCentreDto["audience"]}
             busy={disabled}
             onRefresh={() => {

@@ -1,0 +1,66 @@
+$ vitest run --config apps/api/vitest.config.ts
+
+ RUN  v5.0.5 /workspace/LongBall
+
+ ❯ apps/api/src/team-privileges-http.test.ts (23 tests | 1 failed) 120401ms
+   ❯ PostgreSQL SEC17 actual HTTP boundaries (13)
+     × expands schema14 without rewriting audit rows and rolls back a failed audit-clock installation 898ms
+ ❯ apps/api/src/live-publication.test.ts (4 tests | 1 failed) 42409ms
+   ❯ current live publication through actual postgres HTTP (2)
+     × keeps demo publication scoped, intersects current score/derived decisions, rejects injected approval and invalidates class changes 30559ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  apps/api/src/live-publication.test.ts > current live publication through actual postgres HTTP > keeps demo publication scoped, intersects current score/derived decisions, rejects injected approval and invalidates class changes
+Error: Test timed out in 30000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ apps/api/src/live-publication.test.ts:130:3
+    128|   });
+    129|
+    130|   it('keeps demo publication scoped, intersects current score/derived …
+       |   ^
+    131|     const fixture = await start(backend), { match, view, call, command…
+    132|     const current = (value: View) => value.matches.find(report => repo…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  apps/api/src/team-privileges-http.test.ts > PostgreSQL SEC17 actual HTTP boundaries > expands schema14 without rewriting audit rows and rolls back a failed audit-clock installation
+AssertionError: expected [ { version: 2 }, …(25) ] to deeply equal [ { version: 2 }, …(23) ]
+
+- Expected
++ Received
+
+@@ -69,6 +69,12 @@
+      "version": 24,
+    },
+    {
+      "version": 25,
+    },
++   {
++     "version": 26,
++   },
++   {
++     "version": 27,
++   },
+  ]
+
+ ❯ apps/api/src/team-privileges-http.test.ts:1177:13
+    1175|               "SELECT version FROM schema_migrations ORDER BY version",
+    1176|             ),
+    1177|           ).toEqual(
+       |             ^
+    1178|             Array.from({ length: 26 }, (_, index) => ({ version: index…
+    1179|           );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  2 failed | 77 passed (79)
+      Tests  2 failed | 473 passed | 3 skipped (478)
+   Start at  12:25:07
+   Duration  442.89s (tests 86%, import 13%, transform 1%)
+
+    Isolate  79 workers spawned · ~638ms startup each (spawn + environment, per file)
+             at least ~24.54s faster with isolate: false — reuses workers across files instead of one per file
+
+[ELIFECYCLE] Command failed with exit code 1.

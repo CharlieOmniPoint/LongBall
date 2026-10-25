@@ -3,6 +3,7 @@ import { AccessError } from "../../../packages/application/src/access";
 import { invitationTokenHashInput } from "../../../packages/application/src/invitation-credentials";
 import type { ActivationPolicy, ActivationProvider } from "./activation";
 import type { InvitationContext } from '../../../packages/application/src/invitation-context';
+import { DEFAULT_SIGN_IN_RULES, type SignInRules, type SignInRulesDto } from '../../../packages/application/src/identity-policy';
 export interface SpectatorInvitationCapability {
   id: string;
   clubId: string;
@@ -111,9 +112,12 @@ export function spectatorInvitationHash(token: string): string {
     return unavailable();
   }
 }
-function username() {
-  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  return `LB${Array.from(randomBytes(12), (byte) => alphabet[byte & 31]).join("")}`;
+function username(rules: SignInRules) {
+  // This older token-bound flow has no person's name. Keep an opaque initial
+  // name that meets the current rules, without inventing a personal identity.
+  const alphabet = rules.username.allowNumbers ? "ABCDEFGHJKLMNPQRSTUVWXYZ23456789" : "ABCDEFGHJKLMNPQRSTUVWXYZ";
+  const length = Math.min(rules.username.maxLength, Math.max(14, rules.username.minLength));
+  return `LB${Array.from(randomBytes(length - 2), byte => alphabet[byte % alphabet.length]).join("")}`;
 }
 /** Token-bound username-only provisioning. No membership or adult eligibility is created here. */
 export class SpectatorActivationService {
@@ -124,6 +128,7 @@ export class SpectatorActivationService {
       provider?: ActivationProvider;
       policy?: ActivationPolicy;
       now?: () => number;
+      ensureSignInRules?: () => Promise<SignInRulesDto>;
     },
   ) {
     const { provider, policy } = options;
@@ -226,6 +231,7 @@ export class SpectatorActivationService {
       unavailable();
     const tokenHash = spectatorInvitationHash(input.token),
       candidateId = randomUUID();
+    const rules = (await this.options.ensureSignInRules?.())?.rules ?? DEFAULT_SIGN_IN_RULES;
     const signature = createHash("sha256")
       .update(JSON.stringify([input.deviceId, input.policyVersion]))
       .digest("hex");
@@ -236,7 +242,7 @@ export class SpectatorActivationService {
           invitation: await this.available(tokenHash),
           tokenHash,
           accountId: candidateId,
-          username: username(),
+          username: username(rules),
           requestId: input.requestId,
           signature,
           nowMs: this.now(),

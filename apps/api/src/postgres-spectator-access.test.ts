@@ -17,6 +17,7 @@ import { PostgresInvitationRepository } from "./postgres-invitation-repository";
 import { SpectatorAccessService } from "./spectator-access";
 import { PersistedSpectatorAccessRepository } from "./spectator-access-repository";
 import type { Principal } from "../../../packages/application/src/access";
+import { reserveConfiguredUsernames } from "./username-registry";
 const configured = process.env.LONGBALL_POSTGRES_TEST_URL;
 describe.skipIf(!configured)(
   "restricted PostgreSQL invitation-backed PIN and invite requests",
@@ -132,6 +133,15 @@ describe.skipIf(!configured)(
         new URL(first.body.shareUrl).hash.slice(1),
       ).get("code")!;
     };
+    it("rejects a configured account's case-insensitive username without exposing the namespace or consuming the invitation", async () => {
+      await reserveConfiguredUsernames(store, [{ username: "Roma.Supporter", accountId: "synthetic-account-manager" }]);
+      await expect(api.query("SELECT * FROM global_usernames")).rejects.toMatchObject({ code: "42501" });
+      await expect(worker.query("SELECT claim_configured_demo_username('worker.name','synthetic-account-manager')")).rejects.toMatchObject({ code: "42501" });
+      const token = await issue();
+      await expect(service.register({ token, username: "ROMA.SUPPORTER", passcode: "4729", requestId: randomUUID() }, "namespace")).rejects.toMatchObject({ code: "USERNAME_UNAVAILABLE", status: 409 });
+      expect(await service.preview({ token }, "namespace")).toMatchObject({ teamId, seasonId });
+      expect((await owner.query("SELECT account_id FROM global_usernames WHERE normalized_username='roma.supporter'")).rows).toEqual([{ account_id: "synthetic-account-manager" }]);
+    });
     it("limits credentials and anonymous helpers to API, consumes a possessed invitation, grants only spectator", async () => {
       const token = await issue(),
         before = (await owner.query("SELECT count(*) count FROM accounts"))

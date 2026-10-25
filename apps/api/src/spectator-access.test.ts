@@ -6,6 +6,7 @@ import { SqliteInvitationRepository } from "./invitation-repository";
 import { SpectatorAccessService } from "./spectator-access";
 import { PersistedSpectatorAccessRepository } from "./spectator-access-repository";
 import type { CommunityState } from "../../../packages/application/src/community";
+import { reserveConfiguredUsernames } from "./username-registry";
 
 describe("invitation-backed spectator PIN accounts using persisted SQLite", () => {
   let source: DevelopmentStore,
@@ -58,6 +59,15 @@ describe("invitation-backed spectator PIN accounts using persisted SQLite", () =
   afterEach(() => {
     service.close();
     source.close();
+  });
+  it("refuses a configured login's username across case and leaves the invitation usable", async () => {
+    await reserveConfiguredUsernames(source, [{ username: "Roma.Supporter", accountId: "synthetic-account-manager" }]);
+    const token = await issue();
+    await expect(service.register(registration(token, "ROMA.SUPPORTER"), "a")).rejects.toMatchObject({ code: "USERNAME_UNAVAILABLE", status: 409 });
+    expect(await service.preview({ token }, "a")).toMatchObject({ teamId, seasonId });
+    expect(source.database.prepare("SELECT count(*) AS count FROM spectator_pin_credentials").get()).toMatchObject({ count: 0 });
+    const result = await service.register(registration(token, "roma.supporter2"), "a");
+    expect(source.principal(service.identity(result.accessToken)).accountId).not.toBe("synthetic-account-manager");
   });
   it("requires an invitation and consumes it atomically into spectator-only authority with hashed PIN", async () => {
     const token = await issue(),

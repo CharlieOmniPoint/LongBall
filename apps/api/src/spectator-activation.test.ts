@@ -87,6 +87,7 @@ function fixture() {
   };
   const provider: ActivationProvider = {
     issuer: "https://provider.example/realms/trial",
+    applySignInRules: async ({revision}: {revision:number}) => ({revision,enforced:true as const}),
     credentialSetupOrigins: ["https://provider.example"],
     provisionPending: vi.fn<ActivationProvider["provisionPending"]>(
       async (input) => {

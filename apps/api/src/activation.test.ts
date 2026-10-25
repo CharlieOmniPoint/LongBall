@@ -11,6 +11,7 @@ import {
   type PendingChildInput,
 } from "./activation";
 import { DevelopmentStore, SYNTHETIC_IDS } from "./store";
+import { reserveConfiguredUsernames } from "./username-registry";
 
 const at = Date.parse("2026-10-21T10:00:00Z");
 // A deliberately named test-only policy, not acceptance of the proposed 48-hour expiry.
@@ -48,6 +49,7 @@ function fixtureProvider() {
   let proofPatch: Record<string, unknown> = {};
   const provider: ActivationProvider = {
     issuer: "https://identity.example.invalid/realms/longball",
+    applySignInRules: async ({revision}: {revision:number}) => ({revision,enforced:true as const}),
     credentialSetupOrigins: ["https://identity.example.invalid"],
     async provisionPending(input) {
       expect(input.emailRequired).toBe(false);
@@ -290,7 +292,7 @@ describe("F05 pending child activation", () => {
       status: "pending_activation",
       signInEnabled: false,
     });
-    expect(child.username).toMatch(/^LB[A-HJ-NP-Z2-9]{12}$/);
+    expect(child.username).toBe("Roma.FictionalP");
     expect(
       test.store.database
         .prepare(
@@ -331,6 +333,16 @@ describe("F05 pending child activation", () => {
     ).rejects.toMatchObject({ code: "INVALID_REQUEST" });
     expect(await test.pending()).toEqual(child);
     expect(test.fixture.users.size).toBe(1);
+  });
+  it("suffixes a team-based initial username when another login route already owns its case-insensitive name", async () => {
+    const test = lab(true);
+    await reserveConfiguredUsernames(test.store, [{ username: "ROMA.FICTIONALP", accountId: "synthetic-account-manager" }]);
+    const child = await test.pending();
+    expect(child.username).toBe("Roma.FictionalP2");
+    expect(test.store.database.prepare("SELECT account_id FROM global_usernames WHERE normalized_username='roma.fictionalp'").get()).toMatchObject({ account_id: "synthetic-account-manager" });
+    expect(test.store.database.prepare("SELECT account_id FROM global_usernames WHERE normalized_username='roma.fictionalp2'").get()).toMatchObject({ account_id: child.accountId });
+    test.reopen();
+    expect(await test.pending()).toEqual(child);
   });
   it("checks team scope and current adult authority before reserving or issuing, including spoofed child claims", async () => {
     const test = lab();

@@ -1,0 +1,83 @@
+{
+  "startedAt": "2026-10-25T12:32:16.797Z",
+  "scope": "Fresh SQLite API, separate actual report worker, compiled connected browser clients; only discovery and transport origins are rerouted to loopback. No fabricated feature DTOs.",
+  "checks": [
+    "Anonymous320px Player request selects real club/team and persists a pending request without creating account access.",
+    "Manager types4-4-2 and3-2-1, saves real revisioned formations, sees positions-only pitch, rejects wrong totals, and chooses available-squad65/35 advice.",
+    "Manager saves free-text league/FA ID, downloads genuine XLS, edits/reimports existing+new players with identities retained, and uploads/downloads an identical protected PDF."
+  ],
+  "failures": [
+    {
+      "stage": "SuperAdmin and ClubAdmin club scopes",
+      "message": "Do not allow editing a policy with an unknown saved outcome.",
+      "name": "AssertionError"
+    }
+  ],
+  "httpFailures": [],
+  "apiWindows": [
+    {
+      "accountId": "synthetic-account-manager-2",
+      "started": 1792931553260,
+      "attempts": 66,
+      "mutations": 3
+    },
+    {
+      "accountId": "synthetic-account-manager-3",
+      "started": 1792931560978,
+      "attempts": 84,
+      "mutations": 4
+    },
+    {
+      "accountId": "synthetic-account-manager-3",
+      "started": 1792931622228,
+      "attempts": 3,
+      "mutations": 1
+    },
+    {
+      "accountId": "synthetic-account-admin",
+      "started": 1792931630755,
+      "attempts": 16,
+      "mutations": 0
+    }
+  ],
+  "passed": false,
+  "nativeDeviceEvidence": false,
+  "paidServicesProvisioned": false,
+  "source": {
+    "gitHead": "f893c485b9b967733616028d1444ef11f7e4a4c8",
+    "workingTreeDirty": true,
+    "harnessSha256": "cc4dd9ef843a5a9b6d25962f5610e8dcf3af556db4f5d107f09f295acd52e31f",
+    "webIndexSha256": "1abfcea3ea920a4f1a4b0dc75f0ca73d84925c95c46ed9a5fd322c59de32337e",
+    "webJavaScriptSha256": "cf5f7b7bfa67efbd233995ce92efbcb147fe5cfc84ff41166230590801f1c219",
+    "apiBundleSha256": "6fd9d2fb48efd5ae40f83dbb87b0c390f66fa0d0b81958aef193613714e16617",
+    "workerBundleSha256": "d6285b7dfbfb58896d1cea034823a6762915bb7c3a3b0be636eadda7fd95c63d"
+  },
+  "formations": {
+    "format11Saved": true,
+    "invalidTotalBlocked": true,
+    "format7Versioned": true,
+    "playerTextAbsent": true,
+    "availableSquadAdviceChosen": true,
+    "receivedActualSave": true
+  },
+  "roster": {
+    "actualOleXlsBytes": 37888,
+    "downloadedSha256": "5424f4f03ba1124ff5c4d7ae4a54b9bf4b25f3d36ee584f12cac2f4efa2d0379",
+    "updatedExistingIdentity": true,
+    "newProfiles": 1,
+    "managerFaIdPersisted": true,
+    "optionalLeaguePersisted": true,
+    "pdfRoundTripExact": true,
+    "managerAudioSettingsPersisted": true
+  },
+  "processDiagnostic": "LongBall API http://127.0.0.1:38709 · isolated fictional authentication · fictional SQLite store\n{\"worker\":\"longball-fictional\",\"completed\":2,\"retried\":0,\"failed\":0,\"notifications\":{\"accepted\":0,\"blocked\":0,\"retried\":0,\"suppressed\":0,\"reviewRequired\":0,\"failed\":0},\"exports\":{\"completed\":0,\"retried\":0,\"failed\":0,\"expired\":0}}\n",
+  "pageErrors": [],
+  "failureWorkspaces": [
+    {
+      "accountId": "synthetic-account-admin",
+      "body": "Clubs\nTeams\nSchedule\nStats\nMore\nRoma U10\nSuper Admin · 26/27\nManage this team\nClub and team\nEdit club and team configuration\nView assigned teams\nSuper Admin\nRefresh clubs\nCreate club\nCreate club\nClubs and teams\nBrookfield Juniors\nRichmond Rovers\n0 team-seasons\nAdd team to this club\nAge group U5–U21\nPlayers a side\nSeason start year\nCreate team\nClub reports\nLoad club performance\nAdministrator access\nChoose an existing verified adult account. Club Admins inherit team management for their club; Super Admins operate across the application.\nsynthetic-account-admin\nsynthetic-account-club-admin\nsynthetic-account-manager\nsynthetic-account-manager-2\nsynthetic-account-manager-3\nsynthetic-account-manager-4\nsynthetic-account-manager-5\nsynthetic-account-other-manager\nGrant Club Admin\nGrant Super Admin\nsynthetic-account-admin · Super Admin\nRevoke access\nsynthetic-account-club-admin · Club Admin · Richmond Rovers\nRevoke access\nApplication sign-in rules\nHide sign-in rules\nSuper Admin · applies across all clubs and account types when credentials are created or changed.\nThe service has not confirmed this update. Retry the same update when connected.\nUsernames\nSuggested first username: team + first name + surname initial, for example Roma.SebL. Sign-in ignores letter case. A short suffix resolves a duplicate username.\nMinimum length: 3–32. Maximum length: 8–40 and at least the minimum.\nMinimum username length\nMaximum username length\nAllow numbers in usernames\nAllow dots, underscores and dashes\nPasswords · Managers, administrators and Players\nChoose a minimum of 8–64 characters. Passwords may contain up to 128 characters.\nMinimum password length\nRequire an uppercase letter\nRequire a lowercase letter\nRequire a number\nRequire a symbol\nPrevent the username in a password\nSpectator four-digit passcodes\nBlock easily guessed spectator codes\nSpectators use four-digit passcodes. Other account types use passwords. Changing rules does not rename accounts or expire existing passwords.\nDemo sign-ins keep their existing credentials. New spectator usernames and passcodes use these rules; the password provider is not connected.\nRetry same rules update\nReload current rules\nRules version 0"
+    }
+  ],
+  "completedAt": "2026-10-25T12:33:54.168Z",
+  "reactKeyWarnings": 0
+}

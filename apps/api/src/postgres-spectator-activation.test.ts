@@ -34,6 +34,7 @@ describe.skipIf(!configured)(
     };
     const provider: ActivationProvider = {
       issuer: "https://fixture-identity.example/realms/trial",
+      applySignInRules: async ({revision}: {revision:number}) => ({revision,enforced:true as const}),
       credentialSetupOrigins: ["https://fixture-identity.example"],
       provisionPending: vi.fn<ActivationProvider["provisionPending"]>(
         async (input) => ({
