@@ -1,0 +1,18 @@
+{
+  "observedAt": "2026-10-25T15:21:49.182846+00:00",
+  "sourceCommit": "d07cf42ae04b17ff6c00f1d84f2e5c8bed2a9114",
+  "localBrowserPassed": true,
+  "localWebSha256": "484b3fb963c68e39bf66ed2b16a9b33c5a94ca67d654d17f3360d10999f4cef7",
+  "packagedPagesSha256": "2f382820a80ecef57fc065f34237b8b67bf7641b7357b86c3f55b5c6faacecf9",
+  "manifestInsertionBytes": 44,
+  "pagesIdenticalAfterExactManifestInsertionRemoved": true,
+  "apiSha256": "218ef2808696ce0a063aa19d3c89b5af4784ae47249f083f67b60b932b0fc85e",
+  "apiIdenticalToTested": true,
+  "workerSha256": "1a72230f6f9f49f0cd86601189993c543a5aa1f3a89229048cd9ea10e0b71e7a",
+  "workerIdenticalToTested": true,
+  "existingVerifierValuesUnchanged": true,
+  "migrationsInclude028": true,
+  "runtimeWebSha256": "182ce05376e819b09dde7d9eedb7ab7dde2bda99cefe960b0f1ad45c6aa06018",
+  "runtimeWebIdenticalToPagesBrowserArtifact": false,
+  "runtimeWebBoundary": "The runtime-hosted web export uses its distinct non-static entry profile. No byte identity with the static Pages journey is claimed. An initial overly broad comparison incorrectly required identity for both web profiles; the Pages-only manifest comparison passed unchanged."
+}

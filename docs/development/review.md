@@ -1,8 +1,28 @@
 # Review LongBall
 
-Current published product: `43bf93d5e0d8f076936abb453ae5d572f620eeaf`. The update adds application-wide Super Admin sign-in rules, team-based first usernames, and visible automatic match-refresh status. It preserves the native iPhone/Android targets, phone/tablet browser layouts, original feature scope, five account types and the owner's eight-player Roma U10 squad. Existing credentials remain valid. Production, dependency-security, privacy/support and physical-device gates remain open.
+Current published product: `d07cf42ae04b17ff6c00f1d84f2e5c8bed2a9114`. Super Admin can now see application-wide login and activity reports, split by club, team, account type, event and time period. Existing native iPhone/Android targets, phone/tablet layouts, roles, Roma squad and credentials are preserved. Production, dependency-security, privacy/support and physical-device gates remain open.
 
 ## Shared review status
+
+Open [LongBall](https://charlieomnipoint.github.io/LongBall/?review=d07cf42), refresh and sign in again. Super Admin can open **Clubs → Login activity** or the entry under **More**. The purple dashboard shows active accounts, successful/unsuccessful sign-ins, account mix, club/team breakdowns and a paginated event timeline. Filters stay collapsed until needed; phone and tablet layouts have separate density. [Definitions and coverage](login-activity.md).
+
+An active account has made an authenticated API request within 15 minutes; automatic foreground checks count as activity. The report checks every minute while open and displays its last successful UK-time receipt. Automatic refresh pauses while browsing older event pages. Historical events retain access membership at observation time, rather than claiming actual team-page visits. Tracking starts with collection; earlier login events are not invented.
+
+[Public deployment verification](evidence/2026-10-25/login-activity/publication.json) confirms the exact source and served JavaScript checksum, current service discovery, API health, public sign-in rules, visible login form and unauthenticated report denial. No account credentials were sent to the remote browser. [Artifact comparison](evidence/2026-10-25/login-activity/packaged-artifact-comparison.json) proves that Pages differs from the tested browser bundle only by the 44-byte Expo base-path manifest entry; packaged API/worker bytes match tested binaries. The separate runtime-hosted web entry has its own profile and is not claimed byte-identical. All twelve existing verifier values are unchanged.
+
+The connected free service expires at **20:24:56 GMT on 25 October 2026** (`20:24:56 UTC`). The Pages address persists. Renewal starts a fresh seeded database. No paid analytics/infrastructure service or production identity provider was provisioned.
+
+[Current local evidence](evidence/2026-10-25/login-activity/README.md): 955 shared/client tests; 495 API passes plus three explicit absent-HEIC-helper skips using SQLite/restricted PostgreSQL; 45 actual PostgreSQL migration checks; nine new reporting browser groups; and eight existing role/width journeys with 28 checks passed. Full lint, TypeScript, canonical/runtime contracts including 438 new reporting boundary cases, packaging and source secret checks passed. Earlier failures retain their original outcomes. [Actual Android Debug and unsigned iOS Simulator compilation](evidence/2026-10-25/login-activity/native-final.json) passed for the published source. [Source-equivalent PR CI](evidence/2026-10-25/login-activity/ci-final.json) passed substantive functional, migration, export and browser steps, including 36 tablet journeys/three groups and seven expansion groups. Production-image acceptance passed. Overall CI failed only dependency enforcement; its narrow gate reports a failed or unavailable workspace audit, not a verified advisory-only cause. Existing dependency findings remain unwaived. Browser checks and compilation do not establish physical-device acceptance.
+
+The known unwaived dependency-security findings and owner-deferred Q05/Q09/Q10 remain open. Super Admin reporting does not approve production retention/support decisions or infer human presence from a shared account. See the remaining owner/device work below.
+
+## Previous sign-in rules release
+
+The following account-rules evidence belongs to product `43bf93d`; its original deployment expiry and source-qualified counts remain historical.
+
+Previously published product: `43bf93d5e0d8f076936abb453ae5d572f620eeaf`. The update adds application-wide Super Admin sign-in rules, team-based first usernames, and visible automatic match-refresh status. It preserves the native iPhone/Android targets, phone/tablet browser layouts, original feature scope, five account types and the owner's eight-player Roma U10 squad. Existing credentials remain valid. Production, dependency-security, privacy/support and physical-device gates remain open.
+
+### Previous shared review status
 
 Open [the updated LongBall demo](https://charlieomnipoint.github.io/LongBall/?review=43bf93d), refresh the page and sign in. Super Admin can open **Clubs → Manage sign-in rules**. Shared Match Centre views show the last successful check in UK time, check idle matches every two minutes, and retain faster live-game updates. New named account flows suggest names such as `Roma.SebL`; existing usernames are unchanged. [Behaviour, provider enforcement and namespace limits](sign-in-rules-and-refresh.md).
 
