@@ -1,9 +1,9 @@
 {
-  "state": "starting",
-  "url": "",
+  "state": "ready",
+  "url": "https://caused-divide-vacations-still.trycloudflare.com",
   "sourceRevision": "99d70fa480b9918c66bb88363865c56260ad1df8",
   "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40181762228",
-  "startedAt": "2026-10-25T09:45:29Z",
-  "expiresAt": "",
+  "startedAt": "2026-10-25T09:46:02Z",
+  "expiresAt": "2026-10-25T14:46:02Z",
   "audience": "LongBall demo review with simulated Roma U10 teams and matches"
 }
