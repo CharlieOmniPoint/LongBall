@@ -1,0 +1,35 @@
+{
+  "sourceCommit": "43bf93d5e0d8f076936abb453ae5d572f620eeaf",
+  "sourceMatches": true,
+  "entryPath": "/LongBall/_expo/static/js/web/index-902a4af331cf8f700bca2b4c76a4aa1f.js",
+  "javascriptSha256": "eb28d3f9bd6e1f0042ba09c2e2eaf86ed0901aafdda3762521646da55525f931",
+  "javascriptMatches": true,
+  "healthStatus": 200,
+  "service": "longball-api",
+  "demoAccountLogin": true,
+  "policyStatus": 200,
+  "policyKind": "sign-in-rules",
+  "policyRevision": 0,
+  "minPasswordLength": 12,
+  "weakSpectatorCodesBlocked": true,
+  "checkedAt": "2026-10-25T13:08:56.062Z",
+  "authenticated": false,
+  "scope": "Unauthenticated public page and public policy/health only; no account credentials were sent.",
+  "sessionStopped": true,
+  "pagesDeployment": {
+    "transport": "c957fb7d905d9173398fd6cb7ca2fe0a7a046dcc",
+    "run": 40196198845,
+    "conclusion": "success"
+  },
+  "serviceDeployment": {
+    "transport": "e8f7dc5b2c11c5ace68564e4651e2f6f8e499b89",
+    "run": 40195818223,
+    "state": "ready",
+    "startedAt": "2026-10-25T13:05:56Z",
+    "expiresAt": "2026-10-25T18:05:56Z"
+  },
+  "existingDemoAccounts": {
+    "count": 12,
+    "credentialVerifierValuesUnchanged": true
+  }
+}

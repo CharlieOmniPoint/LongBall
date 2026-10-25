@@ -1,0 +1,11 @@
+{
+  "status": 200,
+  "ready": true,
+  "currentTransport": true,
+  "apiMatches": true,
+  "expiresAt": "2026-10-25T18:05:56Z",
+  "checkedAt": "2026-10-25T13:13:12.562Z",
+  "authenticated": false,
+  "scope": "The exact unauthenticated service-discovery URL was checked from the published Pages browser origin; no credentials sent.",
+  "sessionStopped": true
+}

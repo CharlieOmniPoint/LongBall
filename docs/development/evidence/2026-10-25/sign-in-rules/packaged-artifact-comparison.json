@@ -1,0 +1,8 @@
+{
+  "sourceCommit": "43bf93d5e0d8f076936abb453ae5d572f620eeaf",
+  "testedJavaScriptSha256": "015e62a362e1aff4434698cc32dd81f131d69ca64dfbaa952dcbf3ce2444f7af",
+  "pagesJavaScriptSha256": "eb28d3f9bd6e1f0042ba09c2e2eaf86ed0901aafdda3762521646da55525f931",
+  "onlyDifferenceIsExpoBasePathManifest": true,
+  "insertedBytes": 44,
+  "manifestAddition": ",\\\"experiments\\\":{\\\"baseUrl\\\":\\\"/LongBall\\\"}"
+}
