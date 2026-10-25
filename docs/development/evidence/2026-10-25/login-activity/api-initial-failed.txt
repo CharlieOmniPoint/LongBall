@@ -1,0 +1,33 @@
+$ vitest run --config apps/api/vitest.config.ts
+
+ RUN  v5.0.5 /workspace/LongBall
+
+ ❯ apps/api/src/report-export-http.test.ts (12 tests | 1 failed) 102701ms
+   ❯ canonical report exports on postgres (6)
+     × formats an own-player PDF with human labels and refuses old names after actual configuration renaming 38685ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  apps/api/src/report-export-http.test.ts > canonical report exports on postgres > formats an own-player PDF with human labels and refuses old names after actual configuration renaming
+Error: Test timed out in 30000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ apps/api/src/report-export-http.test.ts:117:3
+    115|     expect((await client.json(path + '/download', viewer)).status).toB…
+    116|   });
+    117|   it('formats an own-player PDF with human labels and refuses old name…
+       |   ^
+    118|     const client = await start(kind), viewer = { token: 'synthetic-acc…
+    119|     const body = { ...scope, kind: 'own_participation', format: 'pdf' …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 82 passed (83)
+      Tests  1 failed | 494 passed | 3 skipped (498)
+   Start at  14:36:18
+   Duration  473.34s (tests 87%, import 13%)
+
+    Isolate  83 workers spawned · ~469ms startup each (spawn + environment, per file)
+             at least ~18.98s faster with isolate: false — reuses workers across files instead of one per file
+
+[ELIFECYCLE] Command failed with exit code 1.

@@ -1,0 +1,219 @@
+{
+  "startedAt": "2026-10-25T15:05:42.454Z",
+  "scope": "Compiled native-shared browser UI and real isolated SQLite API. Actual credential verification, sign-in, rejected sign-in and logout requests create the report history; no historic login rows are seeded.",
+  "transportBridge": {
+    "connectionHeader": "close",
+    "retries": 0,
+    "scope": "Only pinned discovery and virtual API transport are redirected to owned loopback connections; production TCP pooling is not certified."
+  },
+  "checks": [
+    "A fresh database reports one actual sign-in and explicit reporting/active-account coverage, without invented historic events.",
+    "All five real account types contribute activity; Club Admin/Manager/Player/Spectator have no entry point or API data; rejected credentials stay unattributed.",
+    "Real club/team creation and invitation acceptance prove event-time access scope, multi-team non-additivity and safe exclusion of unattributed failures.",
+    "A real UI sign-out and fresh Super Admin sign-in occur between completed phases; session revocation, credential verification and all role checks remain required.",
+    "Actual dashboard controls request club/team/range/role/outcome filters, reset incompatible teams, and page real history without duplicates when new events arrive.",
+    "An actual minute of expanded-history browsing retains every row with automatic updates explicitly paused; manual first-page refresh resumes the actual one-minute timer.",
+    "Phone320/390 and tablet1024 layouts fit without horizontal overflow and the actual trend exposes an accessible text summary.",
+    "A controlled503 retains the successful report/receipt, manual and one-minute automatic refresh succeed, hidden views stop polling and foreground return refreshes the current authorised scope.",
+    "Same-database process restart preserves login history while old in-memory login tokens and active local sessions do not survive."
+  ],
+  "failures": [],
+  "httpFailures": [
+    {
+      "stage": "actual sign-in history and five-role permission boundaries",
+      "method": "GET",
+      "path": "/v1/administration/login-analytics",
+      "status": 401,
+      "code": "INVALID_SESSION",
+      "expected": true
+    },
+    {
+      "stage": "actual sign-in history and five-role permission boundaries",
+      "method": "GET",
+      "path": "/v1/administration/login-analytics",
+      "status": 404,
+      "code": "NOT_FOUND",
+      "expected": true
+    },
+    {
+      "stage": "actual sign-in history and five-role permission boundaries",
+      "method": "GET",
+      "path": "/v1/administration/login-analytics",
+      "status": 404,
+      "code": "NOT_FOUND",
+      "expected": true
+    },
+    {
+      "stage": "actual sign-in history and five-role permission boundaries",
+      "method": "GET",
+      "path": "/v1/administration/login-analytics",
+      "status": 403,
+      "code": "ADULT_AUTHORITY_REQUIRED",
+      "expected": true
+    },
+    {
+      "stage": "actual sign-in history and five-role permission boundaries",
+      "method": "GET",
+      "path": "/v1/administration/login-analytics",
+      "status": 403,
+      "code": "ADULT_AUTHORITY_REQUIRED",
+      "expected": true
+    },
+    {
+      "stage": "actual sign-in history and five-role permission boundaries",
+      "method": "POST",
+      "path": "/v1/demo/sessions",
+      "status": 401,
+      "code": "INVALID_DEMO_CREDENTIALS",
+      "expected": true
+    },
+    {
+      "stage": "lifecycle: controlled failed refresh and retained receipt",
+      "method": "GET",
+      "path": "/v1/administration/login-analytics",
+      "status": 503,
+      "code": "CONTROLLED_LOGIN_REPORT_UNAVAILABLE",
+      "expected": true,
+      "controlledFault": true
+    },
+    {
+      "stage": "persistent report history and local-session restart boundary",
+      "method": "GET",
+      "path": "/v1/me",
+      "status": 401,
+      "code": "INVALID_SESSION",
+      "expected": true
+    }
+  ],
+  "transportErrors": [],
+  "browserCancellations": [],
+  "apiWindows": [
+    {
+      "accountId": "synthetic-account-admin",
+      "startedAtMs": 1792940750894,
+      "attempts": 22,
+      "mutations": 3
+    },
+    {
+      "accountId": "synthetic-account-club-admin",
+      "startedAtMs": 1792940757794,
+      "attempts": 14,
+      "mutations": 0
+    },
+    {
+      "accountId": "synthetic-account-manager-2",
+      "startedAtMs": 1792940763403,
+      "attempts": 17,
+      "mutations": 0
+    },
+    {
+      "accountId": "synthetic-account-player-01",
+      "startedAtMs": 1792940771071,
+      "attempts": 39,
+      "mutations": 25
+    },
+    {
+      "accountId": "synthetic-account-spectator",
+      "startedAtMs": 1792940777669,
+      "attempts": 13,
+      "mutations": 2
+    },
+    {
+      "accountId": "synthetic-account-admin",
+      "startedAtMs": 1792940813935,
+      "attempts": 26,
+      "mutations": 1
+    },
+    {
+      "accountId": "synthetic-account-player-01",
+      "startedAtMs": 1792940834173,
+      "attempts": 1,
+      "mutations": 1
+    },
+    {
+      "accountId": "synthetic-account-admin",
+      "startedAtMs": 1792940897286,
+      "attempts": 4,
+      "mutations": 0
+    },
+    {
+      "accountId": "synthetic-account-admin",
+      "startedAtMs": 1792941018103,
+      "attempts": 16,
+      "mutations": 1
+    }
+  ],
+  "accountBudgetPauses": [],
+  "loginBudgetPauses": [
+    {
+      "waitMs": 29845,
+      "observedAttempts": 18,
+      "actualLimitPerMinute": 20,
+      "retries": 0
+    }
+  ],
+  "passed": true,
+  "nativeHardwareTested": false,
+  "publicCredentialsUsed": false,
+  "paidServicesProvisioned": false,
+  "source": {
+    "gitHead": "258a5ddb9a40acb5873764d53cc65264124b9be2",
+    "workingTreeDirty": true,
+    "harnessSha256": "7fd1c1a00fe3050e3a97b393ef143f3667e729f81c32822efd7b27a4d74476c0",
+    "webIndexSha256": "c807e6347b28f6aac2f2830700fcf13ac2f949f1ae22f6074b657ed352b1cb42",
+    "webJavaScriptSha256": "484b3fb963c68e39bf66ed2b16a9b33c5a94ca67d654d17f3360d10999f4cef7",
+    "apiBundleSha256": "218ef2808696ce0a063aa19d3c89b5af4784ae47249f083f67b60b932b0fc85e"
+  },
+  "actualHistoryGeneration": {
+    "signInLogoutPairs": 25,
+    "seededRows": 0,
+    "loginLimitsChanged": false,
+    "backdatedEvents": false
+  },
+  "historyBrowsing": {
+    "actualPausedMs": 61602,
+    "automaticRequestsWhileExpanded": 0,
+    "loadedRowsPreserved": 60,
+    "clocksMocked": false,
+    "resumedAutomaticAfterMs": 55441,
+    "resumeWaitBoundMs": 75000
+  },
+  "lifecycle": {
+    "clockScope": "Actual browser/server clocks; no widget timers or Date values are mocked.",
+    "visibilityScope": "Controlled document visibility events exercise the browser/app lifecycle; actual OS background execution is not established.",
+    "milestones": [
+      {
+        "step": "manual-report",
+        "observedAt": 1792940955130,
+        "reads": 16
+      },
+      {
+        "step": "failed-refresh-retained-receipt",
+        "reads": 16
+      },
+      {
+        "step": "manual-recovery",
+        "observedAt": 1792940956837,
+        "reads": 17
+      },
+      {
+        "step": "hidden-polling-paused",
+        "elapsedMs": 61002,
+        "reads": 17
+      },
+      {
+        "step": "foreground-refreshed",
+        "reads": 19
+      }
+    ]
+  },
+  "actualSignIns": 34,
+  "rateLimits": {
+    "ordinary": 120,
+    "mutations": 60,
+    "loginAttemptsPerIp": 20
+  },
+  "artifactsStableBeforeAfter": true,
+  "completedAt": "2026-10-25T15:10:23.465Z",
+  "reactKeyWarnings": 0
+}

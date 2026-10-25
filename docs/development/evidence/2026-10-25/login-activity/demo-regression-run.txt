@@ -1,0 +1,4 @@
+{"reviewBudgetPause":"before-player-rsvp-and-summary-projection","accountRole":"player","waitMs":3203}
+{"reviewBudgetPause":"before-manager-matchday","accountRole":"manager","waitMs":22623}
+{"reviewBudgetPause":"after-accepted-referee-pause","accountRole":"manager","waitMs":41787}
+{"passed":true,"roleJourneys":8,"checks":28,"failures":[],"report":".local/quality/demo-account-review/report.json"}

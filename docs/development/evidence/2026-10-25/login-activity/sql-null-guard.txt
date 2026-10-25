@@ -1,0 +1,8 @@
+
+ RUN  v5.0.5 /workspace/LongBall
+
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  14:53:35
+   Duration  13.37s (tests 78%, transform 15%, import 8%)

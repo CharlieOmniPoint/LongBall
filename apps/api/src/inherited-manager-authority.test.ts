@@ -145,7 +145,7 @@ async function fixture(backend: "sqlite" | "postgres") {
         "SELECT actor_id,action,object_id,outcome FROM audit WHERE action='manager.assignment_revoked' ORDER BY id",
       ),
     });
-    return { api, owner, call, rows, snapshot, close };
+    return { api, owner, roles, call, rows, snapshot, close };
   } catch (error) {
     await close();
     throw error;
@@ -385,6 +385,9 @@ describe.skipIf(!configured)(
         // Remove the appended features to reconstruct the actual preceding schema24.
         // Their separate data is absent from the domain-byte/controller snapshot.
         await owner.transaction(async () => {
+          // Version 028 is a separate observation journal, not domain or recorder state.
+          await owner.execute("DROP FUNCTION login_analytics_enabled_accounts(text,text,text),login_analytics_snapshot(bigint,bigint,bigint,bigint),login_activity_write(jsonb),login_account_snapshot(text,bigint),login_reporting_initialize(bigint),login_telemetry_writer()");
+          await owner.execute("DROP TABLE login_events,login_sessions,login_access_snapshots,login_reporting_state");
           await owner.execute(
             "DROP POLICY appointed_manager_updates ON memberships",
           );
@@ -398,6 +401,7 @@ describe.skipIf(!configured)(
           await owner.execute("DELETE FROM schema_migrations WHERE version>=25");
         });
         const before = await test.snapshot();
+        expect((await owner.one("SELECT to_regclass('longball.login_events') AS value"))?.value).toBeNull();
         expect(
           (
             await owner.many(
@@ -410,6 +414,8 @@ describe.skipIf(!configured)(
           "migrations are required",
         );
         await owner.db.migrate();
+        if (!test.roles) throw new Error("Expected restricted runtime roles");
+        await applyRuntimeGrants(owner.db, test.roles);
         await runtime.db.migrate();
         expect(await test.snapshot()).toEqual(before);
         expect(
@@ -418,7 +424,7 @@ describe.skipIf(!configured)(
               "SELECT version FROM schema_migrations ORDER BY version",
             )
           ).map((r) => r.version),
-        ).toEqual(Array.from({ length: 26 }, (_, i) => i + 2));
+        ).toEqual(Array.from({ length: 27 }, (_, i) => i + 2));
         const policy = await owner.one(
           "SELECT polpermissive FROM pg_policy WHERE polname='appointed_manager_updates' AND polrelid='longball.memberships'::regclass",
         );

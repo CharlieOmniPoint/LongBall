@@ -102,6 +102,7 @@ jobs:
           pnpm test:demo:e2e
           pnpm test:tablet:e2e
           pnpm test:club-expansion:e2e
+          pnpm test:login-activity:e2e
       - name: Enforce the dependency audit result
         if: always()
         env:
@@ -122,6 +123,8 @@ jobs:
             .local/quality/tablet-review/*.png
             .local/quality/club-expansion-review/report.json
             .local/quality/club-expansion-review/*.png
+            .local/quality/login-activity-review/report.json
+            .local/quality/login-activity-review/*.png
           if-no-files-found: warn
           retention-days: 3
 

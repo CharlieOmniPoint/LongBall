@@ -1,0 +1,144 @@
+{
+  "startedAt": "2026-10-25T14:38:08.646Z",
+  "scope": "Compiled native-shared browser UI and real isolated SQLite API. Actual credential verification, sign-in, rejected sign-in and logout requests create the report history; no historic login rows are seeded.",
+  "transportBridge": {
+    "connectionHeader": "close",
+    "retries": 0,
+    "scope": "Only pinned discovery and virtual API transport are redirected to owned loopback connections; production TCP pooling is not certified."
+  },
+  "checks": [
+    "A fresh database reports one actual sign-in and explicit reporting/active-account coverage, without invented historic events.",
+    "All five real account types contribute activity; Club Admin/Manager/Player/Spectator have no entry point or API data; rejected credentials stay unattributed.",
+    "Real club/team creation and invitation acceptance prove event-time access scope, multi-team non-additivity and safe exclusion of unattributed failures.",
+    "A real UI sign-out and fresh Super Admin sign-in occur between completed phases; session revocation, credential verification and all role checks remain required.",
+    "Actual dashboard controls request club/team/range/role/outcome filters, reset incompatible teams, and page real history without duplicates when new events arrive."
+  ],
+  "failures": [
+    {
+      "stage": "actual filters, pagination and responsive presentation",
+      "name": "Error",
+      "message": "locator.getAttribute: Error: strict mode violation: getByTestId('login-activity-trend').getByRole('img') resolved to 2 elements:\n    1) <div role=\"img\" class=\"css-g5y9jx r-100vyta\" aria-label=\"Sign-in trend. 13:40: 32 successful, 1 unsuccessful\">…</div> aka getByRole('img', { name: 'Sign-in trend. 13:40: 32' })\n    2) <svg width=\"100%\" height=\"156\" class=\"r-633pao\" viewBox=\"-8 -8 616 156\" preserveAspectRatio=\"none\">…</svg> aka getByRole('img', { name: 'Sign-in trend. 13:40: 32' }).getByRole('img')\n\nCall log:\n\u001b[2m  - waiting for getByTestId('login-activity-trend').getByRole('img')\u001b[22m\n"
+    }
+  ],
+  "httpFailures": [
+    {
+      "stage": "actual sign-in history and five-role permission boundaries",
+      "method": "GET",
+      "path": "/v1/administration/login-analytics",
+      "status": 401,
+      "code": "INVALID_SESSION",
+      "expected": true
+    },
+    {
+      "stage": "actual sign-in history and five-role permission boundaries",
+      "method": "GET",
+      "path": "/v1/administration/login-analytics",
+      "status": 404,
+      "code": "NOT_FOUND",
+      "expected": true
+    },
+    {
+      "stage": "actual sign-in history and five-role permission boundaries",
+      "method": "GET",
+      "path": "/v1/administration/login-analytics",
+      "status": 404,
+      "code": "NOT_FOUND",
+      "expected": true
+    },
+    {
+      "stage": "actual sign-in history and five-role permission boundaries",
+      "method": "GET",
+      "path": "/v1/administration/login-analytics",
+      "status": 403,
+      "code": "ADULT_AUTHORITY_REQUIRED",
+      "expected": true
+    },
+    {
+      "stage": "actual sign-in history and five-role permission boundaries",
+      "method": "GET",
+      "path": "/v1/administration/login-analytics",
+      "status": 403,
+      "code": "ADULT_AUTHORITY_REQUIRED",
+      "expected": true
+    },
+    {
+      "stage": "actual sign-in history and five-role permission boundaries",
+      "method": "POST",
+      "path": "/v1/demo/sessions",
+      "status": 401,
+      "code": "INVALID_DEMO_CREDENTIALS",
+      "expected": true
+    }
+  ],
+  "transportErrors": [],
+  "browserCancellations": [],
+  "apiWindows": [
+    {
+      "accountId": "synthetic-account-admin",
+      "startedAtMs": 1792939112218,
+      "attempts": 22,
+      "mutations": 3
+    },
+    {
+      "accountId": "synthetic-account-club-admin",
+      "startedAtMs": 1792939129316,
+      "attempts": 14,
+      "mutations": 0
+    },
+    {
+      "accountId": "synthetic-account-manager-2",
+      "startedAtMs": 1792939140905,
+      "attempts": 17,
+      "mutations": 0
+    },
+    {
+      "accountId": "synthetic-account-player-01",
+      "startedAtMs": 1792939153135,
+      "attempts": 40,
+      "mutations": 26
+    },
+    {
+      "accountId": "synthetic-account-spectator",
+      "startedAtMs": 1792939163108,
+      "attempts": 13,
+      "mutations": 2
+    },
+    {
+      "accountId": "synthetic-account-admin",
+      "startedAtMs": 1792939186099,
+      "attempts": 26,
+      "mutations": 1
+    }
+  ],
+  "accountBudgetPauses": [],
+  "loginBudgetPauses": [
+    {
+      "waitMs": 3037,
+      "observedAttempts": 18,
+      "actualLimitPerMinute": 20,
+      "retries": 0
+    }
+  ],
+  "passed": false,
+  "nativeHardwareTested": false,
+  "publicCredentialsUsed": false,
+  "paidServicesProvisioned": false,
+  "source": {
+    "gitHead": "258a5ddb9a40acb5873764d53cc65264124b9be2",
+    "workingTreeDirty": true,
+    "harnessSha256": "f16bc4a7cebd1c14c1bd8d7d53384606ddabc82f4443faf68d74e01523f79dbd",
+    "webIndexSha256": "6596b3e840ca8c895c14123238de2b64ea39d0d686817f7d47fc9f6770a7d8b8",
+    "webJavaScriptSha256": "4b90df5f9899f478bc7c3f06880e4c2f9b60de1b880012b7fb77f108c18aee63",
+    "apiBundleSha256": "218ef2808696ce0a063aa19d3c89b5af4784ae47249f083f67b60b932b0fc85e"
+  },
+  "actualHistoryGeneration": {
+    "signInLogoutPairs": 25,
+    "seededRows": 0,
+    "loginLimitsChanged": false,
+    "backdatedEvents": false
+  },
+  "processDiagnostics": "LongBall API http://127.0.0.1:46837 · isolated fictional authentication · fictional SQLite store\n",
+  "pageErrors": [],
+  "completedAt": "2026-10-25T14:40:11.707Z",
+  "reactKeyWarnings": 0
+}

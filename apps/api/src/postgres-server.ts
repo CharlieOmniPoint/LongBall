@@ -1,4 +1,5 @@
 import { loadSignInRules, ensureProviderSignInRules } from './sign-in-rules';
+import { LoginAnalyticsService } from './login-analytics-service';
 import { reserveConfiguredUsernames } from './username-registry';
 import { SpectatorAccessService } from './spectator-access';
 import { PersistedSpectatorAccessRepository } from './spectator-access-repository';
@@ -48,7 +49,8 @@ export async function createPostgresApi(options: ApiOptions & { connectionString
     const feedback=new MatchFeedbackService(feedbackRepository);
     const teamDocuments=new TeamDocumentService(store,port);await teamDocuments.initialize();
     const oppositionRepository=new OppositionReviewRepository(store,port);await oppositionRepository.initialize();const opposition=new OppositionReviewService(oppositionRepository);
-    const spectatorAccess=new SpectatorAccessService(new PersistedSpectatorAccessRepository(store,port),store.now,options.demoScenario===true&&options.syntheticAuth===true?{isolatedDemo:true}:undefined,async()=>(await loadSignInRules(store)).rules);
-    return createRuntimeApi(options, store, port, media, activation,undefined,{branding,spectator,invitations,privileges,push,reports,feedback,teamDocuments,opposition,spectatorAccess});
+    const loginAnalytics=new LoginAnalyticsService(store);await loginAnalytics.initialize();
+    const spectatorAccess=new SpectatorAccessService(new PersistedSpectatorAccessRepository(store,port),store.now,options.demoScenario===true&&options.syntheticAuth===true?{isolatedDemo:true}:undefined,async()=>(await loadSignInRules(store)).rules,event=>loginAnalytics.recordFailure(event));
+    return createRuntimeApi(options, store, port, media, activation,undefined,{branding,spectator,invitations,privileges,push,reports,feedback,teamDocuments,opposition,spectatorAccess,loginAnalytics});
   } catch (error) { await store.close(); throw error; }
 }

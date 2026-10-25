@@ -1,0 +1,2 @@
+{"loginBudgetPauseMs":33032,"actualLimitPerMinute":20}
+{"passed":false,"checks":6,"failures":[{"stage":"report refresh failure, recovery and foreground lifecycle","name":"TimeoutError","message":"page.waitForResponse: Timeout 25000ms exceeded while waiting for event \"response\""}],"report":".local/quality/login-activity-review/report.json"}

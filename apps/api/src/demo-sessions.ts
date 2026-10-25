@@ -1,7 +1,8 @@
-import { createHash, randomBytes, scrypt, timingSafeEqual } from 'node:crypto';
+import { createHash, randomBytes, randomUUID, scrypt, timingSafeEqual } from 'node:crypto';
 import { readFileSync, statSync } from 'node:fs';
 import { AccessError } from '../../../packages/application/src/access';
 import type { VerifiedIdentity } from './oidc';
+import type { SessionFailureObservation, SessionFailureObserver, SessionObservation } from './session-observation';
 
 export interface DemoAccountVerifier {
   username: string;
@@ -55,7 +56,7 @@ async function derive(passcode: string, salt: string): Promise<Buffer> {
   return new Promise((resolve, reject) => scrypt(passcode, Buffer.from(salt, 'base64url'), 32, DEMO_SCRYPT_OPTIONS, (error, result) => error ? reject(error) : resolve(result)));
 }
 
-interface Session { accountId: string; issuedAt: number; expiresAt: number }
+interface Session { accountId: string; sessionId: string; issuedAt: number; expiresAt: number }
 /** Disposable service sessions. Only digests survive in server memory; service restart signs every demo account out. */
 export class DemoSessions {
   private readonly accounts: DemoAccountVerifier[];
@@ -65,7 +66,7 @@ export class DemoSessions {
   private readonly dummySalt = randomBytes(16).toString('base64url');
   private readonly dummyHash = randomBytes(32);
   private inFlight = 0;
-  constructor(options: DemoAccountOptions, private readonly now: () => number = Date.now) {
+  constructor(options: DemoAccountOptions, private readonly now: () => number = Date.now, private readonly observeFailure?: SessionFailureObserver) {
     const parsed = parseDemoAccountOptions(options);
     this.accounts = parsed.accounts;
     this.ttl = (parsed.sessionTtlSeconds ?? 21_600) * 1000;
@@ -75,12 +76,16 @@ export class DemoSessions {
     for (const [key, session] of this.sessions) if (session.expiresAt <= now) this.sessions.delete(key);
     for (const [key, attempt] of this.attempts) if (now - attempt.begins >= 60_000) this.attempts.delete(key);
   }
+  private async failed(reason: SessionFailureObservation['reason']): Promise<void> {
+    try { await this.observeFailure?.(Object.freeze({ kind: 'login_failure', provider: 'demo', at: this.now(), reason })); }
+    catch { /* Reporting must not replace the original safe authentication denial. */ }
+  }
   async login(value: unknown, remoteAddress: string): Promise<{ accessToken: string; expiresAt: string; accountId: string; syntheticOnly: true }> {
     this.prune();
     const key = sha256(remoteAddress);
     const attempt = this.attempts.get(key) ?? { begins: this.now(), count: 0 };
     attempt.count += 1;
-    if (!this.attempts.has(key) && this.attempts.size >= 1000 || attempt.count > 20 || this.inFlight >= 4) throw new AccessError('RATE_LIMIT', 429, 'Please retry after the current request window.');
+    if (!this.attempts.has(key) && this.attempts.size >= 1000 || attempt.count > 20 || this.inFlight >= 4) { await this.failed('rate_limited'); throw new AccessError('RATE_LIMIT', 429, 'Please retry after the current request window.'); }
     this.attempts.set(key, attempt);
     if (!object(value) || Object.keys(value).length !== 2 || Object.keys(value).some(field => !['username', 'passcode'].includes(field)) || typeof value.username !== 'string' || value.username.length > 128 || typeof value.passcode !== 'string' || value.passcode.length < 6 || value.passcode.length > 128) throw new AccessError('INVALID_REQUEST', 400, 'Enter a username and a passcode using only the documented fields.');
     const username = value.username.trim().toLowerCase();
@@ -91,12 +96,12 @@ export class DemoSessions {
     finally { this.inFlight -= 1; }
     const verified = timingSafeEqual(actual, account ? Buffer.from(account.hash, 'hex') : this.dummyHash);
     actual.fill(0);
-    if (!account || !verified) throw invalidLogin();
+    if (!account || !verified) { await this.failed('invalid_credentials'); throw invalidLogin(); }
     this.prune();
-    if (this.sessions.size >= 1000) throw new AccessError('DEMO_SESSION_LIMIT', 503, 'The demo has reached its current session limit. Please try again later.');
+    if (this.sessions.size >= 1000) { await this.failed('capacity'); throw new AccessError('DEMO_SESSION_LIMIT', 503, 'The demo has reached its current session limit. Please try again later.'); }
     const accessToken = `demo_${randomBytes(32).toString('base64url')}`;
     const issuedAt = this.now(), expiresAt = issuedAt + this.ttl;
-    this.sessions.set(sha256(accessToken), { accountId: account.accountId, issuedAt, expiresAt });
+    this.sessions.set(sha256(accessToken), { accountId: account.accountId, sessionId: randomUUID(), issuedAt, expiresAt });
     return { accessToken, expiresAt: new Date(expiresAt).toISOString(), accountId: account.accountId, syntheticOnly: true };
   }
   identity(token: string): VerifiedIdentity {
@@ -104,6 +109,11 @@ export class DemoSessions {
     const session = /^demo_[A-Za-z0-9_-]{43}$/.test(token) ? this.sessions.get(sha256(token)) : undefined;
     if (!session) throw invalidSession();
     return { issuer: 'urn:longball:synthetic', subject: session.accountId, authenticatedAt: session.issuedAt, strongAuth: /^synthetic-account-(?:manager(?:-[2-5])?|admin|club-admin)$/.test(session.accountId) };
+  }
+  sessionObservation(token: string): SessionObservation {
+    this.identity(token);
+    const session = this.sessions.get(sha256(token))!;
+    return { accountId: session.accountId, sessionId: session.sessionId, provider: 'demo', issuedAtMs: session.issuedAt, expiresAtMs: session.expiresAt };
   }
   revoke(token: string): void {
     this.identity(token);

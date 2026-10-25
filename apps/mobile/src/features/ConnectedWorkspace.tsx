@@ -7,6 +7,7 @@ import { FaPlayerIdEditor } from './TeamDetailsEditors';
 import { TeamDocumentsPanel } from './TeamDocumentsPanel';
 import { ClubAdministration } from './ClubAdministration';
 import { SignInRulesPanel } from './SignInRulesPanel';
+import { LoginActivityDashboard } from './LoginActivityDashboard';
 import type { ClubAdministrationCommand, ClubAdministrationDto, ClubReportDto } from '@longball/application/club-administration';
 import { OppositionReviews } from './OppositionReviews';
 import { assertOppositionReviewView, type OppositionReviewView, type OppositionReviewCommand } from '@longball/application/opposition-review';
@@ -2822,9 +2823,9 @@ function WorkspaceSession({
           {props.onSignOut && <Button label="Sign out" icon="logout" iconOnly compact testID={props.signOutTestID ?? "workspace-sign-out"} variant="quiet" onPress={props.onSignOut} />}
         </View>}
         <WorkspaceLayoutControls />
-        {!focusedMatch && administrator && contextChoices.some(choice => choice.teamId===teamId && choice.seasonId===seasonId && choice.role==='manager') && <Button label="Manage this team" icon="users" compact variant="secondary" disabled={disabled} testID="workspace-admin-manage-team" onPress={() => switchScope({teamId:teamId!,seasonId:seasonId!,playerId:null},'manager')} />}
+        {!focusedMatch && tab !== 'loginActivity' && administrator && contextChoices.some(choice => choice.teamId===teamId && choice.seasonId===seasonId && choice.role==='manager') && <Button label="Manage this team" icon="users" compact variant="secondary" disabled={disabled} testID="workspace-admin-manage-team" onPress={() => switchScope({teamId:teamId!,seasonId:seasonId!,playerId:null},'manager')} />}
 
-        {!focusedMatch && selectedContext && contextChoices.length > 1 && (
+        {!focusedMatch && tab !== 'loginActivity' && selectedContext && contextChoices.length > 1 && (
           <Button
             label="Club and team"
             testID="workspace-change-context"
@@ -2857,7 +2858,7 @@ function WorkspaceSession({
           </View>
         )}
         {identity &&
-          (!selectedContext || contextPickerOpen) &&
+          tab !== 'loginActivity' && (!selectedContext || contextPickerOpen) &&
           contextChoices.length > 0 && (
             <ClubTeamSelector choices={contextChoices} selected={selectedContext} principal={identity.principal} disabled={disabled} onSelect={choice => switchScope({teamId:choice.teamId,seasonId:choice.seasonId,playerId:choice.playerId},choice.role)} />
           )}
@@ -3048,10 +3049,12 @@ function WorkspaceSession({
         )}
       </Card>
       {tab === 'clubs' && administrator && identity?.principal.administration && <View style={s.row}><Button label="Edit club and team configuration" compact variant="secondary" disabled={disabled} onPress={() => setTab('settings')} /><Button label="View assigned teams" compact variant="quiet" disabled={disabled} onPress={() => setTab('team')} /></View>}
+      {tab === 'clubs' && identity?.principal.administration?.level === 'super' && <Button label="Login activity" icon="chart" compact style={{ alignSelf: "flex-start" }} testID="workspace-tab-loginActivity" variant="secondary" disabled={disabled} onPress={() => guardNavigation(() => setTab('loginActivity'))} />}
       {tab === 'account' && membership?.role === 'spectator' && teamId && seasonId && <SpectatorConnection key={`${absoluteApi}:${identity?.principal.accountId}:${teamId}:${seasonId}`} baseUrl={connection.baseUrl || '/'} authenticatedFetch={authenticatedFetch} teamId={teamId} seasonId={seasonId} active={!disabledWithoutInvitation} assertCurrent={assertInvitationCurrent} />}
       {tab === 'formation' && manager && preparation && <FormationDesigner state={preparation} busy={disabled} onChange={command => mutate('preparation',command,'Formation')} />}
-      {(tab === 'clubs' || tab === 'clubReports' || !selectedContext) && identity?.principal.administration && <ClubAdministration key={`${absoluteApi}:${identity.principal.accountId}`} principal={identity.principal} section={tab === "clubReports" ? "reports" : "all"} load={loadAdministration} save={saveAdministration} loadReport={loadClubReport} onChanged={load} />}
+      {(tab === 'clubs' || tab === 'clubReports' || !selectedContext && tab !== 'loginActivity') && identity?.principal.administration && <ClubAdministration key={`${absoluteApi}:${identity.principal.accountId}`} principal={identity.principal} section={tab === "clubReports" ? "reports" : "all"} load={loadAdministration} save={saveAdministration} loadReport={loadClubReport} onChanged={load} />}
       {tab === 'clubs' && identity?.principal.administration?.level === 'super' && <SignInRulesPanel key={`sign-in-rules:${absoluteApi}:${identity.principal.accountId}`} client={client} active={props.active !== false && !disabledWithoutInvitation} onRetainedChange={onSignInRulesRetained} />}
+      {tab === 'loginActivity' && identity?.principal.administration?.level === 'super' && <LoginActivityDashboard key={`login-activity:${absoluteApi}:${identity.principal.accountId}`} client={client} active={props.active !== false && !disabled} onBack={() => guardNavigation(() => setTab('clubs'))} />}
       {tab === 'opposition' && (manager || administrator || membership?.role==='player') && (opposition ? <OppositionReviews value={opposition} busy={disabled} onSave={manager || administrator ? command => mutate('opposition-reviews',command,'Opposition notes') : undefined} /> : <Notice>Opposition notes are loading. Refresh your team view if they remain unavailable.</Notice>)}
       {tab === 'overview' && selectedContext && (teamOverview ? <TeamOverview team={teamOverview.team} games={overviewGames} nowMs={membershipTime} busy={disabled} onOpenGame={openOverviewGame} onRefresh={() => { void reload(); }} /> : <Notice>Your team overview is loading. Refresh your team view if it remains unavailable.</Notice>)}
       {tab === 'stats' && (manager || administrator || membership?.role === 'player') && <View style={s.stack}><Button label="Refresh stats" compact variant="quiet" disabled={disabled} onPress={() => {void reload();}} />{stats ? stats.kind === 'own-player-stats' ? <PlayerStats value={stats} teamLabel={overviewTeamLabel} /> : <TeamStats value={stats} teamLabel={overviewTeamLabel} selectedPlayerId={selectedStatsPlayerId} onSelectPlayer={setSelectedStatsPlayerId} /> : <Notice>Your statistics are loading. Refresh your team view if they remain unavailable.</Notice>}</View>}
@@ -3062,6 +3065,7 @@ function WorkspaceSession({
             <Text accessibilityRole="header" style={typography.section}>
               More
             </Text>
+            {identity?.principal.administration?.level === 'super' && <Button label="Login activity" icon="chart" testID="workspace-tab-loginActivity" compact variant="secondary" disabled={disabled} onPress={() => guardNavigation(() => setTab('loginActivity'))} />}
             {(manager ? [
               ["overview", "Team overview"], ["centre", "Match centre"], ["reports", "Team records"], ["feedback", "Player feedback"], ["opposition", "Opposition notes"],
               ["community", "Photos and player of the match"], ["settings", "Team settings"], ["seasons", "Seasons"],

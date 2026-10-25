@@ -1,0 +1,11 @@
+$ python3 scripts/test-cloud-source-publication.py && python3 scripts/test-cloud-demo-packaging.py
+.
+----------------------------------------------------------------------
+Ran 1 test in 0.713s
+
+OK
+.......
+----------------------------------------------------------------------
+Ran 7 tests in 0.038s
+
+OK

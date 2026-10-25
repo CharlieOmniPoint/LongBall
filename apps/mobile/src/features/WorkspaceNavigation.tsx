@@ -6,6 +6,7 @@ import { colors } from "../ui/tokens";
 import { useRoleTheme } from '../ui/RoleTheme';
 
 export type WorkspaceTab =
+  | "loginActivity"
   | "overview"
   | "stats"
   | "feedback"

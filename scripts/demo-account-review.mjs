@@ -234,7 +234,9 @@ async function makePage(width) {
         }
       }
       observeApiRequest(observedToken, request.method(), address.pathname);
-      const response = await route.fetch({ url: base + address.pathname + address.search, maxRedirects: 0 });
+      // Keep the loopback bridge independent of Playwright's shared keep-alive
+      // pool. This exercises application behaviour with no transport retries.
+      const response = await route.fetch({ url: base + address.pathname + address.search, headers: { ...request.headers(), connection: 'close' }, maxRedirects: 0 });
       if (response.status() >= 400) {
         const failure = await response.json().catch(() => null);
         observeHttpFailure(observedToken, request.method(), address.pathname, response.status(), failure?.code);

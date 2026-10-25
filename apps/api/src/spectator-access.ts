@@ -15,6 +15,7 @@ import {
 import type { InvitationContext } from "../../../packages/application/src/invitation-context";
 import { invitationVerifier } from "./invitation-service";
 import type { VerifiedIdentity } from "./oidc";
+import type { SessionFailureObservation, SessionFailureObserver, SessionObservation } from "./session-observation";
 import { DEFAULT_SIGN_IN_RULES, pinProblem, usernameProblem, type SignInRules } from "../../../packages/application/src/identity-policy";
 
 export interface SpectatorAccessPreview {
@@ -124,7 +125,7 @@ export interface SpectatorAccessSession {
 export class SpectatorAccessService {
   private readonly sessions = new Map<
     string,
-    { accountId: string; issuedAt: number; expiresAt: number }
+    { accountId: string; sessionId: string; issuedAt: number; expiresAt: number }
   >();
   private readonly attempts = new Map<
     string,
@@ -139,6 +140,7 @@ export class SpectatorAccessService {
     private readonly now: () => number = Date.now,
     options: { isolatedDemo?: true } = {},
     private readonly rules: () => Promise<SignInRules> = async () => DEFAULT_SIGN_IN_RULES,
+    private readonly observeFailure?: SessionFailureObserver,
   ) {
     if (options.isolatedDemo && process.env.NODE_ENV === "production")
       throw new Error(
@@ -180,7 +182,7 @@ export class SpectatorAccessService {
     const accessToken = `spectator_${randomBytes(32).toString("base64url")}`,
       issuedAt = this.now(),
       expiresAt = issuedAt + 21_600_000;
-    this.sessions.set(digest(accessToken), { accountId, issuedAt, expiresAt });
+    this.sessions.set(digest(accessToken), { accountId, sessionId: randomUUID(), issuedAt, expiresAt });
     return {
       accountId,
       accessToken,
@@ -202,6 +204,15 @@ export class SpectatorAccessService {
       strongAuth: false,
       authenticatedAt: session.issuedAt,
     };
+  }
+  sessionObservation(token: string): SessionObservation {
+    this.identity(token);
+    const session = this.sessions.get(digest(token))!;
+    return { accountId: session.accountId, sessionId: session.sessionId, provider: "spectator_pin", issuedAtMs: session.issuedAt, expiresAtMs: session.expiresAt };
+  }
+  private async failed(reason: SessionFailureObservation["reason"]): Promise<void> {
+    try { await this.observeFailure?.(Object.freeze({ kind: "login_failure", provider: "spectator_pin", at: this.now(), reason })); }
+    catch { /* Reporting must not replace the original safe authentication denial. */ }
   }
   logout(token: string) {
     this.identity(token);
@@ -275,7 +286,11 @@ export class SpectatorAccessService {
     value: unknown,
     remoteAddress: string,
   ): Promise<SpectatorAccessSession> {
-    this.limit(remoteAddress, "auth");
+    try { this.limit(remoteAddress, "auth"); }
+    catch (error) {
+      if (error instanceof AccessError && error.code === "RATE_LIMIT") await this.failed("rate_limited");
+      throw error;
+    }
     if (
       !object(value) ||
       !exact(value, ["username", "passcode"]) ||
@@ -283,8 +298,7 @@ export class SpectatorAccessService {
       value.username.length > 128 ||
       typeof value.passcode !== "string" ||
       !/^\d{4}$/.test(value.passcode)
-    )
-      denied();
+    ) denied();
     let username: string;
     try {
       username = normalizedSpectatorUsername(value.username);
@@ -308,8 +322,15 @@ export class SpectatorAccessService {
       credential && matches && credential.lockedUntil <= this.now(),
     );
     await this.repository.loginAttempt(username, success, this.now());
-    if (!success || !credential) denied();
-    return this.session(credential.accountId);
+    if (!success || !credential) {
+      await this.failed(credential && credential.lockedUntil > this.now() ? "locked" : "invalid_credentials");
+      denied();
+    }
+    try { return this.session(credential.accountId); }
+    catch (error) {
+      if (error instanceof AccessError && error.code === "SESSION_LIMIT") await this.failed("capacity");
+      throw error;
+    }
   }
   directory() {
     return this.repository.directory();

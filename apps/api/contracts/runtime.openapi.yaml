@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: LongBall implemented runtime extensions
-  version: 1.10.0
+  version: 1.11.0
   description: >-
     Runtime additions beside the unchanged supplied canonical contract. Server
     authorization, explicit policy decisions and native-device acceptance remain
@@ -1268,6 +1268,81 @@ paths:
         '503':
           description: SIGN_IN_RULES_UNAVAILABLE or SIGN_IN_RULES_PROVIDER_UNAVAILABLE; no application rule revision was committed
           content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}
+  /administration/login-analytics:
+    get:
+      operationId: readSuperAdminLoginAnalytics
+      summary: Read private application login and activity reports as a Super Admin
+      description: >-
+        Rechecks the current server-owned Super Admin grant, active verified adult
+        identity and current stronger authentication. This read-only report does not add
+        a five-minute authentication-age requirement; existing privileged writes keep
+        their separate recent-authentication requirements. Club Admin, Manager, Player and
+        Spectator accounts cannot obtain this report through role headers or filters.
+        Filters select a report view and never grant authority. Unknown or repeated
+        query fields are rejected. Reads return private, no-store data with a maximum
+        of 50 events per cursor page; aggregate event collection is explicitly bounded.
+        Event pagination freezes eventAsOf and a persisted event-ordinal high-water mark
+        while observedAt continues to describe current activity observations. Later inserts,
+        including same-timestamp or backdated observations, are excluded from that event page
+        sequence. Returned cursors bind normalized filters, expire after one hour and are
+        never authority tokens.
+        Active accounts means authenticated application API activity within 15 minutes,
+        including foreground polling, not a proof of online presence. Global unique
+        accounts are distinct; club/team and role breakdowns can overlap and need not
+        sum to the global total. Scope attribution follows recorded server observations,
+        not a client-supplied club/team assertion. Failed credentials without an accepted
+        account are unattributed. Upstream OIDC password failures are not observable;
+        OIDC sign-in observations mean verified use of the application. The report does
+        not fabricate activity before collection began and does not choose a production
+        privacy-retention period. No password, passcode, bearer/session token, verifier,
+        raw submitted unknown username, IP address or user-agent fingerprint is returned.
+      parameters:
+      - name: range
+        in: query
+        required: false
+        schema: {type: string, enum: [24h, 7d, 30d], default: 7d}
+        description: Bounded report window ending at the response observation time.
+      - name: clubId
+        in: query
+        required: false
+        schema: {$ref: '#/components/schemas/LoginAnalyticsIdentifier'}
+        description: Club filter; unknown or contradictory scope is unavailable.
+      - name: teamId
+        in: query
+        required: false
+        schema: {$ref: '#/components/schemas/LoginAnalyticsIdentifier'}
+        description: Team filter; it must belong to a supplied club filter.
+      - name: role
+        in: query
+        required: false
+        schema: {$ref: '#/components/schemas/LoginAnalyticsRole'}
+        description: Observed account-type filter; it does not select authorization authority.
+      - name: event
+        in: query
+        required: false
+        schema: {$ref: '#/components/schemas/LoginAnalyticsEventType'}
+      - name: cursor
+        in: query
+        required: false
+        schema: {$ref: '#/components/schemas/LoginAnalyticsCursor'}
+        description: Last event boundary for the same filters; not an authentication capability.
+      responses:
+        '200':
+          description: Current authorized login/activity report; private, no-store
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/LoginAnalyticsDto'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthenticated'}
+        '403':
+          description: ADULT_AUTHORITY_REQUIRED; a current verified adult with stronger authentication is required
+          content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}
+        '404': {$ref: '#/components/responses/Unavailable'}
+        '429':
+          description: The ordinary authenticated request rate limit applies; retry later.
+        '503':
+          description: The persisted report cannot currently be established.
+          content: {application/json: {schema: {$ref: '#/components/schemas/Error'}}}
   /administration:
     get:
       operationId: readClubAdministration
@@ -1796,6 +1871,245 @@ components:
   securitySchemes:
     bearerAuth: {type: http, scheme: bearer, bearerFormat: JWT or opaque session}
   schemas:
+    LoginAnalyticsIdentifier:
+      type: string
+      minLength: 1
+      maxLength: 150
+      pattern: '^[A-Za-z0-9_-]{1,150}(?![\s\S])'
+    LoginAnalyticsTimestamp:
+      type: integer
+      minimum: 0
+      maximum: 9007199254740991
+      description: UTC epoch milliseconds, rendered in Europe/London by the client.
+    LoginAnalyticsCount:
+      type: integer
+      minimum: 0
+      maximum: 9007199254740991
+    LoginAnalyticsRole:
+      type: string
+      enum: [super_admin, club_admin, manager, player, spectator]
+    LoginAnalyticsEventType:
+      type: string
+      enum: [login_success, login_failure, logout]
+    LoginAnalyticsProvider:
+      type: string
+      enum: [demo, spectator_pin, oidc]
+    LoginAnalyticsCursor:
+      type: string
+      maxLength: 220
+      pattern: '^2\.[0-9]{1,16}\.[0-9]{1,16}\.[0-9]{1,16}\.[A-Za-z0-9_-]{1,150}\.[a-f0-9]{16}(?![\s\S])'
+      description: Versioned opaque event boundary binds observation time, persisted event-ordinal high-water mark and normalized filters, expires after one hour, and is not an authentication capability. The parser checks safe integers, filter binding and expiry; public event rows omit the internal ordinal.
+    LoginAnalyticsFilters:
+      type: object
+      additionalProperties: false
+      required: [range]
+      properties:
+        range: {type: string, enum: [24h, 7d, 30d]}
+        clubId: {$ref: '#/components/schemas/LoginAnalyticsIdentifier'}
+        teamId: {$ref: '#/components/schemas/LoginAnalyticsIdentifier'}
+        role: {$ref: '#/components/schemas/LoginAnalyticsRole'}
+        event: {$ref: '#/components/schemas/LoginAnalyticsEventType'}
+        cursor: {$ref: '#/components/schemas/LoginAnalyticsCursor'}
+    LoginAnalyticsScope:
+      type: object
+      additionalProperties: false
+      required: [clubId, clubName, teamId, teamName, seasonId, role]
+      properties:
+        clubId: {$ref: '#/components/schemas/LoginAnalyticsIdentifier'}
+        clubName: {type: string, minLength: 1, maxLength: 200}
+        teamId: {$ref: '#/components/schemas/LoginAnalyticsIdentifier'}
+        teamName: {type: string, minLength: 1, maxLength: 200}
+        seasonId: {$ref: '#/components/schemas/LoginAnalyticsIdentifier'}
+        role: {$ref: '#/components/schemas/LoginAnalyticsRole'}
+    LoginAnalyticsEvent:
+      type: object
+      additionalProperties: false
+      required: [id, at, type, provider, accountId, actorLabel, role, scopes, reason, count]
+      properties:
+        id: {$ref: '#/components/schemas/LoginAnalyticsIdentifier'}
+        at: {$ref: '#/components/schemas/LoginAnalyticsTimestamp'}
+        type: {$ref: '#/components/schemas/LoginAnalyticsEventType'}
+        provider: {$ref: '#/components/schemas/LoginAnalyticsProvider'}
+        accountId:
+          anyOf: [{$ref: '#/components/schemas/LoginAnalyticsIdentifier'}, {type: 'null'}]
+        actorLabel: {type: [string, 'null'], minLength: 1, maxLength: 200}
+        role:
+          anyOf: [{$ref: '#/components/schemas/LoginAnalyticsRole'}, {type: 'null'}]
+        scopes:
+          type: array
+          maxItems: 500
+          items: {$ref: '#/components/schemas/LoginAnalyticsScope'}
+        reason: {type: [string, 'null'], maxLength: 256}
+        count: {$ref: '#/components/schemas/LoginAnalyticsCount'}
+    LoginAnalyticsSummary:
+      type: object
+      additionalProperties: false
+      required: [signIns, failedAttempts, uniqueAccounts, activeAccounts, activeSessions, enabledAccounts, lastSignInAt]
+      properties:
+        signIns: {$ref: '#/components/schemas/LoginAnalyticsCount'}
+        failedAttempts: {$ref: '#/components/schemas/LoginAnalyticsCount'}
+        uniqueAccounts: {$ref: '#/components/schemas/LoginAnalyticsCount'}
+        activeAccounts: {$ref: '#/components/schemas/LoginAnalyticsCount'}
+        activeSessions:
+          anyOf: [{$ref: '#/components/schemas/LoginAnalyticsCount'}, {type: 'null'}]
+          description: Null when provider session validity cannot be established; not a claim about external OIDC sessions.
+        enabledAccounts: {$ref: '#/components/schemas/LoginAnalyticsCount'}
+        lastSignInAt:
+          anyOf: [{$ref: '#/components/schemas/LoginAnalyticsTimestamp'}, {type: 'null'}]
+    LoginAnalyticsDirectory:
+      type: object
+      additionalProperties: false
+      required: [clubs, teams]
+      properties:
+        clubs:
+          type: array
+          maxItems: 20000
+          items:
+            type: object
+            additionalProperties: false
+            required: [id, name]
+            properties:
+              id: {$ref: '#/components/schemas/LoginAnalyticsIdentifier'}
+              name: {type: string, minLength: 1, maxLength: 200}
+        teams:
+          type: array
+          maxItems: 20000
+          items:
+            type: object
+            additionalProperties: false
+            required: [id, clubId, name, ageGroup]
+            properties:
+              id: {$ref: '#/components/schemas/LoginAnalyticsIdentifier'}
+              clubId: {$ref: '#/components/schemas/LoginAnalyticsIdentifier'}
+              name: {type: string, minLength: 1, maxLength: 200}
+              ageGroup: {type: string, minLength: 1, maxLength: 12, pattern: '^[^\u0000-\u001f\u007f]*\S[^\u0000-\u001f\u007f]*(?![\s\S])'}
+    LoginAnalyticsTrendBucket:
+      type: object
+      additionalProperties: false
+      required: [from, to, signIns, failedAttempts, uniqueAccounts]
+      properties:
+        from: {$ref: '#/components/schemas/LoginAnalyticsTimestamp'}
+        to: {$ref: '#/components/schemas/LoginAnalyticsTimestamp'}
+        signIns: {$ref: '#/components/schemas/LoginAnalyticsCount'}
+        failedAttempts: {$ref: '#/components/schemas/LoginAnalyticsCount'}
+        uniqueAccounts: {$ref: '#/components/schemas/LoginAnalyticsCount'}
+    LoginAnalyticsRoleRow:
+      type: object
+      additionalProperties: false
+      required: [role, label, signIns, uniqueAccounts, activeAccounts]
+      properties:
+        role: {$ref: '#/components/schemas/LoginAnalyticsRole'}
+        label: {type: string, minLength: 1, maxLength: 200}
+        signIns: {$ref: '#/components/schemas/LoginAnalyticsCount'}
+        uniqueAccounts: {$ref: '#/components/schemas/LoginAnalyticsCount'}
+        activeAccounts: {$ref: '#/components/schemas/LoginAnalyticsCount'}
+    LoginAnalyticsClubRow:
+      type: object
+      additionalProperties: false
+      required: [clubId, clubName, teamCount, signIns, uniqueAccounts, activeAccounts, lastSeenAt]
+      properties:
+        clubId: {$ref: '#/components/schemas/LoginAnalyticsIdentifier'}
+        clubName: {type: string, minLength: 1, maxLength: 200}
+        teamCount: {$ref: '#/components/schemas/LoginAnalyticsCount'}
+        signIns: {$ref: '#/components/schemas/LoginAnalyticsCount'}
+        uniqueAccounts: {$ref: '#/components/schemas/LoginAnalyticsCount'}
+        activeAccounts: {$ref: '#/components/schemas/LoginAnalyticsCount'}
+        lastSeenAt:
+          anyOf: [{$ref: '#/components/schemas/LoginAnalyticsTimestamp'}, {type: 'null'}]
+    LoginAnalyticsTeamRow:
+      type: object
+      additionalProperties: false
+      required: [teamId, teamName, clubId, clubName, ageGroup, signIns, uniqueAccounts, activeAccounts, lastSeenAt]
+      properties:
+        teamId: {$ref: '#/components/schemas/LoginAnalyticsIdentifier'}
+        teamName: {type: string, minLength: 1, maxLength: 200}
+        clubId: {$ref: '#/components/schemas/LoginAnalyticsIdentifier'}
+        clubName: {type: string, minLength: 1, maxLength: 200}
+        ageGroup: {type: string, minLength: 1, maxLength: 12, pattern: '^[^\u0000-\u001f\u007f]*\S[^\u0000-\u001f\u007f]*(?![\s\S])'}
+        signIns: {$ref: '#/components/schemas/LoginAnalyticsCount'}
+        uniqueAccounts: {$ref: '#/components/schemas/LoginAnalyticsCount'}
+        activeAccounts: {$ref: '#/components/schemas/LoginAnalyticsCount'}
+        lastSeenAt:
+          anyOf: [{$ref: '#/components/schemas/LoginAnalyticsTimestamp'}, {type: 'null'}]
+    LoginAnalyticsActiveUser:
+      type: object
+      additionalProperties: false
+      required: [accountId, label, role, lastSeenAt, sessionCount, scopes]
+      properties:
+        accountId: {$ref: '#/components/schemas/LoginAnalyticsIdentifier'}
+        label: {type: string, minLength: 1, maxLength: 200}
+        role: {$ref: '#/components/schemas/LoginAnalyticsRole'}
+        lastSeenAt: {$ref: '#/components/schemas/LoginAnalyticsTimestamp'}
+        sessionCount:
+          anyOf: [{$ref: '#/components/schemas/LoginAnalyticsCount'}, {type: 'null'}]
+        scopes:
+          type: array
+          maxItems: 500
+          items: {$ref: '#/components/schemas/LoginAnalyticsScope'}
+    LoginAnalyticsPage:
+      type: object
+      additionalProperties: false
+      required: [nextCursor, limit]
+      properties:
+        nextCursor:
+          anyOf: [{$ref: '#/components/schemas/LoginAnalyticsCursor'}, {type: 'null'}]
+        limit: {type: integer, const: 50}
+    LoginAnalyticsCoverage:
+      type: object
+      additionalProperties: false
+      required: [startedAt, eventRowsTruncated, activityRowsTruncated, scopeRowsTruncated, eventLimit, activityWindowMinutes, pollingIncluded, upstreamProviderFailuresIncluded, collectionHealthy]
+      properties:
+        startedAt:
+          anyOf: [{$ref: '#/components/schemas/LoginAnalyticsTimestamp'}, {type: 'null'}]
+        eventRowsTruncated: {type: boolean}
+        activityRowsTruncated: {type: boolean}
+        scopeRowsTruncated: {type: boolean}
+        eventLimit: {type: integer, const: 20000}
+        activityWindowMinutes: {type: integer, const: 15}
+        pollingIncluded: {type: boolean, const: true}
+        upstreamProviderFailuresIncluded: {type: boolean, const: false}
+        collectionHealthy: {type: boolean}
+    LoginAnalyticsDto:
+      type: object
+      additionalProperties: false
+      required: [kind, observedAt, eventAsOf, from, filters, summary, directory, trend, roles, clubs, teams, activeUsers, events, page, coverage, definitions]
+      properties:
+        kind: {type: string, const: login-analytics}
+        observedAt: {$ref: '#/components/schemas/LoginAnalyticsTimestamp'}
+        eventAsOf: {$ref: '#/components/schemas/LoginAnalyticsTimestamp'}
+        from: {$ref: '#/components/schemas/LoginAnalyticsTimestamp'}
+        filters: {$ref: '#/components/schemas/LoginAnalyticsFilters'}
+        summary: {$ref: '#/components/schemas/LoginAnalyticsSummary'}
+        directory: {$ref: '#/components/schemas/LoginAnalyticsDirectory'}
+        trend:
+          type: array
+          maxItems: 30
+          items: {$ref: '#/components/schemas/LoginAnalyticsTrendBucket'}
+        roles:
+          type: array
+          maxItems: 5
+          items: {$ref: '#/components/schemas/LoginAnalyticsRoleRow'}
+        clubs:
+          type: array
+          maxItems: 20000
+          items: {$ref: '#/components/schemas/LoginAnalyticsClubRow'}
+        teams:
+          type: array
+          maxItems: 20000
+          items: {$ref: '#/components/schemas/LoginAnalyticsTeamRow'}
+        activeUsers:
+          type: array
+          maxItems: 100
+          items: {$ref: '#/components/schemas/LoginAnalyticsActiveUser'}
+        events:
+          type: array
+          maxItems: 50
+          items: {$ref: '#/components/schemas/LoginAnalyticsEvent'}
+        page: {$ref: '#/components/schemas/LoginAnalyticsPage'}
+        coverage: {$ref: '#/components/schemas/LoginAnalyticsCoverage'}
+        definitions:
+          type: array
+          items: {type: string, maxLength: 1000}
     SignInRules:
       type: object
       additionalProperties: false

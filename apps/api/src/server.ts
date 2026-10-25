@@ -1,4 +1,5 @@
 import { SignInRulesService, loadSignInRules } from './sign-in-rules';
+import { LoginAnalyticsService } from './login-analytics-service';
 import { reserveConfiguredUsernames } from './username-registry';
 import { SpectatorAccessService } from './spectator-access';
 import { PersistedSpectatorAccessRepository } from './spectator-access-repository';
@@ -134,18 +135,21 @@ export function createApi(options:ApiOptions) {
  const feedback=new MatchFeedbackService(feedbackRepository);
  const teamDocuments=new TeamDocumentService(source,runtime.store);
  const oppositionRepository=new OppositionReviewRepository(source,runtime.store);const opposition=new OppositionReviewService(oppositionRepository);
- const spectatorAccess=new SpectatorAccessService(new PersistedSpectatorAccessRepository(source,runtime.store),now,options.demoScenario===true&&options.syntheticAuth===true?{isolatedDemo:true}:undefined,async()=>(await loadSignInRules(source)).rules);
- const ready=runtime.serialize(async()=>{await repository.initialize();await reserveConfiguredUsernames(source,options.demoAccounts?.accounts??[]);await loadSignInRules(source);await exportsRepository.initialize();await feedbackRepository.initialize();await teamDocuments.initialize();await oppositionRepository.initialize();});void ready.catch(()=>undefined);
+ const loginAnalytics=new LoginAnalyticsService(source);
+ const spectatorAccess=new SpectatorAccessService(new PersistedSpectatorAccessRepository(source,runtime.store),now,options.demoScenario===true&&options.syntheticAuth===true?{isolatedDemo:true}:undefined,async()=>(await loadSignInRules(source)).rules,event=>loginAnalytics.recordFailure(event));
+ const ready=runtime.serialize(async()=>{await repository.initialize();await reserveConfiguredUsernames(source,options.demoAccounts?.accounts??[]);await loadSignInRules(source);await loginAnalytics.initialize();await exportsRepository.initialize();await feedbackRepository.initialize();await teamDocuments.initialize();await oppositionRepository.initialize();});void ready.catch(()=>undefined);
  const invitations=new SpectatorInvitationService({...options,repository,now});
  const privileges=new TeamPrivilegeService(new SqliteTeamPrivilegeRepository(source,runtime.store),now);
  const push=new PushRegistrationService(new SqlitePushRepository(source.database,runtime.store.transaction),options,now);
- return createRuntimeApi(options,source,runtime.store,media,activation,work=>ready.then(()=>runtime.serialize(work)),{branding,invitations,privileges,push,reports,feedback,teamDocuments,opposition,spectatorAccess});
+ return createRuntimeApi(options,source,runtime.store,media,activation,work=>ready.then(()=>runtime.serialize(work)),{branding,invitations,privileges,push,reports,feedback,teamDocuments,opposition,spectatorAccess,loginAnalytics});
 }
-export function createRuntimeApi<T>(options:ApiOptions,source:T,store:RuntimeStore,media:RuntimeMedia,activation:RuntimeActivation,serialize:<R>(work:()=>Promise<R>)=>Promise<R> = work=>work(),services:{branding?:BrandMediaService;spectator?:RuntimeSpectatorActivation;invitations?:SpectatorInvitationService;privileges?:TeamPrivilegeService;push?:PushRegistrationService;reports?:ReportExportService;feedback?:MatchFeedbackService;teamDocuments?:TeamDocumentService;opposition?:OppositionReviewService;spectatorAccess?:SpectatorAccessService}={}) {
+export function createRuntimeApi<T>(options:ApiOptions,source:T,store:RuntimeStore,media:RuntimeMedia,activation:RuntimeActivation,serialize:<R>(work:()=>Promise<R>)=>Promise<R> = work=>work(),services:{branding?:BrandMediaService;spectator?:RuntimeSpectatorActivation;invitations?:SpectatorInvitationService;privileges?:TeamPrivilegeService;push?:PushRegistrationService;reports?:ReportExportService;feedback?:MatchFeedbackService;teamDocuments?:TeamDocumentService;opposition?:OppositionReviewService;spectatorAccess?:SpectatorAccessService;loginAnalytics?:LoginAnalyticsService}={}) {
  const now=options.now??Date.now;
  const signInRules=new SignInRulesService(source as DevelopmentStore | import('./postgres-store').PostgresStore,options.activationProvider);
  assertDemoScenarioOptions(options);
- const demoSessions=options.demoAccounts?new DemoSessions(options.demoAccounts,now):null;
+ const loginAnalytics=services.loginAnalytics??new LoginAnalyticsService(source as DevelopmentStore | import('./postgres-store').PostgresStore);
+ const analyticsReady=services.loginAnalytics?Promise.resolve():loginAnalytics.initialize();void analyticsReady.catch(()=>undefined);
+ const demoSessions=options.demoAccounts?new DemoSessions(options.demoAccounts,now,event=>loginAnalytics.recordFailure(event)):null;
  const privilegeService=()=>{if(!services.privileges)throw new AccessError('TEAM_PRIVILEGES_UNAVAILABLE',503,'Current team privileges are unavailable.');return services.privileges;};
  const verifyIdentity=options.verifyIdentity??(options.oidc?createOidcVerifier({...options.oidc,now}):null);
 const windows = new Map<string, {
@@ -185,6 +189,7 @@ const windows = new Map<string, {
     };
     const framework = createFastifyTransport({ beforeParsing, dispatch: (request, reply, parsedBody, requestId) => serialize(async () => {
         try {
+            await analyticsReady;
             if (request.method === 'OPTIONS') {
                 reply.writeHead(204);
                 reply.end();
@@ -223,28 +228,49 @@ const windows = new Map<string, {
                 if(request.method==='POST'&&['preview','register','login','requests'].includes(parts[2])){
                     const input=readJson(request,parsedBody);
                     const result=parts[2]==='preview'?await access.preview(input,address):parts[2]==='register'?await access.register(input,address):parts[2]==='login'?await access.login(input,address):await access.request(input,address);
+                    if((parts[2]==='register'||parts[2]==='login')&&'accessToken' in result){
+                        let acceptedPrincipal:Principal;
+                        try{
+                            const identity=access.identity(result.accessToken);
+                            acceptedPrincipal=await store.withIdentityContext(identity,()=>store.principal(identity));
+                            if(acceptedPrincipal.accountId!==result.accountId)throw new AccessError('INVALID_SESSION',401,'A valid authenticated session is required.');
+                        }catch(error){
+                            access.logout(result.accessToken);
+                            if(error instanceof AccessError&&['ACCOUNT_UNAVAILABLE','INVALID_SESSION'].includes(error.code))await loginAnalytics.recordFailure({kind:'login_failure',provider:'spectator_pin',at:now(),reason:'invalid_credentials'});
+                            throw error;
+                        }
+                        await loginAnalytics.signIn(acceptedPrincipal,access.sessionObservation(result.accessToken));
+                    }
                     response(reply,parts[2]==='requests'?202:parts[2]==='preview'?200:201,result,requestId);return;
                 }
                 if(request.method==='DELETE'&&parts[2]==='session'){
                     const authorization=header(request,'authorization');if(!authorization?.startsWith('Bearer '))throw new AccessError('INVALID_SESSION',401,'Sign in again.');
-                    access.logout(authorization.slice(7));reply.writeHead(204,{'Cache-Control':'private, no-store','Referrer-Policy':'no-referrer','X-Content-Type-Options':'nosniff','X-Request-Id':requestId});reply.end();return;
+                    const observation=access.sessionObservation(authorization.slice(7));
+                    access.logout(authorization.slice(7));await loginAnalytics.logout(observation);reply.writeHead(204,{'Cache-Control':'private, no-store','Referrer-Policy':'no-referrer','X-Content-Type-Options':'nosniff','X-Request-Id':requestId});reply.end();return;
                 }
             }
             if(url.pathname==='/v1/demo/sessions'&&request.method==='POST'){
                 if(!demoSessions)throw new AccessError('NOT_FOUND',404,'The requested object is unavailable.');
                 const result=await demoSessions.login(readJson(request,parsedBody),request.socket.remoteAddress??'unknown');
+                let acceptedPrincipal:Principal;
                 try{
                     const identity=demoSessions.identity(result.accessToken);
-                    const principal=await store.withIdentityContext(identity,()=>store.principal(identity));
-                    if(principal.accountId!==result.accountId)throw new AccessError('INVALID_SESSION',401,'A valid authenticated session is required.');
-                }catch(error){demoSessions.revoke(result.accessToken);throw error;}
+                    acceptedPrincipal=await store.withIdentityContext(identity,()=>store.principal(identity));
+                    if(acceptedPrincipal.accountId!==result.accountId)throw new AccessError('INVALID_SESSION',401,'A valid authenticated session is required.');
+                }catch(error){
+                    demoSessions.revoke(result.accessToken);
+                    if(error instanceof AccessError&&['ACCOUNT_UNAVAILABLE','INVALID_SESSION'].includes(error.code))await loginAnalytics.recordFailure({kind:'login_failure',provider:'demo',at:now(),reason:'invalid_credentials'});
+                    throw error;
+                }
+                await loginAnalytics.signIn(acceptedPrincipal,demoSessions.sessionObservation(result.accessToken));
                 response(reply,200,result,requestId);return;
             }
             if(url.pathname==='/v1/demo/sessions/current'&&request.method==='DELETE'){
                 if(!demoSessions)throw new AccessError('NOT_FOUND',404,'The requested object is unavailable.');
                 const authorization=header(request,'authorization');
                 if(!authorization?.startsWith('Bearer ')||authorization.length>17000)throw new AccessError('INVALID_SESSION',401,'A valid authenticated session is required.');
-                demoSessions.revoke(authorization.slice(7));
+                const observation=demoSessions.sessionObservation(authorization.slice(7));
+                demoSessions.revoke(authorization.slice(7));await loginAnalytics.logout(observation);
                 reply.writeHead(204,{'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','X-Request-Id':requestId});reply.end();return;
             }
             const requireContract = () => {
@@ -314,6 +340,9 @@ const windows = new Map<string, {
                 reply.setHeader('Retry-After', '60');
                 throw new AccessError('RATE_LIMIT', 429, 'Please retry after the current request window.');
             }
+            if(token.startsWith('spectator_')&&services.spectatorAccess)await loginAnalytics.observe(principal,services.spectatorAccess.sessionObservation(token),'spectator_pin');
+            else if(options.syntheticAuth&&demoSessions)await loginAnalytics.observe(principal,demoSessions.sessionObservation(token),'demo');
+            else if(!options.syntheticAuth)await loginAnalytics.observe(principal,null,'oidc');
             let role = header(request, 'x-longball-role');
             const controllerToken = header(request, 'x-controller-token');
             const body = request.method === 'POST' ? readJson(request, parsedBody) : null;
@@ -390,6 +419,7 @@ const windows = new Map<string, {
                 result = { accountId: principal.accountId, identityClassification: principal.identityClassification, principal, memberships: (await store.workspaceMemberships(principal)), serverTime: new Date(now()).toISOString(), syntheticOnly: Boolean(options.syntheticAuth) };
             else if(url.pathname==='/v1/administration/sign-in-rules'&&request.method==='GET')result=await signInRules.adminView(principal);
             else if(url.pathname==='/v1/administration/sign-in-rules'&&request.method==='POST')result=await mutate(url.pathname,()=>signInRules.save(principal,body),()=>signInRules.authorize(principal));
+            else if(url.pathname==='/v1/administration/login-analytics'&&request.method==='GET')result=await loginAnalytics.view(principal,url.searchParams);
             else if(url.pathname==='/v1/administration'&&request.method==='GET')result=await administration.view(principal);
             else if(url.pathname==='/v1/administration'&&request.method==='POST'){
                 if(Object.keys(body!).length!==1||!Object.hasOwn(body!,'command'))throw new AccessError('INVALID_REQUEST',400,'Use only the captured club administration command.');

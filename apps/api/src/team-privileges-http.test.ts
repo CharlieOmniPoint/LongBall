@@ -1122,7 +1122,7 @@ for (const kind of ["SQLite", "PostgreSQL"] as const)
           }
         });
       if (kind === "PostgreSQL")
-        it("expands schema14 without rewriting audit rows and rolls back a failed audit-clock installation", async () => {
+        it("reinstalls the schema15 audit clock against the current schema without rewriting audit rows and rolls back a failed installation", async () => {
           if (!owner) throw new Error("Expected PostgreSQL migration fixture");
           await query(
             "DROP TRIGGER team_privilege_decision_received ON team_privilege_decisions",
@@ -1175,7 +1175,7 @@ for (const kind of ["SQLite", "PostgreSQL"] as const)
               "SELECT version FROM schema_migrations ORDER BY version",
             ),
           ).toEqual(
-            Array.from({ length: 26 }, (_, index) => ({ version: index + 2 })),
+            Array.from({ length: 27 }, (_, index) => ({ version: index + 2 })),
           );
           expect(await snapshot()).toEqual(before);
           await owner.migrate();
