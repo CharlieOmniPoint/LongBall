@@ -1,9 +1,9 @@
 {
-  "state": "ready",
-  "url": "https://bacterial-portion-dimension-youth.trycloudflare.com",
-  "sourceRevision": "e8f7dc5b2c11c5ace68564e4651e2f6f8e499b89",
-  "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40195818223",
-  "startedAt": "2026-10-25T13:05:56Z",
-  "expiresAt": "2026-10-25T18:05:56Z",
+  "state": "starting",
+  "url": "",
+  "sourceRevision": "f1e1a748487be1e628567f0339becedf8162eb7d",
+  "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40206586726",
+  "startedAt": "2026-10-25T15:24:26Z",
+  "expiresAt": "",
   "audience": "LongBall demo review with simulated Roma U10 teams and matches"
 }
