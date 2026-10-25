@@ -1,9 +1,9 @@
 {
-  "state": "starting",
-  "url": "",
+  "state": "ready",
+  "url": "https://landing-mainly-donald-ceramic.trycloudflare.com",
   "sourceRevision": "29633577198155d4cb548ccf1499be17afdfbf41",
   "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40178798927",
-  "startedAt": "2026-10-25T09:03:34Z",
-  "expiresAt": "",
+  "startedAt": "2026-10-25T09:04:05Z",
+  "expiresAt": "2026-10-25T14:04:05Z",
   "audience": "LongBall demo review with simulated Roma U10 teams and matches"
 }
