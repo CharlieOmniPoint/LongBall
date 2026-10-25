@@ -1,0 +1,78 @@
+{
+  "artifacts": [
+    {
+      "path": "report.json",
+      "sha256": "c13ceb90a24160c19f8e1fbea1b2faacc71355cb658d218d67df3a51c542e4aa",
+      "sourcePath": ".local/quality/persona-manager-final/report.json",
+      "originalMtimeNs": 1792968717826056886,
+      "startedAt": "2026-10-25T22:47:19.764Z",
+      "finishedAt": "2026-10-25T22:51:57.816Z",
+      "passed": true,
+      "webScriptSha256": "91c5b2b6013ee0f496c9e13d73bb59b073d0d8b32e0bf0c56f658cf5908b4813"
+    },
+    {
+      "path": "keyboard-candidate6/report.json",
+      "sha256": "77e83ba8968462e06b363ba1e79c7b38c0e4170f502b3151f976e98890a4264d",
+      "sourcePath": ".local/quality/persona-manager-keyboard-final/report.json",
+      "originalMtimeNs": 1792968470951808076,
+      "startedAt": "2026-10-25T22:47:35.412Z",
+      "finishedAt": "2026-10-25T22:47:50.953Z",
+      "passed": true,
+      "webScriptSha256": "91c5b2b6013ee0f496c9e13d73bb59b073d0d8b32e0bf0c56f658cf5908b4813"
+    },
+    {
+      "path": "navigation-notice-candidate7/report.json",
+      "sha256": "67fdd0be91499085f9531803b8ed92b87c21cc240696a336ae9f6b09298d8f68",
+      "sourcePath": ".local/quality/persona-manager-navigation-notice-final/report.json",
+      "originalMtimeNs": 1792968949420371961,
+      "startedAt": "2026-10-25T22:55:43.490Z",
+      "finishedAt": "2026-10-25T22:55:49.420Z",
+      "passed": true,
+      "webScriptSha256": "a2b86b6642ba5d1a9ee4c08199f84663c3e02c43b1934aaade92f1326f812fdb"
+    },
+    {
+      "path": "navigation-notice-candidate6/report.json",
+      "sha256": "d59a72bedaac1a505ec26c32f8788fe8a6bbd721c00abaf91f4d347e1e59b0cb",
+      "sourcePath": ".local/quality/persona-manager-navigation-notice-candidate6/report.json",
+      "originalMtimeNs": 1792968778317615849,
+      "startedAt": "2026-10-25T22:52:52.170Z",
+      "finishedAt": "2026-10-25T22:52:58.322Z",
+      "passed": false,
+      "webScriptSha256": "91c5b2b6013ee0f496c9e13d73bb59b073d0d8b32e0bf0c56f658cf5908b4813"
+    },
+    {
+      "path": "baseline/report.json",
+      "sha256": "fcf024339eec88303732a1d718cec86f3f7228d6f92bda6388cc36d354a9fb6b",
+      "sourcePath": ".local/quality/persona-manager-baseline/report.json",
+      "originalMtimeNs": 1792963989064877652,
+      "startedAt": "2026-10-25T21:31:37.922Z",
+      "finishedAt": "2026-10-25T21:33:09.068Z",
+      "passed": false,
+      "webScriptSha256": "629ef0ee691c9b95e0d5b76653beb9e6b0b4d30c2105f3f60e483edb472a209d"
+    },
+    {
+      "path": "spacing-baseline/report.json",
+      "sha256": "e2225f2ce54cf6d5ddab5e2e8a0d6a8dfa287eb7987e145f64520b7fa32716e9",
+      "sourcePath": ".local/quality/persona-manager-spacing-baseline/report.json",
+      "originalMtimeNs": 1792966200296575750,
+      "startedAt": "2026-10-25T22:09:52.896Z",
+      "finishedAt": "2026-10-25T22:10:00.297Z",
+      "passed": true,
+      "webScriptSha256": "629ef0ee691c9b95e0d5b76653beb9e6b0b4d30c2105f3f60e483edb472a209d"
+    },
+    {
+      "path": "manager-squad-390.png",
+      "sha256": "4d576faf6d48c04eef79215777a3d609b31b4f1fce56b74e918fd60568f9835a",
+      "sourcePath": ".local/quality/persona-manager-final/manager-squad-390.png",
+      "originalMtimeNs": 1792968508763529850
+    },
+    {
+      "path": "manager-squad-1024.png",
+      "sha256": "17b391bf02089b809a87df721ff2745d7f59b666138841e032722a7c390758c6",
+      "sourcePath": ".local/quality/persona-manager-final/manager-squad-1024.png",
+      "originalMtimeNs": 1792968508999528112
+    }
+  ],
+  "copiedWithoutReportEdits": true,
+  "filesystemTimesPreserved": true
+}

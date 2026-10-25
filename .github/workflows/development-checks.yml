@@ -1,0 +1,157 @@
+name: LongBall development checks
+
+on:
+  pull_request:
+    branches: [main]
+    paths-ignore: ["docs/development/**", "README.md", "**/README.md"]
+  push:
+    branches: [main, dev/longball-m0-journey]
+    paths-ignore: ["docs/development/**", "README.md", "**/README.md"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: longball-checks-${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    if: github.repository == 'CharlieOmniPoint/LongBall' && github.event.repository.private == false
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres@sha256:1267c7e692de235fda2a50dbcdbcbca4672ea6a0298576a6bd9d07cafc319b32
+        env:
+          POSTGRES_DB: postgres
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_INITDB_ARGS: --encoding=UTF8 --locale=C
+        ports: ["127.0.0.1:5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    env:
+      CI: "1"
+      EXPO_NO_TELEMETRY: "1"
+      EXPO_NO_DOTENV: "1"
+      LONGBALL_POSTGRES_TEST_URL: postgresql://postgres@127.0.0.1:5432/postgres
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24.19.0
+      - name: Install the pinned frozen workspace
+        run: |
+          npm install --global pnpm@11.25.0 --ignore-scripts --no-audit --no-fund
+          pnpm install --frozen-lockfile
+          python3 -m venv .venv
+          .venv/bin/python -m pip install --disable-pip-version-check -r requirements-dev.txt
+          .venv/bin/python -m pip check
+      - name: Retain resolved dependency and licence inventories
+        run: pnpm quality:inventory
+      - name: Scan current source for secrets
+        run: pnpm quality:secrets
+      - name: Audit workspace and runtime dependency locks
+        id: dependency_audit
+        continue-on-error: true
+        run: pnpm quality:dependencies
+      - name: Lint and check both TypeScript clients
+        run: |
+          pnpm lint
+          pnpm typecheck
+      - name: Shared rules, platform adapters and real PostgreSQL API boundaries
+        run: |
+          pnpm test:unit
+          pnpm test:api
+      - name: Retained-history and actual PostgreSQL migration checks
+        run: pnpm db:migrate:check
+      - name: Validate canonical contracts, source publication and sample fixtures
+        run: |
+          pnpm test:contracts
+          pnpm test:preview
+          pnpm fixtures:synthetic
+          node --test scripts/review-entry.test.mjs scripts/review-artifacts.test.mjs
+      - name: Check native production configuration and compile JavaScript exports
+        run: |
+          node scripts/test-production-native-config.mjs
+          pnpm build
+          pnpm build:web
+          pnpm build:api
+      - name: Exercise the built browser journey
+        run: |
+          pnpm exec playwright install --with-deps chromium
+          python3 -m http.server 4173 --bind 127.0.0.1 --directory apps/mobile/dist-web > .local/quality/browser-server.log 2>&1 &
+          browser_server_pid=$!
+          trap 'kill "$browser_server_pid"' EXIT
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:4173/ > /dev/null; then break; fi
+            sleep 1
+          done
+          pnpm test:e2e
+      - name: Exercise configured demo accounts and queued report downloads
+        env:
+          EXPO_PUBLIC_ENVIRONMENT: "development"
+          EXPO_PUBLIC_DEMO_ACCOUNT_LOGIN: "1"
+          EXPO_PUBLIC_REVIEW_STATIC: "1"
+        run: |
+          pnpm --filter mobile exec expo export --platform web --output-dir dist-demo-web
+          pnpm test:demo:e2e
+          pnpm test:tablet:e2e
+          pnpm test:club-expansion:e2e
+          pnpm test:login-activity:e2e
+      - name: Enforce the dependency audit result
+        if: always()
+        env:
+          AUDIT_OUTCOME: ${{ steps.dependency_audit.outcome }}
+        run: '[[ "$AUDIT_OUTCOME" == success ]]'
+      - name: Retain safe quality evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: longball-quality-${{ github.sha }}
+          path: |
+            .local/quality/secrets.json
+            .local/quality/dependencies/*.json
+            .local/quality/inventory/
+            .local/quality/demo-account-review/report.json
+            .local/quality/demo-account-review/*.png
+            .local/quality/tablet-review/report.json
+            .local/quality/tablet-review/*.png
+            .local/quality/club-expansion-review/report.json
+            .local/quality/club-expansion-review/*.png
+            .local/quality/login-activity-review/report.json
+            .local/quality/login-activity-review/*.png
+          if-no-files-found: warn
+          retention-days: 3
+
+  runtime-image:
+    if: github.repository == 'CharlieOmniPoint/LongBall' && github.event.repository.private == false
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24.19.0
+      - name: Build and exercise the isolated production image
+        run: bash scripts/quality-runtime-image.sh
+      - name: Retain safe image acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: longball-runtime-image-${{ github.sha }}
+          path: |
+            .local/quality/runtime/summary.json
+            .local/quality/runtime/image-id.json
+            .local/quality/runtime/image-checks.json
+            .local/quality/runtime/*-permissions.json
+            .local/quality/runtime/*-decoder.json
+            .local/quality/runtime/*-runtime.json
+          if-no-files-found: warn
+          retention-days: 3

@@ -1,0 +1,33 @@
+{
+  "observedAt": "2026-10-24T22:39:59.617Z",
+  "scope": "Actual isolated local SQLite files and OS processes; no public demo changes",
+  "rounds": 20,
+  "processesPerRound": 4,
+  "startedProcesses": 80,
+  "passedProcesses": 80,
+  "maximumConstructorAndSeedMs": 58.56537000000003,
+  "freshDatabasesVerified": 20,
+  "heldExclusiveLock": {
+    "passed": false,
+    "errcode": 5,
+    "elapsedMs": 5001.218958,
+    "expectedRefusal": true,
+    "interpretation": "Constructor refused with SQLITE_BUSY at the bounded WAL setup deadline; passed=false means construction was refused as expected."
+  },
+  "nonDatabaseError": {
+    "passed": false,
+    "errcode": 26,
+    "elapsedMs": 0.6733300000000213,
+    "expectedRefusal": true,
+    "interpretation": "SQLITE_NOTADB was rethrown immediately; passed=false means construction was refused as expected."
+  },
+  "passed": true,
+  "finishedAt": "2026-10-24T22:40:20.862Z",
+  "sourceObservedAfterRun": {
+    "head": "aeefdbf5f9bacc3462924af3528f9597f725d4bd",
+    "workingTreeDirty": true,
+    "storeSha256": "5be10dbaab67953a516e019b706638aad89cd96eb730e31e53ca6614dde11f98",
+    "testSha256": "7500fdf44176b1786da17561d6ca80987664b81cf21676df3d869e42e952f68e",
+    "note": "Fingerprints measured after the run; no before/after source equivalence is inferred."
+  }
+}

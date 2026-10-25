@@ -1,0 +1,39 @@
+{
+  "status": "passed",
+  "observedAt": "2026-10-21T09:34:00.668Z",
+  "backend": "PostgreSQL 18.6 disposable runtime",
+  "syntheticOnly": true,
+  "testFile": "apps/api/src/postgres-privacy-migration.test.ts",
+  "actualTestsPassed": 3,
+  "checks": [
+    "All six earlier request rows retained; duplicate pending statuses and nonpending history preserved",
+    "Only pending unscoped leave-team requests become needs_scope; no global leave mapping",
+    "Unknown earlier membership snapshots remain NULL rather than inferred from current memberships",
+    "Exact compact JSON business key chooses earliest pending request by created_at then id",
+    "Migration4 apply is idempotent; verify-only startup requires4 and preserves a future version",
+    "Late constraint failure rolls back columns, status changes, pending-key mapping and version atomically",
+    "Restricted API can insert scoped requests and canonical mapping; duplicate mapping is rejected",
+    "Worker cannot read requests or pending keys; API cannot delete requests, modify schema versions or create tables",
+    "Staff document kind accepted while unknown document kinds remain rejected"
+  ],
+  "namedIdentityTrialUpgrade": {
+    "database": "longball_identity_trial",
+    "versions": [
+      2,
+      3,
+      4
+    ],
+    "requestsBefore": 0,
+    "requestsAfter": 0,
+    "originalRowsPreserved": true,
+    "policyApprovalCreated": false
+  },
+  "validation": [
+    "Scoped ESLint passed",
+    "Root TypeScript check passed"
+  ],
+  "limitations": [
+    "This migration stores requests and scope; it performs no erasure, membership revocation or policy approval",
+    "Prior container-runtime-proof.json remains the earlier migration3 image checkpoint; a migration4 image rehearsal is separate"
+  ]
+}

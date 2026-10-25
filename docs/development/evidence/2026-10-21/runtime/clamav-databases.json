@@ -1,0 +1,25 @@
+{
+  "observedAt": "2026-10-21T08:26:32.741Z",
+  "engine": "ClamAV 1.5.4",
+  "image": "clamav/clamav@sha256:e19130cdebaeacc71fa46eab3ed6f69941f2f22aa5e08d55e9197f8edf43ce5e",
+  "databases": {
+    "daily": {
+      "buildTime": "18 Oct 2026 06:24 +0000",
+      "version": 28157,
+      "signatures": 355765,
+      "functionalityLevel": 90,
+      "vendorDigitalSignatureVerifiedBySigtool": true
+    },
+    "main": {
+      "buildTime": "16 Dec 2025 23:18 +0000",
+      "version": 63,
+      "signatures": 3287027,
+      "functionalityLevel": 90,
+      "vendorDigitalSignatureVerifiedBySigtool": true
+    }
+  },
+  "limitations": [
+    "The daily database build was18October2026; this is not a claim that every scan uses the newest upstream release.",
+    "The pinned runtime proves a maintained engine/database at this checkpoint, not an installed operating update/monitoring policy."
+  ]
+}

@@ -1,0 +1,152 @@
+{
+  "recordedAt": "2026-10-21T20:15:10.108590+00:00",
+  "scope": "Actual native compilation of the initial packaged publication. This is separate from the later JavaScript-only review-status cache-key change and its subsequent CI run.",
+  "repository": "CharlieOmniPoint/LongBall",
+  "runId": 39664214737,
+  "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/39664214737",
+  "observedCompletedAt": "2026-10-21T20:12:50.079Z",
+  "conclusion": "success",
+  "source": {
+    "packagedSourceCommit": "d08666f02aa1a229ee66b031cd2e238c7c263cfa",
+    "productCommit": "7ede8d1ef944823cfd6a5f6965ab51d4c37d286e",
+    "transportCommit": "bb3965bd478934dcede62b1cbcc30d647bed2d70",
+    "decodedBundleSha256": "20b385ac7537aecf4c552dea7ccab20685e7ed4e298d61c68ace694d4b46d13a",
+    "sourceRef": "refs/heads/dev/longball-m0-journey",
+    "remoteMarkerVerified": true,
+    "exactSourceImportStepPassedInBothJobs": true
+  },
+  "jobs": [
+    {
+      "jobId": 119444830722,
+      "name": "android native compile",
+      "jobUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/39664214737/job/119444830722",
+      "status": "completed",
+      "conclusion": "success",
+      "runner": "ubuntu-24.04",
+      "configuration": "Debug",
+      "target": "Android arm64-v8a",
+      "build": "Gradle assembleDebug plus expected APK-output existence check",
+      "verifiedSteps": [
+        "Verify and import the exact development source",
+        "Install the pinned package manager and frozen dependencies",
+        "Use the Android Java toolchain",
+        "Install the exact Android SDK components",
+        "Generate the native project and verify security configuration",
+        "Compile the Android debug development client",
+        "Record the scope of this evidence"
+      ]
+    },
+    {
+      "jobId": 119444830673,
+      "name": "ios native compile",
+      "jobUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/39664214737/job/119444830673",
+      "status": "completed",
+      "conclusion": "success",
+      "runner": "macos-15-intel",
+      "configuration": "Debug",
+      "target": "iOS Simulator x86_64",
+      "signingAllowed": false,
+      "build": "xcodebuild with signing disabled plus expected Simulator app-output existence check",
+      "toolchain": {
+        "xcode": "26.3",
+        "cocoaPods": "1.17.0"
+      },
+      "verifiedSteps": [
+        "Verify and import the exact development source",
+        "Install the pinned package manager and frozen dependencies",
+        "Select the explicit iOS toolchain",
+        "Generate the native project and verify security configuration",
+        "Install iOS pods",
+        "Compile the iOS simulator development client without signing",
+        "Record the scope of this evidence"
+      ]
+    }
+  ],
+  "sharedToolchain": {
+    "node": "24.19.0",
+    "pnpm": "11.25.0"
+  },
+  "logObservation": {
+    "scope": "One bounded active-iOS-job log retrieval authorized during compilation; terminal success was observed independently in the workflow jobs API.",
+    "latestFetchedCompilerOutputAt": "2026-10-21T20:09:31.844658Z",
+    "observedActivities": [
+      "ExpoModulesCore and React_RCTAppDelegate module compilation",
+      "EXConstants Objective-C compilation and static-library archive",
+      "Expo Objective-C compilation and compatibility-header generation"
+    ],
+    "buildFailedMarkerObserved": false,
+    "rawLogsRetainedInThisFile": false
+  },
+  "inputComparison": {
+    "method": "Read-only git rev-parse <commit>:<path> object comparison and git diff --name-only",
+    "compiledSourceCommit": "d08666f02aa1a229ee66b031cd2e238c7c263cfa",
+    "cacheFixSourceCommit": "e899e29f71ac50de7de4c7737ee4eb907d7e7823",
+    "comparisonHeadCommit": "2a271b789c54c5187c2deef6c1b345be79e6b3a0",
+    "matchingGitObjects": {
+      "apps/mobile": {
+        "compiledSource": "0076e910c6c870f84eee992e99387624b36a500a",
+        "cacheFixSource": "0076e910c6c870f84eee992e99387624b36a500a",
+        "comparisonHead": "0076e910c6c870f84eee992e99387624b36a500a"
+      },
+      "package.json": {
+        "compiledSource": "aaef6f5825d23f65f7f3505a6b58d3f640aee7c6",
+        "cacheFixSource": "aaef6f5825d23f65f7f3505a6b58d3f640aee7c6",
+        "comparisonHead": "aaef6f5825d23f65f7f3505a6b58d3f640aee7c6"
+      },
+      "pnpm-lock.yaml": {
+        "compiledSource": "088419d0631b952727b53c3302e4ebed4fd99ea9",
+        "cacheFixSource": "088419d0631b952727b53c3302e4ebed4fd99ea9",
+        "comparisonHead": "088419d0631b952727b53c3302e4ebed4fd99ea9"
+      },
+      "packages/application/package.json": {
+        "compiledSource": "03354510ca29b8705c1fd8087f3dbe1dfbbe46bc",
+        "cacheFixSource": "03354510ca29b8705c1fd8087f3dbe1dfbbe46bc",
+        "comparisonHead": "03354510ca29b8705c1fd8087f3dbe1dfbbe46bc"
+      },
+      "infra/ci/native-feasibility.yml": {
+        "compiledSource": "af75b13715f678d2d9cdc3b7796106114e74c410",
+        "cacheFixSource": "af75b13715f678d2d9cdc3b7796106114e74c410",
+        "comparisonHead": "af75b13715f678d2d9cdc3b7796106114e74c410"
+      }
+    },
+    "allListedNativeMobileDependencyWorkflowInputsIdentical": true,
+    "changedSharedApplicationSourcePaths": [
+      "packages/application/src/review-entry.test.ts",
+      "packages/application/src/review-entry.ts"
+    ],
+    "sharedJavaScriptChange": "The pinned public review-status URL gains a per-request public cache key. Shared JavaScript differs from the source compiled in this run; identical native inputs do not prove the later JavaScript was compiled by this run."
+  },
+  "separateLaterSourceChecks": {
+    "evidence": "../final-native-review/verification.json",
+    "testedSource": "b25a74f03b6f27d07871f0bb86fd6a5f9e202e5f",
+    "integratedCacheFixSource": "e899e29f71ac50de7de4c7737ee4eb907d7e7823",
+    "scope": "Fresh production-config Hermes exports, evaluated configuration and anonymous browser checks are separately recorded. These are not a native compile, signing or hardware test.",
+    "androidAndIosHermesExports": [
+      {
+        "platform": "android",
+        "sha256": "f050586425dfefcb53fa060c8ac7649f52e789a408c838f6be6a9473293b076c",
+        "bytes": 3737064
+      },
+      {
+        "platform": "ios",
+        "sha256": "a1d44d4c40fa926163ea65a48f56926a34759b216fe40bb90fd423c4e6591fd1",
+        "bytes": 3722891
+      }
+    ],
+    "evaluatedConfigurationChecks": 6,
+    "anonymousBrowserChecks": 6
+  },
+  "artifactUploadRequested": false,
+  "artifactRetentionStepsSkippedInBothJobs": true,
+  "installerRetained": false,
+  "installationTested": false,
+  "launchTested": false,
+  "physicalDeviceProof": false,
+  "paidServicesProvisioned": false,
+  "limits": [
+    "This run compiled d08666f, not the later e899 cache-fix source. A subsequent exact-source native run is separate evidence.",
+    "Android Debug and unsigned iOS Simulator compilation do not prove signed production distribution or an iPhoneOS device build.",
+    "No installer artifact was requested or retained by this run.",
+    "No installation, launch, physical-device storage, timing, biometric, camera or push-delivery claim is made."
+  ]
+}

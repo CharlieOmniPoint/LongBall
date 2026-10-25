@@ -1,0 +1,304 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-10-24T22:33:37.805Z",
+  "repository": "CharlieOmniPoint/LongBall",
+  "productCommit": "aeefdbf5f9bacc3462924af3528f9597f725d4bd",
+  "productTree": "79ba4a276e0a747b11de4111031e9a9d1434cf68",
+  "workflow": {
+    "runId": 40138019415,
+    "url": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40138019415",
+    "event": "pull_request",
+    "status": "completed",
+    "conclusion": "failure",
+    "createdAt": "2026-10-24T22:18:56Z",
+    "updatedAt": "2026-10-24T22:31:40Z"
+  },
+  "checkout": {
+    "sha": "3909f7245ee3fe154cd59785a5d128c01eddb77a",
+    "tree": "79ba4a276e0a747b11de4111031e9a9d1434cf68",
+    "parents": [
+      "031fdf5fdf4d937a0c638f81f24f9ae34db3579b",
+      "aeefdbf5f9bacc3462924af3528f9597f725d4bd"
+    ],
+    "treeEqualsProduct": true,
+    "verification": "Public GitHub Git commit API for the actual checkout merge named by the retained artifacts; tree compared with the local immutable product Git object."
+  },
+  "jobs": [
+    {
+      "id": 121003939104,
+      "name": "runtime-image",
+      "url": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40138019415/job/121003939104",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-10-24T22:20:33Z",
+      "completedAt": "2026-10-24T22:23:05Z",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Build and exercise the isolated production image",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Retain safe image acceptance evidence",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "id": 121003939337,
+      "name": "quality",
+      "url": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40138019415/job/121003939337",
+      "status": "completed",
+      "conclusion": "failure",
+      "startedAt": "2026-10-24T22:20:33Z",
+      "completedAt": "2026-10-24T22:31:40Z",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Initialize containers",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Install the pinned frozen workspace",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Retain resolved dependency and licence inventories",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Scan current source for secrets",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Audit workspace and runtime dependency locks",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Lint and check both TypeScript clients",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Shared rules, platform adapters and real PostgreSQL API boundaries",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Retained-history and actual PostgreSQL migration checks",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Validate canonical contracts, source publication and sample fixtures",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Check native production configuration and compile JavaScript exports",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Exercise the built browser journey",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Exercise configured demo accounts and queued report downloads",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Enforce the dependency audit result",
+          "status": "completed",
+          "conclusion": "failure"
+        },
+        {
+          "name": "Retain safe quality evidence",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Post Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Stop containers",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    }
+  ],
+  "checks": {
+    "functionalStagesPassed": true,
+    "shared": {
+      "passed": 914,
+      "files": 110
+    },
+    "api": {
+      "passed": 454,
+      "skipped": 3,
+      "total": 457,
+      "files": 74,
+      "postgresql": true,
+      "skipScope": "Three source-built HEIC helper tests explicitly skipped in this quality job, which does not install the native helper. The separate production-image acceptance builds and exercises its maintained helper."
+    },
+    "migrations": {
+      "passed": 30,
+      "files": 6,
+      "skipped": 0
+    },
+    "normalBrowser": {
+      "passed": true,
+      "checks": 10,
+      "viewport": "390x844",
+      "nativeDeviceEvidence": false
+    },
+    "demoBrowser": {
+      "passed": true,
+      "roleJourneys": 8,
+      "checks": 27,
+      "failures": []
+    },
+    "tabletBrowser": {
+      "passed": true,
+      "viewportJourneys": 36,
+      "compositeChecks": 2,
+      "failures": []
+    },
+    "clubExpansionBrowser": {
+      "passed": true,
+      "checks": 6,
+      "failures": []
+    },
+    "staticAndBuild": {
+      "lint": true,
+      "rootAndMobileTypecheck": true,
+      "canonicalAndRuntimeContracts": true,
+      "sourcePublication": true,
+      "syntheticFixtures": true,
+      "nativeConfiguration": true,
+      "hermesExports": true,
+      "webAndApiExports": true
+    },
+    "dependencyAudit": {
+      "enforced": true,
+      "passed": false,
+      "waived": false,
+      "failedStep": "Enforce the dependency audit result",
+      "publicLogResults": {
+        "workspace": "failed or unavailable",
+        "runtime": "passed",
+        "compiler": "passed"
+      },
+      "scope": "The public job log reports aggregate gate outcomes. Complete advisory reports are retained by GitHub but were not downloaded. The locally recorded node-forge and zod high findings remain unwaived."
+    },
+    "runtimeImage": {
+      "passed": true,
+      "imageId": "sha256:8059f0d360403cefa5874803b353ff0395db4ad96d82d7c9b0aabc46964ee2cf",
+      "scope": "Successful Build and exercise the isolated production image job. This workflow does not establish a paired archive/object restore or physical-device behavior."
+    }
+  },
+  "artifacts": [
+    {
+      "id": 12577937870,
+      "name": "longball-runtime-image-3909f7245ee3fe154cd59785a5d128c01eddb77a",
+      "apiUrl": "https://api.github.com/repos/CharlieOmniPoint/LongBall/actions/artifacts/12577937870",
+      "sizeBytes": 3571,
+      "createdAt": "2026-10-24T22:23:02Z",
+      "expiresAt": "2026-10-27T22:23:01Z",
+      "digest": "sha256:bfffd6f4d95ead8d9e6b30a468953496fc008e8a837f180b9310136dc1cdcd26",
+      "expiredWhenObserved": false,
+      "downloaded": false,
+      "contentsIndependentlyInspected": false
+    },
+    {
+      "id": 12577929098,
+      "name": "longball-quality-3909f7245ee3fe154cd59785a5d128c01eddb77a",
+      "apiUrl": "https://api.github.com/repos/CharlieOmniPoint/LongBall/actions/artifacts/12577929098",
+      "sizeBytes": 3851187,
+      "createdAt": "2026-10-24T22:31:37Z",
+      "expiresAt": "2026-10-27T22:31:36Z",
+      "digest": "sha256:4de44b5223268be40d0fcfaab0b683e287876453b3289b45b9bc522affdf80fb",
+      "expiredWhenObserved": false,
+      "downloaded": false,
+      "contentsIndependentlyInspected": false
+    }
+  ],
+  "limitations": [
+    "Overall CI failed the enforced workspace dependency gate; functional passes do not waive it.",
+    "This is historical aeefdbf evidence. An independently found inherited administrative Manager revocation defect requires a later source correction and new qualification; these passing tests do not approve that old behavior.",
+    "No retained artifact archive was downloaded. No native signing, installation, launch or hardware acceptance is claimed."
+  ],
+  "provenance": {
+    "method": "Read-only GitHub MCP workflow job/log/artifact and approved public Git commit endpoints; no reruns, cancellation or repository mutation.",
+    "supersededSameHeadPush": {
+      "runId": 40138016046,
+      "status": "completed",
+      "conclusion": "cancelled"
+    }
+  }
+}

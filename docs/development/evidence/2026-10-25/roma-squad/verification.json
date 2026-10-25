@@ -1,0 +1,144 @@
+{
+  "productSource": "6044534f2962fd1a4d58e70c612ee859f0c36f79",
+  "observedAt": "2026-10-25T09:13:37.265Z",
+  "request": "Owner-provided eight-player Roma U10 demo squad",
+  "profiles": [
+    [
+      "Thomas Arnold",
+      "TA",
+      "GK",
+      "right"
+    ],
+    [
+      "Ralph Barrett",
+      "RB",
+      "CB",
+      "right"
+    ],
+    [
+      "Conor Kyne",
+      "CK",
+      "CB",
+      "right"
+    ],
+    [
+      "Max Holland",
+      "MH",
+      "CM",
+      "right"
+    ],
+    [
+      "Aryan Applegard",
+      "AA",
+      "CM",
+      "right"
+    ],
+    [
+      "Seb Lawler",
+      "SL",
+      "LW",
+      "left"
+    ],
+    [
+      "Ezra Philips",
+      "EP",
+      "RW",
+      "right"
+    ],
+    [
+      "Archie Muir",
+      "AM",
+      "ST",
+      "right"
+    ]
+  ],
+  "liveApi": {
+    "rosterValuesMatched": true,
+    "fixtures": 4,
+    "selectedPerFixture": 8,
+    "domainWrites": false
+  },
+  "publication": {
+    "pagesTransport": "69806c3cfbc27626a30d4ab397e596826ce3b5c1",
+    "backendTransport": "29633577198155d4cb548ccf1499be17afdfbf41",
+    "publicUrl": "https://charlieomnipoint.github.io/LongBall/",
+    "publicJavaScriptSha256": "9057a7f50cce61d5f67503ae3520610e8d769bf52ba7f13809e87bfa913a31ba",
+    "serviceExpiresAt": "2026-10-25T14:04:05Z"
+  },
+  "checks": {
+    "sharedTests": 914,
+    "apiTestsPassed": 459,
+    "apiExplicitHeicHelperSkips": 3,
+    "normalM0BrowserChecks": 10,
+    "expansionGroups": 6,
+    "accountBrowserJourneys": 8,
+    "accountBrowserGroups": 27,
+    "managerTeamLocal": "Eight active players and eight editable player cards asserted in the compiled account journey",
+    "historicalGames": "Valid seven-place lineups, on-pitch scorers, unchanged 2–2 / 3–1 results and 350 player-minutes in each game"
+  },
+  "testOnlyFollowup": "The initial account journey used first-seven IDs and placed some new players outside their primary roles. The planner legitimately advised an immediate correction. The later test-only fixture uses seven actual primary positions and one central-midfielder bench; the unchanged active/pause countdown assertions then pass. Deployed application remains source6044534.",
+  "publicBrowserAttempt": {
+    "sourceCommit": "6044534f2962fd1a4d58e70c612ee859f0c36f79",
+    "publicUrl": "https://charlieomnipoint.github.io/LongBall/",
+    "scope": "Actual public Manager sign-in, API roster read, Team navigation and logout; no roster/domain writes.",
+    "javaScriptSha256": "9057a7f50cce61d5f67503ae3520610e8d769bf52ba7f13809e87bfa913a31ba",
+    "profiles": [
+      [
+        "Thomas Arnold",
+        "TA",
+        "GK",
+        "right"
+      ],
+      [
+        "Ralph Barrett",
+        "RB",
+        "CB",
+        "right"
+      ],
+      [
+        "Conor Kyne",
+        "CK",
+        "CB",
+        "right"
+      ],
+      [
+        "Max Holland",
+        "MH",
+        "CM",
+        "right"
+      ],
+      [
+        "Aryan Applegard",
+        "AA",
+        "CM",
+        "right"
+      ],
+      [
+        "Seb Lawler",
+        "SL",
+        "LW",
+        "left"
+      ],
+      [
+        "Ezra Philips",
+        "EP",
+        "RW",
+        "right"
+      ],
+      [
+        "Archie Muir",
+        "AM",
+        "ST",
+        "right"
+      ]
+    ],
+    "fixtures": 4,
+    "selectedPerFixture": 8,
+    "passed": false,
+    "error": "Manager Team page must show every requested player.",
+    "observedAt": "2026-10-25T09:08:31.912934+00:00"
+  },
+  "publicBrowserQualification": "The initial Team text assertion did not pass after a fixed 700ms wait. Its timing/cause was not established; a further authenticated roster snapshot was rejected by automatic approval review as an unauthorized private-view disclosure to Firecrawl. No further snapshot was attempted. The exact live API roster passed, and Manager Team display was verified locally against identical compiled application bytes. The failed initial attempt remains failed.",
+  "credentials": "Existing demo credentials unchanged; the existing Player account is now Thomas Arnold. No credentials or tokens are retained in this evidence.",
+  "unchangedGates": "Physical-device acceptance, operator-deferred privacy/support decisions and the two unwaived high dependency findings remain open."
+}

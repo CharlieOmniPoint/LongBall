@@ -1,0 +1,324 @@
+{
+  "recordedAt": "2026-10-23T22:41:06.569Z",
+  "repository": "CharlieOmniPoint/LongBall",
+  "scope": "Read-only observation of the surviving development CI after harness-only corrections. No rerun, build, source change or artifact archive download was performed by this observer.",
+  "run": {
+    "id": 40033876459,
+    "event": "pull_request",
+    "headSha": "e2bf5a6744fbcdebd832d2d4e8795641d9d4488d",
+    "headTree": "dc02bb704d522a1916573bccc09312a7755a7176",
+    "status": "completed",
+    "conclusion": "failure",
+    "createdAt": "2026-10-23T22:28:51Z",
+    "updatedAt": "2026-10-23T22:37:44Z",
+    "runStartedAt": "2026-10-23T22:28:51Z",
+    "attempt": 1,
+    "url": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40033876459"
+  },
+  "checkout": {
+    "sha": "e440eea2f51f338e68c8fc3799f9ffa99889d2ee",
+    "tree": "dc02bb704d522a1916573bccc09312a7755a7176",
+    "parents": [
+      "031fdf5fdf4d937a0c638f81f24f9ae34db3579b",
+      "e2bf5a6744fbcdebd832d2d4e8795641d9d4488d"
+    ],
+    "url": "https://github.com/CharlieOmniPoint/LongBall/commit/e440eea2f51f338e68c8fc3799f9ffa99889d2ee",
+    "ref": "refs/pull/1/merge",
+    "verifiedInBothJobCheckoutLogs": true,
+    "exactTreeEqualsProductCommit": true
+  },
+  "product": {
+    "commit": "e2bf5a6744fbcdebd832d2d4e8795641d9d4488d",
+    "tree": "dc02bb704d522a1916573bccc09312a7755a7176",
+    "runtimeSourceCommit": "3ea4e0853ef0aab2c375f809a685c312dcfedd27",
+    "runtimeInputsIdentical": {
+      "apps": "1c0b72f0c6af354d4d57c180a410ce22bfa679a1",
+      "packages": "111c46d1aa133e538f1067419591f5d2150ba684",
+      "package.json": "52173681d79ae0b2a8536b795921537dffcc9375",
+      "pnpm-lock.yaml": "d31607c7dd2dbb729626a201fc2b498d26e4d11d"
+    },
+    "method": "Read-only Git tree/blob equality versus 3ea4e08 for apps, packages, root manifest and frozen lock. Later commits correct the browser acceptance harness."
+  },
+  "jobs": [
+    {
+      "id": 120688924859,
+      "name": "runtime-image",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40033876459/job/120688924859",
+      "steps": [
+        {
+          "name": "Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+          "conclusion": "success"
+        },
+        {
+          "name": "Build and exercise the isolated production image",
+          "conclusion": "success"
+        },
+        {
+          "name": "Retain safe image acceptance evidence",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "id": 120688925170,
+      "name": "quality",
+      "status": "completed",
+      "conclusion": "failure",
+      "url": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40033876459/job/120688925170",
+      "steps": [
+        {
+          "name": "Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+          "conclusion": "success"
+        },
+        {
+          "name": "Install the pinned frozen workspace",
+          "conclusion": "success"
+        },
+        {
+          "name": "Retain resolved dependency and licence inventories",
+          "conclusion": "success"
+        },
+        {
+          "name": "Scan current source for secrets",
+          "conclusion": "success"
+        },
+        {
+          "name": "Audit workspace and runtime dependency locks",
+          "conclusion": "success"
+        },
+        {
+          "name": "Lint and check both TypeScript clients",
+          "conclusion": "success"
+        },
+        {
+          "name": "Shared rules, platform adapters and real PostgreSQL API boundaries",
+          "conclusion": "success"
+        },
+        {
+          "name": "Retained-history and actual PostgreSQL migration checks",
+          "conclusion": "success"
+        },
+        {
+          "name": "Validate canonical contracts, source publication and sample fixtures",
+          "conclusion": "success"
+        },
+        {
+          "name": "Check native production configuration and compile JavaScript exports",
+          "conclusion": "success"
+        },
+        {
+          "name": "Exercise the built browser journey",
+          "conclusion": "success"
+        },
+        {
+          "name": "Exercise configured demo accounts and queued report downloads",
+          "conclusion": "success"
+        },
+        {
+          "name": "Enforce the dependency audit result",
+          "conclusion": "failure"
+        },
+        {
+          "name": "Retain safe quality evidence",
+          "conclusion": "success"
+        }
+      ]
+    }
+  ],
+  "functionalResults": {
+    "lintAndRootMobileTypes": "passed",
+    "secretsAndInventories": "passed",
+    "shared": {
+      "passed": 784,
+      "files": 89
+    },
+    "api": {
+      "passed": 393,
+      "skipped": 3,
+      "total": 396,
+      "files": 60,
+      "postgresqlExercised": true,
+      "skipScope": "Three native HEIC helper cases in apps/api/src/heic.test.ts. The separate runtime-image job exercised its maintained decoder."
+    },
+    "retainedHistoryAndPostgresMigrations": {
+      "passed": 24,
+      "files": 4
+    },
+    "canonicalContractsSourcePublicationAndFixtures": "passed",
+    "nativeEvaluatedConfiguration": {
+      "passed": true,
+      "checks": 6,
+      "scope": "Configuration evaluation; no native platform compile in this workflow."
+    },
+    "sharedNativeJavaScriptWebAndApiBuilds": "passed",
+    "browser": {
+      "passed": true,
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "groups": 10,
+      "savedRecords": 21,
+      "finalActiveDurationMs": 2992000,
+      "physicalDeviceEvidence": false
+    },
+    "demoAccounts": {
+      "passed": true,
+      "roleJourneys": 8,
+      "checks": 24,
+      "failures": [],
+      "reportPathInArtifact": "demo-account-review/report.json"
+    }
+  },
+  "dependencyGate": {
+    "passed": false,
+    "failedStep": "Enforce the dependency audit result",
+    "workspaceAudit": "failed or unavailable (high/critical gate; complete report retained)",
+    "runtimeAudit": "passed",
+    "compilerAudit": "passed",
+    "expectedKnownLocalFinding": {
+      "source": ".local/quality/dependencies/workspace.json",
+      "observedAt": "2026-10-23T19:01:17.324Z",
+      "sourceCommit": "ae43c49b730b6d2bce779ef12ea4ab6d2001c50e",
+      "workingTreeDirty": true,
+      "module": "node-forge",
+      "severity": "high",
+      "advisory": "GHSA-86w9-cpqp-85rv",
+      "vulnerableVersions": "<=1.4.0",
+      "patchedVersions": null,
+      "highCount": 1,
+      "artifactDigests": [
+        {
+          "file": "currentLockSha256Matches",
+          "digest": "5658e12cc2b1322d2891cdda8dc68d2eca4d706f9699d0215a0fb21c98c42d6e"
+        }
+      ]
+    },
+    "limitation": "Remote CI logs expose the workspace gate failure, not the advisory report body. Advisory details above are the prior local finding with the identical current lock hash; the CI archive contents were not downloaded or independently inspected.",
+    "exceptionApproved": false
+  },
+  "runtimeImage": {
+    "passed": true,
+    "builtImageIdFromBuildLog": "sha256:ff25d4dff4bb3dca340f0c8e7a743c9758c0f7314235479a7f904ad86299723e",
+    "acceptanceScript": "scripts/quality-runtime-image.sh",
+    "scope": "The successful exact-checkout script builds the production image and asserts dedicated migration, schema16 restricted API/worker permissions, nonroot read-only runtimes, private network/no published host ports, health/unconfigured-identity denial, real ClamAV clean/EICAR and JPEG/HEIC orientation/metadata handling.",
+    "artifactContentsIndependentlyInspected": false,
+    "pairedRestoreExercised": false,
+    "actualPushDelivered": false,
+    "physicalDeviceEvidence": false
+  },
+  "artifacts": [
+    {
+      "id": 12536327674,
+      "name": "longball-quality-e440eea2f51f338e68c8fc3799f9ffa99889d2ee",
+      "sizeBytes": 955832,
+      "url": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40033876459/artifacts/12536327674",
+      "apiUrl": "https://api.github.com/repos/CharlieOmniPoint/LongBall/actions/artifacts/12536327674",
+      "createdAt": "2026-10-23T22:37:41Z",
+      "expiresAt": "2026-10-26T22:37:41Z",
+      "expired": false,
+      "githubReportedDigest": "sha256:d8969dd2b2b33af913547214b4339663ccda3d0056d538941c45f3c944e3e08a",
+      "archiveDownloaded": false,
+      "archiveHashIndependentlyComputed": false,
+      "contentsIndependentlyInspected": false
+    },
+    {
+      "id": 12535844234,
+      "name": "longball-runtime-image-e440eea2f51f338e68c8fc3799f9ffa99889d2ee",
+      "sizeBytes": 3480,
+      "url": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40033876459/artifacts/12535844234",
+      "apiUrl": "https://api.github.com/repos/CharlieOmniPoint/LongBall/actions/artifacts/12535844234",
+      "createdAt": "2026-10-23T22:33:00Z",
+      "expiresAt": "2026-10-26T22:32:59Z",
+      "expired": false,
+      "githubReportedDigest": "sha256:b3eb80e87387239cc06d7014e4e6d9393bf86f02d4a00efeed2968caa35a10f1",
+      "archiveDownloaded": false,
+      "archiveHashIndependentlyComputed": false,
+      "contentsIndependentlyInspected": false
+    }
+  ],
+  "supersededRuns": [
+    {
+      "id": 40033870094,
+      "event": "push",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "headSha": "e2bf5a6744fbcdebd832d2d4e8795641d9d4488d",
+      "headTree": "dc02bb704d522a1916573bccc09312a7755a7176",
+      "createdAt": "2026-10-23T22:28:48Z",
+      "updatedAt": "2026-10-23T22:28:53Z",
+      "runAttempt": 1,
+      "url": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40033870094"
+    },
+    {
+      "id": 40033497517,
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "headSha": "03dab267994bcec5b5ed5c9771cb9a7b9ebb4871",
+      "headTree": "0f3612566fc12914f3bbdac06a10f3511dd4dfa3",
+      "createdAt": "2026-10-23T22:25:18Z",
+      "updatedAt": "2026-10-23T22:30:07Z",
+      "runAttempt": 1,
+      "url": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40033497517"
+    },
+    {
+      "id": 40033493328,
+      "event": "push",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "headSha": "03dab267994bcec5b5ed5c9771cb9a7b9ebb4871",
+      "headTree": "0f3612566fc12914f3bbdac06a10f3511dd4dfa3",
+      "createdAt": "2026-10-23T22:25:16Z",
+      "updatedAt": "2026-10-23T22:25:19Z",
+      "runAttempt": 1,
+      "url": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40033493328"
+    },
+    {
+      "id": 40033237834,
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "headSha": "924d905c1fce3c8ba095ffd89a6a3433508a5048",
+      "headTree": "0b65ab5dff6c2843fd820721243241567a76526d",
+      "createdAt": "2026-10-23T22:22:58Z",
+      "updatedAt": "2026-10-23T22:26:01Z",
+      "runAttempt": 1,
+      "url": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40033237834"
+    },
+    {
+      "id": 40033230976,
+      "event": "push",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "headSha": "924d905c1fce3c8ba095ffd89a6a3433508a5048",
+      "headTree": "0b65ab5dff6c2843fd820721243241567a76526d",
+      "createdAt": "2026-10-23T22:22:54Z",
+      "updatedAt": "2026-10-23T22:24:30Z",
+      "runAttempt": 1,
+      "url": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40033230976"
+    }
+  ],
+  "limitations": [
+    "Overall CI is failed because the dependency gate remains failed; functional success does not approve or suppress that gate.",
+    "Artifacts were observed only through GitHub metadata/upload logs; no archive was downloaded because the parent retained the previous FileService retrieval limitation and requested no download attempt.",
+    "No native compilation, installer, launch, hardware acceptance, paid provisioning or production provider delivery is claimed by this workflow observation."
+  ],
+  "observerMutations": {
+    "sourceEdits": false,
+    "reruns": false,
+    "builds": false,
+    "artifactDownloads": false,
+    "onlyOwnedIgnoredFile": ".local/workflow-review-2026-10-23/ci-observed.json"
+  }
+}

@@ -1,0 +1,69 @@
+{
+  "scope": "Staff-only device-local tablet layout, role boundaries, rotation and untouched football command state against an isolated generated-account API and exact built application.",
+  "passed": false,
+  "viewports": [
+    {
+      "width": 320,
+      "height": 844
+    },
+    {
+      "width": 390,
+      "height": 844
+    },
+    {
+      "width": 768,
+      "height": 1024
+    },
+    {
+      "width": 820,
+      "height": 1180
+    },
+    {
+      "width": 1024,
+      "height": 768
+    },
+    {
+      "width": 1180,
+      "height": 820
+    },
+    {
+      "width": 1366,
+      "height": 1024
+    },
+    {
+      "width": 844,
+      "height": 390
+    },
+    {
+      "width": 915,
+      "height": 412
+    }
+  ],
+  "journeys": [],
+  "checks": [],
+  "failures": [
+    {
+      "stage": "Manager selected-player defaults and authoritative core-position presentation",
+      "name": "AssertionError",
+      "message": "Manager selected player: choosing a player must select their map without a second map-button click.\n\nnull !== 'true'\n"
+    }
+  ],
+  "apiBudgetWaits": [],
+  "nativeDeviceEvidence": false,
+  "paidServicesProvisioned": false,
+  "source": {
+    "gitHead": "ed16f22913ea88eeba171791aa0fb598d44e64f7",
+    "workingTreeDirty": true,
+    "harnessSha256": "a57a82f66b929ad4298a00f4dba3e469937a1f4b0f59b0c39cc4db73099d2126",
+    "webIndexSha256": "f3cc0cd5e19ad483355da38d8c0e0e56525007a2fb6214ecd6e31b2cb57df284",
+    "webJavaScriptSha256": "6043e29a03cc01be0f5e6cddbbbb8b6d54edc3d87255a502bb2c775fa0dd7334",
+    "apiBundleSha256": "218ef2808696ce0a063aa19d3c89b5af4784ae47249f083f67b60b932b0fc85e"
+  },
+  "apiContractVersion": "longball.events/1.1",
+  "loginAttempts": 1,
+  "failureWorkspace": "Home\nSchedule\nTeam\nStats\nMore\nRoma U10\nManager · 26/27\nRefresh stats\nPlayer Stats\nRoma U10 · 26/27\nChoose a player\nThomas Arnold\nRalph Barrett\nConor Kyne\nMax Holland\nAryan Applegard\nSeb Lawler\nEzra Philips\nArchie Muir\nSeason position map\nWhole team\nSelected player\nRalph Barrett\nCurrent core positions\nPrimary · CB\nSecondary · CM\n7-a-side · reference layout\nST\n0m 0s\n0.0%\nLW\n0m 0s\n0.0%\nRW\n0m 0s\n0.0%\nCM\n0m 0s\n0.0%\nCB\n87m 30s\n100.0%\nGK\n0m 0s\n0.0%\nEach position code is combined across matching slots. Formation rows adapt to the screen; this reference layout does not infer where a player stood within a position.\nCB · Centre back\n87m 30s · 100.0%\nPercentages use known playing time. Time without a position stays in the denominator; historical gaps are not filled in.\nTeam percentages use the sum of player playing time, not match-clock duration. Position codes absent from the layout remain in the breakdown.\nRalph Barrett\nKnown playing time\n87m 30s\nKnown appearances\n2\nKnown goals\n2\nRecorded own goals\n0\nClean sheets in goal\n0\nAppearances count only matches with recorded playing time above zero. Known goals count explicit scorer attribution; gaps are not treated as zero. Clean sheets count completed games with no opposition goal during the recorded goalkeeper stints, including opposition goals from own goals.\nGoalkeeping reviewed: 0 games.\nWhere they played\nCB · Centre back\n87m 30s · 100.0%\nPercentages use known playing time. Time without a position stays in the denominator; historical gaps are not filled in.\nWhat is recorded\nPlaying-time entries: 2 of 2 recorded matches.\nScoring complete: 2\nPartial: 0\nUnknown: 0\nThrough the latest accepted match checkpoint. Running clocks do not add unaccepted time here.",
+  "processDiagnostic": "LongBall API http://127.0.0.1:43341 · isolated fictional authentication · fictional SQLite store\n",
+  "httpFailures": [],
+  "expectedRevokedSessionDenials": [],
+  "observedHttpFailureCount": 0
+}

@@ -1,0 +1,2 @@
+{"loginBudgetPauseMs":29845,"actualLimitPerMinute":20}
+{"passed":true,"checks":9,"failures":[],"report":".local/quality/login-activity-review/report.json"}

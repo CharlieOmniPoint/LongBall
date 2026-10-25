@@ -1,0 +1,206 @@
+{
+  "recordedAt": "2026-10-21T19:26:25.594012+00:00",
+  "scope": "Production-config JavaScript/Hermes exports, evaluated native configuration and anonymous phone-width browser entry. This evidence does not prove native compilation, signing, hardware runtime or push delivery.",
+  "sources": {
+    "tested": "de2ae0ab236c0b1fbfddfea48cc3fa1e7ccfe840",
+    "integratedConfig": "ff0691c6be5449f74c3a2ef7c613b18cdf8ad82d",
+    "integratedApiFollowup": "7ede8d1ef944823cfd6a5f6965ab51d4c37d286e"
+  },
+  "sourceEquivalence": {
+    "method": "Git tree/blob object IDs",
+    "matchingObjects": {
+      "apps/mobile": {
+        "tested": "0076e910c6c870f84eee992e99387624b36a500a",
+        "integratedConfig": "0076e910c6c870f84eee992e99387624b36a500a",
+        "integratedApiFollowup": "0076e910c6c870f84eee992e99387624b36a500a"
+      },
+      "packages/application": {
+        "tested": "8fad69ff964876144a9f310affc256c1f939922c",
+        "integratedConfig": "8fad69ff964876144a9f310affc256c1f939922c",
+        "integratedApiFollowup": "8fad69ff964876144a9f310affc256c1f939922c"
+      },
+      "packages/domain": {
+        "tested": "dde4f25206e66f495b0f6fcfb794a6a694355fc6",
+        "integratedConfig": "dde4f25206e66f495b0f6fcfb794a6a694355fc6",
+        "integratedApiFollowup": "dde4f25206e66f495b0f6fcfb794a6a694355fc6"
+      },
+      "packages/testing": {
+        "tested": "078d490a69755cce6b3d540435b8b3f1a1dae3d5",
+        "integratedConfig": "078d490a69755cce6b3d540435b8b3f1a1dae3d5",
+        "integratedApiFollowup": "078d490a69755cce6b3d540435b8b3f1a1dae3d5"
+      },
+      "package.json": {
+        "tested": "aaef6f5825d23f65f7f3505a6b58d3f640aee7c6",
+        "integratedConfig": "aaef6f5825d23f65f7f3505a6b58d3f640aee7c6",
+        "integratedApiFollowup": "aaef6f5825d23f65f7f3505a6b58d3f640aee7c6"
+      },
+      "pnpm-lock.yaml": {
+        "tested": "088419d0631b952727b53c3302e4ebed4fd99ea9",
+        "integratedConfig": "088419d0631b952727b53c3302e4ebed4fd99ea9",
+        "integratedApiFollowup": "088419d0631b952727b53c3302e4ebed4fd99ea9"
+      },
+      "scripts/production-entry-review.mjs": {
+        "tested": "868fb192675c8defef3cab0dca2c14303599c6d1",
+        "integratedConfig": "868fb192675c8defef3cab0dca2c14303599c6d1",
+        "integratedApiFollowup": "868fb192675c8defef3cab0dca2c14303599c6d1"
+      },
+      "scripts/test-production-native-config.mjs": {
+        "tested": "ea5f0f645b0440e4e3b1bad26eeecb1b51c9d276",
+        "integratedConfig": "ea5f0f645b0440e4e3b1bad26eeecb1b51c9d276",
+        "integratedApiFollowup": "ea5f0f645b0440e4e3b1bad26eeecb1b51c9d276"
+      }
+    },
+    "allListedObjectsMatch": true,
+    "remainingIntegratedDiffPaths": [
+      "apps/api/src/branding.test.ts",
+      "apps/api/src/image-bytes.ts",
+      "apps/api/src/image-process.test.ts",
+      "apps/api/src/image-process.ts",
+      "apps/api/src/media-worker.mjs",
+      "apps/api/src/team-privileges-http.test.ts",
+      "docs/development/evidence/2026-10-21/media-processing-retry/README.md",
+      "docs/development/evidence/2026-10-21/media-processing-retry/report.json"
+    ]
+  },
+  "environment": {
+    "NODE_ENV": "production",
+    "EXPO_PUBLIC_ENVIRONMENT": "production",
+    "EXPO_NO_DOTENV": "1",
+    "EXPO_OFFLINE": "1",
+    "fictionalIdentityTrial": false,
+    "providerOrApiPublicDefaults": false
+  },
+  "maxMetroWorkers": 2,
+  "toolchain": {
+    "node": "24.19.0",
+    "expoPackage": "58.0.16",
+    "reactNative": "0.88.0"
+  },
+  "commands": [
+    {
+      "workingDirectory": "apps/mobile",
+      "command": "node node_modules/expo/bin/cli config --type introspect --json"
+    },
+    {
+      "workingDirectory": "apps/mobile",
+      "command": "node node_modules/expo/bin/cli export --platform web --max-workers 2 --output-dir <isolated>/web"
+    },
+    {
+      "workingDirectory": "apps/mobile",
+      "command": "node node_modules/expo/bin/cli export --platform android --platform ios --max-workers 2 --output-dir <isolated>/native"
+    },
+    {
+      "workingDirectory": "repository root",
+      "command": "LONGBALL_PRODUCTION_REVIEW_URL=http://127.0.0.1:4178 node scripts/production-entry-review.mjs"
+    },
+    {
+      "workingDirectory": "repository root",
+      "command": "node scripts/test-production-native-config.mjs"
+    }
+  ],
+  "exportPhases": [
+    {
+      "name": "config",
+      "startedAt": "2026-10-21T19:17:41.074080+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-10-21T19:17:42.326983+00:00"
+    },
+    {
+      "name": "web",
+      "startedAt": "2026-10-21T19:17:42.327918+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-10-21T19:17:48.951197+00:00"
+    },
+    {
+      "name": "native",
+      "startedAt": "2026-10-21T19:17:48.952147+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-10-21T19:19:03.556748+00:00"
+    }
+  ],
+  "nativeHermesExports": [
+    {
+      "file": "native/_expo/static/js/android/index-189b2cee1cdaea9c89605b97cc306f3d.hbc",
+      "bytes": 3736819,
+      "sha256": "1b12bc15defa73b31f5d8cd06ce37e99988f2ab008a6c07005f17def91c5bf23",
+      "platform": "android",
+      "hermesMagic": "c61fbc03c103191f"
+    },
+    {
+      "file": "native/_expo/static/js/ios/index-48688323006a0839d4b1df55e4ff1f87.hbc",
+      "bytes": 3722571,
+      "sha256": "c9670e07c6e090e57ffcd41ffe77ac3164035c8a6f010d2dd23a21c6749997ec",
+      "platform": "ios",
+      "hermesMagic": "c61fbc03c103191f"
+    }
+  ],
+  "webJavaScript": [
+    {
+      "file": "web/_expo/static/js/web/index-982d3589fea725782ec249eca3ba6091.js",
+      "bytes": 1482669,
+      "sha256": "a101c20d436dc776dc9aac99bf90be653a1156aa9ad25caa81754fe8ff5aca23"
+    }
+  ],
+  "nativeMetadata": {
+    "file": "native/metadata.json",
+    "bytes": 244,
+    "sha256": "1ece088c0e8129c393d62ced8ae80f644c944a370cdb1bfefe5621b3300f84ad"
+  },
+  "evaluatedConfig": {
+    "rawConfigSha256": "3f09344cbccc08efce0ddb5737470b3d733661982631fea04ce705053750f0ea",
+    "rawConfigBytes": 10337,
+    "publishedAllowlist": "evaluated-native-fields.json"
+  },
+  "checks": {
+    "anonymousBrowser": {
+      "passed": true,
+      "count": 6,
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "recordingIndexedDBOpened": false,
+      "providerSignInAttempted": false,
+      "report": "anonymous-browser-report.json",
+      "screenshots": [
+        "anonymous-welcome.png",
+        "anonymous-sign-in.png"
+      ]
+    },
+    "evaluatedDevelopmentAndProductionConfig": {
+      "passed": true,
+      "count": 6,
+      "report": "configuration-checks.json"
+    },
+    "scopedEslint": {
+      "exitCode": 0,
+      "files": [
+        "apps/mobile/app.config.js",
+        "apps/mobile/plugins/withProductionNative.js",
+        "scripts/test-production-native-config.mjs"
+      ]
+    },
+    "rootTypeScript": {
+      "exitCode": 0
+    },
+    "mobileTypeScript": {
+      "exitCode": 0
+    }
+  },
+  "comparisonToHistorical55465b": {
+    "historicalEvidence": "historical-55465b.json",
+    "webJavaScriptSha256Equal": true,
+    "androidHermesSha256Equal": false,
+    "iosHermesSha256Equal": false,
+    "note": "The native filenames match but the actual binary hashes differ. Current hashes above are measured directly; no binary identity claim is made."
+  },
+  "limits": [
+    "No new native compile, signing, install or physical device test was performed by these exports.",
+    "SQLCipher, backup protection, clock continuity, local authentication and notification permissions/runtime need native device testing.",
+    "APNs production is evaluated build configuration; no signing profile, provider/project credentials, notification transport or delivery was provisioned or tested.",
+    "Existing application identifiers/display name remain operator choices and were preserved.",
+    "Anonymous checks cover the production entry only; no provider authentication or private API action was attempted.",
+    "Historical source55465b introspection used Expo fallback Info.plist when no local iOS project existed; its permissive ATS values were not measured compiled Release behaviour. SDK58 devlauncher also has debug gates and a Release cleanup phase.",
+    "This directory retains summaries and anonymous screenshots, not raw build/config logs, credentials, provider defaults or binaries."
+  ]
+}

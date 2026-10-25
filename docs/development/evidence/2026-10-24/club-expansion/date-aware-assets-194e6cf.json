@@ -1,0 +1,25 @@
+{
+  "recordedAt": "2026-10-24T23:16:25.274642+00:00",
+  "deployedProductSource": "194e6cf3407071f1c9011654aef81718f05d649e",
+  "scope": "Current working-tree test harness changes only; compiled clients/API/worker match deployed product artifacts.",
+  "checks": [
+    {
+      "name": "demo",
+      "harnessSha256": "a76faf30e6ce02d324840303580fac4cab6d26843d05354d4efb025460e05b39",
+      "reportSha256": "94e77cc2b78206294b8cdcfa01914bb40d93a82eb4405d7a9f8fcdfbdc47404a",
+      "recordedInputFingerprintsMatchAfterRun": true
+    },
+    {
+      "name": "expansion",
+      "harnessSha256": "f1e34c590fe318c4dcbed368bd74eaea0e91f2aeb819e53ae628659d6b0f32ff",
+      "reportSha256": "d193760fc6ce426fda268b61fd64491a42e0f9e8a09292476ee3e4d61d15c5ed",
+      "recordedInputFingerprintsMatchAfterRun": true
+    }
+  ],
+  "compiledArtifactsAfter": {
+    "webIndexSha256": "f15b8f1b45500c6a8119f33b51ab6b285f033e07aba4a91ac20b55853014feef",
+    "webJavaScriptSha256": "289258d42b21fc155fa24526d0e397f7d4bfc159d85a4e6e7ca7368f8c84ea22",
+    "apiBundleSha256": "4aa4b31b3235911156b6dcd412e9fef9d3a2e893699e313ccb8e9d888d01e859",
+    "workerBundleSha256": "a2fef0d79f7657dd45fae2aed4d2f32a445d38fd6f02f8bffaedf343950a938a"
+  }
+}

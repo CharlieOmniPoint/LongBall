@@ -1,0 +1,859 @@
+{
+  "scope": "Approved actual public browser verification of the LongBall seventeen-feature candidate; four dummy-account roles at 320px and 390px.",
+  "passed": true,
+  "productRevision": "a2e8129df58f4eb4f81ca68161813df942d614ee",
+  "verificationProvider": "Firecrawl browser interaction; real public Pages/API with no request mocking or response replacement.",
+  "authorization": "The owner's earlier explicit approval for Firecrawl to receive the four existing dummy account credentials was reused. Values are omitted.",
+  "skill": "skill://plugin_asdk_app_6a314a73f8ac819195b0d55e36b9c609/firecrawl/SKILL.md",
+  "expectedPublication": {
+    "pagesRun": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40092802597",
+    "pagesTransportRevision": "0cba3b68e2ec3e948e69f9853db3c6ee3f53907f",
+    "sourceBundleSha256": "fa3cc5a75e8b2b800196b8cfe044999ebfaafc3ead0e29d13424d875f18e5c22",
+    "source": "Parent-supplied pinned publication metadata; actual remote script/status/health observations are recorded separately."
+  },
+  "provenance": {
+    "stage": "final-public-provenance",
+    "checkedAtUtc": "2026-10-24T12:21:06Z",
+    "site": "https://charlieomnipoint.github.io/LongBall/",
+    "indexStatus": 200,
+    "indexSha256": "949c0ce8c225712d09a1753f97d4f00b68f127023410899a071b26700fc65f85",
+    "script": "https://charlieomnipoint.github.io/LongBall/_expo/static/js/web/index-4a4386d18951ba3335c7b85deb9817af.js",
+    "scriptStatus": 200,
+    "scriptSha256": "df550eb866c14f1dceb1397ea717c3ae856254ed4823d103d7d731adae16fa00",
+    "statusHttp": 200,
+    "discovery": {
+      "state": "ready",
+      "url": "https://wear-deutschland-coins-peter.trycloudflare.com",
+      "sourceRevision": "f8bf5eb096b87f9fa549c74149e59e7f36ba2c29",
+      "startedAt": "2026-10-24T12:09:19Z",
+      "expiresAt": "2026-10-24T17:09:19Z"
+    },
+    "healthStatus": 200,
+    "contractVersion": "longball.events/1.1",
+    "dummyAccountLogin": true,
+    "syntheticOnly": true,
+    "unmockedTransport": true
+  },
+  "journeyCount": 8,
+  "visitedSignedInViewCount": 36,
+  "journeys": [
+    {
+      "role": "spectator",
+      "width": 320,
+      "unmockedPublicSite": true,
+      "views": [
+        {
+          "name": "initial-role-home",
+          "width": 320,
+          "scrollWidth": 320,
+          "serifTextNodes": 0,
+          "developmentStatusLabels": 0
+        },
+        {
+          "name": "team-overview",
+          "width": 320,
+          "scrollWidth": 320,
+          "serifTextNodes": 0,
+          "developmentStatusLabels": 0
+        },
+        {
+          "name": "spectator-scores",
+          "width": 320,
+          "scrollWidth": 320,
+          "serifTextNodes": 0,
+          "developmentStatusLabels": 0
+        }
+      ],
+      "header": {
+        "exactRole": true,
+        "oneSignOut": true,
+        "iconOnly": true,
+        "signOut44px": true,
+        "sameHeaderRow": true
+      },
+      "spectatorBottomNavigation": {
+        "visible": true,
+        "box": {
+          "x": 12,
+          "y": 770,
+          "width": 296,
+          "height": 66
+        },
+        "homeVisible": true,
+        "scoresVisible": true
+      },
+      "feedback": {
+        "status": 404,
+        "privateEntriesDenied": true
+      },
+      "passed": true,
+      "loginHttp": 200,
+      "logoutHttp": 204,
+      "exactUiTokenAfterLogout": [
+        401
+      ],
+      "browserStores": {
+        "signedIn": {
+          "localStorageEntries": 1,
+          "sessionStorageEntries": 0,
+          "indexedDbDatabases": 0,
+          "knownCredentialMatches": 0,
+          "knownUiTokenMatches": 0,
+          "opaqueTokenPatternFound": false
+        },
+        "signedOut": {
+          "localStorageEntries": 1,
+          "sessionStorageEntries": 0,
+          "indexedDbDatabases": 0,
+          "knownCredentialMatches": 0,
+          "knownUiTokenMatches": 0,
+          "opaqueTokenPatternFound": false
+        }
+      },
+      "pageErrors": [],
+      "applicationMutations": 0,
+      "apiRequestCount": 12,
+      "nativeDeviceEvidence": false
+    },
+    {
+      "role": "spectator",
+      "width": 390,
+      "unmockedPublicSite": true,
+      "views": [
+        {
+          "name": "initial-role-home",
+          "width": 390,
+          "scrollWidth": 390,
+          "serifTextNodes": 0,
+          "developmentStatusLabels": 0
+        },
+        {
+          "name": "team-overview",
+          "width": 390,
+          "scrollWidth": 390,
+          "serifTextNodes": 0,
+          "developmentStatusLabels": 0
+        },
+        {
+          "name": "spectator-scores",
+          "width": 390,
+          "scrollWidth": 390,
+          "serifTextNodes": 0,
+          "developmentStatusLabels": 0
+        }
+      ],
+      "header": {
+        "exactRole": true,
+        "oneSignOut": true,
+        "iconOnly": true,
+        "signOut44px": true,
+        "sameHeaderRow": true
+      },
+      "spectatorBottomNavigation": {
+        "visible": true,
+        "box": {
+          "x": 12,
+          "y": 770,
+          "width": 366,
+          "height": 66
+        },
+        "homeVisible": true,
+        "scoresVisible": true
+      },
+      "feedback": {
+        "status": 404,
+        "privateEntriesDenied": true
+      },
+      "passed": true,
+      "loginHttp": 200,
+      "logoutHttp": 204,
+      "exactUiTokenAfterLogout": [
+        401
+      ],
+      "browserStores": {
+        "signedIn": {
+          "localStorageEntries": 1,
+          "sessionStorageEntries": 0,
+          "indexedDbDatabases": 0,
+          "knownCredentialMatches": 0,
+          "knownUiTokenMatches": 0,
+          "opaqueTokenPatternFound": false
+        },
+        "signedOut": {
+          "localStorageEntries": 1,
+          "sessionStorageEntries": 0,
+          "indexedDbDatabases": 0,
+          "knownCredentialMatches": 0,
+          "knownUiTokenMatches": 0,
+          "opaqueTokenPatternFound": false
+        }
+      },
+      "pageErrors": [],
+      "applicationMutations": 0,
+      "apiRequestCount": 12,
+      "nativeDeviceEvidence": false
+    },
+    {
+      "role": "player",
+      "width": 320,
+      "unmockedPublicSite": true,
+      "views": [
+        {
+          "name": "initial-role-home",
+          "width": 320,
+          "scrollWidth": 320,
+          "serifTextNodes": 0,
+          "developmentStatusLabels": 0
+        },
+        {
+          "name": "team-overview",
+          "width": 320,
+          "scrollWidth": 320,
+          "serifTextNodes": 0,
+          "developmentStatusLabels": 0
+        },
+        {
+          "name": "player-my-stats",
+          "width": 320,
+          "scrollWidth": 320,
+          "serifTextNodes": 0,
+          "developmentStatusLabels": 0
+        },
+        {
+          "name": "private-player-feedback",
+          "width": 320,
+          "scrollWidth": 320,
+          "serifTextNodes": 0,
+          "developmentStatusLabels": 0
+        }
+      ],
+      "header": {
+        "exactRole": true,
+        "oneSignOut": true,
+        "iconOnly": true,
+        "signOut44px": true,
+        "sameHeaderRow": true
+      },
+      "feedback": {
+        "status": 200,
+        "audience": "player",
+        "managerReadOnly": false,
+        "playerOwnOnly": true,
+        "matches": 2
+      },
+      "passed": true,
+      "loginHttp": 200,
+      "logoutHttp": 204,
+      "exactUiTokenAfterLogout": [
+        401
+      ],
+      "browserStores": {
+        "signedIn": {
+          "localStorageEntries": 2,
+          "sessionStorageEntries": 0,
+          "indexedDbDatabases": 0,
+          "knownCredentialMatches": 0,
+          "knownUiTokenMatches": 0,
+          "opaqueTokenPatternFound": false
+        },
+        "signedOut": {
+          "localStorageEntries": 2,
+          "sessionStorageEntries": 0,
+          "indexedDbDatabases": 0,
+          "knownCredentialMatches": 0,
+          "knownUiTokenMatches": 0,
+          "opaqueTokenPatternFound": false
+        }
+      },
+      "pageErrors": [],
+      "applicationMutations": 0,
+      "apiRequestCount": 15,
+      "nativeDeviceEvidence": false
+    },
+    {
+      "role": "player",
+      "width": 390,
+      "unmockedPublicSite": true,
+      "views": [
+        {
+          "name": "initial-role-home",
+          "width": 390,
+          "scrollWidth": 390,
+          "serifTextNodes": 0,
+          "developmentStatusLabels": 0
+        },
+        {
+          "name": "team-overview",
+          "width": 390,
+          "scrollWidth": 390,
+          "serifTextNodes": 0,
+          "developmentStatusLabels": 0
+        },
+        {
+          "name": "player-my-stats",
+          "width": 390,
+          "scrollWidth": 390,
+          "serifTextNodes": 0,
+          "developmentStatusLabels": 0
+        },
+        {
+          "name": "private-player-feedback",
+          "width": 390,
+          "scrollWidth": 390,
+          "serifTextNodes": 0,
+          "developmentStatusLabels": 0
+        }
+      ],
+      "header": {
+        "exactRole": true,
+        "oneSignOut": true,
+        "iconOnly": true,
+        "signOut44px": true,
+        "sameHeaderRow": true
+      },
+      "feedback": {
+        "status": 200,
+        "audience": "player",
+        "managerReadOnly": false,
+        "playerOwnOnly": true,
+        "matches": 2
+      },
+      "passed": true,
+      "loginHttp": 200,
+      "logoutHttp": 204,
+      "exactUiTokenAfterLogout": [
+        401
+      ],
+      "browserStores": {
+        "signedIn": {
+          "localStorageEntries": 2,
+          "sessionStorageEntries": 0,
+          "indexedDbDatabases": 0,
+          "knownCredentialMatches": 0,
+          "knownUiTokenMatches": 0,
+          "opaqueTokenPatternFound": false
+        },
+        "signedOut": {
+          "localStorageEntries": 2,
+          "sessionStorageEntries": 0,
+          "indexedDbDatabases": 0,
+          "knownCredentialMatches": 0,
+          "knownUiTokenMatches": 0,
+          "opaqueTokenPatternFound": false
+        }
+      },
+      "pageErrors": [],
+      "applicationMutations": 0,
+      "apiRequestCount": 15,
+      "nativeDeviceEvidence": false
+    },
+    {
+      "role": "manager",
+      "width": 320,
+      "unmockedPublicSite": true,
+      "views": [
+        {
+          "name": "initial-role-home",
+          "width": 320,
+          "scrollWidth": 320,
+          "serifTextNodes": 0,
+          "developmentStatusLabels": 0
+        },
+        {
+          "name": "team-overview",
+          "width": 320,
+          "scrollWidth": 320,
+          "serifTextNodes": 0,
+          "developmentStatusLabels": 0
+        },
+        {
+          "name": "staff-selected-player-position-map",
+          "width": 320,
+          "scrollWidth": 320,
+          "serifTextNodes": 0,
+          "developmentStatusLabels": 0
+        },
+        {
+          "name": "staff-whole-team-position-map",
+          "width": 320,
+          "scrollWidth": 320,
+          "serifTextNodes": 0,
+          "developmentStatusLabels": 0
+        },
+        {
+          "name": "private-manager-feedback",
+          "width": 320,
+          "scrollWidth": 320,
+          "serifTextNodes": 0,
+          "developmentStatusLabels": 0
+        },
+        {
+          "name": "manager-saved-player-setups-and-roster",
+          "width": 320,
+          "scrollWidth": 320,
+          "serifTextNodes": 0,
+          "developmentStatusLabels": 0
+        },
+        {
+          "name": "manager-team-positions-read-only-visit",
+          "width": 320,
+          "scrollWidth": 320,
+          "serifTextNodes": 0,
+          "developmentStatusLabels": 0
+        }
+      ],
+      "header": {
+        "exactRole": true,
+        "oneSignOut": true,
+        "iconOnly": true,
+        "signOut44px": true,
+        "sameHeaderRow": true
+      },
+      "feedback": {
+        "status": 200,
+        "audience": "manager",
+        "managerReadOnly": true,
+        "playerOwnOnly": false,
+        "matches": 2
+      },
+      "passed": true,
+      "loginHttp": 200,
+      "logoutHttp": 204,
+      "exactUiTokenAfterLogout": [
+        401
+      ],
+      "browserStores": {
+        "signedIn": {
+          "localStorageEntries": 3,
+          "sessionStorageEntries": 0,
+          "indexedDbDatabases": 1,
+          "knownCredentialMatches": 0,
+          "knownUiTokenMatches": 0,
+          "opaqueTokenPatternFound": false
+        },
+        "signedOut": {
+          "localStorageEntries": 3,
+          "sessionStorageEntries": 0,
+          "indexedDbDatabases": 1,
+          "knownCredentialMatches": 0,
+          "knownUiTokenMatches": 0,
+          "opaqueTokenPatternFound": false
+        }
+      },
+      "pageErrors": [],
+      "applicationMutations": 0,
+      "apiRequestCount": 18,
+      "nativeDeviceEvidence": false
+    },
+    {
+      "role": "manager",
+      "width": 390,
+      "unmockedPublicSite": true,
+      "views": [
+        {
+          "name": "initial-role-home",
+          "width": 390,
+          "scrollWidth": 390,
+          "serifTextNodes": 0,
+          "developmentStatusLabels": 0
+        },
+        {
+          "name": "team-overview",
+          "width": 390,
+          "scrollWidth": 390,
+          "serifTextNodes": 0,
+          "developmentStatusLabels": 0
+        },
+        {
+          "name": "staff-selected-player-position-map",
+          "width": 390,
+          "scrollWidth": 390,
+          "serifTextNodes": 0,
+          "developmentStatusLabels": 0
+        },
+        {
+          "name": "staff-whole-team-position-map",
+          "width": 390,
+          "scrollWidth": 390,
+          "serifTextNodes": 0,
+          "developmentStatusLabels": 0
+        },
+        {
+          "name": "private-manager-feedback",
+          "width": 390,
+          "scrollWidth": 390,
+          "serifTextNodes": 0,
+          "developmentStatusLabels": 0
+        },
+        {
+          "name": "manager-saved-player-setups-and-roster",
+          "width": 390,
+          "scrollWidth": 390,
+          "serifTextNodes": 0,
+          "developmentStatusLabels": 0
+        },
+        {
+          "name": "manager-team-positions-read-only-visit",
+          "width": 390,
+          "scrollWidth": 390,
+          "serifTextNodes": 0,
+          "developmentStatusLabels": 0
+        }
+      ],
+      "header": {
+        "exactRole": true,
+        "oneSignOut": true,
+        "iconOnly": true,
+        "signOut44px": true,
+        "sameHeaderRow": true
+      },
+      "feedback": {
+        "status": 200,
+        "audience": "manager",
+        "managerReadOnly": true,
+        "playerOwnOnly": false,
+        "matches": 2
+      },
+      "passed": true,
+      "loginHttp": 200,
+      "logoutHttp": 204,
+      "exactUiTokenAfterLogout": [
+        401
+      ],
+      "browserStores": {
+        "signedIn": {
+          "localStorageEntries": 3,
+          "sessionStorageEntries": 0,
+          "indexedDbDatabases": 1,
+          "knownCredentialMatches": 0,
+          "knownUiTokenMatches": 0,
+          "opaqueTokenPatternFound": false
+        },
+        "signedOut": {
+          "localStorageEntries": 3,
+          "sessionStorageEntries": 0,
+          "indexedDbDatabases": 1,
+          "knownCredentialMatches": 0,
+          "knownUiTokenMatches": 0,
+          "opaqueTokenPatternFound": false
+        }
+      },
+      "pageErrors": [],
+      "applicationMutations": 0,
+      "apiRequestCount": 18,
+      "nativeDeviceEvidence": false
+    },
+    {
+      "role": "administrator",
+      "width": 320,
+      "unmockedPublicSite": true,
+      "views": [
+        {
+          "name": "initial-role-home",
+          "width": 320,
+          "scrollWidth": 320,
+          "serifTextNodes": 0,
+          "developmentStatusLabels": 0
+        },
+        {
+          "name": "team-overview",
+          "width": 320,
+          "scrollWidth": 320,
+          "serifTextNodes": 0,
+          "developmentStatusLabels": 0
+        },
+        {
+          "name": "staff-selected-player-position-map",
+          "width": 320,
+          "scrollWidth": 320,
+          "serifTextNodes": 0,
+          "developmentStatusLabels": 0
+        },
+        {
+          "name": "staff-whole-team-position-map",
+          "width": 320,
+          "scrollWidth": 320,
+          "serifTextNodes": 0,
+          "developmentStatusLabels": 0
+        }
+      ],
+      "header": {
+        "exactRole": true,
+        "oneSignOut": true,
+        "iconOnly": true,
+        "signOut44px": true,
+        "sameHeaderRow": true
+      },
+      "feedback": {
+        "status": 404,
+        "privateEntriesDenied": true
+      },
+      "passed": true,
+      "loginHttp": 200,
+      "logoutHttp": 204,
+      "exactUiTokenAfterLogout": [
+        401
+      ],
+      "browserStores": {
+        "signedIn": {
+          "localStorageEntries": 4,
+          "sessionStorageEntries": 0,
+          "indexedDbDatabases": 1,
+          "knownCredentialMatches": 0,
+          "knownUiTokenMatches": 0,
+          "opaqueTokenPatternFound": false
+        },
+        "signedOut": {
+          "localStorageEntries": 4,
+          "sessionStorageEntries": 0,
+          "indexedDbDatabases": 1,
+          "knownCredentialMatches": 0,
+          "knownUiTokenMatches": 0,
+          "opaqueTokenPatternFound": false
+        }
+      },
+      "pageErrors": [],
+      "applicationMutations": 0,
+      "apiRequestCount": 13,
+      "nativeDeviceEvidence": false
+    },
+    {
+      "role": "administrator",
+      "width": 390,
+      "unmockedPublicSite": true,
+      "views": [
+        {
+          "name": "initial-role-home",
+          "width": 390,
+          "scrollWidth": 390,
+          "serifTextNodes": 0,
+          "developmentStatusLabels": 0
+        },
+        {
+          "name": "team-overview",
+          "width": 390,
+          "scrollWidth": 390,
+          "serifTextNodes": 0,
+          "developmentStatusLabels": 0
+        },
+        {
+          "name": "staff-selected-player-position-map",
+          "width": 390,
+          "scrollWidth": 390,
+          "serifTextNodes": 0,
+          "developmentStatusLabels": 0
+        },
+        {
+          "name": "staff-whole-team-position-map",
+          "width": 390,
+          "scrollWidth": 390,
+          "serifTextNodes": 0,
+          "developmentStatusLabels": 0
+        }
+      ],
+      "header": {
+        "exactRole": true,
+        "oneSignOut": true,
+        "iconOnly": true,
+        "signOut44px": true,
+        "sameHeaderRow": true
+      },
+      "feedback": {
+        "status": 404,
+        "privateEntriesDenied": true
+      },
+      "passed": true,
+      "loginHttp": 200,
+      "logoutHttp": 204,
+      "exactUiTokenAfterLogout": [
+        401
+      ],
+      "browserStores": {
+        "signedIn": {
+          "localStorageEntries": 4,
+          "sessionStorageEntries": 0,
+          "indexedDbDatabases": 1,
+          "knownCredentialMatches": 0,
+          "knownUiTokenMatches": 0,
+          "opaqueTokenPatternFound": false
+        },
+        "signedOut": {
+          "localStorageEntries": 4,
+          "sessionStorageEntries": 0,
+          "indexedDbDatabases": 1,
+          "knownCredentialMatches": 0,
+          "knownUiTokenMatches": 0,
+          "opaqueTokenPatternFound": false
+        }
+      },
+      "pageErrors": [],
+      "applicationMutations": 0,
+      "apiRequestCount": 13,
+      "nativeDeviceEvidence": false
+    }
+  ],
+  "footerInvestigation": {
+    "finding": "No steady-state public Spectator footer defect reproduced at either phone width. Home/Overview primary navigation, Home and Scores controls were visible and fully within the844px viewport. Cause of the earlier screenshot appearance is not established.",
+    "evidence": [
+      {
+        "width": 320,
+        "visible": true,
+        "box": {
+          "x": 12,
+          "y": 770,
+          "width": 296,
+          "height": 66
+        },
+        "homeVisible": true,
+        "scoresVisible": true
+      },
+      {
+        "width": 390,
+        "visible": true,
+        "box": {
+          "x": 12,
+          "y": 770,
+          "width": 366,
+          "height": 66
+        },
+        "homeVisible": true,
+        "scoresVisible": true
+      }
+    ]
+  },
+  "earlierAttempts": [
+    {
+      "stage": "initial public provenance",
+      "result": "Readiness assertion failed before approved credentials were used; the first response value was not retained. A separate diagnostic immediately observed ready discovery, expected runtime source/window and health200. The final provenance check also passed.",
+      "productDefectEstablished": false
+    },
+    {
+      "stage": "first exploratory Spectator320 journey",
+      "result": "Signed-in views/header/footer/privacy checks passed; harness checked accumulated logout statuses immediately after private UI closure and before awaiting the network response. Final journeys await the actual DELETE response and assert204, then assert401 for the same UI token.",
+      "evidence": {
+        "role": "spectator",
+        "width": 320,
+        "unmockedPublicSite": true,
+        "views": [
+          {
+            "name": "initial-role-home",
+            "width": 320,
+            "scrollWidth": 320,
+            "serifTextNodes": 0,
+            "developmentStatusLabels": 0
+          },
+          {
+            "name": "team-overview",
+            "width": 320,
+            "scrollWidth": 320,
+            "serifTextNodes": 0,
+            "developmentStatusLabels": 0
+          },
+          {
+            "name": "spectator-scores",
+            "width": 320,
+            "scrollWidth": 320,
+            "serifTextNodes": 0,
+            "developmentStatusLabels": 0
+          }
+        ],
+        "header": {
+          "exactRole": true,
+          "oneSignOut": true,
+          "iconOnly": true,
+          "signOut44px": true,
+          "sameHeaderRow": true
+        },
+        "spectatorBottomNavigation": {
+          "visible": true,
+          "box": {
+            "x": 12,
+            "y": 770,
+            "width": 296,
+            "height": 66
+          },
+          "homeVisible": true,
+          "scoresVisible": true
+        },
+        "feedback": {
+          "status": 404,
+          "privateEntriesDenied": true
+        },
+        "passed": false,
+        "errorType": "AssertionError",
+        "error": "Actual UI logout must complete with HTTP204.",
+        "pageErrors": [],
+        "lastApiStatuses": [
+          {
+            "method": "GET",
+            "path": "/health",
+            "status": 200
+          },
+          {
+            "method": "POST",
+            "path": "/v1/demo/sessions",
+            "status": 200
+          },
+          {
+            "method": "GET",
+            "path": "/v1/me",
+            "status": 200
+          },
+          {
+            "method": "GET",
+            "path": "/v1/me",
+            "status": 200
+          },
+          {
+            "method": "GET",
+            "path": "/v1/me",
+            "status": 200
+          },
+          {
+            "method": "GET",
+            "path": "/v1/teams/synthetic-roma-u10/community",
+            "status": 200
+          },
+          {
+            "method": "GET",
+            "path": "/v1/teams/synthetic-roma-u10/privileges/own",
+            "status": 200
+          },
+          {
+            "method": "GET",
+            "path": "/v1/teams/synthetic-roma-u10/matches",
+            "status": 200
+          },
+          {
+            "method": "GET",
+            "path": "/v1/teams/synthetic-roma-u10/team-overview",
+            "status": 200
+          },
+          {
+            "method": "GET",
+            "path": "/v1/teams/synthetic-roma-u10/branding",
+            "status": 200
+          },
+          {
+            "method": "GET",
+            "path": "/v1/teams/synthetic-roma-u10/records",
+            "status": 200
+          }
+        ]
+      },
+      "productDefectEstablished": false
+    }
+  ],
+  "sessionStopped": true,
+  "redaction": {
+    "rawUsernamesPasscodesTokensCdpUrlsRetained": false,
+    "credentialValuesInEvidence": 0
+  },
+  "limits": [
+    "Public application records were not mutated; only approved sessions were created and revoked.",
+    "Live private feedback entry editing and fixture/setup writes were not performed; isolated source-bound feature evidence covers those writes.",
+    "Browser storage checks cover localStorage, sessionStorage and available IndexedDB contents for known supplied credentials, observed UI tokens and the opaque demo-token pattern.",
+    "Typography checks count visible viewport text nodes in each recorded signed-in view.",
+    "No physical native-device, production identity, production operating or policy-approval claim."
+  ]
+}

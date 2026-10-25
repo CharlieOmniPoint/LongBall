@@ -1,0 +1,1 @@
+{"role":"longball_api","passed":["restricted_role_attributes","cannot_create_schema_objects","cannot_create_public_objects","cannot_alter_schema","cannot_change_migration_version","api_cannot_delete_domain_rows","api_cannot_rewrite_audit","api_insert_update_and_feature_verification"]}

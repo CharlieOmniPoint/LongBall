@@ -1,0 +1,72 @@
+{
+  "productSource": "aeefdbf5f9bacc3462924af3528f9597f725d4bd",
+  "productTree": "79ba4a276e0a747b11de4111031e9a9d1434cf68",
+  "scope": "Safe report copies and five visually inspected generated-data screenshots. Report bytes retain their original source/time fields. This manifest is not hosted/native-device acceptance.",
+  "files": [
+    {
+      "name": "expansion-browser-aeefdbf.json",
+      "bytes": 6026,
+      "sha256": "76b2dfabb3106c41f33e505014858bea2fecf2ac8a2e5839634b83092d0baa9c"
+    },
+    {
+      "name": "demo-browser-aeefdbf.json",
+      "bytes": 19681,
+      "sha256": "86972a7a4164586240ef04f3fdf3cb6f2a3d62a62f0b5c5d75f520da7af13761"
+    },
+    {
+      "name": "demo-assets-before-aeefdbf.json",
+      "bytes": 905,
+      "sha256": "9820013cdc7929ca6c2534bb41b615ad96ca5959a174a610a27aa3156f8ca8d0"
+    },
+    {
+      "name": "demo-assets-after-aeefdbf.json",
+      "bytes": 2562,
+      "sha256": "18dea1f4be032af8a2d0d36d7ba4e6b1a5eb35da67c5b8f5256ce3aec63bbf51"
+    },
+    {
+      "name": "tablet-browser-aeefdbf.json",
+      "bytes": 19662,
+      "sha256": "6375ada88b05009294bcb02dc9e304e64778280bbc70726efc1ebb88dfef4368"
+    },
+    {
+      "name": "tablet-assets-aeefdbf.json",
+      "bytes": 2747,
+      "sha256": "dd41a559b8015e17720ef062f479d92963925a361e8d55b33f514839a5956733"
+    },
+    {
+      "name": "secret-scan-aeefdbf.json",
+      "bytes": 25651,
+      "sha256": "6246dc85214cbec4667c5aa689330ad879aba325cc52e8455b2213ae85ac0b82"
+    },
+    {
+      "name": "manager-formation-390.png",
+      "bytes": 37565,
+      "sha256": "588db7ec7462d1759cd60f297fa2344997af751671d8ff16fb71f06ad024ecc0"
+    },
+    {
+      "name": "super-admin-purple-tablet.png",
+      "bytes": 72551,
+      "sha256": "e4ed33419dc047d1619a4a391cb0388d86e64af01e17665686fb4fa8684b94c2"
+    },
+    {
+      "name": "spectator-blue-multiple-teams-390.png",
+      "bytes": 59601,
+      "sha256": "74577183a44698266e6a20973d9921a44921886f916c836b5a2641afc49429f7"
+    },
+    {
+      "name": "manager-countdowns-390.png",
+      "bytes": 59432,
+      "sha256": "0c44a0eb4f4e1cb26acf37f77f4b97e873a854475c1668856dc5328dce12c3eb"
+    },
+    {
+      "name": "manager-countdowns-320.png",
+      "bytes": 55630,
+      "sha256": "ef644235a52faa2bd769c9d4bc9740db94be1154ccaa108f95644fdf2e3ccfe1"
+    },
+    {
+      "name": "native-js-aeefdbf.json",
+      "bytes": 1090,
+      "sha256": "3abcca689a28ab0c0bda8cd78dc76d4041da155f901486619e4958a4e620153f"
+    }
+  ]
+}

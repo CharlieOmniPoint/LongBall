@@ -1,0 +1,118 @@
+{
+  "runId": "20261021123008695",
+  "completedAt": "2026-10-21T12:31:55.524Z",
+  "status": "passed",
+  "scope": "Uncommitted development candidate browser evidence; no physical device or release-readiness claim",
+  "baseURL": "http://127.0.0.1:4173",
+  "api": "http://127.0.0.1:4349",
+  "health": {
+    "status": "ok",
+    "service": "longball-api",
+    "contractVersion": "longball.events/1.1",
+    "backend": "fictional-sqlite",
+    "syntheticOnly": true
+  },
+  "viewportWidths": [
+    390,
+    320
+  ],
+  "initialSlotVersions": {
+    "club": 2,
+    "team": 2
+  },
+  "finalSlotVersions": {
+    "club": 4,
+    "team": 4
+  },
+  "webBundle": "/_expo/static/js/web/index-235f9a3719cf34be53467fb946ee21c0.js",
+  "webSha256": "096ba32215de264e0bec87288347bda2778f34a262aeebe6b5b67d234e0cd2f5",
+  "apiSnapshotSha256": "517a3e6c6a52918aea1f732cac68fb214ab000d041dbc99882fc60a018d6e411",
+  "checks": [
+    "Private upload retains original scope and disables outer reconnect/account/API edits",
+    "Manager-only team logo: real private upload + scanner + derivative; no pointer change until exact image load, rights and explicit publication",
+    "Selected administrator publishes only seasonless club logo; existing team override remains effective",
+    "Current published team and inherited club badges display authenticated PNG pixels at both 390 and 320 pixels",
+    "Explicit team override removal restores the current club asset without deleting either retained asset",
+    "Club reference removal returns neutral badge; all prior assets retained and preparation/players unchanged"
+  ],
+  "writes": [
+    {
+      "endpoint": "/v1/teams/synthetic-roma-u10/branding/team_logo/uploads/prepare",
+      "kind": "team_logo",
+      "clubId": null,
+      "teamId": "synthetic-roma-u10",
+      "mimeType": "image/png",
+      "byteSize": 175
+    },
+    {
+      "endpoint": "/v1/teams/synthetic-roma-u10/branding/team_logo/publish",
+      "type": "logo.published",
+      "kind": "team_logo",
+      "commandId": "94c791d5-11f2-42c1-8927-a16ba4cfe051",
+      "expectedSlotVersion": 2,
+      "assetId": "logo-755afbf1-44dc-4090-b8f4-97601de98ff3",
+      "reviewedRevision": 1
+    },
+    {
+      "endpoint": "/v1/teams/synthetic-roma-u10/branding/club_logo/uploads/prepare",
+      "kind": "club_logo",
+      "clubId": "synthetic-richmond-rovers",
+      "teamId": null,
+      "mimeType": "image/png",
+      "byteSize": 175
+    },
+    {
+      "endpoint": "/v1/teams/synthetic-roma-u10/branding/club_logo/publish",
+      "type": "logo.published",
+      "kind": "club_logo",
+      "commandId": "f3541a36-4f3d-47b4-834b-2dd07dd9a887",
+      "expectedSlotVersion": 2,
+      "assetId": "logo-db0c0634-dfcd-49b9-bf77-fff666c5585b",
+      "reviewedRevision": 1
+    },
+    {
+      "endpoint": "/v1/teams/synthetic-roma-u10/branding/team_logo/remove",
+      "type": "logo.removed",
+      "kind": "team_logo",
+      "commandId": "04599ac8-7c3e-4af9-8fb7-91c6853e50d1",
+      "expectedSlotVersion": 3,
+      "assetId": null,
+      "reviewedRevision": null
+    },
+    {
+      "endpoint": "/v1/teams/synthetic-roma-u10/branding/club_logo/remove",
+      "type": "logo.removed",
+      "kind": "club_logo",
+      "commandId": "0f07f9c2-c2ee-4a5b-a354-7092843888e3",
+      "expectedSlotVersion": 3,
+      "assetId": null,
+      "reviewedRevision": null
+    }
+  ],
+  "pageErrors": [],
+  "nativeTestingPending": [
+    "iPhone/Android image picker including original HEIC selection",
+    "Native image decode and foreground recovery on physical phones"
+  ],
+  "postRunRetentionRead": {
+    "verifiedAt": "2026-10-21T12:33:53.962Z",
+    "checks": [
+      {
+        "role": "manager",
+        "knownAssetIdsRetained": [
+          "logo-447179c9-5d1f-45a0-903d-ea762f9c5e2d",
+          "logo-755afbf1-44dc-4090-b8f4-97601de98ff3"
+        ],
+        "totalOwnAssets": 3
+      },
+      {
+        "role": "administrator",
+        "knownAssetIdsRetained": [
+          "logo-1864527a-103e-49bf-9601-90198a2754d2",
+          "logo-db0c0634-dfcd-49b9-bf77-fff666c5585b"
+        ],
+        "totalOwnAssets": 2
+      }
+    ]
+  }
+}

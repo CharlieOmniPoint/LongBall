@@ -1,0 +1,67 @@
+{
+  "passed": true,
+  "productSource": "d07cf42ae04b17ff6c00f1d84f2e5c8bed2a9114",
+  "pagesTransport": "56a49cb45b975a84b3faba73c2245287c766a0ba",
+  "pagesRun": 40206896925,
+  "pagesRunConclusion": "success",
+  "publicUrl": "https://charlieomnipoint.github.io/LongBall/?review=d07cf42",
+  "verification": {
+    "discovery": {
+      "json": {
+        "audience": "LongBall demo review with simulated Roma U10 teams and matches",
+        "expiresAt": "2026-10-25T20:24:56Z",
+        "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40206586726",
+        "sourceRevision": "f1e1a748487be1e628567f0339becedf8162eb7d",
+        "startedAt": "2026-10-25T15:24:56Z",
+        "state": "ready",
+        "url": "https://vic-subjects-evaluated-sociology.trycloudflare.com"
+      },
+      "status": 200
+    },
+    "health": {
+      "json": {
+        "backend": "fictional-sqlite",
+        "contractVersion": "longball.events/1.1",
+        "demoAccountLogin": true,
+        "demoScenario": true,
+        "service": "longball-api",
+        "status": "ok",
+        "syntheticOnly": true
+      },
+      "status": 200
+    },
+    "javaScriptSha256": "2f382820a80ecef57fc065f34237b8b67bf7641b7357b86c3f55b5c6faacecf9",
+    "jsonSource": "d07cf42ae04b17ff6c00f1d84f2e5c8bed2a9114",
+    "noCredentialsUsed": true,
+    "observedAt": "2026-10-25T15:26:53.724Z",
+    "script": "/LongBall/_expo/static/js/web/index-f5e4a6bbf7f630326c1b922af4080c8a.js",
+    "source": {
+      "json": {
+        "basePath": "/LongBall",
+        "connectedBackendIncluded": false,
+        "nativeTargets": [
+          "iPhone",
+          "Android"
+        ],
+        "production": false,
+        "sourceBranch": "dev/longball-m0-journey",
+        "sourceCommit": "d07cf42ae04b17ff6c00f1d84f2e5c8bed2a9114",
+        "synthetic": true
+      },
+      "status": 200
+    },
+    "unauthenticatedReport": {
+      "code": "INVALID_SESSION",
+      "status": 401
+    }
+  },
+  "form": {
+    "loginFormVisible": true,
+    "noCredentialsUsed": true,
+    "observedAt": "2026-10-25T15:27:26.166Z",
+    "passwordRulePresent": true,
+    "policyVersion": null,
+    "publicRulesStatus": 200,
+    "usernameRulePresent": true
+  }
+}

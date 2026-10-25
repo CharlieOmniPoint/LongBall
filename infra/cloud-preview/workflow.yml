@@ -1,0 +1,45 @@
+name: LongBall temporary demo service
+
+on:
+  push:
+    branches: [preview/longball-m0]
+    paths:
+      [
+        "site/**",
+        "backend/**",
+        "preview/**",
+        ".github/workflows/cloud-preview.yml",
+      ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: longball-fictional-cloud-review
+  cancel-in-progress: true
+
+jobs:
+  review:
+    if: github.repository == 'CharlieOmniPoint/LongBall' && github.event.repository.private == false
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+      - name: Use the pinned Node runtime
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "24.19.0"
+      - name: Install the isolated decoder runtime
+        run: npm ci --prefix backend --omit=dev --ignore-scripts --no-audit --no-fund
+      - name: Build the pinned maintained HEIC runtime
+        run: >-
+          docker build --target heic-helper
+          --secret id=proxy_ca,src=/etc/ssl/certs/ca-certificates.crt
+          --output type=local,dest=.local/heic-runtime
+          -f infra/runtime/Dockerfile .
+      - name: Serve the demo for a bounded five-hour review
+        run: bash preview/run.sh

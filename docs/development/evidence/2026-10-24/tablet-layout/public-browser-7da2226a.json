@@ -1,0 +1,865 @@
+{
+  "sourceCommit": "7da2226a2b24a878ea2ac1c6cb55fe07df33a220",
+  "pagesUrl": "https://charlieomnipoint.github.io/LongBall/?v=7da2226",
+  "pagesScriptSha256": "9679216d73426ecce7abb947e8e714915eac5ea9cc90ee25e993e660a5d13796",
+  "apiUrl": "https://drinks-motel-reply-washington.trycloudflare.com",
+  "serviceStartsAt": "2026-10-24T18:13:31Z",
+  "serviceExpiresAt": "2026-10-24T23:13:31Z",
+  "ownerApprovedDestination": "Firecrawl for four dummy demo accounts",
+  "viewports": [
+    {
+      "width": 390,
+      "height": 844
+    },
+    {
+      "width": 820,
+      "height": 1180
+    },
+    {
+      "width": 1180,
+      "height": 820
+    }
+  ],
+  "journeys": [
+    {
+      "role": "manager",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "passed": true,
+      "loginStatus": 200,
+      "rememberedBefore": "auto",
+      "before": {
+        "effective": "phone",
+        "shellWidth": 390,
+        "noOverflow": true,
+        "staffControls": true
+      },
+      "storage": {
+        "webStorageAreas": 2,
+        "indexedDbStores": 1,
+        "knownCredentialMatches": 0,
+        "demoTokenPatternMatches": 0
+      },
+      "logout": {
+        "status": 204,
+        "privateViewClosed": true,
+        "exactUiToken401": null
+      }
+    },
+    {
+      "role": "manager",
+      "viewport": {
+        "width": 820,
+        "height": 1180
+      },
+      "passed": true,
+      "loginStatus": 200,
+      "rememberedBefore": "auto",
+      "before": {
+        "effective": "tablet",
+        "shellWidth": 820,
+        "noOverflow": true,
+        "staffControls": true
+      },
+      "storage": {
+        "webStorageAreas": 2,
+        "indexedDbStores": 1,
+        "knownCredentialMatches": 0,
+        "demoTokenPatternMatches": 0
+      },
+      "logout": {
+        "status": 204,
+        "privateViewClosed": true,
+        "exactUiToken401": null
+      }
+    },
+    {
+      "role": "manager",
+      "viewport": {
+        "width": 1180,
+        "height": 820
+      },
+      "passed": true,
+      "loginStatus": 200,
+      "rememberedBefore": "phone",
+      "before": {
+        "effective": "phone",
+        "shellWidth": 632,
+        "noOverflow": true,
+        "staffControls": true
+      },
+      "storage": {
+        "webStorageAreas": 2,
+        "indexedDbStores": 1,
+        "knownCredentialMatches": 0,
+        "demoTokenPatternMatches": 0
+      },
+      "logout": {
+        "status": 204,
+        "privateViewClosed": true,
+        "exactUiToken401": null
+      }
+    },
+    {
+      "role": "administrator",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "passed": true,
+      "loginStatus": 200,
+      "rememberedBefore": "tablet",
+      "before": {
+        "effective": "tablet",
+        "shellWidth": 390,
+        "noOverflow": true,
+        "staffControls": true
+      },
+      "storage": {
+        "webStorageAreas": 2,
+        "indexedDbStores": 1,
+        "knownCredentialMatches": 0,
+        "demoTokenPatternMatches": 0
+      },
+      "logout": {
+        "status": 204,
+        "privateViewClosed": true,
+        "exactUiToken401": null
+      }
+    },
+    {
+      "role": "administrator",
+      "viewport": {
+        "width": 820,
+        "height": 1180
+      },
+      "passed": true,
+      "loginStatus": 200,
+      "rememberedBefore": "auto",
+      "before": {
+        "effective": "tablet",
+        "shellWidth": 820,
+        "noOverflow": true,
+        "staffControls": true
+      },
+      "storage": {
+        "webStorageAreas": 2,
+        "indexedDbStores": 1,
+        "knownCredentialMatches": 0,
+        "demoTokenPatternMatches": 0
+      },
+      "logout": {
+        "status": 204,
+        "privateViewClosed": true,
+        "exactUiToken401": true
+      }
+    },
+    {
+      "role": "administrator",
+      "viewport": {
+        "width": 1180,
+        "height": 820
+      },
+      "passed": true,
+      "loginStatus": 200,
+      "rememberedBefore": "phone",
+      "before": {
+        "effective": "phone",
+        "shellWidth": 632,
+        "noOverflow": true,
+        "staffControls": true
+      },
+      "storage": {
+        "webStorageAreas": 2,
+        "indexedDbStores": 1,
+        "knownCredentialMatches": 0,
+        "demoTokenPatternMatches": 0
+      },
+      "logout": {
+        "status": 204,
+        "privateViewClosed": true,
+        "exactUiToken401": true
+      }
+    },
+    {
+      "role": "player",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "passed": true,
+      "loginStatus": 200,
+      "retainedStaffPreference": "tablet",
+      "layout": {
+        "effective": "phone",
+        "shellWidth": 390,
+        "noOverflow": true,
+        "staffControls": false
+      },
+      "storage": {
+        "webStorageAreas": 2,
+        "indexedDbStores": 1,
+        "knownCredentialMatches": 0,
+        "demoTokenPatternMatches": 0
+      },
+      "logout": {
+        "status": 204,
+        "privateViewClosed": true,
+        "exactUiToken401": null
+      }
+    },
+    {
+      "role": "player",
+      "viewport": {
+        "width": 820,
+        "height": 1180
+      },
+      "passed": true,
+      "loginStatus": 200,
+      "retainedStaffPreference": "tablet",
+      "layout": {
+        "effective": "phone",
+        "shellWidth": 632,
+        "noOverflow": true,
+        "staffControls": false
+      },
+      "storage": {
+        "webStorageAreas": 2,
+        "indexedDbStores": 1,
+        "knownCredentialMatches": 0,
+        "demoTokenPatternMatches": 0
+      },
+      "logout": {
+        "status": 204,
+        "privateViewClosed": true,
+        "exactUiToken401": true
+      }
+    },
+    {
+      "role": "player",
+      "viewport": {
+        "width": 1180,
+        "height": 820
+      },
+      "passed": true,
+      "loginStatus": 200,
+      "retainedStaffPreference": "tablet",
+      "layout": {
+        "effective": "phone",
+        "shellWidth": 632,
+        "noOverflow": true,
+        "staffControls": false
+      },
+      "storage": {
+        "webStorageAreas": 2,
+        "indexedDbStores": 1,
+        "knownCredentialMatches": 0,
+        "demoTokenPatternMatches": 0
+      },
+      "logout": {
+        "status": 204,
+        "privateViewClosed": true,
+        "exactUiToken401": null
+      }
+    },
+    {
+      "role": "spectator",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "passed": true,
+      "loginStatus": 200,
+      "retainedStaffPreference": "tablet",
+      "layout": {
+        "effective": "phone",
+        "shellWidth": 390,
+        "noOverflow": true,
+        "staffControls": false
+      },
+      "storage": {
+        "webStorageAreas": 2,
+        "indexedDbStores": 1,
+        "knownCredentialMatches": 0,
+        "demoTokenPatternMatches": 0
+      },
+      "logout": {
+        "status": 204,
+        "privateViewClosed": true,
+        "exactUiToken401": null
+      }
+    },
+    {
+      "role": "spectator",
+      "viewport": {
+        "width": 820,
+        "height": 1180
+      },
+      "passed": true,
+      "loginStatus": 200,
+      "retainedStaffPreference": "tablet",
+      "layout": {
+        "effective": "phone",
+        "shellWidth": 632,
+        "noOverflow": true,
+        "staffControls": false
+      },
+      "storage": {
+        "webStorageAreas": 2,
+        "indexedDbStores": 1,
+        "knownCredentialMatches": 0,
+        "demoTokenPatternMatches": 0
+      },
+      "logout": {
+        "status": 204,
+        "privateViewClosed": true,
+        "exactUiToken401": null
+      }
+    },
+    {
+      "role": "spectator",
+      "viewport": {
+        "width": 1180,
+        "height": 820
+      },
+      "passed": true,
+      "loginStatus": 200,
+      "retainedStaffPreference": "tablet",
+      "layout": {
+        "effective": "phone",
+        "shellWidth": 632,
+        "noOverflow": true,
+        "staffControls": false
+      },
+      "storage": {
+        "webStorageAreas": 2,
+        "indexedDbStores": 1,
+        "knownCredentialMatches": 0,
+        "demoTokenPatternMatches": 0
+      },
+      "logout": {
+        "status": 204,
+        "privateViewClosed": true,
+        "exactUiToken401": null
+      }
+    }
+  ],
+  "layoutChecks": [
+    {
+      "role": "manager",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "preference": "phone",
+      "expandedStatePassed": true,
+      "focusReturnedToMenu": true,
+      "serverWrites": 0,
+      "effective": "phone",
+      "shellWidth": 390,
+      "noOverflow": true,
+      "staffControls": true,
+      "columns": {
+        "checked": true,
+        "sideBySide": false
+      }
+    },
+    {
+      "role": "manager",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "preference": "tablet",
+      "expandedStatePassed": true,
+      "focusReturnedToMenu": true,
+      "serverWrites": 0,
+      "effective": "tablet",
+      "shellWidth": 390,
+      "noOverflow": true,
+      "staffControls": true,
+      "columns": {
+        "checked": true,
+        "sideBySide": false
+      }
+    },
+    {
+      "role": "manager",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "preference": "auto",
+      "expandedStatePassed": true,
+      "focusReturnedToMenu": true,
+      "serverWrites": 0,
+      "effective": "phone",
+      "shellWidth": 390,
+      "noOverflow": true,
+      "staffControls": true,
+      "columns": {
+        "checked": true,
+        "sideBySide": false
+      }
+    },
+    {
+      "role": "manager",
+      "viewport": {
+        "width": 820,
+        "height": 1180
+      },
+      "preference": "auto",
+      "expandedStatePassed": true,
+      "focusReturnedToMenu": true,
+      "serverWrites": 0,
+      "effective": "tablet",
+      "shellWidth": 820,
+      "noOverflow": true,
+      "staffControls": true,
+      "columns": {
+        "checked": true,
+        "sideBySide": true
+      }
+    },
+    {
+      "role": "manager",
+      "viewport": {
+        "width": 820,
+        "height": 1180
+      },
+      "preference": "tablet",
+      "expandedStatePassed": true,
+      "focusReturnedToMenu": true,
+      "serverWrites": 0,
+      "effective": "tablet",
+      "shellWidth": 820,
+      "noOverflow": true,
+      "staffControls": true,
+      "columns": {
+        "checked": true,
+        "sideBySide": true
+      }
+    },
+    {
+      "role": "manager",
+      "viewport": {
+        "width": 820,
+        "height": 1180
+      },
+      "preference": "phone",
+      "expandedStatePassed": true,
+      "focusReturnedToMenu": true,
+      "serverWrites": 0,
+      "effective": "phone",
+      "shellWidth": 632,
+      "noOverflow": true,
+      "staffControls": true,
+      "columns": {
+        "checked": true,
+        "sideBySide": false
+      }
+    },
+    {
+      "role": "manager",
+      "viewport": {
+        "width": 1180,
+        "height": 820
+      },
+      "preference": "auto",
+      "expandedStatePassed": true,
+      "focusReturnedToMenu": true,
+      "serverWrites": 0,
+      "effective": "tablet",
+      "shellWidth": 1180,
+      "noOverflow": true,
+      "staffControls": true,
+      "columns": {
+        "checked": true,
+        "sideBySide": true
+      }
+    },
+    {
+      "role": "manager",
+      "viewport": {
+        "width": 1180,
+        "height": 820
+      },
+      "preference": "phone",
+      "expandedStatePassed": true,
+      "focusReturnedToMenu": true,
+      "serverWrites": 0,
+      "effective": "phone",
+      "shellWidth": 632,
+      "noOverflow": true,
+      "staffControls": true,
+      "columns": {
+        "checked": true,
+        "sideBySide": false
+      }
+    },
+    {
+      "role": "manager",
+      "viewport": {
+        "width": 1180,
+        "height": 820
+      },
+      "preference": "tablet",
+      "expandedStatePassed": true,
+      "focusReturnedToMenu": true,
+      "serverWrites": 0,
+      "effective": "tablet",
+      "shellWidth": 1180,
+      "noOverflow": true,
+      "staffControls": true,
+      "columns": {
+        "checked": true,
+        "sideBySide": true
+      }
+    },
+    {
+      "role": "administrator",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "preference": "phone",
+      "expandedStatePassed": true,
+      "focusReturnedToMenu": true,
+      "serverWrites": 0,
+      "effective": "phone",
+      "shellWidth": 390,
+      "noOverflow": true,
+      "staffControls": true,
+      "columns": {
+        "checked": true,
+        "sideBySide": false
+      }
+    },
+    {
+      "role": "administrator",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "preference": "tablet",
+      "expandedStatePassed": true,
+      "focusReturnedToMenu": true,
+      "serverWrites": 0,
+      "effective": "tablet",
+      "shellWidth": 390,
+      "noOverflow": true,
+      "staffControls": true,
+      "columns": {
+        "checked": true,
+        "sideBySide": false
+      }
+    },
+    {
+      "role": "administrator",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "preference": "auto",
+      "expandedStatePassed": true,
+      "focusReturnedToMenu": true,
+      "serverWrites": 0,
+      "effective": "phone",
+      "shellWidth": 390,
+      "noOverflow": true,
+      "staffControls": true,
+      "columns": {
+        "checked": true,
+        "sideBySide": false
+      }
+    },
+    {
+      "role": "administrator",
+      "viewport": {
+        "width": 820,
+        "height": 1180
+      },
+      "preference": "auto",
+      "expandedStatePassed": true,
+      "focusReturnedToMenu": true,
+      "serverWrites": 0,
+      "effective": "tablet",
+      "shellWidth": 820,
+      "noOverflow": true,
+      "staffControls": true,
+      "columns": {
+        "checked": true,
+        "sideBySide": true
+      }
+    },
+    {
+      "role": "administrator",
+      "viewport": {
+        "width": 820,
+        "height": 1180
+      },
+      "preference": "tablet",
+      "expandedStatePassed": true,
+      "focusReturnedToMenu": true,
+      "serverWrites": 0,
+      "effective": "tablet",
+      "shellWidth": 820,
+      "noOverflow": true,
+      "staffControls": true,
+      "columns": {
+        "checked": true,
+        "sideBySide": true
+      }
+    },
+    {
+      "role": "administrator",
+      "viewport": {
+        "width": 820,
+        "height": 1180
+      },
+      "preference": "phone",
+      "expandedStatePassed": true,
+      "focusReturnedToMenu": true,
+      "serverWrites": 0,
+      "effective": "phone",
+      "shellWidth": 632,
+      "noOverflow": true,
+      "staffControls": true,
+      "columns": {
+        "checked": true,
+        "sideBySide": false
+      }
+    },
+    {
+      "role": "administrator",
+      "viewport": {
+        "width": 1180,
+        "height": 820
+      },
+      "preference": "auto",
+      "expandedStatePassed": true,
+      "focusReturnedToMenu": true,
+      "serverWrites": 0,
+      "effective": "tablet",
+      "shellWidth": 1180,
+      "noOverflow": true,
+      "staffControls": true,
+      "columns": {
+        "checked": true,
+        "sideBySide": true
+      }
+    },
+    {
+      "role": "administrator",
+      "viewport": {
+        "width": 1180,
+        "height": 820
+      },
+      "preference": "phone",
+      "expandedStatePassed": true,
+      "focusReturnedToMenu": true,
+      "serverWrites": 0,
+      "effective": "phone",
+      "shellWidth": 632,
+      "noOverflow": true,
+      "staffControls": true,
+      "columns": {
+        "checked": true,
+        "sideBySide": false
+      }
+    },
+    {
+      "role": "administrator",
+      "viewport": {
+        "width": 1180,
+        "height": 820
+      },
+      "preference": "tablet",
+      "expandedStatePassed": true,
+      "focusReturnedToMenu": true,
+      "serverWrites": 0,
+      "effective": "tablet",
+      "shellWidth": 1180,
+      "noOverflow": true,
+      "staffControls": true,
+      "columns": {
+        "checked": true,
+        "sideBySide": true
+      }
+    }
+  ],
+  "separateHttpSessions": [
+    {
+      "role": "manager",
+      "passed": true,
+      "loginStatus": 200,
+      "preparationStatus": 200,
+      "namedProfiles": 13,
+      "fixtures": 4,
+      "logoutStatus": 204,
+      "sameHttpTokenStatus": 401,
+      "assignedScopeVerified": true
+    },
+    {
+      "role": "administrator",
+      "passed": true,
+      "loginStatus": 200,
+      "preparationStatus": 404,
+      "logoutStatus": 204,
+      "sameHttpTokenStatus": 401,
+      "assignedScopeVerified": true
+    },
+    {
+      "role": "player",
+      "passed": true,
+      "loginStatus": 200,
+      "preparationStatus": 404,
+      "logoutStatus": 204,
+      "sameHttpTokenStatus": 401,
+      "assignedScopeVerified": true
+    },
+    {
+      "role": "spectator",
+      "passed": true,
+      "loginStatus": 200,
+      "preparationStatus": 404,
+      "logoutStatus": 204,
+      "sameHttpTokenStatus": 401,
+      "assignedScopeVerified": true
+    }
+  ],
+  "failures": [],
+  "pageErrors": [],
+  "writes": [
+    {
+      "method": "POST",
+      "path": "/v1/demo/sessions"
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1/demo/sessions/current"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/demo/sessions"
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1/demo/sessions/current"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/demo/sessions"
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1/demo/sessions/current"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/demo/sessions"
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1/demo/sessions/current"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/demo/sessions"
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1/demo/sessions/current"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/demo/sessions"
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1/demo/sessions/current"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/demo/sessions"
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1/demo/sessions/current"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/demo/sessions"
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1/demo/sessions/current"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/demo/sessions"
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1/demo/sessions/current"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/demo/sessions"
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1/demo/sessions/current"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/demo/sessions"
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1/demo/sessions/current"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/demo/sessions"
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1/demo/sessions/current"
+    }
+  ],
+  "mockedRequests": false,
+  "applicationRecordsReadOnly": true,
+  "nativeDeviceProof": false,
+  "credentialValuesRecorded": false,
+  "screenshotsCaptured": false,
+  "loginAttempts": 16,
+  "readOnlyWritesVerified": true,
+  "uiExactTokenRevocationsObserved": 3,
+  "uiTokenBodyLimitation": "Exact UI-token401 checks were made only for entries whose response bodies were available. Complete role coverage uses the separately labelled HTTPS sessions.",
+  "passed": true,
+  "finalAssetBinding": {
+    "pagesSource": "7da2226a2b24a878ea2ac1c6cb55fe07df33a220",
+    "apiSource": "7da2226a2b24a878ea2ac1c6cb55fe07df33a220",
+    "scriptPath": "/LongBall/_expo/static/js/web/index-67b0504be999152c70186c6d1bdf6c14.js",
+    "actualJavaScriptSha256": "9679216d73426ecce7abb947e8e714915eac5ea9cc90ee25e993e660a5d13796",
+    "matchesExpected": true
+  },
+  "observedAt": "2026-10-24T18:24:09.103958+00:00",
+  "limitations": [
+    "Public browser viewport smoke only; no native device, signing, hardware keyboard, screen reader or physical touch proof.",
+    "The matrix only reads application records. Server writes are limited to the authorised login/logout sessions; layout preference writes are device-local.",
+    "Exact UI-token reuse checks are reported only for the 3 entries whose bodies were accessible. The 4 separate HTTPS sessions provide complete role coverage of same-token 401 after logout.",
+    "This smoke does not repeat the local draft/clock/history/worker/full-suite acceptance or approve deferred privacy, production policies or dependency findings.",
+    "A predeployment read observed the prior 0265b48 asset while Pages was deploying; no credentials were submitted until final 7da2226 source and digest matched.",
+    "Known-credential/token scans in this smoke covered localStorage, sessionStorage and IndexedDB. Cookies, CacheStorage and browser-managed HTTP cache were not inspected; the earlier local acceptance retains its own broader storage scope."
+  ],
+  "pagesTransportCommit": "4dfbcd0ebc3a8d9766a3a0284bf26817a704d06e",
+  "pagesWorkflowRun": 40119756756,
+  "pagesWorkflowConclusion": "success",
+  "independentlyReadGitObjectSha256": "9679216d73426ecce7abb947e8e714915eac5ea9cc90ee25e993e660a5d13796",
+  "serviceExpiresAtLondon": "25 October 2026 00:13:31 BST",
+  "browserSessionStopped": true
+}

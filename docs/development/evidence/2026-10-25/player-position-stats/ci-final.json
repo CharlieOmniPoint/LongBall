@@ -1,0 +1,471 @@
+{
+  "observedAt": "2026-10-25 20:06:30 UTC",
+  "productSource": {
+    "sha": "f31b823f59b64d4474f821439ffa43fc1d674942",
+    "tree": "29aeb5e7238def8009321a0786705e9108ce8ac8",
+    "parents": [
+      "ed16f22913ea88eeba171791aa0fb598d44e64f7"
+    ]
+  },
+  "sourceQualification": {
+    "pullRequest": {
+      "number": 1,
+      "headSha": "f31b823f59b64d4474f821439ffa43fc1d674942",
+      "baseSha": "031fdf5fdf4d937a0c638f81f24f9ae34db3579b",
+      "mergeCommitSha": "7d9c1038c38d00878f3501a43a4995135a91a850",
+      "state": "open"
+    },
+    "syntheticMerge": {
+      "sha": "7d9c1038c38d00878f3501a43a4995135a91a850",
+      "tree": "29aeb5e7238def8009321a0786705e9108ce8ac8",
+      "parents": [
+        "031fdf5fdf4d937a0c638f81f24f9ae34db3579b",
+        "f31b823f59b64d4474f821439ffa43fc1d674942"
+      ],
+      "treeMatchesProduct": true
+    },
+    "qualityCheckout": {
+      "jobId": 121272846923,
+      "ref": "refs/remotes/pull/1/merge",
+      "observedHead": "7d9c1038c38d00878f3501a43a4995135a91a850",
+      "expectedMerge": "7d9c1038c38d00878f3501a43a4995135a91a850",
+      "headMatchesExpectedMerge": true,
+      "treeMatchesProduct": true
+    },
+    "imageCheckout": {
+      "jobId": 121272847139,
+      "ref": "refs/remotes/pull/1/merge",
+      "observedHead": "7d9c1038c38d00878f3501a43a4995135a91a850",
+      "expectedMerge": "7d9c1038c38d00878f3501a43a4995135a91a850",
+      "headMatchesExpectedMerge": true,
+      "treeMatchesProduct": true
+    },
+    "meaning": "Both completed PR jobs checked out the observed synthetic merge commit. Its complete Git tree equals product f31b823; this is source-equivalent verification, not a literal product-SHA checkout."
+  },
+  "runs": [
+    {
+      "id": 40227688764,
+      "name": "LongBall development checks",
+      "head_sha": "f31b823f59b64d4474f821439ffa43fc1d674942",
+      "head_branch": "dev/longball-m0-journey",
+      "status": "completed",
+      "conclusion": "failure",
+      "event": "pull_request",
+      "created_at": "2026-10-25T19:47:25Z",
+      "updated_at": "2026-10-25T20:05:08Z",
+      "html_url": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40227688764",
+      "run_attempt": 1,
+      "jobs": [
+        {
+          "id": 121272846923,
+          "name": "quality",
+          "status": "completed",
+          "conclusion": "failure",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Initialize containers",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Install the pinned frozen workspace",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Retain resolved dependency and licence inventories",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Scan current source for secrets",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Audit workspace and runtime dependency locks",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Lint and check both TypeScript clients",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Shared rules, platform adapters and real PostgreSQL API boundaries",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Retained-history and actual PostgreSQL migration checks",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Validate canonical contracts, source publication and sample fixtures",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Check native production configuration and compile JavaScript exports",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Exercise the built browser journey",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Exercise configured demo accounts and queued report downloads",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Enforce the dependency audit result",
+              "status": "completed",
+              "conclusion": "failure"
+            },
+            {
+              "name": "Retain safe quality evidence",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+              "status": "completed",
+              "conclusion": "skipped"
+            },
+            {
+              "name": "Post Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Stop containers",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success"
+            }
+          ]
+        },
+        {
+          "id": 121272847139,
+          "name": "runtime-image",
+          "status": "completed",
+          "conclusion": "success",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Build and exercise the isolated production image",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Retain safe image acceptance evidence",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 40227684226,
+      "name": "LongBall development checks",
+      "head_sha": "f31b823f59b64d4474f821439ffa43fc1d674942",
+      "head_branch": "dev/longball-m0-journey",
+      "status": "completed",
+      "conclusion": "cancelled",
+      "event": "push",
+      "created_at": "2026-10-25T19:47:21Z",
+      "updated_at": "2026-10-25T19:48:56Z",
+      "html_url": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40227684226",
+      "run_attempt": 1,
+      "jobs": [
+        {
+          "id": 121272456668,
+          "name": "quality",
+          "status": "completed",
+          "conclusion": "cancelled",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Initialize containers",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Install the pinned frozen workspace",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Retain resolved dependency and licence inventories",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Scan current source for secrets",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Audit workspace and runtime dependency locks",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Lint and check both TypeScript clients",
+              "status": "completed",
+              "conclusion": "cancelled"
+            },
+            {
+              "name": "Shared rules, platform adapters and real PostgreSQL API boundaries",
+              "status": "completed",
+              "conclusion": "skipped"
+            },
+            {
+              "name": "Retained-history and actual PostgreSQL migration checks",
+              "status": "completed",
+              "conclusion": "skipped"
+            },
+            {
+              "name": "Validate canonical contracts, source publication and sample fixtures",
+              "status": "completed",
+              "conclusion": "skipped"
+            },
+            {
+              "name": "Check native production configuration and compile JavaScript exports",
+              "status": "completed",
+              "conclusion": "skipped"
+            },
+            {
+              "name": "Exercise the built browser journey",
+              "status": "completed",
+              "conclusion": "skipped"
+            },
+            {
+              "name": "Exercise configured demo accounts and queued report downloads",
+              "status": "completed",
+              "conclusion": "skipped"
+            },
+            {
+              "name": "Enforce the dependency audit result",
+              "status": "completed",
+              "conclusion": "failure"
+            },
+            {
+              "name": "Retain safe quality evidence",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+              "status": "completed",
+              "conclusion": "skipped"
+            },
+            {
+              "name": "Post Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Stop containers",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success"
+            }
+          ]
+        },
+        {
+          "id": 121272456788,
+          "name": "runtime-image",
+          "status": "completed",
+          "conclusion": "cancelled",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Build and exercise the isolated production image",
+              "status": "completed",
+              "conclusion": "cancelled"
+            },
+            {
+              "name": "Retain safe image acceptance evidence",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+              "status": "completed",
+              "conclusion": "skipped"
+            },
+            {
+              "name": "Post Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "testCounts": {
+    "unit": {
+      "passed": 959,
+      "testFilesPassed": 116
+    },
+    "api": {
+      "passed": 495,
+      "skipped": 3,
+      "total": 498,
+      "testFilesPassed": 83
+    },
+    "retainedHistoryAndMigration": {
+      "passed": 45,
+      "testFilesPassed": 11
+    },
+    "evidence": [
+      "2026-10-25T19:51:05.1037798Z  Test Files  116 passed (116)",
+      "2026-10-25T19:51:05.1045196Z       Tests  959 passed (959)",
+      "2026-10-25T19:52:28.2083201Z  Test Files  83 passed (83)",
+      "2026-10-25T19:52:28.2088007Z       Tests  495 passed | 3 skipped (498)",
+      "2026-10-25T19:52:37.2084131Z  Test Files  11 passed (11)",
+      "2026-10-25T19:52:37.2085003Z       Tests  45 passed (45)"
+    ]
+  },
+  "configuredBrowserSummaries": [
+    {
+      "passed": true,
+      "roleJourneys": 8,
+      "checks": 28,
+      "failures": [],
+      "report": ".local/quality/demo-account-review/report.json"
+    },
+    {
+      "passed": true,
+      "viewportJourneys": 36,
+      "checks": 4,
+      "failures": [],
+      "report": ".local/quality/tablet-review/report.json"
+    },
+    {
+      "passed": true,
+      "checks": 7,
+      "failures": [],
+      "report": ".local/quality/club-expansion-review/report.json"
+    },
+    {
+      "passed": true,
+      "checks": 9,
+      "failures": [],
+      "report": ".local/quality/login-activity-review/report.json"
+    }
+  ],
+  "dependencyGate": {
+    "outcome": "failure",
+    "workspace": "failed-or-unavailable",
+    "runtime": "passed",
+    "compiler": "passed",
+    "enforcement": "AUDIT_OUTCOME=failure caused final enforcement exit1.",
+    "classificationLimit": "Current logs do not establish vulnerability finding versus unavailable registry/audit response. No dependency waiver is inferred.",
+    "evidence": [
+      "2026-10-25T19:49:54.3824453Z workspace: failed or unavailable (high/critical gate; complete report retained).",
+      "2026-10-25T19:49:54.7653975Z runtime: passed (high/critical gate; complete report retained).",
+      "2026-10-25T19:49:55.1741935Z compiler: passed (high/critical gate; complete report retained).",
+      "2026-10-25T20:05:03.7016879Z ##[group]Run [[ \"$AUDIT_OUTCOME\" == success ]]",
+      "2026-10-25T20:05:03.7082491Z   AUDIT_OUTCOME: failure"
+    ]
+  },
+  "notes": [
+    "All substantive completed PR quality steps except final dependency enforcement passed. The CI run remains failed.",
+    "Duplicate push run40227684226 was cancelled; its post-cancellation audit-enforcement step is not the completed PR run's failure.",
+    "No repository edits, remote mutations, workflow cancellations or application credential use were performed by this monitoring task."
+  ]
+}

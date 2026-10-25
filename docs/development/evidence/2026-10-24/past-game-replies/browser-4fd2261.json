@@ -1,0 +1,403 @@
+{
+  "scope": "Built demo-login web application with fresh SQLite API and separate report worker; virtual discovery/API requests rerouted only to loopback.",
+  "roles": [
+    {
+      "role": "manager",
+      "width": 390,
+      "assignedWorkspace": true,
+      "noOverflow": true,
+      "signedOut": true,
+      "revokedTokenRefused": true,
+      "pageErrors": []
+    },
+    {
+      "role": "administrator",
+      "width": 390,
+      "assignedWorkspace": true,
+      "noOverflow": true,
+      "signedOut": true,
+      "revokedTokenRefused": true,
+      "pageErrors": []
+    },
+    {
+      "role": "player",
+      "width": 390,
+      "assignedWorkspace": true,
+      "noOverflow": true,
+      "signedOut": true,
+      "revokedTokenRefused": true,
+      "pageErrors": []
+    },
+    {
+      "role": "spectator",
+      "width": 390,
+      "assignedWorkspace": true,
+      "noOverflow": true,
+      "signedOut": true,
+      "revokedTokenRefused": true,
+      "pageErrors": []
+    },
+    {
+      "role": "manager",
+      "width": 320,
+      "assignedWorkspace": true,
+      "noOverflow": true,
+      "signedOut": true,
+      "revokedTokenRefused": true,
+      "pageErrors": []
+    },
+    {
+      "role": "administrator",
+      "width": 320,
+      "assignedWorkspace": true,
+      "noOverflow": true,
+      "signedOut": true,
+      "revokedTokenRefused": true,
+      "pageErrors": []
+    },
+    {
+      "role": "player",
+      "width": 320,
+      "assignedWorkspace": true,
+      "noOverflow": true,
+      "signedOut": true,
+      "revokedTokenRefused": true,
+      "pageErrors": []
+    },
+    {
+      "role": "spectator",
+      "width": 320,
+      "assignedWorkspace": true,
+      "noOverflow": true,
+      "signedOut": true,
+      "revokedTokenRefused": true,
+      "pageErrors": []
+    }
+  ],
+  "checks": [
+    "Credential/header/key redaction is checked before any diagnostic can be retained.",
+    "Wrong password is refused; empty sign-in stays disabled and the passcode is cleared.",
+    "Browser visibility lifecycle covers the private DOM, waits for actual /v1/me, and restores the same mounted workspace.",
+    "A controlled foreground503 keeps private views covered; explicit retry rechecks the real service and restores the same DOM.",
+    "Separate worker prepares actual PDF/CSV; browser saves and parses protected artifacts at the current report revision.",
+    "Top Sign out closes private views and revokes the session while foreground access checking is stalled.",
+    "A real server-side account disablement closes private views on resume; a fresh login works after independent reactivation.",
+    "An independently disabled account is refused despite a correct passcode.",
+    "Client expiry uses setSystemTime plus a short timer advance and closes private views without replaying hours of intervals.",
+    "All four preauthorised roles pass at 320px and 390px; logout revokes each opaque server session.",
+    "Thirteen named profiles, four accepted fixtures and two completed games agree with manager/player screens.",
+    "Past game cards at both phone widths omit every availability action while retaining exact recorded replies and attendance; upcoming unplayed games keep their reply actions, and period navigation causes no POST or service preparation change.",
+    "Generated passwords and login tokens are absent from built assets, visible workspace text and browser journal/preferences.",
+    "Administrator club save preserves the separate unsaved Team name draft across accepted refresh without submitting it.",
+    "Actual concurrent administrator update produces the existing COMMAND_REJECTED422; the editor retains editable drafts with no automatic POST, and explicit refresh exposes the latest value for separate keep-draft review.",
+    "Controlled required configuration503 retains the same disabled draft and explicit retry restores it; configuration403 closes private views even while independently verified /v1/me remains200.",
+    "Player upcoming RSVP is accepted without changing actual attendance or manager selection; accepted refresh retains the same match card, Matches filter and usable Schedule.",
+    "Actual concurrent profile-field change rejects a stale full-form save; explicit refresh retains the draft but blocks saving at its original revision, and discard/reopen reveals the newer saved field without publishing the unsaved name.",
+    "Two actual fixture reply mutations retain the selected Schedule detail through accepted refresh, allowing the next player edit.",
+    "Manager explicitly claims recording, checks in nine players, stages seven eligible places, confirms kickoff and referee pause, navigates back/return, and uploads; independent HTTP verifies accepted attendance, lineup and clock.",
+    "After actual future profile/template edits, Schedule reopens the saved recorded match without preparation POST or immutable-history failure; its original squad/formation and accepted clock remain unchanged.",
+    "A selected player archived through an actual manager command remains visible in the future fixture until explicit UI removal; accepted selection changes without inferred attendance.",
+    "Future occurrence and reviewed series drafts expose archived expected players for explicit removal and save successfully; future attendance and complete held/cancelled records remain unchanged, with archived historical attendance visible and read-only.",
+    "An open penalty draft survives a clock-resume upload with its captured time; local goal stays invisible to spectators until explicit upload, then actual accepted polling updates a second browser automatically. This is functional loopback evidence, not a network latency benchmark.",
+    "Actual Roma manager grant revocation closes its private workspace on foreground even while /v1/me200 retains a separate Milan manager grant; the exact temporary membership changes are then restored."
+  ],
+  "failures": [],
+  "passed": true,
+  "loginAttempts": 17,
+  "apiRequestWindows": [
+    {
+      "accountId": "synthetic-account-manager-2",
+      "startedAtMs": 1792868581215,
+      "startedAt": "2026-10-24T19:03:01.215Z",
+      "observedAttempts": 76,
+      "observedMutations": 2,
+      "scope": "Actual attempted loopback requests in a local sixty-second observation window; pre-authority denials can make this an upper bound on server counts."
+    },
+    {
+      "accountId": "synthetic-account-admin",
+      "startedAtMs": 1792868609699,
+      "startedAt": "2026-10-24T19:03:29.699Z",
+      "observedAttempts": 82,
+      "observedMutations": 5,
+      "scope": "Actual attempted loopback requests in a local sixty-second observation window; pre-authority denials can make this an upper bound on server counts."
+    },
+    {
+      "accountId": "synthetic-account-player-01",
+      "startedAtMs": 1792868614803,
+      "startedAt": "2026-10-24T19:03:34.803Z",
+      "observedAttempts": 70,
+      "observedMutations": 1,
+      "scope": "Actual attempted loopback requests in a local sixty-second observation window; pre-authority denials can make this an upper bound on server counts."
+    },
+    {
+      "accountId": "synthetic-account-spectator",
+      "startedAtMs": 1792868622396,
+      "startedAt": "2026-10-24T19:03:42.396Z",
+      "observedAttempts": 29,
+      "observedMutations": 0,
+      "scope": "Actual attempted loopback requests in a local sixty-second observation window; pre-authority denials can make this an upper bound on server counts."
+    },
+    {
+      "accountId": "synthetic-account-manager-2",
+      "startedAtMs": 1792868648641,
+      "startedAt": "2026-10-24T19:04:08.641Z",
+      "observedAttempts": 94,
+      "observedMutations": 7,
+      "scope": "Actual attempted loopback requests in a local sixty-second observation window; pre-authority denials can make this an upper bound on server counts."
+    },
+    {
+      "accountId": "synthetic-account-manager-2",
+      "startedAtMs": 1792868708976,
+      "startedAt": "2026-10-24T19:05:08.976Z",
+      "observedAttempts": 113,
+      "observedMutations": 8,
+      "scope": "Actual attempted loopback requests in a local sixty-second observation window; pre-authority denials can make this an upper bound on server counts."
+    },
+    {
+      "accountId": "synthetic-account-spectator",
+      "startedAtMs": 1792868715438,
+      "startedAt": "2026-10-24T19:05:15.438Z",
+      "observedAttempts": 16,
+      "observedMutations": 0,
+      "scope": "Actual attempted loopback requests in a local sixty-second observation window; pre-authority denials can make this an upper bound on server counts."
+    }
+  ],
+  "apiBudgetWaits": [
+    {
+      "accountId": "synthetic-account-manager-2",
+      "phase": "before-manager-matchday",
+      "windowStartedAt": "2026-10-24T19:03:01.215Z",
+      "observedAttemptsBefore": 76,
+      "observedMutationsBefore": 2,
+      "plannedWaitMs": 0,
+      "waitedMs": 0,
+      "ordinaryLimit": 120,
+      "mutationLimit": 60,
+      "pendingCommandRetried": false
+    },
+    {
+      "accountId": "synthetic-account-manager-2",
+      "phase": "after-accepted-referee-pause",
+      "windowStartedAt": "2026-10-24T19:04:08.641Z",
+      "observedAttemptsBefore": 94,
+      "observedMutationsBefore": 7,
+      "plannedWaitMs": 53633,
+      "waitedMs": 53668,
+      "ordinaryLimit": 120,
+      "mutationLimit": 60,
+      "pendingCommandRetried": false
+    }
+  ],
+  "httpFailures": [
+    {
+      "stage": "manager 390px",
+      "accountId": "pre-session",
+      "method": "POST",
+      "pathname": "/v1/demo/sessions",
+      "status": 401,
+      "code": "INVALID_DEMO_CREDENTIALS",
+      "controlled": false
+    },
+    {
+      "stage": "manager 390px",
+      "accountId": "synthetic-account-manager-2",
+      "method": "GET",
+      "pathname": "/v1/me",
+      "status": 503,
+      "code": "STORAGE_UNAVAILABLE",
+      "controlled": true
+    },
+    {
+      "stage": "player 390px",
+      "accountId": "synthetic-account-player-01",
+      "method": "GET",
+      "pathname": "/v1/me",
+      "status": 403,
+      "code": "ACCOUNT_UNAVAILABLE",
+      "controlled": false
+    },
+    {
+      "stage": "administrator 320px",
+      "accountId": "pre-session",
+      "method": "POST",
+      "pathname": "/v1/demo/sessions",
+      "status": 403,
+      "code": "ACCOUNT_UNAVAILABLE",
+      "controlled": false
+    },
+    {
+      "stage": "administrator retained configuration draft",
+      "accountId": "synthetic-account-admin",
+      "method": "POST",
+      "pathname": "/v1/teams/synthetic-roma-u10/configuration",
+      "status": 422,
+      "code": "COMMAND_REJECTED",
+      "controlled": false
+    },
+    {
+      "stage": "administrator retained configuration draft",
+      "accountId": "synthetic-account-admin",
+      "method": "GET",
+      "pathname": "/v1/teams/synthetic-roma-u10/configuration",
+      "status": 503,
+      "code": "STORAGE_UNAVAILABLE",
+      "controlled": true
+    },
+    {
+      "stage": "administrator retained configuration draft",
+      "accountId": "synthetic-account-admin",
+      "method": "GET",
+      "pathname": "/v1/teams/synthetic-roma-u10/configuration",
+      "status": 403,
+      "code": "NOT_FOUND",
+      "controlled": true
+    },
+    {
+      "stage": "actual manager matchday and accepted spectator refresh",
+      "accountId": "synthetic-account-manager-2",
+      "method": "POST",
+      "pathname": "/v1/teams/synthetic-roma-u10/preparation",
+      "status": 422,
+      "code": "COMMAND_REJECTED",
+      "controlled": false
+    }
+  ],
+  "nativeDeviceEvidence": false,
+  "paidServicesProvisioned": false,
+  "source": {
+    "gitHead": "4fd2261bab0f39ddcb8c44bdd302d753adfdbce6",
+    "workingTreeDirty": false,
+    "harnessSha256": "dc45b75c0915f0fb86e05b7cf4863a0f545e9e75601650d47d94639e32c4be99",
+    "webIndexSha256": "09ffdaa76c17a7e5a30c12ee14db7d3e4e41ef799dba4d14caa6b4893bce3dc4",
+    "webJavaScriptSha256": "3c1466e270391a08842f97473d4dec736be045c8b1ab9718a7ecba079468d52e",
+    "apiBundleSha256": "022ec44e6ad09f2423f66d7066b07538783d23c2f0c7c9fb485c567b5c7cf7c7",
+    "workerBundleSha256": "5562a6a844defdd8dda6d48d0af7fc7a8f6b5f3d4480ee341b64dac314b40e93"
+  },
+  "apiContractVersion": "longball.events/1.1",
+  "exports": {
+    "pdf": {
+      "bytes": 22964,
+      "sha256": "33c359c8da7c79247fb743e92d2fae5f776f7fa6da8491312402cce96c27f235",
+      "status": 200,
+      "noStore": true,
+      "pages": 4,
+      "readableLabels": {
+        "Roma U10": true,
+        "Oak FC": true,
+        "Hill FC": true
+      }
+    },
+    "csv": {
+      "bytes": 9614,
+      "sha256": "309b1738f38e3c8c800261d7d4282915a7e345b20635e8376ae078f03324420c",
+      "status": 200,
+      "noStore": true,
+      "rows": 175,
+      "header": [
+        "section",
+        "field",
+        "value"
+      ],
+      "projectionVersion": 0
+    }
+  },
+  "browserStoreInspections": 12,
+  "playerHistoricSchedule": [
+    {
+      "width": 390,
+      "historicGames": 2,
+      "upcomingGames": 2,
+      "everyHistoricalReplyActionAbsent": true,
+      "recordedReplyAndAttendanceRetained": true,
+      "upcomingReplyActionsRetained": true,
+      "navigationPosts": 0,
+      "servicePreparationUnchanged": true
+    },
+    {
+      "width": 320,
+      "historicGames": 2,
+      "upcomingGames": 2,
+      "everyHistoricalReplyActionAbsent": true,
+      "recordedReplyAndAttendanceRetained": true,
+      "upcomingReplyActionsRetained": true,
+      "navigationPosts": 0,
+      "servicePreparationUnchanged": true
+    }
+  ],
+  "browserCredentialBoundary": {
+    "generatedUsernamesPasswordsForbidden": true,
+    "demoSessionBearerTokensForbidden": true,
+    "serverOnlyExportKeyForbidden": true,
+    "allBrowserStoresInspected": true,
+    "canonicalControllerGrantIntentionallyRetained": true,
+    "allOpaqueHeadersRedactedFromEvidence": true
+  },
+  "administratorDraft": {
+    "unrelatedClubSaveAccepted": true,
+    "unsavedTeamDraftRetained": true,
+    "teamNameUnchangedOnService": true,
+    "actual422RetainsEditableDraftWithoutAutomaticWrite": true,
+    "explicitConflictRefreshAndReview": true,
+    "transientScopedRead503RetainsDisabledDraft": true,
+    "explicitRetryRestoresSameDraft": true,
+    "scopedRead403ClosesPrivateFormWhileMe200": true,
+    "signedOut": true
+  },
+  "playerReply": {
+    "accepted": "unsure",
+    "actualAttendanceUnchanged": true,
+    "selectionUnchanged": true,
+    "matchFilterRetained": true,
+    "matchCardRetained": true,
+    "signedOut": true
+  },
+  "staleProfile": {
+    "actualRejectedStatus": 422,
+    "originalDraftRetained": true,
+    "explicitRefreshBlocksStaleForm": true,
+    "automaticWriteCount": 0,
+    "newerFootPreserved": true,
+    "unsavedNameNotPublished": true,
+    "discardAndReopenCurrent": true
+  },
+  "archivedFuture": {
+    "playerId": "synthetic-player-02",
+    "futureSelectionExplicitlyRemoved": true,
+    "futureMatchAttendanceUnchanged": true,
+    "occurrenceSaved": true,
+    "reviewedSeriesSaved": true,
+    "heldAndCancelledHistoryUnchanged": 4,
+    "futureTrainingAttendanceUnchanged": true,
+    "historicalArchivedRowReadOnly": true
+  },
+  "matchday": {
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "fixtureId": "synthetic-roma-maple-2026-10-24",
+    "selectedPlayers": 9,
+    "acceptedLineupPlaces": 7,
+    "pausedCheckpoint": {
+      "acceptedRevision": 12,
+      "status": "first_half_paused"
+    },
+    "finalCheckpoint": {
+      "acceptedRevision": 14,
+      "status": "first_half_running",
+      "score": {
+        "for": 1,
+        "against": 0
+      }
+    },
+    "savedMatchReopenedAfterFutureEdits": true,
+    "openGoalDraftRetained": true,
+    "localGoalWithheldUntilUpload": true,
+    "acceptedSpectatorAutoRefresh": true,
+    "selectedScopeRevocationClosesDespiteOtherManagerGrant": true,
+    "signedOut": true,
+    "nativeDeviceEvidence": false,
+    "latencyBenchmark": false
+  },
+  "actualApiRateLimitsRespected": true
+}

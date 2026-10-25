@@ -1,0 +1,82 @@
+{
+  "stage": "after",
+  "sourceCommit": "aeefdbf5f9bacc3462924af3528f9597f725d4bd",
+  "productDiffFromPinned": "",
+  "allThreeSiteFilesUnchanged": true,
+  "apiAndWorkerRunnerBytesUnchanged": true,
+  "harnessBytesMatchReport": true,
+  "siteFilesSha256": {
+    "_expo/static/js/web/index-311d2e11675cb4706a9b29aedb66b654.js": "289258d42b21fc155fa24526d0e397f7d4bfc159d85a4e6e7ca7368f8c84ea22",
+    "index.html": "f15b8f1b45500c6a8119f33b51ab6b285f033e07aba4a91ac20b55853014feef",
+    "metadata.json": "aa5f19cc84d41c0f8c70ececb2bc82e863227ea1e121632aca879eb616056991"
+  },
+  "reportSha256": "86972a7a4164586240ef04f3fdf3cb6f2a3d62a62f0b5c5d75f520da7af13761",
+  "passed": true,
+  "roles": 8,
+  "groups": 27,
+  "failures": [],
+  "substitutionCountdown": {
+    "configuredBeforeFirstKickoff": true,
+    "numericAfterFirstKickoff": true,
+    "bothTimersUnclippedAtPhoneWidths": [
+      {
+        "width": 390,
+        "height": 844,
+        "timers": [
+          {
+            "id": "connected-match-countdown",
+            "text": "24:59",
+            "x": 27,
+            "y": 287,
+            "width": 163,
+            "height": 38,
+            "fullyInViewportAndUnclipped": true
+          },
+          {
+            "id": "next-substitution-time",
+            "text": "12:30",
+            "x": 209,
+            "y": 292,
+            "width": 61.390625,
+            "height": 28,
+            "fullyInViewportAndUnclipped": true
+          }
+        ]
+      },
+      {
+        "width": 320,
+        "height": 844,
+        "timers": [
+          {
+            "id": "connected-match-countdown",
+            "text": "24:59",
+            "x": 27,
+            "y": 327,
+            "width": 128,
+            "height": 38,
+            "fullyInViewportAndUnclipped": true
+          },
+          {
+            "id": "next-substitution-time",
+            "text": "12:30",
+            "x": 174,
+            "y": 332,
+            "width": 61.390625,
+            "height": 28,
+            "fullyInViewportAndUnclipped": true
+          }
+        ]
+      }
+    ],
+    "before": "12:30",
+    "after": "12:27",
+    "decreasesDuringActivePlay": true,
+    "actualLineupAndQueueUnchanged": true,
+    "hardwareSoundDeliveryProved": false,
+    "pausedBefore": "12:29",
+    "pausedAfter": "12:29",
+    "freezesWhilePaused": true,
+    "pausedLineupAndQueueUnchanged": true
+  },
+  "scope": "Actual fresh SQLite API, separate report worker, browser client at pinned aeefdbf site. This is browser functionality/geometry evidence, not native speaker delivery or physical-device acceptance."
+}

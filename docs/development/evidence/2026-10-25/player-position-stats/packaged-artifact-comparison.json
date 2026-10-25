@@ -1,0 +1,14 @@
+{
+  "observedAt": "2026-10-25T19:48:54.416234+00:00",
+  "sourceCommit": "f31b823f59b64d4474f821439ffa43fc1d674942",
+  "localTabletReviewPassed": true,
+  "testedScriptSha256": "629ef0ee691c9b95e0d5b76653beb9e6b0b4d30c2105f3f60e483edb472a209d",
+  "servedPagesScriptSha256": "fab691131fadb55e6550f676d27a832a4dd0a77ab6a884792bef7e04a90b302b",
+  "exactManifestInsertionBytes": 44,
+  "pagesIdenticalAfterExactManifestInsertionRemoved": true,
+  "serverBundleSha256": "218ef2808696ce0a063aa19d3c89b5af4784ae47249f083f67b60b932b0fc85e",
+  "workerBundleSha256": "1a72230f6f9f49f0cd86601189993c543a5aa1f3a89229048cd9ea10e0b71e7a",
+  "serverAndWorkerIdenticalToTested": true,
+  "existingVerifierValuesUnchanged": true,
+  "runtimeHostedWebBoundary": "Uses the separate non-static entry profile; no identity with the Pages UI artifact is claimed."
+}

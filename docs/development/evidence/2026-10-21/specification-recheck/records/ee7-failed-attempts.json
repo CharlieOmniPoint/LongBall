@@ -1,0 +1,36 @@
+{
+  "compiledSource": "ee7cb613695b8d96388e742a60dc248277b24091",
+  "failures": [
+    {
+      "attempt": "records-all",
+      "category": "obsolete_harness_dom_assumption",
+      "description": "A new harness assertion incorrectly required a literal aria-label attribute. The React Native button already had the correct visible and accessible text. Assertion changed to exact visible text; readable-choice screenshot was inspected.",
+      "originalPrivateReportSha256": "ecbb692c62e6ffac6e3c2c3381d25875e7a12dd120a532eeeaef7f1c6e089dee",
+      "originalErrorSha256": [
+        "c16c2f3b25d218bba709c13e34e06378510c301b5d9f468bf2bd4660887332ee"
+      ],
+      "rawErrorOrDownloadContentIncluded": false
+    },
+    {
+      "attempt": "records-visible-choice",
+      "category": "product_pdf_presentation_gap",
+      "description": "A real worker-generated PDF parsed successfully but lacked a human team name. The Roma readability assertion was retained. Source607 added trusted public display metadata and focused scenario02 then passed.",
+      "originalPrivateReportSha256": "5879be012722443fce2a61a708e14e8181049eab632b58de40aa1477005e212f",
+      "originalErrorSha256": [
+        "4f309dae96de3a903d2e91c36f56a98558c23da1c712efef5429258c7f01983b"
+      ],
+      "rawErrorOrDownloadContentIncluded": false
+    },
+    {
+      "attempt": "records-scopes-03-05",
+      "category": "execution_host_transport_interruption",
+      "description": "Browser entry failed while the execution-host transport was disconnected. The owned static server still listened but returned empty HTTP replies, and its exec session could not resume. Restarting only that process with file-redirected logs restored HTTP 200; scenarios 03\u201305 then passed. A broken inherited log pipe was suspected, not independently proven.",
+      "originalPrivateReportSha256": "f235eb619385fd2fb403be7ccb57b6c8554608d87ea82c5f415bea1efcdb9d8d",
+      "originalErrorSha256": [
+        "e7c15bce3ed9257043a2437f0e22f35dc10ebfe8f51e400db75034dce10d29bc"
+      ],
+      "rawErrorOrDownloadContentIncluded": false
+    }
+  ],
+  "handling": "Original failed attempts remain retained privately. Sanitized reasons and digests preserve the failures without copying logs, downloaded data or invitation material."
+}

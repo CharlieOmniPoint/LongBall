@@ -1,0 +1,25 @@
+{
+  "status": "passed",
+  "sourceCommit": "79cbc724d5cc63a8331b5f10eeabe6f5d2c3fc4e",
+  "workflowRun": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/39582846991",
+  "sourceBundleSha256": "c0f855b23b15025ac8e631c3211c5dbb92d8209c72a9224ca1ea6b7dd7283c8a",
+  "jobs": [
+    {
+      "id": 119164412323,
+      "name": "ios native compile",
+      "conclusion": "success"
+    },
+    {
+      "id": 119164413045,
+      "name": "android native compile",
+      "conclusion": "success"
+    }
+  ],
+  "actualNativeCompilation": true,
+  "binaryArtifactsRetained": false,
+  "physicalDeviceEvidence": false,
+  "limits": [
+    "Android debug development client and unsigned iOS Simulator compile; no physical installation or native acceptance inferred.",
+    "This exact source precedes the subsequent database-security and retained-storage increment."
+  ]
+}

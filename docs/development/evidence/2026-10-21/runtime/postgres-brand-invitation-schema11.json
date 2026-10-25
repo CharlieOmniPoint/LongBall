@@ -1,0 +1,59 @@
+{
+  "status": "passed",
+  "observedAt": "2026-10-21T11:58:04.719Z",
+  "syntheticOnly": true,
+  "versions": [
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11
+  ],
+  "ownedChecks": {
+    "files": 3,
+    "tests": 10,
+    "command": "source .local/runtime/runtime.env && pnpm exec vitest run --config apps/api/vitest.config.ts apps/api/src/postgres-brand-security.test.ts apps/api/src/postgres-invitation-migration.test.ts apps/api/src/postgres-privacy-migration.test.ts",
+    "durationSeconds": 11.02,
+    "scopedEslintExitCode": 0
+  },
+  "checks": [
+    "actual separate schema-owner/API/worker PostgreSQL login roles with NOBYPASSRLS",
+    "club-only and team-only nullable branding ancestry; full-scope pointer foreign key",
+    "selected administrator club logos and selected assigned manager team logos; no administrator role union",
+    "processed/reviewed publication and stale pointer revision rejection; removed pointers deny lower-role reads",
+    "narrow administrator branding-name helper without raw documents",
+    "atomic migration rollback leaves original legacy secrets and no new tables",
+    "legacy pending credentials retired; accepted grants and metadata preserved",
+    "domain-separated legacy fingerprints and retained-command markers; response secrets redacted without changing cache identity",
+    "own account/issuer native enrollment uses database timestamps and creates no controller identity",
+    "foreign account/device adoption, context-free data and worker access denied",
+    "current player invitation issue and exact authenticated destination inspection without membership creation",
+    "scoped privacy request history, pending-key preservation, rollback and worker privacy denial"
+  ],
+  "sourceSha256": {
+    "apps/api/migrations/postgresql/010_brand_assets.sql": "278a7a0aac536e02c63eafe0c9751071a19d33ae2c3b9d057a2fd646d95dc333",
+    "apps/api/migrations/postgresql/011_spectator_capabilities.sql": "137ec5a543a9acffce491626928a01842e0597a992ab7db07baf881aacfc9e7e",
+    "apps/api/src/pg.ts": "d79d5239e1bd613e5500d1c9c9f5ef761243fd5f4663dda61b77fa06bdbab184",
+    "apps/api/src/runtime-grants.ts": "ac2d7b4f4d01c22bf145024f8e8871d46852179ea8822c1c0a09ec735c29a8bc",
+    "apps/api/src/postgres-brand-security.test.ts": "8d37857e0984d6f43fe9a59045cf10f5a1b5996fd88b6e41d3fc0cd6db4f6d43",
+    "apps/api/src/postgres-invitation-migration.test.ts": "f681b0a529f0934797e231219d8ca53d594f0598800adbecdb051f6e1e970f14",
+    "apps/api/src/postgres-privacy-migration.test.ts": "eeb797dec5596ec95f467711de363a72bea8c1df84750f5bb0cc120be407db72"
+  },
+  "limitations": [
+    "This is scoped schema/source verification, not a schema11 container or backup/restore proof.",
+    "Branding tests stamp explicitly named test-adapter processing evidence; they do not claim an actual antivirus scan.",
+    "The API processor/provider-verification adapter remains a trusted application boundary.",
+    "No paid infrastructure was provisioned; physical iPhone/Android and live child/publication policies remain separate gates."
+  ],
+  "lastTargetedRetirementRun": {
+    "tests": 4,
+    "status": "passed",
+    "durationSeconds": 13.45,
+    "description": "Final metadata parity/unchanged-game transition source plus exact pure legacy JSON transformation; actual restricted PostgreSQL."
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "status": "passed",
+  "checkedAt": "2026-10-21T10:02:47.414Z",
+  "baseURL": "http://127.0.0.1:4176/LongBall/",
+  "script": "/LongBall/_expo/static/js/web/index-1f994eab9ecd0cbe816e06ec65de3984.js",
+  "viewport": "390\u00d7844",
+  "synthetic": true,
+  "checks": [
+    "Subpath HTML and JavaScript load without failed responses",
+    "Actual check-in \u2192 starting lineup \u2192 start \u2192 pause",
+    "Static workspace starts without an API and rejects blank, relative and same-host addresses before network access",
+    "No horizontal overflow or browser exceptions"
+  ],
+  "hostedDeploymentProved": false,
+  "nativeDeviceEvidence": false
+}

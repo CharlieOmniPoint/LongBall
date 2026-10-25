@@ -1,0 +1,28 @@
+# Optional operator-reviewed export capability. Supply an explicit TTL; no retention default.
+services:
+  export-key:
+    image: longball-runtime:local
+    user: root
+    profiles: [export-key]
+    entrypoint: [node, /run/create-export-key.mjs]
+    environment:
+      LONGBALL_EXPORT_KEY_INITIALIZE: "1"
+    volumes:
+      - export-key:/data/export-key
+      - ./create-export-key.mjs:/run/create-export-key.mjs:ro
+    read_only: true
+    network_mode: none
+  api:
+    environment:
+      LONGBALL_EXPORT_ENCRYPTION_KEY_FILE: /run/longball-export-key/key
+      LONGBALL_EXPORT_TTL_MS: ${LONGBALL_EXPORT_TTL_MS:?Set an explicit report artifact TTL in milliseconds}
+    volumes:
+      - export-key:/run/longball-export-key:ro
+  worker:
+    environment:
+      LONGBALL_EXPORT_ENCRYPTION_KEY_FILE: /run/longball-export-key/key
+      LONGBALL_EXPORT_TTL_MS: ${LONGBALL_EXPORT_TTL_MS:?Set an explicit report artifact TTL in milliseconds}
+    volumes:
+      - export-key:/run/longball-export-key:ro
+volumes:
+  export-key: {}

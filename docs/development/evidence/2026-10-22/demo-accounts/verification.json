@@ -1,0 +1,58 @@
+{
+  "productSource": "214844e65310ccd4bb070b2f5a35395837fed19c",
+  "sharedTests": {
+    "passed": 756,
+    "files": 85,
+    "scope": "Full shared/platform unit suite; data agent retained component source digests."
+  },
+  "serviceTests": {
+    "passed": 394,
+    "files": 60,
+    "skipped": 0,
+    "scope": "Full API suite against actual restricted PostgreSQL, with maintained HEIC decoder configured. CLI log retained locally; reporter arguments did not create a JSON report."
+  },
+  "migrationChecks": {
+    "passed": 24,
+    "files": 4
+  },
+  "otherPassed": [
+    "Root and mobile TypeScript",
+    "Full ESLint",
+    "Canonical and runtime OpenAPI/contracts",
+    "One source-publication and six verifier-packaging tests",
+    "13-player/four-match fixture validation",
+    "Android and iOS Hermes JavaScript exports with login flag",
+    "Current-source scan: 942files,0unexpected findings,38exact reviewed false positives"
+  ],
+  "nativeCompilation": "Separate new cloud run39757554938 is still in progress; JS exports are not native compilation.",
+  "localBrowser": {
+    "file": "phone-browser.json",
+    "exactPackagedPagesDigest": "e433e41cbb518a986a734d4e74265206a9ff7de7566884d5b3b81b2d82a0de75",
+    "configuredPasswordsAbsent": true,
+    "transport": "Loopback HTTP API with intercepted pinned discovery/HTTPS demo service URL; no public readiness claim from this local test."
+  },
+  "dependencyGate": {
+    "passed": false,
+    "workspace": {
+      "high": 2,
+      "moderate": 1,
+      "critical": 0
+    },
+    "isolatedRuntime": 0,
+    "isolatedCompiler": 0,
+    "exceptionsApproved": false
+  },
+  "earlierDiagnostics": [
+    "Two old eight-fixture manager-home expectations failed in the first unit run; updated to the requested four-fixture data and unchanged behavioral assertions passed in the full rerun.",
+    "Local browser initially used an unavailable default downloaded Chromium path; selected the already-installed /usr/bin/chromium.",
+    "Combined preview lacked the pinned status origin in its CSP; corrected runner setup and reran.",
+    "Browser harness initially assumed an administrator home exceeded400characters and that player Completed text was a standalone badge; replaced those assumptions with actual role-specific controls and inline labels.",
+    "Final-byte loopback routing saw a teardown cancellation; the harness now handles canceled routes without leaking headers.",
+    "First migration invocation omitted the required disposable PostgreSQL selector; configured it and all24checks passed."
+  ],
+  "releaseLimits": [
+    "Deferred privacy fulfilment/support-console and authority/retention decisions remain incomplete.",
+    "Physical iPhone/Android tests and production identity/push/hosting/signing remain deferred or unproved.",
+    "No real child data, paid services or release exception introduced."
+  ]
+}

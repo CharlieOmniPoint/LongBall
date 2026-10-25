@@ -1,0 +1,30 @@
+{
+  "status": "passed",
+  "sourceCommit": "298985d665265ad2fd8209ebc6403a5feb842d81",
+  "sourceBundleSha256": "b311ae30990d0ccbceb20d07a7e35573e7e651217fb8370561db41145dfd4f3b",
+  "workflowRun": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/39591436565",
+  "jobs": [
+    {
+      "id": 119193097694,
+      "target": "Android debug development client",
+      "status": "success",
+      "buildMarker": "BUILD SUCCESSFUL in 6m 46s",
+      "buildCompletedUtc": "2026-10-21T11:30:01.538829Z"
+    },
+    {
+      "id": 119193097963,
+      "target": "Unsigned iOS Simulator development client",
+      "status": "success",
+      "toolchain": "Xcode 26.3",
+      "buildMarker": "BUILD SUCCEEDED",
+      "buildCompletedUtc": "2026-10-21T11:30:23.841149Z"
+    }
+  ],
+  "binaryArtifactsRetained": false,
+  "physicalDeviceEvidence": false,
+  "limits": [
+    "Actual native compilation validates this exact security checkpoint.",
+    "The subsequent logo, first-spectator and OS-authentication/device-enrollment increment requires its own compilation and checks.",
+    "No physical installation, encryption/key-loss, sleep/reboot clock, OS prompt or notification result is inferred."
+  ]
+}

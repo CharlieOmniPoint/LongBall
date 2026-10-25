@@ -1,0 +1,30 @@
+{
+  "role": "longball_worker",
+  "versions": [
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9
+  ],
+  "passed": [
+    "restricted_role_attributes",
+    "cannot_create_schema_objects",
+    "cannot_create_public_objects",
+    "cannot_alter_schema",
+    "cannot_change_migration_version",
+    "schema9_verified",
+    "login_purpose_and_context_free_rls",
+    "worker_cannot_insert_unscoped_job",
+    "worker_cannot_forge_api_identity",
+    "worker_cannot_change_accounts",
+    "worker_cannot_read_private_media_manifests",
+    "worker_cannot_read_privacy_requests",
+    "worker_cannot_read_privacy_pending_keys",
+    "worker_cannot_delete_jobs",
+    "worker_job_and_document_operations"
+  ]
+}

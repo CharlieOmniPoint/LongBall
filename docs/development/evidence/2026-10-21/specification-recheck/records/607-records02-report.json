@@ -1,0 +1,27 @@
+{
+  "baseURL": "http://127.0.0.1:4528",
+  "api": "http://127.0.0.1:4526",
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "scenarioFilter": "02-",
+  "namedWorkspaceChoiceVerified": true,
+  "checks": [
+    {
+      "name": "02-accepted-match-context-archive-and-exports",
+      "status": "passed",
+      "detail": {
+        "archivedSourceRevision": 15,
+        "recordedActiveMs": 50000,
+        "explicitContext": true,
+        "browserJsonCsvDownloads": true,
+        "encryptedCsvAndPdfJobsTested": true,
+        "nativeShareTested": false
+      }
+    }
+  ],
+  "browserErrors": [],
+  "nativeDeviceTested": false,
+  "failureScreenshotOmittedForOneTimeInvitation": false
+}

@@ -1,0 +1,224 @@
+{
+  "recordedAt": "2026-10-24T12:23:17.568Z",
+  "observedCompletedAt": "2026-10-24T12:21:49.136Z",
+  "run": {
+    "id": 40092461334,
+    "url": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40092461334",
+    "event": "push",
+    "status": "completed",
+    "conclusion": "success",
+    "transportCommit": "f8bf5eb096b87f9fa549c74149e59e7f36ba2c29",
+    "createdAt": "2026-10-24T12:04:56Z",
+    "updatedAt": "2026-10-24T12:21:32Z",
+    "attempt": 1
+  },
+  "source": {
+    "productCommit": "a2e8129df58f4eb4f81ca68161813df942d614ee",
+    "productTree": "8d474fa31117cc1a5e8a7fa4ce11ad85fa6d8702",
+    "transportCommit": "f8bf5eb096b87f9fa549c74149e59e7f36ba2c29",
+    "decodedBundleSha256": "fa3cc5a75e8b2b800196b8cfe044999ebfaafc3ead0e29d13424d875f18e5c22",
+    "sourceRef": "refs/heads/dev/longball-m0-journey",
+    "remoteMarkersVerified": true,
+    "bothActualBuildLogsBindSameSourceAndBundle": true,
+    "demoAccountLogin": true,
+    "artifactUploadRequested": false
+  },
+  "jobs": [
+    {
+      "id": 120867779452,
+      "name": "ios native compile",
+      "url": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40092461334/job/120867779452",
+      "status": "completed",
+      "conclusion": "success",
+      "transportCommit": "f8bf5eb096b87f9fa549c74149e59e7f36ba2c29",
+      "runnerLabels": [
+        "macos-15-intel"
+      ],
+      "startedAt": "2026-10-24T12:04:59Z",
+      "completedAt": "2026-10-24T12:21:31Z",
+      "configuration": "Debug",
+      "target": "iOS Simulator x86_64",
+      "signingAllowed": false,
+      "xcodeSelected": "26.3",
+      "xcodeBuildVersionObserved": "17C529",
+      "cocoaPods": "1.17.0",
+      "actualBuildSuccessMarker": "2026-10-24T12:21:21.0552680Z ** BUILD SUCCEEDED **",
+      "compileStep": {
+        "name": "Compile the iOS simulator development client without signing",
+        "conclusion": "success",
+        "startedAt": "2026-10-24T12:08:40Z",
+        "completedAt": "2026-10-24T12:21:21Z"
+      },
+      "exactSourceImport": "success",
+      "nativePrebuildSecurityAndAutolinking": "success",
+      "expectedOutputExistenceCheck": "passed as part of the successful compile step",
+      "artifactRetention": "skipped",
+      "rawLogsStoredInEvidence": false,
+      "steps": [
+        {
+          "name": "Read the preview transport branch",
+          "conclusion": "success"
+        },
+        {
+          "name": "Verify and import the exact development source",
+          "conclusion": "success"
+        },
+        {
+          "name": "Use the pinned Node runtime",
+          "conclusion": "success"
+        },
+        {
+          "name": "Install the pinned package manager and frozen dependencies",
+          "conclusion": "success"
+        },
+        {
+          "name": "Use the Android Java toolchain",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Install the exact Android SDK components",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Select the explicit iOS toolchain",
+          "conclusion": "success"
+        },
+        {
+          "name": "Generate the native project and verify security configuration",
+          "conclusion": "success"
+        },
+        {
+          "name": "Compile the Android debug development client",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Install iOS pods",
+          "conclusion": "success"
+        },
+        {
+          "name": "Compile the iOS simulator development client without signing",
+          "conclusion": "success"
+        },
+        {
+          "name": "Prepare bounded logs and optional binary artifacts",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Retain requested artifacts for one day",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Record the scope of this evidence",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "id": 120867779493,
+      "name": "android native compile",
+      "url": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40092461334/job/120867779493",
+      "status": "completed",
+      "conclusion": "success",
+      "transportCommit": "f8bf5eb096b87f9fa549c74149e59e7f36ba2c29",
+      "runnerLabels": [
+        "ubuntu-24.04"
+      ],
+      "startedAt": "2026-10-24T12:04:59Z",
+      "completedAt": "2026-10-24T12:11:30Z",
+      "configuration": "Debug",
+      "target": "Android arm64-v8a",
+      "actualBuildSuccessMarker": "2026-10-24T12:11:26.0563177Z BUILD SUCCESSFUL in 5m 38s",
+      "compileStep": {
+        "name": "Compile the Android debug development client",
+        "conclusion": "success",
+        "startedAt": "2026-10-24T12:05:43Z",
+        "completedAt": "2026-10-24T12:11:26Z"
+      },
+      "exactSourceImport": "success",
+      "nativePrebuildSecurityAndAutolinking": "success",
+      "expectedOutputExistenceCheck": "passed as part of the successful compile step",
+      "artifactRetention": "skipped",
+      "rawLogsStoredInEvidence": false,
+      "steps": [
+        {
+          "name": "Read the preview transport branch",
+          "conclusion": "success"
+        },
+        {
+          "name": "Verify and import the exact development source",
+          "conclusion": "success"
+        },
+        {
+          "name": "Use the pinned Node runtime",
+          "conclusion": "success"
+        },
+        {
+          "name": "Install the pinned package manager and frozen dependencies",
+          "conclusion": "success"
+        },
+        {
+          "name": "Use the Android Java toolchain",
+          "conclusion": "success"
+        },
+        {
+          "name": "Install the exact Android SDK components",
+          "conclusion": "success"
+        },
+        {
+          "name": "Select the explicit iOS toolchain",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Generate the native project and verify security configuration",
+          "conclusion": "success"
+        },
+        {
+          "name": "Compile the Android debug development client",
+          "conclusion": "success"
+        },
+        {
+          "name": "Install iOS pods",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Compile the iOS simulator development client without signing",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Prepare bounded logs and optional binary artifacts",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Retain requested artifacts for one day",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Record the scope of this evidence",
+          "conclusion": "success"
+        }
+      ]
+    }
+  ],
+  "sharedToolchain": {
+    "node": "24.19.0",
+    "pnpm": "11.25.0"
+  },
+  "variant": "Debug development clients with the explicitly declared fictional demo-account login enabled. No production signing or physical-device execution proof.",
+  "relatedEvidence": {
+    "developmentCi": "ci-a2e8129.json",
+    "runtime": "runtime-a2e8129.json",
+    "pages": "pages-a2e8129.json",
+    "localActualPgHeic": "api-validation.json"
+  },
+  "limits": {
+    "binariesRetained": false,
+    "artifactsDownloaded": false,
+    "installationPerformed": false,
+    "launchTested": false,
+    "physicalDeviceEvidence": false,
+    "productionSigning": false,
+    "paidServicesProvisioned": false,
+    "workflowMutationsOrRetries": false,
+    "sourceEditsByObserver": false
+  }
+}

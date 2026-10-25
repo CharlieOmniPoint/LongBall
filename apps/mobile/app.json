@@ -1,0 +1,56 @@
+{
+  "expo": {
+    "name": "LongBall Synthetic Lab",
+    "slug": "longball-synthetic-lab",
+    "scheme": "longball",
+    "version": "0.0.1",
+    "orientation": "default",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#F6F8F7",
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "name": "LongBall \u00b7 Roma U10 review",
+      "description": "Explore LongBall with Roma U10 teams, players and matchday schedules."
+    },
+    "ios": {
+      "bundleIdentifier": "dev.longball.synthetic",
+      "supportsTablet": true,
+      "requireFullScreen": false
+    },
+    "android": {
+      "package": "dev.longball.synthetic",
+      "allowBackup": false
+    },
+    "plugins": [
+      "expo-dev-client",
+      [
+        "expo-sqlite",
+        {
+          "useSQLCipher": true
+        }
+      ],
+      [
+        "expo-secure-store",
+        {
+          "configureAndroidBackup": true
+        }
+      ],
+      "expo-notifications",
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Allow LongBall to use Face ID to unlock your saved session on this device."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Choose a team photo to submit for approval.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ]
+    ]
+  }
+}

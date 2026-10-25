@@ -1,0 +1,123 @@
+{
+  "source": "55465b04b00bb97df1c87ae1a82d67a589159471",
+  "recordedAt": "2026-10-21T19:11:16.664242+00:00",
+  "scope": "Production-selector Hermes JS exports and anonymous browser entry only. Native config evaluation is prebuild introspection, not a compiled/signed native app.",
+  "environment": {
+    "NODE_ENV": "production",
+    "EXPO_PUBLIC_ENVIRONMENT": "production",
+    "EXPO_NO_DOTENV": "1",
+    "EXPO_OFFLINE": "1",
+    "fictionalIdentityTrial": false,
+    "providerOrApiPublicDefaults": false
+  },
+  "native": [
+    {
+      "platform": "android",
+      "path": ".local/final-production-55465b/native/_expo/static/js/android/index-189b2cee1cdaea9c89605b97cc306f3d.hbc",
+      "bytes": 3736819,
+      "sha256": "b9fb5260acc8512ef287e3ccd67bbce1a7f18c1ce5118167c6d068dd13417523",
+      "hermesMagic": "c61fbc03c103191f"
+    },
+    {
+      "platform": "ios",
+      "path": ".local/final-production-55465b/native/_expo/static/js/ios/index-48688323006a0839d4b1df55e4ff1f87.hbc",
+      "bytes": 3722571,
+      "sha256": "8b8b62ddd6427d71c71b4b91c3b1f3a8b17096bdf4101accf72bade70611ead2",
+      "hermesMagic": "c61fbc03c103191f"
+    }
+  ],
+  "web": [
+    {
+      "path": ".local/final-production-55465b/web/_expo/static/js/web/index-982d3589fea725782ec249eca3ba6091.js",
+      "bytes": 1482669,
+      "sha256": "a101c20d436dc776dc9aac99bf90be653a1156aa9ad25caa81754fe8ff5aca23"
+    }
+  ],
+  "nativeMetadata": {
+    "path": ".local/final-production-55465b/native/metadata.json",
+    "bytes": 244,
+    "sha256": "1ece088c0e8129c393d62ced8ae80f644c944a370cdb1bfefe5621b3300f84ad"
+  },
+  "evaluatedConfig": {
+    "path": ".local/final-production-55465b/expo-evaluated-config.json",
+    "bytes": 10314,
+    "sha256": "9089db49bc12b0e3efad4966bf1b90144583359dcfb88fa652cc759759889c82"
+  },
+  "evaluatedNativeFields": {
+    "iosSqlcipher": "true",
+    "androidSqlcipher": [
+      {
+        "type": "property",
+        "key": "expo.sqlite.useSQLCipher",
+        "value": "true"
+      }
+    ],
+    "androidAllowBackup": "false",
+    "androidFullBackupContent": "@xml/secure_store_backup_rules",
+    "androidDataExtractionRules": "@xml/secure_store_data_extraction_rules",
+    "faceIDUsage": "Allow LongBall to use Face ID to unlock your saved session on this device.",
+    "apnsEnvironment": "development",
+    "iosATS": {
+      "NSAllowsArbitraryLoads": true,
+      "NSExceptionDomains": {
+        "localhost": {
+          "NSExceptionAllowsInsecureHTTPLoads": true
+        }
+      }
+    },
+    "iosBonjour": [
+      "_expo._tcp"
+    ],
+    "iosLocalNetworkDescription": "Expo Dev Launcher uses the local network to discover and connect to development servers running on your computer."
+  },
+  "sourceConfig": {
+    "path": "apps/mobile/app.json",
+    "bytes": 1252,
+    "sha256": "7e047df9aa62d64dbf7089790213a6900772d4a9a9f751fc22c45669754f7465"
+  },
+  "nativeModuleSources": [
+    {
+      "path": "apps/mobile/modules/longball-native/expo-module.config.json",
+      "bytes": 183,
+      "sha256": "a3be291879afd72f596df413b50c12b27777ef7eb1aa20bcf9ff9e5ef3b5e139"
+    },
+    {
+      "path": "apps/mobile/modules/longball-native/ios/LongBallNativeModule.swift",
+      "bytes": 2710,
+      "sha256": "8696cdce8dea0c3cd4254a74b071792104d7d51938d585a06558ecaa947eb058"
+    },
+    {
+      "path": "apps/mobile/modules/longball-native/android/src/main/java/dev/longball/nativeclock/LongBallNativeModule.kt",
+      "bytes": 1810,
+      "sha256": "448b69e5674b308ea7587b3fb337c2ab35e8954e43e1ee85a1003f106f280c8e"
+    }
+  ],
+  "browser": {
+    "passed": true,
+    "checks": [
+      "Production Welcome has explicit sign-in and no fictional review choice",
+      "Fictional accounts/seed absent",
+      "Recording journal not opened at Welcome or anonymous sign-in",
+      "Welcome opens the account sign-in screen",
+      "Provider settings remain inside the advanced connection controls",
+      "390px layout and no runtime errors"
+    ],
+    "layout": {
+      "width": 390,
+      "documentWidth": 390
+    },
+    "url": "http://127.0.0.1:4178",
+    "screenshots": [
+      "anonymous-welcome.png",
+      "anonymous-sign-in.png"
+    ]
+  },
+  "limits": [
+    "No new native compilation/signing/device runtime, storage, biometrics, OS permissions or delivery proof.",
+    "No provider/API public defaults, fictional identity trial, paid service or credential provision.",
+    "Introspected ATS permissive value originates from Expo fallback template when local iOS project absent; not a measured compiled Release defect.",
+    "SDK58 devlauncher has debugOnly/APP_DEBUG gate and a Release phase stripping Expo local-network keys.",
+    "A separate conditional-native-config follow-on is being prepared; this proof stays bound to55465b."
+  ],
+  "historicalStatus": "Superseded configuration evaluation; retained to preserve original55465b artifact hashes and browser result. Current candidate evidence is verification.json."
+}

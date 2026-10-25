@@ -1,0 +1,122 @@
+{
+  "recordedAt": "2026-10-24T11:49:14.852844+00:00",
+  "status": "all-API-cases-validated-after-one-authorised-test-ledger-correction",
+  "source": {
+    "candidateCommit": "65b1a806ce4ec23e6b443a7138e4a24b0017cd38",
+    "candidateTree": "bafa76249fd4f1928ab7e0c8a9054c64288b5bcb",
+    "initialSnapshotHead": "156b4d2d0f2b38c17ba22d2dbd4b03f0e2d7f3ed",
+    "inputFiles": 310,
+    "beforeManifest": "api-inputs-before.json",
+    "afterManifest": "api-inputs-after.json",
+    "inputsChangedDuringInitialFullRun": [],
+    "subsequentChanges": [
+      "apps/api/src/team-privileges-http.test.ts"
+    ],
+    "newFilesAfterCapture": [],
+    "workingTreeClean": true
+  },
+  "environment": {
+    "node": "24.19.0",
+    "pnpm": "11.25.0",
+    "postgresql": "18.6",
+    "databaseScope": "Assigned disposable local runtime-test administrator connection; suites create isolated disposable databases and restricted runtime roles.",
+    "postgresEnabled": true,
+    "pgUser": "postgres",
+    "heicDecoderFile": "/workspace/LongBall/.local/heic/install/bin/longball-heic",
+    "heicDecoderSha256": "5ec9807e2a45b04fc2aaa272ab97372266f5d35543414d9c73ceca0a546e29f0",
+    "nativeHeicEnabled": true
+  },
+  "initialFullApi": {
+    "command": "pnpm test:api --reporter=default --reporter=json --outputFile=.local/feature-pass/api-report.json",
+    "startedAt": "2026-10-24T11:42:32.880916+00:00",
+    "finishedAt": "2026-10-24T11:45:24.795691+00:00",
+    "exitCode": 1,
+    "passed": 423,
+    "failed": 1,
+    "total": 424,
+    "files": 65,
+    "skipped": 0,
+    "durationSeconds": 168.82,
+    "maxWorkers": 2,
+    "log": "api.log",
+    "report": "api-report.json"
+  },
+  "testOnlyCorrection": {
+    "authorisedBy": "parent root agent after confirmed stale expectation",
+    "file": "apps/api/src/team-privileges-http.test.ts",
+    "change": "Final migrated ledger assertion only: Array.from length15 to19, exact versions2 through20. Historical pre-expansion assertions and all rollback/preservation checks are unchanged.",
+    "otherMaintainedTestsInspected": true,
+    "otherStaleFinalLedgerAssertionsFound": false,
+    "productImplementationChanged": false,
+    "focusedCommand": "pnpm exec vitest run --config apps/api/vitest.config.ts apps/api/src/team-privileges-http.test.ts -t 'expands schema14 without rewriting audit rows'",
+    "focusedPassed": 1,
+    "focusedFailed": 0,
+    "filteredOut": 22,
+    "filteredScope": "Other tests intentionally excluded by the exact-name selection, after they passed in the full API run.",
+    "report": "api-ledger-rerun.json",
+    "log": "api-ledger-rerun.log",
+    "scopedEslintPassed": true,
+    "diffCheckPassed": true
+  },
+  "migrationAcceptance": {
+    "command": "pnpm db:migrate:check",
+    "startedAt": "2026-10-24T11:46:55.816556+00:00",
+    "finishedAt": "2026-10-24T11:47:08.186466+00:00",
+    "exitCode": 0,
+    "passed": 30,
+    "failed": 0,
+    "skipped": 0,
+    "files": 6,
+    "durationSeconds": 8.81,
+    "coreVersions": [
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20
+    ],
+    "suites": [
+      "migration.test.ts",
+      "postgres-privacy-migration.test.ts",
+      "postgres-invitation-migration.test.ts",
+      "report-export-repository.test.ts",
+      "postgres-match-feedback.test.ts",
+      "postgres-player-stats.test.ts"
+    ],
+    "log": "migrations.log"
+  },
+  "meaningfulScope": [
+    "Actual SQLite and restricted PostgreSQL HTTP/repository boundaries, RLS and role contexts.",
+    "Controller, offline bundle, current publication, privacy, identity/activation, invitations, contribution restrictions, push-registration and export regression coverage.",
+    "New scheduled-game management, team overview, private match feedback and player statistics API coverage.",
+    "Actual maintained HEIC decoder cases enabled; no conditional PostgreSQL or decoder tests skipped.",
+    "Retained-history expansion, migration rollback and preservation with expected core ledger2 through20."
+  ],
+  "limits": [
+    "The initial full API command exited1 for the stale test-only ledger assertion; this file does not relabel it as a clean full-suite run. Its corrected case passed separately.",
+    "No second broad API run was performed, per parent direction; all424 cases are covered by423 initial passes and the corrected focused pass.",
+    "No browser, export, deployment, signed distribution or physical-device acceptance was performed by this validation task.",
+    "No paid services were provisioned and no operating-policy decision was approved."
+  ],
+  "ownedChanges": {
+    "sourceFiles": [
+      "apps/api/src/team-privileges-http.test.ts"
+    ],
+    "sourceChangeKind": "Authorised test expectation only, committed by integrating root in65b1a80.",
+    "indexOrCommitsByObserver": false
+  }
+}

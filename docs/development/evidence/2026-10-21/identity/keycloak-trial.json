@@ -1,0 +1,25 @@
+{
+  "provider": "Keycloak",
+  "version": "26.8.1",
+  "verifiedAt": "2026-10-21T09:19:34.489Z",
+  "checks": [
+    "Actual pinned provider discovery over verified HTTPS",
+    "Provider extension refuses unauthenticated provisioning",
+    "Actual username-only provider password + recovery-code setup, hashed completion proof and wrong-proof refusal",
+    "Consumed action-token replay cannot reopen credential setup",
+    "Cancellation plus reissue blocks stale credential submission from an already-open provider form",
+    "Actual child authorization code + PKCE S256, signed API token, nonce and code replay refusal",
+    "Actual wrong-PKCE refusal, refresh and refresh-token revocation",
+    "Actual adult TOTP enrollment and fresh password+OTP AMR verified by application verifier",
+    "Actual strongly authenticated provider manager \u2192 restricted-role PostgreSQL API \u2192 username-only activation \u2192 independent child PKCE sign-in, child manager-denial and synthetic-alias refusal"
+  ],
+  "httpsCertificateVerified": true,
+  "actualProviderRequests": true,
+  "chromiumUse": "offline DOM parser only",
+  "systemBrowserTested": false,
+  "physicalDeviceTested": false,
+  "liveOnboardingApproved": false,
+  "productionProviderSelected": false,
+  "actualProviderApiJourney": true,
+  "source": "Development worktree; exact publication commit recorded by final source packaging."
+}

@@ -1,0 +1,59 @@
+{
+  "status": "passed",
+  "observedAt": "2026-10-21T13:44:09.355Z",
+  "runId": 39608816471,
+  "jobId": 119251954845,
+  "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/39608816471",
+  "source": {
+    "sourceHead": "c71f19dcea05f76adb0f7b5a4e2afb621d49bd40",
+    "bundleSha256": "438742d45601956f0dc9ab4230ed33c494533ada74c5115ed76c0cde56909660",
+    "transportHead": "d92021de2a66b0ebb6176df48379bd5bc499856c"
+  },
+  "actualBuildSuccessMarker": "2026-10-21T13:39:43.3938645Z BUILD SUCCESSFUL in 6m 53s",
+  "artifact": {
+    "id": 12350396424,
+    "name": "longball-fictional-android-c71-arm64",
+    "sizeBytes": 33428607,
+    "digest": "sha256:15212af71c2a936cb1ff7ac8cba73d42c637fa3b744288d5cbcbd9494c380acb",
+    "expired": false,
+    "createdAt": "2026-10-21T13:39:47Z",
+    "expiresAt": "2026-10-22T13:39:45Z",
+    "downloadUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/39608816471/artifacts/12350396424",
+    "uploadStepSucceeded": true
+  },
+  "download": {
+    "connectorDownloadSucceeded": true,
+    "fileId": "file_00000000b8f881f4a659078833977003",
+    "zipPath": "/workspace/attachments/df8da66d-7519-4480-91a7-c5c880fc08bf/longball-fictional-android-c71-arm64.zip",
+    "zipBytes": 33428607,
+    "zipSha256": "15212af71c2a936cb1ff7ac8cba73d42c637fa3b744288d5cbcbd9494c380acb",
+    "githubArtifactDigestMatchesDownloadedZip": true,
+    "allEightChecksumEntriesVerified": true,
+    "nineSafeTopLevelZipEntries": true
+  },
+  "apk": {
+    "path": "/workspace/LongBall/.local/android-device-kit/LongBall-fictional-c71-arm64.apk",
+    "name": "LongBall-fictional-c71-arm64.apk",
+    "sha256": "80fd8c78cdb389c332b0c7a899fc837b9c8fa687a28d90ab9cc3a2b34576bfc6",
+    "bytes": 33343214,
+    "applicationId": "dev.longball.synthetic",
+    "minimumSdk": 24,
+    "targetSdk": 36,
+    "abi": "arm64-v8a",
+    "nativeLibraries": 21,
+    "embeddedBundleBytes": 2723388,
+    "embeddedBundleIndependentlyVerified": true,
+    "requiresMetro": false,
+    "releaseVariant": true,
+    "runnerApksignerV2VerificationPassed": true,
+    "runnerBadgingNotDebuggable": true,
+    "signingIdentity": "Generated public Android debug signing key; test distribution only.",
+    "fictionalDataOnly": true
+  },
+  "limitations": [
+    "Installer build/download/structural checks only; no physical installation or app launch was performed.",
+    "No physical SQLCipher/key/backup, monotonic clock/drift, notifications or OS authentication proof.",
+    "No iPhone hardware installer or app-store distribution claim.",
+    "GitHub artifact expires after one day; its download may require GitHub sign-in."
+  ]
+}

@@ -1,0 +1,90 @@
+{
+  "status": "passed",
+  "checkedAt": "2026-10-21T17:40:33.797Z",
+  "branch": "dev/longball-training",
+  "sourceSha256": {
+    "packages/application/src/training-series.ts": "506ff89834fb0221f8b735e1f163f90e4cbc9df02c7538b34c92d48a8a03e9e5",
+    "packages/application/src/training-series.test.ts": "764589e39b3f283e9184ec44c78c46256b990ec4bd96371d5f8747f4e7d74e3a",
+    "packages/application/src/preparation.ts": "33566dd5ba7dce452c780570a6f8c340ef45ba11c2eb2293190ba24551871ab3",
+    "apps/mobile/src/features/TrainingSeriesEditor.tsx": "18f8c4f1b1c65067a211dafc1d5a689e4671347e0a2c5154ac8dbdb1bca765fd",
+    "apps/mobile/src/features/PreparationScreens.tsx": "e9a7aaf761564ceee9e022bdfbda696c0361907ed73fa2e19ac8eef333dcf582",
+    "apps/api/src/store.ts": "a5b75091a52a4d1ba249bf2b7578877f8ba94b361dec9d00a9f14aef4cca1937",
+    "apps/api/src/postgres-store.ts": "62be5ea1b819464c27e91baf51adfd6ba91edeedcd18dcf21db96d5ce99ce15b",
+    "apps/api/src/training-series.test.ts": "20c473d3acf614874ae40f6769807ec15a82ddfe5f4a6337ca10feb2c8a9fa13",
+    "scripts/training-series-review.mjs": "ceca86a46dc1b51f719f6c3b840991af7c725b2dac498d6c958b5d12228ff283"
+  },
+  "tests": {
+    "sharedPreparation": 23,
+    "newRecurrenceUnitCases": 6,
+    "actualHttp": {
+      "sqlite": 1,
+      "restrictedNonBypassPostgres": 1,
+      "skipped": 0
+    },
+    "browserModes": 2,
+    "browserAssertions": 8,
+    "mobileTypeScript": "passed",
+    "rootTypeScript": "passed",
+    "scopedEslint": "passed",
+    "gitDiffCheck": "passed"
+  },
+  "semantics": [
+    "Explicit occurrence count and full preview before saving.",
+    "Weekly calendar dates across both clock changes, with no inferred UTC offset.",
+    "Atomic single-revision creation and exact command replay.",
+    "Stable IDs and dates through common series edits.",
+    "Only the exact confirmed scheduled list can be edited or cancelled.",
+    "Held/cancelled occurrences and all prior responses/attendance are retained.",
+    "Wrong role/team, foreign profile, stale version and invalid batch are rejected.",
+    "Notification jobs use per-occurrence deduplicated business keys; no provider delivery was exercised."
+  ],
+  "browser": {
+    "status": "passed",
+    "checkedAt": "2026-10-21T17:38:56.271Z",
+    "baseURL": "http://127.0.0.1:4386",
+    "viewport": "320x844",
+    "results": [
+      {
+        "mode": "local",
+        "status": "passed",
+        "occurrences": 3,
+        "checks": [
+          "Preview does not write before confirmation.",
+          "Three dated stable occurrences save with one series identity.",
+          "Held attendance and cancelled occurrence remain unchanged during series time edit.",
+          "Explicit series cancellation retains all occurrences, original RSVP and attendance."
+        ],
+        "browserErrors": []
+      },
+      {
+        "mode": "connected",
+        "status": "passed",
+        "occurrences": 3,
+        "checks": [
+          "Preview does not write before confirmation.",
+          "Three dated stable occurrences save with one series identity.",
+          "Held attendance and cancelled occurrence remain unchanged during series time edit.",
+          "Explicit series cancellation retains all occurrences, original RSVP and attendance."
+        ],
+        "browserErrors": []
+      }
+    ],
+    "nativeDeviceEvidence": false,
+    "method": "Actual UI controls; independent HTTP or read-only IndexedDB verification; no domain state injection. Fictional SQLite service only. No notification delivery claim.",
+    "asset": {
+      "path": "/_expo/static/js/web/index-885604636b23b9629b64f87110166b35.js",
+      "bytes": 1368217,
+      "sha256": "0b0c96eccd7fb1c35c54c4ae6bacf86345965cb58d0660481016c56110d9b978"
+    }
+  },
+  "limits": {
+    "maximumOccurrencesPerSeries": 52,
+    "currentSeasonOnly": true,
+    "bulkEditKeepsDates": true,
+    "notificationDeliveryProved": false,
+    "nativeDeviceEvidence": false,
+    "timezoneOffsetInference": false,
+    "q09ExcusedAttendanceApproved": false
+  },
+  "diagnostics": "Preliminary test harness issues were corrected without weakening application rules: supply both restricted runtime roles; wait for the existing connected save/refresh cycle and re-open Training before the next action. Ignored diagnostics remain with the worktree."
+}

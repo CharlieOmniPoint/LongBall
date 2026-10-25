@@ -1,0 +1,18 @@
+{
+  "status": "passed",
+  "completedAt": "2026-10-21T17:47:04.817Z",
+  "checks": [
+    "320px manager: invalid row blocked, preview inert, explicit confirmation imports two distinct same-initial profiles atomically",
+    "320px manager: explicit event selection downloads standards ICS with unknown kickoff kept date-only and no roster/results",
+    "390px player: own authorized schedule exports without manager import or teammate details"
+  ],
+  "pageErrors": [],
+  "webBundle": "/_expo/static/js/web/index-f9dc4cc7991bdb25dcdace37b85f95b7.js",
+  "webSha256": "adaa31eb748fff66c61126bcc2e248d97008796ddde48520d919f09b8d17f3ef",
+  "api": "Actual isolated TypeScript HTTP service on4385; new fictional SQLite database, no projection injection",
+  "limitations": [
+    "Public fictional identities, not production authentication proof",
+    "Native Sharing and accessibility require physical iPhone/Android checks",
+    "Exported calendar copies do not update automatically"
+  ]
+}

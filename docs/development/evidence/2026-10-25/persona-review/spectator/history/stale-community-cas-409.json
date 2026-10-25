@@ -1,0 +1,118 @@
+{
+  "persona": "spectator",
+  "phase": "candidate",
+  "startedAt": "2026-10-25T22:24:57.846Z",
+  "scope": "Actual compiled UI and isolated SQLite API/worker; only discovery and virtual transport are redirected to owned loopback processes. Generated accounts, not public demo credentials.",
+  "checks": [
+    "Spectator sign-in opens only the simple Home, Scores, Results, Photos and Account navigation, with its role identified.",
+    "Home overview fits 320/390/1024px and opens its recommended game, with an All games return path.",
+    "Manual match refresh reaches the actual permitted match endpoint and presents its last-checked UK-time receipt plus the existing two-minute auto-check explanation; this journey does not simulate an elapsed background scheduler interval.",
+    "Scores exposes permitted match cards/details and refresh receipts without private player-stat views.",
+    "A completed result opens its published game album directly; protected opposition notes, FA team sheets, private player participation and Manager match state remain unavailable to Spectators.",
+    "Results are readable without player participation rows; direct player stats are denied and the community projection contains no ballot candidates, own ballot, submissions or review queue.",
+    "Photos is reachable without vote/upload/review controls; published-only data and empty/cluttered states were inspected.",
+    "A Spectator can save the player they support within the invited team; this does not expose private player stats. The later owner-authorized spectator invitation entry remains available.",
+    "Spectator Account exposes role-specific Help, Privacy and its own data-request intake, clearly marks policy/verification as pending, and submits nothing merely by opening the screen. Deferred fulfilment decisions remain pending.",
+    "Connection loading disables choices; a transient read, an accepted save with lost receipt and a bounded stalled read all recover with an explicit retry and keep the last confirmed selection honest."
+  ],
+  "findings": [],
+  "failures": [
+    "AssertionError [ERR_ASSERTION]: The actual community mutation must succeed.\n    at mutation (file:///workspace/LongBall/scripts/persona-spectator-review.mjs:22:3)\n    at async publishedPhotos (file:///workspace/LongBall/scripts/persona-spectator-review.mjs:110:3)\n    at async file:///workspace/LongBall/scripts/persona-spectator-review.mjs:422:5"
+  ],
+  "httpFailures": [
+    {
+      "method": "GET",
+      "path": "/v1/teams/synthetic-roma-u10/player-stats",
+      "status": 404,
+      "code": "NOT_FOUND",
+      "expected": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/teams/synthetic-roma-u10/opposition-reviews",
+      "status": 404,
+      "code": "NOT_FOUND",
+      "expected": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/teams/synthetic-roma-u10/team-sheet",
+      "status": 404,
+      "code": "NOT_FOUND",
+      "expected": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/teams/synthetic-roma-u10/community",
+      "status": 409,
+      "code": "CONFLICT",
+      "expected": false
+    }
+  ],
+  "transportErrors": [],
+  "pageErrors": [],
+  "screenshots": [
+    "home-390.png",
+    "home-1024.png",
+    "scores-1024.png",
+    "results-1024.png",
+    "photos-390.png",
+    "account-390.png",
+    "photo-open-390.png"
+  ],
+  "passed": false,
+  "source": {
+    "gitHead": "0961d1eb438ac2be591e71e6b3a92442aa72e38a",
+    "workingTreeDirty": true,
+    "webScriptSha256": "680e2ab9b19cb4752ebe0d996e97fbd56a6a03ff8998e9a644f446f443709ec6",
+    "serverBundleSha256": "7e6a4fc28acac0d106ca98e5a3955f2d06932d8da7d3fe99cef7c45ca3a1c3e4",
+    "workerBundleSha256": "b9077f122adf3b1bc6122df9beaf5610f1ea2928c852c1da4280619cf05a45f5",
+    "helperSha256": "6a9da668a2d0fe88245328f3df167f6da815917c90634d66e5a1288fde751698",
+    "personaScriptSha256": "086344b56e229ba12bbc7bc63b384a3fb66ef45f2315f584cfa70eb220db683d"
+  },
+  "physicalDeviceTested": false,
+  "publicCredentialsUsed": false,
+  "paidServicesProvisioned": false,
+  "mediaFixture": {
+    "kind": "exact-generated-artwork-clamd-wire-ui-fixture",
+    "antivirusProof": false,
+    "allowedImageKinds": [
+      "pitch",
+      "cones",
+      "ball"
+    ],
+    "acceptedImageCount": 3,
+    "maxBytes": 18300,
+    "description": "Only the exact demoArtwork PNG hashes receive a controlled clean response. All other bytes are rejected. Actual HTTP upload, decoding, authorization and moderation run in the application; malware detection and real antivirus database acceptance are not established."
+  },
+  "mediaSetup": {
+    "processed": 3,
+    "publishedExamples": 2,
+    "pendingPlayerExamples": 1,
+    "throughNormalMediaPipeline": true,
+    "boundary": {
+      "kind": "exact-generated-artwork-clamd-wire-ui-fixture",
+      "antivirusProof": false,
+      "allowedImageKinds": [
+        "pitch",
+        "cones",
+        "ball"
+      ],
+      "acceptedImageCount": 3,
+      "maxBytes": 18300,
+      "description": "Only the exact demoArtwork PNG hashes receive a controlled clean response. All other bytes are rejected. Actual HTTP upload, decoding, authorization and moderation run in the application; malware detection and real antivirus database acceptance are not established."
+    },
+    "fixtureScans": {
+      "accepted": 3,
+      "rejected": 0,
+      "malformed": 0
+    }
+  },
+  "controlledFailures": [
+    "One connection GET503 recovered manually",
+    "One accepted connection POST with its successful receipt replaced by503; no automatic duplicate",
+    "One connection GET held beyond the product20-second bound; retry recovered"
+  ],
+  "artifactsStable": true,
+  "finishedAt": "2026-10-25T22:25:39.920Z"
+}

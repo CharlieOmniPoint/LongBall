@@ -1,0 +1,30 @@
+{
+  "verifiedAt": "2026-10-25T12:41:14.181288+00:00",
+  "javaRelease": 21,
+  "compiler": "Eclipse ECJ 3.40.0",
+  "keycloakVersion": "26.8.1",
+  "compile": "passed, all main and test Java sources against existing pinned Keycloak dependencies",
+  "junit": {
+    "version": "1.13.4 platform console / Jupiter 5.13.4",
+    "passed": 6,
+    "failed": 0,
+    "skipped": 0
+  },
+  "adapterTests": {
+    "passed": 7,
+    "failed": 0
+  },
+  "limits": [
+    "Java helpers/provider model tested; no live Keycloak deployment end-to-end run",
+    "Cross-system provider application then database save is not atomic; monotonic provider revisions fail closed if database save fails after provider update and needs operator recovery"
+  ],
+  "resolvedTestFinding": "Pinned Keycloak PasswordPolicy.empty().toBuilder() throws; first install now uses PasswordPolicy.build() for absent/blank source policy.",
+  "sourceSha256": {
+    "infra/identity/keycloak-extension/src/test/java/dev/longball/identity/LongBallSignInRulesTest.java": "93f236760d4abe83a9bbc19c121b223d90a2f3eb19cd27fd9a2b33132da32eea",
+    "infra/identity/keycloak-extension/src/main/java/dev/longball/identity/LongBallSignInRules.java": "fe0ed1bf894473a04fc978402acafb071321129e28678de4b44a69795d98fc70",
+    "infra/identity/keycloak-extension/src/main/java/dev/longball/identity/LongBallActivation.java": "e0d974a0511e2accdeb6abb19b2d500b3e913f323466db2bba39fb15cb903da2",
+    "infra/identity/keycloak-extension/src/main/java/dev/longball/identity/LongBallSignInRulesPolicy.java": "f7ef5d22117c6f7b25228b05f46ca8ea5c355e6cc53ee27a229d24f6a857b578",
+    "apps/api/src/keycloak-activation-provider.ts": "f4306e792bdc50d4d8deb19f5ecf01746d10ef0871f55eea79846f0010e65305",
+    "apps/api/src/keycloak-activation-provider.test.ts": "32a93a20c4972453f53fb68fd742f257e317b146c0ab3653e8e786e860e9998b"
+  }
+}

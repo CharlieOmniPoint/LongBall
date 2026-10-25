@@ -1,0 +1,24 @@
+{
+  "verifiedAt": "2026-10-21T10:30:24.159Z",
+  "provider": "Keycloak",
+  "providerVersion": "26.8.1",
+  "actualProviderJwt": true,
+  "database": "PostgreSQL",
+  "runtimeRole": "restricted API role",
+  "checks": [
+    "Real child JWT account export request: lost committed response resolved by fresh status without a second client POST",
+    "A new idempotency key for the same pending global business request returns the original service reference",
+    "Separate exact team-season leave request stays pending and leaves real API memberships unchanged",
+    "Global account deletion request records verification/policy pending without credential removal, erasure or account deactivation"
+  ],
+  "policiesApproved": false,
+  "fulfilled": false,
+  "erased": false,
+  "systemBrowserTested": false,
+  "physicalDeviceTested": false,
+  "verifiedRuntimeSchema": {
+    "core": 5,
+    "activation": 2
+  },
+  "separateEvidenceAfterRowSecurityChange": true
+}

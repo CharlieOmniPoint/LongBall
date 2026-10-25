@@ -1,0 +1,82 @@
+{
+  "startedAt": "2026-10-25T12:26:03.105Z",
+  "scope": "Fresh SQLite API, separate actual report worker, compiled connected browser clients; only discovery and transport origins are rerouted to loopback. No fabricated feature DTOs.",
+  "checks": [
+    "Anonymous320px Player request selects real club/team and persists a pending request without creating account access.",
+    "Manager types4-4-2 and3-2-1, saves real revisioned formations, sees positions-only pitch, rejects wrong totals, and chooses available-squad65/35 advice.",
+    "Manager saves free-text league/FA ID, downloads genuine XLS, edits/reimports existing+new players with identities retained, and uploads/downloads an identical protected PDF."
+  ],
+  "failures": [
+    {
+      "stage": "SuperAdmin and ClubAdmin club scopes",
+      "message": "locator.waitFor: Error: strict mode violation: getByTestId('club-administration') resolved to 11 elements:\n    1) <div class=\"css-g5y9jx\" data-testid=\"club-administration\">…</div> aka getByTestId('club-administration').first()\n    2) <div class=\"css-g5y9jx\" data-testid=\"club-administration\">…</div> aka getByTestId('club-administration').nth(1)\n    3) <div class=\"css-g5y9jx\" data-testid=\"club-administration\">…</div> aka getByTestId('club-administration').nth(2)\n    4) <div class=\"css-g5y9jx\" data-testid=\"club-administration\">…</div> aka getByTestId('club-administration').nth(3)\n    5) <div class=\"css-g5y9jx\" data-testid=\"club-administration\">…</div> aka getByTestId('club-administration').nth(4)\n    6) <div class=\"css-g5y9jx\" data-testid=\"club-administration\">…</div> aka getByTestId('club-administration').nth(5)\n    7) <div class=\"css-g5y9jx\" data-testid=\"club-administration\">…</div> aka getByText('Super AdminRefresh clubsLoading clubs…').nth(3)\n    8) <div class=\"css-g5y9jx\" data-testid=\"club-administration\">…</div> aka getByText('Super AdminRefresh clubsLoading clubs…').nth(4)\n    9) <div class=\"css-g5y9jx\" data-testid=\"club-administration\">…</div> aka getByText('Super AdminRefresh clubsClub').nth(2)\n    10) <div class=\"css-g5y9jx\" data-testid=\"club-administration\">…</div> aka getByText('Super AdminRefresh clubsClub').nth(3)\n    ...\n\nCall log:\n\u001b[2m  - waiting for getByTestId('club-administration') to be visible\u001b[22m\n",
+      "name": "Error"
+    }
+  ],
+  "httpFailures": [],
+  "apiWindows": [
+    {
+      "accountId": "synthetic-account-manager-2",
+      "started": 1792931193614,
+      "attempts": 66,
+      "mutations": 3
+    },
+    {
+      "accountId": "synthetic-account-manager-3",
+      "started": 1792931226012,
+      "attempts": 84,
+      "mutations": 4
+    },
+    {
+      "accountId": "synthetic-account-manager-3",
+      "started": 1792931287448,
+      "attempts": 3,
+      "mutations": 1
+    },
+    {
+      "accountId": "synthetic-account-admin",
+      "started": 1792931299202,
+      "attempts": 22,
+      "mutations": 0
+    }
+  ],
+  "passed": false,
+  "nativeDeviceEvidence": false,
+  "paidServicesProvisioned": false,
+  "source": {
+    "gitHead": "f893c485b9b967733616028d1444ef11f7e4a4c8",
+    "workingTreeDirty": true,
+    "harnessSha256": "34377f7f5e7d9679887d3b0215d9f7b45e47c68f39a675856dd372e42b9b168e",
+    "webIndexSha256": "aa826a51bbce51efcb3d6ac22e80112459f82813869b386534b079ba8164cb03",
+    "webJavaScriptSha256": "b4419e05c4dd63b8876aa14d2a1885d244c8f1a73457c3328b2c0ed2463a5a59",
+    "apiBundleSha256": "a02083ef9ac75b45f50b20c29a7f6304588ef93f7ac979480a3172bb4a6b78ef",
+    "workerBundleSha256": "d6285b7dfbfb58896d1cea034823a6762915bb7c3a3b0be636eadda7fd95c63d"
+  },
+  "formations": {
+    "format11Saved": true,
+    "invalidTotalBlocked": true,
+    "format7Versioned": true,
+    "playerTextAbsent": true,
+    "availableSquadAdviceChosen": true,
+    "receivedActualSave": true
+  },
+  "roster": {
+    "actualOleXlsBytes": 37888,
+    "downloadedSha256": "5424f4f03ba1124ff5c4d7ae4a54b9bf4b25f3d36ee584f12cac2f4efa2d0379",
+    "updatedExistingIdentity": true,
+    "newProfiles": 1,
+    "managerFaIdPersisted": true,
+    "optionalLeaguePersisted": true,
+    "pdfRoundTripExact": true,
+    "managerAudioSettingsPersisted": true
+  },
+  "processDiagnostic": "LongBall API http://127.0.0.1:32961 · isolated fictional authentication · fictional SQLite store\n{\"worker\":\"longball-fictional\",\"completed\":2,\"retried\":0,\"failed\":0,\"notifications\":{\"accepted\":0,\"blocked\":0,\"retried\":0,\"suppressed\":0,\"reviewRequired\":0,\"failed\":0},\"exports\":{\"completed\":0,\"retried\":0,\"failed\":0,\"expired\":0}}\n",
+  "pageErrors": [],
+  "failureWorkspaces": [
+    {
+      "accountId": "synthetic-account-admin",
+      "body": "Clubs\nTeams\nSchedule\nStats\nMore\nRoma U10\nSuper Admin · 26/27\nManage this team\nClub and team\nSuper Admin\nRefresh clubs\nCreate club\nCreate club\nClubs and teams\nBrookfield Juniors\nRichmond Rovers\n0 team-seasons\nAdd team to this club\nAge group U5–U21\nPlayers a side\nSeason start year\nCreate team\nClub reports\nLoad club performance\nAdministrator access\nChoose an existing verified adult account. Club Admins inherit team management for their club; Super Admins operate across the application.\nsynthetic-account-admin\nsynthetic-account-club-admin\nsynthetic-account-manager\nsynthetic-account-manager-2\nsynthetic-account-manager-3\nsynthetic-account-manager-4\nsynthetic-account-manager-5\nsynthetic-account-other-manager\nGrant Club Admin\nGrant Super Admin\nsynthetic-account-admin · Super Admin\nRevoke access\nsynthetic-account-club-admin · Club Admin · Richmond Rovers\nRevoke access\nSuper Admin\nRefresh clubs\nClub administration is unavailable.\nSuper Admin\nRefresh clubs\nLoading clubs…\nEdit club and team configuration\nView assigned teams\nSuper Admin\nRefresh clubs\nClub administration is unavailable.\nSuper Admin\nRefresh clubs\nLoading clubs…\nSuper Admin\nRefresh clubs\nLoading clubs…\nSuper Admin\nRefresh clubs\nLoading clubs…\nSuper Admin\nRefresh clubs\nLoading clubs…\nSuper Admin\nRefresh clubs\nClub administration is unavailable.\nSuper Admin\nRefresh clubs\nClub administration is unavailable.\nSuper Admin\nRefresh clubs\nCreate club\nCreate club\nClubs and teams\nBrookfield Juniors\nRichmond Rovers\n0 team-seasons\nAdd team to this club\nAge group U5–U21\nPlayers a side\nSeason start year\nCreate team\nClub reports\nLoad club performance\nAdministrator access\nChoose an existing verified adult account. Club Admins inherit team management for their club; Super Admins operate across the application.\nsynthetic-account-admin\nsynthetic-account-club-admin\nsynthetic-account-manager\nsynthetic-account-manager-2\nsynthetic-account-manager-3\nsynthetic-account-manager-4\nsynthetic-account-manager-5\nsynthetic-account-other-manager\nGrant Club Admin\nGrant Super Admin\nsynthetic-account-admin · Super Admin\nRevoke access\nsynthetic-account-club-admin · Club Admin · Richmond Rovers\nRevoke access\nApplication sign-in rules\nManage sign-in rules\nSuper Admin · applies across all clubs and account types when credentials are created or changed."
+    }
+  ],
+  "completedAt": "2026-10-25T12:28:22.516Z"
+}

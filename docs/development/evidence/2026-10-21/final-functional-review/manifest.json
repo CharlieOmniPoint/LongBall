@@ -1,0 +1,120 @@
+{
+  "status": "passed",
+  "sourceRevision": "7ede8d1ef944823cfd6a5f6965ab51d4c37d286e",
+  "startedAt": "2026-10-21T19:32:33.944878+00:00",
+  "baseURL": "http://127.0.0.1:4173/",
+  "expectedArtifacts": {
+    "web": {
+      "entry": "/_expo/static/js/web/index-0e10e3d0fbd5528d8ee4e090a5d1e659.js",
+      "sha256": "c007d2543cbff4ce46c1eded82f8ce9d485b2dba7b2fa68f25e1eee7e2e126c7"
+    },
+    "api": {
+      "entry": "/workspace/LongBall/apps/api/dist/api.mjs",
+      "sha256": "d1568c20879d2e1df83843fc31e35a6fa053751785560988f53093c546e10798"
+    }
+  },
+  "ancillaryArtifact": {
+    "entry": "apps/api/dist/media-worker.mjs",
+    "bytes": 3467,
+    "sha256": "4b878815f5255ec427900db496df40c278176e381bfc3b7f6809912fe4cea5ed",
+    "scope": "Checksum binding only; this browser group does not exercise media processing."
+  },
+  "groups": [
+    {
+      "suite": "role-entry",
+      "script": "account-entry-review.mjs",
+      "apiPort": 4392,
+      "exitCode": 0,
+      "expectedNamedGroups": 8,
+      "seconds": 53.54,
+      "output": ".local/final-verification/final-7ede8d1e-20261021T193233Z/role-entry",
+      "namedGroups": 8,
+      "report": ".local/final-verification/final-7ede8d1e-20261021T193233Z/role-entry/report.json",
+      "artifacts": {
+        "sourceRevision": "7ede8d1ef944823cfd6a5f6965ab51d4c37d286e",
+        "web": {
+          "entry": "/_expo/static/js/web/index-0e10e3d0fbd5528d8ee4e090a5d1e659.js",
+          "sha256": "c007d2543cbff4ce46c1eded82f8ce9d485b2dba7b2fa68f25e1eee7e2e126c7"
+        },
+        "api": {
+          "entry": "apps/api/dist/api.mjs",
+          "sha256": "d1568c20879d2e1df83843fc31e35a6fa053751785560988f53093c546e10798"
+        }
+      },
+      "ancillaryArtifactUnchanged": true
+    },
+    {
+      "suite": "matchday",
+      "script": "connected-matchday-review.mjs",
+      "apiPort": 4393,
+      "exitCode": 0,
+      "expectedNamedGroups": 4,
+      "seconds": 12.53,
+      "output": ".local/final-verification/final-7ede8d1e-20261021T193233Z/matchday",
+      "namedGroups": 4,
+      "report": ".local/final-verification/final-7ede8d1e-20261021T193233Z/matchday/report.json",
+      "artifacts": {
+        "sourceRevision": "7ede8d1ef944823cfd6a5f6965ab51d4c37d286e",
+        "web": {
+          "entry": "/_expo/static/js/web/index-0e10e3d0fbd5528d8ee4e090a5d1e659.js",
+          "sha256": "c007d2543cbff4ce46c1eded82f8ce9d485b2dba7b2fa68f25e1eee7e2e126c7"
+        },
+        "api": {
+          "entry": "apps/api/dist/api.mjs",
+          "sha256": "d1568c20879d2e1df83843fc31e35a6fa053751785560988f53093c546e10798"
+        }
+      },
+      "ancillaryArtifactUnchanged": true
+    },
+    {
+      "suite": "policy-handover",
+      "script": "policy-connected-review.mjs",
+      "apiPort": 4394,
+      "exitCode": 0,
+      "expectedNamedGroups": 2,
+      "seconds": 12.72,
+      "output": ".local/final-verification/final-7ede8d1e-20261021T193233Z/policy-handover",
+      "namedGroups": 2,
+      "report": ".local/final-verification/final-7ede8d1e-20261021T193233Z/policy-handover/report.json",
+      "artifacts": {
+        "sourceRevision": "7ede8d1ef944823cfd6a5f6965ab51d4c37d286e",
+        "web": {
+          "entry": "/_expo/static/js/web/index-0e10e3d0fbd5528d8ee4e090a5d1e659.js",
+          "sha256": "c007d2543cbff4ce46c1eded82f8ce9d485b2dba7b2fa68f25e1eee7e2e126c7"
+        },
+        "api": {
+          "entry": "apps/api/dist/api.mjs",
+          "sha256": "d1568c20879d2e1df83843fc31e35a6fa053751785560988f53093c546e10798"
+        }
+      },
+      "ancillaryArtifactUnchanged": true
+    },
+    {
+      "suite": "accepted-view",
+      "script": "accepted-view-review.mjs",
+      "apiPort": 4395,
+      "exitCode": 0,
+      "expectedNamedGroups": 4,
+      "seconds": 40.15,
+      "output": ".local/final-verification/final-7ede8d1e-20261021T193233Z/accepted-view",
+      "namedGroups": 4,
+      "report": ".local/final-verification/final-7ede8d1e-20261021T193233Z/accepted-view/evidence.json",
+      "artifacts": {
+        "sourceRevision": "7ede8d1ef944823cfd6a5f6965ab51d4c37d286e",
+        "web": {
+          "entry": "/_expo/static/js/web/index-0e10e3d0fbd5528d8ee4e090a5d1e659.js",
+          "sha256": "c007d2543cbff4ce46c1eded82f8ce9d485b2dba7b2fa68f25e1eee7e2e126c7"
+        },
+        "api": {
+          "entry": "apps/api/dist/api.mjs",
+          "sha256": "d1568c20879d2e1df83843fc31e35a6fa053751785560988f53093c546e10798"
+        }
+      },
+      "ancillaryArtifactUnchanged": true
+    }
+  ],
+  "nativeDeviceEvidence": false,
+  "previousSourceEvidence": ".local/final-verification/final-55465b04-20261021T190328Z/",
+  "completedAt": "2026-10-21T19:34:32.894518+00:00",
+  "namedGroups": 18
+}

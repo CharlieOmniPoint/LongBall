@@ -1,0 +1,22 @@
+{
+  "sourceCommit": "b3a3502dfbe2af49f288e5f66d9a5473e9bc132d",
+  "checkedAt": "2026-10-21T17:51:28.477558+00:00",
+  "artifact": {
+    "script": "/_expo/static/js/web/index-32ca86273dbe686b58a3f536714329e2.js",
+    "sha256": "53eac573caf1b74dae1d67f0ab32038e764ca0a8301bc31fee1232bad8cdf3e9",
+    "bytes": 1377243
+  },
+  "checks": {
+    "connectedRoleJourneys": 8,
+    "matchdayGroups": 4,
+    "mainNavigationHiddenInFocusedMatch": true,
+    "backToTeamAndReturnWithoutPausing": true,
+    "independentlyAcceptedEvents": 12,
+    "acceptedStatus": "first_half_paused",
+    "mobileTypes": true,
+    "scopedLint": true
+  },
+  "nativeDeviceEvidence": false,
+  "publiclyPublished": false,
+  "scope": "Actual isolated fictional HTTP API and browser journal. Discovery transport redirected locally; all preparation/recording writes use visible UI. This interim source includes engine4 core and recurring training; final combined feature acceptance is separate."
+}

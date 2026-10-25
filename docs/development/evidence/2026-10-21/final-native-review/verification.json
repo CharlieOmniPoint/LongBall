@@ -1,0 +1,197 @@
+{
+  "recordedAt": "2026-10-21T20:04:25.425754+00:00",
+  "scope": "Production-config JavaScript/Hermes exports, evaluated native configuration and anonymous phone-width browser entry. This evidence does not prove native compilation, signing, hardware runtime or push delivery.",
+  "sources": {
+    "tested": "b25a74f03b6f27d07871f0bb86fd6a5f9e202e5f",
+    "integratedReliabilityFix": "e899e29f71ac50de7de4c7737ee4eb907d7e7823"
+  },
+  "sourceEquivalence": {
+    "method": "Git tree/blob object IDs",
+    "matchingObjects": {
+      "apps/mobile": {
+        "tested": "0076e910c6c870f84eee992e99387624b36a500a",
+        "integratedReliabilityFix": "0076e910c6c870f84eee992e99387624b36a500a"
+      },
+      "packages/application": {
+        "tested": "6ad1fbbc422456391777bf06765663bf144f2f68",
+        "integratedReliabilityFix": "6ad1fbbc422456391777bf06765663bf144f2f68"
+      },
+      "packages/domain": {
+        "tested": "dde4f25206e66f495b0f6fcfb794a6a694355fc6",
+        "integratedReliabilityFix": "dde4f25206e66f495b0f6fcfb794a6a694355fc6"
+      },
+      "packages/testing": {
+        "tested": "078d490a69755cce6b3d540435b8b3f1a1dae3d5",
+        "integratedReliabilityFix": "078d490a69755cce6b3d540435b8b3f1a1dae3d5"
+      },
+      "package.json": {
+        "tested": "aaef6f5825d23f65f7f3505a6b58d3f640aee7c6",
+        "integratedReliabilityFix": "aaef6f5825d23f65f7f3505a6b58d3f640aee7c6"
+      },
+      "pnpm-lock.yaml": {
+        "tested": "088419d0631b952727b53c3302e4ebed4fd99ea9",
+        "integratedReliabilityFix": "088419d0631b952727b53c3302e4ebed4fd99ea9"
+      },
+      "scripts/production-entry-review.mjs": {
+        "tested": "868fb192675c8defef3cab0dca2c14303599c6d1",
+        "integratedReliabilityFix": "868fb192675c8defef3cab0dca2c14303599c6d1"
+      },
+      "scripts/test-production-native-config.mjs": {
+        "tested": "ea5f0f645b0440e4e3b1bad26eeecb1b51c9d276",
+        "integratedReliabilityFix": "ea5f0f645b0440e4e3b1bad26eeecb1b51c9d276"
+      }
+    },
+    "allListedObjectsMatch": true,
+    "remainingCodeDiffPaths": [
+      "apps/api/src/branding.test.ts",
+      "apps/api/src/image-bytes.ts",
+      "apps/api/src/image-process.test.ts",
+      "apps/api/src/image-process.ts",
+      "apps/api/src/media-worker.mjs",
+      "apps/api/src/team-privileges-http.test.ts",
+      "scripts/runtime-contribution-boundaries.ts"
+    ]
+  },
+  "environment": {
+    "NODE_ENV": "production",
+    "EXPO_PUBLIC_ENVIRONMENT": "production",
+    "EXPO_NO_DOTENV": "1",
+    "EXPO_OFFLINE": "1",
+    "fictionalIdentityTrial": false,
+    "providerOrApiPublicDefaults": false
+  },
+  "maxMetroWorkers": 2,
+  "toolchain": {
+    "node": "24.19.0",
+    "expoPackage": "58.0.16",
+    "reactNative": "0.88.0"
+  },
+  "commands": [
+    {
+      "workingDirectory": "apps/mobile",
+      "command": "node node_modules/expo/bin/cli config --type introspect --json"
+    },
+    {
+      "workingDirectory": "apps/mobile",
+      "command": "node node_modules/expo/bin/cli export --platform web --max-workers 2 --output-dir <isolated>/web"
+    },
+    {
+      "workingDirectory": "apps/mobile",
+      "command": "node node_modules/expo/bin/cli export --platform android --platform ios --max-workers 2 --output-dir <isolated>/native"
+    },
+    {
+      "workingDirectory": "repository root",
+      "command": "LONGBALL_PRODUCTION_REVIEW_URL=http://127.0.0.1:4178 node scripts/production-entry-review.mjs"
+    },
+    {
+      "workingDirectory": "repository root",
+      "command": "node scripts/test-production-native-config.mjs"
+    }
+  ],
+  "exportPhases": [
+    {
+      "name": "config",
+      "startedAt": "2026-10-21T20:00:55.186084+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-10-21T20:00:57.433565+00:00"
+    },
+    {
+      "name": "web",
+      "startedAt": "2026-10-21T20:00:57.435185+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-10-21T20:01:07.328945+00:00"
+    },
+    {
+      "name": "native",
+      "startedAt": "2026-10-21T20:01:07.331070+00:00",
+      "exitCode": 0,
+      "finishedAt": "2026-10-21T20:02:52.643141+00:00"
+    }
+  ],
+  "nativeHermesExports": [
+    {
+      "file": "native/_expo/static/js/android/index-b0f8c97cd9b2e03855562d721d2481d7.hbc",
+      "bytes": 3737064,
+      "sha256": "f050586425dfefcb53fa060c8ac7649f52e789a408c838f6be6a9473293b076c",
+      "platform": "android",
+      "hermesMagic": "c61fbc03c103191f"
+    },
+    {
+      "file": "native/_expo/static/js/ios/index-c645d646838262042c69002c0bb56568.hbc",
+      "bytes": 3722891,
+      "sha256": "a1d44d4c40fa926163ea65a48f56926a34759b216fe40bb90fd423c4e6591fd1",
+      "platform": "ios",
+      "hermesMagic": "c61fbc03c103191f"
+    }
+  ],
+  "webJavaScript": [
+    {
+      "file": "web/_expo/static/js/web/index-302a41030f838f066bb03ee8b2e37462.js",
+      "bytes": 1482804,
+      "sha256": "dc82f9b9899e96e6eefd18d7654da0d476c8b8f22639f440c24b29c3e5c06e87"
+    }
+  ],
+  "nativeMetadata": {
+    "file": "native/metadata.json",
+    "bytes": 244,
+    "sha256": "5f0aec2da4295d7301617288a0636a3735e3085541eeeec7ae8c209259b119f3"
+  },
+  "evaluatedConfig": {
+    "rawConfigSha256": "3f09344cbccc08efce0ddb5737470b3d733661982631fea04ce705053750f0ea",
+    "rawConfigBytes": 10337,
+    "publishedAllowlist": "evaluated-native-fields.json"
+  },
+  "checks": {
+    "anonymousBrowser": {
+      "passed": true,
+      "count": 6,
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "recordingIndexedDBOpened": false,
+      "providerSignInAttempted": false,
+      "report": "anonymous-browser-report.json",
+      "screenshots": [
+        "anonymous-welcome.png",
+        "anonymous-sign-in.png"
+      ]
+    },
+    "evaluatedDevelopmentAndProductionConfig": {
+      "passed": true,
+      "count": 6,
+      "report": "configuration-checks.json"
+    }
+  },
+  "limits": [
+    "No new native compile, signing, install or physical device test was performed by these exports.",
+    "SQLCipher, backup protection, clock continuity, local authentication and notification permissions/runtime need native device testing.",
+    "APNs production is evaluated build configuration; no signing profile, provider/project credentials, notification transport or delivery was provisioned or tested.",
+    "Existing application identifiers/display name remain operator choices and were preserved.",
+    "Anonymous checks cover the production entry only; no provider authentication or private API action was attempted.",
+    "Historical source55465b introspection used Expo fallback Info.plist when no local iOS project existed; its permissive ATS values were not measured compiled Release behaviour. SDK58 devlauncher also has debug gates and a Release cleanup phase.",
+    "This directory retains summaries and anonymous screenshots, not raw build/config logs, credentials, provider defaults or binaries."
+  ],
+  "refreshReason": "Re-export after the bounded pinned public-review status cache-key reliability fix. No native configuration, module or API business behaviour change is included in that fix.",
+  "carriedForwardStaticChecks": {
+    "historicalEvidence": "historical-de2ae0a/verification.json",
+    "scope": "Previous configuration-source ESLint and root/mobile TypeScript results are retained historically; they were not rerun by this export refresh. Current global static checks are recorded separately by the integrating branch."
+  },
+  "historicalComparisons": [
+    {
+      "evidence": "historical-de2ae0a/verification.json",
+      "source": "de2ae0ab236c0b1fbfddfea48cc3fa1e7ccfe840",
+      "webJavaScriptSha256Equal": false,
+      "androidHermesSha256Equal": false,
+      "iosHermesSha256Equal": false
+    },
+    {
+      "evidence": "historical-55465b.json",
+      "source": "55465b04b00bb97df1c87ae1a82d67a589159471",
+      "webJavaScriptSha256Equal": false,
+      "androidHermesSha256Equal": false,
+      "iosHermesSha256Equal": false
+    }
+  ],
+  "artifactIdentityNote": "All current hashes are measured from the new files. Current native and web hashes differ from both historical exports; matching filenames would not establish binary identity."
+}

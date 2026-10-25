@@ -1,0 +1,51 @@
+{
+  "baseURL": "http://127.0.0.1:4173",
+  "api": "http://127.0.0.1:4314",
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "checks": [
+    {
+      "name": "01-rich-history-audited-correction-and-unknown-coverage",
+      "status": "passed",
+      "detail": {
+        "historicalId": "6630873c-743c-44ef-9e01-a944dcdecd92",
+        "correctedRevision": 2,
+        "historicalMinutesInvented": false,
+        "unknownScoreExcludedFromDraws": true
+      }
+    },
+    {
+      "name": "02-accepted-match-context-archive-and-exports",
+      "status": "passed",
+      "detail": {
+        "archivedSourceRevision": 15,
+        "recordedActiveMs": 50000,
+        "explicitContext": true,
+        "browserJsonCsvDownloads": true,
+        "nativeShareTested": false
+      }
+    },
+    {
+      "name": "03-administrator-configuration-explicit-rollover-preserves-source",
+      "status": "passed",
+      "detail": {
+        "destinationSeasonId": "25f1a46d-3766-4a4e-b23d-f38812bf5c68",
+        "sourcePreparationRecordsMembershipsPreserved": true,
+        "ongoingMatchUnchanged": true,
+        "explicitPlayerLinkCount": 1,
+        "spectatorGrantsCopied": 0,
+        "duplicateNextSeasonBlocked": true
+      }
+    }
+  ],
+  "browserErrors": [],
+  "nativeDeviceTested": false,
+  "reviewedWebBundle": "index-ca91e5e22aa0031c1489323df6c73a5c.js",
+  "sourceStatus": "uncommitted development candidate; not a final release",
+  "branch": "dev/longball-m0-journey",
+  "baseCommit": "3b2d83d591074a6fe887c4f3e6300626d4e138af",
+  "runDate": "2026-10-21",
+  "apiStorage": "isolated fictional SQLite via actual HTTP"
+}

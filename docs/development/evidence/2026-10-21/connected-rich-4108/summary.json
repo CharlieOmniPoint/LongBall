@@ -1,0 +1,73 @@
+{
+  "baseURL": "http://127.0.0.1:4173",
+  "api": "http://127.0.0.1:4314",
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "checks": [
+    {
+      "name": "01-rich-history-audited-correction-and-unknown-coverage",
+      "status": "passed",
+      "detail": {
+        "historicalId": "18ed9c52-b592-4050-8654-98c82d06e97e",
+        "correctedRevision": 2,
+        "historicalMinutesInvented": false,
+        "unknownScoreExcludedFromDraws": true
+      }
+    },
+    {
+      "name": "02-accepted-match-context-archive-and-exports",
+      "status": "passed",
+      "detail": {
+        "archivedSourceRevision": 15,
+        "recordedActiveMs": 50000,
+        "explicitContext": true,
+        "browserJsonCsvDownloads": true,
+        "nativeShareTested": false
+      }
+    },
+    {
+      "name": "03-administrator-configuration-explicit-rollover-preserves-source",
+      "status": "passed",
+      "detail": {
+        "destinationSeasonId": "c7eb03c5-7055-437d-8f5f-752485d8a367",
+        "sourcePreparationRecordsMembershipsPreserved": true,
+        "ongoingMatchUnchanged": true,
+        "explicitPlayerLinkCount": 1,
+        "spectatorGrantsCopied": 0,
+        "duplicateNextSeasonBlocked": true
+      }
+    },
+    {
+      "name": "04-delayed-scope-denial-closes-parallel-private-replies",
+      "status": "passed",
+      "detail": {
+        "delayed403Fixture": true,
+        "realMembershipRevocationTested": false,
+        "parallelPrivateRepliesClosed": true,
+        "freshIdentityRequiredToReopen": true
+      }
+    },
+    {
+      "name": "05-new-account-invitation-remains-online-and-usable",
+      "status": "passed",
+      "detail": {
+        "priorMembershipCount": 0,
+        "explicitlyAddressedSeason": "synthetic-season-2026-27",
+        "grantedRole": "spectator",
+        "acceptanceCodePersisted": false
+      }
+    }
+  ],
+  "browserErrors": [],
+  "nativeDeviceTested": false,
+  "reviewedWebBundle": "index-4108b23540176f94638dc263073b3912.js",
+  "apiSha256": "0ab39063e4bc217333a15f121fd49ade321eaf07e986ddb41bac18e2ef8a3697",
+  "sourceStatus": "uncommitted development candidate; later staff/album UI edits are not covered by this bundle",
+  "branch": "dev/longball-m0-journey",
+  "baseCommit": "3b2d83d591074a6fe887c4f3e6300626d4e138af",
+  "runDate": "2026-10-21",
+  "apiStorage": "isolated fictional SQLite over actual HTTP",
+  "serviceRatePolicyChanged": false
+}

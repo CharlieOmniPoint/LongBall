@@ -1,0 +1,25 @@
+{
+  "baseURL": "http://127.0.0.1:4173",
+  "artifact": {
+    "url": "http://127.0.0.1:4173/_expo/static/js/web/index-25ef8375d2900f017af0882d72abda65.js",
+    "sha256": "44c470778f2fce51e094180d16d834587de95c062da8787a6b12cef871a8e98e"
+  },
+  "deliberateFictionalCorruptionFixtures": true,
+  "results": [
+    {
+      "name": "blank-device",
+      "status": "failed",
+      "error": "Corruption fixtures are permitted only in a newly isolated fictional review."
+    },
+    {
+      "name": "malformed-device",
+      "status": "failed",
+      "error": "Corruption fixtures are permitted only in a newly isolated fictional review."
+    },
+    {
+      "name": "different-match",
+      "status": "failed",
+      "error": "Corruption fixtures are permitted only in a newly isolated fictional review."
+    }
+  ]
+}

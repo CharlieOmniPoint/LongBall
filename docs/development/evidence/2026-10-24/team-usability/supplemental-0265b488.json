@@ -1,0 +1,90 @@
+{
+  "status": "passed",
+  "checkedAt": "2026-10-24T12:58:12.694681+00:00",
+  "artifacts": {
+    "sourceRevision": "0265b4880d9808fb393851e3377ac5a34264b2c7",
+    "web": {
+      "entry": "/_expo/static/js/web/index-d3e05ce76f40fce98bf914c779707556.js",
+      "sha256": "899e6eabead9bffd2881a7e87e183a9e6403471d0ef11b118cca3e722b3cf3fd"
+    },
+    "api": {
+      "entry": "apps/api/dist/api.mjs",
+      "sha256": "ac0aae5d8afda850a1262675dde39434e2d39857adfcbb016fa5c004df3710e4"
+    }
+  },
+  "records": {
+    "viewport": "390x844",
+    "scenarios": [
+      "01-rich-history-audited-correction-and-unknown-coverage",
+      "02-accepted-match-context-archive-and-exports",
+      "03-administrator-configuration-explicit-rollover-preserves-source",
+      "04-delayed-scope-denial-closes-parallel-private-replies",
+      "05-new-account-invitation-remains-online-and-usable"
+    ],
+    "report": "connected-records/summary.json",
+    "actualQueuedCsvPdfWorker": true,
+    "runtimeErrors": []
+  },
+  "training": {
+    "viewport": "320x844",
+    "modes": [
+      {
+        "mode": "local",
+        "checks": 4
+      },
+      {
+        "mode": "connected",
+        "checks": 4
+      }
+    ],
+    "report": "training-series/report.json",
+    "runtimeErrors": []
+  },
+  "entry": {
+    "roles": [
+      "manager",
+      "administrator",
+      "player",
+      "spectator"
+    ],
+    "widths": [
+      320,
+      390
+    ],
+    "journeys": 8,
+    "report": "account-entry-final/report.json",
+    "runtimeErrors": []
+  },
+  "harnessOnlyChanges": [
+    "scripts/connected-records-review.mjs",
+    "scripts/training-series-review.mjs"
+  ],
+  "harnessChanges": [
+    "Explicit Back to records after saved-detail navigation.",
+    "Existing UK display-date helper for accepted context and match export buttons.",
+    "Real account-window pacing between completed phases only; no mutation retry or rebase.",
+    "Check independent training read HTTP status before parsing its body.",
+    "Existing isolated queued export encryption key and worker option enabled for the run."
+  ],
+  "earlierAttemptsPreserved": [
+    "connected-records/first-attempt",
+    "connected-records/second-attempt",
+    "connected-records/third-attempt",
+    "training-series/first-attempt",
+    "connected-records/rate-limit-observation.json",
+    "training-series/rate-limit-observation.json"
+  ],
+  "earlierAttempts": "Initial context-season display issue fixed by root in0265. Later stale harness navigation/date assumptions corrected. Earlier request-window failures preserved; wire429 status was not retained, so rate-limit annotations distinguish server-message inference from observed HTTP evidence.",
+  "unchangedPolicies": "Ordinary120/min and mutation60/min limits and all assertion timeouts unchanged. No product edits, mutation retry/rebase/regeneration or policy approvals.",
+  "cleanup": {
+    "4314": "closed",
+    "4386": "closed",
+    "4387": "closed",
+    "4358": "closed"
+  },
+  "limits": [
+    "Fictional isolated SQLite service and loopback transports only.",
+    "Delayed403 scenario does not itself prove real membership revocation.",
+    "No native device, native share, real notification delivery or public deployment claim."
+  ]
+}

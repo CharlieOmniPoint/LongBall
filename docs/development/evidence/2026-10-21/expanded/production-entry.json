@@ -1,0 +1,13 @@
+{
+  "passed": true,
+  "checks": [
+    "Anonymous production entry requires connected sign-in",
+    "Fictional accounts/seed absent",
+    "Recording journal not opened before sign-in",
+    "390px layout and no runtime errors"
+  ],
+  "layout": {
+    "width": 390,
+    "documentWidth": 390
+  }
+}

@@ -1,0 +1,177 @@
+{
+  "observedAt": "2026-10-23T18:53:21.378353+00:00",
+  "sourceCommit": "ae43c49b730b6d2bce779ef12ea4ab6d2001c50e",
+  "workingTreeDirty": true,
+  "changedDependencyFiles": [
+    "pnpm-lock.yaml"
+  ],
+  "lockSha256": "5658e12cc2b1322d2891cdda8dc68d2eca4d706f9699d0215a0fb21c98c42d6e",
+  "before": {
+    "workspaceVulnerabilities": {
+      "info": 0,
+      "low": 0,
+      "moderate": 1,
+      "high": 1,
+      "critical": 0
+    }
+  },
+  "after": {
+    "workspace": {
+      "passed": false,
+      "vulnerabilities": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 1,
+        "critical": 0
+      }
+    },
+    "runtime": {
+      "passed": true,
+      "vulnerabilities": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 0,
+        "critical": 0,
+        "total": 0
+      }
+    },
+    "compiler": {
+      "passed": true,
+      "vulnerabilities": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 0,
+        "critical": 0,
+        "total": 0
+      }
+    }
+  },
+  "changes": [
+    {
+      "package": "@expo/config-plugins",
+      "from": "58.0.9",
+      "to": "58.0.10",
+      "releasedAt": "2026-10-21T18:14:11.245Z",
+      "compatibleRange": "Expo 58.0.16 declares ~58.0.9; no declared application dependency, override or SDK change"
+    },
+    {
+      "package": "xcode",
+      "from": "3.0.1",
+      "to": "4.0.0",
+      "releasedAt": "2026-10-20T09:34:44.560Z",
+      "reason": "Official @expo/config-plugins patch uses xcode ^4.0.0 and removes uuid7 transitively"
+    },
+    {
+      "package": "uuid",
+      "from": "7.0.3",
+      "to": null,
+      "reason": "Removed from resolved dependency graph, fixing GHSA-w5hq-g745-h8pq"
+    }
+  ],
+  "upstreamEvidence": [
+    {
+      "url": "https://github.com/expo/expo/pull/51986",
+      "status": "Merged and published to npm",
+      "commit": "95eb2d30bfeb932d3cc5b335a82fcc649436db3c",
+      "finding": "Official Expo change states it fixes CVE-2026-41907 / GHSA-w5hq-g745-h8pq; published patch @expo/config-plugins58.0.10"
+    },
+    {
+      "url": "https://github.com/advisories/GHSA-vfj7-8cjw-p6xm",
+      "package": "braces",
+      "status": "Withdrawn on 2026-10-23",
+      "quote": "This advisory has been withdrawn because it's not a practically exploitable vulnerability.",
+      "finding": "Fresh registry audit no longer reports this advisory; no suppression or braces version change"
+    },
+    {
+      "url": "https://github.com/advisories/GHSA-86w9-cpqp-85rv",
+      "package": "node-forge",
+      "affected": "<=1.4.0",
+      "patch": null,
+      "status": "Still high and unpatched; registry latest is1.4.0, no safe patched resolution available"
+    },
+    {
+      "url": "https://github.com/advisories/GHSA-w5hq-g745-h8pq",
+      "package": "uuid",
+      "finding": "Affected legacy uuid7 removed by official tooling update"
+    }
+  ],
+  "checks": {
+    "frozenInstall": {
+      "passed": true,
+      "command": "pnpm install --frozen-lockfile",
+      "runtime": "Node24.19.0/pnpm11.25.0",
+      "supplyChainPolicyPassed": true,
+      "minimumReleaseAgeMinutes": 1440,
+      "log": "frozen-install.log"
+    },
+    "productionPrebuild": {
+      "passed": true,
+      "command": "CI=1 EXPO_OFFLINE=1 EXPO_PUBLIC_ENVIRONMENT=production expo prebuild --no-install --platform all",
+      "location": "Owned isolated copy under native-sandbox/apps/mobile",
+      "log": "prebuild.log",
+      "notes": [
+        "Expo suggests optional expo-system-ui for background/user-interface-style features; no install performed"
+      ]
+    },
+    "nativeConfiguration": {
+      "passed": true,
+      "checks": [
+        "Production evaluated iOS ATS and Android manifest refuse cleartext/local exceptions",
+        "Production strips Expo discovery/generated schemes and disables default dev menu/tools",
+        "Production/development APNs environment follows build profile without signing/provisioning",
+        "Explicit fictional/development trial keeps its recorded dev-client behavior",
+        "Both profiles retain app identity, SQLCipher, backup protections, biometrics, local module and notifications",
+        "Static trial source and explicit local-only notification/operator options are preserved"
+      ],
+      "sourceAppJsonSha256": "1d942ff7c29012b86f04a50d066bf66e2c59a0e1644c495802470a6c2625e00d",
+      "evaluated": {
+        "production": "0535656d320dd886fa2f330da29585a2ed095091c83a32ac8d59c32bb0c1eb8d",
+        "development": "2efd9e65471ceafbf66a524755366551d0981a20bf18237d4e4d052f69e2507f"
+      },
+      "scope": "Evaluated build configuration only; native Release signing, compilation, runtime and delivery are separate proof."
+    },
+    "xcodeProjectRoundtrip": {
+      "observedAt": "2026-10-23T18:52:31.278Z",
+      "passed": true,
+      "configPlugins": "58.0.10",
+      "xcode": "4.0.0",
+      "checks": [
+        "Production iOS/Android prebuild --no-install succeeded in isolated source copy",
+        "Generated project parsed, added group, written and parsed again preserving project root",
+        "1000 generated Xcode UUIDs have uppercase 24-hex format without collisions"
+      ],
+      "iosProjectSha256": "536285e68bd917d8e7b316320e61c4f54d0233a122611db3898827d85fae9aad",
+      "scope": "Project generation/configuration only; no native compilation, signing, installation, hardware runtime or notification delivery proof."
+    }
+  },
+  "qualification": [
+    "Source is dirty working tree based on sourceCommit, not clean commit/CI proof. Only pnpm-lock.yaml dependency resolution changed by this task.",
+    "Primary-tree native config test failed development ATS assertion because ignored generated primary iOS Info.plist has NSAllowsArbitraryLoads=false. Same six groups pass from isolated source copy with no generated native directories. Primary native directories were left untouched.",
+    "Initial ad hoc xcode smoke used empty PBX group path, which serialized invalid empty value; corrected smoke uses valid nonempty path and parses/writes/parses successfully. No application code changed for this harness correction.",
+    "Native config/prebuild/project parsing are not native compilation, signing, device installation/runtime or notification delivery evidence.",
+    "Full dependency gate remains failing due to one unpatched high node-forge advisory. No ignores, overrides, severity changes or audit/license/secret gate suppression were added.",
+    "Primary-tree native-config false failure is now fixed in maintained script by fresh temporary source evaluation; no primary generated native file changed."
+  ],
+  "additionalAuthorizedCheckFix": {
+    "file": "scripts/test-production-native-config.mjs",
+    "sha256": "117b3bda81951f39b4488a3b37246aa137416b134d7a1ec6922402af90069057",
+    "behavior": "Always introspect fresh owned temporary mobile source copy; preserve relative plugins/assets/local module and link installed dependencies; remove copy in finally on success or error",
+    "cleanupProof": {
+      "passed": true,
+      "successGroups": 6,
+      "failureInjection": "Temporary copied production plugin throws intentional marker; script exits nonzero",
+      "temporaryDirectoriesRemaining": 0,
+      "primaryNativeFilesHashed": 72,
+      "primaryNativeFilesUnchanged": true
+    },
+    "checks": [
+      "Maintained script6 groups pass from primary repository despite stale ignored generated native folders",
+      "Prettier and targeted ESLint pass",
+      "Intentional production-plugin error in isolated source confirms nonzero failure and cleanup; primary72 native files unchanged",
+      "git diff --check passes"
+    ]
+  }
+}

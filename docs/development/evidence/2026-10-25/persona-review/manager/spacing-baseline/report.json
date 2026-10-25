@@ -1,0 +1,120 @@
+{
+  "persona": "manager",
+  "phase": "baseline",
+  "startedAt": "2026-10-25T22:09:52.896Z",
+  "scope": "Actual compiled UI and isolated SQLite API/worker; only discovery and virtual transport are redirected to owned loopback processes. Generated accounts, not public demo credentials.",
+  "checks": [
+    "Measured actual baseline squad card choices at phone and tablet widths."
+  ],
+  "findings": [],
+  "failures": [],
+  "httpFailures": [],
+  "transportErrors": [],
+  "pageErrors": [],
+  "screenshots": [
+    "manager-squad-390.png",
+    "manager-squad-1024.png"
+  ],
+  "passed": true,
+  "source": {
+    "gitHead": "0961d1eb438ac2be591e71e6b3a92442aa72e38a",
+    "workingTreeDirty": true,
+    "webScriptSha256": "629ef0ee691c9b95e0d5b76653beb9e6b0b4d30c2105f3f60e483edb472a209d",
+    "serverBundleSha256": "218ef2808696ce0a063aa19d3c89b5af4784ae47249f083f67b60b932b0fc85e",
+    "workerBundleSha256": "1a72230f6f9f49f0cd86601189993c543a5aa1f3a89229048cd9ea10e0b71e7a",
+    "helperSha256": "454047298be9d96c6520073e03b7ff303f784fac586bffe823673683c6835506"
+  },
+  "physicalDeviceTested": false,
+  "publicCredentialsUsed": false,
+  "paidServicesProvisioned": false,
+  "spacing": [
+    {
+      "viewport": 390,
+      "cardHeight": 314,
+      "cardWidth": 358,
+      "choiceRows": [
+        {
+          "label": "Thomas Arnold availability reply: Available",
+          "y": 552,
+          "height": 48
+        },
+        {
+          "label": "Thomas Arnold availability reply: Unavailable",
+          "y": 552,
+          "height": 48
+        },
+        {
+          "label": "Thomas Arnold availability reply: Unsure",
+          "y": 552,
+          "height": 48
+        },
+        {
+          "label": "Thomas Arnold availability reply: No reply",
+          "y": 608,
+          "height": 48
+        },
+        {
+          "label": "Thomas Arnold actual attendance: Present",
+          "y": 696,
+          "height": 48
+        },
+        {
+          "label": "Thomas Arnold actual attendance: Absent",
+          "y": 696,
+          "height": 48
+        },
+        {
+          "label": "Thomas Arnold actual attendance: Not recorded",
+          "y": 696,
+          "height": 48
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "viewport": 1024,
+      "cardHeight": 258,
+      "cardWidth": 499.390625,
+      "choiceRows": [
+        {
+          "label": "Thomas Arnold availability reply: Available",
+          "y": 552,
+          "height": 48
+        },
+        {
+          "label": "Thomas Arnold availability reply: Unavailable",
+          "y": 552,
+          "height": 48
+        },
+        {
+          "label": "Thomas Arnold availability reply: Unsure",
+          "y": 552,
+          "height": 48
+        },
+        {
+          "label": "Thomas Arnold availability reply: No reply",
+          "y": 552,
+          "height": 48
+        },
+        {
+          "label": "Thomas Arnold actual attendance: Present",
+          "y": 640,
+          "height": 48
+        },
+        {
+          "label": "Thomas Arnold actual attendance: Absent",
+          "y": 640,
+          "height": 48
+        },
+        {
+          "label": "Thomas Arnold actual attendance: Not recorded",
+          "y": 640,
+          "height": 48
+        }
+      ],
+      "overflow": false
+    }
+  ],
+  "artifactsStable": true,
+  "finishedAt": "2026-10-25T22:10:00.297Z"
+}

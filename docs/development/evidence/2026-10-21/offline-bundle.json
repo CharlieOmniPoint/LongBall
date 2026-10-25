@@ -1,0 +1,91 @@
+{
+  "recordedAt": "2026-10-21T19:00:30.548697+00:00",
+  "baseSource": "1d119878361f28224f38739ed34637cd527aaf19",
+  "dependencyPrerequisite": "147dfd6",
+  "scope": "DS10 complete verified offline snapshot, runtime bundle schema1 and API04 typed match-list contract",
+  "sourceSha256": {
+    "packages/application/src/offline-bundle.ts": "d2231015498ec85380c013d37c53bb27ebab1e9c44fd7b55c11c3b8deaed78ea",
+    "packages/application/src/sync.ts": "db6c435dd7929510f868e96d7dd53780977dfc1fcd16a72cbdd2178b714f342c",
+    "apps/api/src/offline-bundle.ts": "8039d2f4434e10c5636b9d30c0600132d7a8a59686bb98a99955f5be6caba69e",
+    "apps/api/src/store.ts": "6350aa94e654038524d3e8e00be178f5e54a50ead10fd4aab94f9023e6e8c5b2",
+    "apps/api/src/postgres-store.ts": "53ecc5b44911f4a12f42e75f55984c348ffc3b59c33c048c208afc0ff890af42",
+    "apps/api/src/server.ts": "538d367ed4293c69763d56d0c909be41b7cec6596f4964f83a38c6852bda139e",
+    "apps/mobile/src/features/ServicePanel.tsx": "c151eab1ab538468c4bcf0cbaba763cdce05a126f7bab3f8502d69954d990e47",
+    "packages/application/src/offline-bundle.test.ts": "c094eec17cee2ca4bf087a50c64388cf763435a4321870fdcd762947d02ecf66",
+    "packages/application/src/offline-bundle.test-fixture.ts": "8eeaf0dd24bc3fd10335c962a5e4bb2e036a712a14ab3a57a12c05533415699e",
+    "apps/api/src/offline-bundle.test.ts": "1355c6debda5c091c39ca8f3960e57f4b04356c1ef19b14109a3ddaf07590a34",
+    "packages/application/src/accepted-match-view.test.ts": "45b03817bd397c99238ccf797f8b2e3edc74df5a15d3f8067778d25dfc4bf612",
+    "packages/application/src/connected-live-editor.test.ts": "fcc89afb7c82baead536ed8dd4e9a284c2539ae4da197ddee46fe634311b0435",
+    "packages/application/src/sync.test.ts": "6b42bd1e12b2dd60fc5c29018ff28293f1ddb186762cd0b6167aee83b6a5a1a6",
+    "apps/api/contracts/runtime.openapi.yaml": "1e84deaad0251782301a6020726575d81f4e8cd30bfa683d2e5f0aa6e58d1eb8",
+    "scripts/test-offline-download-contract.py": "e73434eccd1861b94e72571073fd7789ab67dd71369104be83b0707f7f1063d6",
+    "scripts/validate-contracts.py": "71b763fc18cd6dbe6b15e7ec60733d2587c6cff62b8b823fb57e6c28c943e6e9"
+  },
+  "dependency": {
+    "name": "@noble/hashes",
+    "version": "2.4.0",
+    "hashApi": "@noble/hashes/sha2.js; Uint8Array incremental SHA-256"
+  },
+  "results": {
+    "unit": {
+      "passed": 42,
+      "files": 4,
+      "skipped": 0,
+      "durationSeconds": 8.68,
+      "command": "node_modules/.bin/vitest run packages/application/src/offline-bundle.test.ts packages/application/src/sync.test.ts packages/application/src/accepted-match-view.test.ts packages/application/src/connected-live-editor.test.ts --maxWorkers=1"
+    },
+    "actualHttp": {
+      "passed": 3,
+      "files": 1,
+      "skipped": 0,
+      "durationSeconds": 7.94,
+      "backends": [
+        "actual SQLite fictional API",
+        "actual PostgreSQL restricted NOBYPASSRLS API"
+      ],
+      "command": "node --env-file=<private-runtime-selector> node_modules/vitest/vitest.mjs run --config apps/api/vitest.config.ts apps/api/src/offline-bundle.test.ts --maxWorkers=1"
+    },
+    "earlierAffectedHttpRegression": {
+      "passed": 5,
+      "files": 3,
+      "skipped": 0,
+      "scope": "Bundle plus existing clock-exchange and policy HTTP journeys; final3 bundle checks supersede this earlier source snapshot"
+    },
+    "rootTypeScript": "passed",
+    "mobileTypeScript": "passed",
+    "scopedEslint": "passed",
+    "diffCheck": "passed",
+    "contracts": {
+      "canonicalArchiveMembersUnchanged": 15,
+      "canonicalChecksumsUnchanged": 14,
+      "canonicalOpenApi31": "passed",
+      "runtimeOpenApi31": "passed",
+      "maintainedRuntimeVersion": "1.6.0",
+      "allStandardBoundaryValidators": "passed"
+    }
+  },
+  "verifiedBehaviors": [
+    "Deterministic canonical JSON/UTF-8 parity with Node SHA-256 including Unicode/astral/lone-surrogate escaping; hash works with global TextEncoder and crypto unavailable",
+    "Checksum mismatch and correctly rehashed inconsistent scope/revision/history/checkpoint refuse merge without modifying pending/outbox/candidate",
+    "10000 accepted-record structural fixture with1000-character permitted reasons succeeds without a tighter payload-byte cap;10001 refuses without truncation",
+    "Original persisted accepted envelope and exact database received_at survive HTTP download; historical engine labels remain original",
+    "Current controller-only endpoint rejects missing/wrong capability and device; another manager receives observation without a capability",
+    "Actual PostgreSQL concurrent write waits outside the complete snapshot transaction; pre-write snapshot0 then post-write snapshot1 are each consistent",
+    "Complete installed bundle metadata/history persists alongside the single acceptedState and is revalidated after JSON reload",
+    "Legacy unsigned cache remains retained and cannot capture until verified refresh; immutable old-engine pending bytes still require review",
+    "Explicit observation downgrade disables confirmed recording while retaining original uncertain upload, grant and candidate",
+    "Legacy fictional player available metadata remains selection evidence and does not create attendance"
+  ],
+  "limitations": [
+    "Upper-bound record test is structural fixture proof, not a played10000-event match or physical-device performance acceptance",
+    "JSON reload proof is not physical encrypted-device cold restart acceptance",
+    "Browser/Hermes exports and final composed browser journeys are parent follow-on checks after merge",
+    "Pilot rejects unsupported history instead of truncating; control transitions retain separate actual IDs/epochs, not fabricated global event ordinals",
+    "Checksum is payload integrity over authenticated transport, not a server signature, new sharing approval or a continuous-clock anchor",
+    "No new provider delivery, physical-device, deployment or paid-service provisioning proof is claimed"
+  ],
+  "resolvedCompatibilityDiagnostics": [
+    "ServicePanel receipt projection captured explicitly because useDocument.change returns a boolean",
+    "Original fictional seed player available boolean explicitly preserved by snapshot allowlist/schema"
+  ]
+}

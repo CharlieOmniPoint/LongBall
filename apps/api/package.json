@@ -1,0 +1,14 @@
+{
+  "name": "@longball/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/main.ts"
+  },
+  "dependencies": {
+    "fastify": "5.12.7",
+    "pg": "8.23.1",
+    "sharp": "0.35.5"
+  }
+}

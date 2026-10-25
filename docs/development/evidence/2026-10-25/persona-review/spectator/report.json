@@ -1,0 +1,158 @@
+{
+  "persona": "spectator",
+  "phase": "candidate6-final",
+  "startedAt": "2026-10-25T22:47:24.986Z",
+  "scope": "Actual compiled UI and isolated SQLite API/worker; only discovery and virtual transport are redirected to owned loopback processes. Generated accounts, not public demo credentials.",
+  "checks": [
+    "Spectator sign-in opens only the simple Home, Scores, Results, Photos and Account navigation, with its role identified.",
+    "Home overview fits 320/390/1024px and opens its recommended game, with an All games return path.",
+    "Manual match refresh reaches the actual permitted match endpoint and presents its last-checked UK-time receipt plus the existing two-minute auto-check explanation; this journey does not simulate an elapsed background scheduler interval.",
+    "Scores exposes permitted match cards/details and refresh receipts without private player-stat views.",
+    "A completed result opens its published game album directly; protected opposition notes, FA team sheets, private player participation and Manager match state remain unavailable to Spectators.",
+    "Results are readable without player participation rows; direct player stats are denied and the community projection contains no ballot candidates, own ballot, submissions or review queue.",
+    "Photos is reachable without vote/upload/review controls; published-only data and empty/cluttered states were inspected.",
+    "A Spectator can save the player they support within the invited team; this does not expose private player stats. The later owner-authorized spectator invitation entry remains available.",
+    "Spectator Account exposes role-specific Help, Privacy and its own data-request intake, clearly marks policy/verification as pending, and submits nothing merely by opening the screen. Deferred fulfilment decisions remain pending.",
+    "Connection loading disables choices; a transient read, an accepted save with lost receipt and a bounded stalled read all recover with an explicit retry and keep the last confirmed selection honest.",
+    "Actual protected thumbnail/full-image bytes open from published-only albums; reporting, cancellation, account-only uploader hiding and restoration persist without altering official match/award data.",
+    "Gallery previews load automatically, a controlled thumbnail503 offers a successful explicit retry, and the preview makes no additional request over successive workspace clock ticks; Open photo loads one decoded current-access display image.",
+    "On390px the viewer replaces album/grid clutter, shows the complete photo above navigation without an extra scroll, preserves the full caption in accessible button names and returns to the same selected album when closed.",
+    "Notification category and UK quiet-hour preferences persist, equal start/end is refused; no notification delivery or real antivirus proof is claimed.",
+    "A first-time320px Spectator request recovers a directory503 with retained contact fields; an accepted request whose receipt is lost locks its exact body, warns before leaving and retries the original requestId explicitly to produce one pending staff request without an account or automatic membership.",
+    "A Spectator creates a scoped invitation and local QR with email-compose availability; a new320px join recovers a preview503, preserves edited name/username, refuses1111 before any POST, creates its own PIN account, signs out/revokes and signs back in. No email was sent or capability screenshot retained.",
+    "An existing PIN account accepts a second actual team, sees a safe whole-team-only empty roster, switches back and retains its original per-team supported player without replacing either grant.",
+    "Account returns to the distinct invitation workspace after the earlier issued link/QR was closed; no capability screenshot is retained.",
+    "Explicit sign-out closes private views and revokes the old session token."
+  ],
+  "findings": [],
+  "failures": [],
+  "httpFailures": [
+    {
+      "method": "GET",
+      "path": "/v1/teams/synthetic-roma-u10/player-stats",
+      "status": 404,
+      "code": "NOT_FOUND",
+      "expected": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/teams/synthetic-roma-u10/opposition-reviews",
+      "status": 404,
+      "code": "NOT_FOUND",
+      "expected": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/teams/synthetic-roma-u10/team-sheet",
+      "status": 404,
+      "code": "NOT_FOUND",
+      "expected": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/me",
+      "status": 401,
+      "code": "INVALID_SESSION",
+      "expected": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/me",
+      "status": 401,
+      "code": "INVALID_SESSION",
+      "expected": true
+    }
+  ],
+  "transportErrors": [],
+  "pageErrors": [],
+  "screenshots": [
+    "home-390.png",
+    "home-1024.png",
+    "scores-1024.png",
+    "results-1024.png",
+    "photos-390.png",
+    "account-390.png",
+    "photo-open-390.png",
+    "photos-real-protected-gallery-390.png"
+  ],
+  "passed": true,
+  "source": {
+    "gitHead": "0961d1eb438ac2be591e71e6b3a92442aa72e38a",
+    "workingTreeDirty": true,
+    "webScriptSha256": "91c5b2b6013ee0f496c9e13d73bb59b073d0d8b32e0bf0c56f658cf5908b4813",
+    "serverBundleSha256": "7e6a4fc28acac0d106ca98e5a3955f2d06932d8da7d3fe99cef7c45ca3a1c3e4",
+    "workerBundleSha256": "b9077f122adf3b1bc6122df9beaf5610f1ea2928c852c1da4280619cf05a45f5",
+    "helperSha256": "6a9da668a2d0fe88245328f3df167f6da815917c90634d66e5a1288fde751698",
+    "personaScriptSha256": "3455d3c38ce08f377ccb073249cb4d4c7021bf9bc82f44c2cb34a19fa015eae4"
+  },
+  "physicalDeviceTested": false,
+  "publicCredentialsUsed": false,
+  "paidServicesProvisioned": false,
+  "mediaFixture": {
+    "kind": "exact-generated-artwork-clamd-wire-ui-fixture",
+    "antivirusProof": false,
+    "allowedImageKinds": [
+      "pitch",
+      "cones",
+      "ball"
+    ],
+    "acceptedImageCount": 3,
+    "maxBytes": 18300,
+    "description": "Only the exact demoArtwork PNG hashes receive a controlled clean response. All other bytes are rejected. Actual HTTP upload, decoding, authorization and moderation run in the application; malware detection and real antivirus database acceptance are not established."
+  },
+  "mediaSetup": {
+    "processed": 3,
+    "publishedExamples": 2,
+    "pendingPlayerExamples": 1,
+    "throughNormalMediaPipeline": true,
+    "boundary": {
+      "kind": "exact-generated-artwork-clamd-wire-ui-fixture",
+      "antivirusProof": false,
+      "allowedImageKinds": [
+        "pitch",
+        "cones",
+        "ball"
+      ],
+      "acceptedImageCount": 3,
+      "maxBytes": 18300,
+      "description": "Only the exact demoArtwork PNG hashes receive a controlled clean response. All other bytes are rejected. Actual HTTP upload, decoding, authorization and moderation run in the application; malware detection and real antivirus database acceptance are not established."
+    },
+    "fixtureScans": {
+      "accepted": 3,
+      "rejected": 0,
+      "malformed": 0
+    }
+  },
+  "controlledFailures": [
+    "One connection GET503 recovered manually",
+    "One accepted connection POST with its successful receipt replaced by503; no automatic duplicate",
+    "One connection GET held beyond the product20-second bound; retry recovered"
+  ],
+  "budgetWaits": [
+    {
+      "accountId": "synthetic-account-spectator",
+      "waitMs": 20083,
+      "attempts": 74,
+      "mutations": 2
+    },
+    {
+      "accountId": "synthetic-account-spectator",
+      "waitMs": 17352,
+      "attempts": 71,
+      "mutations": 6
+    }
+  ],
+  "photoViewerGeometry": {
+    "viewportWidth": 390,
+    "image": {
+      "x": 33,
+      "y": 14,
+      "width": 324,
+      "height": 240
+    },
+    "navigationTop": 770,
+    "noPostOpenScroll": true
+  },
+  "artifactsStable": true,
+  "finishedAt": "2026-10-25T22:49:42.646Z"
+}

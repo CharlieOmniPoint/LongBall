@@ -1,0 +1,66 @@
+{
+  "accepted": true,
+  "observedAt": "2026-10-25T23:13:15.048Z",
+  "url": "https://charlieomnipoint.github.io/LongBall/?review=97b6a49&verify=persona-final",
+  "source": {
+    "sourceCommit": "97b6a49c7830da82a498a8dfb9108ad9b0cbfa69",
+    "sourceBranch": "dev/longball-m0-journey",
+    "synthetic": true,
+    "nativeTargets": [
+      "iPhone",
+      "Android"
+    ],
+    "production": false,
+    "basePath": "/LongBall",
+    "connectedBackendIncluded": false
+  },
+  "scriptUrl": "https://charlieomnipoint.github.io/LongBall/_expo/static/js/web/index-a8dfb1e287cb99265f62d09f81de8c84.js",
+  "scriptStatus": 200,
+  "servedScriptSha256": "a2ae2acd16fc138cf079e8708bb51843afdaa0920a57039f855999f6b8ff9706",
+  "runtime": {
+    "state": "ready",
+    "url": "https://conventional-unions-attachment-absolute.trycloudflare.com",
+    "sourceRevision": "fe899e89b54aeceab8f5903036fc6daef1dd786d",
+    "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40243187138",
+    "startedAt": "2026-10-25T23:09:15Z",
+    "expiresAt": "2026-10-26T04:09:15Z",
+    "audience": "LongBall demo review with simulated Roma U10 teams and matches"
+  },
+  "healthStatus": 200,
+  "health": {
+    "status": "ok",
+    "service": "longball-api",
+    "contractVersion": "longball.events/1.1",
+    "backend": "fictional-sqlite",
+    "syntheticOnly": true,
+    "demoScenario": true,
+    "demoAccountLogin": true
+  },
+  "publicPolicyStatus": 200,
+  "anonymousPrivateReportStatus": 401,
+  "welcomeVisible": true,
+  "signInVisible": true,
+  "viewport": 390,
+  "scrollWidth": 390,
+  "credentialsSubmitted": false,
+  "loginForm": {
+    "loginFormVisible": true,
+    "usernameVisible": true,
+    "viewport": 390,
+    "scrollWidth": 390,
+    "credentialsSubmitted": false
+  },
+  "localAuthenticatedProof": "Separate isolated compiled journeys; no public authentication claim.",
+  "pagesDeploymentRun": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40243534073",
+  "pagesTransport": "851a179b35d6e874e89f2b95a4d8a0f4e36d15bf",
+  "runtimeTransport": "fe899e89b54aeceab8f5903036fc6daef1dd786d",
+  "noCredentialsSentToRemoteBrowser": true,
+  "defaultShareUrlVerification": {
+    "url": "https://charlieomnipoint.github.io/LongBall/",
+    "scriptStatus": 200,
+    "scriptUrl": "https://charlieomnipoint.github.io/LongBall/_expo/static/js/web/index-a8dfb1e287cb99265f62d09f81de8c84.js",
+    "servedScriptSha256": "a2ae2acd16fc138cf079e8708bb51843afdaa0920a57039f855999f6b8ff9706",
+    "welcomeVisible": true,
+    "credentialsSubmitted": false
+  }
+}

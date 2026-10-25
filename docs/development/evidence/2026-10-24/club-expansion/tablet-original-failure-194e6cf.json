@@ -1,0 +1,820 @@
+{
+  "scope": "Staff-only device-local tablet layout, role boundaries, rotation and untouched football command state against an isolated generated-account API and exact built application.",
+  "passed": false,
+  "viewports": [
+    {
+      "width": 320,
+      "height": 844
+    },
+    {
+      "width": 390,
+      "height": 844
+    },
+    {
+      "width": 768,
+      "height": 1024
+    },
+    {
+      "width": 820,
+      "height": 1180
+    },
+    {
+      "width": 1024,
+      "height": 768
+    },
+    {
+      "width": 1180,
+      "height": 820
+    },
+    {
+      "width": 1366,
+      "height": 1024
+    },
+    {
+      "width": 844,
+      "height": 390
+    },
+    {
+      "width": 915,
+      "height": 412
+    }
+  ],
+  "journeys": [
+    {
+      "role": "manager",
+      "width": 320,
+      "height": 844,
+      "preference": "auto",
+      "effective": "phone",
+      "selectedPlayerRetained": true,
+      "visibleTargets": 24,
+      "noOverflow": true,
+      "targets44px": true,
+      "readableTypography": true,
+      "mapCardsDoNotOverlap": true,
+      "columns": [
+        {
+          "id": "stats-workspace-layout",
+          "width": 288,
+          "direction": "column",
+          "axis": "column",
+          "expected": "column",
+          "siblingPanelsDoNotOverlap": true,
+          "siblingPanelsFollowAxis": true
+        }
+      ]
+    },
+    {
+      "role": "manager",
+      "width": 390,
+      "height": 844,
+      "preference": "auto",
+      "effective": "phone",
+      "selectedPlayerRetained": true,
+      "visibleTargets": 24,
+      "noOverflow": true,
+      "targets44px": true,
+      "readableTypography": true,
+      "mapCardsDoNotOverlap": true,
+      "columns": [
+        {
+          "id": "stats-workspace-layout",
+          "width": 358,
+          "direction": "column",
+          "axis": "column",
+          "expected": "column",
+          "siblingPanelsDoNotOverlap": true,
+          "siblingPanelsFollowAxis": true
+        }
+      ]
+    },
+    {
+      "role": "manager",
+      "width": 768,
+      "height": 1024,
+      "preference": "auto",
+      "effective": "tablet",
+      "selectedPlayerRetained": true,
+      "visibleTargets": 24,
+      "noOverflow": true,
+      "targets44px": true,
+      "readableTypography": true,
+      "mapCardsDoNotOverlap": true,
+      "columns": [
+        {
+          "id": "stats-workspace-layout",
+          "width": 736,
+          "direction": "row",
+          "axis": "row",
+          "expected": "row",
+          "siblingPanelsDoNotOverlap": true,
+          "siblingPanelsFollowAxis": true
+        }
+      ]
+    },
+    {
+      "role": "manager",
+      "width": 820,
+      "height": 1180,
+      "preference": "auto",
+      "effective": "tablet",
+      "selectedPlayerRetained": true,
+      "visibleTargets": 24,
+      "noOverflow": true,
+      "targets44px": true,
+      "readableTypography": true,
+      "mapCardsDoNotOverlap": true,
+      "columns": [
+        {
+          "id": "stats-workspace-layout",
+          "width": 788,
+          "direction": "row",
+          "axis": "row",
+          "expected": "row",
+          "siblingPanelsDoNotOverlap": true,
+          "siblingPanelsFollowAxis": true
+        }
+      ]
+    },
+    {
+      "role": "manager",
+      "width": 1024,
+      "height": 768,
+      "preference": "auto",
+      "effective": "tablet",
+      "selectedPlayerRetained": true,
+      "visibleTargets": 24,
+      "noOverflow": true,
+      "targets44px": true,
+      "readableTypography": true,
+      "mapCardsDoNotOverlap": true,
+      "columns": [
+        {
+          "id": "stats-workspace-layout",
+          "width": 840,
+          "direction": "row",
+          "axis": "row",
+          "expected": "row",
+          "siblingPanelsDoNotOverlap": true,
+          "siblingPanelsFollowAxis": true
+        }
+      ]
+    },
+    {
+      "role": "manager",
+      "width": 1180,
+      "height": 820,
+      "preference": "auto",
+      "effective": "tablet",
+      "selectedPlayerRetained": true,
+      "visibleTargets": 24,
+      "noOverflow": true,
+      "targets44px": true,
+      "readableTypography": true,
+      "mapCardsDoNotOverlap": true,
+      "columns": [
+        {
+          "id": "stats-workspace-layout",
+          "width": 996,
+          "direction": "row",
+          "axis": "row",
+          "expected": "row",
+          "siblingPanelsDoNotOverlap": true,
+          "siblingPanelsFollowAxis": true
+        }
+      ]
+    },
+    {
+      "role": "manager",
+      "width": 1366,
+      "height": 1024,
+      "preference": "auto",
+      "effective": "tablet",
+      "selectedPlayerRetained": true,
+      "visibleTargets": 24,
+      "noOverflow": true,
+      "targets44px": true,
+      "readableTypography": true,
+      "mapCardsDoNotOverlap": true,
+      "columns": [
+        {
+          "id": "stats-workspace-layout",
+          "width": 1182,
+          "direction": "row",
+          "axis": "row",
+          "expected": "row",
+          "siblingPanelsDoNotOverlap": true,
+          "siblingPanelsFollowAxis": true
+        }
+      ]
+    },
+    {
+      "role": "manager",
+      "width": 844,
+      "height": 390,
+      "preference": "auto",
+      "effective": "phone",
+      "selectedPlayerRetained": true,
+      "visibleTargets": 24,
+      "noOverflow": true,
+      "targets44px": true,
+      "readableTypography": true,
+      "mapCardsDoNotOverlap": true,
+      "columns": [
+        {
+          "id": "stats-workspace-layout",
+          "width": 600,
+          "direction": "column",
+          "axis": "column",
+          "expected": "column",
+          "siblingPanelsDoNotOverlap": true,
+          "siblingPanelsFollowAxis": true
+        }
+      ]
+    },
+    {
+      "role": "manager",
+      "width": 915,
+      "height": 412,
+      "preference": "auto",
+      "effective": "phone",
+      "selectedPlayerRetained": true,
+      "visibleTargets": 24,
+      "noOverflow": true,
+      "targets44px": true,
+      "readableTypography": true,
+      "mapCardsDoNotOverlap": true,
+      "columns": [
+        {
+          "id": "stats-workspace-layout",
+          "width": 600,
+          "direction": "column",
+          "axis": "column",
+          "expected": "column",
+          "siblingPanelsDoNotOverlap": true,
+          "siblingPanelsFollowAxis": true
+        }
+      ]
+    },
+    {
+      "role": "administrator",
+      "width": 320,
+      "height": 844,
+      "preference": "auto",
+      "effective": "phone",
+      "selectedPlayerRetained": true,
+      "visibleTargets": 26,
+      "noOverflow": true,
+      "targets44px": true,
+      "readableTypography": true,
+      "mapCardsDoNotOverlap": true,
+      "columns": [
+        {
+          "id": "stats-workspace-layout",
+          "width": 288,
+          "direction": "column",
+          "axis": "column",
+          "expected": "column",
+          "siblingPanelsDoNotOverlap": true,
+          "siblingPanelsFollowAxis": true
+        }
+      ]
+    },
+    {
+      "role": "administrator",
+      "width": 390,
+      "height": 844,
+      "preference": "auto",
+      "effective": "phone",
+      "selectedPlayerRetained": true,
+      "visibleTargets": 26,
+      "noOverflow": true,
+      "targets44px": true,
+      "readableTypography": true,
+      "mapCardsDoNotOverlap": true,
+      "columns": [
+        {
+          "id": "stats-workspace-layout",
+          "width": 358,
+          "direction": "column",
+          "axis": "column",
+          "expected": "column",
+          "siblingPanelsDoNotOverlap": true,
+          "siblingPanelsFollowAxis": true
+        }
+      ]
+    },
+    {
+      "role": "administrator",
+      "width": 768,
+      "height": 1024,
+      "preference": "auto",
+      "effective": "tablet",
+      "selectedPlayerRetained": true,
+      "visibleTargets": 26,
+      "noOverflow": true,
+      "targets44px": true,
+      "readableTypography": true,
+      "mapCardsDoNotOverlap": true,
+      "columns": [
+        {
+          "id": "stats-workspace-layout",
+          "width": 736,
+          "direction": "row",
+          "axis": "row",
+          "expected": "row",
+          "siblingPanelsDoNotOverlap": true,
+          "siblingPanelsFollowAxis": true
+        }
+      ]
+    },
+    {
+      "role": "administrator",
+      "width": 820,
+      "height": 1180,
+      "preference": "auto",
+      "effective": "tablet",
+      "selectedPlayerRetained": true,
+      "visibleTargets": 26,
+      "noOverflow": true,
+      "targets44px": true,
+      "readableTypography": true,
+      "mapCardsDoNotOverlap": true,
+      "columns": [
+        {
+          "id": "stats-workspace-layout",
+          "width": 788,
+          "direction": "row",
+          "axis": "row",
+          "expected": "row",
+          "siblingPanelsDoNotOverlap": true,
+          "siblingPanelsFollowAxis": true
+        }
+      ]
+    },
+    {
+      "role": "administrator",
+      "width": 1024,
+      "height": 768,
+      "preference": "auto",
+      "effective": "tablet",
+      "selectedPlayerRetained": true,
+      "visibleTargets": 26,
+      "noOverflow": true,
+      "targets44px": true,
+      "readableTypography": true,
+      "mapCardsDoNotOverlap": true,
+      "columns": [
+        {
+          "id": "stats-workspace-layout",
+          "width": 840,
+          "direction": "row",
+          "axis": "row",
+          "expected": "row",
+          "siblingPanelsDoNotOverlap": true,
+          "siblingPanelsFollowAxis": true
+        }
+      ]
+    },
+    {
+      "role": "administrator",
+      "width": 1180,
+      "height": 820,
+      "preference": "auto",
+      "effective": "tablet",
+      "selectedPlayerRetained": true,
+      "visibleTargets": 26,
+      "noOverflow": true,
+      "targets44px": true,
+      "readableTypography": true,
+      "mapCardsDoNotOverlap": true,
+      "columns": [
+        {
+          "id": "stats-workspace-layout",
+          "width": 996,
+          "direction": "row",
+          "axis": "row",
+          "expected": "row",
+          "siblingPanelsDoNotOverlap": true,
+          "siblingPanelsFollowAxis": true
+        }
+      ]
+    },
+    {
+      "role": "administrator",
+      "width": 1366,
+      "height": 1024,
+      "preference": "auto",
+      "effective": "tablet",
+      "selectedPlayerRetained": true,
+      "visibleTargets": 26,
+      "noOverflow": true,
+      "targets44px": true,
+      "readableTypography": true,
+      "mapCardsDoNotOverlap": true,
+      "columns": [
+        {
+          "id": "stats-workspace-layout",
+          "width": 1182,
+          "direction": "row",
+          "axis": "row",
+          "expected": "row",
+          "siblingPanelsDoNotOverlap": true,
+          "siblingPanelsFollowAxis": true
+        }
+      ]
+    },
+    {
+      "role": "administrator",
+      "width": 844,
+      "height": 390,
+      "preference": "auto",
+      "effective": "phone",
+      "selectedPlayerRetained": true,
+      "visibleTargets": 26,
+      "noOverflow": true,
+      "targets44px": true,
+      "readableTypography": true,
+      "mapCardsDoNotOverlap": true,
+      "columns": [
+        {
+          "id": "stats-workspace-layout",
+          "width": 600,
+          "direction": "column",
+          "axis": "column",
+          "expected": "column",
+          "siblingPanelsDoNotOverlap": true,
+          "siblingPanelsFollowAxis": true
+        }
+      ]
+    },
+    {
+      "role": "administrator",
+      "width": 915,
+      "height": 412,
+      "preference": "auto",
+      "effective": "phone",
+      "selectedPlayerRetained": true,
+      "visibleTargets": 26,
+      "noOverflow": true,
+      "targets44px": true,
+      "readableTypography": true,
+      "mapCardsDoNotOverlap": true,
+      "columns": [
+        {
+          "id": "stats-workspace-layout",
+          "width": 600,
+          "direction": "column",
+          "axis": "column",
+          "expected": "column",
+          "siblingPanelsDoNotOverlap": true,
+          "siblingPanelsFollowAxis": true
+        }
+      ]
+    },
+    {
+      "role": "player",
+      "width": 320,
+      "height": 844,
+      "preference": "auto",
+      "effective": "phone",
+      "selectedPlayerRetained": false,
+      "visibleTargets": 8,
+      "noOverflow": true,
+      "targets44px": true,
+      "readableTypography": true,
+      "mapCardsDoNotOverlap": true,
+      "columns": []
+    },
+    {
+      "role": "player",
+      "width": 390,
+      "height": 844,
+      "preference": "auto",
+      "effective": "phone",
+      "selectedPlayerRetained": false,
+      "visibleTargets": 8,
+      "noOverflow": true,
+      "targets44px": true,
+      "readableTypography": true,
+      "mapCardsDoNotOverlap": true,
+      "columns": []
+    },
+    {
+      "role": "player",
+      "width": 768,
+      "height": 1024,
+      "preference": "auto",
+      "effective": "phone",
+      "selectedPlayerRetained": false,
+      "visibleTargets": 8,
+      "noOverflow": true,
+      "targets44px": true,
+      "readableTypography": true,
+      "mapCardsDoNotOverlap": true,
+      "columns": []
+    },
+    {
+      "role": "player",
+      "width": 820,
+      "height": 1180,
+      "preference": "auto",
+      "effective": "phone",
+      "selectedPlayerRetained": false,
+      "visibleTargets": 8,
+      "noOverflow": true,
+      "targets44px": true,
+      "readableTypography": true,
+      "mapCardsDoNotOverlap": true,
+      "columns": []
+    },
+    {
+      "role": "player",
+      "width": 1024,
+      "height": 768,
+      "preference": "auto",
+      "effective": "phone",
+      "selectedPlayerRetained": false,
+      "visibleTargets": 8,
+      "noOverflow": true,
+      "targets44px": true,
+      "readableTypography": true,
+      "mapCardsDoNotOverlap": true,
+      "columns": []
+    },
+    {
+      "role": "player",
+      "width": 1180,
+      "height": 820,
+      "preference": "auto",
+      "effective": "phone",
+      "selectedPlayerRetained": false,
+      "visibleTargets": 8,
+      "noOverflow": true,
+      "targets44px": true,
+      "readableTypography": true,
+      "mapCardsDoNotOverlap": true,
+      "columns": []
+    },
+    {
+      "role": "player",
+      "width": 1366,
+      "height": 1024,
+      "preference": "auto",
+      "effective": "phone",
+      "selectedPlayerRetained": false,
+      "visibleTargets": 8,
+      "noOverflow": true,
+      "targets44px": true,
+      "readableTypography": true,
+      "mapCardsDoNotOverlap": true,
+      "columns": []
+    },
+    {
+      "role": "player",
+      "width": 844,
+      "height": 390,
+      "preference": "auto",
+      "effective": "phone",
+      "selectedPlayerRetained": false,
+      "visibleTargets": 8,
+      "noOverflow": true,
+      "targets44px": true,
+      "readableTypography": true,
+      "mapCardsDoNotOverlap": true,
+      "columns": []
+    },
+    {
+      "role": "player",
+      "width": 915,
+      "height": 412,
+      "preference": "auto",
+      "effective": "phone",
+      "selectedPlayerRetained": false,
+      "visibleTargets": 8,
+      "noOverflow": true,
+      "targets44px": true,
+      "readableTypography": true,
+      "mapCardsDoNotOverlap": true,
+      "columns": []
+    },
+    {
+      "role": "spectator",
+      "width": 320,
+      "height": 844,
+      "preference": "auto",
+      "effective": "phone",
+      "selectedPlayerRetained": false,
+      "visibleTargets": 9,
+      "noOverflow": true,
+      "targets44px": true,
+      "readableTypography": true,
+      "mapCardsDoNotOverlap": true,
+      "columns": []
+    },
+    {
+      "role": "spectator",
+      "width": 390,
+      "height": 844,
+      "preference": "auto",
+      "effective": "phone",
+      "selectedPlayerRetained": false,
+      "visibleTargets": 9,
+      "noOverflow": true,
+      "targets44px": true,
+      "readableTypography": true,
+      "mapCardsDoNotOverlap": true,
+      "columns": []
+    },
+    {
+      "role": "spectator",
+      "width": 768,
+      "height": 1024,
+      "preference": "auto",
+      "effective": "phone",
+      "selectedPlayerRetained": false,
+      "visibleTargets": 9,
+      "noOverflow": true,
+      "targets44px": true,
+      "readableTypography": true,
+      "mapCardsDoNotOverlap": true,
+      "columns": []
+    },
+    {
+      "role": "spectator",
+      "width": 820,
+      "height": 1180,
+      "preference": "auto",
+      "effective": "phone",
+      "selectedPlayerRetained": false,
+      "visibleTargets": 9,
+      "noOverflow": true,
+      "targets44px": true,
+      "readableTypography": true,
+      "mapCardsDoNotOverlap": true,
+      "columns": []
+    },
+    {
+      "role": "spectator",
+      "width": 1024,
+      "height": 768,
+      "preference": "auto",
+      "effective": "phone",
+      "selectedPlayerRetained": false,
+      "visibleTargets": 9,
+      "noOverflow": true,
+      "targets44px": true,
+      "readableTypography": true,
+      "mapCardsDoNotOverlap": true,
+      "columns": []
+    },
+    {
+      "role": "spectator",
+      "width": 1180,
+      "height": 820,
+      "preference": "auto",
+      "effective": "phone",
+      "selectedPlayerRetained": false,
+      "visibleTargets": 9,
+      "noOverflow": true,
+      "targets44px": true,
+      "readableTypography": true,
+      "mapCardsDoNotOverlap": true,
+      "columns": []
+    },
+    {
+      "role": "spectator",
+      "width": 1366,
+      "height": 1024,
+      "preference": "auto",
+      "effective": "phone",
+      "selectedPlayerRetained": false,
+      "visibleTargets": 9,
+      "noOverflow": true,
+      "targets44px": true,
+      "readableTypography": true,
+      "mapCardsDoNotOverlap": true,
+      "columns": []
+    },
+    {
+      "role": "spectator",
+      "width": 844,
+      "height": 390,
+      "preference": "auto",
+      "effective": "phone",
+      "selectedPlayerRetained": false,
+      "visibleTargets": 9,
+      "noOverflow": true,
+      "targets44px": true,
+      "readableTypography": true,
+      "mapCardsDoNotOverlap": true,
+      "columns": []
+    },
+    {
+      "role": "spectator",
+      "width": 915,
+      "height": 412,
+      "preference": "auto",
+      "effective": "phone",
+      "selectedPlayerRetained": false,
+      "visibleTargets": 9,
+      "noOverflow": true,
+      "targets44px": true,
+      "readableTypography": true,
+      "mapCardsDoNotOverlap": true,
+      "columns": []
+    }
+  ],
+  "checks": [
+    "Actual dual-role context switching, narrow-screen fallback, refresh and sign-out/relogin preserve the device-local preference; unsaved administrator sibling fields survive rotation/toggles without a configuration POST; player and spectator ignore the retained staff preference.",
+    "Manager profile text, selected lineup place/complete draft, pending kickoff confirmation and captured penalty/scorer review survive phone/tablet rotation and preference changes; exact local journal/outbox and HTTP writes remain unchanged during every layout action; a running match remains running with reachable clock controls; accepted match stays unstarted, unscored and revision0 without upload, with back/return navigation reachable."
+  ],
+  "failures": [
+    {
+      "stage": "manager running clock rotation",
+      "name": "AssertionError",
+      "message": "No real API request may fail during the tablet review.\n+ actual - expected\n\n+ [\n+   {\n+     code: 'INVALID_SESSION',\n+     method: 'GET',\n+     pathname: '/v1/teams/synthetic-roma-u10/privileges/own',\n+     stage: 'staff preference and administrator draft retention',\n+     status: 401\n+   },\n+   {\n+     code: 'INVALID_SESSION',\n+     method: 'GET',\n+     pathname: '/v1/teams/synthetic-roma-u10/privileges',\n+     stage: 'staff preference and administrator draft retention',\n+     status: 401\n+   },\n+   {\n+     code: 'INVALID_SESSION',\n+     method: 'GET',\n+     pathname: '/v1/teams/synthetic-roma-u10/preparation',\n+     stage: 'staff preference and administrator draft retention',\n+     status: 401\n+   },\n+   {\n+     code: 'INVALID_SESSION',\n+     method: 'GET',\n+     pathname: '/v1/teams/synthetic-roma-u10/team-overview',\n+     stage: 'staff preference and administrator draft retention',\n+     status: 401\n+   },\n+   {\n+     code: 'INVALID_SESSION',\n+     method: 'GET',\n+     pathname: '/v1/teams/synthetic-roma-u10/player-stats',\n+     stage: 'staff preference and administrator draft retention',\n+     status: 401\n+   },\n+   {\n+     code: 'INVALID_SESSION',\n+     method: 'GET',\n+     pathname: '/v1/teams/synthetic-roma-u10/opposition-reviews',\n+     stage: 'staff preference and administrator draft retention',\n+     status: 401\n+   },\n+   {\n+     code: 'INVALID_SESSION',\n+     method: 'GET',\n+     pathname: '/v1/teams/synthetic-roma-u10/match-feedback',\n+     stage: 'staff preference and administrator draft retention',\n+     status: 401\n+   },\n+   {\n+     code: 'INVALID_SESSION',\n+     method: 'GET',\n+     pathname: '/v1/teams/synthetic-roma-u10/scheduled-games',\n+     stage: 'staff preference and administrator draft retention',\n+     status: 401\n+   }\n+ ]\n- []\n"
+    }
+  ],
+  "apiBudgetWaits": [
+    {
+      "phase": "manager actual-match layout retention",
+      "observedRequests": 17,
+      "observedMutations": 1,
+      "waitMs": 32439,
+      "automaticRetry": false,
+      "serverLimitsChanged": false
+    }
+  ],
+  "nativeDeviceEvidence": false,
+  "paidServicesProvisioned": false,
+  "source": {
+    "gitHead": "194e6cf3407071f1c9011654aef81718f05d649e",
+    "workingTreeDirty": false,
+    "harnessSha256": "4f7d1812e443dd1c4c5df35658ed3cc06ea4248862e949ce7bedd9257be60f93",
+    "webIndexSha256": "f15b8f1b45500c6a8119f33b51ab6b285f033e07aba4a91ac20b55853014feef",
+    "webJavaScriptSha256": "289258d42b21fc155fa24526d0e397f7d4bfc159d85a4e6e7ca7368f8c84ea22",
+    "apiBundleSha256": "4aa4b31b3235911156b6dcd412e9fef9d3a2e893699e313ccb8e9d888d01e859"
+  },
+  "apiContractVersion": "longball.events/1.1",
+  "loginAttempts": 10,
+  "httpFailures": [
+    {
+      "stage": "staff preference and administrator draft retention",
+      "method": "GET",
+      "pathname": "/v1/teams/synthetic-roma-u10/privileges/own",
+      "status": 401,
+      "code": "INVALID_SESSION"
+    },
+    {
+      "stage": "staff preference and administrator draft retention",
+      "method": "GET",
+      "pathname": "/v1/teams/synthetic-roma-u10/privileges",
+      "status": 401,
+      "code": "INVALID_SESSION"
+    },
+    {
+      "stage": "staff preference and administrator draft retention",
+      "method": "GET",
+      "pathname": "/v1/teams/synthetic-roma-u10/preparation",
+      "status": 401,
+      "code": "INVALID_SESSION"
+    },
+    {
+      "stage": "staff preference and administrator draft retention",
+      "method": "GET",
+      "pathname": "/v1/teams/synthetic-roma-u10/team-overview",
+      "status": 401,
+      "code": "INVALID_SESSION"
+    },
+    {
+      "stage": "staff preference and administrator draft retention",
+      "method": "GET",
+      "pathname": "/v1/teams/synthetic-roma-u10/player-stats",
+      "status": 401,
+      "code": "INVALID_SESSION"
+    },
+    {
+      "stage": "staff preference and administrator draft retention",
+      "method": "GET",
+      "pathname": "/v1/teams/synthetic-roma-u10/opposition-reviews",
+      "status": 401,
+      "code": "INVALID_SESSION"
+    },
+    {
+      "stage": "staff preference and administrator draft retention",
+      "method": "GET",
+      "pathname": "/v1/teams/synthetic-roma-u10/match-feedback",
+      "status": 401,
+      "code": "INVALID_SESSION"
+    },
+    {
+      "stage": "staff preference and administrator draft retention",
+      "method": "GET",
+      "pathname": "/v1/teams/synthetic-roma-u10/scheduled-games",
+      "status": 401,
+      "code": "INVALID_SESSION"
+    }
+  ],
+  "processDiagnostic": "LongBall API http://127.0.0.1:42027 · isolated fictional authentication · fictional SQLite store\n"
+}

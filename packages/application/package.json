@@ -1,0 +1,15 @@
+{
+  "name": "@longball/application",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./*": "./src/*.ts"
+  },
+  "dependencies": {
+    "@e965/xlsx": "0.20.3",
+    "@longball/domain": "workspace:*",
+    "@longball/testing": "workspace:*",
+    "@noble/hashes": "2.4.0"
+  }
+}

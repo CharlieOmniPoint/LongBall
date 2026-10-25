@@ -1,0 +1,183 @@
+{
+  "recordedAt": "2026-10-21T21:05:28.187618+00:00",
+  "status": "quality-automation-implemented-release-dependency-gate-failed",
+  "scope": "Independent SEC/QL/reproducible-build re-audit. Commands ran on the shared development worktree; final committed-source CI is separate.",
+  "migrationCheck": {
+    "command": "pnpm db:migrate:check",
+    "requiredPostgreSQL": true,
+    "actualSuites": 3,
+    "actualTests": 16,
+    "conclusion": "passed",
+    "durationSeconds": 14.46,
+    "startedAt": "2026-10-21T20:57:33Z",
+    "coverage": [
+      "SQLite retained-history migration/refusal/rollback",
+      "Actual PostgreSQL privacy expansion and retained requests",
+      "Actual PostgreSQL secret retirement and own-device metadata"
+    ]
+  },
+  "secretScan": {
+    "observedAt": "2026-10-21T21:03:11.856Z",
+    "sourceCommit": "0fca5b5d947b1802741daf877b791967c33d5727",
+    "sourceTreeSha256": "89ee7f7697ce42d39342f6435543db96d61df26feba14c2cd26095bee184d431",
+    "workingTreeDirty": true,
+    "scanner": "gitleaks 8.24.3",
+    "scope": "Current tracked and nonignored untracked repository files; history is not scanned. Built-in rules; no inline allow comments honored. Only exact reviewed source-line false positives accepted.",
+    "scannedFiles": 833,
+    "passed": true,
+    "unexpectedFindings": 0,
+    "reviewedFalsePositives": 26,
+    "reviewedPolicy": "../../../../../infra/ci/secret-scan-reviewed.json",
+    "historyScanned": false
+  },
+  "inventory": {
+    "observedAt": "2026-10-21T21:04:11.769Z",
+    "sourceCommit": "0fca5b5d947b1802741daf877b791967c33d5727",
+    "workingTreeDirty": true,
+    "lockSha256": "20c88c6603a39e0c4064d7378a98ef5b1df6817c858f884b655da61c4039ea15",
+    "packageCount": 363,
+    "retainedLicenseFiles": 272,
+    "sbom": "sbom.spdx.json",
+    "licenses": "licenses.json",
+    "scope": "Resolved JavaScript workspace only; optional uninstalled packages have no retained licence text. Native/image inventories remain separate."
+  },
+  "spdxValidation": {
+    "conclusion": "passed",
+    "schemaUrl": "https://raw.githubusercontent.com/spdx/spdx-spec/v2.3.1/schemas/spdx-schema.json",
+    "schemaSha256": "4126dc29f15e92feec92e9622f4939131ad58b125d6f578aa93e980a6e6f3212",
+    "validator": "jsonschema Draft201909Validator",
+    "correction": "Initial documentComment property was rejected by the official schema; changed to canonical comment and the generated document then passed."
+  },
+  "dependencyAudit": {
+    "workspace": {
+      "observedAt": "2026-10-21T21:03:58.048Z",
+      "sourceCommit": "0fca5b5d947b1802741daf877b791967c33d5727",
+      "workingTreeDirty": true,
+      "lockSha256": "20c88c6603a39e0c4064d7378a98ef5b1df6817c858f884b655da61c4039ea15",
+      "passed": false,
+      "exitCode": 1,
+      "metadata": {
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 1,
+          "high": 2,
+          "critical": 0
+        },
+        "dependencies": 509,
+        "devDependencies": 312,
+        "optionalDependencies": 122,
+        "totalDependencies": 873
+      }
+    },
+    "runtime": {
+      "observedAt": "2026-10-21T21:03:58.771Z",
+      "sourceCommit": "0fca5b5d947b1802741daf877b791967c33d5727",
+      "workingTreeDirty": true,
+      "lockSha256": "da244dbc880266ccc7d58c4c3a7b551398377653eb15b398ed2b2f2352205425",
+      "passed": true,
+      "exitCode": 0,
+      "metadata": {
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        },
+        "dependencies": {
+          "prod": 18,
+          "dev": 0,
+          "optional": 29,
+          "peer": 0,
+          "peerOptional": 0,
+          "total": 46
+        }
+      }
+    },
+    "compiler": {
+      "observedAt": "2026-10-21T21:03:59.428Z",
+      "sourceCommit": "0fca5b5d947b1802741daf877b791967c33d5727",
+      "workingTreeDirty": true,
+      "lockSha256": "e4980aa6ddfbb26f8d4908002a80b85b57bc2356e9ab83946b077f6f49a7b483",
+      "passed": true,
+      "exitCode": 0,
+      "metadata": {
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        },
+        "dependencies": {
+          "prod": 2,
+          "dev": 0,
+          "optional": 26,
+          "peer": 0,
+          "peerOptional": 0,
+          "total": 27
+        }
+      }
+    }
+  },
+  "advisories": [
+    {
+      "id": "GHSA-86w9-cpqp-85rv",
+      "package": "node-forge",
+      "installedVersion": "1.4.0",
+      "severity": "high",
+      "url": "https://github.com/advisories/GHSA-86w9-cpqp-85rv",
+      "vulnerableVersions": "<=1.4.0",
+      "patchedVersionAvailable": false,
+      "affectedPath": "Expo CLI and @expo/code-signing-certificates build tooling",
+      "action": "Dependency gate fails; no unsafe local cryptographic patch or invented patched release. Do not expose Metro/development tooling as a production service."
+    },
+    {
+      "id": "GHSA-vfj7-8cjw-p6xm",
+      "package": "braces",
+      "installedVersion": "3.0.3",
+      "severity": "high",
+      "url": "https://github.com/advisories/GHSA-vfj7-8cjw-p6xm",
+      "vulnerableVersions": "<=3.0.3",
+      "patchedVersionAvailable": false,
+      "affectedPath": "Metro file-map > micromatch build-tool glob parsing",
+      "action": "Dependency gate fails; no invented patched release or blanket audit suppression."
+    },
+    {
+      "id": "GHSA-w5hq-g745-h8pq",
+      "package": "uuid",
+      "installedVersion": "7.0.3",
+      "severity": "moderate",
+      "url": "https://github.com/advisories/GHSA-w5hq-g745-h8pq",
+      "patchedVersions": ">=11.1.1",
+      "affectedPath": "xcode project-generation helper uses uuid.v4 only; advisory concerns v3/v5/v6 with supplied buffer",
+      "action": "No unreviewed major transitive override. Retained as explicit dependency/reachability work."
+    }
+  ],
+  "ci": {
+    "path": "../../../../../.github/workflows/development-checks.yml",
+    "sourceQualityJob": "Frozen install, inventory, secret/dependency scans, lint/types, shared/platform tests, actual PostgreSQL API/migration tests, canonical/runtime contracts, publication/fixtures, production native configuration, native/web/API JavaScript exports and local browser journey.",
+    "dependencyFailureHandling": "Audit runs with continue-on-error solely to allow all independent checks; an explicit final gate fails the job if the audit failed or was unavailable.",
+    "runtimeImageJob": "Independent clean public standard runner; exact-source image, private fresh database/scanner/secrets, dedicated migrator, nonroot read-only API/worker, permission checks and real JPEG/HEIC/scanner probes.",
+    "workflowActuallyRunAtThisRecord": false,
+    "pairedRestoreExercisedInNewImageJob": false,
+    "paidServicesProvisioned": false
+  },
+  "localContainerRehearsal": {
+    "conclusion": "not_run",
+    "workspaceAvailableApproxGiB": 2.3,
+    "workspaceUsedPercent": 93,
+    "tmpAvailableApproxGiB": 8.5,
+    "reason": "Retained workspace disk constraint. New clean-runner job avoids mutating/deleting existing owned runtime state."
+  },
+  "remainingGates": [
+    "Both high dependency advisories currently have no patched registry release.",
+    "Actual CI/runtime-image success must be recorded from the published committed source, not this prepared workflow.",
+    "Physical M0, OS authentication, key loss/backups, screen readers and background/battery/notification behavior are deferred/unproved.",
+    "SEC20/SEC21 privacy request capture/status is implemented; actual verified privacy fulfillment/deletion ledger/processor workflow remains incomplete and gated by Q05/Q09/Q10 verification, retention and operating authority.",
+    "Production identity/push/durable hosting/signing and named recovery/privacy/moderation/support policies remain unconfigured or unapproved."
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "success": true,
+  "exitCode": 0,
+  "observations": {
+    "stage": "independent-accepted-read",
+    "revision": 12,
+    "status": "first_half_paused",
+    "lineup": 7,
+    "present": 9,
+    "activeMs": 417,
+    "score": {
+      "for": 0,
+      "against": 0
+    },
+    "expectedPassed": true,
+    "body": "Roma U10\nManager · 2026/27\nFICTIONAL API REVIEW\nPreparation change saved by the service and its receipt retained on this device.\nHome\nSchedule\nTeam\nReports\nMore\nChoose the service match\nOpen a prepared fixture or enter an existing accepted match identifier. The service checks its team, season and manager authority.\nControl Maple FC · 2026-10-24\nController connection settings\nMatch recording\nThis device holds the current match controller.\nService receipt and authoritative actor-bound projection downloaded. Accepted and quarantined records remain separate.\nMatch changes acknowledged\nRecording and sync details\nRoma · match day\nFictional browser review. Records use an unprotected local preview journal and the fictional service. This does not test phone storage, clock recovery or notification delivery.\nRecord actual attendance, lineup changes and match events for this saved fixture. Saved on this phone appears after the record is stored; service confirmation is shown separately above.\nAttendance · 9/9\nLineup\nLive\nRoma\n0–0\nMaple FC\nFirst half · referee clock paused\nActive time this half\n00:00\n24:59 planned half remaining\nThe countdown is a guide. Half-time and full-time always need your confirmation; they do not happen automatically.\nReview clock resume\nReview half-time\n7 places · confirmed on pitch\nList view\n01\nGK\n02\nCB1\n03\nCB2\n04\nCM\n05\nLW\n06\nRW\n07\nST\nAvailable bench · 2\nPlayer 08\nPlayer 09\nPrepare a lineup change\nNext change\nOpen the planner above to review the current next-change projection. A suggestion never moves players automatically.\nRecord goal\nUnavailable / return\nGoals and corrections · 0\nPlaying-time plan\nMANAGER SUGGESTION\nFair time, with every change confirmed by you.\nRoma’s five-minute playing spells and 15% half buffers are flexible preferences. Choose and confirm the other settings before planning.\nPreferred batch size · proposed starting value 2\n−\n2\n+\nThis is a preference, with no hard batch cap or mandatory five-minute grid.\nScore lead for adventurous positions\nReturn to normal when the lead falls?\nYes\nNo\nPosition weights and Q07 availability/keeper transitions are labelled synthetic experiments. Confirming these review settings does not approve unresolved product policy.\nConfirm settings and plan"
+  },
+  "earlierRead": {
+    "acceptedRevision": 0,
+    "interpretation": "The first independent GET was issued immediately after the upload click, before the asynchronous mutation completed. Subsequent independent read confirmed revision12. UI paint is not used as the acknowledgement oracle."
+  }
+}

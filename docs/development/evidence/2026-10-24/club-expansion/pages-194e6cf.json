@@ -1,0 +1,105 @@
+{
+  "schemaVersion": 1,
+  "repository": "CharlieOmniPoint/LongBall",
+  "productCommit": "194e6cf3407071f1c9011654aef81718f05d649e",
+  "productTree": "367969992dac34ae2eebacf5f23c6ff0e2c5a71c",
+  "sourceBundleSha256": "10736999438a6a7581b50aecf87bccae9ae43959855bc3a41d1de5cfc59e2dfb",
+  "observedAt": "2026-10-24T22:53:08.559Z",
+  "transportCommit": "22792cae20735228fd0fcc03d5a5d9aa10375bd7",
+  "transportTree": "422f413732c394d0bb2688fbccc997b1ef137ed2",
+  "runtimeTransportCommit": "4721b9aa8997437c48a80aaf2c44efee926b325f",
+  "workflow": {
+    "runId": 40140358464,
+    "url": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40140358464",
+    "status": "completed",
+    "conclusion": "success"
+  },
+  "deployment": {
+    "url": "https://charlieomnipoint.github.io/LongBall/",
+    "jobId": 121010617989,
+    "status": "completed",
+    "conclusion": "success",
+    "startedAt": "2026-10-24T22:52:02Z",
+    "completedAt": "2026-10-24T22:52:20Z",
+    "creationLog": {
+      "timestamp": "2026-10-24T22:52:12.6328698Z",
+      "text": "Created deployment for 22792cae20735228fd0fcc03d5a5d9aa10375bd7"
+    },
+    "steps": [
+      {
+        "name": "Set up job",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Run actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Check demo export provenance",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Read enabled GitHub Pages configuration",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Run actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Publish the browser demo",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Post Run actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Complete job",
+        "status": "completed",
+        "conclusion": "success"
+      }
+    ]
+  },
+  "buildInfo": {
+    "sourceCommit": "194e6cf3407071f1c9011654aef81718f05d649e",
+    "sourceBranch": "dev/longball-m0-journey",
+    "synthetic": true,
+    "nativeTargets": [
+      "iPhone",
+      "Android"
+    ],
+    "production": false,
+    "basePath": "/LongBall",
+    "connectedBackendIncluded": false,
+    "gitBlob": "80c8b3e16a46fcbe1df056f470d20746b2ee023e",
+    "matchedExpectedSource": true
+  },
+  "packagedJavaScript": {
+    "pages-site/_expo/static/js/web/index-561b6324d32cac054f8101ddc2decb0f.js": {
+      "sizeBytes": 2312895,
+      "sha256": "4825870218589069e97527791079403cf29d04d22e2d177c403753dcf44d1f83",
+      "gitBlob": "76ab603754b63eefe26926ee8db0e60747ec6206"
+    }
+  },
+  "publicBrowserVerifiedByThisObserver": false,
+  "liveBytesFetchedByThisObserver": false,
+  "physicalDeviceProof": false,
+  "limitations": [
+    "The actual deployment job and immutable packaged provenance were verified. Live browser/account/source-stamp/byte acceptance belongs to the separately recorded public review.",
+    "This Pages site is a fictional browser export. Its successful publication is not native signing/distribution, physical-device acceptance, durable backend operation or approval for real child data."
+  ],
+  "provenance": {
+    "method": "Read-only GitHub MCP job metadata, terminal deployment log, exact-commit build-info file and immutable local Git object hashing.",
+    "repositoryMutatedByObserver": false,
+    "cancellationRequested": false,
+    "rerunRequested": false
+  }
+}

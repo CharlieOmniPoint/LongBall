@@ -1,0 +1,103 @@
+{
+  "recordedAt": "2026-10-21T20:10:45.650599+00:00",
+  "status": "accepted-for-fictional-functional-review-awaiting-publication",
+  "productSourceCommit": "e899e29f71ac50de7de4c7737ee4eb907d7e7823",
+  "change": "Bounded public cache key on the exact pinned anonymous review status endpoint. Canonical metadata, redirect/full response URL checks, strict tunnel validation and unqueried health verification are preserved.",
+  "originalPublicFailure": "full-publication/discovery-cache-diagnostic.json",
+  "focusedChecks": {
+    "discoveryTestsPassed": 52,
+    "strictStatusRouteBoundaryTestPassed": 1,
+    "independentReadOnlyReview": "No material findings"
+  },
+  "sharedPlatformSuite": {
+    "sourceCommit": "e899e29f71ac50de7de4c7737ee4eb907d7e7823",
+    "passed": 686,
+    "files": 74,
+    "durationSeconds": 61.74,
+    "skipped": 0
+  },
+  "apiSuite": {
+    "sourceCommit": "7ede8d1ef944823cfd6a5f6965ab51d4c37d286e",
+    "passed": 284,
+    "files": 45,
+    "skipped": 0,
+    "durationSeconds": 232.6,
+    "restrictedPostgreSQLAvailable": true,
+    "maintainedHeicDecoderAvailable": true,
+    "privateLogSha256": "2ab1933cd980a5e89325c5a0e1b1abb466ef91492f2f4f4f9b149906b0117425",
+    "scope": "Original quiet full API run at7ede8d1; all five newly built backend artifacts are byte-identical. No new full API run is claimed for the discovery-only follow-up."
+  },
+  "matchingBackendArtifacts": [
+    {
+      "path": "apps/api/dist/api.mjs",
+      "bytes": 782954,
+      "sha256": "d1568c20879d2e1df83843fc31e35a6fa053751785560988f53093c546e10798",
+      "identicalToPackagedD086": true
+    },
+    {
+      "path": "apps/api/dist/heic-worker.mjs",
+      "bytes": 1326,
+      "sha256": "af403995a2780164fdddbce814fbf6f4c5789fcc00dcb49c9235dfb76a0e751d",
+      "identicalToPackagedD086": true
+    },
+    {
+      "path": "apps/api/dist/media-worker.mjs",
+      "bytes": 3467,
+      "sha256": "4b878815f5255ec427900db496df40c278176e381bfc3b7f6809912fe4cea5ed",
+      "identicalToPackagedD086": true
+    },
+    {
+      "path": "apps/api/dist/migrate.mjs",
+      "bytes": 454025,
+      "sha256": "a54633d40ef12adeeb82da9338cd12e2d0b814a53e00f18b1e25d9328119e9a4",
+      "identicalToPackagedD086": true
+    },
+    {
+      "path": "apps/api/dist/worker.mjs",
+      "bytes": 503718,
+      "sha256": "326967e27c649efdf3c9269629c0c6637638d0a26a760f183686928d9f92c479",
+      "identicalToPackagedD086": true
+    }
+  ],
+  "browserSuite": {
+    "sourceCommit": "e899e29f71ac50de7de4c7737ee4eb907d7e7823",
+    "passedNamedGroups": 18,
+    "durationSeconds": 62.76,
+    "acceptedAttemptRuntimeErrors": [],
+    "evidence": "discovery-functional-review/summary.json",
+    "attemptHistory": "The first role-entry attempt stopped on one ECONNRESET while its API remained healthy. An instrumented unchanged diagnostic passed8/8 with zero route errors and no pending routes at context close. One unchanged fresh full18 attempt passed. The reset cause remains unproved; original failure/diagnostic evidence is preserved."
+  },
+  "nativeJavaScriptAndConfiguration": {
+    "evidence": "final-native-review/verification.json",
+    "freshAndroidHermesExport": true,
+    "freshIosHermesExport": true,
+    "freshAnonymousBrowserChecks": 6,
+    "freshEvaluatedConfigurationGroups": 6,
+    "nativeCompilationAndPhysicalProof": "Separate; no compilation, signing, hardware or delivery result is inferred from these exports."
+  },
+  "staticChecks": {
+    "sourceCommit": "e899e29f71ac50de7de4c7737ee4eb907d7e7823",
+    "fullEslint": true,
+    "rootTypeScript": true,
+    "mobileTypeScript": true,
+    "nodeHarnessBoundaryTestsPassed": 3,
+    "canonicalAndRuntimeOpenApiValidation": true,
+    "sourcePublicationCheck": true,
+    "fictionalFixtureGeneration": true
+  },
+  "runtimeProof": {
+    "evidence": "runtime/schema15-operational/summary.json",
+    "productSourceCommit": "7ede8d1ef944823cfd6a5f6965ab51d4c37d286e",
+    "operationalRunCommit": "5185f0022770c9acc98ffb2cf569800fcb949277",
+    "bothExitCodesZero": true,
+    "scope": "Actual host-bundled schema15/media4/activation2 restricted PostgreSQL/scanner/paired restore proofs. Backend/schema/proof source is unchanged by discovery follow-up; no new production image proof."
+  },
+  "productionContainerRehearsal": {
+    "status": "not_run",
+    "evidence": "runtime/container-schema15/assessment.json",
+    "reason": "Observed workspace free disk2.39GB/93% used; avoid heavy isolated image rebuild alongside final verification. Existing owned resources were not changed."
+  },
+  "physicalDeviceTests": "Deferred by user, not passed",
+  "productionRelease": false,
+  "paidServicesProvisioned": false
+}

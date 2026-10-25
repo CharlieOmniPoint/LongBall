@@ -1,0 +1,10 @@
+{
+  "sourceRevision": "30cd5541fca1935997e1d5f1d5f313973fc7d714",
+  "webIndexSha256": "c994c77c5e4724a8a5697bc959d837397ff7cbb950d654be25fbd57aebf8f5c4",
+  "webEntry": "/_expo/static/js/web/index-8b3af50847f50d53dfdb8a8cf9b961ab.js",
+  "webSha256": "3c0e0c2e0ec78f070fde4a00a26a1efaec0a0474021e8730ef0e8c475b3e1a4b",
+  "apiSha256": "ac0aae5d8afda850a1262675dde39434e2d39857adfcbb016fa5c004df3710e4",
+  "harnessSha256": "e760b940d3178ac44eac2dae2c459cbf6a6304d1de6ff62a5e5018774a8e3f29",
+  "exitCode": 0,
+  "unchangedAfterRun": true
+}

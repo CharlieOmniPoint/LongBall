@@ -1,0 +1,122 @@
+{
+  "version": "0.1",
+  "status": "specification examples, not executed application tests",
+  "cases": [
+    {
+      "id": "FV01",
+      "source": "ME40/MT06",
+      "description": "9 players, one fixed keeper, full availability",
+      "pitchPlaces": 7,
+      "actualDurationMs": 3000000,
+      "availableCount": 9,
+      "fixedKeeperCount": 1,
+      "outfieldTarget": {
+        "numeratorMs": 18000000,
+        "denominator": 8
+      },
+      "outfieldBandMs": [
+        2025000,
+        2475000
+      ],
+      "keeperTargetMs": 3000000,
+      "expectedPlayerMs": 21000000
+    },
+    {
+      "id": "FV02",
+      "source": "ME41/MT07",
+      "description": "8 players, one fixed keeper",
+      "pitchPlaces": 7,
+      "actualDurationMs": 3000000,
+      "availableCount": 8,
+      "fixedKeeperCount": 1,
+      "outfieldTarget": {
+        "numeratorMs": 18000000,
+        "denominator": 7
+      },
+      "plannedOutfieldMs": [
+        2580000,
+        2580000,
+        2640000,
+        2700000,
+        2520000,
+        2520000,
+        2460000
+      ],
+      "keeperTargetMs": 3000000,
+      "expectedPlayerMs": 21000000
+    },
+    {
+      "id": "FV03",
+      "source": "ME42/MT08",
+      "description": "9-player common pool with two keepers",
+      "pitchPlaces": 7,
+      "actualDurationMs": 3000000,
+      "availableCount": 9,
+      "fixedKeeperCount": 0,
+      "allPlayerTarget": {
+        "numeratorMs": 21000000,
+        "denominator": 9
+      },
+      "proposedTotalMinutes": [
+        40,
+        40,
+        40,
+        40,
+        40,
+        40,
+        40,
+        35,
+        35
+      ],
+      "keeperRoleTargetMs": 1500000,
+      "positionsStillRequireValidation": true,
+      "expectedPlayerMs": 21000000
+    },
+    {
+      "id": "FV04",
+      "source": "ME43/MT09",
+      "description": "Fixed keeper, seven original outfielders; eighth joins after ten active minutes",
+      "pitchPlaces": 7,
+      "actualDurationMs": 3000000,
+      "originalOutfielderTarget": {
+        "numeratorMs": 16200000,
+        "denominator": 7
+      },
+      "lateOutfielderTargetMs": 1800000,
+      "keeperTargetMs": 3000000,
+      "expectedPlayerMs": 21000000
+    },
+    {
+      "id": "FV05",
+      "source": "ME43/MT03",
+      "description": "23:40 first half, 25:00 second; nine present with fixed keeper",
+      "pitchPlaces": 7,
+      "actualDurationMs": 2920000,
+      "plannedSecondHalfMs": 1500000,
+      "outfieldTargetMs": 2190000,
+      "keeperTargetMs": 2920000,
+      "expectedPlayerMs": 20440000
+    },
+    {
+      "id": "FV06",
+      "source": "ME44/MT13",
+      "description": "40-minute seven-a-side, fixed keeper plus nine outfielders, strict 5-minute grid",
+      "pitchPlaces": 7,
+      "actualDurationMs": 2400000,
+      "outfieldTargetMs": 1600000,
+      "outfieldBandMs": [
+        1440000,
+        1760000
+      ],
+      "onlyAllowedGridMinutes": 25,
+      "ninePlayersAtAllowedGridMinutes": 225,
+      "requiredOutfieldPlayerMinutes": 240,
+      "expectedStatus": "proved_infeasible_under_grid",
+      "nonGridBenchSpellsMs": [
+        800000,
+        800000,
+        800000
+      ]
+    }
+  ]
+}

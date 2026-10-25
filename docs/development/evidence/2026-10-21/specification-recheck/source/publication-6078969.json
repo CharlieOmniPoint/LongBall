@@ -1,0 +1,123 @@
+{
+  "verifiedAt": "2026-10-21T23:40:27Z",
+  "sourceCommit": "60789694c89dd4bc8aa5902ddb984dc84f6cba45",
+  "pages": {
+    "url": "https://charlieomnipoint.github.io/LongBall/",
+    "transportCommit": "11f627ab44ddcb4e922328540b4526ac1894ba69",
+    "workflowRun": 39694040536,
+    "conclusion": "success",
+    "actualBuildInfoMatched": true,
+    "scriptPath": "/LongBall/_expo/static/js/web/index-be31e5914e2ce7356f8972f155b15436.js",
+    "scriptSha256": "e60f52f375e029e16a7e87153af6a8610070164ad87e2f9ec3cc089602397c01",
+    "actualScriptMatchedPackagedBytes": true
+  },
+  "service": {
+    "url": "https://spectrum-duty-bool-spouse.trycloudflare.com",
+    "transportCommit": "ad3ee0b8170aed6097730dcf6f1a5e76383051b9",
+    "workflowRun": 39693154348,
+    "actualBuildInfoMatched": true,
+    "healthStatus": 200,
+    "syntheticOnly": true,
+    "demoScenario": true,
+    "expiresAt": "2026-10-22T04:28:27Z"
+  },
+  "browser": {
+    "provider": "Firecrawl managed Chromium",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "roles": [
+      {
+        "role": "Manager",
+        "bodyNames": [
+          "Roma U10",
+          "Maple FC",
+          "Hill FC"
+        ],
+        "overflow": false,
+        "pageErrors": []
+      },
+      {
+        "role": "Administrator",
+        "body": "Roma U10\nAdministrator · 2026/27\nDEMO\nClubs\nRichmond Rovers\nThis is the club attached to your current service assignment. Private team records require a separate manager role.\nEdit club and team configuration\nView assigned teams\nClubs\nTeams\nPeople\nOperations\nAccount",
+        "tabs": [
+          "Clubs",
+          "Teams",
+          "People",
+          "Operations",
+          "Account"
+        ],
+        "overflow": false,
+        "pageErrors": []
+      },
+      {
+        "role": "Player / household",
+        "body": "Roma U10\nPlayer and parent · 2026/27\nDEMO\nYour team, Oliver Bennett\nMy profile\nNext up\nTraining\nTeam training\nThu 22 Oct · 18:00\nRovers Sports Ground · Training area\nYour reply: No reply yet\nAvailable\nUnavailable\nUnsure\nYour reply is availability. Selection and actual attendance are recorded separately.\nOpen my schedule\nMy game\nOpen My game for the current updates your team has shared.\nOpen my game\nPlayer of the match\nYour private choice is available for Roma v Willow FC · Practice match.\nChoose player of the match\nReview and confirm on the next screen. Your vote counts only after the service accepts it before the cutoff.\nTeam photos\nRoma v Willow FC · Practice match\nFrom the latest permitted game\nView authorised thumbnail\nReady for the next training session · sample illustration\nOpen this game’s photos\nHome\nSchedule\nMy game\nPhotos\nMore",
+        "tabs": [
+          "Home",
+          "Schedule",
+          "My game",
+          "Photos",
+          "More"
+        ],
+        "overflow": false,
+        "pageErrors": []
+      },
+      {
+        "role": "Spectator",
+        "body": "Roma U10\nSpectator · 2026/27\nDEMO\nMatch centre\nThese are accepted service updates. A recorder may have newer events waiting on its phone.\nRefresh accepted match updates\nMaple FC\n2026-10-24 · preparation\n0 – 0\nHalf time: Not recorded\nAwaiting kickoff\nRecorder last synchronised: Not recorded · revision 0\nGoal events and the final award become available after recorded play. No match report has been recorded yet.\nOpen permitted team reports\nOpen published game albums\nSpectator access includes permitted team updates and published photos. Named attendance, minutes, private submissions and ballots stay outside this view.\nScores\nResults\nPhotos\nAccount",
+        "tabs": [
+          "Scores",
+          "Results",
+          "Photos",
+          "Account"
+        ],
+        "overflow": false,
+        "pageErrors": []
+      }
+    ],
+    "authorisedPhoto": [
+      {
+        "loaded": true,
+        "width": 480,
+        "height": 300,
+        "alt": "Authorised service photo revision 1"
+      }
+    ],
+    "pageErrors": [],
+    "pdf": {
+      "status": 200,
+      "bytes": 21093,
+      "contentType": "application/pdf",
+      "cacheControl": "private, no-store",
+      "magic": "%PDF-",
+      "sha256": "12e212b2fc6da84d2edb6623522a2c3cb76a05c41815d8c1d0ec8e7a6abe8eb8",
+      "browserDownloadStatus": 200,
+      "fileSave": "Managed browser canceled the disk download; replayed the same current authorized request to inspect binary response."
+    },
+    "csv": {
+      "status": 200,
+      "bytes": 7767,
+      "contentType": "text/csv; charset=utf-8",
+      "cacheControl": "private, no-store",
+      "sha256": "1dd821e33bb1afd1b2771a1ddeb662d2d6b2254974af49e78ab05e4738df8643",
+      "readableLabels": {
+        "Roma U10": false,
+        "Maple FC": true,
+        "Hill FC": true
+      },
+      "parsedRows": 146,
+      "browserDownloadStatus": 200,
+      "fileSave": "Managed browser disk save remains unproved; replayed same authorized request to inspect response."
+    }
+  },
+  "preservedTestLimits": [
+    "Initial Firecrawl call rejected screenshotOptions before opening a session; viewport was set through Playwright.",
+    "Manager-home assertion initially waited for nonexistent 'Next match'; current fixture schedule correctly says 'Next event'. Correct current UI was then inspected.",
+    "Role-loop harness first expected Welcome after Return to welcome; current route is the demo chooser. Administrator then has Account rather than More. Correct role-specific routes were inspected and passed.",
+    "Managed browser canceled PDF disk saving; Response.body was unavailable for the canceled browser download. The same current authorized request was replayed with page.request.fetch to inspect actual binary bytes. Saved-file behavior is separately proved by the local607 PDF browser run, not this external run.",
+    "Canonical legacy CSV retains its specified fields and does not include the new human team metadata; its named opponent data was checked. JSON and PDF human team labels have separate current-source proofs.",
+    "This is a temporary five-hour demo API session, not permanent API hosting, physical phone evidence or production approval."
+  ]
+}

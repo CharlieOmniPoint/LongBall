@@ -1,0 +1,12 @@
+$ node scripts/check-migrations.mjs
+
+ RUN  v5.0.5 /workspace/LongBall
+
+
+ Test Files  11 passed (11)
+      Tests  45 passed (45)
+   Start at  15:14:03
+   Duration  63.91s (tests 82%, import 14%, transform 4%, worker 1%)
+
+    Isolate  11 workers spawned · ~1.81s startup each (spawn + environment, per file)
+             at least ~8.13s faster with isolate: false — reuses workers across files instead of one per file

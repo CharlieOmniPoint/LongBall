@@ -1,0 +1,39 @@
+Preserved all 15 supplied archive members
+Passed 14 archived checksums
+[0;93m2026-10-25 14:37:28.062711366 [W:onnxruntime:Default, telemetry_1ds.cc:600 operator()] Failed to persist telemetry device ID; using an in-memory identifier[m
+/workspace/LongBall/.venv/lib/python3.12/site-packages/fitz/__init__.py:17: FutureWarning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.
+  warnings.warn(
+{
+  "status": "passed limited artifact checks",
+  "paths": 87,
+  "operations": 103,
+  "schemas": 172,
+  "resolved_internal_refs": 176,
+  "fairness_vectors": 6,
+  "visual_pages": 8,
+  "contrast_ratios": {
+    "ink/white": 16.0,
+    "muted/white": 6.31,
+    "white/brand": 6.7,
+    "white/pitch": 6.51,
+    "warning": 6.76,
+    "error": 6.64,
+    "info": 7.9
+  },
+  "canonical_words": 32424,
+  "not_run": [
+    "full OpenAPI validator",
+    "application tests",
+    "physical-device tests",
+    "deployment or release tests"
+  ]
+}
+Full OpenAPI 3.1 validation passed
+Runtime extension OpenAPI 3.1 validation passed
+Logo contract positive/negative ancestry, reviewed-version, rights, action and DTO cases passed
+Identity contract credential, replay, destination, own-device and authority boundary cases passed; 141 application sign-in rule cases passed
+EV05 canonical payload parity, explicit soft applicability, unapproved Q07, source/version boundary and current engine envelope cases passed
+DS14/SEC17 strict metadata privacy, canonical receipts, quoted zero-generation CAS, optional selected role and explicit privilege decision cases passed
+DS10 versioned snapshot integrity/privacy metadata and API04 typed-pagination boundaries passed
+Club expansion contract: 129 scoped payload/security/format boundary cases passed; server and device proofs remain separate.
+Login activity contract: 438 strict schema, pagination, metadata privacy and Super Admin boundary cases passed; collection, authority and device proofs remain separate.

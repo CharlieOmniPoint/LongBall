@@ -1,0 +1,75 @@
+{
+  "recordedAt": "2026-10-21T22:28:29.320209+00:00",
+  "sourceCommit": "ee7cb613695b8d96388e742a60dc248277b24091",
+  "passed": true,
+  "scope": "Evaluated native development/production configuration and exported anonymous production web entry only; native compile/sign/install/device behavior remains separate.",
+  "isolation": {
+    "path": "/workspace/LongBall-native-recheck",
+    "trackedFilesClean": true,
+    "generatedIOSPresent": false,
+    "generatedAndroidPresent": false,
+    "dependenciesSymlinkedWithoutInstall": true,
+    "sourceProof": "source-proof.json"
+  },
+  "nativeConfiguration": {
+    "passed": true,
+    "groups": 6,
+    "report": "native-config/report.json",
+    "sourceAppJsonSha256": "1d942ff7c29012b86f04a50d066bf66e2c59a0e1644c495802470a6c2625e00d",
+    "evaluated": {
+      "production": "5f57acb4ca036950c0e65d5f9c34cf0c07837aa4beb4ba3b91e757132a711a59",
+      "development": "1b6bf74cfffd78c66060bd68a030d8af0a3fa1a975f4f0ed1e232579084dfea6"
+    }
+  },
+  "productionWeb": {
+    "passed": true,
+    "invocation": "Direct node Expo CLI export --platform web, production environment, no dotenv/no installs",
+    "log": "production-web-build.log",
+    "artifacts": [
+      {
+        "path": "dist-production/_expo/static/js/web/index-569b14288ee83af45c1a46890e41c747.js",
+        "bytes": 1530685,
+        "sha256": "cadf3c98c248ff83aa2a7fdb58a89cb9c699648d9412fc3106b30e21d842e3a9"
+      },
+      {
+        "path": "dist-production/index.html",
+        "bytes": 1290,
+        "sha256": "d82c5c542f65bc83db1651e52a7c9623f6ded29d542cbb7d04c73bcbc608d42d"
+      },
+      {
+        "path": "dist-production/metadata.json",
+        "bytes": 49,
+        "sha256": "aa5f19cc84d41c0f8c70ececb2bc82e863227ea1e121632aca879eb616056991"
+      }
+    ]
+  },
+  "anonymousProductionEntry": {
+    "passed": true,
+    "groups": 6,
+    "report": ".local/production-review/report.json",
+    "layout": {
+      "width": 390,
+      "documentWidth": 390
+    },
+    "screenshots": [
+      {
+        "path": ".local/production-review/sign-in.png",
+        "bytes": 60240,
+        "sha256": "90dbe239ffba07c133b98900d544aaaca571c38df22fec2ad83be30ef03bded9"
+      },
+      {
+        "path": ".local/production-review/welcome.png",
+        "bytes": 38756,
+        "sha256": "7195002f0a32e9e6d1441639abecb3d7e0f4f19c1c783e51386b0df5b69156fb"
+      }
+    ],
+    "scope": "Actual 390px Welcome/sign-in DOM, no review choice or seeded account in DOM, no anonymous recording IndexedDB, hidden advanced provider controls and no runtime errors."
+  },
+  "processes": {
+    "staticServerTerminatedPids": [
+      631491
+    ],
+    "browserClosedByHarness": true,
+    "heavyExportCompleted": true
+  }
+}

@@ -1,0 +1,189 @@
+{
+  "status": "passed",
+  "observedAt": "2026-10-21T13:01:44.444664+00:00",
+  "image": "sha256:c29d7caddb404740200ab2d1f701dac9478cf21bfe6ecc3d55cdca314a3e0abb",
+  "dedicatedMigrator": {
+    "status": "passed",
+    "separateNonSuperuserNonBypassOwnerRole": true,
+    "prior": {
+      "versions": [
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ],
+      "accounts": 22,
+      "matches": 1,
+      "media": 0
+    },
+    "current": {
+      "versions": [
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "mediaVersions": [
+        1,
+        2,
+        3
+      ],
+      "accounts": 22,
+      "matches": 1,
+      "media": 0,
+      "protectedTables": 34
+    },
+    "existingAccountMatchManifestCountsPreserved": true
+  },
+  "runtime": {
+    "api": {
+      "role": "longball_api",
+      "versions": [
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "passed": [
+        "restricted_role_attributes",
+        "cannot_create_schema_objects",
+        "cannot_create_public_objects",
+        "cannot_alter_schema",
+        "cannot_change_migration_version",
+        "schema12_verified",
+        "login_purpose_and_context_free_rls",
+        "api_cannot_delete_domain_rows",
+        "api_cannot_rewrite_audit",
+        "api_scoped_request_schema_and_key_access",
+        "api_feature_verification_and_request_schema",
+        "api_cannot_claim_worker_job",
+        "api_context_free_branding_and_identity_denied"
+      ]
+    },
+    "worker": {
+      "role": "longball_worker",
+      "versions": [
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "passed": [
+        "restricted_role_attributes",
+        "cannot_create_schema_objects",
+        "cannot_create_public_objects",
+        "cannot_alter_schema",
+        "cannot_change_migration_version",
+        "schema12_verified",
+        "login_purpose_and_context_free_rls",
+        "worker_cannot_insert_unscoped_job",
+        "worker_cannot_forge_api_identity",
+        "worker_cannot_change_accounts",
+        "worker_cannot_read_private_media_manifests",
+        "worker_cannot_read_privacy_requests",
+        "worker_cannot_read_privacy_pending_keys",
+        "worker_cannot_read_brand_assets",
+        "worker_cannot_read_invitation_verifiers",
+        "worker_cannot_read_native_devices",
+        "worker_cannot_delete_jobs",
+        "worker_job_and_document_operations"
+      ]
+    },
+    "apiPermissionChecks": 13,
+    "workerPermissionChecks": 18,
+    "bothUid1000AndReadOnly": true,
+    "bothFinalImageRunning": true,
+    "health": {
+      "status": "ok",
+      "service": "longball-api",
+      "contractVersion": "longball.events/1.1",
+      "backend": "postgresql",
+      "syntheticOnly": false
+    },
+    "unconfiguredIdentityPrivateStatus": 503,
+    "unconfiguredIdentityPrivateBody": {
+      "code": "IDENTITY_NOT_CONFIGURED",
+      "message": "Configure the trusted OIDC issuer, audience and JWKS verifier before accepting requests.",
+      "requestId": "f4cee815-5571-464f-8cbd-cb9af42d74cf",
+      "retryable": true
+    },
+    "containers": [
+      {
+        "name": "/longball-runtime-api-1",
+        "image": "sha256:c29d7caddb404740200ab2d1f701dac9478cf21bfe6ecc3d55cdca314a3e0abb",
+        "user": "node",
+        "readOnlyRoot": true,
+        "running": true
+      },
+      {
+        "name": "/longball-runtime-worker-1",
+        "image": "sha256:c29d7caddb404740200ab2d1f701dac9478cf21bfe6ecc3d55cdca314a3e0abb",
+        "user": "node",
+        "readOnlyRoot": true,
+        "running": true
+      }
+    ]
+  },
+  "compiledSha256": {
+    "api.mjs": "53f89376dcd52bea93d9f54997e673001397760e2e89e530a04148ef7cc9ab5f",
+    "worker.mjs": "b5664fe93df37e726b4a5737d9aab0dda38df3652a8087ffd88f5d4eb7b93204",
+    "migrate.mjs": "ad601509c51a2dc3af81ef57846227fe2d0fd254fa69aa931c940f462e398523",
+    "media-worker.mjs": "db982ffae7d4e9162d8bd5c76fa79f6109ca2380ed6ba9c002a49fac029b3d73",
+    "heic-worker.mjs": "af403995a2780164fdddbce814fbf6f4c5789fcc00dcb49c9235dfb76a0e751d"
+  },
+  "actualContainerNativeHeic": {
+    "status": "passed",
+    "uid": 1000,
+    "decoder": "libheif:1.23.6/libde265",
+    "helperSha256": "5ec9807e2a45b04fc2aaa272ab97372266f5d35543414d9c73ceca0a546e29f0",
+    "libraries": {
+      "libheif.so.1": {
+        "path": "/opt/longball-heic/lib/libheif.so.1.23.6",
+        "sha256": "824e0024b63a855be082acc02dbd238eda7e22d2d4a6e9a2a6f574e23d796aa0"
+      },
+      "libde265.so.0": {
+        "path": "/opt/longball-heic/lib/libde265.so.0.2.3",
+        "sha256": "de31a2ce135c38202f794e5c5c4ddafca337b249a2cf048c3ebaaf4224661dac"
+      }
+    },
+    "decodedDimensions": [
+      32,
+      64
+    ],
+    "sandboxedReadOnlyRuntime": true,
+    "sourceArchivesVerified": true,
+    "licensesReadableByRuntimeUser": true
+  },
+  "pairedRestoreEvidence": "heic-schema12.json",
+  "limitations": [
+    "Local prepared PostgreSQL/private-volume deployment, not a hosted or paid production deployment.",
+    "Private authenticated API intentionally requires configured OIDC; this image rejects fictional authentication.",
+    "Native picker/OS authentication still require physical iPhone and Android validation.",
+    "No real children, push-provider delivery, operational backup SLA or policy approval is claimed."
+  ]
+}

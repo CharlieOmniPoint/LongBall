@@ -1,0 +1,86 @@
+{
+  "observedAt": "2026-10-23",
+  "productSource": "3e310d458bdc945a620db20728a3934d3d3c925d",
+  "productTree": "686159647cecdeff3f965862401b8d38d78269b9",
+  "changes": [
+    "Immediate demo sign-out even during retained/pending activity; normal navigation guards remain.",
+    "Covered retained workspace on background; current account and role rechecked before revealing on return; transient retry, denial and expiry handling.",
+    "Bounded cancelable login responses, duplicate submission guard and keyboard Next focus.",
+    "Both upcoming Roma demo games now seed from saved prepared profiles, formation and eligibility.",
+    "Official compatible Expo config-plugins patch removes legacy uuid; native configuration check isolates and cleans its generated sources.",
+    "Maintained built-demo browser/worker acceptance runs in CI using fresh generated accounts, never the shared review passcodes."
+  ],
+  "unit": {
+    "success": true,
+    "numPassedTests": 764,
+    "numFailedTests": 0,
+    "numPendingTests": 0,
+    "numTotalTests": 764
+  },
+  "firstIntendedFullApi": {
+    "success": false,
+    "numPassedTests": 395,
+    "numFailedTests": 1,
+    "numPendingTests": 0,
+    "numTotalTests": 396
+  },
+  "idleFullApiRerun": {
+    "success": true,
+    "numPassedTests": 396,
+    "numFailedTests": 0,
+    "numPendingTests": 0,
+    "numTotalTests": 396
+  },
+  "apiFailureAndRerun": {
+    "test": "PostgreSQL SEC17 actual HTTP boundaries retains the same private upload and capability after decoder timeout, crash or startup failure",
+    "initialFailure": "Exceeded unchanged 30000ms test timeout while other builds and lint were running.",
+    "isolatedUnchangedRerun": {
+      "passed": 2,
+      "failed": 0,
+      "filtered": 21,
+      "postgresDurationMs": 16611,
+      "sqliteDurationMs": 3931
+    },
+    "interpretation": "The isolated pass supports contention as a possible cause; the failed aggregate remains recorded. No assertion or timeout changed. The later full API rerun passed all 396 without skips."
+  },
+  "otherHostChecks": {
+    "migrationPassed": 24,
+    "lint": true,
+    "rootAndMobileTypes": true,
+    "contracts": true,
+    "sourcePublicationTests": 1,
+    "demoVerifierPackagingTests": 6,
+    "sampleFixtureValidation": true,
+    "nodeReviewScriptTests": 3,
+    "nativeConfigurationGroups": 6,
+    "nativeHermesExport": {
+      "androidModules": 1050,
+      "iosModules": 1049,
+      "demoAccountLogin": true
+    },
+    "ordinaryBrowserGroups": 10,
+    "ordinaryBrowserNativeDeviceEvidence": false,
+    "finalSecretScan": {
+      "files": 951,
+      "unexpected": 0,
+      "exactReviewedFalsePositives": 38
+    }
+  },
+  "dependencyGate": {
+    "passed": false,
+    "workspaceHigh": 1,
+    "workspaceModerate": 0,
+    "runtimeFindings": 0,
+    "compilerFindings": 0,
+    "unpatched": "node-forge <=1.4.0 / GHSA-86w9-cpqp-85rv",
+    "suppressionAdded": false
+  },
+  "sourceBinding": "Runtime/test changes were frozen before the host suites. Subsequent commits added runner evidence cleanup/binding and ignored its generated export. The final browser report separately verifies the clean committed product and exact compiled assets. Cloud CI/source-import proof is recorded separately.",
+  "qualifications": [
+    "An exploratory API invocation without the PostgreSQL selector passed 259 and skipped 137; it is not the PostgreSQL acceptance result.",
+    "Two initial browser runs overlapped after crossed agent messages; both completed successfully and cleaned only their own processes. The accepted final clean-source run was separate and passed eight role journeys/twelve groups.",
+    "Native JavaScript export and configuration are not compilation, signing, installation or hardware evidence.",
+    "Q05/Q09/Q10 and physical-phone tests remain owner-deferred; no paid services provisioned.",
+    "Earlier performance, restore and device results retain their original source and limits."
+  ]
+}

@@ -1,0 +1,63 @@
+{
+  "baseURL": "http://127.0.0.1:4173",
+  "generatedAt": "2026-10-21T07:16:17.260Z",
+  "scenarioFilter": null,
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "method": "User controls only; read-only IndexedDB evidence; no state injection.",
+  "results": [
+    {
+      "name": "01-fixture-history",
+      "status": "passed",
+      "detail": "Create/reschedule/cancel preserve one identity and old played date; cancelled status survives reload."
+    },
+    {
+      "name": "02-training-evidence",
+      "status": "passed",
+      "detail": "RSVP does not check in; held expected session contributes 1/1, cancelled occurrence excluded independently."
+    },
+    {
+      "name": "03-snapshots-and-formats",
+      "status": "passed",
+      "detail": "Prepared profiles are unchanged after edit; 5- and 11-place formations save with distinct stable slots."
+    },
+    {
+      "name": "04-historical-results",
+      "status": "passed",
+      "detail": "A friendly win adds 3 points; corrected loss removes them with before/after audit; unknown participation remains null."
+    },
+    {
+      "name": "05-private-role-projections",
+      "status": "passed",
+      "detail": "Player sees own named rows only; responses leave attendance unknown; spectator has no private report/control or withheld derived score."
+    },
+    {
+      "name": "06-exact-photo-revision",
+      "status": "passed",
+      "detail": "Pending media stays private; exact approval publishes v1/v2, previous approved revision remains until replacement approval, removal blocks spectator retrieval."
+    },
+    {
+      "name": "07-private-ballot",
+      "status": "passed",
+      "detail": "No default +59 cutoff; explicit fictional +25; self excluded, one player changes own private revision, manager sees no ballot, latest valid vote seals under original deadline."
+    },
+    {
+      "name": "08-invitations-revocation",
+      "status": "passed",
+      "detail": "Individual invitation and season grant revocations retain audit and block old spectator gallery retrieval."
+    },
+    {
+      "name": "09-durability-stale-tab",
+      "status": "passed",
+      "detail": "Reload preserves accepted team document; stale second-tab write cannot overwrite it and retained rejected projection survives reload."
+    }
+  ],
+  "pageErrors": [],
+  "limitations": [
+    "Fictional local role controls do not establish server authorisation.",
+    "Native encryption, background delivery, reboot and lock need physical iPhone/Android verification.",
+    "Photo processing uses original synthetic illustrations; device picker/upload/scanning are not proved."
+  ]
+}

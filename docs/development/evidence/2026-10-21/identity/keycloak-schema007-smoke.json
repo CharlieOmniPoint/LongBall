@@ -1,0 +1,28 @@
+{
+  "provider": "Keycloak",
+  "version": "26.8.1",
+  "verifiedAt": "2026-10-21T10:41:15.073Z",
+  "checks": [
+    "Actual pinned provider discovery over verified HTTPS",
+    "Provider extension refuses unauthenticated provisioning",
+    "Actual adult TOTP enrollment and fresh password+OTP AMR verified by application verifier",
+    "Actual activation completion refuses missing or mismatched original capability before accepting the independent provider proof",
+    "Actual strongly authenticated provider manager \u2192 restricted-role PostgreSQL API \u2192 username-only activation \u2192 independent child PKCE sign-in, child manager-denial and synthetic-alias refusal"
+  ],
+  "httpsCertificateVerified": true,
+  "actualProviderRequests": true,
+  "actualProviderApiJourney": true,
+  "activationCompletionRequiresOriginalCapability": true,
+  "verifiedRuntimeSchema": {
+    "core": 7,
+    "activation": 2
+  },
+  "schemaUpgradeSmokeOnly": true,
+  "chromiumUse": "offline DOM parser only",
+  "systemBrowserTested": false,
+  "physicalDeviceTested": false,
+  "liveOnboardingApproved": false,
+  "productionProviderSelected": false,
+  "priorFullProviderProofCoreSchema": 5,
+  "scope": "Fresh real manager and child authentication/API boundary smoke after worker-only schema006/007 deltas; unrelated protocol replay/cancel/refresh cases were not repeated"
+}

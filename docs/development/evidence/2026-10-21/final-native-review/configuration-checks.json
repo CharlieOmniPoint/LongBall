@@ -1,0 +1,29 @@
+{
+  "passed": true,
+  "checks": [
+    "Production evaluated iOS ATS and Android manifest refuse cleartext/local exceptions",
+    "Production strips Expo discovery/generated schemes and disables default dev menu/tools",
+    "Production/development APNs environment follows build profile without signing/provisioning",
+    "Explicit fictional/development trial keeps its recorded dev-client behavior",
+    "Both profiles retain app identity, SQLCipher, backup protections, biometrics, local module and notifications",
+    "Static trial source and explicit local-only notification/operator options are preserved"
+  ],
+  "sourceAppJsonSha256": "7e047df9aa62d64dbf7089790213a6900772d4a9a9f751fc22c45669754f7465",
+  "evaluated": {
+    "production": "210a32ecf971a8ebb56fa7211a9a06f04e1a22e997353a21dbfbe6ae79d436e8",
+    "development": "830e12685ba558b6b2cb39e1e2388d2e32f7daa9ce8fbb9e7074c91fd3aaedab"
+  },
+  "scope": "Evaluated build configuration only; native Release signing, compilation, runtime and delivery are separate proof.",
+  "evaluatedVariant": {
+    "NODE_ENV": "production",
+    "productionSelector": "production",
+    "developmentSelector": "development",
+    "LONGBALL_WEB_BASE_PATH": "/LongBall",
+    "privatePublicEnvironmentRemoved": true
+  },
+  "freshRun": {
+    "source": "b25a74f03b6f27d07871f0bb86fd6a5f9e202e5f",
+    "command": "node scripts/test-production-native-config.mjs",
+    "exitCode": 0
+  }
+}

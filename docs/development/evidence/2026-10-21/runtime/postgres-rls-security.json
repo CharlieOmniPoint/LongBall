@@ -1,0 +1,73 @@
+{
+  "status": "passed",
+  "observedAt": "2026-10-21T10:58:01.794Z",
+  "kind": "actual-postgresql-sec10-focused",
+  "versions": [
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9
+  ],
+  "featureVersions": {
+    "media": 2,
+    "activation": 2
+  },
+  "tests": {
+    "coreSecurity": 9,
+    "privacyMigration": 3,
+    "notificationAdapter": 18,
+    "notificationActualPostgres": 11,
+    "notificationSQLite": 7
+  },
+  "checks": [
+    "Non-owner NOSUPERUSER NOBYPASSRLS roles and installed policies",
+    "Verified issuer/subject, selected role and club/team/season substitution denial",
+    "Database login purpose prevents worker API identity and API worker-lease forgery",
+    "Current published media revision, private pending/replaced/removed/hidden manifests",
+    "Short SET LOCAL transactions, pooled reuse, rollback and concurrent contexts",
+    "Ended ancestor context and released transaction client reject delayed work",
+    "Composite foreign keys remain effective independently of derivation triggers",
+    "Late migration failure rolls back expansion; unresolved legacy ancestry retained and denied",
+    "Exact live job lease, current recipient and actual-clock expiry",
+    "Award fanout is exact game/category, generic allowlist only, unique source-job/recipient independent business key",
+    "Administrator revocation freezes only exact named controller and cannot rewrite capability or read match state",
+    "Independent database due/reclaim/lease timing and old007 future-capability upgrade denial without ledger rewriting"
+  ],
+  "sourceSha256": {
+    "apps/api/migrations/postgresql/005_scope_security.sql": "6c6e73509ea12851c5c7080a711114244046350128ecdc6e1f2611a665dac13b",
+    "apps/api/migrations/postgresql/006_award_notifications.sql": "121ef919d7a0c66135e644cccb03a20159948bd5bc0034b5428a535b1aa1928d",
+    "apps/api/migrations/postgresql/007_worker_boundaries.sql": "17436fc100ad0a80a5d3df78db4a14dc98d192cc38ed5578a73136cd98845aed",
+    "apps/api/migrations/postgresql/005_media_security.sql": "abe04afacd7341cd1b22fdb2174dab9c24ae6d441d09bd5f4b22f2827ef7205a",
+    "apps/api/migrations/postgresql/005_activation_security.sql": "b9890a431223f2e5c5ea772eb7ba0a601d107d460e4ecb5da3db4aaee3644f5f",
+    "apps/api/src/pg.ts": "210930cb42a47afef85a85e394d6c01b4627388510c62f9a44016bab157124dc",
+    "apps/api/src/postgres-security.ts": "b19a30d1eb866b2f27455bf21c5466fcf182b4f9b6f4d7e54bf27b2e8dd4d03e",
+    "apps/api/src/runtime-grants.ts": "46669b6f2b36e528fe4bcfd95a9e0dd4e86b9238b934aa9d9e6e2f35b759ec0f",
+    "apps/api/src/postgres-security.test.ts": "6d45eb7f6495830ddd13ac511314a5d046f38e57af1519848267eea8b6a2ca81",
+    "apps/api/src/postgres-privacy-migration.test.ts": "4d58309054c0ca81d55768e8f15d99885505fc19214d0314453c2fcbecb792ba",
+    "apps/api/migrations/postgresql/008_controller_revocation.sql": "c39e8132ea91637b95ffe31ff8b7ffdb2c713d3e035e30d802e86ff50978cddf",
+    "apps/api/migrations/postgresql/009_dispatch_database_clock.sql": "5298965bb5425e58fcd8c758024b62da9191e38121cdf94c5ea176282d6cdcfa",
+    "apps/worker/src/notification-jobs.ts": "d254350c2e3cd26f399282858bb474c57f6ef884ddc83d24f55373ed0a4db079",
+    "apps/worker/src/postgres-jobs.ts": "50db8e623b396e448a57a157b54c8f99bb653d5a7fc464308ee79f1be7002f23"
+  },
+  "limitations": [
+    "Direct SQL/HTTP/provider/restore proof complements application field projections; aggregate JSON redaction remains mandatory.",
+    "No physical device, production load, push delivery, paid service or privacy fulfilment claim."
+  ],
+  "preFixActualProbe": {
+    "restrictedWorker": true,
+    "futureObservationAdvanceMs": 600000,
+    "futureJobClaimedBeforeDue": true,
+    "communityNoOpWriteAuthorizedBeforeDue": true
+  },
+  "independentSqlAudit": "passed; no outstanding material SQL finding",
+  "finalGuardValidation": {
+    "broadApiBeforeLastGuards": 167,
+    "finalBroadApiReportedByRoot": 169,
+    "targetedAwardRollbackAndDbClockFanout": 2,
+    "targetedNotificationUpdateZero": 1
+  }
+}

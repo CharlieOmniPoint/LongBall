@@ -1,0 +1,87 @@
+{
+  "baseURL": "http://127.0.0.1:4173",
+  "primaryAPI": "http://127.0.0.1:4320",
+  "controlAPI": "http://127.0.0.1:4321",
+  "runId": "20261021100336954",
+  "artifacts": {
+    "web": {
+      "url": "http://127.0.0.1:4173/_expo/static/js/web/index-574b3e4289da41fb548779d3b27caa53.js",
+      "sha256": "34f026256d1eb1dca1a1686a6d2a02a4ec2f8389c715a9c70497c224abb92427"
+    },
+    "api": {
+      "entry": "apps/api/dist/api.mjs",
+      "sha256": "bcf92d7d6937c965c88637c089168636122c29c06b817291faee480ebe7df558"
+    }
+  },
+  "checks": [
+    {
+      "name": "01-canonical-match-and-lost-response",
+      "status": "failed",
+      "error": "clock.pauseAt: Error: Cannot fast-forward to the past\n    at ClockController._innerFastForwardTo (eval at evaluate (:290:30), <anonymous>:196:13)\n    at ClockController.pauseAt (eval at evaluate (:290:30), <anonymous>:127:16)\n    at async <anonymous>:316:30"
+    },
+    {
+      "name": "02-handover-sequence-and-stale-quarantine",
+      "status": "passed",
+      "detail": {
+        "acceptedRevision": 27,
+        "epochs": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "sequenceBeforeHandback": 9,
+        "nextSequenceOnHandback": 10,
+        "finalReservedSequence": 27,
+        "quarantined": 9,
+        "acceptedProjectionUnchanged": true,
+        "managerReviewRequired": true,
+        "immutableProposalOverHttp": true,
+        "exactProposalRetryAfterReload": true,
+        "q08Apply503": true,
+        "quarantineNotClearedByProposal": true,
+        "fictionalClockExchangeOverHttp": true,
+        "nativeClockContinuityTested": false
+      }
+    },
+    {
+      "name": "03-workspace-service-preparation-results-and-privacy",
+      "status": "passed",
+      "detail": {
+        "fixtureId": "59d483ca-a382-4eeb-b0a7-5ba8b2a95e5d",
+        "sameIdentityAfterReschedule": true,
+        "historicalSummaryUnknownMinutes": true,
+        "ownPlayerDataOnly": true,
+        "rsvpDistinctFromAttendance": true,
+        "invitationAcceptedOverHttp": true,
+        "q21SharingWithheld": true
+      }
+    },
+    {
+      "name": "04-private-media-two-explicit-game-albums-without-scanner",
+      "status": "failed",
+      "error": "Two independently permitted games are needed to prove explicit upload targeting.\n\n1 !== 2\n"
+    },
+    {
+      "name": "05-workspace-durable-outbox-reload-and-exact-retry",
+      "status": "passed",
+      "detail": {
+        "fixtureId": "639ae9a4-8909-4208-aa06-5b5544c389cb",
+        "retainedAcrossReload": true,
+        "otherAccountCannotReplay": true,
+        "identicalWireKeyAndBody": true,
+        "finalServiceRevision": 4,
+        "noDuplicateFixtureOrHistory": true,
+        "acknowledgementDurableAfterSecondReload": true
+      }
+    }
+  ],
+  "errors": [],
+  "limitations": [
+    "Fictional development authentication; no real identity provider rehearsal.",
+    "Browser-controlled monotonic time validates rules and HTTP boundaries, not native clock continuity.",
+    "Control API clock exchange uses an explicitly fictional trial policy; it approves no Q08 authority or production clock/sharing policy.",
+    "Phone reboot, SQLCipher, background alerts, lock-screen and physical-device continuity still require native device evidence.",
+    "Unconfigured antivirus blocks media processing; no publication or malware-scanner claim."
+  ]
+}

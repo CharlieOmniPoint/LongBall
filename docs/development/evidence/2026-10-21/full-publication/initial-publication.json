@@ -1,0 +1,38 @@
+{
+  "recordedAt": "2026-10-21T20:02:57.461Z",
+  "stage": "initial-full-scope-publication-before-discovery-cache-fix",
+  "packagedSourceCommit": "d08666f02aa1a229ee66b031cd2e238c7c263cfa",
+  "productSourceCommit": "7ede8d1ef944823cfd6a5f6965ab51d4c37d286e",
+  "transportCommit": "bb3965bd478934dcede62b1cbcc30d647bed2d70",
+  "sourceBundleSha256": "20b385ac7537aecf4c552dea7ccab20685e7ed4e298d61c68ace694d4b46d13a",
+  "sourceBundleBytes": 5381450,
+  "pages": {
+    "url": "https://charlieomnipoint.github.io/LongBall/",
+    "runId": 39664214908,
+    "conclusion": "success",
+    "entryEvidence": "entry.json",
+    "localJourneyEvidence": "local-journey.json"
+  },
+  "api": {
+    "state": "ready",
+    "url": "https://conditional-runner-belief-delivery.trycloudflare.com",
+    "sourceRevision": "bb3965bd478934dcede62b1cbcc30d647bed2d70",
+    "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/39664214764",
+    "startedAt": "2026-10-21T19:48:46Z",
+    "expiresAt": "2026-10-22T00:48:46Z",
+    "audience": "Adult review of fictional Roma U10 data only",
+    "healthAndBuildFromActualPublicBrowserPassed": true,
+    "actualPublicCors": true
+  },
+  "connectedRoleAcceptance": {
+    "passed": false,
+    "reason": "Actual browser status cache pointed to a retired earlier service; role chooser withheld connected entry. Cached status and new direct health recorded.",
+    "evidence": "discovery-cache-diagnostic.json"
+  },
+  "queryCompatibility": "status-query-compatibility.json",
+  "artifacts": "packaged-artifacts.json",
+  "nativeRunId": 39664214737,
+  "physicalDeviceEvidence": false,
+  "productionRelease": false,
+  "paidServicesProvisioned": false
+}

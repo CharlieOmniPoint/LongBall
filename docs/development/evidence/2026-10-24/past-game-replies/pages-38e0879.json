@@ -1,0 +1,89 @@
+{
+  "recordedAt": "2026-10-24T19:12:57.335Z",
+  "source": {
+    "productCommit": "38e08797755fe5ca154786c0ad2130888f8b6d1a",
+    "productTree": "93dafb22cdc0b04f6f8fd3d4dfa9695df47bdcce",
+    "pagesTransportCommit": "16e85d63fd86f87964a33bff03c3903a52106d57",
+    "runtimeTransportCommit": "18b24b9f9cbeead4e7a9f38e47f25e8c309dbf0e",
+    "decodedSourceBundleSha256": "5c1253e1a22f4b0057d297b7a29f498310120472a50522925b5c4e84b5d6644c"
+  },
+  "run": {
+    "id": 40124114863,
+    "url": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40124114863",
+    "conclusion": "success"
+  },
+  "job": {
+    "id": 120961752339,
+    "status": "completed",
+    "conclusion": "success",
+    "steps": [
+      {
+        "name": "Set up job",
+        "conclusion": "success"
+      },
+      {
+        "name": "Run actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803",
+        "conclusion": "success"
+      },
+      {
+        "name": "Check demo export provenance",
+        "conclusion": "success"
+      },
+      {
+        "name": "Read enabled GitHub Pages configuration",
+        "conclusion": "success"
+      },
+      {
+        "name": "Run actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b",
+        "conclusion": "success"
+      },
+      {
+        "name": "Publish the browser demo",
+        "conclusion": "success"
+      },
+      {
+        "name": "Post Run actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803",
+        "conclusion": "success"
+      },
+      {
+        "name": "Complete job",
+        "conclusion": "success"
+      }
+    ]
+  },
+  "deploymentUrl": "https://charlieomnipoint.github.io/LongBall/",
+  "deploymentCreatedLogAt": "2026-10-24T19:11:08.6739923Z",
+  "deploymentUrlSource": "Actual successful deployment job log.",
+  "buildInfo": {
+    "sourceCommit": "38e08797755fe5ca154786c0ad2130888f8b6d1a",
+    "sourceBranch": "dev/longball-m0-journey",
+    "synthetic": true,
+    "nativeTargets": [
+      "iPhone",
+      "Android"
+    ],
+    "production": false,
+    "basePath": "/LongBall",
+    "connectedBackendIncluded": false,
+    "gitBlobSha": "8c96bb419cba6c6a19d1ed868d3a128f4ccb1f66"
+  },
+  "packagedJavaScript": [
+    {
+      "path": "pages-site/_expo/static/js/web/index-08dbd201c27889d799e089de4566e9cd.js",
+      "bytes": 1685012,
+      "sha256": "b98eceac4d46ebff8301430bf65c48d291fb035c6c5a451cf6b36d745cdfbd16",
+      "gitBlobSha": "7db02e98866fcee0ac71b6b8deeb9a17c55b27db"
+    }
+  ],
+  "assetMeasurementMethod": "Bytes and SHA256 measured from exact16e85d63 local Git blobs. Public live-byte checks are performed separately by the integrating parent.",
+  "scope": "Source-bound historic-game availability browser export provenance and successful Pages deployment; not a browser-action or native-device acceptance claim.",
+  "limits": {
+    "directPublicAssetBytesFetchedByObserver": false,
+    "publicAccountSessionsOpenedByObserver": false,
+    "connectedBackendIncluded": false,
+    "physicalDeviceEvidence": false,
+    "workflowMutationsOrRetries": false,
+    "artifactDownloads": false,
+    "paidServicesProvisioned": false
+  }
+}

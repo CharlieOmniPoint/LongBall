@@ -1,0 +1,56 @@
+{
+  "version": 1,
+  "scope": "Unchanged sanitized reports and credential-free captures, copied from the original isolated review outputs. SHA-256 covers the exact copied bytes; source mtime is filesystem metadata, not an invented run start.",
+  "files": [
+    {
+      "file": "player-main-candidate4.json",
+      "candidate": "candidate4",
+      "source": ".local/quality/persona-player-final/report.json",
+      "byteLength": 4731,
+      "sha256": "85d2927703e5ab864f70a3ef872c010b1429da29e005b38242da3e053620beae",
+      "originalModifiedAt": "2026-10-25T22:34:31.346Z",
+      "copiedModifiedAt": "2026-10-25T22:34:31.346Z",
+      "byteIdenticalToSanitizedSource": true
+    },
+    {
+      "file": "player-upload-candidate6.json",
+      "candidate": "candidate6",
+      "source": ".local/quality/persona-player-upload-final/report.json",
+      "byteLength": 4851,
+      "sha256": "2f52e41f73e990fb28f97452a89c00d5cbfd86e12cd9b5e6871a5b5e1e88ad2a",
+      "originalModifiedAt": "2026-10-25T22:52:23.078Z",
+      "copiedModifiedAt": "2026-10-25T22:52:23.078Z",
+      "byteIdenticalToSanitizedSource": true
+    },
+    {
+      "file": "feature-pass-candidate6.json",
+      "candidate": "candidate6",
+      "source": ".local/quality/feature-pass-review/report.json",
+      "byteLength": 7219,
+      "sha256": "b26a314ad24f9aac8d98c6bde4a3e8957ec586e2684bd99d819c22799e80dba8",
+      "originalModifiedAt": "2026-10-25T22:50:45.679Z",
+      "copiedModifiedAt": "2026-10-25T22:50:45.679Z",
+      "byteIdenticalToSanitizedSource": true
+    },
+    {
+      "file": "player-home-390-candidate4.png",
+      "candidate": "candidate4",
+      "source": ".local/quality/persona-player-final/player-home-390.png",
+      "byteLength": 54284,
+      "sha256": "a03f0115a664efcf2467ce5630a05901d7a56c44c3724639a4cdbf8d97bf8327",
+      "originalModifiedAt": "2026-10-25T22:33:02.998Z",
+      "copiedModifiedAt": "2026-10-25T22:33:02.998Z",
+      "byteIdenticalToSanitizedSource": true
+    },
+    {
+      "file": "player-stats-390-candidate4.png",
+      "candidate": "candidate4",
+      "source": ".local/quality/persona-player-final/player-stats-compact-390.png",
+      "byteLength": 53494,
+      "sha256": "b03a32b7f0b7a4b470d9278a674d481615d08f9ec4052551bb9bacc37ae754ae",
+      "originalModifiedAt": "2026-10-25T22:34:02.622Z",
+      "copiedModifiedAt": "2026-10-25T22:34:02.622Z",
+      "byteIdenticalToSanitizedSource": true
+    }
+  ]
+}

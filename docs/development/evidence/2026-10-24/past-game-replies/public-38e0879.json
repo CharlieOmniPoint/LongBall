@@ -1,0 +1,249 @@
+{
+  "sourceCommit": "38e08797755fe5ca154786c0ad2130888f8b6d1a",
+  "pagesUrl": "https://charlieomnipoint.github.io/LongBall/?v=38e0879",
+  "apiUrl": "https://silence-stainless-anaheim-fast.trycloudflare.com",
+  "serviceStartsAt": "2026-10-24T19:10:03Z",
+  "serviceExpiresAt": "2026-10-25T00:10:03Z",
+  "ownerApprovedDestination": "Firecrawl for dummy demo account functionality testing",
+  "uiJourneys": [
+    {
+      "width": 320,
+      "height": 844,
+      "passed": true,
+      "loginStatus": 200,
+      "pastCards": [
+        {
+          "fixtureId": "synthetic-history-oak",
+          "replyButtonCounts": {
+            "Available": 0,
+            "Unavailable": 0,
+            "Unsure": 0,
+            "No reply": 0
+          },
+          "recordedReplyVisible": true,
+          "actualAttendanceVisible": true
+        },
+        {
+          "fixtureId": "synthetic-history-hill",
+          "replyButtonCounts": {
+            "Available": 0,
+            "Unavailable": 0,
+            "Unsure": 0,
+            "No reply": 0
+          },
+          "recordedReplyVisible": true,
+          "actualAttendanceVisible": true
+        }
+      ],
+      "upcomingCards": [
+        {
+          "fixtureId": "synthetic-roma-maple-2026-10-24",
+          "replyButtonCounts": {
+            "Available": 1,
+            "Unavailable": 1,
+            "Unsure": 1,
+            "No reply": 1
+          },
+          "allReplyButtonsEnabled": true,
+          "clickedAvailability": false
+        },
+        {
+          "fixtureId": "synthetic-roma-oak-2026-10-31",
+          "replyButtonCounts": {
+            "Available": 1,
+            "Unavailable": 1,
+            "Unsure": 1,
+            "No reply": 1
+          },
+          "allReplyButtonsEnabled": true,
+          "clickedAvailability": false
+        }
+      ],
+      "noHorizontalOverflow": true,
+      "logout": {
+        "status": 204,
+        "privateViewClosed": true
+      }
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "passed": true,
+      "loginStatus": 200,
+      "pastCards": [
+        {
+          "fixtureId": "synthetic-history-oak",
+          "replyButtonCounts": {
+            "Available": 0,
+            "Unavailable": 0,
+            "Unsure": 0,
+            "No reply": 0
+          },
+          "recordedReplyVisible": true,
+          "actualAttendanceVisible": true
+        },
+        {
+          "fixtureId": "synthetic-history-hill",
+          "replyButtonCounts": {
+            "Available": 0,
+            "Unavailable": 0,
+            "Unsure": 0,
+            "No reply": 0
+          },
+          "recordedReplyVisible": true,
+          "actualAttendanceVisible": true
+        }
+      ],
+      "upcomingCards": [
+        {
+          "fixtureId": "synthetic-roma-maple-2026-10-24",
+          "replyButtonCounts": {
+            "Available": 1,
+            "Unavailable": 1,
+            "Unsure": 1,
+            "No reply": 1
+          },
+          "allReplyButtonsEnabled": true,
+          "clickedAvailability": false
+        },
+        {
+          "fixtureId": "synthetic-roma-oak-2026-10-31",
+          "replyButtonCounts": {
+            "Available": 1,
+            "Unavailable": 1,
+            "Unsure": 1,
+            "No reply": 1
+          },
+          "allReplyButtonsEnabled": true,
+          "clickedAvailability": false
+        }
+      ],
+      "noHorizontalOverflow": true,
+      "logout": {
+        "status": 204,
+        "privateViewClosed": true
+      }
+    }
+  ],
+  "rejectedPastReply": {
+    "passed": true,
+    "attempts": 1,
+    "contractVersion": "longball.events/1.1",
+    "fixtureId": "synthetic-history-oak",
+    "playedDate": "2026-10-10",
+    "revision": 0,
+    "freshCommandId": true,
+    "freshIdempotencyKey": true,
+    "assignedScopeVerified": true,
+    "status": 422,
+    "responseCode": "COMMAND_REJECTED",
+    "beforeOwnDtoSha256": "35aea9283b371a10a880080e0778623a760eadcac85073d03bb2654bdabaa4dc",
+    "afterOwnDtoSha256": "35aea9283b371a10a880080e0778623a760eadcac85073d03bb2654bdabaa4dc",
+    "ownDtoUnchanged": true,
+    "logoutStatus": 204
+  },
+  "pageErrors": [],
+  "uiWrites": [
+    {
+      "method": "POST",
+      "path": "/v1/demo/sessions"
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1/demo/sessions/current"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/demo/sessions"
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1/demo/sessions/current"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/demo/sessions"
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1/demo/sessions/current"
+    }
+  ],
+  "failures": [],
+  "mockedRequests": false,
+  "positiveAvailabilityWrites": 0,
+  "credentialValuesRecorded": false,
+  "screenshotsCaptured": false,
+  "nativeDeviceProof": false,
+  "earlierAttempts": [
+    {
+      "kind": "harness-selector-failure",
+      "journeys": [
+        {
+          "width": 320,
+          "height": 844,
+          "passed": false,
+          "loginStatus": 200,
+          "pastCards": [
+            {
+              "fixtureId": "synthetic-history-hill",
+              "replyButtonCounts": {
+                "Available": 0,
+                "Unavailable": 0,
+                "Unsure": 0,
+                "No reply": 0
+              },
+              "recordedReplyVisible": true,
+              "actualAttendanceVisible": true
+            }
+          ],
+          "stage": "past-match-cards",
+          "failure": "Past reply and actual attendance must remain visible.",
+          "cleanupLogout": {
+            "status": 204,
+            "privateViewClosed": true
+          }
+        }
+      ],
+      "failures": [
+        {
+          "width": 320,
+          "stage": "past-match-cards",
+          "message": "Past reply and actual attendance must remain visible."
+        }
+      ],
+      "cause": "A broad player-fixture- prefix also matched the nested player-fixture-schedule-details helper. The failing captured identifier was schedule-details, not a match card. Exact known fixture-card IDs replace the broad selector.",
+      "applicationAvailabilityWrites": 0
+    }
+  ],
+  "uiReadOnlyWritesVerified": true,
+  "passed": true,
+  "preflight": {
+    "pagesSource": "38e08797755fe5ca154786c0ad2130888f8b6d1a",
+    "apiSource": "38e08797755fe5ca154786c0ad2130888f8b6d1a",
+    "scriptPath": "/LongBall/_expo/static/js/web/index-08dbd201c27889d799e089de4566e9cd.js",
+    "scriptSha256": "b98eceac4d46ebff8301430bf65c48d291fb035c6c5a451cf6b36d745cdfbd16",
+    "healthStatus": 200,
+    "demoAccountLogin": true
+  },
+  "finalBinding": {
+    "pagesSource": "38e08797755fe5ca154786c0ad2130888f8b6d1a",
+    "apiSource": "38e08797755fe5ca154786c0ad2130888f8b6d1a",
+    "scriptPath": "/LongBall/_expo/static/js/web/index-08dbd201c27889d799e089de4566e9cd.js",
+    "scriptSha256": "b98eceac4d46ebff8301430bf65c48d291fb035c6c5a451cf6b36d745cdfbd16",
+    "matchesExpected": true
+  },
+  "observedAt": "2026-10-24T19:17:24.664626+00:00",
+  "limitations": [
+    "Focused public Player reply-window smoke only. No native-device, full-suite, positive future-reply, manager-correction, operating or dependency acceptance is claimed.",
+    "Exactly one fresh past-game command was attempted and actually rejected 422; no prospective availability action was clicked or submitted.",
+    "The initial broad test-id prefix accidentally selected the nested schedule-details helper. That harness-only failure and successful cleanup remain in earlierAttempts; the final checks use exact fixture-card IDs."
+  ],
+  "pagesTransportCommit": "16e85d63fd86f87964a33bff03c3903a52106d57",
+  "pagesWorkflowRun": 40124114863,
+  "pagesWorkflowConclusion": "success",
+  "independentlyReadGitObjectSha256": "b98eceac4d46ebff8301430bf65c48d291fb035c6c5a451cf6b36d745cdfbd16",
+  "serviceExpiresAtLondon": "25 October 2026 01:10:03 BST",
+  "browserSessionStopped": true
+}
+

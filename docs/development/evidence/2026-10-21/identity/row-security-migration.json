@@ -1,0 +1,33 @@
+{
+  "result": "passed",
+  "database": "longball_identity_trial",
+  "versions": [
+    2,
+    3,
+    4,
+    5
+  ],
+  "activationVersion": 2,
+  "existingRowsPreserved": true,
+  "counts": {
+    "accounts": 24,
+    "memberships": 23,
+    "matches": 1,
+    "documents": 3,
+    "audit": 15,
+    "privacy_requests": 5,
+    "lb_activation_children": 2,
+    "lb_activation_issues": 2,
+    "lb_activation_tokens": 2,
+    "lb_activation_verification_requests": 0,
+    "lb_identity_trial_fixture": 1
+  },
+  "restrictedGrantsApplied": true,
+  "markerReadOnly": true,
+  "policyApprovalCreated": false,
+  "verifiedAt": "2026-10-21T10:28:07.213586+00:00",
+  "physicalDeviceTested": false,
+  "schemaRole": "separate named fictional schema owner",
+  "runtimeRole": "distinct restricted login with API-only purpose mapping",
+  "originalColumnsComparedByHash": true
+}

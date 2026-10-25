@@ -1,0 +1,30 @@
+{
+  "observedAt": "2026-10-21T10:50:32Z",
+  "quietApi": {
+    "status": "passed",
+    "tests": 164,
+    "files": 20,
+    "durationSeconds": 53.09,
+    "actualPostgresql": true
+  },
+  "earlierLoadedRun": {
+    "status": "failed",
+    "passed": 160,
+    "failed": 2,
+    "files": 20,
+    "durationSeconds": 249.48,
+    "simultaneousWork": "Duplicate broad API suite, web/production/native exports, lint and container work overlapped.",
+    "failures": [
+      {
+        "test": "ClamAV daemon protocol framing",
+        "outcome": "30000ms test timeout"
+      },
+      {
+        "test": "Private image completion across restart",
+        "outcome": "Decoder rejected processing outside its existing limits"
+      }
+    ]
+  },
+  "followup": "Quiet rerun passed without increasing timeouts or weakening decoder limits. Subsequent schema009 changes require separate acceptance.",
+  "fixedCauseClaim": false
+}

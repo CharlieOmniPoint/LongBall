@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 1,
+  "repository": "CharlieOmniPoint/LongBall",
+  "productCommit": "194e6cf3407071f1c9011654aef81718f05d649e",
+  "productTree": "367969992dac34ae2eebacf5f23c6ff0e2c5a71c",
+  "sourceBundleSha256": "10736999438a6a7581b50aecf87bccae9ae43959855bc3a41d1de5cfc59e2dfb",
+  "observedAt": "2026-10-24T22:52:23.821Z",
+  "transportCommit": "4721b9aa8997437c48a80aaf2c44efee926b325f",
+  "transportTree": "a718c0252eff6ae848d9cf65cb2dbd0eda0c788d",
+  "workflow": {
+    "runId": 40140008956,
+    "url": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40140008956",
+    "jobId": 121009686072,
+    "status": "in_progress",
+    "conclusion": null,
+    "successfulPreparationSteps": [
+      "Set up job",
+      "Run actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803",
+      "Use the pinned Node runtime",
+      "Install the isolated decoder runtime",
+      "Build the pinned maintained HEIC runtime"
+    ],
+    "activeStep": "Serve the demo for a bounded five-hour review",
+    "scope": "Readiness and bounded serving observed; the five-hour workflow is intentionally not terminal yet."
+  },
+  "readyMarker": {
+    "state": "ready",
+    "url": "https://specialist-mit-walter-wanting.trycloudflare.com",
+    "sourceRevision": "4721b9aa8997437c48a80aaf2c44efee926b325f",
+    "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40140008956",
+    "startedAt": "2026-10-24T22:50:33Z",
+    "expiresAt": "2026-10-25T03:50:33Z",
+    "audience": "LongBall demo review with simulated Roma U10 teams and matches",
+    "gitBlob": "c525af98d2eafce42697a10b30ce3f03ffc6d07f",
+    "matchesExpectedTransport": true
+  },
+  "packagedBackendAssets": {
+    "backend/api.mjs": {
+      "sizeBytes": 3771099,
+      "sha256": "4aa4b31b3235911156b6dcd412e9fef9d3a2e893699e313ccb8e9d888d01e859",
+      "gitBlob": "a673781673ad1bb32d4181aecb210e732e564907"
+    },
+    "backend/worker.mjs": {
+      "sizeBytes": 3382230,
+      "sha256": "a2fef0d79f7657dd45fae2aed4d2f32a445d38fd6f02f8bffaedf343950a938a",
+      "gitBlob": "d1152e039d95430a5786639f9621071dc8bfbd56"
+    },
+    "backend/media-worker.mjs": {
+      "sizeBytes": 3467,
+      "sha256": "4b878815f5255ec427900db496df40c278176e381bfc3b7f6809912fe4cea5ed",
+      "gitBlob": "f3d15794dbf6a3601bb71080c79c50379348ab94"
+    },
+    "backend/heic-worker.mjs": {
+      "sizeBytes": 1326,
+      "sha256": "af403995a2780164fdddbce814fbf6f4c5789fcc00dcb49c9235dfb76a0e751d",
+      "gitBlob": "c382cf9351ea05525510f4f5f34306c1c0c005f2"
+    }
+  },
+  "assetVerification": "SHA256 and Git blob IDs were computed from the immutable local Git objects at the exact transport. These are packaged-file measurements, not a claim that this observer fetched live API bytes.",
+  "review": {
+    "fictionalData": true,
+    "durableHostedBackend": false,
+    "operatingMode": "Bounded fictional review on an existing standard public GitHub runner; no paid service was provisioned.",
+    "publicBrowserVerifiedByThisObserver": false,
+    "liveHealthCheckedByThisObserver": false,
+    "credentialOrSessionDataRetained": false,
+    "physicalDeviceProof": false
+  },
+  "limitations": [
+    "The ready status was read through GitHub MCP and matched to the exact transport/run. Parent-owned public health, source-stamp, byte and account journeys are separate proof.",
+    "The service is temporary and expires at the recorded time; readiness is not a whole-job success or a durable production deployment.",
+    "No real-child operating-policy approval, paid provider setup, signed distribution, installation or physical-device acceptance is claimed."
+  ],
+  "provenance": {
+    "method": "Read-only GitHub workflow job metadata and ready-marker file, plus immutable local Git object hashing.",
+    "repositoryMutatedByObserver": false,
+    "workflowRerunRequested": false,
+    "cancellationRequested": false
+  }
+}

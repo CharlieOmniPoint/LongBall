@@ -1,0 +1,68 @@
+{
+  "status": "passed",
+  "observedAt": "2026-10-21T11:56:59.920Z",
+  "syntheticOnly": true,
+  "versions": [
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11
+  ],
+  "checks": [
+    {
+      "name": "actual-maintained-clamav-clean-and-eicar",
+      "detail": {
+        "engine": "clamav:1.5.4/db:28157",
+        "clean": "clean",
+        "standardHarmlessAntivirusPattern": "rejected"
+      }
+    },
+    {
+      "name": "actual-restricted-pg-scanned-transparent-logo-journey",
+      "detail": {
+        "clubDerivativeSha256": "eaedf3e3849075e18f8c183001c6e008bfd4511590d8a093eed728299f852c51",
+        "teamDerivativeSha256": "eaedf3e3849075e18f8c183001c6e008bfd4511590d8a093eed728299f852c51",
+        "dimensions": [
+          32,
+          64
+        ],
+        "metadataStripped": true,
+        "alphaPreserved": true,
+        "pendingPrivate": true,
+        "explicitReviewedPublication": true,
+        "staleVersionDenied": true,
+        "teamClubNeutralInheritance": true,
+        "removedRevisionPrivate": true
+      }
+    },
+    {
+      "name": "actual-scanner-unavailable-fail-closed",
+      "detail": {
+        "originalRetainedPrivate": true,
+        "noProcessedPointer": true
+      }
+    }
+  ],
+  "limitations": [
+    "Harmless generated fictional PNGs and standard EICAR scanner probe only; no real child images.",
+    "Actual PostgreSQL uses isolated non-owner API role and disposable loopback trust authentication.",
+    "No HEIC claim; current pipeline supports JPEG/PNG pending additive codec work.",
+    "Scanner verdict/version is an observation, not an operating signature-update SLA.",
+    "Physical iPhone/Android picker behavior and hosted/private-volume recovery remain separate checks."
+  ],
+  "sourceSha256": {
+    "apps/api/migrations/postgresql/010_brand_assets.sql": "278a7a0aac536e02c63eafe0c9751071a19d33ae2c3b9d057a2fd646d95dc333",
+    "apps/api/migrations/postgresql/011_spectator_capabilities.sql": "137ec5a543a9acffce491626928a01842e0597a992ab7db07baf881aacfc9e7e",
+    "apps/api/src/image-bytes.ts": "20ea79aad4c8b3343ba22345c07aaaac04b4cec870243670eccfa5c687e51a93",
+    "apps/api/src/media-worker.mjs": "8c214c0e18a629559b5289eb769c071ba503946d6e14097f8391e2126e1e77c9",
+    "apps/api/src/brand-service.ts": "9b73a6e20d1d6147f57137a566b9efac509fcf5ed144a3ae465bc3750c1577dd",
+    "apps/api/src/postgres-brand-repository.ts": "d71f2a6482475ef64ea1efe9a7d54706e31701a043e9ed68a9a22818a0f5d5bf",
+    "scripts/runtime-brand-media.ts": "a621aa513d7e39559d95736428cfbed8bacba381137abd93b80b2811ef6f9017"
+  }
+}

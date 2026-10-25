@@ -1,0 +1,7 @@
+{
+  "transport": "Owned127.0.0.1:4396 stdio relay through local Docker exec to existing network-none container daemon; no external service.",
+  "version": "ClamAV 1.5.4/28157/Sun Oct 18 06:24:14 2026",
+  "realPing": true,
+  "startedExistingContainer": true,
+  "providerVerdictsInjected": false
+}

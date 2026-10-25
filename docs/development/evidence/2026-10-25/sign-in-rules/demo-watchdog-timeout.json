@@ -1,0 +1,558 @@
+{
+  "scope": "Built demo-login web application with fresh SQLite API and separate report worker; virtual discovery/API requests rerouted only to loopback.",
+  "roles": [
+    {
+      "role": "manager",
+      "width": 390,
+      "assignedWorkspace": true,
+      "noOverflow": true,
+      "signedOut": true,
+      "revokedTokenRefused": true,
+      "pageErrors": []
+    },
+    {
+      "role": "administrator",
+      "width": 390,
+      "assignedWorkspace": true,
+      "noOverflow": true,
+      "signedOut": true,
+      "revokedTokenRefused": true,
+      "pageErrors": []
+    },
+    {
+      "role": "player",
+      "width": 390,
+      "assignedWorkspace": true,
+      "noOverflow": true,
+      "signedOut": true,
+      "revokedTokenRefused": true,
+      "pageErrors": []
+    },
+    {
+      "role": "spectator",
+      "width": 390,
+      "assignedWorkspace": true,
+      "noOverflow": true,
+      "signedOut": true,
+      "revokedTokenRefused": true,
+      "pageErrors": []
+    },
+    {
+      "role": "manager",
+      "width": 320,
+      "assignedWorkspace": true,
+      "noOverflow": true,
+      "signedOut": true,
+      "revokedTokenRefused": true,
+      "pageErrors": []
+    },
+    {
+      "role": "administrator",
+      "width": 320,
+      "assignedWorkspace": true,
+      "noOverflow": true,
+      "signedOut": true,
+      "revokedTokenRefused": true,
+      "pageErrors": []
+    },
+    {
+      "role": "player",
+      "width": 320,
+      "assignedWorkspace": true,
+      "noOverflow": true,
+      "signedOut": true,
+      "revokedTokenRefused": true,
+      "pageErrors": []
+    },
+    {
+      "role": "spectator",
+      "width": 320,
+      "assignedWorkspace": true,
+      "noOverflow": true,
+      "signedOut": true,
+      "revokedTokenRefused": true,
+      "pageErrors": []
+    }
+  ],
+  "checks": [
+    "Credential/header/key redaction is checked before any diagnostic can be retained.",
+    "Wrong password is refused; empty sign-in stays disabled and the passcode is cleared.",
+    "Browser visibility lifecycle covers the private DOM, waits for actual /v1/me, and restores the same mounted workspace.",
+    "A controlled foreground503 keeps private views covered; explicit retry rechecks the real service and restores the same DOM.",
+    "Separate worker prepares actual PDF/CSV; browser saves and parses protected artifacts at the current report revision.",
+    "Top Sign out closes private views and revokes the session while foreground access checking is stalled.",
+    "A real server-side account disablement closes private views on resume; a fresh login works after independent reactivation.",
+    "Idle Match Centre refreshes after two minutes, visibly records a successful UK-time receipt, retains that receipt on a controlled503, and recovers with manual refresh.",
+    "An independently disabled account is refused despite a correct passcode.",
+    "Client expiry uses setSystemTime plus a short timer advance and closes private views without replaying hours of intervals.",
+    "All four preauthorised roles pass at 320px and 390px; logout revokes each opaque server session.",
+    "The eight owner-specified player names, initials, primary positions and feet, four accepted fixtures and two completed games agree with manager/player screens.",
+    "Past game cards at both phone widths omit every availability action while retaining exact recorded replies and attendance; upcoming unplayed games keep their reply actions, and period navigation causes no POST or service preparation change.",
+    "Generated passwords and login tokens are absent from built assets, visible workspace text and browser journal/preferences.",
+    "Administrator club save preserves the separate unsaved Team name draft across accepted refresh without submitting it.",
+    "Actual concurrent administrator update produces the existing COMMAND_REJECTED422; the editor retains editable drafts with no automatic POST, and explicit refresh exposes the latest value for separate keep-draft review.",
+    "Controlled required configuration503 retains the same disabled draft and explicit retry restores it; configuration403 closes private views even while independently verified /v1/me remains200.",
+    "One separately labelled filtered-records GET projection marks an upcoming game completed while its actual canonical match remains unstarted; Home omits its reply and Schedule hides all reply actions, preserves recorded details, leaves another unplayed game open, and restores the actual records without any preparation write.",
+    "Player upcoming RSVP is accepted without changing actual attendance or manager selection; accepted refresh retains the same match card, Matches filter and usable Schedule.",
+    "Actual concurrent profile-field change rejects a stale full-form save; explicit refresh retains the draft but blocks saving at its original revision, and discard/reopen reveals the newer saved field without publishing the unsaved name.",
+    "Two actual fixture reply mutations retain the selected Schedule detail through accepted refresh, allowing the next player edit.",
+    "The first actual Manager kickoff recovers from its newer event anchor, shows a numeric substitution countdown, decreases during active play and leaves the confirmed lineup/revision/outbox unchanged; speaker delivery remains a separate hardware check.",
+    "Manager explicitly claims recording, checks in eight players, stages seven eligible places, confirms kickoff and referee pause, navigates back/return, and uploads; independent HTTP verifies accepted attendance, lineup and clock.",
+    "After actual future profile/template edits, Schedule reopens the saved recorded match without preparation POST or immutable-history failure; its original squad/formation and accepted clock remain unchanged.",
+    "A selected player archived through an actual manager command remains visible in the future fixture until explicit UI removal; accepted selection changes without inferred attendance.",
+    "Future occurrence and reviewed series drafts expose archived expected players for explicit removal and save successfully; future attendance and complete held/cancelled records remain unchanged, with archived historical attendance visible and read-only."
+  ],
+  "failures": [
+    {
+      "stage": "recorded match reopening and future archived selections",
+      "name": "Error",
+      "message": "browserContext.close: Target page, context or browser has been closed\nBrowser logs:\n\n<launching> /usr/bin/chromium --disable-field-trial-config --disable-background-networking --disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-back-forward-cache --disable-breakpad --disable-client-side-phishing-detection --disable-component-extensions-with-background-pages --disable-component-update --no-default-browser-check --disable-default-apps --disable-dev-shm-usage --disable-extensions --disable-features=AvoidUnnecessaryBeforeUnloadCheckSync,BoundaryEventDispatchTracksNodeRemoval,DestroyProfileOnBrowserClose,DialMediaRouteProvider,GlobalMediaControls,HttpsUpgrades,LensOverlay,MediaRouter,PaintHolding,ThirdPartyStoragePartitioning,Translate,AutoDeElevate,RenderDocument,OptimizationHints --enable-features=CDPScreenshotNewSurface --allow-pre-commit-input --disable-hang-monitor --disable-ipc-flooding-protection --disable-popup-blocking --disable-prompt-on-repost --disable-renderer-backgrounding --force-color-profile=srgb --metrics-recording-only --no-first-run --password-store=basic --use-mock-keychain --no-service-autorun --export-tagged-pdf --disable-search-engine-choice-screen --unsafely-disable-devtools-self-xss-warnings --edge-skip-compat-layer-relaunch --enable-automation --disable-infobars --disable-search-engine-choice-screen --disable-sync --enable-unsafe-swiftshader --headless --hide-scrollbars --mute-audio --blink-settings=primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4 --no-sandbox --no-sandbox --user-data-dir=/tmp/playwright_chromiumdev_profile-TPTV8w --remote-debugging-pipe --no-startup-window\n<launched> pid=46693\n[pid=46693][err] [46693:46693:1025/123251.456306:ERROR:third_party/crashpad/crashpad/util/file/filesystem_posix.cc:63] mkdir : No such file or directory (2)\n[pid=46693][err] chrome_crashpad_handler: --database is required\n[pid=46693][err] Try 'chrome_crashpad_handler --help' for more information.\n[pid=46693][err] [46693:46733:1025/123251.695819:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Failed to connect to socket /run/dbus/system_bus_socket: No such file or directory\n[pid=46693][err] [46693:46733:1025/123251.695904:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are \"tcp\" and on UNIX \"unix\")\n[pid=46693][err] [46693:46733:1025/123251.714686:ERROR:dbus/bus.cc:405] Failed to connect"
+    }
+  ],
+  "passed": false,
+  "loginAttempts": 17,
+  "apiRequestWindows": [
+    {
+      "accountId": "synthetic-account-manager-2",
+      "startedAtMs": 1792931576258,
+      "startedAt": "2026-10-25T12:32:56.258Z",
+      "observedAttempts": 80,
+      "observedMutations": 2,
+      "scope": "Actual attempted loopback requests in a local sixty-second observation window; pre-authority denials can make this an upper bound on server counts."
+    },
+    {
+      "accountId": "synthetic-account-admin",
+      "startedAtMs": 1792931597998,
+      "startedAt": "2026-10-25T12:33:17.998Z",
+      "observedAttempts": 96,
+      "observedMutations": 5,
+      "scope": "Actual attempted loopback requests in a local sixty-second observation window; pre-authority denials can make this an upper bound on server counts."
+    },
+    {
+      "accountId": "synthetic-account-player-01",
+      "startedAtMs": 1792931601298,
+      "startedAt": "2026-10-25T12:33:21.298Z",
+      "observedAttempts": 46,
+      "observedMutations": 0,
+      "scope": "Actual attempted loopback requests in a local sixty-second observation window; pre-authority denials can make this an upper bound on server counts."
+    },
+    {
+      "accountId": "synthetic-account-spectator",
+      "startedAtMs": 1792931605882,
+      "startedAt": "2026-10-25T12:33:25.882Z",
+      "observedAttempts": 43,
+      "observedMutations": 0,
+      "scope": "Actual attempted loopback requests in a local sixty-second observation window; pre-authority denials can make this an upper bound on server counts."
+    },
+    {
+      "accountId": "synthetic-account-manager-2",
+      "startedAtMs": 1792931646763,
+      "startedAt": "2026-10-25T12:34:06.763Z",
+      "observedAttempts": 25,
+      "observedMutations": 3,
+      "scope": "Actual attempted loopback requests in a local sixty-second observation window; pre-authority denials can make this an upper bound on server counts."
+    },
+    {
+      "accountId": "synthetic-account-player-01",
+      "startedAtMs": 1792931664398,
+      "startedAt": "2026-10-25T12:34:24.398Z",
+      "observedAttempts": 57,
+      "observedMutations": 1,
+      "scope": "Actual attempted loopback requests in a local sixty-second observation window; pre-authority denials can make this an upper bound on server counts."
+    },
+    {
+      "accountId": "synthetic-account-manager-2",
+      "startedAtMs": 1792931714062,
+      "startedAt": "2026-10-25T12:35:14.062Z",
+      "observedAttempts": 99,
+      "observedMutations": 7,
+      "scope": "Actual attempted loopback requests in a local sixty-second observation window; pre-authority denials can make this an upper bound on server counts."
+    },
+    {
+      "accountId": "synthetic-account-manager-2",
+      "startedAtMs": 1792931774362,
+      "startedAt": "2026-10-25T12:36:14.362Z",
+      "observedAttempts": 94,
+      "observedMutations": 6,
+      "scope": "Actual attempted loopback requests in a local sixty-second observation window; pre-authority denials can make this an upper bound on server counts."
+    },
+    {
+      "accountId": "synthetic-account-spectator",
+      "startedAtMs": 1792931803159,
+      "startedAt": "2026-10-25T12:36:43.159Z",
+      "observedAttempts": 15,
+      "observedMutations": 0,
+      "scope": "Actual attempted loopback requests in a local sixty-second observation window; pre-authority denials can make this an upper bound on server counts."
+    }
+  ],
+  "apiBudgetWaits": [
+    {
+      "accountId": "synthetic-account-player-01",
+      "phase": "before-player-rsvp-and-summary-projection",
+      "windowStartedAt": "2026-10-25T12:33:21.298Z",
+      "observedAttemptsBefore": 46,
+      "observedMutationsBefore": 0,
+      "plannedWaitMs": 13663,
+      "waitedMs": 13668,
+      "ordinaryLimit": 120,
+      "mutationLimit": 60,
+      "pendingCommandRetried": false
+    },
+    {
+      "accountId": "synthetic-account-manager-2",
+      "phase": "before-manager-matchday",
+      "windowStartedAt": "2026-10-25T12:34:06.763Z",
+      "observedAttemptsBefore": 25,
+      "observedMutationsBefore": 3,
+      "plannedWaitMs": 37622,
+      "waitedMs": 37622,
+      "ordinaryLimit": 120,
+      "mutationLimit": 60,
+      "pendingCommandRetried": false
+    },
+    {
+      "accountId": "synthetic-account-manager-2",
+      "phase": "after-accepted-referee-pause",
+      "windowStartedAt": "2026-10-25T12:35:14.062Z",
+      "observedAttemptsBefore": 99,
+      "observedMutationsBefore": 7,
+      "plannedWaitMs": 14812,
+      "waitedMs": 14812,
+      "ordinaryLimit": 120,
+      "mutationLimit": 60,
+      "pendingCommandRetried": false
+    }
+  ],
+  "httpFailures": [
+    {
+      "stage": "manager 390px",
+      "accountId": "pre-session",
+      "method": "POST",
+      "pathname": "/v1/demo/sessions",
+      "status": 401,
+      "code": "INVALID_DEMO_CREDENTIALS",
+      "controlled": false
+    },
+    {
+      "stage": "manager 390px",
+      "accountId": "synthetic-account-manager-2",
+      "method": "GET",
+      "pathname": "/v1/me",
+      "status": 503,
+      "code": "STORAGE_UNAVAILABLE",
+      "controlled": true
+    },
+    {
+      "stage": "player 390px",
+      "accountId": "synthetic-account-player-01",
+      "method": "GET",
+      "pathname": "/v1/me",
+      "status": 403,
+      "code": "ACCOUNT_UNAVAILABLE",
+      "controlled": false
+    },
+    {
+      "stage": "spectator 390px",
+      "accountId": "synthetic-account-spectator",
+      "method": "GET",
+      "pathname": "/v1/teams/synthetic-roma-u10/matches",
+      "status": 503,
+      "code": "STORAGE_UNAVAILABLE",
+      "controlled": true
+    },
+    {
+      "stage": "administrator 320px",
+      "accountId": "pre-session",
+      "method": "POST",
+      "pathname": "/v1/demo/sessions",
+      "status": 403,
+      "code": "ACCOUNT_UNAVAILABLE",
+      "controlled": false
+    },
+    {
+      "stage": "administrator retained configuration draft",
+      "accountId": "synthetic-account-admin",
+      "method": "POST",
+      "pathname": "/v1/teams/synthetic-roma-u10/configuration",
+      "status": 422,
+      "code": "COMMAND_REJECTED",
+      "controlled": false
+    },
+    {
+      "stage": "administrator retained configuration draft",
+      "accountId": "synthetic-account-admin",
+      "method": "GET",
+      "pathname": "/v1/teams/synthetic-roma-u10/configuration",
+      "status": 503,
+      "code": "STORAGE_UNAVAILABLE",
+      "controlled": true
+    },
+    {
+      "stage": "administrator retained configuration draft",
+      "accountId": "synthetic-account-admin",
+      "method": "GET",
+      "pathname": "/v1/teams/synthetic-roma-u10/configuration",
+      "status": 403,
+      "code": "NOT_FOUND",
+      "controlled": true
+    },
+    {
+      "stage": "actual manager matchday and accepted spectator refresh",
+      "accountId": "synthetic-account-manager-2",
+      "method": "POST",
+      "pathname": "/v1/teams/synthetic-roma-u10/preparation",
+      "status": 422,
+      "code": "COMMAND_REJECTED",
+      "controlled": false
+    }
+  ],
+  "nativeDeviceEvidence": false,
+  "paidServicesProvisioned": false,
+  "source": {
+    "gitHead": "f893c485b9b967733616028d1444ef11f7e4a4c8",
+    "workingTreeDirty": true,
+    "harnessSha256": "3aea11129435be187b7aacda0ea781170a6cb6c40a67ed4acaaff1609a013ec0",
+    "webIndexSha256": "1abfcea3ea920a4f1a4b0dc75f0ca73d84925c95c46ed9a5fd322c59de32337e",
+    "webJavaScriptSha256": "cf5f7b7bfa67efbd233995ce92efbcb147fe5cfc84ff41166230590801f1c219",
+    "apiBundleSha256": "6fd9d2fb48efd5ae40f83dbb87b0c390f66fa0d0b81958aef193613714e16617",
+    "workerBundleSha256": "d6285b7dfbfb58896d1cea034823a6762915bb7c3a3b0be636eadda7fd95c63d"
+  },
+  "apiContractVersion": "longball.events/1.1",
+  "exports": {
+    "pdf": {
+      "bytes": 22164,
+      "sha256": "dab42a974b8e7e93c66b1557afddec40742ef39529f4d048cc6c5eb83a93a1bf",
+      "status": 200,
+      "noStore": true,
+      "pages": 3,
+      "readableLabels": {
+        "Roma U10": true,
+        "Oak FC": true,
+        "Hill FC": true
+      }
+    },
+    "csv": {
+      "bytes": 9264,
+      "sha256": "43aabb4d6476346fcef5028bc9bcb5cccb82497197cbbaf43210f9e8dc69ae17",
+      "status": 200,
+      "noStore": true,
+      "rows": 169,
+      "header": [
+        "section",
+        "field",
+        "value"
+      ],
+      "projectionVersion": 0
+    }
+  },
+  "browserStoreInspections": 10,
+  "playerHistoricSchedule": [
+    {
+      "width": 390,
+      "historicGames": 3,
+      "upcomingGames": 1,
+      "everyHistoricalReplyActionAbsent": true,
+      "recordedReplyAndAttendanceRetained": true,
+      "upcomingReplyActionsRetained": true,
+      "navigationPosts": 0,
+      "servicePreparationUnchanged": true
+    },
+    {
+      "width": 320,
+      "historicGames": 3,
+      "upcomingGames": 1,
+      "everyHistoricalReplyActionAbsent": true,
+      "recordedReplyAndAttendanceRetained": true,
+      "upcomingReplyActionsRetained": true,
+      "navigationPosts": 0,
+      "servicePreparationUnchanged": true
+    }
+  ],
+  "browserCredentialBoundary": {
+    "generatedUsernamesPasswordsForbidden": true,
+    "demoSessionBearerTokensForbidden": true,
+    "serverOnlyExportKeyForbidden": true,
+    "allBrowserStoresInspected": true,
+    "canonicalControllerGrantIntentionallyRetained": true,
+    "allOpaqueHeadersRedactedFromEvidence": true
+  },
+  "administratorDraft": {
+    "unrelatedClubSaveAccepted": true,
+    "unsavedTeamDraftRetained": true,
+    "teamNameUnchangedOnService": true,
+    "actual422RetainsEditableDraftWithoutAutomaticWrite": true,
+    "explicitConflictRefreshAndReview": true,
+    "transientScopedRead503RetainsDisabledDraft": true,
+    "explicitRetryRestoresSameDraft": true,
+    "scopedRead403ClosesPrivateFormWhileMe200": true,
+    "signedOut": true
+  },
+  "calendarFixtureSetup": {
+    "today": "2026-10-25",
+    "originalSeedUnchanged": true,
+    "createdOnlyInIsolatedDatabase": [
+      {
+        "fixtureId": "review-calendar-b049bab8-fbd4-4dfa-b8f5-d924f31ce964",
+        "playedDate": "2026-11-08",
+        "realManagerCommands": 3
+      }
+    ],
+    "source": "Actual authenticated Manager fixture.saved/selection_saved/prepared commands; no DTO or date overrides."
+  },
+  "playerTerminalSummaryProjection": {
+    "mocked": true,
+    "method": "GET",
+    "pathname": "/v1/teams/synthetic-roma-u10/records",
+    "mockedReads": 1,
+    "scope": {
+      "teamId": "synthetic-roma-u10",
+      "seasonId": "synthetic-season-2026-27",
+      "playerId": "synthetic-player-01"
+    },
+    "fixtureId": "synthetic-roma-oak-2026-10-31",
+    "canonicalStatusBeforeAndAfter": "preparation",
+    "terminalSummaryOnlyInClientProjection": true,
+    "homeNextGameReplyExcluded": true,
+    "allReplyActionsHidden": true,
+    "recordedReplyAndAttendanceRetained": true,
+    "otherUnplayedReplyActionsRetained": true,
+    "originalRecordsRestored": true,
+    "preparationPosts": 0,
+    "actualOwnPreparationUnchanged": true,
+    "backendGuardScope": "Separate real SQLite/PostgreSQL HTTP tests; this case only exercises client projection."
+  },
+  "playerReply": {
+    "accepted": "unsure",
+    "actualAttendanceUnchanged": true,
+    "selectionUnchanged": true,
+    "matchFilterRetained": true,
+    "matchCardRetained": true,
+    "signedOut": true
+  },
+  "staleProfile": {
+    "actualRejectedStatus": 422,
+    "originalDraftRetained": true,
+    "explicitRefreshBlocksStaleForm": true,
+    "automaticWriteCount": 0,
+    "newerFootPreserved": true,
+    "unsavedNameNotPublished": true,
+    "discardAndReopenCurrent": true
+  },
+  "managerInitialLineup": {
+    "source": "Actual accepted match profile snapshot, availability and saved formation slots",
+    "allocations": [
+      {
+        "slotId": "gk-1",
+        "position": "GK",
+        "playerId": "synthetic-player-01"
+      },
+      {
+        "slotId": "cb-1",
+        "position": "CB",
+        "playerId": "synthetic-player-02"
+      },
+      {
+        "slotId": "cb-2",
+        "position": "CB",
+        "playerId": "synthetic-player-03"
+      },
+      {
+        "slotId": "cm-1",
+        "position": "CM",
+        "playerId": "synthetic-player-04"
+      },
+      {
+        "slotId": "lw-1",
+        "position": "LW",
+        "playerId": "synthetic-player-06"
+      },
+      {
+        "slotId": "rw-1",
+        "position": "RW",
+        "playerId": "synthetic-player-07"
+      },
+      {
+        "slotId": "st-1",
+        "position": "ST",
+        "playerId": "synthetic-player-08"
+      }
+    ],
+    "primaryPreferenceCost": 0,
+    "benchPlayerId": "synthetic-player-05"
+  },
+  "substitutionCountdown": {
+    "configuredBeforeFirstKickoff": true,
+    "numericAfterFirstKickoff": true,
+    "bothTimersUnclippedAtPhoneWidths": [
+      {
+        "width": 390,
+        "height": 844,
+        "timers": [
+          {
+            "id": "connected-match-countdown",
+            "text": "24:59",
+            "x": 27,
+            "y": 287,
+            "width": 163,
+            "height": 38,
+            "fullyInViewportAndUnclipped": true
+          },
+          {
+            "id": "next-substitution-time",
+            "text": "07:09",
+            "x": 209,
+            "y": 292,
+            "width": 61.390625,
+            "height": 28,
+            "fullyInViewportAndUnclipped": true
+          }
+        ]
+      },
+      {
+        "width": 320,
+        "height": 844,
+        "timers": [
+          {
+            "id": "connected-match-countdown",
+            "text": "24:58",
+            "x": 27,
+            "y": 327,
+            "width": 128,
+            "height": 38,
+            "fullyInViewportAndUnclipped": true
+          },
+          {
+            "id": "next-substitution-time",
+            "text": "07:09",
+            "x": 174,
+            "y": 332,
+            "width": 61.390625,
+            "height": 28,
+            "fullyInViewportAndUnclipped": true
+          }
+        ]
+      }
+    ],
+    "before": "07:08",
+    "after": "07:05",
+    "decreasesDuringActivePlay": true,
+    "actualLineupAndQueueUnchanged": true,
+    "hardwareSoundDeliveryProved": false,
+    "pausedBefore": "07:07",
+    "pausedAfter": "07:07",
+    "freezesWhilePaused": true,
+    "pausedLineupAndQueueUnchanged": true
+  },
+  "archivedFuture": {
+    "playerId": "synthetic-player-02",
+    "futureSelectionExplicitlyRemoved": true,
+    "futureMatchAttendanceUnchanged": true,
+    "occurrenceSaved": true,
+    "reviewedSeriesSaved": true,
+    "heldAndCancelledHistoryUnchanged": 4,
+    "futureTrainingAttendanceUnchanged": true,
+    "historicalArchivedRowReadOnly": true
+  },
+  "failureWorkspaces": [],
+  "processDiagnostic": "LongBall API http://127.0.0.1:38497 · isolated fictional authentication · fictional SQLite store\n{\"worker\":\"longball-fictional\",\"completed\":2,\"retried\":0,\"failed\":0,\"notifications\":{\"accepted\":0,\"blocked\":0,\"retried\":0,\"suppressed\":0,\"reviewRequired\":0,\"failed\":0},\"exports\":{\"completed\":0,\"retried\":0,\"failed\":0,\"expired\":0}}\n{\"worker\":\"longball-fictional\",\"completed\":0,\"retried\":0,\"failed\":0,\"notifications\":{\"accepted\":0,\"blocked\":0,\"retried\":0,\"suppressed\":0,\"reviewRequired\":0,\"failed\":0},\"exports\":{\"completed\":1,\"retried\":0,\"failed\":0,\"expired\":0}}\n{\"worker\":\"longball-fictional\",\"completed\":0,\"retried\":0,\"failed\":0,\"notifications\":{\"accepted\":0,\"blocked\":0,\"retried\":0,\"suppressed\":0,\"reviewRequired\":0,\"failed\":0},\"exports\":{\"completed\":1,\"retried\":0,\"failed\":0,\"expired\":0}}\n{\"worker\":\"longball-fictional\",\"completed\":0,\"retried\":0,\"failed\":0,\"notifications\":{\"accepted\":0,\"blocked\":19,\"retried\":0,\"suppressed\":1,\"reviewRequired\":0,\"failed\":0},\"exports\":{\"completed\":0,\"retried\":0,\"failed\":0,\"expired\":0}}\n{\"worker\":\"longball-fictional\",\"completed\":0,\"retried\":0,\"failed\":0,\"notifications\":{\"accepted\":0,\"blocked\":9,\"retried\":0,\"suppressed\":1,\"reviewRequired\":0,\"failed\":0},\"exports\":{\"completed\":0,\"retried\":0,\"failed\":0,\"expired\":0}}\n{\"worker\":\"longball-fictional\",\"completed\":0,\"retried\":0,\"failed\":0,\"notifications\":{\"accepted\":0,\"blocked\":15,\"retried\":0,\"suppressed\":0,\"reviewRequired\":0,\"failed\":0},\"exports\":{\"completed\":0,\"retried\":0,\"failed\":0,\"expired\":0}}\n{\"worker\":\"longball-fictional\",\"completed\":0,\"retried\":0,\"failed\":0,\"notifications\":{\"accepted\":0,\"blocked\":14,\"retried\":0,\"suppressed\":1,\"reviewRequired\":0,\"failed\":0},\"exports\":{\"completed\":0,\"retried\":0,\"failed\":0,\"expired\":0}}\n{\"worker\":\"longball-fictional\",\"completed\":0,\"retried\":0,\"failed\":0,\"notifications\":{\"accepted\":0,\"blocked\":14,\"retried\":0,\"suppressed\":1,\"reviewRequired\":0,\"failed\":0},\"exports\":{\"completed\":0,\"retried\":0,\"failed\":0,\"expired\":0}}\n{\"worker\":\"longball-fictional\",\"completed\":0,\"retried\":0,\"failed\":0,\"notifications\":{\"accepted\":0,\"blocked\":19,\"retried\":0,\"suppressed\":1,\"reviewRequired\":0,\"failed\":0},\"exports\":{\"completed\":0,\"retried\":0,\"failed\":0,\"expired\":0}}\n{\"worker\":\"longball-fictional\",\"completed\":0,\"retried\":0,\"failed\":0,\"notifications\":{\"accepted\":0,\"blocked\":19,\"retried\":0,\"suppressed\":1,\"reviewRequired\":0,\"failed\":0},\"exports\":{\"completed\":0,\"retried\":0,\"failed\":0,\"expired\":0}}\n{\"worker\":\"longball-fictional\",\"completed\":0,\"retried\":0,\"failed\":0,\"notifications\":{\"accepted\":0"
+}

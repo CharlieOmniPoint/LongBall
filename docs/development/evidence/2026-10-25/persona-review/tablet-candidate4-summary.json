@@ -1,0 +1,115 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-10-25T22:41:42.005Z",
+  "command": "pnpm test:tablet:e2e",
+  "candidate": "candidate4",
+  "pinnedWithoutRebuild": true,
+  "scope": "Staff-only device-local tablet layout, role boundaries, rotation and untouched football command state against an isolated generated-account API and exact built application.",
+  "passed": true,
+  "source": {
+    "gitHead": "0961d1eb438ac2be591e71e6b3a92442aa72e38a",
+    "workingTreeDirty": true,
+    "harnessSha256": "d3617c55669a944b10fac8b0b50ce6ec347e2fb1d962b3359294b4cedcb304b9",
+    "webIndexSha256": "7ea245ab93de98058cae80a60100d349f9bd8b62a828ab17a0ee89981cc15a73",
+    "webJavaScriptSha256": "fe455b35fee18875c51a314126191d536c6bab8b1ce02053cf614e1629d8b521",
+    "apiBundleSha256": "7e6a4fc28acac0d106ca98e5a3955f2d06932d8da7d3fe99cef7c45ca3a1c3e4"
+  },
+  "artifactsStableBeforeAfter": true,
+  "viewportJourneys": 36,
+  "roles": [
+    "manager",
+    "administrator",
+    "player",
+    "spectator"
+  ],
+  "viewports": [
+    {
+      "width": 320,
+      "height": 844
+    },
+    {
+      "width": 390,
+      "height": 844
+    },
+    {
+      "width": 768,
+      "height": 1024
+    },
+    {
+      "width": 820,
+      "height": 1180
+    },
+    {
+      "width": 1024,
+      "height": 768
+    },
+    {
+      "width": 1180,
+      "height": 820
+    },
+    {
+      "width": 1366,
+      "height": 1024
+    },
+    {
+      "width": 844,
+      "height": 390
+    },
+    {
+      "width": 915,
+      "height": 412
+    }
+  ],
+  "compositeChecks": [
+    "Actual Manager player selection automatically opens that player's position map; Whole team clears core annotations and either another or the same player returns to their own map. Zero recorded position text is grey, positive time remains emphasized, and authoritative primary/secondary preferences receive red solid/dotted outlines with text alternatives.",
+    "Actual dual-role context switching, narrow-screen fallback, refresh and sign-out/relogin preserve the device-local preference; unsaved administrator sibling fields survive rotation/toggles without a configuration POST; player and spectator ignore the retained staff preference.",
+    "Manager profile text, selected lineup place/complete draft, pending kickoff confirmation and captured penalty/scorer review survive phone/tablet rotation and preference changes; exact local journal/outbox and HTTP writes remain unchanged during every layout action; a running match remains running with reachable clock controls; accepted match stays unstarted, unscored and revision0 without upload, with back/return navigation reachable.",
+    "An original Manager read deliberately held until after exact-token sign-out and a new Player login receives401; the old response cannot attach Manager data or close the new private view, and the new session independently remains200. Only captured pre-sign-out reads for explicitly revoked sessions are classified as expected denials."
+  ],
+  "loginAttempts": 12,
+  "screenshotCount": 43,
+  "failures": [],
+  "unexpectedHttpFailures": [],
+  "expectedRevokedSessionDenials": [
+    {
+      "stage": "original read across explicit sign-out and replacement account",
+      "requestId": 207,
+      "method": "GET",
+      "pathname": "/v1/teams/synthetic-roma-u10/privileges/own",
+      "status": 401,
+      "code": "INVALID_SESSION",
+      "session": "session-11",
+      "requestCreatedAtMs": 85904,
+      "logoutBeganAtMs": 86056,
+      "responseAtMs": 86466,
+      "exactSessionExplicitlyRevoked": true,
+      "privateViewClosed": true
+    }
+  ],
+  "controlledHeldOldSession": {
+    "oldSession": "session-11",
+    "newSession": "session-12",
+    "requestId": 207,
+    "pathname": "/v1/teams/synthetic-roma-u10/privileges/own",
+    "oldResponseStatus": 401,
+    "oldResponseDelivered": true,
+    "exactSessionExplicitlyRevoked": true,
+    "privateViewClosedAtSignOut": true,
+    "newPlayerSessionRemainedAuthorized": true,
+    "domainMutations": 0
+  },
+  "apiBudgetWaits": [
+    {
+      "phase": "manager actual-match layout retention",
+      "observedRequests": 21,
+      "observedMutations": 1,
+      "waitMs": 36451,
+      "automaticRetry": false,
+      "serverLimitsChanged": false
+    }
+  ],
+  "nativeDeviceEvidence": false,
+  "paidServicesProvisioned": false,
+  "reportSha256": "117d21f812c344194e1eecfc33fb89226e26d33bafcf49451ba964af1ceafafa",
+  "rawReportLocation": ".local/quality/tablet-review/report.json"
+}

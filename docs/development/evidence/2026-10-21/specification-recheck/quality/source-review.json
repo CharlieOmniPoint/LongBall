@@ -1,0 +1,153 @@
+{
+  "observedAt": "2026-10-21T23:29:07.149889+00:00",
+  "sourceCommit": "60789694c89dd4bc8aa5902ddb984dc84f6cba45",
+  "kind": "Independent source review; not production, legal, hardware or performance approval",
+  "reviewedAreas": [
+    "Requester/account/selected-role/team-season export scope and current policy checks",
+    "Encrypted immutable snapshots, exact worker leases, retries, expiry and finalization",
+    "Download integrity, identity-bound binary delivery, redirects and private local adapters",
+    "Font redistribution notice and actual Docker/cloud package paths",
+    "Fastify secure parsing, CORS, safe parser/router errors and native listener shutdown",
+    "Capability-bound invitation names and own-current-membership display metadata without broad document grants",
+    "Bounded notification candidates/batches and per-row RLS/ancestry/business-key invariants",
+    "Shared legacy advisory barrier plus exact team key across seasons; conservative fallback and nested frame rules"
+  ],
+  "closedFindings": [
+    {
+      "issue": "Mandatory wire-length equality rejected chunked or transparently decompressed binary downloads.",
+      "resolution": "Read bounded decoded bytes, accept missing Content-Length, compare wire length only for explicit identity encoding, cancel/release readers on failure/abort and bound native arrayBuffer fallback before file effects.",
+      "verification": "Focused implementing-agent tests plus independent source reread; full current-source unit/API checks recorded separately."
+    },
+    {
+      "issue": "Cross-team transactions could race on a globally keyed device ID; INSERT ON CONFLICT DO NOTHING did not establish ownership. A hidden existing foreign row had the same unsafe postcondition.",
+      "resolution": "Recheck exact committed device/account ownership after insert and fail409 before controller writes.",
+      "verification": {
+        "testFile": "apps/api/src/postgres-device-race.test.ts",
+        "actualRestrictedPostgresTestsPassed": 3,
+        "durationSeconds": 4.6,
+        "independentApiInstances": 2,
+        "cases": [
+          "Controlled barrier forces both initial device reads absent: one200/one409, one correct owner/grant and no losing idempotency receipt",
+          "Existing device hidden by cross-team RLS produces409 without a wrong-account grant",
+          "Same account can reuse its own device on another authorised team"
+        ],
+        "focusedLintPassed": true
+      }
+    }
+  ],
+  "sourceReviewFoundAdditionalBlockingDefect": false,
+  "hierarchyLimits": [
+    "Only explicit actor match.manage transactions with bounded canonical resolved club/team/season/match IDs and manager/default role take shared global plus exclusive team locks.",
+    "Other explicit write transactions retain the original global exclusive lock. Existing row-locked worker claims were not globally locked and are unchanged.",
+    "Context cannot change operation/scope inside a transaction; unlocked read frames cannot upgrade to writes.",
+    "Same-team matches and seasons serialize; legacy/global writers interlock with all match transactions. Device ownership is checked independently."
+  ],
+  "limitations": [
+    "Independent source review does not substitute for actual tests or runtime checks.",
+    "Three source-CI HEIC cases skip without the maintained decoder; actual image decoding and full configured host tests are separate evidence.",
+    "Report export jobs do not fulfill pending privacy requests; Q05/Q09/Q10 remain pending at user request.",
+    "Physical iPhone/Android behavior, production provider/hosting/push and the unresolved dependency gate remain release limits."
+  ],
+  "reviewedFiles": [
+    {
+      "path": "apps/api/src/report-export-config.ts",
+      "sha256": "fb171c2c30d1da728e0251960d3f896c67e93fc3d120a274f51d2fc48179f52b"
+    },
+    {
+      "path": "apps/api/src/report-export-service.ts",
+      "sha256": "f6fe8486b304c5ad41339f13c977b7579d722534d4fb27ed9fd101e2a0665361"
+    },
+    {
+      "path": "apps/api/src/report-export-repository.ts",
+      "sha256": "60dc0502b2be360baed31d4b8d34159b1e97f1d747242802bda2afe5154d9cd5"
+    },
+    {
+      "path": "apps/api/migrations/postgresql/016_report_exports.sql",
+      "sha256": "aeca325431937f1624b22f9a291f973571fb261c786e62642a32d9635e5cae4f"
+    },
+    {
+      "path": "apps/api/src/report-export-pdf.ts",
+      "sha256": "c9df0e83cdd3310d2f99c0a852d3016f6d6a684ab3eccfa5ed61456d20bdbbc5"
+    },
+    {
+      "path": "apps/api/src/report-export-pdf-probe.ts",
+      "sha256": "3419340c978deb1ba1317e96c79abb3e2a5fd747c9686944a739581ee7cf228e"
+    },
+    {
+      "path": "apps/api/src/fastify-transport.ts",
+      "sha256": "99b2f99a181be0abe95e385aa5c11c6c7025cb7bb62bd4b05a066a77aa263816"
+    },
+    {
+      "path": "apps/api/src/request-context.ts",
+      "sha256": "e5c0b8deddaccbeb708ac99a45afbeee196ebcf017b194e9e06da9013b51385e"
+    },
+    {
+      "path": "apps/api/src/runtime-grants.ts",
+      "sha256": "b7fa95875e083f292d12f2ed7c88107d7e91ddd3dd3a40d41c10526f4dd1a492"
+    },
+    {
+      "path": "apps/api/src/postgres-store.ts",
+      "sha256": "b7af1e8c745c572fd1a5d3ed7694a1a9e40af05bbda3b33ae6da09bc9592465f"
+    },
+    {
+      "path": "apps/api/src/pg.ts",
+      "sha256": "a6fbebf30d06c2079a8436d069d86ec712896cf5b8c45590dc917ae96cb89399"
+    },
+    {
+      "path": "apps/api/src/postgres-device-race.test.ts",
+      "sha256": "46f44443b8cdaa91bfd3ec2538c9c50659b00909ce0ae1787c92ebf30f2152d8"
+    },
+    {
+      "path": "apps/api/src/postgres-write-locks.test.ts",
+      "sha256": "3295169142e7e70c8768bc888d612fd39e0ceb919725b3506774c83d4a98b316"
+    },
+    {
+      "path": "apps/api/src/workspace-memberships.ts",
+      "sha256": "3555b7a44dcae028f0e38f9b7da9a64e4bb00b8151e1a9dd919fe71007a5ec6b"
+    },
+    {
+      "path": "apps/worker/src/report-export-jobs.ts",
+      "sha256": "07f95749ad51d1d6e7a67e7e95b426155e9d8d142711b38b690c117f1bdad2e4"
+    },
+    {
+      "path": "packages/application/src/records-service.ts",
+      "sha256": "1b51bd42d72c570884cdb49ecfb7ccd5e0d1f75ace2d76b162cb7fa303feebd4"
+    },
+    {
+      "path": "apps/mobile/src/platform/report-export-jobs.ts",
+      "sha256": "8b2ec25e6c2f5b377dff60b928098a83b12aa05b74169d07ea6ddc43ee8755b3"
+    },
+    {
+      "path": "apps/mobile/src/platform/report-export-artifact.ts",
+      "sha256": "bfd97ff78b8efb56d235cc0211c28c8a2d16e00fa0f3dccd92426f60ab9e8ae4"
+    },
+    {
+      "path": "apps/mobile/src/platform/report-export.ts",
+      "sha256": "dfa0298ac6140e521647daa5aabe676d2a72f3e0b609f81518a9be9225b87ab2"
+    },
+    {
+      "path": "apps/mobile/src/platform/report-export.web.ts",
+      "sha256": "a9f6f517cad68ca992941f4129cae34614b651951682dbba6c0067893bcbd8fb"
+    },
+    {
+      "path": "infra/runtime/Dockerfile",
+      "sha256": "80c3452ba402c1b7bf8c226ba8262562f7f6bfd74433e07d53678240acca8e00"
+    },
+    {
+      "path": "infra/runtime/Dockerfile.dockerignore",
+      "sha256": "f7d6605a7025db4a797e611f12c87eac5a4cef884fb27e6fc58a4d5386ac01bf"
+    },
+    {
+      "path": "scripts/build-api.mjs",
+      "sha256": "6b113105d478b2ecdaf6aa98f64c59019ab7d27b099efa3077cc0232ebdf2cbe"
+    },
+    {
+      "path": "scripts/package-cloud-preview.py",
+      "sha256": "0affd3c447264f7b1b32116ebb216778517df36c0af3fda30f13d36449ee8600"
+    },
+    {
+      "path": "infra/cloud-preview/run.sh",
+      "sha256": "89653c8de688db2297d153f9e74cbbfd47fdadaf66526d447bfbf5ff33ffee53"
+    }
+  ]
+}

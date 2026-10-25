@@ -1,0 +1,148 @@
+{
+  "persona": "club",
+  "phase": "final",
+  "startedAt": "2026-10-25T22:32:37.171Z",
+  "scope": "Actual compiled UI and isolated SQLite API/worker; only discovery and virtual transport are redirected to owned loopback processes. Generated accounts, not public demo credentials.",
+  "checks": [
+    "Club Admin opens clubs in the current authorised team/season.",
+    "Club Admin opens team in the current authorised team/season.",
+    "Club Admin opens schedule in the current authorised team/season.",
+    "Club Admin opens stats in the current authorised team/season.",
+    "Club Admin opens people in the current authorised team/season.",
+    "Club Admin opens opposition in the current authorised team/season.",
+    "Club Admin opens invitations in the current authorised team/season.",
+    "Club Admin opens seasons in the current authorised team/season.",
+    "Club Admin opens settings in the current authorised team/season.",
+    "Club Admin opens overview in the current authorised team/season.",
+    "Club Admin opens people in the current authorised team/season.",
+    "Club Admin reviews and confirms a real scoped Manager revocation, then restores the same verified account; appointed-seat totals return to the original value.",
+    "Club Admin opens clubReports in the current authorised team/season.",
+    "Club Admin cannot create a global club, grant Super Admin, read another club report, or access global sign-in policy/login reports.",
+    "Club Admin opens clubs in the current authorised team/season.",
+    "Club Admin opens team in the current authorised team/season.",
+    "Club Admin opens clubs in the current authorised team/season.",
+    "A real new-team draft retains navigation until explicit discard; discarding clears only the local form and sends no creation.",
+    "A real team creation committed on the isolated service receives a deliberately malformed200, then a controlled non-committing403 retry denial; the original body/key remain locked until a final accepted same-key receipt. The denial is injected transport evidence, not a physical expiry test.",
+    "Club Admin opens settings in the current authorised team/season.",
+    "Club Admin opens team in the current authorised team/season.",
+    "Club Admin opens settings in the current authorised team/season.",
+    "Configuration fields advertise unsaved changes, retain ordinary navigation and restore the current service baseline only after explicit discard.",
+    "Club Admin creates a real empty U12 nine-a-side team in its own club, opens its authorised scope, and saves team configuration.",
+    "Club Admin opens team in the current authorised team/season.",
+    "The authorised team directory searches a renamed team, filters by age with pressed state, clears filters and opens explicit inherited Manager context for the chosen team-season.",
+    "Club Admin opens team in the current authorised team/season.",
+    "Club Admin opens formation in the current authorised team/season.",
+    "Club Admin opens stats in the current authorised team/season.",
+    "Club Admin explicitly enters inherited Manager context and can use the real Roma roster, formation designer and private selected-player statistics. Shared Manager elements are separately traversed by the Manager persona.",
+    "Club Admin opens clubs in the current authorised team/season.",
+    "Club Admin opens clubReports in the current authorised team/season.",
+    "Selecting the already-current club preserves its loaded report rather than clearing it without a new request.",
+    "A Super Admin fixture grant adds a second test club; a normal fresh Club Admin login selects permitted clubs, and report controls are exercised across U10 and U14 club scopes.",
+    "Club Admin opens account in the current authorised team/season.",
+    "Account remains scoped to the signed-in Club Admin; privacy/support policy decisions are not treated as approved.",
+    "Explicit logout ends the real session and closes all private Club Admin views."
+  ],
+  "findings": [],
+  "failures": [],
+  "httpFailures": [
+    {
+      "method": "GET",
+      "path": "/v1/administration/sign-in-rules",
+      "status": 404,
+      "code": "NOT_FOUND",
+      "expected": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/administration/login-analytics",
+      "status": 404,
+      "code": "NOT_FOUND",
+      "expected": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/administration",
+      "status": 404,
+      "code": "NOT_FOUND",
+      "expected": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/clubs/synthetic-other-club/reports",
+      "status": 404,
+      "code": "NOT_FOUND",
+      "expected": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/administration",
+      "status": 404,
+      "code": "NOT_FOUND",
+      "expected": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/administration",
+      "status": 403,
+      "code": "CONTROLLED_ADMIN_RETRY_DENIED",
+      "expected": true,
+      "controlledFault": true
+    }
+  ],
+  "transportErrors": [],
+  "pageErrors": [],
+  "screenshots": [
+    "club-admin-clubs-390.png",
+    "club-admin-reports-390.png",
+    "club-admin-reports-1024.png"
+  ],
+  "passed": true,
+  "source": {
+    "gitHead": "0961d1eb438ac2be591e71e6b3a92442aa72e38a",
+    "workingTreeDirty": true,
+    "webScriptSha256": "fe455b35fee18875c51a314126191d536c6bab8b1ce02053cf614e1629d8b521",
+    "serverBundleSha256": "7e6a4fc28acac0d106ca98e5a3955f2d06932d8da7d3fe99cef7c45ca3a1c3e4",
+    "workerBundleSha256": "b9077f122adf3b1bc6122df9beaf5610f1ea2928c852c1da4280619cf05a45f5",
+    "helperSha256": "6a9da668a2d0fe88245328f3df167f6da815917c90634d66e5a1288fde751698",
+    "wrapperSha256": "141cffea20eed633f204ce36f762082413e1e201d780a48817f647986120a92d"
+  },
+  "physicalDeviceTested": false,
+  "publicCredentialsUsed": false,
+  "paidServicesProvisioned": false,
+  "controlledFaults": [
+    {
+      "method": "POST",
+      "path": "/v1/administration",
+      "status": 200,
+      "type": "malformed-receipt-after-origin-commit"
+    }
+  ],
+  "budgetWaits": [
+    {
+      "accountId": "synthetic-account-club-admin",
+      "waitMs": 34694,
+      "attempts": 73,
+      "mutations": 6
+    },
+    {
+      "accountId": "synthetic-account-club-admin",
+      "waitMs": 0,
+      "attempts": 73,
+      "mutations": 6
+    },
+    {
+      "accountId": "synthetic-account-club-admin",
+      "waitMs": 24624,
+      "attempts": 67,
+      "mutations": 2
+    },
+    {
+      "accountId": "synthetic-account-club-admin",
+      "waitMs": 0,
+      "attempts": 68,
+      "mutations": 2
+    }
+  ],
+  "artifactsStable": true,
+  "finishedAt": "2026-10-25T22:34:57.834Z"
+}

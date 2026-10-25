@@ -1,0 +1,83 @@
+{
+  "recordedAt": "2026-10-24T18:14:08.247Z",
+  "source": {
+    "productCommit": "7da2226a2b24a878ea2ac1c6cb55fe07df33a220",
+    "productTree": "c77fb0240e7565fa7cb86936992d0f03dadaccc1",
+    "transportCommit": "970ccd344026a11c1dc0218b144feae4bdd86775",
+    "decodedBundleSha256": "92c8f1972c6a1e4eba72a82c99892266624bb7b734a98ad0f54569bf322eabf4",
+    "remoteSourceMarkersVerified": true
+  },
+  "run": {
+    "id": 40119447887,
+    "url": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40119447887",
+    "name": "LongBall temporary demo service",
+    "status": "in_progress",
+    "conclusion": null,
+    "expectedBoundedServing": true,
+    "jobId": 120947697969
+  },
+  "readiness": {
+    "state": "ready",
+    "url": "https://drinks-motel-reply-washington.trycloudflare.com",
+    "sourceRevision": "970ccd344026a11c1dc0218b144feae4bdd86775",
+    "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40119447887",
+    "startedAt": "2026-10-24T18:13:31Z",
+    "expiresAt": "2026-10-24T23:13:31Z",
+    "audience": "LongBall demo review with simulated Roma U10 teams and matches",
+    "statusGitBlobSha": "8bbd7a3952c4eecded3b590b4ad35d11be09324e",
+    "observedReadyAt": "2026-10-24T18:13:33.962Z"
+  },
+  "steps": [
+    {
+      "name": "Set up job",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Run actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Use the pinned Node runtime",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Install the isolated decoder runtime",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Build the pinned maintained HEIC runtime",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "Serve the demo for a bounded five-hour review",
+      "status": "in_progress",
+      "conclusion": null
+    },
+    {
+      "name": "Post Use the pinned Node runtime",
+      "status": "pending",
+      "conclusion": null
+    },
+    {
+      "name": "Post Run actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803",
+      "status": "pending",
+      "conclusion": null
+    }
+  ],
+  "scope": "Exact-source ready marker after the workflow's own API/media startup checks. This establishes bounded fictional-service readiness, not tablet browser or physical-device acceptance.",
+  "limits": {
+    "directPublicHealthRequestByObserver": false,
+    "browserOrAccountSessionByObserver": false,
+    "permanentHosting": false,
+    "physicalDeviceEvidence": false,
+    "paidServicesProvisioned": false,
+    "workflowMutationsOrRetries": false,
+    "artifactDownloads": false,
+    "sourceEdits": false
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "observedAt": "2026-10-25T22:59:27Z",
+  "scope": "Final candidate7 browser; exact stale-warning case passed. Full candidate6 and earlier role checks remain independently bound in the persona evidence. No blanket same-artifact claim.",
+  "headBeforeCommit": "0961d1eb438ac2be591e71e6b3a92442aa72e38a",
+  "workingTreeDirty": true,
+  "appsPackagesSourceFiles": 582,
+  "appsPackagesSourceFingerprint": "8a36479bf7cadb7a83842958d8aa0714dc8af2de7c14650b8373cc9099fd126f",
+  "browserScriptSha256": "a2b86b6642ba5d1a9ee4c08199f84663c3e02c43b1934aaade92f1326f812fdb",
+  "serverBundleSha256": "7e6a4fc28acac0d106ca98e5a3955f2d06932d8da7d3fe99cef7c45ca3a1c3e4",
+  "workerBundleSha256": "b9077f122adf3b1bc6122df9beaf5610f1ea2928c852c1da4280619cf05a45f5",
+  "unit": {
+    "passed": 1008,
+    "files": 123,
+    "scope": "Candidate6 pure shared/client source; final7 only changes navigation warning in the UI."
+  },
+  "api": {
+    "passed": 496,
+    "skipped": 3,
+    "files": 83,
+    "postgresSkipped": 0,
+    "sourceUnchanged": true
+  },
+  "migrations": {
+    "passed": 45,
+    "files": 11
+  },
+  "finalFollowup": {
+    "focusedNavigationProofPassed": true,
+    "scopedLintPassed": true,
+    "mobileTypesPassed": true
+  },
+  "deploymentPending": true,
+  "physicalDeviceTested": false,
+  "policyDecisionsApproved": false,
+  "paidServicesProvisioned": false
+}

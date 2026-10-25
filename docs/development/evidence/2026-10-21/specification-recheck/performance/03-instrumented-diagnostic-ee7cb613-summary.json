@@ -1,0 +1,103 @@
+{
+  "status": "target-not-met",
+  "checkedAt": "2026-10-21T22:41:02.272Z",
+  "startedAt": "2026-10-21T22:40:28.543Z",
+  "sourceCommit": "ee7cb613695b8d96388e742a60dc248277b24091",
+  "sourceFingerprint": "96183a8f65aae93d77723d84d914e6eecda1b9edf44a2eed629518fb5fef3b3b",
+  "sourceUnchangedDuringRun": true,
+  "execution": "Actual HTTP on loopback, real PostgreSQL, non-owner non-bypass runtime role, fixture identity verifier",
+  "environment": {
+    "platform": "linux",
+    "release": "6.18.55",
+    "node": "v24.19.0",
+    "cpuModel": "INTEL(R) XEON(R) PLATINUM 8573C",
+    "logicalCpus": 5,
+    "memoryBytes": 18932219904,
+    "freeMemoryBytesAtReport": 13638574080,
+    "postgres": "PostgreSQL 18.6 (Debian 18.6-1.pgdg13+2) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit",
+    "foregroundDevice": false,
+    "hostedProductionImage": false
+  },
+  "dataset": {
+    "teams": 10,
+    "games": 10,
+    "allGamesStartedOverCanonicalHttp": true,
+    "allGamesRemainUnfinished": true,
+    "rosterPerGame": 13,
+    "selectedPerGame": 9,
+    "managers": 10,
+    "spectators": 40,
+    "distinctAccounts": 50,
+    "concurrentSessionSlots": 50,
+    "measuredCohorts": 20,
+    "peakInFlight": 50,
+    "requests": 1000,
+    "readCommandMix": "40 accepted-summary reads and ten canonical pause/resume mutations per cohort"
+  },
+  "restrictedDatabase": {
+    "runtimeRole": {
+      "rolsuper": false,
+      "rolbypassrls": false,
+      "purpose": "api"
+    },
+    "protectedTables": 38,
+    "contextFreeAccountsDenied": true,
+    "schemaOwnerClosedBeforeHttp": true,
+    "existingDataMutated": false,
+    "disposableRandomDatabaseOnly": true
+  },
+  "timing": {
+    "measurementMs": 22807.276,
+    "totalElapsedMs": 33730.855,
+    "reads": {
+      "count": 800,
+      "minMs": 149.956,
+      "medianMs": 335.635,
+      "p95Ms": 583.83,
+      "maxMs": 690.105
+    },
+    "commands": {
+      "count": 200,
+      "minMs": 192.833,
+      "medianMs": 682.483,
+      "p95Ms": 1265.642,
+      "maxMs": 1828.654
+    },
+    "warmupExcluded": {
+      "count": 50,
+      "minMs": 168.789,
+      "medianMs": 399.574,
+      "p95Ms": 450.98,
+      "maxMs": 451.225
+    },
+    "fixtureIdentityVerification": {
+      "count": 1080,
+      "minMs": 0,
+      "medianMs": 0.002,
+      "p95Ms": 0.01,
+      "maxMs": 1.958
+    },
+    "serverTargetMs": 500,
+    "readsP95UnderTarget": false,
+    "commandsP95UnderTarget": false,
+    "authenticationProviderMeasured": false,
+    "latencyDefinition": "Client-observed loopback HTTP through response JSON, including local transit and fixture verification; not pure server instrumentation."
+  },
+  "httpStatuses": {
+    "200": 1080
+  },
+  "failures": [],
+  "limits": [
+    "Local shared execution host; no production deployment, remote network or capacity/SLA proof.",
+    "Explicit in-memory fixture session verifier measured separately; no OIDC login, JWT signature/JWKS or provider performance claim.",
+    "Warmup precedes measured cohorts; nearest-rank p95 is reported for 800 reads and 200 commands.",
+    "Clock evidence is review-required session evidence. No native clock continuity, device durability, background behavior or phone responsiveness claim.",
+    "QL03 requires supported lower-end Android hardware; QL02, QL07 and QL11 remain physical-device gates.",
+    "QL09 offsite recovery objectives and QL10 monthly availability require operating evidence, not this bounded rehearsal."
+  ],
+  "cleanup": {
+    "disposableDatabaseDropped": true,
+    "createdRolesDropped": 3,
+    "temporaryMediaRemoved": true
+  }
+}

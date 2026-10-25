@@ -1,0 +1,380 @@
+{
+  "attempts": [
+    {
+      "attempt": "initial-browser",
+      "passed": false,
+      "source": {
+        "gitHead": "886ef22b4a8b3da9b3a88b5e9b3a78bad1e64227",
+        "workingTreeDirty": true,
+        "artifactDigests": [
+          {
+            "file": "harnessSha256",
+            "digest": "aba944771943373b43eb9a8754d34357255aec653b3e6f102175cb892050a443"
+          },
+          {
+            "file": "webIndexSha256",
+            "digest": "9c0f7881d74580dea59d41803bc7d5da288ecf735f927f505183a03a083dcc36"
+          },
+          {
+            "file": "webJavaScriptSha256",
+            "digest": "f4f22bc5f435e112be055fba9ef7af37c9e9659920f4cf2e11ecb684687ac9e9"
+          },
+          {
+            "file": "apiBundleSha256",
+            "digest": "a8c0eacd04f2bc7858e08665251ce0c32f02ec90bbdee907c72954a82d665fc3"
+          },
+          {
+            "file": "workerBundleSha256",
+            "digest": "7d88610a3aa9d459beb6d290890625f6bbbe410b05e5ef9b1e3cbf49c2d60f8c"
+          }
+        ]
+      },
+      "completedRoleJourneys": 8,
+      "completedCheckGroups": 16,
+      "failures": [
+        {
+          "stage": "actual manager matchday and accepted spectator refresh",
+          "name": "AssertionError",
+          "message": "Discard and reopen must show the current saved name and independently updated foot."
+        }
+      ],
+      "resolution": "Actual missing web checked-state semantics were corrected while preserving native state."
+    },
+    {
+      "attempt": "accepted-checkpoint",
+      "passed": false,
+      "source": {
+        "gitHead": "3ea4e0853ef0aab2c375f809a685c312dcfedd27",
+        "workingTreeDirty": false,
+        "artifactDigests": [
+          {
+            "file": "harnessSha256",
+            "digest": "c25ff042c0a5fe692f8eaa351cb1a04b93a3cff856d2d1ae16036fe5b11b881a"
+          },
+          {
+            "file": "webIndexSha256",
+            "digest": "3c704a5e23554fa7b626af4ce66b8fc43920ce72b341f3e7452afccaa6c0b3f7"
+          },
+          {
+            "file": "webJavaScriptSha256",
+            "digest": "58c3af251d6333fd4b326097fc0ed8e31335909d1968395eda85be5f2f1d84e3"
+          },
+          {
+            "file": "apiBundleSha256",
+            "digest": "a8c0eacd04f2bc7858e08665251ce0c32f02ec90bbdee907c72954a82d665fc3"
+          },
+          {
+            "file": "workerBundleSha256",
+            "digest": "7d88610a3aa9d459beb6d290890625f6bbbe410b05e5ef9b1e3cbf49c2d60f8c"
+          }
+        ]
+      },
+      "completedRoleJourneys": 8,
+      "completedCheckGroups": 18,
+      "failures": [
+        {
+          "stage": "actual manager matchday and accepted spectator refresh",
+          "name": "AssertionError",
+          "message": "The current authorised API read must succeed."
+        }
+      ],
+      "resolution": "Generic independent read failure retained; no HTTP cause was recorded in this earlier attempt."
+    },
+    {
+      "attempt": "controller-diagnostic",
+      "passed": false,
+      "source": {
+        "gitHead": "3ea4e0853ef0aab2c375f809a685c312dcfedd27",
+        "workingTreeDirty": true,
+        "artifactDigests": [
+          {
+            "file": "harnessSha256",
+            "digest": "aff832794c60e2983bc2c3533835d384d9eb40f561c1a125643af418e818e406"
+          },
+          {
+            "file": "webIndexSha256",
+            "digest": "3c704a5e23554fa7b626af4ce66b8fc43920ce72b341f3e7452afccaa6c0b3f7"
+          },
+          {
+            "file": "webJavaScriptSha256",
+            "digest": "58c3af251d6333fd4b326097fc0ed8e31335909d1968395eda85be5f2f1d84e3"
+          },
+          {
+            "file": "apiBundleSha256",
+            "digest": "a8c0eacd04f2bc7858e08665251ce0c32f02ec90bbdee907c72954a82d665fc3"
+          },
+          {
+            "file": "workerBundleSha256",
+            "digest": "7d88610a3aa9d459beb6d290890625f6bbbe410b05e5ef9b1e3cbf49c2d60f8c"
+          }
+        ]
+      },
+      "completedRoleJourneys": 8,
+      "completedCheckGroups": 18,
+      "failures": [
+        {
+          "stage": "manager initial accepted checkpoint after current preparation",
+          "name": "TimeoutError",
+          "message": "locator.click: Timeout 30000ms exceeded."
+        }
+      ],
+      "resolution": "Disabled controller after a one-shot read; exact HTTP cause unrecorded in this attempt."
+    },
+    {
+      "attempt": "rate-diagnostic",
+      "passed": false,
+      "source": {
+        "gitHead": "3ea4e0853ef0aab2c375f809a685c312dcfedd27",
+        "workingTreeDirty": true,
+        "artifactDigests": [
+          {
+            "file": "harnessSha256",
+            "digest": "606d43172ff61f72862ff653627b6a06aeebd392a2866822433bcc3daf2f2455"
+          },
+          {
+            "file": "webIndexSha256",
+            "digest": "3c704a5e23554fa7b626af4ce66b8fc43920ce72b341f3e7452afccaa6c0b3f7"
+          },
+          {
+            "file": "webJavaScriptSha256",
+            "digest": "58c3af251d6333fd4b326097fc0ed8e31335909d1968395eda85be5f2f1d84e3"
+          },
+          {
+            "file": "apiBundleSha256",
+            "digest": "a8c0eacd04f2bc7858e08665251ce0c32f02ec90bbdee907c72954a82d665fc3"
+          },
+          {
+            "file": "workerBundleSha256",
+            "digest": "7d88610a3aa9d459beb6d290890625f6bbbe410b05e5ef9b1e3cbf49c2d60f8c"
+          }
+        ]
+      },
+      "completedRoleJourneys": 8,
+      "completedCheckGroups": 18,
+      "failures": [
+        {
+          "stage": "manager initial accepted checkpoint after current preparation",
+          "name": "Error",
+          "message": "The current authorised API read failed: HTTP 429, RATE_LIMIT, /v1/matches/synthetic-roma-maple-2026-10-24/download, stage manager initial accepted checkpoint after current preparation."
+        }
+      ],
+      "resolution": "Actual HTTP429 at124 observed manager requests/minute. Test phases now wait for the unchanged account window; no command is automatically retried.",
+      "apiRequestWindows": [
+        {
+          "accountId": "synthetic-account-manager-2",
+          "startedAtMs": 1792793975372,
+          "startedAt": "2026-10-23T22:19:35.372Z",
+          "observedAttempts": 124,
+          "observedMutations": 7,
+          "scope": "Actual attempted loopback requests in a local sixty-second observation window; pre-authority denials can make this an upper bound on server counts."
+        },
+        {
+          "accountId": "synthetic-account-admin",
+          "startedAtMs": 1792793986373,
+          "startedAt": "2026-10-23T22:19:46.373Z",
+          "observedAttempts": 58,
+          "observedMutations": 5,
+          "scope": "Actual attempted loopback requests in a local sixty-second observation window; pre-authority denials can make this an upper bound on server counts."
+        },
+        {
+          "accountId": "synthetic-account-player-01",
+          "startedAtMs": 1792793987946,
+          "startedAt": "2026-10-23T22:19:47.946Z",
+          "observedAttempts": 51,
+          "observedMutations": 1,
+          "scope": "Actual attempted loopback requests in a local sixty-second observation window; pre-authority denials can make this an upper bound on server counts."
+        },
+        {
+          "accountId": "synthetic-account-spectator",
+          "startedAtMs": 1792793991184,
+          "startedAt": "2026-10-23T22:19:51.184Z",
+          "observedAttempts": 26,
+          "observedMutations": 0,
+          "scope": "Actual attempted loopback requests in a local sixty-second observation window; pre-authority denials can make this an upper bound on server counts."
+        }
+      ],
+      "httpFailures": [
+        {
+          "stage": "manager 390px",
+          "accountId": "pre-session",
+          "method": "POST",
+          "pathname": "/v1/demo/sessions",
+          "status": 401,
+          "code": "INVALID_DEMO_CREDENTIALS",
+          "controlled": false
+        },
+        {
+          "stage": "manager 390px",
+          "accountId": "synthetic-account-manager-2",
+          "method": "GET",
+          "pathname": "/v1/me",
+          "status": 503,
+          "code": "STORAGE_UNAVAILABLE",
+          "controlled": true
+        },
+        {
+          "stage": "player 390px",
+          "accountId": "synthetic-account-player-01",
+          "method": "GET",
+          "pathname": "/v1/me",
+          "status": 403,
+          "code": "ACCOUNT_UNAVAILABLE",
+          "controlled": false
+        },
+        {
+          "stage": "administrator 320px",
+          "accountId": "pre-session",
+          "method": "POST",
+          "pathname": "/v1/demo/sessions",
+          "status": 403,
+          "code": "ACCOUNT_UNAVAILABLE",
+          "controlled": false
+        },
+        {
+          "stage": "administrator retained configuration draft",
+          "accountId": "synthetic-account-admin",
+          "method": "POST",
+          "pathname": "/v1/teams/synthetic-roma-u10/configuration",
+          "status": 422,
+          "code": "COMMAND_REJECTED",
+          "controlled": false
+        },
+        {
+          "stage": "administrator retained configuration draft",
+          "accountId": "synthetic-account-admin",
+          "method": "GET",
+          "pathname": "/v1/teams/synthetic-roma-u10/configuration",
+          "status": 503,
+          "code": "STORAGE_UNAVAILABLE",
+          "controlled": true
+        },
+        {
+          "stage": "administrator retained configuration draft",
+          "accountId": "synthetic-account-admin",
+          "method": "GET",
+          "pathname": "/v1/teams/synthetic-roma-u10/configuration",
+          "status": 403,
+          "code": "NOT_FOUND",
+          "controlled": true
+        },
+        {
+          "stage": "actual manager matchday and accepted spectator refresh",
+          "accountId": "synthetic-account-manager-2",
+          "method": "POST",
+          "pathname": "/v1/teams/synthetic-roma-u10/preparation",
+          "status": 422,
+          "code": "COMMAND_REJECTED",
+          "controlled": false
+        },
+        {
+          "stage": "manager initial accepted checkpoint after current preparation",
+          "accountId": "synthetic-account-manager-2",
+          "method": "GET",
+          "pathname": "/v1/matches/synthetic-roma-maple-2026-10-24/download",
+          "status": 429,
+          "code": "RATE_LIMIT",
+          "controlled": false
+        }
+      ]
+    },
+    {
+      "attempt": "canonical-lineup-assertion",
+      "passed": false,
+      "source": {
+        "gitHead": "924d905c1fce3c8ba095ffd89a6a3433508a5048",
+        "workingTreeDirty": false,
+        "artifactDigests": [
+          {
+            "file": "harnessSha256",
+            "digest": "0cfcf1aad8ad62cdc2e6a5c64dfd0ef820e01af97aa570d10d811c4cba742146"
+          },
+          {
+            "file": "webIndexSha256",
+            "digest": "3c704a5e23554fa7b626af4ce66b8fc43920ce72b341f3e7452afccaa6c0b3f7"
+          },
+          {
+            "file": "webJavaScriptSha256",
+            "digest": "58c3af251d6333fd4b326097fc0ed8e31335909d1968395eda85be5f2f1d84e3"
+          },
+          {
+            "file": "apiBundleSha256",
+            "digest": "a8c0eacd04f2bc7858e08665251ce0c32f02ec90bbdee907c72954a82d665fc3"
+          },
+          {
+            "file": "workerBundleSha256",
+            "digest": "7d88610a3aa9d459beb6d290890625f6bbbe410b05e5ef9b1e3cbf49c2d60f8c"
+          }
+        ]
+      },
+      "completedRoleJourneys": 8,
+      "completedCheckGroups": 18,
+      "failures": [
+        {
+          "stage": "manager accepted attendance, lineup and paused clock",
+          "name": "AssertionError",
+          "message": "The accepted seven-place lineup must match the actual eligible UI selections."
+        }
+      ],
+      "resolution": "Test expectation used slot.id; corrected to canonical slot.slotId while retaining exact accepted lineup comparison."
+    },
+    {
+      "attempt": "credential-assertion",
+      "passed": false,
+      "source": {
+        "gitHead": "03dab267994bcec5b5ed5c9771cb9a7b9ebb4871",
+        "workingTreeDirty": false,
+        "artifactDigests": [
+          {
+            "file": "harnessSha256",
+            "digest": "68501f724b3e1dd232cccf115baafacc702fbad56ae868fd3f539003745fb5cb"
+          },
+          {
+            "file": "webIndexSha256",
+            "digest": "3c704a5e23554fa7b626af4ce66b8fc43920ce72b341f3e7452afccaa6c0b3f7"
+          },
+          {
+            "file": "webJavaScriptSha256",
+            "digest": "58c3af251d6333fd4b326097fc0ed8e31335909d1968395eda85be5f2f1d84e3"
+          },
+          {
+            "file": "apiBundleSha256",
+            "digest": "a8c0eacd04f2bc7858e08665251ce0c32f02ec90bbdee907c72954a82d665fc3"
+          },
+          {
+            "file": "workerBundleSha256",
+            "digest": "7d88610a3aa9d459beb6d290890625f6bbbe410b05e5ef9b1e3cbf49c2d60f8c"
+          }
+        ]
+      },
+      "completedRoleJourneys": 8,
+      "completedCheckGroups": 23,
+      "failures": [
+        {
+          "stage": "recorded match reopening and future archived selections",
+          "name": "AssertionError",
+          "message": "The browser journal and preferences must not store demo credentials or login tokens."
+        }
+      ],
+      "resolution": "Diagnostic-redaction set included intentional durable controller grants. The login-secret prohibition now uses its own complete username/password/session/server-key set; broad redaction remains."
+    }
+  ],
+  "initialTypecheck": {
+    "passed": false,
+    "cause": "Two new fixture.prepared test fixtures lacked required formationId. Corrected fixtures passed root TypeScript without changing runtime assertions."
+  },
+  "preFixObservations": {
+    "source": "886ef22b4a8b3da9b3a88b5e9b3a78bad1e64227",
+    "managerDetailRetainedAfterSave": false,
+    "administratorTeamDraftRetainedAfterClubSave": false,
+    "meaning": "The exploratory observation harness completed; these false behavior values motivated the fixes and are not feature passes."
+  },
+  "finalDemo": {
+    "source": "e2bf5a6744fbcdebd832d2d4e8795641d9d4488d",
+    "passed": true,
+    "roleJourneys": 8,
+    "checkGroups": 24,
+    "actual429": 0,
+    "watchdogMs": 240000,
+    "serverLimitsUnchanged": true
+  }
+}

@@ -1,0 +1,106 @@
+{
+  "persona": "player",
+  "phase": "final",
+  "startedAt": "2026-10-25T22:51:50.502Z",
+  "scope": "Actual compiled UI and isolated SQLite API/worker; only discovery and virtual transport are redirected to owned loopback processes. Generated accounts, not public demo credentials.",
+  "checks": [
+    "Actual Player upload uses its verified session; exact approved artwork passes processing and is pending, private, and not published automatically.",
+    "Selecting a new photo clears only confirmed presentation/acknowledgement state; no second upload occurs without a new review.",
+    "A real Spectator account cannot see or fetch a pending Player photo.",
+    "A real Manager must fetch and review the exact private image before explicit approval adds it to the permitted gallery.",
+    "A newly opened actual Spectator album can fetch the approved image through the authenticated gateway.",
+    "Player can explicitly withdraw an own pending photo; a published submission offers no invalid withdrawal and keeps the existing manager-removal policy.",
+    "An authorized Manager explicitly removes the published image; it leaves the permitted gallery and the same Spectator token can no longer fetch its former route. Existing screenshots or in-memory views are not claimed to be recalled."
+  ],
+  "findings": [],
+  "failures": [],
+  "httpFailures": [
+    {
+      "method": "GET",
+      "path": "/v1/teams/synthetic-roma-u10/media/photos/media-1b8047dc-112c-4358-bdce-95ccdaab7130/display",
+      "status": 404,
+      "code": "NOT_FOUND",
+      "expected": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/teams/synthetic-roma-u10/media/photos/media-1b8047dc-112c-4358-bdce-95ccdaab7130/display",
+      "status": 404,
+      "code": "NOT_FOUND",
+      "expected": true
+    }
+  ],
+  "transportErrors": [],
+  "pageErrors": [],
+  "screenshots": [
+    "spectator-approved-player-photo.png"
+  ],
+  "passed": true,
+  "source": {
+    "gitHead": "0961d1eb438ac2be591e71e6b3a92442aa72e38a",
+    "workingTreeDirty": true,
+    "webScriptSha256": "91c5b2b6013ee0f496c9e13d73bb59b073d0d8b32e0bf0c56f658cf5908b4813",
+    "serverBundleSha256": "7e6a4fc28acac0d106ca98e5a3955f2d06932d8da7d3fe99cef7c45ca3a1c3e4",
+    "workerBundleSha256": "b9077f122adf3b1bc6122df9beaf5610f1ea2928c852c1da4280619cf05a45f5",
+    "helperSha256": "6a9da668a2d0fe88245328f3df167f6da815917c90634d66e5a1288fde751698",
+    "harnessSha256": "9b4744479fd1661ea9b9d45e2615bd6e84d44328bcf6c4674a6d0e6c8543e273"
+  },
+  "physicalDeviceTested": false,
+  "publicCredentialsUsed": false,
+  "paidServicesProvisioned": false,
+  "mediaFixture": {
+    "kind": "exact-generated-artwork-clamd-wire-ui-fixture",
+    "antivirusProof": false,
+    "allowedImageKinds": [
+      "pitch",
+      "cones",
+      "ball"
+    ],
+    "acceptedImageCount": 3,
+    "maxBytes": 18300,
+    "description": "Only the exact demoArtwork PNG hashes receive a controlled clean response. All other bytes are rejected. Actual HTTP upload, decoding, authorization and moderation run in the application; malware detection and real antivirus database acceptance are not established."
+  },
+  "mediaSetup": {
+    "processed": 3,
+    "publishedExamples": 2,
+    "pendingPlayerExamples": 1,
+    "throughNormalMediaPipeline": true,
+    "boundary": {
+      "kind": "exact-generated-artwork-clamd-wire-ui-fixture",
+      "antivirusProof": false,
+      "allowedImageKinds": [
+        "pitch",
+        "cones",
+        "ball"
+      ],
+      "acceptedImageCount": 3,
+      "maxBytes": 18300,
+      "description": "Only the exact demoArtwork PNG hashes receive a controlled clean response. All other bytes are rejected. Actual HTTP upload, decoding, authorization and moderation run in the application; malware detection and real antivirus database acceptance are not established."
+    },
+    "fixtureScans": {
+      "accepted": 3,
+      "rejected": 0,
+      "malformed": 0
+    }
+  },
+  "scannerBoundary": "The optional isolated scanner fixture accepts only the three exact original people-free demoArtwork byte sequences. It is not antivirus acceptance; decoding, private storage, media authorization and publication remain the actual application pipeline.",
+  "browserLibraryPicker": {
+    "actualFileInput": false,
+    "reason": "The compiled review build does not enable library selection.",
+    "nativePhotoPermissionTested": false
+  },
+  "photoLifecycle": {
+    "actualVerifiedSessionUsed": true,
+    "approvedFootballAssetUsed": true,
+    "pendingPrivate": true,
+    "secondImageNeedsReview": true,
+    "managerViewRequired": true,
+    "managerApprovalRequired": true,
+    "spectatorCanReadOnlyAfterApproval": true,
+    "playerCanWithdrawOwnPendingOnly": true,
+    "publishedWithdrawalNotOffered": true,
+    "managerRemovalRevokesFutureRead": true
+  },
+  "artifactsStable": true,
+  "finishedAt": "2026-10-25T22:52:23.077Z"
+}

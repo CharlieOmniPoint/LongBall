@@ -1,0 +1,40 @@
+{
+  "sourceCommit": "4fd2261bab0f39ddcb8c44bdd302d753adfdbce6",
+  "sourceTreeCleanAtStart": true,
+  "siteFilesIdenticalAfterRun": true,
+  "apiBundleIdenticalAfterRun": true,
+  "workerBundleIdenticalAfterRun": true,
+  "harnessIdenticalAfterRun": true,
+  "runnerExitCode": 0,
+  "completeReportPassed": true,
+  "roleJourneys": 8,
+  "checkGroups": 25,
+  "playerHistoricalViews": [
+    {
+      "width": 390,
+      "historicGames": 2,
+      "upcomingGames": 2,
+      "everyHistoricalReplyActionAbsent": true,
+      "recordedReplyAndAttendanceRetained": true,
+      "upcomingReplyActionsRetained": true,
+      "navigationPosts": 0,
+      "servicePreparationUnchanged": true
+    },
+    {
+      "width": 320,
+      "historicGames": 2,
+      "upcomingGames": 2,
+      "everyHistoricalReplyActionAbsent": true,
+      "recordedReplyAndAttendanceRetained": true,
+      "upcomingReplyActionsRetained": true,
+      "navigationPosts": 0,
+      "servicePreparationUnchanged": true
+    }
+  ],
+  "http429Observed": false,
+  "apiBundleSha256": "022ec44e6ad09f2423f66d7066b07538783d23c2f0c7c9fb485c567b5c7cf7c7",
+  "workerBundleSha256": "5562a6a844defdd8dda6d48d0af7fc7a8f6b5f3d4480ee341b64dac314b40e93",
+  "webJavaScriptSha256": "3c1466e270391a08842f97473d4dec736be045c8b1ab9718a7ecba079468d52e",
+  "harnessSha256": "dc45b75c0915f0fb86e05b7cf4863a0f545e9e75601650d47d94639e32c4be99",
+  "physicalDeviceProof": false
+}

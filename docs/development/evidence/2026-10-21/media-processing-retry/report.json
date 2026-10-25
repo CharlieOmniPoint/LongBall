@@ -1,0 +1,55 @@
+{
+  "kind": "private-media-transient-processing-retry",
+  "baseline": "55465b04b00bb97df1c87ae1a82d67a589159471",
+  "observedAt": "2026-10-21T19:21:21.319120+00:00",
+  "decodeTimeoutMs": 12000,
+  "decodeHeapMb": 128,
+  "focusedRun": {
+    "passed": 49,
+    "skipped": 0,
+    "files": {
+      "image-process.test.ts": 2,
+      "team-privileges-http.test.ts": 23,
+      "branding.test.ts": 5,
+      "media.test.ts": 15,
+      "heic.test.ts": 4
+    },
+    "durationSeconds": 51.53,
+    "actualPostgres": true,
+    "maintainedNativeHeicDecoderConfigured": true
+  },
+  "checks": [
+    "Actual child timeout, crash, missing executable, explicit malformed image rejection and filesystem failure classification",
+    "HTTP SQLite/restricted PostgreSQL preserve uploaded private original and token hash after each simulated timeout/crash/startup failure",
+    "Same original upload, capability and completion identity succeeds after processing recovers",
+    "No full or thumbnail gateway access or community revision before success",
+    "Malformed PNG receives415 and terminal rejected manifest, no publication",
+    "HTTP logo crash remains uploaded/private; same capability retries without auto publication",
+    "Existing orientation/metadata stripping, format/pixel/byte/scan gates and maintained HEIC format tests pass"
+  ],
+  "rootTypeScript": "passed",
+  "scopedLint": "passed",
+  "apiBuild": "passed",
+  "sourceSha256": {
+    "apps/api/src/image-bytes.ts": "0459c6556e1785443c7e27403426d14c556ec25c1d092d385addcc8829de425f",
+    "apps/api/src/image-process.ts": "bbe9d587ea99d1f932e1a09b485ea64f1b5005e0fc572eedb849d2e22c0f3747",
+    "apps/api/src/media-worker.mjs": "4b878815f5255ec427900db496df40c278176e381bfc3b7f6809912fe4cea5ed",
+    "apps/api/src/image-process.test.ts": "6cfa21772036639f922ac49bae11765a0d1407fa1c6a7b14fb32ca479d5372e7",
+    "apps/api/src/team-privileges-http.test.ts": "7c2bfc01fc23eff0b4ca0a272e7d475efb4ba9786e999a86b5330a94aef87c56",
+    "apps/api/src/branding.test.ts": "1f106300f05ff5ccefa0ca981827b656ffcbb34466ae17a9f0f5543a37b2e221"
+  },
+  "localBuildSha256": {
+    "api.mjs": "d1568c20879d2e1df83843fc31e35a6fa053751785560988f53093c546e10798",
+    "worker.mjs": "326967e27c649efdf3c9269629c0c6637638d0a26a760f183686928d9f92c479",
+    "migrate.mjs": "a54633d40ef12adeeb82da9338cd12e2d0b814a53e00f18b1e25d9328119e9a4",
+    "media-worker.mjs": "4b878815f5255ec427900db496df40c278176e381bfc3b7f6809912fe4cea5ed",
+    "heic-worker.mjs": "af403995a2780164fdddbce814fbf6f4c5789fcc00dcb49c9235dfb76a0e751d"
+  },
+  "limits": [
+    "The earlier full-suite415 cause cannot be reconstructed from its discarded worker error and is not attributed to a host timeout.",
+    "Fault injection controls only the private decoder process seam in tests; production has no client-selected decoder or bypass flag.",
+    "Scanner fixtures are explicit fictional test inputs, not a malware-scanner verification claim.",
+    "No new browser/native-device proof; existing UI evidence remains bound to its recorded source and bundle.",
+    "The maintained HEIC helper explicit rejection marker is preserved; its native binary was not changed."
+  ]
+}

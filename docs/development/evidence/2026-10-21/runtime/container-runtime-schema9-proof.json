@@ -1,0 +1,186 @@
+{
+  "status": "passed",
+  "observedAt": "2026-10-21T11:15:38.596Z",
+  "image": "sha256:f977a920dc6b21503fd652849a679781960f0bbe60f0fbd538694a003ca07e07",
+  "data": "Operator-seeded fictional Roma fixture; no real child data.",
+  "commands": [
+    "dedicated non-bypass schema-owner migrator",
+    "verify-only non-owner API",
+    "verify-only non-owner worker"
+  ],
+  "initialSchema": {
+    "versions": [
+      2,
+      3,
+      4
+    ],
+    "privacyRows": 0
+  },
+  "finalSchema": {
+    "versions": [
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+    ],
+    "privacyRows": 0,
+    "rlsTables": 28,
+    "migratorNonBypass": true
+  },
+  "featureVersions": {
+    "media": 2,
+    "activation": 2
+  },
+  "apiChecks": {
+    "role": "longball_api",
+    "versions": [
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+    ],
+    "passed": [
+      "restricted_role_attributes",
+      "cannot_create_schema_objects",
+      "cannot_create_public_objects",
+      "cannot_alter_schema",
+      "cannot_change_migration_version",
+      "schema9_verified",
+      "login_purpose_and_context_free_rls",
+      "api_cannot_delete_domain_rows",
+      "api_cannot_rewrite_audit",
+      "api_scoped_request_schema_and_key_access",
+      "api_feature_verification_and_request_schema",
+      "api_cannot_claim_worker_job"
+    ]
+  },
+  "workerChecks": {
+    "role": "longball_worker",
+    "versions": [
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+    ],
+    "passed": [
+      "restricted_role_attributes",
+      "cannot_create_schema_objects",
+      "cannot_create_public_objects",
+      "cannot_alter_schema",
+      "cannot_change_migration_version",
+      "schema9_verified",
+      "login_purpose_and_context_free_rls",
+      "worker_cannot_insert_unscoped_job",
+      "worker_cannot_forge_api_identity",
+      "worker_cannot_change_accounts",
+      "worker_cannot_read_private_media_manifests",
+      "worker_cannot_read_privacy_requests",
+      "worker_cannot_read_privacy_pending_keys",
+      "worker_cannot_delete_jobs",
+      "worker_job_and_document_operations"
+    ]
+  },
+  "containers": [
+    {
+      "name": "/longball-runtime-api-1",
+      "image": "sha256:f977a920dc6b21503fd652849a679781960f0bbe60f0fbd538694a003ca07e07",
+      "user": "node",
+      "readOnlyRoot": true,
+      "status": "running",
+      "ports": {
+        "4310/tcp": [
+          {
+            "HostIp": "127.0.0.1",
+            "HostPort": "4310"
+          }
+        ]
+      }
+    },
+    {
+      "name": "/longball-runtime-worker-1",
+      "image": "sha256:f977a920dc6b21503fd652849a679781960f0bbe60f0fbd538694a003ca07e07",
+      "user": "node",
+      "readOnlyRoot": true,
+      "status": "running",
+      "ports": {}
+    },
+    {
+      "name": "/longball-runtime-database-1",
+      "image": "sha256:79061104669bb30919d015b549c764e2d8021a18ee39cb175581a2588fe90dbe",
+      "user": "",
+      "readOnlyRoot": false,
+      "status": "running",
+      "ports": {}
+    },
+    {
+      "name": "/longball-runtime-scanner-1",
+      "image": "sha256:ac90e771724d0ce8fdd955ad8d23fad36ca9fd8c1c30cf0ecf8014de43fa9ec4",
+      "user": "",
+      "readOnlyRoot": true,
+      "status": "running",
+      "ports": {}
+    }
+  ],
+  "http": {
+    "healthStatus": 200,
+    "backend": "postgresql",
+    "syntheticAuthenticationEnabled": false,
+    "privateStatus": 503,
+    "privateCode": "IDENTITY_NOT_CONFIGURED"
+  },
+  "imageSha256": {
+    "/app/migrations/postgresql/005_scope_security.sql": "6c6e73509ea12851c5c7080a711114244046350128ecdc6e1f2611a665dac13b",
+    "/app/migrations/postgresql/006_award_notifications.sql": "121ef919d7a0c66135e644cccb03a20159948bd5bc0034b5428a535b1aa1928d",
+    "/app/migrations/postgresql/007_worker_boundaries.sql": "17436fc100ad0a80a5d3df78db4a14dc98d192cc38ed5578a73136cd98845aed",
+    "/app/migrations/postgresql/008_controller_revocation.sql": "c39e8132ea91637b95ffe31ff8b7ffdb2c713d3e035e30d802e86ff50978cddf",
+    "/app/migrations/postgresql/009_dispatch_database_clock.sql": "5298965bb5425e58fcd8c758024b62da9191e38121cdf94c5ea176282d6cdcfa",
+    "/app/backend/api.mjs": "e4bea9b6476dbdcda6eb7ff6a1008ec6ba9d46ffd8ad661e3a9bba749542d413",
+    "/app/backend/worker.mjs": "10740134547cfbb4495fe7dcaed9626e9c34e77cd84013fe9092171ab3d656d5",
+    "/app/backend/migrate.mjs": "9a37ca24a30b616719c6bf9f00919918cbf00ee20106e221da285443ccc42713"
+  },
+  "migrationSourceSha256": {
+    "005_scope_security.sql": "6c6e73509ea12851c5c7080a711114244046350128ecdc6e1f2611a665dac13b",
+    "006_award_notifications.sql": "121ef919d7a0c66135e644cccb03a20159948bd5bc0034b5428a535b1aa1928d",
+    "007_worker_boundaries.sql": "17436fc100ad0a80a5d3df78db4a14dc98d192cc38ed5578a73136cd98845aed",
+    "008_controller_revocation.sql": "c39e8132ea91637b95ffe31ff8b7ffdb2c713d3e035e30d802e86ff50978cddf",
+    "009_dispatch_database_clock.sql": "5298965bb5425e58fcd8c758024b62da9191e38121cdf94c5ea176282d6cdcfa"
+  },
+  "backendSourceSha256": {
+    "apps/api/src/pg.ts": "210930cb42a47afef85a85e394d6c01b4627388510c62f9a44016bab157124dc",
+    "apps/api/src/postgres-store.ts": "a96bc265a17138d26350757c21454be093c81d8edc643a90fcbbbf4f6fd1d84b",
+    "apps/api/src/postgres-media.ts": "8567508417d74466fc97bef77fb2996c281adc2f109740d7d27876a70321685a",
+    "apps/api/src/postgres-security.ts": "b19a30d1eb866b2f27455bf21c5466fcf182b4f9b6f4d7e54bf27b2e8dd4d03e",
+    "apps/api/src/runtime-grants.ts": "46669b6f2b36e528fe4bcfd95a9e0dd4e86b9238b934aa9d9e6e2f35b759ec0f",
+    "apps/worker/src/postgres-jobs.ts": "50db8e623b396e448a57a157b54c8f99bb653d5a7fc464308ee79f1be7002f23",
+    "apps/worker/src/notification-jobs.ts": "d254350c2e3cd26f399282858bb474c57f6ef884ddc83d24f55373ed0a4db079"
+  },
+  "pairedRestore": {
+    "observedAt": "2026-10-21T10:56:50.139Z",
+    "archiveSha256": "95c256cdb2deaf8d954b311ec3d18d4ef3dca983eedd94e628753ed6edb84880",
+    "publishedDerivativeSha256": "b0272eac7747fa4f2217c81c2388794bd32d685f7cd86ef79ffe2ad4ccf94050"
+  },
+  "finalGuardValidation": {
+    "broadApiBeforeLastGuards": 167,
+    "finalBroadApiReportedByRoot": 169,
+    "targetedAwardRollbackAndDbClockFanout": 2,
+    "targetedNotificationUpdateZero": 1
+  },
+  "limitations": [
+    "Local private deployment rehearsal; no hosted or paid service provisioned.",
+    "The serving production image has no configured OIDC provider; private requests fail closed. Separate actual provider trial evidence records authenticated fictional journeys.",
+    "Paired schema9 restore reuses the previous harmless processed image; scanner-engine/signature proof remains its earlier checkpoint.",
+    "No physical-device, actual APNs/FCM delivery, production-load or encrypted offsite RPO/RTO claim."
+  ]
+}

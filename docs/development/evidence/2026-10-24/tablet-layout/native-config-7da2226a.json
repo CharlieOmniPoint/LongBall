@@ -1,0 +1,22 @@
+{
+  "sourceCommit": "7da2226a2b24a878ea2ac1c6cb55fe07df33a220",
+  "observedAt": "2026-10-24T18:11:58Z",
+  "inputScope": "Current app/config inputs match committed product; documentation may be edited separately. This is evaluated configuration, not a native build or device run.",
+  "result": {
+    "passed": true,
+    "checks": [
+      "Production evaluated iOS ATS and Android manifest refuse cleartext/local exceptions",
+      "Production strips Expo discovery/generated schemes and disables default dev menu/tools",
+      "Production/development APNs environment follows build profile without signing/provisioning",
+      "Explicit fictional/development trial keeps its recorded dev-client behavior",
+      "Both profiles support iPhone/iPad, all tablet orientations and resizable Android windows without activity recreation, while retaining app identity, SQLCipher, backups, biometrics and notifications",
+      "Static trial source and explicit local-only notification/operator options are preserved"
+    ],
+    "sourceAppJsonSha256": "ae34d39c1d09b4581cfc7a999a5b53d4534deb79f25a04ce093abf9627346c61",
+    "evaluated": {
+      "production": "122810b1627811e65b387032bfe3d5b36f43844bb3805381fefaffea7caf344d",
+      "development": "51d102d2a19f4de0380591dd7ec9ffbd6abd720caed1a37cefdabdd780f4844e"
+    },
+    "scope": "Evaluated build configuration only; native Release signing, compilation, runtime and delivery are separate proof."
+  }
+}

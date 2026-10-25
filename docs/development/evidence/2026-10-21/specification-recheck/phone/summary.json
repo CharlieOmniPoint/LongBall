@@ -1,0 +1,226 @@
+{
+  "preparedAt": "2026-10-21T23:26:44.050Z",
+  "sourceRevision": "ee7cb613695b8d96388e742a60dc248277b24091",
+  "artifactBinding": "Compiled web and API artifacts were built from the explicit source revision ee7cb613695b8d96388e742a60dc248277b24091. Every review hashes the served JavaScript and compiled API before and after its run and rejects any change. Later notification-query, PostgreSQL and PDF backend changes are outside these frozen browser tests; this packet does not relabel the tested API as a newer revision. An identical later web SHA identifies the same browser bundle only.",
+  "result": {
+    "passed": true,
+    "roleEntryJourneys": 8,
+    "matchdayGroupsAt390": 6,
+    "matchdayGroupsAt320": 6,
+    "browserErrors": 0,
+    "apiProcessesClosed": true
+  },
+  "reviews": [
+    {
+      "name": "account-entry",
+      "passed": true,
+      "checkedAt": "2026-10-21T22:43:23.406Z",
+      "report": {
+        "path": "account-entry/report.json",
+        "sha256": "af11034e6ba106b4e1674c3cb6deba8bf544d513f3398809ba853e98cec1f7f2",
+        "retainedLocalSha256": "9464a39ea16fe0c543c78a94c33bf551a5e65c83a2813893283c96ad27f75982",
+        "sanitized": true
+      },
+      "artifacts": {
+        "sourceRevision": "ee7cb613695b8d96388e742a60dc248277b24091",
+        "web": {
+          "entry": "/_expo/static/js/web/index-9ddd154bdda7116598b3c07d353833e3.js",
+          "sha256": "b2fc5a1438ac398d43cf59f52ad6691f812e398232698fb2171a8748b2417158"
+        },
+        "api": {
+          "entry": "apps/api/dist/api.mjs",
+          "sha256": "6217c496603d372a6fc80c82e9907b68dc5a5501642d1594fe630eb69df16873"
+        }
+      },
+      "checksPassed": 8,
+      "browserErrors": [],
+      "screenshots": [
+        {
+          "path": "account-entry/administrator-320.png",
+          "sha256": "6be01757463d5a48ab850dbd4c84019a7060610709c514a122b40c152dd64d50",
+          "width": 320,
+          "height": 844,
+          "includedInTrackedPacket": false
+        },
+        {
+          "path": "account-entry/administrator-390.png",
+          "sha256": "37517e42fe28e881511a0b71d0021e41eca72a3afa5b23199eb651a7eba65a96",
+          "width": 390,
+          "height": 844,
+          "includedInTrackedPacket": false
+        },
+        {
+          "path": "account-entry/manager-320.png",
+          "sha256": "34fb3f9fdbba7fbd4bf5fc043bd26a571e96385a66718387aa660549c49590f3",
+          "width": 320,
+          "height": 844,
+          "includedInTrackedPacket": true
+        },
+        {
+          "path": "account-entry/manager-390.png",
+          "sha256": "ed9ff149c81a5eb741edaa51d6e123296e44cdc5d5521c4cac196cdb4d536ea9",
+          "width": 390,
+          "height": 844,
+          "includedInTrackedPacket": true
+        },
+        {
+          "path": "account-entry/player-320.png",
+          "sha256": "488718794e60fadf6db0beaa8a50e7e8035cf2dafe4fda70671a8f84cea2535a",
+          "width": 320,
+          "height": 844,
+          "includedInTrackedPacket": false
+        },
+        {
+          "path": "account-entry/player-390.png",
+          "sha256": "db1caa06cf386fc786e2012801753ec6964e1b5d250554e07a10b895c26dda19",
+          "width": 390,
+          "height": 844,
+          "includedInTrackedPacket": false
+        },
+        {
+          "path": "account-entry/spectator-320.png",
+          "sha256": "34d7abc157bbdc0650ca4d917213165eef494734c30213139834f183fe06e878",
+          "width": 320,
+          "height": 844,
+          "includedInTrackedPacket": false
+        },
+        {
+          "path": "account-entry/spectator-390.png",
+          "sha256": "1297b2d1c8686ef6c81632428ca23265f7a9c75b29693be2eb3d47d51eefe406",
+          "width": 390,
+          "height": 844,
+          "includedInTrackedPacket": false
+        }
+      ]
+    },
+    {
+      "name": "matchday-390",
+      "passed": true,
+      "checkedAt": "2026-10-21T22:43:15.147Z",
+      "report": {
+        "path": "matchday-390/report.json",
+        "sha256": "cb9825acf45e55dfcf37541707d1302e6f6b44039e33067c67cd702290577d5d",
+        "retainedLocalSha256": "cb9825acf45e55dfcf37541707d1302e6f6b44039e33067c67cd702290577d5d",
+        "sanitized": false
+      },
+      "artifacts": {
+        "sourceRevision": "ee7cb613695b8d96388e742a60dc248277b24091",
+        "web": {
+          "entry": "/_expo/static/js/web/index-9ddd154bdda7116598b3c07d353833e3.js",
+          "sha256": "b2fc5a1438ac398d43cf59f52ad6691f812e398232698fb2171a8748b2417158"
+        },
+        "api": {
+          "entry": "apps/api/dist/api.mjs",
+          "sha256": "6217c496603d372a6fc80c82e9907b68dc5a5501642d1594fe630eb69df16873"
+        }
+      },
+      "checksPassed": 6,
+      "browserErrors": [],
+      "phoneViewport": {
+        "width": 390,
+        "height": 844
+      },
+      "pausedCheckpoint": {
+        "acceptedRevision": 12,
+        "status": "first_half_paused"
+      },
+      "acceptedRevision": 14,
+      "acceptedStatus": "first_half_running",
+      "screenshots": [
+        {
+          "path": "matchday-390/accepted-match-clock-390.png",
+          "sha256": "78cd89423d924d63a699f5560d34167e71995254cb27f5e34215ce105d0a4c0e",
+          "width": 390,
+          "height": 844,
+          "includedInTrackedPacket": true
+        },
+        {
+          "path": "matchday-390/automatic-spectator-update-390.png",
+          "sha256": "c0c31b6df83b5e87ee2162286bbc07f2e0cb5268ece98c5c8c1fbc6c45e95ead",
+          "width": 390,
+          "height": 844,
+          "includedInTrackedPacket": false
+        }
+      ]
+    },
+    {
+      "name": "matchday-320",
+      "passed": true,
+      "checkedAt": "2026-10-21T22:43:15.333Z",
+      "report": {
+        "path": "matchday-320/report.json",
+        "sha256": "200ba612250a9ac3d42384eef7020180a90714b0677f293fe70e41c80d6c6aa1",
+        "retainedLocalSha256": "200ba612250a9ac3d42384eef7020180a90714b0677f293fe70e41c80d6c6aa1",
+        "sanitized": false
+      },
+      "artifacts": {
+        "sourceRevision": "ee7cb613695b8d96388e742a60dc248277b24091",
+        "web": {
+          "entry": "/_expo/static/js/web/index-9ddd154bdda7116598b3c07d353833e3.js",
+          "sha256": "b2fc5a1438ac398d43cf59f52ad6691f812e398232698fb2171a8748b2417158"
+        },
+        "api": {
+          "entry": "apps/api/dist/api.mjs",
+          "sha256": "6217c496603d372a6fc80c82e9907b68dc5a5501642d1594fe630eb69df16873"
+        }
+      },
+      "checksPassed": 6,
+      "browserErrors": [],
+      "phoneViewport": {
+        "width": 320,
+        "height": 844
+      },
+      "pausedCheckpoint": {
+        "acceptedRevision": 12,
+        "status": "first_half_paused"
+      },
+      "acceptedRevision": 14,
+      "acceptedStatus": "first_half_running",
+      "screenshots": [
+        {
+          "path": "matchday-320/accepted-match-clock-320.png",
+          "sha256": "4c2d03da93b64abf4c8e60ac6d1e83e9c17d0cfab6b7a1ac376dfe17ce3c5662",
+          "width": 320,
+          "height": 844,
+          "includedInTrackedPacket": true
+        },
+        {
+          "path": "matchday-320/automatic-spectator-update-320.png",
+          "sha256": "d764b75aa30e58f534711324de008011b42a8a28b355b68b6997b3ef6bbfb712",
+          "width": 320,
+          "height": 844,
+          "includedInTrackedPacket": false
+        }
+      ]
+    }
+  ],
+  "visualInspection": {
+    "method": "Manually inspected all twelve saved final phone screenshots with view_image. No screenshot alteration.",
+    "observations": [
+      "All four role screens retain their complete navigation within the 844px viewport at 320px and 390px; the harness independently verifies the footer position before and after content scrolling and checks horizontal overflow.",
+      "Manager and administrator navigation differ from player/parent and spectator navigation. Role screens show Roma U10 and 2026/27; the player home names Oliver Bennett and shows availability replies.",
+      "The running match screenshots show the accepted 1–0 score, prominent remaining-half countdown, recording acknowledgement and complete manual-clock/event action rail. Summary and actions retain their measured positions while the middle content scrolls.",
+      "Spectator screenshots show accepted revision 14 and 1–0 after automatic refresh without a Refresh click. The normal default-deny entry scenario separately withholds unapproved competition scores.",
+      "No visible fictional or numbered-player labels appear in the loaded role screens; that check is also asserted by the tracked account-entry harness.",
+      "The spectator screenshot is captured at the first automatic score update and still warns that independently fetched match and report revisions differ; it withholds the related goal/award/album context while those projections are inconsistent."
+    ],
+    "limitations": [
+      "These final screenshots do not capture pitch geometry. The actual matchday journeys enter an eligible lineup through the accessible position-list alternative, and verify accepted lineup/attendance through an independent HTTP read. Pitch initials/layout source changes and original-board inspection were assessed earlier; this packet does not represent a new final pitch screenshot.",
+      "Native large text, physical-device encrypted storage, OS prompts, background timing and outdoor legibility are not established by browser screenshots.",
+      "The automatic spectator update assertion has a hard 8-second functional loopback deadline; this packet is not a mobile-network p95 performance result."
+    ]
+  },
+  "earlierFailures": {
+    "directory": ".local/visual-reaudit-70ed",
+    "scope": "Retained pre-fix and explicitly uncommitted-workingtree evidence. It is not relabelled as ee7 or substituted for these final frozen-build results.",
+    "resolvedByFinalReview": [
+      "320px administrator footer flowed below the viewport",
+      "Focused match summary/action rail lost viewport position through nested layout",
+      "First accepted demo live result lacked independent records publication approval",
+      "Temporary upload verification remounted the event editor and lost its open goal draft"
+    ],
+    "correctedDiagnosis": "The earlier suspicion that the demo flag was missing was disproved by health.demoScenario=true and the matching compiled API/policy state. The actual failure was the independent records publication projection, which was fixed with explicit demo-only initial approval plus strict current-policy revocation and classification invalidation."
+  },
+  "publication": "Sanitized repository evidence prepared from retained local reports. No database, service log, token, invitation URL, transport header or private capability is included. Four unchanged screenshots are included; all twelve inspected original screenshots retain their SHA-256 digests, with inclusion marked individually. Later commits, deployments and public availability require their own evidence.",
+  "retainedLocalSummarySha256": "458b485955b0c72c56a2488f568f65ffd54d2484edbc896077ea085cb7fce616"
+}

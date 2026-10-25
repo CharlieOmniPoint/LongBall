@@ -1,0 +1,12 @@
+$ vitest run --config apps/api/vitest.config.ts
+
+ RUN  v5.0.5 /workspace/LongBall
+
+
+ Test Files  79 passed (79)
+      Tests  475 passed | 3 skipped (478)
+   Start at  12:35:01
+   Duration  518.94s (tests 86%, import 13%)
+
+    Isolate  79 workers spawned · ~831ms startup each (spawn + environment, per file)
+             at least ~32.00s faster with isolate: false — reuses workers across files instead of one per file

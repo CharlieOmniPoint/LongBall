@@ -1,0 +1,42 @@
+{
+  "status": "passed",
+  "observedAt": "2026-10-21T10:56:50.139Z",
+  "syntheticOnly": true,
+  "versions": [
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9
+  ],
+  "featureVersions": {
+    "media": 2,
+    "activation": 2
+  },
+  "historicalMediaCheckpoint": "2026-10-21T08:53:54.914Z",
+  "archiveSha256": "95c256cdb2deaf8d954b311ec3d18d4ef3dca983eedd94e628753ed6edb84880",
+  "exactRestoredDerivativeSha256": "b0272eac7747fa4f2217c81c2388794bd32d685f7cd86ef79ffe2ad4ccf94050",
+  "protectedTables": 28,
+  "compositeForeignKeys": 23,
+  "preservedCounts": {
+    "manifests": 3,
+    "clubs": 1,
+    "seasons": 1,
+    "game_contexts": 2
+  },
+  "temporaryDatabaseCreateRevoked": true,
+  "restoredSchemaOwnerNonBypass": true,
+  "restoredApiWorkerNonBypass": true,
+  "restoredCurrentPlayerGateway": true,
+  "contextFreeDataDenied": true,
+  "foreignTeamDenied": true,
+  "workerForgedActorDenied": true,
+  "limitations": [
+    "Reuses previously processed fictional image bytes; ClamAV engine was not rerun.",
+    "Paired private object copy and custom-format archive; no encrypted offsite backup, retention, RPO or RTO claim.",
+    "Disposable proof database roles use loopback-only trust authentication; production credentials remain separate mounted secrets."
+  ]
+}

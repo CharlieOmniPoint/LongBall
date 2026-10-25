@@ -1,0 +1,165 @@
+{
+  "startedAt": "2026-10-24T22:45:57.255Z",
+  "scope": "Fresh SQLite API, separate actual report worker, compiled connected browser clients; only discovery and transport origins are rerouted to loopback. No fabricated feature DTOs.",
+  "checks": [
+    "Anonymous320px Player request selects real club/team and persists a pending request without creating account access.",
+    "Manager types4-4-2 and3-2-1, saves real revisioned formations, sees positions-only pitch, rejects wrong totals, and chooses available-squad65/35 advice.",
+    "Manager saves free-text league/FA ID, downloads genuine XLS, edits/reimports existing+new players with identities retained, and uploads/downloads an identical protected PDF.",
+    "SuperAdmin purple UI creates club/team with no Roma leakage; ClubAdmin has real cross-club denials, own-team creation, report age filtering/sorting and inherited Manager scope switching.",
+    "Scoped invitation QR creates a four-digit PIN spectator after weak-code refusal, supports logout/relogin and a second team with retained player connection; Player/Spectator both issue invitations.",
+    "Staff sees anonymous requests; Manager opposition notes persist and are Player-read-only/Spectator-denied; Player saves own FA ID and neither nonstaff role exposes Manager alert controls."
+  ],
+  "failures": [],
+  "httpFailures": [
+    {
+      "stage": "SuperAdmin and ClubAdmin club scopes",
+      "route": "/v1/administration",
+      "method": "POST",
+      "status": 404,
+      "code": "NOT_FOUND",
+      "expected": true
+    },
+    {
+      "stage": "SuperAdmin and ClubAdmin club scopes",
+      "route": "/v1/clubs/b5110c8c-9428-476b-b7ef-235fe04fdc15/reports",
+      "method": "GET",
+      "status": 404,
+      "code": "NOT_FOUND",
+      "expected": true
+    },
+    {
+      "stage": "SuperAdmin and ClubAdmin club scopes",
+      "route": "/v1/teams/47742ac6-eb0b-4c8c-8e73-6e16110bc90c/preparation",
+      "method": "GET",
+      "status": 404,
+      "code": "NOT_FOUND",
+      "expected": true
+    },
+    {
+      "stage": "Spectator invitation registration and weak PIN",
+      "route": "/v1/teams/synthetic-roma-u10/opposition-reviews",
+      "method": "GET",
+      "status": 404,
+      "code": "NOT_FOUND",
+      "expected": true
+    },
+    {
+      "stage": "Spectator invitation registration and weak PIN",
+      "route": "/v1/teams/synthetic-roma-u10/team-sheet",
+      "method": "GET",
+      "status": 404,
+      "code": "NOT_FOUND",
+      "expected": true
+    }
+  ],
+  "apiWindows": [
+    {
+      "accountId": "synthetic-account-manager-2",
+      "started": 1792881963521,
+      "attempts": 66,
+      "mutations": 3
+    },
+    {
+      "accountId": "synthetic-account-manager-3",
+      "started": 1792881968970,
+      "attempts": 84,
+      "mutations": 4
+    },
+    {
+      "accountId": "synthetic-account-manager-3",
+      "started": 1792882030039,
+      "attempts": 59,
+      "mutations": 4
+    },
+    {
+      "accountId": "synthetic-account-admin",
+      "started": 1792882032537,
+      "attempts": 68,
+      "mutations": 3
+    },
+    {
+      "accountId": "synthetic-account-club-admin",
+      "started": 1792882037575,
+      "attempts": 62,
+      "mutations": 3
+    },
+    {
+      "accountId": "2a92de4e-4c17-41c8-bfd4-5c411f3c614c",
+      "started": 1792882045977,
+      "attempts": 55,
+      "mutations": 5
+    },
+    {
+      "accountId": "synthetic-account-player-01",
+      "started": 1792882051271,
+      "attempts": 52,
+      "mutations": 2
+    }
+  ],
+  "passed": true,
+  "nativeDeviceEvidence": false,
+  "paidServicesProvisioned": false,
+  "source": {
+    "gitHead": "194e6cf3407071f1c9011654aef81718f05d649e",
+    "workingTreeDirty": false,
+    "harnessSha256": "d42cdec558bef8fd38fe1ee4eee705c00ffe4db51bb3fcac3dfed7c40b962091",
+    "webIndexSha256": "f15b8f1b45500c6a8119f33b51ab6b285f033e07aba4a91ac20b55853014feef",
+    "webJavaScriptSha256": "289258d42b21fc155fa24526d0e397f7d4bfc159d85a4e6e7ca7368f8c84ea22",
+    "apiBundleSha256": "4aa4b31b3235911156b6dcd412e9fef9d3a2e893699e313ccb8e9d888d01e859",
+    "workerBundleSha256": "a2fef0d79f7657dd45fae2aed4d2f32a445d38fd6f02f8bffaedf343950a938a"
+  },
+  "formations": {
+    "format11Saved": true,
+    "invalidTotalBlocked": true,
+    "format7Versioned": true,
+    "playerTextAbsent": true,
+    "availableSquadAdviceChosen": true,
+    "receivedActualSave": true
+  },
+  "roster": {
+    "actualOleXlsBytes": 38400,
+    "downloadedSha256": "6fe5ba27f7a18cd889eff6fa87f796087eb44f991aa69d049fc8012814920ecf",
+    "updatedExistingIdentity": true,
+    "newProfiles": 1,
+    "managerFaIdPersisted": true,
+    "optionalLeaguePersisted": true,
+    "pdfRoundTripExact": true,
+    "managerAudioSettingsPersisted": true
+  },
+  "administration": {
+    "superPurple": true,
+    "clubCreated": true,
+    "teamCreatedEmpty": true,
+    "superInheritedManagerInvites": true,
+    "clubCreationDenied": true,
+    "crossClubReportAndManagerDenied": true,
+    "clubTeamCreated": true,
+    "reportAgeFilterAndSort": true,
+    "inheritedManagerScopeSelected": true
+  },
+  "invitations": {
+    "managerIssuedScopedLink": true,
+    "locallyRenderedQr": true,
+    "emailComposerOptionPresentNotSent": true,
+    "weakPinBlockedBeforePost": true,
+    "registeredPinAccount": true,
+    "signOutReturnsOrdinaryPinForm": true,
+    "persistedPinLogin": true,
+    "spectatorBlue": true,
+    "spectatorInvitesEnabled": true,
+    "secondTeamAcceptedWithoutNewAccount": true,
+    "playerFollowPreferenceRetained": true,
+    "playerInvitesEnabled": true,
+    "anonymousRequestVisibleToStaff": true,
+    "ownFaIdSaved": true,
+    "oppositionManagerWritePlayerReadSpectatorDenied": true,
+    "privateTeamSheetSpectatorDenied": true
+  },
+  "artifactsStableBeforeAfter": true,
+  "apiRateLimitsUnchanged": {
+    "ordinary": 120,
+    "mutations": 60
+  },
+  "audioHardwareBoundary": "No hardware sound, OS volume, background delivery or native installation is claimed. Active-match countdown needs separate actual matchday evidence.",
+  "completedAt": "2026-10-24T22:47:34.486Z"
+}

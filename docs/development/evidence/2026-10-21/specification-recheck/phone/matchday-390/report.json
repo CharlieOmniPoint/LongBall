@@ -1,0 +1,36 @@
+{
+  "passed": true,
+  "phoneViewport": {
+    "width": 390,
+    "height": 844
+  },
+  "checkedAt": "2026-10-21T22:43:15.147Z",
+  "artifacts": {
+    "sourceRevision": "ee7cb613695b8d96388e742a60dc248277b24091",
+    "web": {
+      "entry": "/_expo/static/js/web/index-9ddd154bdda7116598b3c07d353833e3.js",
+      "sha256": "b2fc5a1438ac398d43cf59f52ad6691f812e398232698fb2171a8748b2417158"
+    },
+    "api": {
+      "entry": "apps/api/dist/api.mjs",
+      "sha256": "6217c496603d372a6fc80c82e9907b68dc5a5501642d1594fe630eb69df16873"
+    }
+  },
+  "checks": [
+    "Opening an unprepared fixture cannot claim its controller; saved formation and player snapshots are required first.",
+    "Selected manager account downloads the real service fixture, explicitly claims recording, and records actual attendance through the shared editor.",
+    "A complete eligible staged lineup is saved locally; the independent service read remains unchanged before explicit upload.",
+    "The focused match hides team navigation; Back to team and return preserve the running clock without another event. Explicit kickoff and referee pause use the existing confirmation, journal and canonical upload; an independent HTTP read verifies accepted attendance, lineup, time and unchanged score. Fixed score/countdown and action rail stay visible while match details scroll.",
+    "An open penalty goal draft retains its selection and original paused capture time while a resumed-clock event is uploaded and its verified snapshot installed; only the later explicit goal confirmation records it.",
+    "A second spectator browser sees no locally queued goal, then receives its accepted score automatically without clicking Refresh. This is a functional loopback observation, not a mobile-network p95 benchmark."
+  ],
+  "pausedCheckpoint": {
+    "acceptedRevision": 12,
+    "status": "first_half_paused"
+  },
+  "acceptedRevision": 14,
+  "acceptedStatus": "first_half_running",
+  "browserErrors": [],
+  "fixture": "Isolated fictional SQLite; transport-only discovery redirect; actual HTTP commands, no state injection",
+  "nativeDeviceEvidence": false
+}

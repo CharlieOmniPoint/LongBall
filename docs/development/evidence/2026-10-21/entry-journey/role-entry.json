@@ -1,0 +1,373 @@
+{
+  "passed": true,
+  "serviceDiscovery": "Pinned status and tunnel requests routed to isolated local fictional HTTP service; no production identity simulation",
+  "checks": [
+    {
+      "role": "manager",
+      "width": 320,
+      "passed": true,
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/health",
+          "role": null
+        },
+        {
+          "method": "GET",
+          "path": "/v1/me",
+          "role": null
+        },
+        {
+          "method": "GET",
+          "path": "/v1/me",
+          "role": "manager"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/teams/synthetic-roma-u10/community?seasonId=synthetic-season-2026-27",
+          "role": "manager"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/teams/synthetic-roma-u10/records?seasonId=synthetic-season-2026-27",
+          "role": "manager"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/teams/synthetic-roma-u10/branding?seasonId=synthetic-season-2026-27",
+          "role": "manager"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/teams/synthetic-roma-u10/matches?seasonId=synthetic-season-2026-27",
+          "role": "manager"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/teams/synthetic-roma-u10/seasons/rollover-options?seasonId=synthetic-season-2026-27",
+          "role": "manager"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/teams/synthetic-roma-u10/preparation?seasonId=synthetic-season-2026-27",
+          "role": "manager"
+        }
+      ]
+    },
+    {
+      "role": "administrator",
+      "width": 320,
+      "passed": true,
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/health",
+          "role": null
+        },
+        {
+          "method": "GET",
+          "path": "/v1/me",
+          "role": null
+        },
+        {
+          "method": "GET",
+          "path": "/v1/me",
+          "role": "administrator"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/teams/synthetic-roma-u10/branding?seasonId=synthetic-season-2026-27",
+          "role": "administrator"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/teams/synthetic-roma-u10/seasons/rollover-options?seasonId=synthetic-season-2026-27",
+          "role": "administrator"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/teams/synthetic-roma-u10/configuration?seasonId=synthetic-season-2026-27",
+          "role": "administrator"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/teams/synthetic-roma-u10/managers?seasonId=synthetic-season-2026-27",
+          "role": "administrator"
+        }
+      ]
+    },
+    {
+      "role": "player",
+      "width": 320,
+      "passed": true,
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/health",
+          "role": null
+        },
+        {
+          "method": "GET",
+          "path": "/v1/me",
+          "role": null
+        },
+        {
+          "method": "GET",
+          "path": "/v1/me",
+          "role": "player"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/teams/synthetic-roma-u10/community?seasonId=synthetic-season-2026-27",
+          "role": "player"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/teams/synthetic-roma-u10/records?seasonId=synthetic-season-2026-27",
+          "role": "player"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/teams/synthetic-roma-u10/branding?seasonId=synthetic-season-2026-27",
+          "role": "player"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/teams/synthetic-roma-u10/matches?seasonId=synthetic-season-2026-27",
+          "role": "player"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/teams/synthetic-roma-u10/preparation/own?seasonId=synthetic-season-2026-27",
+          "role": "player"
+        }
+      ]
+    },
+    {
+      "role": "spectator",
+      "width": 320,
+      "passed": true,
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/health",
+          "role": null
+        },
+        {
+          "method": "GET",
+          "path": "/v1/me",
+          "role": null
+        },
+        {
+          "method": "GET",
+          "path": "/v1/me",
+          "role": "spectator"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/teams/synthetic-roma-u10/community?seasonId=synthetic-season-2026-27",
+          "role": "spectator"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/teams/synthetic-roma-u10/records?seasonId=synthetic-season-2026-27",
+          "role": "spectator"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/teams/synthetic-roma-u10/branding?seasonId=synthetic-season-2026-27",
+          "role": "spectator"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/teams/synthetic-roma-u10/matches?seasonId=synthetic-season-2026-27",
+          "role": "spectator"
+        }
+      ]
+    },
+    {
+      "role": "manager",
+      "width": 390,
+      "passed": true,
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/health",
+          "role": null
+        },
+        {
+          "method": "GET",
+          "path": "/v1/me",
+          "role": null
+        },
+        {
+          "method": "GET",
+          "path": "/v1/me",
+          "role": "manager"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/teams/synthetic-roma-u10/community?seasonId=synthetic-season-2026-27",
+          "role": "manager"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/teams/synthetic-roma-u10/records?seasonId=synthetic-season-2026-27",
+          "role": "manager"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/teams/synthetic-roma-u10/branding?seasonId=synthetic-season-2026-27",
+          "role": "manager"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/teams/synthetic-roma-u10/matches?seasonId=synthetic-season-2026-27",
+          "role": "manager"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/teams/synthetic-roma-u10/seasons/rollover-options?seasonId=synthetic-season-2026-27",
+          "role": "manager"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/teams/synthetic-roma-u10/preparation?seasonId=synthetic-season-2026-27",
+          "role": "manager"
+        }
+      ]
+    },
+    {
+      "role": "administrator",
+      "width": 390,
+      "passed": true,
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/health",
+          "role": null
+        },
+        {
+          "method": "GET",
+          "path": "/v1/me",
+          "role": null
+        },
+        {
+          "method": "GET",
+          "path": "/v1/me",
+          "role": "administrator"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/teams/synthetic-roma-u10/branding?seasonId=synthetic-season-2026-27",
+          "role": "administrator"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/teams/synthetic-roma-u10/seasons/rollover-options?seasonId=synthetic-season-2026-27",
+          "role": "administrator"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/teams/synthetic-roma-u10/configuration?seasonId=synthetic-season-2026-27",
+          "role": "administrator"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/teams/synthetic-roma-u10/managers?seasonId=synthetic-season-2026-27",
+          "role": "administrator"
+        }
+      ]
+    },
+    {
+      "role": "player",
+      "width": 390,
+      "passed": true,
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/health",
+          "role": null
+        },
+        {
+          "method": "GET",
+          "path": "/v1/me",
+          "role": null
+        },
+        {
+          "method": "GET",
+          "path": "/v1/me",
+          "role": "player"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/teams/synthetic-roma-u10/community?seasonId=synthetic-season-2026-27",
+          "role": "player"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/teams/synthetic-roma-u10/records?seasonId=synthetic-season-2026-27",
+          "role": "player"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/teams/synthetic-roma-u10/branding?seasonId=synthetic-season-2026-27",
+          "role": "player"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/teams/synthetic-roma-u10/matches?seasonId=synthetic-season-2026-27",
+          "role": "player"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/teams/synthetic-roma-u10/preparation/own?seasonId=synthetic-season-2026-27",
+          "role": "player"
+        }
+      ]
+    },
+    {
+      "role": "spectator",
+      "width": 390,
+      "passed": true,
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/health",
+          "role": null
+        },
+        {
+          "method": "GET",
+          "path": "/v1/me",
+          "role": null
+        },
+        {
+          "method": "GET",
+          "path": "/v1/me",
+          "role": "spectator"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/teams/synthetic-roma-u10/community?seasonId=synthetic-season-2026-27",
+          "role": "spectator"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/teams/synthetic-roma-u10/records?seasonId=synthetic-season-2026-27",
+          "role": "spectator"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/teams/synthetic-roma-u10/branding?seasonId=synthetic-season-2026-27",
+          "role": "spectator"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/teams/synthetic-roma-u10/matches?seasonId=synthetic-season-2026-27",
+          "role": "spectator"
+        }
+      ]
+    }
+  ],
+  "runtimeErrors": []
+}

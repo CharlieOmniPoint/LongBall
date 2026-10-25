@@ -1,0 +1,53 @@
+$ vitest run --config apps/api/vitest.config.ts
+
+ RUN  v5.0.5 /workspace/LongBall
+
+ ❯ apps/api/src/postgres-spectator-activation.test.ts (5 tests | 5 skipped) 33844ms
+ ❯ apps/api/src/server.test.ts (30 tests | 1 failed) 36490ms
+   ❯ durable preparation, records, community and own privacy requests (14)
+     × creates a new canonical match from its prepared snapshot and never overwrites a claimed stream 32488ms
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  apps/api/src/postgres-spectator-activation.test.ts > actual restricted PostgreSQL spectator activation
+error: canceling statement due to statement timeout
+ ❯ node_modules/.pnpm/pg@8.23.1/node_modules/pg/lib/client.js:694:17
+ ❯ apps/api/src/pg.ts:146:7
+    144|       const schema = await this.query<{ namespace: string | null }>("S…
+    145|       if (!schema.rows[0]?.namespace) await this.query('CREATE SCHEMA …
+    146|       await this.query('CREATE TABLE IF NOT EXISTS longball.schema_mig…
+       |       ^
+    147|       const versions = await this.query<{ version: number }>('SELECT v…
+    148|       if (versions.rows.some(row => row.version > 12)) throw new Error…
+ ❯ PgDatabase.inTransaction apps/api/src/pg.ts:114:22
+ ❯ PgDatabase.migrate apps/api/src/pg.ts:143:5
+ ❯ apps/api/src/postgres-spectator-activation.test.ts:102:7
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  apps/api/src/server.test.ts > durable preparation, records, community and own privacy requests > creates a new canonical match from its prepared snapshot and never overwrites a claimed stream
+Error: Test timed out in 30000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ apps/api/src/server.test.ts:340:3
+    338|     expect((await client.call(`${teamUrl}/preparation/own`, { token: '…
+    339|   });
+    340|   it('creates a new canonical match from its prepared snapshot and nev…
+       |   ^
+    341|     const client = await start(); let revision = 0;
+    342|     const profileIds = Array.from({ length: 9 }, (_, index) => `synthe…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  2 failed | 29 passed (31)
+      Tests  1 failed | 214 passed | 5 skipped (220)
+   Start at  16:07:22
+   Duration  153.57s (tests 93%, import 6%, transform 1%)
+
+    Isolate  31 workers spawned · ~819ms startup each (spawn + environment, per file)
+             at least ~11.87s faster with isolate: false — reuses workers across files instead of one per file
+
+[ELIFECYCLE] Command failed with exit code 1.

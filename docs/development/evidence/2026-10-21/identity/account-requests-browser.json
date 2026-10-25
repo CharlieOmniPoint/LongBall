@@ -1,0 +1,23 @@
+{
+  "verifiedAt": "2026-10-21T09:59:43.176Z",
+  "actualBrowser": "155.0.8059.79",
+  "width": 320,
+  "checks": [
+    "Isolated Chromium trusts the exact local CA with normal certificate validation",
+    "Real provider password/TOTP setup and PKCE browser return establish the API-verified account without vault injection",
+    "Global account request shows the own-membership list and requires explicit all-memberships confirmation",
+    "Phone-width UI blocks blind retry and reuses the exact original body/key after fresh status and renewed confirmation",
+    "Selected team-season leave UI resolves a lost committed response from status without another POST",
+    "320px request layout retains honest pending status without horizontal overflow or application page errors"
+  ],
+  "actualOidcPkce": true,
+  "certificateValidationDisabled": false,
+  "privateVaultInjected": false,
+  "responseLossInjected": true,
+  "physicalDeviceTested": false,
+  "fulfilled": false,
+  "erased": false,
+  "reviewBuildAsset": "index-a3ec3741c511df6df4452e267ddf4e1c.js",
+  "providerVersion": "Keycloak 26.8.1 fictional loopback trial",
+  "database": "Dedicated fictional longball_identity_trial using restricted runtime role"
+}

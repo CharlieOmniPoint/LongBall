@@ -1,0 +1,36 @@
+{
+  "status": "passed",
+  "checkedAt": "2026-10-21T10:50:38.548Z",
+  "url": "https://charlieomnipoint.github.io/LongBall/",
+  "viewport": "390x844",
+  "paused": "Resume clock",
+  "script": "/LongBall/_expo/static/js/web/index-1f994eab9ecd0cbe816e06ec65de3984.js",
+  "defaultApi": "",
+  "guardResults": [
+    {
+      "address": "",
+      "message": "This static review link has no connected API. Paste the separate absolute HTTP(S) service address.",
+      "workspaceSessions": 0
+    },
+    {
+      "address": "/",
+      "message": "This static review link has no connected API. Paste the separate absolute HTTP(S) service address.",
+      "workspaceSessions": 0
+    },
+    {
+      "address": "https://charlieomnipoint.github.io",
+      "message": "This address is the static review host, which has no API. Use the separately supplied service address or temporary full-API review link.",
+      "workspaceSessions": 0
+    }
+  ],
+  "faults": [],
+  "badResponses": [],
+  "overflow": false,
+  "nativeDeviceEvidence": false,
+  "hostedDeploymentProved": true,
+  "sourceCommit": "79cbc724d5cc63a8331b5f10eeabe6f5d2c3fc4e",
+  "workflowRun": 39582847164,
+  "successfulDeployJob": 119179512363,
+  "ownerConfiguration": "GitHub Actions Pages source and exact preview/longball-m0 environment branch rule",
+  "connectedBackendIncluded": false
+}

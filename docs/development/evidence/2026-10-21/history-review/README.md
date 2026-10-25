@@ -1,0 +1,15 @@
+# Extended browser and canonical HTTP evidence
+
+Run `20261021091850213` passed all five journeys in one execution with zero browser runtime errors, using a 390×844 phone viewport and isolated fictional SQLite APIs on ports4320/4321. The existing production-trial listener on4310 was left untouched. The harness now waits for its own child listener, requires `health.syntheticOnly === true` and an initial accepted revision of0 before performing mutations; it waits for the protected reschedule receipt and refreshed UI before switching tabs.
+
+- Web entry: `index-4108b23540176f94638dc263073b3912.js`; SHA256 `7136f6d6f2ce9207f943e8d2b034fd43feb0f06edb14efd3620925b02e036c7e`.
+- API bundle: `apps/api/dist/api.mjs`; SHA256 `0ab39063e4bc217333a15f121fd49ade321eaf07e986ddb41bac18e2ef8a3697`.
+- Reproduction: `LONGBALL_REVIEW_API_URL=http://127.0.0.1:4320 LONGBALL_REVIEW_CONTROL_API_URL=http://127.0.0.1:4321 node scripts/connected-review.mjs` with this web bundle served on4173.
+
+The primary journey committed21 original match events, then an explicitly reviewed missing first-half substitution and an audited correction to its actual boundary. Read-only inspection confirms accepted revision23, 25:03 +25:00 active halves, five minutes of excluded pause, score3–0, and21,021,000 occupied player milliseconds. Every selected player partitions the3,003,000 active milliseconds exactly. Original event history, actual second-half starting allocations and completion time remain retained; the accepted correction audit actor is service-bound.
+
+The handover journey retained27 accepted and9 quarantined events across epochs1–4 without resetting device sequence. It performed an explicitly fictional clock exchange, verified the receipt persisted and subsequent envelopes referenced its challenge, then verified a new epoch clears active proof while retaining its receipt history. A disputed-history proposal survived a committed-but-lost response, page reload and exact-key/body retry without duplicate proposals. It remains `prepared`; original submissions and accepted play are unchanged, and final apply returns `503 Q08_AUTHORITY_UNAPPROVED`.
+
+Other journeys passed service fixture creation/reschedule with stable identity, summary-only historical results, own-player RSVP distinct from attendance, invitation privacy/Q21 withholding, private upload failing closed with `SCANNER_REQUIRED`, and protected workspace outbox response-loss/reload/exact retry with no duplicate fixture/history. Screenshots show participation review and retained reconciliation evidence.
+
+This is fictional browser/HTTP evidence. It does not prove native clock continuity, phone reboot recovery, SQLCipher, background alerts, lock-screen behavior, actual identity-provider sign-in, antivirus operation or approved production authority/sharing policy. The control API clock policy is an explicit test fixture, not a product-policy approval. The separate real HTTP client clock test follows a retained mapping through a queued full-time event to server-derived finish evidence under another explicitly fictional clock policy.

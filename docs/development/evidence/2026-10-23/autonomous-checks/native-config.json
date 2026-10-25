@@ -1,0 +1,17 @@
+{
+  "passed": true,
+  "checks": [
+    "Production evaluated iOS ATS and Android manifest refuse cleartext/local exceptions",
+    "Production strips Expo discovery/generated schemes and disables default dev menu/tools",
+    "Production/development APNs environment follows build profile without signing/provisioning",
+    "Explicit fictional/development trial keeps its recorded dev-client behavior",
+    "Both profiles retain app identity, SQLCipher, backup protections, biometrics, local module and notifications",
+    "Static trial source and explicit local-only notification/operator options are preserved"
+  ],
+  "sourceAppJsonSha256": "1d942ff7c29012b86f04a50d066bf66e2c59a0e1644c495802470a6c2625e00d",
+  "evaluated": {
+    "production": "5d11c1f019eda15e24c0f940e517236130a7aa863688e65bbbcf27bc4f24ddfe",
+    "development": "4fc26daabeb2537340414e0dfde75375bd270e3cfd612c80015ae0c20e39770a"
+  },
+  "scope": "Evaluated build configuration only; native Release signing, compilation, runtime and delivery are separate proof."
+}

@@ -1,0 +1,69 @@
+{
+  "pinnedSource": "aeefdbf5f9bacc3462924af3528f9597f725d4bd",
+  "startedAt": "2026-10-24T22:21:02.116400+00:00",
+  "finishedAt": "2026-10-24T22:22:28.767303+00:00",
+  "exitCode": 0,
+  "assetsUnchanged": true,
+  "apiByteIdenticalToPinned": true,
+  "before": {
+    "webIndex": {
+      "path": ".local/cloud-preview-build/aeefdbf5f9bacc3462924af3528f9597f725d4bd/site/index.html",
+      "sha256": "f15b8f1b45500c6a8119f33b51ab6b285f033e07aba4a91ac20b55853014feef",
+      "bytes": 1290
+    },
+    "webJavaScript": {
+      "path": ".local/cloud-preview-build/aeefdbf5f9bacc3462924af3528f9597f725d4bd/site/_expo/static/js/web/index-311d2e11675cb4706a9b29aedb66b654.js",
+      "sha256": "289258d42b21fc155fa24526d0e397f7d4bfc159d85a4e6e7ca7368f8c84ea22",
+      "bytes": 2312472
+    },
+    "apiBundle": {
+      "path": "apps/api/dist/api.mjs",
+      "sha256": "72041fadfbd4003d1287fde613955517ebf9ddb80fd99f3c2706a580424064e3",
+      "bytes": 3769522
+    },
+    "pinnedApiBundle": {
+      "path": ".local/cloud-preview-build/aeefdbf5f9bacc3462924af3528f9597f725d4bd/backend/api.mjs",
+      "sha256": "72041fadfbd4003d1287fde613955517ebf9ddb80fd99f3c2706a580424064e3",
+      "bytes": 3769522
+    },
+    "harness": {
+      "path": "scripts/tablet-review.mjs",
+      "sha256": "4f7d1812e443dd1c4c5df35658ed3cc06ea4248862e949ce7bedd9257be60f93",
+      "bytes": 43866
+    }
+  },
+  "after": {
+    "webIndex": {
+      "path": ".local/cloud-preview-build/aeefdbf5f9bacc3462924af3528f9597f725d4bd/site/index.html",
+      "sha256": "f15b8f1b45500c6a8119f33b51ab6b285f033e07aba4a91ac20b55853014feef",
+      "bytes": 1290
+    },
+    "webJavaScript": {
+      "path": ".local/cloud-preview-build/aeefdbf5f9bacc3462924af3528f9597f725d4bd/site/_expo/static/js/web/index-311d2e11675cb4706a9b29aedb66b654.js",
+      "sha256": "289258d42b21fc155fa24526d0e397f7d4bfc159d85a4e6e7ca7368f8c84ea22",
+      "bytes": 2312472
+    },
+    "apiBundle": {
+      "path": "apps/api/dist/api.mjs",
+      "sha256": "72041fadfbd4003d1287fde613955517ebf9ddb80fd99f3c2706a580424064e3",
+      "bytes": 3769522
+    },
+    "pinnedApiBundle": {
+      "path": ".local/cloud-preview-build/aeefdbf5f9bacc3462924af3528f9597f725d4bd/backend/api.mjs",
+      "sha256": "72041fadfbd4003d1287fde613955517ebf9ddb80fd99f3c2706a580424064e3",
+      "bytes": 3769522
+    },
+    "harness": {
+      "path": "scripts/tablet-review.mjs",
+      "sha256": "4f7d1812e443dd1c4c5df35658ed3cc06ea4248862e949ce7bedd9257be60f93",
+      "bytes": 43866
+    }
+  },
+  "passed": true,
+  "viewportJourneys": 36,
+  "checkGroups": 2,
+  "report": "../quality/tablet-review/report.json",
+  "log": "tablet-final-pinned.log",
+  "initialBootstrapAttempt": "tablet-final-bootstrap-dependencies.json",
+  "nativeDeviceEvidence": false
+}

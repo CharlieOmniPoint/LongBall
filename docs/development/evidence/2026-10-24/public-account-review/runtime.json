@@ -1,0 +1,125 @@
+{
+  "observedAt": "2026-10-24T10:27:20.678Z",
+  "repository": "CharlieOmniPoint/LongBall",
+  "purpose": "Read-only monitoring of the owner-approved expired-demo renewal for later live account checks.",
+  "renewal": {
+    "transportCommit": "c8400d2db240770c5f93669322fe33b6ce0ffeb7",
+    "productSourceCommit": "e2bf5a6744fbcdebd832d2d4e8795641d9d4488d",
+    "changedPaths": [
+      "preview/review-renewal.json"
+    ],
+    "onlyRenewalMarkerChanged": true,
+    "markerRequestedAt": "2026-10-24T10:23:21Z",
+    "markerPurpose": "Owner-approved public account verification",
+    "boundedReviewHours": 5
+  },
+  "workflow": {
+    "runId": 40085713495,
+    "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40085713495",
+    "name": "LongBall temporary demo service",
+    "event": "push",
+    "status": "in_progress",
+    "conclusion": null,
+    "expectedLongRunningServe": true,
+    "job": {
+      "id": 120848100135,
+      "name": "review",
+      "status": "in_progress",
+      "conclusion": null,
+      "currentStep": "Serve the demo for a bounded five-hour review",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Use the pinned Node runtime",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Install the isolated decoder runtime",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Build the pinned maintained HEIC runtime",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Serve the demo for a bounded five-hour review",
+          "status": "in_progress",
+          "conclusion": null
+        },
+        {
+          "name": "Post Use the pinned Node runtime",
+          "status": "pending",
+          "conclusion": null
+        },
+        {
+          "name": "Post Run actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803",
+          "status": "pending",
+          "conclusion": null
+        }
+      ]
+    },
+    "failedSteps": []
+  },
+  "publishedReadiness": {
+    "state": "ready",
+    "url": "https://secrets-proposals-cup-horse.trycloudflare.com",
+    "sourceRevision": "c8400d2db240770c5f93669322fe33b6ce0ffeb7",
+    "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40085713495",
+    "startedAt": "2026-10-24T10:26:31Z",
+    "expiresAt": "2026-10-24T15:26:31Z",
+    "audience": "LongBall demo review with simulated Roma U10 teams and matches",
+    "statusGitBlobSha": "28312f3a34ab6542212b60dcf645138ef6186b1c",
+    "source": "GitHub preview/longball-m0 preview-status.json",
+    "matchesCurrentRenewal": true,
+    "readyMarkerObservedAt": "2026-10-24T10:26:33.647Z"
+  },
+  "sourceMetadata": {
+    "sourceHeadFile": {
+      "path": "preview/source-head.txt",
+      "gitBlobSha": "e43f1182ef0516860499a9f6c9f420ed1ac72473",
+      "sourceCommit": "e2bf5a6744fbcdebd832d2d4e8795641d9d4488d"
+    },
+    "siteBuildInfo": {
+      "path": "site/build-info.json",
+      "gitBlobSha": "a44dbff970d7790857cbf6b405c0621ffc0041c5",
+      "sourceCommit": "e2bf5a6744fbcdebd832d2d4e8795641d9d4488d",
+      "synthetic": true,
+      "production": false
+    },
+    "method": "Read-only exact-transport GitHub file reads and local Git name-only diff against the renewal parent; no application source was changed."
+  },
+  "previousExpiredStatus": {
+    "url": "https://nose-tale-office-holly.trycloudflare.com",
+    "transportCommit": "2fd2fe8ee8107b589ff462b0351c50db4a4e533e",
+    "runId": 40034161171,
+    "startedAt": "2026-10-23T22:35:29Z",
+    "expiresAt": "2026-10-24T03:35:29Z",
+    "usedAsCurrentReadyUrl": false
+  },
+  "observerLimits": {
+    "directPublicHealthRequestPerformed": false,
+    "browserSessionsOpened": false,
+    "liveAccountAuthenticationPerformed": false,
+    "credentialsReadOrSaved": false,
+    "artifactDownloads": false,
+    "workflowMutations": false,
+    "workflowRetries": false,
+    "nativeRebuildRequested": false,
+    "sourceEdits": false,
+    "paidServicesProvisioned": false,
+    "onlyWrittenFile": ".local/public-auth-2026-10-24/runtime-observed.json",
+    "note": "Readiness is the matching workflow-published marker and current nonfailed serving step. The five-hour job has not completed; live account and browser checks are outside this observer task."
+  }
+}

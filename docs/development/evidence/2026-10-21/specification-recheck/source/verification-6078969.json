@@ -1,0 +1,184 @@
+{
+  "sourceCommit": "60789694c89dd4bc8aa5902ddb984dc84f6cba45",
+  "sourceTree": "cd0f9877c1cdaa71de5e2250342125f1c0437784",
+  "recordedAt": "2026-10-21T23:20:43.458681+00:00",
+  "status": "passed",
+  "checks": {
+    "unit": {
+      "passed": 742,
+      "failed": 0,
+      "skipped": 0,
+      "files": 82,
+      "wallSeconds": 22.029,
+      "reportSha256": "c0d78a99937618a6dc198f2de695b8e18e3bc76c33abbacdf60e8fdbf6f26551"
+    },
+    "api": {
+      "passed": 380,
+      "failed": 0,
+      "skipped": 0,
+      "files": 58,
+      "wallSeconds": 314.03,
+      "reportSha256": "80845ed43abd894223ae240051fba69fb19e4393a4690ff471b68472ba7b68da"
+    },
+    "lint": {
+      "status": "passed",
+      "logSha256": "050c69da23536758722729aeda55a8d0fb9d557495ef6d33d70873a3b64a71c1"
+    },
+    "typecheck": {
+      "status": "passed",
+      "logSha256": "70f9aa17735dd144f3b43011d5effa29478a36ed43cc4811cf9e81c9775af59e"
+    },
+    "migrations": {
+      "status": "passed",
+      "logSha256": "7d461585930e0ff934d50c542363efc26f281a41b3d4a3e247fc24c7491aa4d9",
+      "passed": 24
+    },
+    "contracts": {
+      "status": "passed",
+      "logSha256": "d63b6c3472cd1994e167fc022d5558a93a919714b9e1b5bd1280a0eae44efbe1"
+    },
+    "source-publication": {
+      "status": "passed",
+      "logSha256": "de2b8f399de16c2db88ada2d53f21c5ca5dc445b69765a7ea8fe263d8492e246",
+      "passed": 1
+    },
+    "fixtures": {
+      "status": "passed",
+      "logSha256": "6240212c41c1cd50f200f32927a3417fa2b2fd5c2043e45b43e93dff1dbff33d"
+    },
+    "node-boundaries": {
+      "status": "passed",
+      "logSha256": "7c606afc74005c7ae8b257a6880601349d8059f479cbf23e76ac95a2c0993633",
+      "passed": 3
+    },
+    "native-build": {
+      "status": "passed",
+      "logSha256": "761f533f048dffee6ecd07241560cff34c35e731b7587fc5c7d70b2bdec18c6f"
+    },
+    "web-build": {
+      "status": "passed",
+      "logSha256": "dc55a9cc15961ae9c02eab221143d402f5b4aa5b0745eedda8127d277f4fa399"
+    },
+    "api-build": {
+      "status": "passed",
+      "logSha256": "1b47b58331fac6e2c1dfba3a94e8d32ee0f07c4470a99ce23a3b3e185335c545"
+    },
+    "operational-build": {
+      "status": "passed",
+      "logSha256": "50e5df94c1ae1f49b401d82c3dc9f7099d6f74651f50d03db409ab35e97c3cec"
+    },
+    "operational": {
+      "status": "passed",
+      "observedAt": "2026-10-21T23:19:42.551Z",
+      "protectedTables": 38,
+      "schemaVersions": [
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16
+      ],
+      "execution": "host-bundled-operational-proof",
+      "reportSha256": "f9357c59b25bdedbd3690b1063b0eeb61d79271a2406fc9e864b5139b7f31f83"
+    }
+  },
+  "scope": "Serial source checks and host-bundled operational restore; native JavaScript exports are not native compilation or device execution.",
+  "executionNote": "Original shell657555 continued across exec-server reconnection; unit/API JSON and downstream set-e outputs verified. Earlier ee7 restore harness failure retained separately.",
+  "artifacts": [
+    {
+      "path": "apps/mobile/dist-web/_expo/static/js/web/index-9ddd154bdda7116598b3c07d353833e3.js",
+      "bytes": 1534359,
+      "sha256": "b2fc5a1438ac398d43cf59f52ad6691f812e398232698fb2171a8748b2417158"
+    },
+    {
+      "path": "apps/mobile/dist-web/index.html",
+      "bytes": 1290,
+      "sha256": "f7606ed37b35e4f89b8b5e997a93d1c9ad534810f04f7fdf665a5faf2684f1a3"
+    },
+    {
+      "path": "apps/mobile/dist-web/metadata.json",
+      "bytes": 49,
+      "sha256": "aa5f19cc84d41c0f8c70ececb2bc82e863227ea1e121632aca879eb616056991"
+    },
+    {
+      "path": "apps/mobile/dist/_expo/static/js/android/index-16fb30ee131a9dd89df1c9bf7ad0af91.hbc",
+      "bytes": 3824248,
+      "sha256": "e6e05b440bfd90c088fa9dc99b449e80c87bcf1829199c168617629db8ee3b0d"
+    },
+    {
+      "path": "apps/mobile/dist/_expo/static/js/ios/index-ae37bcbe7e45509eadad80b1911a41a6.hbc",
+      "bytes": 3810046,
+      "sha256": "e0223e3b94842c79e761d39a40eb92930f872e470f86d90b2d3baf3d0b0a9426"
+    },
+    {
+      "path": "apps/mobile/dist/metadata.json",
+      "bytes": 244,
+      "sha256": "cf62c7e09f7c394b16482398b56d33dfca8c3decc44270dd2882aaf09f815fb6"
+    },
+    {
+      "path": "apps/api/dist/api.cjs",
+      "bytes": 202242,
+      "sha256": "e40a9d89b2662febe8f59c5dc9bc92c71c73c374b98a953d839026848b5a7cf9"
+    },
+    {
+      "path": "apps/api/dist/api.mjs",
+      "bytes": 3578608,
+      "sha256": "db2c7472091b296c3f165dea501ccc59cc7acdf2f66a48a11cd30c373ac48a4a"
+    },
+    {
+      "path": "apps/api/dist/assets/fonts/DejaVuSans.ttf",
+      "bytes": 759720,
+      "sha256": "57f73e11f51999432bf7ab22ce55b6f945d5eca1bf824404cfa9ec2e3718c84e"
+    },
+    {
+      "path": "apps/api/dist/assets/fonts/LICENSE",
+      "bytes": 2497,
+      "sha256": "313b3a0d96941787361031e2610533303ded274f814e0dd2e81187a13ca42bb3"
+    },
+    {
+      "path": "apps/api/dist/heic-worker.mjs",
+      "bytes": 1326,
+      "sha256": "af403995a2780164fdddbce814fbf6f4c5789fcc00dcb49c9235dfb76a0e751d"
+    },
+    {
+      "path": "apps/api/dist/media-worker.mjs",
+      "bytes": 3467,
+      "sha256": "4b878815f5255ec427900db496df40c278176e381bfc3b7f6809912fe4cea5ed"
+    },
+    {
+      "path": "apps/api/dist/migrate.mjs",
+      "bytes": 475200,
+      "sha256": "560a8d5f0d7d3440a3e703577235e3dd203f674cb9306c36e202cb0022bcbf6f"
+    },
+    {
+      "path": "apps/api/dist/report-pdf-probe.mjs",
+      "bytes": 2721682,
+      "sha256": "6372f1bcf98de5f99167d13b6c5a27f395ba2c41751eabe41d2fe8c33257a50f"
+    },
+    {
+      "path": "apps/api/dist/rls-restore-proof.mjs",
+      "bytes": 505339,
+      "sha256": "ad0b475dd62a88e38735d95ea32adeaf090625e90fdf65b570e71f5b9b7c7689"
+    },
+    {
+      "path": "apps/api/dist/worker.cjs",
+      "bytes": 180323,
+      "sha256": "b7070da60b2596164e0c9a31e4a7cb68f083b831a5e63c188d4ef4b7a8044e74"
+    },
+    {
+      "path": "apps/api/dist/worker.mjs",
+      "bytes": 3291439,
+      "sha256": "4ba4032dfe0a7500f6027948345ac86a64933613c950bd614abb24bdf9e803d7"
+    }
+  ]
+}

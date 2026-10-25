@@ -1,0 +1,198 @@
+{
+  "kind": "club-expansion-dependency-rollup",
+  "scope": "Summaries of three actual audit files, each preserving its own captured old HEAD, dirty working-tree flag, lock fingerprint and observation time. These are not final-commit audit claims. Current registry metadata is a separate read-only observation.",
+  "gatesWaived": false,
+  "audits": [
+    {
+      "observedAt": "2026-10-24T21:22:30.088Z",
+      "sourceCommit": "2ee01461160b83fad7a77c3a5d5d4240d2883b63",
+      "workingTreeDirty": true,
+      "lockSha256": "829d5b68a991f087feb9220985e4c0fe2b18934d2f15bd6f9b6de5070a68c401",
+      "passed": false,
+      "exitCode": 1,
+      "project": "workspace",
+      "lockfile": "pnpm-lock.yaml",
+      "auditCommand": "pnpm audit --json --audit-level high",
+      "metadata": {
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 2,
+          "critical": 0
+        },
+        "dependencies": 556,
+        "devDependencies": 317,
+        "optionalDependencies": 122,
+        "totalDependencies": 925
+      },
+      "findings": [
+        {
+          "registryAdvisoryId": "1240912",
+          "githubAdvisoryId": "GHSA-86w9-cpqp-85rv",
+          "module": "node-forge",
+          "installedVersions": [
+            "1.4.0"
+          ],
+          "severity": "high",
+          "title": "node-forge RSA PKCS#1 v1.5 signature verification accepts extra nested DigestAlgorithm elements",
+          "vulnerableRange": "<=1.4.0",
+          "patchedRange": null,
+          "patchedVersionsUnpublished": true,
+          "url": "https://github.com/advisories/GHSA-86w9-cpqp-85rv",
+          "representativeDependencyPaths": [
+            "apps__mobile>expo>@expo/cli>@expo/code-signing-certificates>node-forge",
+            "apps__mobile>expo>@expo/cli>node-forge"
+          ]
+        },
+        {
+          "registryAdvisoryId": "1243066",
+          "githubAdvisoryId": "GHSA-mrhx-c7xc-m3w5",
+          "module": "zod",
+          "installedVersions": [
+            "3.25.76"
+          ],
+          "severity": "high",
+          "title": "Zod can exhaust memory while validating oversized constrained collections",
+          "vulnerableRange": "<4.6.6",
+          "patchedRange": ">=4.6.6",
+          "patchedVersionsUnpublished": false,
+          "url": "https://github.com/advisories/GHSA-mrhx-c7xc-m3w5",
+          "representativeDependencyPaths": [
+            "apps__mobile>expo>@expo/cli>zod"
+          ]
+        }
+      ],
+      "currentLockStillMatchesCapturedAudit": true
+    },
+    {
+      "observedAt": "2026-10-24T21:22:32.249Z",
+      "sourceCommit": "2ee01461160b83fad7a77c3a5d5d4240d2883b63",
+      "workingTreeDirty": true,
+      "lockSha256": "58a1a28094ab521699c503b54724c7118193d2f8bd1e5081f7e0bde8638f622b",
+      "passed": true,
+      "exitCode": 0,
+      "project": "runtime",
+      "lockfile": "infra/runtime/backend/package-lock.json",
+      "auditCommand": "npm audit --package-lock-only --json --audit-level high",
+      "metadata": {
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        },
+        "dependencies": {
+          "prod": 64,
+          "dev": 0,
+          "optional": 29,
+          "peer": 0,
+          "peerOptional": 0,
+          "total": 92
+        }
+      },
+      "findings": [],
+      "currentLockStillMatchesCapturedAudit": true
+    },
+    {
+      "observedAt": "2026-10-24T21:22:34.710Z",
+      "sourceCommit": "2ee01461160b83fad7a77c3a5d5d4240d2883b63",
+      "workingTreeDirty": true,
+      "lockSha256": "2dc27f23311cf3d5260ab84b7b149d0de231967da7aa5acee373369e9f6407bc",
+      "passed": true,
+      "exitCode": 0,
+      "project": "compiler",
+      "lockfile": "infra/runtime/compiler/package-lock.json",
+      "auditCommand": "npm audit --package-lock-only --json --audit-level high",
+      "metadata": {
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        },
+        "dependencies": {
+          "prod": 9,
+          "dev": 0,
+          "optional": 26,
+          "peer": 0,
+          "peerOptional": 0,
+          "total": 34
+        }
+      },
+      "findings": [],
+      "currentLockStillMatchesCapturedAudit": true
+    }
+  ],
+  "featureDependenciesWithoutFindingsInCapturedWorkspaceAudit": [
+    {
+      "name": "@e965/xlsx",
+      "version": "0.20.3"
+    },
+    {
+      "name": "qrcode-generator",
+      "version": "2.0.4"
+    }
+  ],
+  "registryObservation": {
+    "observedAt": "2026-10-24T21:32:49.777285Z",
+    "packages": {
+      "expo": {
+        "url": "https://registry.npmjs.org/expo",
+        "latestStable": "58.0.19",
+        "publishedAt": "2026-10-23T23:27:17.387Z",
+        "dependencies": {
+          "@expo/cli": "^58.1.15"
+        }
+      },
+      "@expo/cli": {
+        "url": "https://registry.npmjs.org/@expo%2fcli",
+        "latestStable": "58.1.15",
+        "publishedAt": "2026-10-23T23:27:01.562Z",
+        "dependencies": {
+          "zod": "^3.25.76"
+        }
+      },
+      "zod": {
+        "url": "https://registry.npmjs.org/zod",
+        "latestStable": "4.6.7",
+        "publishedAt": "2026-10-12T16:29:37.778Z",
+        "dependencies": {},
+        "latestStable3": "3.25.76"
+      },
+      "node-forge": {
+        "url": "https://registry.npmjs.org/node-forge",
+        "latestStable": "1.4.0",
+        "publishedAt": "2026-03-24T21:44:34.668Z",
+        "dependencies": {}
+      }
+    }
+  },
+  "upstreamEvidence": [
+    {
+      "url": "https://github.com/advisories/GHSA-mrhx-c7xc-m3w5",
+      "kind": "GitHub-reviewed advisory",
+      "observedFact": "Updated 23 October 2026; affected <4.6.6, patched 4.6.6."
+    },
+    {
+      "url": "https://github.com/colinhacks/zod/pull/6652",
+      "kind": "upstream merged implementation",
+      "observedFact": "Fix changes v4 bounded array/set/map early rejection; unbounded containers unchanged."
+    },
+    {
+      "url": "https://github.com/colinhacks/zod/issues/6653",
+      "kind": "upstream issue and maintainer statement",
+      "observedFact": "Open v3 issue; maintainer 12 October says new v3 versions are no longer published. Retained v3 entrypoint behaviour is distinct from patched v4 engine."
+    },
+    {
+      "url": "https://zod.dev/v4/versioning",
+      "kind": "official documentation",
+      "observedFact": "Root zod changes from v3 to v4 in package major 4; zod/v3 remains a separate subpath."
+    }
+  ],
+  "conclusion": "No compatible published Expo SDK58/CLI58 patch replaces Zod3 with patched v4; no patched node-forge release is published. Root-import major override is not an established compatible fix; selecting v3 from a v4 package would retain the old implementation. Both high findings remain blocking and unwaived."
+}

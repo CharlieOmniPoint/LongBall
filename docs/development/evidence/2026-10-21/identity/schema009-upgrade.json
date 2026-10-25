@@ -1,0 +1,57 @@
+{
+  "result": "passed",
+  "database": "longball_identity_trial",
+  "versions": [
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9
+  ],
+  "activationVersion": 2,
+  "existingRowsPreserved": true,
+  "counts": {
+    "accounts": 27,
+    "memberships": 26,
+    "matches": 1,
+    "documents": 3,
+    "audit": 33,
+    "privacy_requests": 8,
+    "lb_activation_children": 5,
+    "lb_activation_issues": 5,
+    "lb_activation_tokens": 5,
+    "lb_activation_verification_requests": 0,
+    "lb_identity_trial_fixture": 1
+  },
+  "restrictedGrantsApplied": true,
+  "markerReadOnly": true,
+  "policyApprovalCreated": false,
+  "verifiedAt": "2026-10-21T11:11:12.778334+00:00",
+  "originalColumnsComparedByHash": true,
+  "priorCompleteProviderProofCoreSchema": 5,
+  "priorFreshAuthenticatedSmokeCoreSchema": 7,
+  "additiveDelta": "Admin controller revocation and independent database-clock worker dispatch; activation flow unchanged",
+  "physicalDeviceTested": false,
+  "startupSmoke": {
+    "results": [
+      {
+        "path": "/health",
+        "status": 200
+      },
+      {
+        "path": "/v1/me",
+        "status": 401
+      },
+      {
+        "path": "/v1/me",
+        "syntheticAliasStatus": 401
+      }
+    ],
+    "verifiedAt": "2026-10-21T11:09:50.137Z",
+    "certificateValidationDisabled": false,
+    "providerMfaRepeated": false
+  }
+}

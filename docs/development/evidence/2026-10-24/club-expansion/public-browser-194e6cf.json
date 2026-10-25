@@ -1,0 +1,45 @@
+{
+  "sourceCommit": "194e6cf3407071f1c9011654aef81718f05d649e",
+  "publicUrl": "https://charlieomnipoint.github.io/LongBall/",
+  "scope": "Live public browser with the four previously approved demo accounts; sign-in/read-only navigation/sign-out only. New Club Admin credential remains local.",
+  "checks": [
+    {
+      "role": "Manager",
+      "signedIn": true,
+      "team": "Roma U10",
+      "readOnlyView": "Formation",
+      "correctApiOrigin": true,
+      "signedOutPrivateViewClosed": true
+    },
+    {
+      "role": "Super Admin",
+      "signedIn": true,
+      "team": "Roma U10",
+      "readOnlyView": "Clubs",
+      "correctApiOrigin": true,
+      "signedOutPrivateViewClosed": true
+    },
+    {
+      "role": "Player",
+      "signedIn": true,
+      "team": "Roma U10",
+      "readOnlyView": "My Stats",
+      "correctApiOrigin": true,
+      "signedOutPrivateViewClosed": true
+    },
+    {
+      "role": "Spectator",
+      "signedIn": true,
+      "team": "Roma U10",
+      "readOnlyView": "Account and team connection",
+      "correctApiOrigin": true,
+      "signedOutPrivateViewClosed": true
+    }
+  ],
+  "deployedJavaScriptSha256": "4825870218589069e97527791079403cf29d04d22e2d177c403753dcf44d1f83",
+  "passed": true,
+  "observedAt": "2026-10-24T22:59:56.573Z",
+  "nativeDeviceEvidence": false,
+  "paidServicesProvisioned": false,
+  "newClubAdminScope": "Passed in the isolated compiled browser/API expansion journey; public remote credential disclosure was not authorized by automatic review."
+}

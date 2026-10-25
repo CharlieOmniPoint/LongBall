@@ -1,0 +1,410 @@
+name: LongBall native compilation feasibility
+
+# Publish this template as .github/workflows/native-feasibility.yml on the
+# public preview branch. The development branch runs separate quality checks.
+on:
+  push:
+    branches: [preview/longball-m0]
+    paths:
+      - preview/source.bundle.base64
+      - preview/source.bundle.sha256
+      - preview/source-head.txt
+      - preview/native-build-request.txt
+      - .github/workflows/native-feasibility.yml
+  workflow_dispatch:
+    inputs:
+      build_ios:
+        description: Also compile an unsigned iOS simulator app on standard macOS
+        type: boolean
+        default: false
+      upload_artifacts:
+        description: Store bounded binaries/logs for one day (uses artifact storage quota)
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: longball-native-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CI: "1"
+  EXPO_NO_TELEMETRY: "1"
+  EXPO_NO_DOTENV: "1"
+  EXPO_OFFLINE: "1"
+
+jobs:
+  compile:
+    # Standard public runners only. No fork, pull-request or private-repo run.
+    if: github.repository == 'CharlieOmniPoint/LongBall' && github.event.repository.private == false && github.ref == 'refs/heads/preview/longball-m0'
+    name: ${{ matrix.platform }} native compile
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      # Use the standard Intel Mac runner already proved by the unsigned device kit.
+      # The preceding ARM job was cancelled before start because hosted capacity was unavailable.
+      matrix: ${{ fromJSON((github.event_name == 'push' || inputs.build_ios) && '{"include":[{"platform":"android","runner":"ubuntu-24.04"},{"platform":"ios","runner":"macos-15-intel"}]}' || '{"include":[{"platform":"android","runner":"ubuntu-24.04"}]}') }}
+    env:
+      NATIVE_PLATFORM: ${{ matrix.platform }}
+      DISPATCH_UPLOAD: ${{ github.event_name == 'workflow_dispatch' && inputs.upload_artifacts && 'true' || 'false' }}
+    steps:
+      - name: Read the preview transport branch
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify and import the exact development source
+        id: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/longball-native-logs"
+          python3 - <<'PY'
+          import base64
+          import hashlib
+          import json
+          import os
+          import pathlib
+          import re
+          import subprocess
+
+          root = pathlib.Path.cwd()
+          preview = root / "preview"
+          expected_head = (preview / "source-head.txt").read_text().strip()
+          expected_sha = (preview / "source.bundle.sha256").read_text().strip()
+          if not re.fullmatch(r"[0-9a-f]{40}", expected_head):
+              raise SystemExit("source-head.txt must contain exactly one commit SHA")
+          if not re.fullmatch(r"[0-9a-f]{64}", expected_sha):
+              raise SystemExit("source.bundle.sha256 must contain the decoded SHA256")
+          encoded_path = preview / "source.bundle.base64"
+          if encoded_path.stat().st_size > 96 * 1024 * 1024:
+              raise SystemExit("Encoded source bundle exceeds the 96 MiB transport limit")
+          decoded = base64.b64decode(b"".join(encoded_path.read_bytes().split()), validate=True)
+          actual_sha = hashlib.sha256(decoded).hexdigest()
+          if not decoded or len(decoded) > 64 * 1024 * 1024 or actual_sha != expected_sha:
+              raise SystemExit("Decoded source bundle is empty, oversized or has the wrong SHA256")
+          marker = json.loads((preview / "native-build-request.txt").read_text())
+          if not isinstance(marker, dict) or not isinstance(marker.get("upload_artifacts", False), bool):
+              raise SystemExit("native-build-request.txt must be JSON with a boolean upload_artifacts")
+          if not isinstance(marker.get("demo_account_login", False), bool):
+              raise SystemExit("demo_account_login must be a boolean")
+          demo_account_login = marker.get("demo_account_login", False)
+          upload = os.environ["DISPATCH_UPLOAD"] == "true" or marker.get("upload_artifacts", False)
+          bundle = pathlib.Path(os.environ["RUNNER_TEMP"]) / "longball-source.bundle"
+          bundle.write_bytes(decoded)
+          source = root / "source"
+          if source.exists():
+              raise SystemExit("Refusing to replace an existing source directory")
+
+          def git(*args, cwd=root):
+              return subprocess.check_output(["git", *args], cwd=cwd, text=True).strip()
+
+          # Cloning the full transport repository preserves the origin/main
+          # prerequisite objects used by the differential bundle.
+          subprocess.run(["git", "clone", "--no-hardlinks", "--no-checkout", str(root), str(source)], check=True)
+          subprocess.run(["git", "bundle", "verify", str(bundle)], cwd=source, check=True)
+          bundle_ref = "refs/heads/dev/longball-m0-journey"
+          heads = git("bundle", "list-heads", str(bundle), bundle_ref, cwd=source).splitlines()
+          if heads != [f"{expected_head} {bundle_ref}"]:
+              raise SystemExit("Bundle development branch does not match source-head.txt")
+          subprocess.run(["git", "fetch", "--no-tags", str(bundle), bundle_ref], cwd=source, check=True)
+          subprocess.run(["git", "checkout", "--detach", expected_head], cwd=source, check=True)
+          if git("rev-parse", "HEAD", cwd=source) != expected_head:
+              raise SystemExit("Imported source HEAD verification failed")
+          proof = {
+              "sourceHead": expected_head,
+              "bundleSha256": actual_sha,
+              "transportHead": git("rev-parse", "HEAD"),
+              "sourceRef": bundle_ref,
+              "platform": os.environ["NATIVE_PLATFORM"],
+              "artifactUploadRequested": upload,
+              "demoAccountLogin": demo_account_login,
+              "physicalDeviceProof": False,
+          }
+          log_dir = pathlib.Path(os.environ["RUNNER_TEMP"]) / "longball-native-logs"
+          (log_dir / "source-proof.json").write_text(json.dumps(proof, indent=2) + "\n")
+          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+              output.write(f"head={expected_head}\nimported=true\nupload_artifacts={str(upload).lower()}\n")
+          with open(os.environ["GITHUB_ENV"], "a") as environment:
+              environment.write(f"EXPO_PUBLIC_DEMO_ACCOUNT_LOGIN={int(demo_account_login)}\n")
+          print(json.dumps(proof, indent=2))
+          PY
+
+      - name: Use the pinned Node runtime
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "24.19.0"
+
+      - name: Install the pinned package manager and frozen dependencies
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(node --version)" = v24.19.0
+          npm install --global pnpm@11.25.0 --no-audit --no-fund
+          test "$(pnpm --version)" = 11.25.0
+          pnpm install --frozen-lockfile 2>&1 | tee "$RUNNER_TEMP/longball-native-logs/dependencies.log"
+          node --version > "$RUNNER_TEMP/longball-native-logs/tools.log"
+          pnpm --version >> "$RUNNER_TEMP/longball-native-logs/tools.log"
+
+      - name: Use the Android Java toolchain
+        if: matrix.platform == 'android'
+        uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install the exact Android SDK components
+        if: matrix.platform == 'android'
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${ANDROID_HOME:-}"
+          # API 37 uses the v3 catalog and android-37.0 package name. The
+          # runner's older sdkmanager cannot establish this toolchain.
+          python3 - <<'PY' 2>&1 | tee "$RUNNER_TEMP/longball-native-logs/android-sdk.log"
+          import hashlib
+          import os
+          import pathlib
+          import shutil
+          import subprocess
+          import urllib.request
+          import zipfile
+
+          temp = pathlib.Path(os.environ["RUNNER_TEMP"])
+          tools = temp / "longball-android-cli-23"
+          tools.mkdir()
+          archive = temp / "commandlinetools-linux-16111833_latest.zip"
+          url = "https://dl.google.com/android/repository/commandlinetools-linux-16111833_latest.zip"
+          with urllib.request.urlopen(url, timeout=120) as response, archive.open("wb") as output:
+              shutil.copyfileobj(response, output)
+          if archive.stat().st_size != 181052239:
+              raise SystemExit("Unexpected pinned Android CLI archive size")
+          # SHA1 is the official repository2-3.xml checksum. SHA256 is also
+          # pinned from that verified archive, not inferred from the filename.
+          for algorithm, expected in [
+              ("sha1", "e025545c62a8e64c7559119566a569fb1dec5f60"),
+              ("sha256", "0877a1d048fe4a24efe2eff536ca4223f7adeb58648bb81909d33c446918cfa8"),
+          ]:
+              with archive.open("rb") as source:
+                  actual = hashlib.file_digest(source, algorithm).hexdigest()
+              if actual != expected:
+                  raise SystemExit(f"Pinned Android CLI {algorithm} mismatch")
+          with zipfile.ZipFile(archive) as bundle:
+              for member in bundle.infolist():
+                  destination = (tools / member.filename).resolve()
+                  if not destination.is_relative_to(tools.resolve()):
+                      raise SystemExit("Android CLI archive path escapes staging")
+                  bundle.extract(member, tools)
+                  mode = member.external_attr >> 16
+                  if mode:
+                      destination.chmod(mode & 0o777)
+          android = tools / "cmdline-tools/bin/android"
+          properties = (tools / "cmdline-tools/source.properties").read_text()
+          if "Pkg.Revision=23.0" not in properties.splitlines():
+              raise SystemExit("Pinned Android command-line tools revision mismatch")
+          packages = [
+              "platform-tools", "platforms/android-36", "platforms/android-37.0",
+              "build-tools/36.0.0", "build-tools/37.0.0", "ndk/27.1.12297006",
+              "cmake/3.22.1", "cmake/3.30.5",
+          ]
+          # Android CLI 23 includes terms in its first-run flow; the removed
+          # sdkmanager --licenses command is deliberately not invoked.
+          subprocess.run(
+              [str(android), "--no-metrics", f"--sdk={os.environ['ANDROID_HOME']}", "sdk", "install", *packages],
+              input="y\n" * 200, text=True, check=True,
+          )
+          sdk = pathlib.Path(os.environ["ANDROID_HOME"])
+          for package in packages:
+              if not (sdk / package / "source.properties").is_file():
+                  raise SystemExit(f"Android SDK component was not installed: {package}")
+          version = subprocess.check_output([str(android), "--no-metrics", "--version"], text=True)
+          with (temp / "longball-native-logs/tools.log").open("a") as output:
+              output.write(version)
+          print("Verified pinned Android command-line tools 23.0 and required SDK components.")
+          PY
+          java -version 2>> "$RUNNER_TEMP/longball-native-logs/tools.log"
+
+      - name: Select the explicit iOS toolchain
+        if: matrix.platform == 'ios'
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -d /Applications/Xcode_26.3.app/Contents/Developer
+          sudo xcode-select --switch /Applications/Xcode_26.3.app/Contents/Developer
+          xcodebuild -version | tee -a "$RUNNER_TEMP/longball-native-logs/tools.log"
+          ruby --version >> "$RUNNER_TEMP/longball-native-logs/tools.log"
+          gem install cocoapods --version 1.17.0 --no-document --user-install
+          pod_bin="$(ruby -e 'print Gem.user_dir')/bin"
+          printf '%s\n' "$pod_bin" >> "$GITHUB_PATH"
+          test "$("$pod_bin/pod" --version)" = 1.17.0
+          "$pod_bin/pod" --version >> "$RUNNER_TEMP/longball-native-logs/tools.log"
+
+      - name: Generate the native project and verify security configuration
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          pnpm --filter mobile prebuild --platform "$NATIVE_PLATFORM" 2>&1 | tee "$RUNNER_TEMP/longball-native-logs/prebuild.log"
+          python3 - <<'PY'
+          import json
+          import os
+          import pathlib
+          import re
+
+          mobile = pathlib.Path("apps/mobile")
+          config = json.loads((mobile / "app.json").read_text())["expo"]
+          sqlite = [p for p in config["plugins"] if isinstance(p, list) and p[0] == "expo-sqlite"]
+          assert sqlite and sqlite[0][1].get("useSQLCipher") is True, "SQLCipher config is required"
+          native = json.loads((mobile / "modules/longball-native/expo-module.config.json").read_text())
+          assert native["apple"]["modules"] == ["LongBallNativeModule"]
+          assert native["android"]["modules"] == ["dev.longball.nativeclock.LongBallNativeModule"]
+          if os.environ["NATIVE_PLATFORM"] == "android":
+              properties = (mobile / "android/gradle.properties").read_text()
+              assert re.search(r"^expo\.sqlite\.useSQLCipher=true$", properties, re.M)
+              manifest = (mobile / "android/app/src/main/AndroidManifest.xml").read_text()
+              assert 'android:allowBackup="false"' in manifest
+          else:
+              properties = json.loads((mobile / "ios/Podfile.properties.json").read_text())
+              assert properties.get("expo.sqlite.useSQLCipher") == "true"
+          print("SQLCipher requested, local native module declared; runtime/device verification remains required.")
+          PY
+          autolinking_platform="$NATIVE_PLATFORM"
+          if [ "$NATIVE_PLATFORM" = ios ]; then
+            autolinking_platform=apple
+          fi
+          pnpm --filter mobile exec expo-modules-autolinking resolve --platform "$autolinking_platform" --json > "$RUNNER_TEMP/longball-native-logs/autolinking.json"
+          python3 - <<'PY'
+          import os
+          import pathlib
+          data = (pathlib.Path(os.environ["RUNNER_TEMP"]) / "longball-native-logs/autolinking.json").read_text()
+          assert "LongBallNativeModule" in data or "longball-native" in data, "Local native module missing from autolinking"
+          PY
+
+      - name: Compile the Android debug development client
+        id: android
+        if: matrix.platform == 'android'
+        working-directory: source/apps/mobile/android
+        shell: bash
+        env:
+          GRADLE_OPTS: -Dorg.gradle.daemon=false -Dorg.gradle.workers.max=2
+        run: |
+          set -euo pipefail
+          ./gradlew --version >> "$RUNNER_TEMP/longball-native-logs/tools.log"
+          ./gradlew :app:assembleDebug --no-daemon --max-workers=2 \
+            '-Dorg.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1g -Dfile.encoding=UTF-8' \
+            -PreactNativeArchitectures=arm64-v8a \
+            2>&1 | tee "$RUNNER_TEMP/longball-native-logs/android-build.log"
+          test -s app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Install iOS pods
+        if: matrix.platform == 'ios'
+        working-directory: source/apps/mobile/ios
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(pod --version)" = 1.17.0
+          pod install 2>&1 | tee "$RUNNER_TEMP/longball-native-logs/ios-pods.log"
+          test -d LongBallSyntheticLab.xcworkspace
+
+      - name: Compile the iOS simulator development client without signing
+        id: ios
+        if: matrix.platform == 'ios'
+        working-directory: source/apps/mobile/ios
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcodebuild \
+            -workspace LongBallSyntheticLab.xcworkspace \
+            -scheme LongBallSyntheticLab -configuration Debug \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/longball-ios-build" \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY= DEVELOPMENT_TEAM= \
+            ONLY_ACTIVE_ARCH=YES "ARCHS=$(uname -m)" \
+            build 2>&1 | tee "$RUNNER_TEMP/longball-native-logs/ios-build.log"
+          test -d "$RUNNER_TEMP/longball-ios-build/Build/Products/Debug-iphonesimulator/LongBallSyntheticLab.app"
+
+      - name: Prepare bounded logs and optional binary artifacts
+        id: artifacts
+        if: always() && steps.source.outputs.imported == 'true' && steps.source.outputs.upload_artifacts == 'true'
+        shell: bash
+        env:
+          ANDROID_RESULT: ${{ steps.android.outcome }}
+          IOS_RESULT: ${{ steps.ios.outcome }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib
+          import os
+          import pathlib
+          import shutil
+          import subprocess
+
+          temp = pathlib.Path(os.environ["RUNNER_TEMP"])
+          destination = temp / "longball-native-artifact"
+          destination.mkdir()
+          for log in sorted((temp / "longball-native-logs").glob("*")):
+              if log.is_file():
+                  # Retain each log's final 4 MiB; full streaming logs remain in Actions.
+                  with log.open("rb") as handle:
+                      handle.seek(max(0, log.stat().st_size - 4 * 1024 * 1024))
+                      (destination / log.name).write_bytes(handle.read())
+          platform = os.environ["NATIVE_PLATFORM"]
+          if platform == "android" and os.environ["ANDROID_RESULT"] == "success":
+              shutil.copy2("source/apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk", destination / "LongBall-Android-arm64-debug.apk")
+          if platform == "ios" and os.environ["IOS_RESULT"] == "success":
+              app = temp / "longball-ios-build/Build/Products/Debug-iphonesimulator/LongBallSyntheticLab.app"
+              subprocess.run(["ditto", "-c", "-k", "--sequesterRsrc", "--keepParent", str(app), str(destination / "LongBall-iOS-Simulator.zip")], check=True)
+          total = sum(file.stat().st_size for file in destination.iterdir() if file.is_file())
+          if total > 250 * 1024 * 1024:
+              raise SystemExit("Artifact exceeds 250 MiB cap; no upload. Use console logs or reduce binary size.")
+          hashes = []
+          for file in sorted(destination.iterdir()):
+              if file.is_file():
+                  hashes.append(f"{hashlib.sha256(file.read_bytes()).hexdigest()}  {file.name}")
+          (destination / "SHA256SUMS").write_text("\n".join(hashes) + "\n")
+          PY
+
+      - name: Retain requested artifacts for one day
+        if: always() && steps.source.outputs.upload_artifacts == 'true' && steps.artifacts.outcome == 'success'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: longball-${{ matrix.platform }}-${{ steps.source.outputs.head }}
+          path: ${{ runner.temp }}/longball-native-artifact/
+          retention-days: 1
+          compression-level: 0
+          if-no-files-found: error
+
+      - name: Record the scope of this evidence
+        if: always()
+        shell: bash
+        env:
+          SOURCE_HEAD: ${{ steps.source.outputs.head }}
+          ANDROID_RESULT: ${{ steps.android.outcome }}
+          IOS_RESULT: ${{ steps.ios.outcome }}
+          ARTIFACT_REQUESTED: ${{ steps.source.outputs.upload_artifacts }}
+        run: |
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+
+          platform = os.environ["NATIVE_PLATFORM"]
+          result = os.environ["ANDROID_RESULT" if platform == "android" else "IOS_RESULT"] or "not run"
+          text = (
+              f"### LongBall {platform} compilation\n\n"
+              f"Source: `{os.environ['SOURCE_HEAD'] or 'source import failed'}`. Compile step: **{result}**.\n\n"
+              f"Binary/log storage requested: {os.environ['ARTIFACT_REQUESTED'] or 'false'}; maximum 250 MiB, retention one day.\n\n"
+              "A successful compile proves this source links with the selected native toolchain. "
+              "It does not prove phone behaviour, sleep/reboot clock continuity, encrypted-journal recovery, "
+              "wrong-key refusal, backup exclusion, notification delivery or store readiness. "
+              "Android output is debug-key signed; iOS output is an unsigned simulator app. "
+              "Development clients require a reachable Metro server.\n"
+          )
+          with Path(os.environ["GITHUB_STEP_SUMMARY"]).open("a") as summary:
+              summary.write(text)
+          PY

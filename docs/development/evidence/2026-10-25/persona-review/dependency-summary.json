@@ -1,0 +1,127 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-10-25T22:24:02.548Z",
+  "command": "pnpm quality:dependencies",
+  "registryAvailable": true,
+  "gatePassed": false,
+  "policyWaived": false,
+  "packageOrLockfileChanged": false,
+  "audits": [
+    {
+      "scope": "workspace",
+      "observedAt": "2026-10-25T22:22:44.413Z",
+      "sourceGitHead": "0961d1eb438ac2be591e71e6b3a92442aa72e38a",
+      "workingTreeDirty": true,
+      "lockSha256": "829d5b68a991f087feb9220985e4c0fe2b18934d2f15bd6f9b6de5070a68c401",
+      "passed": false,
+      "exitCode": 1,
+      "registryError": null,
+      "counts": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 2,
+        "critical": 0
+      },
+      "advisories": [
+        {
+          "id": 1240912,
+          "package": "node-forge",
+          "severity": "high",
+          "title": "node-forge RSA PKCS#1 v1.5 signature verification accepts extra nested DigestAlgorithm elements",
+          "url": "https://github.com/advisories/GHSA-86w9-cpqp-85rv",
+          "affectedVersions": "<=1.4.0",
+          "patchedVersions": null,
+          "representativeDependencyPaths": [
+            "apps__mobile>expo>@expo/cli>@expo/code-signing-certificates>node-forge",
+            "apps__mobile>expo>@expo/cli>node-forge"
+          ]
+        },
+        {
+          "id": 1243066,
+          "package": "zod",
+          "severity": "high",
+          "title": "Zod can exhaust memory while validating oversized constrained collections",
+          "url": "https://github.com/advisories/GHSA-mrhx-c7xc-m3w5",
+          "affectedVersions": "<4.6.6",
+          "patchedVersions": ">=4.6.6",
+          "representativeDependencyPaths": [
+            "apps__mobile>expo>@expo/cli>zod"
+          ]
+        }
+      ],
+      "rawReportSha256": "1e86c035261db25f190d708043c7e72088bf13ea61abcd030a8b154af50f22cd"
+    },
+    {
+      "scope": "runtime",
+      "observedAt": "2026-10-25T22:22:47.177Z",
+      "sourceGitHead": "0961d1eb438ac2be591e71e6b3a92442aa72e38a",
+      "workingTreeDirty": true,
+      "lockSha256": "58a1a28094ab521699c503b54724c7118193d2f8bd1e5081f7e0bde8638f622b",
+      "passed": true,
+      "exitCode": 0,
+      "registryError": null,
+      "counts": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 0,
+        "critical": 0,
+        "total": 0
+      },
+      "advisories": [],
+      "rawReportSha256": "01f7bb7534c6b37589e3f7b5b18ed9572cb2a1d8d8b3e7b2a6d179973b597e96"
+    },
+    {
+      "scope": "compiler",
+      "observedAt": "2026-10-25T22:22:48.219Z",
+      "sourceGitHead": "0961d1eb438ac2be591e71e6b3a92442aa72e38a",
+      "workingTreeDirty": true,
+      "lockSha256": "2dc27f23311cf3d5260ab84b7b149d0de231967da7aa5acee373369e9f6407bc",
+      "passed": true,
+      "exitCode": 0,
+      "registryError": null,
+      "counts": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 0,
+        "critical": 0,
+        "total": 0
+      },
+      "advisories": [],
+      "rawReportSha256": "d9c1b957176c67e9a98a293cd1425ab762fa21dc485c2051d87c7ea59ccfa883"
+    }
+  ],
+  "registry": [
+    {
+      "package": "node-forge",
+      "distTags": {
+        "latest": "1.4.0"
+      },
+      "latestPublishedVersion": "1.4.0",
+      "registryMetadataSha256": "ae0bd66b9ec198208b9b0852f07b9643e9a36367d41bc54586859c4e780ee61a"
+    },
+    {
+      "package": "zod",
+      "distTags": {
+        "next": "3.25.0-beta.20250519T094321",
+        "alpha": "3.25.68-alpha.11",
+        "beta": "4.1.13-beta.0",
+        "canary": "4.5.0-canary.20260828T171753",
+        "latest": "4.6.7"
+      },
+      "latestPublishedMajor3Version": "3.25.76",
+      "registryMetadataSha256": "0a428d66f084de437852314df78e9b9174cd5e98f1c521c540e04cb2f1a42f2a"
+    },
+    {
+      "package": "@expo/cli",
+      "latestPublishedVersion": "58.1.15",
+      "zodDependency": "^3.25.76",
+      "nodeForgeDependency": "^1.4.0",
+      "registryMetadataSha256": "9d202812a0f6deabc7542e6a81156e146ecee1664bf3203563ab8bb6b1586756"
+    }
+  ],
+  "installedExpoCliVersion": "58.1.13",
+  "recommendation": "Keep the dependency gate open. No published node-forge fix exists. The latest Expo CLI still requires Zod ^3.25.76, whose latest major-3 release is 3.25.76; the advisory fixes >=4.6.6. A Zod major override is outside the supported dependency range and is not approved or applied. Recheck upstream patches separately from the current persona candidate."
+}

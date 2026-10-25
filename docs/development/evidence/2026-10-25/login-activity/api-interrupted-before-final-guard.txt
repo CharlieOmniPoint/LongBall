@@ -1,0 +1,5 @@
+$ vitest run --config apps/api/vitest.config.ts
+
+ RUN  v5.0.5 /workspace/LongBall
+
+[ELIFECYCLE] Command failed with exit code 130.

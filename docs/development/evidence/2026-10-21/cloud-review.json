@@ -1,0 +1,27 @@
+{
+  "checkedAt": "2026-10-21T05:28:30Z",
+  "applicationSourceCommit": "1377f89fb9b2637ea8398caf6506ae0f5a40ff7d",
+  "previewWorkflowCommit": "6b27dce9152dcbda00a53aabbb5cb493815dd3b0",
+  "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/39549565863",
+  "url": "https://ware-fisher-express-hazardous.trycloudflare.com",
+  "expiresAt": "2026-10-21T06:26:40Z",
+  "data": "Fictional Roma U10; adult review only",
+  "passed": [
+    "Shell syntax and Python compilation",
+    "Local export HTTP 200 and exact 554221-byte JavaScript asset",
+    "No-store and security headers; directory listing and private repository paths return 404",
+    "Pinned official cloudflared checksum",
+    "Free public standard GitHub runner startup, tunnel and status publication",
+    "Independent public browser: Roma U10 home, explicit nine-player check-in, seven unique lineup positions, enabled first-half start",
+    "Independent public browser: live countdown then explicit pause and Resume clock",
+    "Actual public browser viewport 390x844 with no horizontal overflow; paused clock and resume control visible",
+    "Public browser reported no runtime errors or missing assets"
+  ],
+  "startupRepair": "First run failed its readiness check because ripgrep was not installed. Replaced that dependency with Python. The failed session was stopped; the URL above belongs to the successful replacement run.",
+  "limitations": [
+    "Temporary one-hour public session; may end early and has no uptime guarantee",
+    "New hostname creates an independent browser storage origin",
+    "No real child accounts, real team data, backend, authentication or sync",
+    "Native device M0 and lasting hosting setup remain incomplete"
+  ]
+}

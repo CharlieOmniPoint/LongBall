@@ -1,0 +1,74 @@
+{
+  "status": "NOT_RUN",
+  "observedAt": "2026-10-21T20:01:29Z",
+  "assessment": "Read-only inventory; isolated production image rehearsal stopped before mutation because of limited workspace disk alongside final exports.",
+  "inspectedHead": "e899e29f71ac50de7de4c7737ee4eb907d7e7823",
+  "productBackendSourceCommit": "7ede8d1ef944823cfd6a5f6965ab51d4c37d286e",
+  "operationalHarnessCommit": "5185f0022770c9acc98ffb2cf569800fcb949277",
+  "resources": {
+    "workspaceTotalBytes": 33770192896,
+    "workspaceAvailableBytes": 2396745728,
+    "workspaceUsedPercent": 93,
+    "temporaryFilesystemAvailableBytes": 9057443840,
+    "memoryAvailableBytes": 13184499712,
+    "swapTotalBytes": 0,
+    "dockerBuildCacheReported": "416.4MB",
+    "heicCompilerCacheHitVerified": false
+  },
+  "existingImage": {
+    "tag": "longball-runtime:local",
+    "id": "sha256:c29d7caddb404740200ab2d1f701dac9478cf21bfe6ecc3d55cdca314a3e0abb",
+    "createdAt": "2026-10-21T12:57:00.592619877Z",
+    "sizeBytes": 295666416,
+    "configuredUser": "node",
+    "sourceCompatibilityVerified": false,
+    "changed": false
+  },
+  "existingResourcesUntouched": [
+    "longball-runtime-api-1",
+    "longball-runtime-database-1",
+    "longball-runtime-scanner-1",
+    "longball-postgres-runtime",
+    "longball-clamd-runtime",
+    "longball-keycloak-trial"
+  ],
+  "inspectedRecipeSha256": {
+    "infra/runtime/Dockerfile": "093ad3baef691a8dac3bdb953ba5f5b78d3bbb81d557c1ce396947057d81f158",
+    "infra/runtime/compose.yaml": "2a2cc4147c668146f00562a5a33cbe5b32441c82b8742c21d7bd49929179eadd",
+    "infra/runtime/check-permissions.mjs": "beb6c824e75846f6fda8c5634aa6aab5ce5332939ecca38507894eb96ae78fd6",
+    "infra/runtime/check-decoder.mjs": "0c868f24ead3079f0479b01b0e531dfb15677495c1a88662fe69ea3589224fb3",
+    "infra/runtime/backend/package-lock.json": "da244dbc880266ccc7d58c4c3a7b551398377653eb15b398ed2b2f2352205425",
+    "infra/runtime/compiler/package-lock.json": "e4980aa6ddfbb26f8d4908002a80b85b57bc2356e9ab83946b077f6f49a7b483"
+  },
+  "plannedChecks": [
+    "Exact committed source, image and compiled API hashes",
+    "Unique isolated image/project/secrets/volumes; no published ports or external identity/push",
+    "Dedicated migrator; separate API and worker restricted roles",
+    "Non-root API/worker and read-only runtime root filesystems",
+    "Verify-only startup: core versions 2 through 15, media 1 through 4, activation 2, 37 expected RLS tables",
+    "Actual API/worker permission checks, no ambient tenant reads and no cross-purpose worker/API authority",
+    "Health and private-route refusal without configured identity",
+    "Actual image HEIC decoder and stripped-metadata/orientation fixture assertions",
+    "Optional isolated fictional job authorization; no provider means no delivered push claim"
+  ],
+  "separatePassedHostEvidence": {
+    "summary": "../schema15-operational/summary.json",
+    "heicCompletedAt": "2026-10-21T19:34:32.626Z",
+    "retainedRestoreCompletedAt": "2026-10-21T19:35:21.222Z",
+    "coreVersions": [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+    "mediaVersions": [1, 2, 3, 4],
+    "activationVersion": 2,
+    "protectedTables": 37,
+    "productionImageExercised": false
+  },
+  "buildAttempted": false,
+  "newContainersCreated": false,
+  "secretsChanged": false,
+  "stateRemoved": false,
+  "daemonRestarted": false,
+  "cachePruned": false,
+  "publicExposureCreated": false,
+  "paidServicesProvisioned": false,
+  "physicalDeviceEvidence": false,
+  "actualPushDelivered": false
+}

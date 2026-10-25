@@ -1,0 +1,16 @@
+{
+  "productSource": "3e310d458bdc945a620db20728a3934d3d3c925d",
+  "url": "https://charlieomnipoint.github.io/LongBall/?v=3e310d4",
+  "scope": "External browser on actual published Pages app; only its pinned status response was controlled for this negative expiry case.",
+  "result": {
+    "usernameEnterFocusesPassword": true,
+    "controlledExpiredStatusShowsRecovery": true,
+    "passwordCleared": true,
+    "privateWorkspaceAbsent": true,
+    "statusResponseIntercepted": true,
+    "sharedDemoRecordsModified": false,
+    "nativeKeyboardEvidence": false,
+    "noOverflow": true
+  },
+  "initialSetupFailure": "First controlled status used Python ISO timestamps with a timezone offset/microseconds rather than the status contract's canonical UTC format. The client refused that invalid status, so waiting for the different expired-service message timed out. Correcting only the test response to canonical UTC reproduced the intended expiry case and passed; no application source changed."
+}
