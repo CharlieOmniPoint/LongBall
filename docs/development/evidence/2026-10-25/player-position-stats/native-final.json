@@ -1,0 +1,234 @@
+{
+  "observedAt": "2026-10-25 20:08:21 UTC",
+  "productSource": "f31b823f59b64d4474f821439ffa43fc1d674942",
+  "transportSource": "eb511810dbf96073f8240ff2c251f3df49faf562",
+  "verifiedSourceMarker": "f31b823f59b64d4474f821439ffa43fc1d674942",
+  "sourceMarkerUrl": "https://github.com/CharlieOmniPoint/LongBall/blob/eb511810dbf96073f8240ff2c251f3df49faf562/preview/source-head.txt",
+  "status": "completed",
+  "conclusion": "success",
+  "runs": [
+    {
+      "id": 40227817735,
+      "name": "LongBall native compilation feasibility",
+      "head_sha": "eb511810dbf96073f8240ff2c251f3df49faf562",
+      "head_branch": "preview/longball-m0",
+      "status": "completed",
+      "conclusion": "success",
+      "event": "push",
+      "created_at": "2026-10-25T19:49:03Z",
+      "updated_at": "2026-10-25T20:07:36Z",
+      "html_url": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40227817735",
+      "run_attempt": 1,
+      "jobs": [
+        {
+          "id": 121272877922,
+          "name": "ios native compile",
+          "status": "completed",
+          "conclusion": "success",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Read the preview transport branch",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Verify and import the exact development source",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Use the pinned Node runtime",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Install the pinned package manager and frozen dependencies",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Use the Android Java toolchain",
+              "status": "completed",
+              "conclusion": "skipped"
+            },
+            {
+              "name": "Install the exact Android SDK components",
+              "status": "completed",
+              "conclusion": "skipped"
+            },
+            {
+              "name": "Select the explicit iOS toolchain",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Generate the native project and verify security configuration",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Compile the Android debug development client",
+              "status": "completed",
+              "conclusion": "skipped"
+            },
+            {
+              "name": "Install iOS pods",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Compile the iOS simulator development client without signing",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Prepare bounded logs and optional binary artifacts",
+              "status": "completed",
+              "conclusion": "skipped"
+            },
+            {
+              "name": "Retain requested artifacts for one day",
+              "status": "completed",
+              "conclusion": "skipped"
+            },
+            {
+              "name": "Record the scope of this evidence",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Use the pinned Node runtime",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Read the preview transport branch",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success"
+            }
+          ]
+        },
+        {
+          "id": 121272878187,
+          "name": "android native compile",
+          "status": "completed",
+          "conclusion": "success",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Read the preview transport branch",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Verify and import the exact development source",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Use the pinned Node runtime",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Install the pinned package manager and frozen dependencies",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Use the Android Java toolchain",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Install the exact Android SDK components",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Select the explicit iOS toolchain",
+              "status": "completed",
+              "conclusion": "skipped"
+            },
+            {
+              "name": "Generate the native project and verify security configuration",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Compile the Android debug development client",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Install iOS pods",
+              "status": "completed",
+              "conclusion": "skipped"
+            },
+            {
+              "name": "Compile the iOS simulator development client without signing",
+              "status": "completed",
+              "conclusion": "skipped"
+            },
+            {
+              "name": "Prepare bounded logs and optional binary artifacts",
+              "status": "completed",
+              "conclusion": "skipped"
+            },
+            {
+              "name": "Retain requested artifacts for one day",
+              "status": "completed",
+              "conclusion": "skipped"
+            },
+            {
+              "name": "Record the scope of this evidence",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Use the Android Java toolchain",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Use the pinned Node runtime",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Read the preview transport branch",
+              "status": "completed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "physicalDeviceProof": false,
+  "notes": [
+    "Both jobs passed exact-development-source import and native security configuration checks before successful compilation.",
+    "Android is a debug development client; iOS is an unsigned simulator development client.",
+    "Compilation does not establish physical iPhone/iPad/Android acceptance or OS background behavior.",
+    "No remote mutations, workflow cancellation, deployment or application credential use was performed by this monitoring task."
+  ]
+}

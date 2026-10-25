@@ -1,0 +1,39 @@
+{
+  "passed": true,
+  "productSource": "f31b823f59b64d4474f821439ffa43fc1d674942",
+  "pagesTransport": "37d95ca8ea93ac9df1fa2f39892ca9554fdfe241",
+  "pagesWorkflowRun": 40228157359,
+  "pagesConclusion": "success",
+  "publicUrl": "https://charlieomnipoint.github.io/LongBall/?review=f31b823",
+  "verification": {
+    "discovery": {
+      "audience": "LongBall demo review with simulated Roma U10 teams and matches",
+      "expiresAt": "2026-10-26T00:52:20Z",
+      "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40227817766",
+      "sourceRevision": "eb511810dbf96073f8240ff2c251f3df49faf562",
+      "startedAt": "2026-10-25T19:52:20Z",
+      "state": "ready",
+      "url": "https://bills-alexander-img-introduce.trycloudflare.com"
+    },
+    "discoveryStatus": 200,
+    "health": "ok",
+    "healthStatus": 200,
+    "javaScriptSha256": "fab691131fadb55e6550f676d27a832a4dd0a77ab6a884792bef7e04a90b302b",
+    "nativeTargets": [
+      "iPhone",
+      "Android"
+    ],
+    "noCredentialsUsed": true,
+    "observedAt": "2026-10-25T19:54:43.268Z",
+    "policyHasUsernameRules": true,
+    "publicPolicyStatus": 200,
+    "script": "/LongBall/_expo/static/js/web/index-c7ff53dbd26b58f59e390d60917a223f.js",
+    "sourceCommit": "f31b823f59b64d4474f821439ffa43fc1d674942",
+    "sourceStatus": 200,
+    "unauthenticatedPrivateReportStatus": 401
+  },
+  "form": {
+    "loginFormVisible": true,
+    "noCredentialsUsed": true
+  }
+}
