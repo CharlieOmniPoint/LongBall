@@ -1,9 +1,9 @@
 {
-  "state": "ready",
-  "url": "https://specialist-mit-walter-wanting.trycloudflare.com",
-  "sourceRevision": "4721b9aa8997437c48a80aaf2c44efee926b325f",
-  "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40140008956",
-  "startedAt": "2026-10-24T22:50:33Z",
-  "expiresAt": "2026-10-25T03:50:33Z",
+  "state": "starting",
+  "url": "",
+  "sourceRevision": "351a7b17168b446321bd03439aa317c3e1c405ae",
+  "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40171241231",
+  "startedAt": "2026-10-25T07:04:30Z",
+  "expiresAt": "",
   "audience": "LongBall demo review with simulated Roma U10 teams and matches"
 }
