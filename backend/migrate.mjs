@@ -2043,9 +2043,9 @@ var PgDatabase = class {
   async migrate() {
     if (this.migrationMode === "verify") {
       const versions = await this.query("SELECT version FROM longball.schema_migrations ORDER BY version");
-      if (versions.rows.some((row) => row.version > 27)) throw new Error("This PostgreSQL schema is newer than the application. Preserve it and use a compatible build.");
-      if (![2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27].every((version2) => versions.rows.some((row) => row.version === version2))) throw new Error("PostgreSQL migrations are required. Run the separate migrator before starting the runtime.");
-      const protectedTables = ["clubs", "teams", "team_seasons", "game_contexts", "accounts", "memberships", "matches", "documents", "devices", "controller_grants", "controller_history", "events", "streams", "conflicting_submissions", "transfers", "clock_challenges", "clock_mappings", "reconciliation_proposals", "audit", "idempotency", "privacy_requests", "privacy_pending_keys", "jobs", "brand_assets", "brand_slots", "spectator_invitations", "lb_spectator_activation_accounts", "lb_spectator_activation_attempts", "native_app_devices", "team_privilege_states", "team_privilege_decisions", "push_registrations", "report_exports", "match_feedback", "match_feedback_receipts", "administration_grants", "administrative_memberships", "team_documents", "opposition_reviews", "opposition_review_receipts", "spectator_pin_credentials", "invite_requests", "application_sign_in_rules", "global_usernames"];
+      if (versions.rows.some((row) => row.version > 28)) throw new Error("This PostgreSQL schema is newer than the application. Preserve it and use a compatible build.");
+      if (![2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28].every((version2) => versions.rows.some((row) => row.version === version2))) throw new Error("PostgreSQL migrations are required. Run the separate migrator before starting the runtime.");
+      const protectedTables = ["clubs", "teams", "team_seasons", "game_contexts", "accounts", "memberships", "matches", "documents", "devices", "controller_grants", "controller_history", "events", "streams", "conflicting_submissions", "transfers", "clock_challenges", "clock_mappings", "reconciliation_proposals", "audit", "idempotency", "privacy_requests", "privacy_pending_keys", "jobs", "brand_assets", "brand_slots", "spectator_invitations", "lb_spectator_activation_accounts", "lb_spectator_activation_attempts", "native_app_devices", "team_privilege_states", "team_privilege_decisions", "push_registrations", "report_exports", "match_feedback", "match_feedback_receipts", "administration_grants", "administrative_memberships", "team_documents", "opposition_reviews", "opposition_review_receipts", "spectator_pin_credentials", "invite_requests", "application_sign_in_rules", "global_usernames", "login_reporting_state", "login_access_snapshots", "login_events", "login_sessions"];
       const security = await this.query(`SELECT c.relname,c.relrowsecurity,(SELECT count(*)::integer FROM pg_catalog.pg_policy p WHERE p.polrelid=c.oid) AS policies FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='longball' AND c.relname=ANY($1::text[])`, [protectedTables]);
       if (security.rows.length !== protectedTables.length || security.rows.some((row) => !row.relrowsecurity || row.policies < 1)) throw new Error("PostgreSQL row security is missing. Run the separate migrator before starting runtime.");
       return;
@@ -2076,12 +2076,13 @@ var PgDatabase = class {
     const inheritedManagerMigration = await readFile(new URL("../migrations/postgresql/025_inherited_manager_authority.sql", import.meta.url), "utf8");
     const signInRulesMigration = await readFile(new URL("../migrations/postgresql/026_sign_in_rules.sql", import.meta.url), "utf8");
     const globalUsernamesMigration = await readFile(new URL("../migrations/postgresql/027_global_usernames.sql", import.meta.url), "utf8");
+    const loginAnalyticsMigration = await readFile(new URL("../migrations/postgresql/028_login_analytics.sql", import.meta.url), "utf8");
     await this.transaction(async () => {
       const schema = await this.query("SELECT to_regnamespace('longball')::text AS namespace");
       if (!schema.rows[0]?.namespace) await this.query("CREATE SCHEMA longball");
       await this.query("CREATE TABLE IF NOT EXISTS longball.schema_migrations(version integer PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())");
       const versions = await this.query("SELECT version FROM longball.schema_migrations ORDER BY version");
-      if (versions.rows.some((row) => row.version > 27)) throw new Error("This PostgreSQL schema is newer than the application. Preserve it and use a compatible build.");
+      if (versions.rows.some((row) => row.version > 28)) throw new Error("This PostgreSQL schema is newer than the application. Preserve it and use a compatible build.");
       if (!versions.rows.some((row) => row.version === 2)) {
         await this.query(migration);
         await this.query("INSERT INTO longball.schema_migrations(version) VALUES(2)");
@@ -2185,6 +2186,10 @@ var PgDatabase = class {
       if (!versions.rows.some((row) => row.version === 27)) {
         await this.query(globalUsernamesMigration);
         await this.query("INSERT INTO longball.schema_migrations(version) VALUES(27)");
+      }
+      if (!versions.rows.some((row) => row.version === 28)) {
+        await this.query(loginAnalyticsMigration);
+        await this.query("INSERT INTO longball.schema_migrations(version) VALUES(28)");
       }
     });
   }
@@ -9802,6 +9807,7 @@ async function applyRuntimeGrants(database, roles = { apiRole: "longball_api", w
     await database.query(`GRANT SELECT,INSERT ON longball.opposition_review_receipts TO ${api}`);
     await database.query(`GRANT SELECT,UPDATE ON longball.invite_requests TO ${api}`);
     await database.query(`GRANT EXECUTE ON FUNCTION longball.sign_in_rules_read(),longball.sign_in_rules_provider_confirm(bigint),longball.sign_in_rules_lock(),longball.sign_in_rules_save(bigint,jsonb,bigint),longball.claim_configured_demo_username(text,text) TO ${api}`);
+    await database.query(`GRANT EXECUTE ON FUNCTION longball.login_reporting_initialize(bigint),longball.login_activity_write(jsonb),longball.login_analytics_snapshot(bigint,bigint,bigint,bigint),longball.login_analytics_enabled_accounts(text,text,text) TO ${api}`);
     await database.query(`GRANT EXECUTE ON FUNCTION longball.team_document_staff(text,text),longball.opposition_completed_games(text,text),longball.spectator_pin_preview(text,bigint),longball.spectator_pin_register(text,text,text,text,text,text,bigint),longball.spectator_pin_credential(text),longball.spectator_pin_login_attempt(text,boolean,bigint),longball.spectator_invite_directory(),longball.spectator_connection_catalog(text,text),longball.spectator_invite_request(text,text,text,text,text,text,text,bigint) TO ${api}`);
     await database.query(`GRANT EXECUTE ON FUNCTION longball.feedback_player(text,text,text,text,text),longball.feedback_reader(text,text,text,text,text) TO ${api}`);
     await database.query(`GRANT EXECUTE ON FUNCTION longball.scheduled_games(text,text),longball.manage_scheduled_game(text,text,jsonb),longball.admin_player_stats_source(text,text),longball.team_overview_source(text,text) TO ${api}`);

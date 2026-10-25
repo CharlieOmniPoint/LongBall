@@ -8967,9 +8967,9 @@ var require_CMap = __commonJS({
       var bfChars = new Array(glyphs.length);
       for (var idx = 0, len = glyphs.length; idx < len; idx++) {
         var glyph = glyphs[idx];
-        var id11 = cmapHexFormat(cmapHexString(glyphId(glyph)));
+        var id12 = cmapHexFormat(cmapHexString(glyphId(glyph)));
         var unicode = cmapHexFormat.apply(void 0, glyph.codePoints.map(cmapCodePointFormat));
-        bfChars[idx] = [id11, unicode];
+        bfChars[idx] = [id12, unicode];
       }
       return fillCmapTemplate(bfChars);
     };
@@ -16678,7 +16678,7 @@ var require_svgPath = __commonJS({
       ["Z", 0],
       ["z", 0]
     ]);
-    var parse = function(path) {
+    var parse2 = function(path) {
       var cmd;
       var ret = [];
       var args = [];
@@ -17000,7 +17000,7 @@ var require_svgPath = __commonJS({
       return result;
     };
     exports.svgPathToOperators = function(path) {
-      return apply(parse(path));
+      return apply(parse2(path));
     };
   }
 });
@@ -49688,13 +49688,13 @@ var require_fontkit_umd = __commonJS({
         return Constructor;
       }
       var GlyphInfo = /* @__PURE__ */ (function() {
-        function GlyphInfo2(font, id11, codePoints, features2) {
+        function GlyphInfo2(font, id12, codePoints, features2) {
           if (codePoints === void 0) {
             codePoints = [];
           }
           this._font = font;
           this.codePoints = codePoints;
-          this.id = id11;
+          this.id = id12;
           this.features = {};
           if (Array.isArray(features2)) {
             for (var i2 = 0; i2 < features2.length; i2++) {
@@ -49722,16 +49722,16 @@ var require_fontkit_umd = __commonJS({
           get: function get() {
             return this._id;
           },
-          set: function set(id11) {
-            this._id = id11;
+          set: function set(id12) {
+            this._id = id12;
             this.substituted = true;
             var GDEF2 = this._font.GDEF;
             if (GDEF2 && GDEF2.glyphClassDef) {
-              var classID = OTProcessor.prototype.getClassID(id11, GDEF2.glyphClassDef);
+              var classID = OTProcessor.prototype.getClassID(id12, GDEF2.glyphClassDef);
               this.isBase = classID === 1;
               this.isLigature = classID === 2;
               this.isMark = classID === 3;
-              this.markAttachmentType = GDEF2.markAttachClassDef ? OTProcessor.prototype.getClassID(id11, GDEF2.markAttachClassDef) : 0;
+              this.markAttachmentType = GDEF2.markAttachClassDef ? OTProcessor.prototype.getClassID(id12, GDEF2.markAttachClassDef) : 0;
             } else {
               this.isMark = this.codePoints.length > 0 && this.codePoints.every(unicode.isMark);
               this.isBase = !this.isMark;
@@ -52209,8 +52209,8 @@ var require_fontkit_umd = __commonJS({
         return desc;
       }
       var Glyph = (_class$3 = /* @__PURE__ */ (function() {
-        function Glyph2(id11, codePoints, font) {
-          this.id = id11;
+        function Glyph2(id12, codePoints, font) {
+          this.id = id12;
           this.codePoints = codePoints;
           this._font = font;
           this.isMark = this.codePoints.length > 0 && this.codePoints.every(unicode.isMark);
@@ -52281,11 +52281,11 @@ var require_fontkit_umd = __commonJS({
             case 1:
               return StandardNames[this.id];
             case 2:
-              var id11 = post2.glyphNameIndex[this.id];
-              if (id11 < StandardNames.length) {
-                return StandardNames[id11];
+              var id12 = post2.glyphNameIndex[this.id];
+              if (id12 < StandardNames.length) {
+                return StandardNames[id12];
               }
-              return post2.names[id11 - StandardNames.length];
+              return post2.names[id12 - StandardNames.length];
             case 2.5:
               return StandardNames[this.id + post2.offsets[this.id]];
             case 4:
@@ -52750,7 +52750,7 @@ var require_fontkit_umd = __commonJS({
             path.moveTo(x2, y2);
             open4 = true;
           }
-          var parse = function parse2() {
+          var parse2 = function parse3() {
             while (stream.pos < end) {
               var op = stream.readUInt8();
               if (op < 32) {
@@ -52812,7 +52812,7 @@ var require_fontkit_umd = __commonJS({
                       var e = end;
                       stream.pos = subr.offset;
                       end = subr.offset + subr.length;
-                      parse2();
+                      parse3();
                       stream.pos = p;
                       end = e;
                     }
@@ -52954,7 +52954,7 @@ var require_fontkit_umd = __commonJS({
                       var e = end;
                       stream.pos = subr.offset;
                       end = subr.offset + subr.length;
-                      parse2();
+                      parse3();
                       stream.pos = p;
                       end = e;
                     }
@@ -53187,7 +53187,7 @@ var require_fontkit_umd = __commonJS({
               }
             }
           };
-          parse();
+          parse2();
           if (open4) {
             path.closePath();
           }
@@ -59290,8 +59290,8 @@ function effectiveTime(state, requested) {
   if (time3.half === 2 && firstHalf === null) throw new Error("Second-half time requires the recorded actual first-half duration.");
   const expected = (time3.half === 2 ? firstHalf ?? 0 : 0) + time3.halfElapsedMs;
   if (expected !== time3.matchElapsedMs) throw new Error("Effective cumulative time must use actual first-half duration and exclude half-time.");
-  const maximum = time3.half === 1 && firstHalf !== null ? firstHalf : state.halfActiveMs;
-  if (time3.halfElapsedMs > maximum || time3.matchElapsedMs > state.matchActiveMs) throw new Error("Effective time cannot invent future active play.");
+  const maximum2 = time3.half === 1 && firstHalf !== null ? firstHalf : state.halfActiveMs;
+  if (time3.halfElapsedMs > maximum2 || time3.matchElapsedMs > state.matchActiveMs) throw new Error("Effective time cannot invent future active play.");
   return { ...time3 };
 }
 function wasOnPitch(state, playerId, time3) {
@@ -59435,13 +59435,13 @@ function knownBoundary(state, eventId) {
 function initial(state) {
   return {
     attendance: Object.fromEntries(
-      state.config.selectedPlayerIds.map((id11) => [
-        id11,
-        state.config.initialAttendance?.[id11] ?? "not_recorded"
+      state.config.selectedPlayerIds.map((id12) => [
+        id12,
+        state.config.initialAttendance?.[id12] ?? "not_recorded"
       ])
     ),
     availability: Object.fromEntries(
-      state.config.selectedPlayerIds.map((id11) => [id11, true])
+      state.config.selectedPlayerIds.map((id12) => [id12, true])
     ),
     lineup: []
   };
@@ -59737,7 +59737,7 @@ function reprojectParticipation(state, correction, validateLineup2) {
         });
       }
       const availablePlayerIds = state.config.selectedPlayerIds.filter(
-        (id11) => actual.attendance[id11] === "present" && actual.availability[id11]
+        (id12) => actual.attendance[id12] === "present" && actual.availability[id12]
       );
       const policy = policyAtBoundary(state, half2, from);
       const fixedKeeperId = fixedKeeperAtBoundary(state, half2, from);
@@ -59796,11 +59796,11 @@ function isRunning(state) {
 function isPaused(state) {
   return state.status === "first_half_paused" || state.status === "second_half_paused";
 }
-function available(state, id11) {
-  return state.availability[id11] === true && state.attendance[id11] === "present";
+function available(state, id12) {
+  return state.availability[id12] === true && state.attendance[id12] === "present";
 }
-function selectedPlayer(state, id11) {
-  if (!state.config.selectedPlayerIds.includes(id11)) throw new Error("Player is outside this selected match squad.");
+function selectedPlayer(state, id12) {
+  if (!state.config.selectedPlayerIds.includes(id12)) throw new Error("Player is outside this selected match squad.");
 }
 function cloneLineup(lineup) {
   return lineup.map((item) => ({ ...item }));
@@ -59816,8 +59816,8 @@ function createMatch(config) {
   if (config.plannedHalfDurationMs < 3e4) throw new Error("Planned half duration must be at least 30 seconds.");
   const ids = config.players.map((player) => player.id);
   if (new Set(ids).size !== ids.length || new Set(config.selectedPlayerIds).size !== config.selectedPlayerIds.length) throw new Error("Player identifiers must be unique.");
-  if (config.selectedPlayerIds.some((id11) => !ids.includes(id11))) throw new Error("Selected players must belong to this roster.");
-  if (config.initialAttendance && Object.entries(config.initialAttendance).some(([id11, status2]) => !config.selectedPlayerIds.includes(id11) || !["present", "absent", "excused", "not_selected", "not_recorded"].includes(status2))) throw new Error("Initial attendance must be explicit valid check-in for the selected squad.");
+  if (config.selectedPlayerIds.some((id12) => !ids.includes(id12))) throw new Error("Selected players must belong to this roster.");
+  if (config.initialAttendance && Object.entries(config.initialAttendance).some(([id12, status2]) => !config.selectedPlayerIds.includes(id12) || !["present", "absent", "excused", "not_selected", "not_recorded"].includes(status2))) throw new Error("Initial attendance must be explicit valid check-in for the selected squad.");
   if (config.slots && (config.slots.length !== config.pitchPlaces || new Set(config.slots.map((slot) => slot.slotId)).size !== config.slots.length || config.slots.filter((slot) => slot.position === "GK").length !== 1 || config.slots.some((slot) => !slot.slotId || !slot.position))) throw new Error("Saved formation needs one distinct slot per pitch place and exactly one goalkeeper.");
   if (config.profileSnapshot && (new Set(config.profileSnapshot.map((profile) => profile.playerId)).size !== config.profileSnapshot.length || config.profileSnapshot.some((profile) => !ids.includes(profile.playerId) || profile.preferences.length > 3 || new Set(profile.preferences).size !== profile.preferences.length || new Set(profile.eligiblePositions).size !== profile.eligiblePositions.length))) throw new Error("Match profile snapshots must belong to distinct roster players with distinct preferences and eligibility.");
   if (config.fixedKeeperId !== null && (!config.selectedPlayerIds.includes(config.fixedKeeperId) || ![1, 2].includes(keeperChoice(config, config.fixedKeeperId)))) throw new Error("Fixed keeper must be a selected first- or second-choice goalkeeper.");
@@ -59827,8 +59827,8 @@ function createMatch(config) {
     config: cloneValue(config),
     status: "preparation",
     revision: 0,
-    attendance: Object.fromEntries(ids.map((id11) => [id11, config.initialAttendance?.[id11] ?? "not_recorded"])),
-    availability: Object.fromEntries(ids.map((id11) => [id11, config.selectedPlayerIds.includes(id11)])),
+    attendance: Object.fromEntries(ids.map((id12) => [id12, config.initialAttendance?.[id12] ?? "not_recorded"])),
+    availability: Object.fromEntries(ids.map((id12) => [id12, config.selectedPlayerIds.includes(id12)])),
     stagedLineup: [],
     lineup: [],
     half: 0,
@@ -59930,10 +59930,10 @@ function accrue(state, sample) {
   if (state.half !== 1 && state.half !== 2) throw new Error("No active half.");
   const intervals = state.config.selectedPlayerIds.map((playerId) => {
     const allocation = state.lineup.find((item) => item.playerId === playerId);
-    const eligible2 = available(state, playerId);
+    const eligible3 = available(state, playerId);
     return {
       playerId,
-      state: allocation ? "playing" : eligible2 ? "available_bench" : "unavailable",
+      state: allocation ? "playing" : eligible3 ? "available_bench" : "unavailable",
       position: allocation?.position ?? null,
       slotId: allocation?.slotId ?? null,
       startMs: state.matchActiveMs,
@@ -59949,7 +59949,7 @@ function accrue(state, sample) {
     intervals: [...state.intervals, ...intervals],
     targetIntervals: [...state.targetIntervals, {
       durationMs,
-      availablePlayerIds: state.config.selectedPlayerIds.filter((id11) => available(state, id11)),
+      availablePlayerIds: state.config.selectedPlayerIds.filter((id12) => available(state, id12)),
       pitchPlaces: state.config.pitchPlaces,
       fixedKeeperId: fixedKeeperId && available(state, fixedKeeperId) ? fixedKeeperId : null,
       ...state.activePolicy ? { policyVersion: state.activePolicy.policyVersion } : {}
@@ -60292,7 +60292,7 @@ function withinTargetBand(actualMs, target) {
   return actual * target.lower.denominator >= target.lower.numerator && actual * target.upper.denominator <= target.upper.numerator;
 }
 function calculateTargets(intervals, allPlayerIds = []) {
-  const totals = new Map(allPlayerIds.map((id11) => [id11, rational(0n)]));
+  const totals = new Map(allPlayerIds.map((id12) => [id12, rational(0n)]));
   for (const interval of intervals) {
     integer(interval.durationMs, "Target interval duration");
     integer(interval.pitchPlaces, "Target pitch capacity");
@@ -60329,10 +60329,10 @@ function shape(value, keys2) {
     "Match-plan data contains unsupported fields."
   );
 }
-function required(value, maximum, label3) {
+function required(value, maximum2, label3) {
   assert(
-    typeof value === "string" && value.trim() && value.trim().length <= maximum && !/[\u0000-\u001f\u007f]/.test(value),
-    `${label3} is required and must be at most ${maximum} characters.`
+    typeof value === "string" && value.trim() && value.trim().length <= maximum2 && !/[\u0000-\u001f\u007f]/.test(value),
+    `${label3} is required and must be at most ${maximum2} characters.`
   );
   return value.trim();
 }
@@ -60394,8 +60394,8 @@ function validateProposal(state, fixture, formation, allocations, settings) {
     "Review one distinct player for every saved place."
   );
   const selected = fixture.selectedProfileIds.map(
-    (id11) => state.profiles.find(
-      (profile) => profile.id === id11 && profile.seasonId === fixture.seasonId && profile.active
+    (id12) => state.profiles.find(
+      (profile) => profile.id === id12 && profile.seasonId === fixture.seasonId && profile.active
     )
   ).filter(
     (profile) => Boolean(profile)
@@ -60465,7 +60465,7 @@ function saveMatchPlan(state, input) {
   assert(
     latestSnapshot?.id === snapshot.id && canonical2(snapshot.fixture) === canonical2(fixtureDetails) && canonical2(snapshot.selectedPlayerIds.slice().sort()) === canonical2(
       fixture.selectedProfileIds.map(
-        (id11) => state.profiles.find((profile) => profile.id === id11)?.playerId
+        (id12) => state.profiles.find((profile) => profile.id === id12)?.playerId
       ).sort()
     ),
     "Source preparation changed. Prepare and review its latest snapshot before saving a plan."
@@ -60693,10 +60693,10 @@ function requireThat3(condition, message) {
   if (!condition) throw new Error(message);
 }
 var clone = (value) => JSON.parse(JSON.stringify(value));
-function text(value, label3, maximum = 80) {
+function text(value, label3, maximum2 = 80) {
   requireThat3(
-    typeof value === "string" && value.trim().length > 0 && value.trim().length <= maximum,
-    `${label3} is required and must be at most ${maximum} characters.`
+    typeof value === "string" && value.trim().length > 0 && value.trim().length <= maximum2,
+    `${label3} is required and must be at most ${maximum2} characters.`
   );
   return value.trim();
 }
@@ -60793,7 +60793,7 @@ function validateTraining(state, training) {
   );
   unique(training.expectedProfileIds);
   training.expectedProfileIds.forEach(
-    (id11) => checkProfile(state, id11, training.seasonId)
+    (id12) => checkProfile(state, id12, training.seasonId)
   );
 }
 function seasonBounds(startYear) {
@@ -60877,7 +60877,7 @@ function prepareFixtureSnapshot(state, fixtureId, formationId) {
     "Select enough players for the match format."
   );
   const profiles = fixture.selectedProfileIds.map(
-    (id11) => checkProfile(state, id11, fixture.seasonId)
+    (id12) => checkProfile(state, id12, fixture.seasonId)
   );
   requireThat3(
     profiles.some((profile) => goalkeeperChoice(profile) > 0),
@@ -61004,9 +61004,9 @@ function validateRosterImport(state, profiles) {
       profile.active === true && profile.seasonId === state.activeSeasonId,
       "Import active players into the current season only."
     );
-    for (const id11 of [profile.id, profile.playerId])
+    for (const id12 of [profile.id, profile.playerId])
       requireThat3(
-        typeof id11 === "string" && id11.length >= 1 && id11.length <= 150 && !/[^A-Za-z0-9_.:-]/.test(id11),
+        typeof id12 === "string" && id12.length >= 1 && id12.length <= 150 && !/[^A-Za-z0-9_.:-]/.test(id12),
         "Use a valid opaque player/profile identity of at most 150 characters."
       );
     requireThat3(
@@ -61351,7 +61351,7 @@ function reducePreparation(previous, command, context = {}) {
       if (command.type === "fixture.selection_saved") {
         unique(command.selectedProfileIds);
         command.selectedProfileIds.forEach(
-          (id11) => checkProfile(state, id11, fixture.seasonId)
+          (id12) => checkProfile(state, id12, fixture.seasonId)
         );
         fixture.selectedProfileIds = [...command.selectedProfileIds];
       } else {
@@ -61544,17 +61544,17 @@ function trainingAttendanceEvidence(state) {
     playedDate: session.date,
     eventStatus: session.status,
     expectedPlayerIds: session.expectedProfileIds.map(
-      (id11) => state.profiles.find((profile) => profile.id === id11)?.playerId
-    ).filter((id11) => Boolean(id11)),
+      (id12) => state.profiles.find((profile) => profile.id === id12)?.playerId
+    ).filter((id12) => Boolean(id12)),
     attendance: Object.fromEntries(
-      Object.entries(session.attendance).flatMap(([id11, attendance]) => {
-        const profile = state.profiles.find((item) => item.id === id11);
+      Object.entries(session.attendance).flatMap(([id12, attendance]) => {
+        const profile = state.profiles.find((item) => item.id === id12);
         return profile ? [[profile.playerId, attendance]] : [];
       })
     ),
     responses: Object.fromEntries(
-      Object.entries(session.responses).flatMap(([id11, response]) => {
-        const profile = state.profiles.find((item) => item.id === id11);
+      Object.entries(session.responses).flatMap(([id12, response]) => {
+        const profile = state.profiles.find((item) => item.id === id12);
         return profile ? [[profile.playerId, response]] : [];
       })
     )
@@ -61863,12 +61863,12 @@ function validateInput(state, input) {
   }
   if (input.finalScore && (input.goals.filter((goal) => goal.beneficiary === "us").length > input.finalScore.for || input.goals.filter((goal) => goal.beneficiary === "opposition").length > input.finalScore.against)) throw new Error("Known goal attribution cannot exceed the recorded score.");
 }
-function historicalRecord(state, id11, input, at) {
+function historicalRecord(state, id12, input, at) {
   validateInput(state, input);
   return {
     ...clone2(input),
     opponent: input.opponent.trim(),
-    id: id11,
+    id: id12,
     teamId: state.teamId,
     seasonId: state.seasonId,
     recordMode: "historical_summary",
@@ -62170,9 +62170,9 @@ function publicResult(record3) {
   };
 }
 function selectSeasonResults(state, viewer) {
-  const scoped = inScope(state, viewer) ? state.results.filter((record3) => record3.teamId === state.teamId && record3.seasonId === state.seasonId) : [];
-  const visible = scoped.filter((record3) => canShare(record3, viewer.actor)).sort(chronological);
-  const withheld = scoped.length - visible.length;
+  const scoped2 = inScope(state, viewer) ? state.results.filter((record3) => record3.teamId === state.teamId && record3.seasonId === state.seasonId) : [];
+  const visible = scoped2.filter((record3) => canShare(record3, viewer.actor)).sort(chronological);
+  const withheld = scoped2.length - visible.length;
   const denied6 = !inScope(state, viewer) || withheld > 0;
   const included = visible.filter(ordinaryCompleted);
   const totals = { played: 0, wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0, goalDifference: 0, points: 0 };
@@ -62213,14 +62213,14 @@ function selectSeasonResults(state, viewer) {
     formChronologyState: ambiguous ? "same_day_order_unknown" : "known",
     unknownScoreCount: visible.filter((record3) => record3.status === "completed" && record3.finalScore === null).length,
     excludedExceptionalMatches: visible.filter((record3) => record3.specialOutcome !== "ordinary" || record3.status === "abandoned").length,
-    dataCoverage: { totalRecordedMatches: denied6 ? null : scoped.length, knownOrdinaryResults: denied6 ? null : included.length, summaryOnlyCount: denied6 ? null : visible.filter((record3) => record3.recordMode === "historical_summary").length }
+    dataCoverage: { totalRecordedMatches: denied6 ? null : scoped2.length, knownOrdinaryResults: denied6 ? null : included.length, summaryOnlyCount: denied6 ? null : visible.filter((record3) => record3.recordMode === "historical_summary").length }
   };
 }
 function reportRecords(state, match) {
-  const scoped = state.results.filter((record3) => record3.teamId === state.teamId && record3.seasonId === state.seasonId);
-  if (!match || match.config.matchId !== state.liveMatch.matchId || match.status === "preparation") return scoped;
+  const scoped2 = state.results.filter((record3) => record3.teamId === state.teamId && record3.seasonId === state.seasonId);
+  if (!match || match.config.matchId !== state.liveMatch.matchId || match.status === "preparation") return scoped2;
   const current3 = snapshotLiveMatch(state, match, observedMatchTime(match) ?? latestRecordTime(state) ?? state.startsOn + "T00:00:00Z");
-  return [...scoped.filter((record3) => record3.id !== current3.id), current3];
+  return [...scoped2.filter((record3) => record3.id !== current3.id), current3];
 }
 function observedMatchTime(match) {
   const value = match?.eventHistory?.at(-1)?.sample.wallTimeMs ?? match?.anchor?.sample.wallTimeMs ?? match?.completedAtMs;
@@ -62346,13 +62346,13 @@ function selectMatchReport(state, matchId, viewer, currentMatch = null) {
     awardStatus: record3.awardStatus
   };
   if (viewer.actor === "spectator") return base;
-  const eligible2 = viewer.actor === "manager" ? state.players.map((player) => player.id) : viewer.playerId ? [viewer.playerId] : [];
+  const eligible3 = viewer.actor === "manager" ? state.players.map((player) => player.id) : viewer.playerId ? [viewer.playerId] : [];
   return {
     ...base,
     actualActiveDurationMs: record3.actualActiveDurationMs,
     keeperPolicy: record3.keeperPolicy,
-    participation: record3.participation?.filter((item) => eligible2.includes(item.playerId)).map(clone2) ?? null,
-    attendance: record3.attendance ? Object.fromEntries(Object.entries(record3.attendance).filter(([id11]) => eligible2.includes(id11))) : null
+    participation: record3.participation?.filter((item) => eligible3.includes(item.playerId)).map(clone2) ?? null,
+    attendance: record3.attendance ? Object.fromEntries(Object.entries(record3.attendance).filter(([id12]) => eligible3.includes(id12))) : null
   };
 }
 
@@ -62464,13 +62464,13 @@ function assertManager(state, actor, nowMs) {
   assertAccess(state, actor, nowMs);
   requireRule(actor.role === "manager", "forbidden", "Only an assigned verified adult manager can do this.");
 }
-function scopedMatch(state, actor, id11) {
-  const match = state.matches.find((item) => item.id === id11);
+function scopedMatch(state, actor, id12) {
+  const match = state.matches.find((item) => item.id === id12);
   requireRule(match && match.teamId === actor.teamId && match.seasonId === actor.seasonId, "forbidden", "That match is outside this team and season.");
   return match;
 }
-function scopedPhoto(state, actor, id11) {
-  const photo = state.photos.find((item) => item.id === id11);
+function scopedPhoto(state, actor, id12) {
+  const photo = state.photos.find((item) => item.id === id12);
   requireRule(photo && photo.teamId === actor.teamId && photo.seasonId === actor.seasonId, "forbidden", "That photo is outside this team and season.");
   return photo;
 }
@@ -62509,7 +62509,7 @@ function sealAward(state, match, nowMs) {
     counts.set(ballot.candidatePlayerId, (counts.get(ballot.candidatePlayerId) ?? 0) + 1);
   }
   const highest = Math.max(0, ...counts.values());
-  const winners = [...counts].filter(([, count]) => count === highest).map(([id11]) => id11).sort();
+  const winners = [...counts].filter(([, count]) => count === highest).map(([id12]) => id12).sort();
   state.awards.push({
     matchId: match.id,
     winnerPlayerIds: winners,
@@ -62608,8 +62608,8 @@ function applyCommunityCommand(state, actor, command, nowMs) {
       requireRule(match.teamId === actor.teamId && match.seasonId === actor.seasonId, "forbidden", "A match must belong to the active team and season.");
       requireRule(!next.matches.some((item) => item.id === match.id), "conflict", "This match is already registered. A corrected finish requires an audited exception process and never reopens an award.");
       requireRule(validTime3(match.playedAtMs) && unique2(match.selectedPlayerIds) && unique2(match.presentPlayerIds) && unique2(match.playedPlayerIds), "invalid", "The match evidence is invalid.");
-      requireRule(match.presentPlayerIds.every((id11) => match.selectedPlayerIds.includes(id11)) && match.playedPlayerIds.every((id11) => match.presentPlayerIds.includes(id11)), "invalid", "Played and present evidence must belong to the selected squad.");
-      requireRule(match.selectedPlayerIds.every((id11) => next.memberships.some((member) => member.playerId === id11 && member.teamId === actor.teamId && member.seasonId === actor.seasonId)), "invalid", "Every selected player needs a membership in this team and season.");
+      requireRule(match.presentPlayerIds.every((id12) => match.selectedPlayerIds.includes(id12)) && match.playedPlayerIds.every((id12) => match.presentPlayerIds.includes(id12)), "invalid", "Played and present evidence must belong to the selected squad.");
+      requireRule(match.selectedPlayerIds.every((id12) => next.memberships.some((member) => member.playerId === id12 && member.teamId === actor.teamId && member.seasonId === actor.seasonId)), "invalid", "Every selected player needs a membership in this team and season.");
       requireRule(match.actualFullTimeAtMs === null || validTime3(match.actualFullTimeAtMs) && match.actualFullTimeAtMs <= nowMs, "invalid", "Actual full time cannot be in the future.");
       next.matches.push({
         ...match,
@@ -63062,8 +63062,8 @@ function getCommunityView(state, actor, nowMs) {
   const allowed = communityCanAccess(state, actor, nowMs);
   const season = state.seasons.find((item) => item.id === actor.seasonId && item.teamId === actor.teamId);
   const person = account(state, actor);
-  const scoped = (items) => items.filter((item) => item.teamId === actor.teamId && item.seasonId === actor.seasonId);
-  const gallery = allowed ? scoped(state.photos).flatMap((photo) => {
+  const scoped2 = (items) => items.filter((item) => item.teamId === actor.teamId && item.seasonId === actor.seasonId);
+  const gallery = allowed ? scoped2(state.photos).flatMap((photo) => {
     const decision = authorizeCommunityMedia(state, actor, photo.id, nowMs);
     if (!decision.allowed) return [];
     const match = state.matches.find((item) => item.id === photo.matchId);
@@ -63087,9 +63087,9 @@ function getCommunityView(state, actor, nowMs) {
     accountLabel: person.label,
     memberships: state.memberships.filter((item) => item.accountId === actor.accountId).map((item) => ({ ...item })),
     preferences: { ...state.preferences[actor.accountId] ?? defaultCommunityPreferences() },
-    invitations: allowed ? scoped(state.invitations).filter((item) => actor.role === "manager" || item.inviterAccountId === actor.accountId).map((item) => ({ ...publicInvitation(item, nowMs), reviewCode: item.credential?.kind === "fictional_review" && state.synthetic === true ? item.credential.code : void 0 })) : [],
-    grants: allowed && actor.role === "manager" ? scoped(state.grants).map((item) => ({ ...item, accountLabel: labelForAccount(state, item.accountId) })) : [],
-    matches: allowed ? scoped(state.matches).map((match) => {
+    invitations: allowed ? scoped2(state.invitations).filter((item) => actor.role === "manager" || item.inviterAccountId === actor.accountId).map((item) => ({ ...publicInvitation(item, nowMs), reviewCode: item.credential?.kind === "fictional_review" && state.synthetic === true ? item.credential.code : void 0 })) : [],
+    grants: allowed && actor.role === "manager" ? scoped2(state.grants).map((item) => ({ ...item, accountLabel: labelForAccount(state, item.accountId) })) : [],
+    matches: allowed ? scoped2(state.matches).map((match) => {
       const share = sharedAllowed(state, actor, match);
       const award = state.awards.find((item) => item.matchId === match.id);
       const own = actor.role === "player" ? latestBallots(state, match.id).find((item) => item.voterAccountId === actor.accountId && item.voterPlayerId === actor.playerId) : null;
@@ -63106,12 +63106,12 @@ function getCommunityView(state, actor, nowMs) {
         deadlineAtMs: share ? match.finalisationDeadlineAtMs : null,
         mayVote,
         ownChoice: own?.candidatePlayerId ?? null,
-        candidates: mayVote ? match.playedPlayerIds.filter((id11) => id11 !== actor.playerId).map((id11) => ({ id: id11, label: labelForPlayer(state, id11) })) : [],
-        award: share && award ? { ...award, winnerLabels: award.winnerPlayerIds.map((id11) => labelForPlayer(state, id11)) } : null
+        candidates: mayVote ? match.playedPlayerIds.filter((id12) => id12 !== actor.playerId).map((id12) => ({ id: id12, label: labelForPlayer(state, id12) })) : [],
+        award: share && award ? { ...award, winnerLabels: award.winnerPlayerIds.map((id12) => labelForPlayer(state, id12)) } : null
       };
     }) : [],
     gallery,
-    submissions: allowed && actor.role !== "spectator" ? scoped(state.photos).filter((item) => item.uploaderAccountId === actor.accountId).map((photo) => {
+    submissions: allowed && actor.role !== "spectator" ? scoped2(state.photos).filter((item) => item.uploaderAccountId === actor.accountId).map((photo) => {
       const revision = photo.revisions.find((item) => item.version === photo.currentRevision);
       return {
         id: photo.id,
@@ -63124,7 +63124,7 @@ function getCommunityView(state, actor, nowMs) {
         previousPublishedVersion: photo.publishedRevision !== photo.currentRevision ? photo.publishedRevision : null
       };
     }) : [],
-    reviewQueue: allowed && actor.role === "manager" ? scoped(state.photos).flatMap((photo) => {
+    reviewQueue: allowed && actor.role === "manager" ? scoped2(state.photos).flatMap((photo) => {
       const decision = authorizeCommunityMedia(state, actor, photo.id, nowMs, "review");
       return decision.allowed ? [{
         id: photo.id,
@@ -63135,7 +63135,7 @@ function getCommunityView(state, actor, nowMs) {
       }] : [];
     }) : [],
     ownConcerns: state.concerns.filter((item) => item.reporterAccountId === actor.accountId).map((item) => ({ id: item.id, status: item.status, targetType: item.targetType, createdAtMs: item.createdAtMs })),
-    reviewConcerns: allowed && actor.role === "manager" ? scoped(state.concerns).filter((item) => item.uploaderAccountId !== actor.accountId && item.status !== "escalation_required").map((item) => ({ id: item.id, targetType: item.targetType, targetId: item.targetId, category: item.category, explanation: item.explanation, status: item.status })) : [],
+    reviewConcerns: allowed && actor.role === "manager" ? scoped2(state.concerns).filter((item) => item.uploaderAccountId !== actor.accountId && item.status !== "escalation_required").map((item) => ({ id: item.id, targetType: item.targetType, targetId: item.targetId, category: item.category, explanation: item.explanation, status: item.status })) : [],
     hiddenUploaders: state.hiddenUploaders.filter((item) => item.accountId === actor.accountId).map((item) => ({ id: item.uploaderAccountId, label: labelForAccount(state, item.uploaderAccountId) })),
     privacyRequests: state.privacyRequests.filter((item) => item.accountId === actor.accountId).map((item) => ({ ...item }))
   };
@@ -63295,7 +63295,7 @@ function communityObjectShape(value, fields10) {
   const object14 = value;
   return Object.keys(object14).every((key) => Object.hasOwn(fields10, key)) && Object.entries(fields10).every(([key, rule]) => Object.hasOwn(object14, key) ? rule.accepts(object14[key]) : Boolean(rule.optional));
 }
-var communityText = (maximum, nonempty = true) => ({ accepts: (value) => typeof value === "string" && value.length <= maximum && (!nonempty || value.trim().length > 0) });
+var communityText = (maximum2, nonempty = true) => ({ accepts: (value) => typeof value === "string" && value.length <= maximum2 && (!nonempty || value.trim().length > 0) });
 var communityInteger = (minimum = 0) => ({ accepts: (value) => typeof value === "number" && Number.isSafeInteger(value) && value >= minimum });
 var communityEnum = (...values) => ({ accepts: (value) => typeof value === "string" && values.includes(value) });
 var communityTrue = { accepts: (value) => value === true };
@@ -63680,140 +63680,26 @@ var SignInRulesService = class {
   }
 };
 
-// packages/application/src/player-preparation.ts
-var time = (value) => typeof value === "string" && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value);
-var format = (value) => Number.isInteger(value) && Number(value) >= 5 && Number(value) <= 11;
-var half = (value) => Number.isSafeInteger(value) && Number(value) > 0 && Number(value) % 1e3 === 0;
-function projectOwnPlayerPreparation(state, profile, seasonId) {
-  const season = state.seasons.find((item) => item.id === seasonId);
-  if (!season || !profile.active || profile.seasonId !== seasonId || !state.profiles.some(
-    (item) => item.id === profile.id && item.playerId === profile.playerId && item.seasonId === seasonId && item.active
-  ))
-    throw new Error("The authorised own-player preparation is unavailable.");
-  return {
-    kind: "player-preparation",
-    revision: state.revision,
-    positionCatalogue: positionCatalogueFor(state),
-    team: {
-      id: state.team.id,
-      name: state.team.name,
-      ageGroup: state.team.ageGroup
-    },
-    season: {
-      id: season.id,
-      label: season.label,
-      startYear: season.startYear,
-      startDate: season.startDate,
-      endDate: season.endDate,
-      spectatorRenewalRequired: true
-    },
-    profile: {
-      id: profile.id,
-      playerId: profile.playerId,
-      seasonId: profile.seasonId,
-      displayName: profile.displayName,
-      initials: profile.initials,
-      shirtNumber: profile.shirtNumber,
-      ...profile.faPlayerId !== void 0 ? { faPlayerId: profile.faPlayerId } : {},
-      foot: profile.foot,
-      preferences: [...profile.preferences],
-      eligiblePositions: [...profile.eligiblePositions],
-      active: profile.active
-    },
-    fixtures: state.fixtures.filter((item) => item.seasonId === seasonId).map((item) => ({
-      id: item.id,
-      opponent: item.opponent,
-      playedDate: item.playedDate,
-      kickoff: time(item.kickoff) ? item.kickoff : null,
-      arrival: time(item.arrival) ? item.arrival : null,
-      venue: item.venue,
-      homeAway: item.homeAway,
-      status: item.status,
-      format: format(item.format) ? item.format : null,
-      plannedHalfDurationMs: half(item.plannedHalfDurationMs) ? item.plannedHalfDurationMs : null,
-      response: item.responses[profile.id] ?? "no_reply",
-      selected: item.selectedProfileIds.includes(profile.id),
-      attendance: item.attendance[profile.id] ?? "not_recorded"
-    })),
-    training: state.training.filter((item) => item.seasonId === seasonId).map((item) => ({
-      id: item.id,
-      date: item.date,
-      time: time(item.time) ? item.time : null,
-      venue: item.venue,
-      status: item.status,
-      expected: item.expectedProfileIds.includes(profile.id),
-      response: item.responses[profile.id] ?? "no_reply",
-      attendance: item.attendance[profile.id] ?? "not_recorded"
-    }))
-  };
-}
+// apps/api/src/login-analytics-service.ts
+import { createHash, randomUUID } from "node:crypto";
 
-// packages/application/src/uk-display.ts
-var UK_TIME_ZONE = "Europe/London";
-function londonDateKey(now) {
-  const parts = new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: UK_TIME_ZONE }).formatToParts(new Date(now));
-  const part = (kind2) => parts.find((item) => item.type === kind2).value;
-  return `${part("year")}-${part("month")}-${part("day")}`;
-}
-
-// packages/application/src/fixture-response-window.ts
-function canPlayerReplyToFixture(fixture, nowMs, context = {}) {
-  if (fixture.status !== "scheduled" || !Number.isSafeInteger(nowMs) || nowMs < 0 || !Number.isFinite(new Date(nowMs).getTime())) return false;
-  if (context.recordedStatus != null && context.recordedStatus !== "preparation") return false;
-  const date = fixture.playedDate;
-  if (typeof date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(date) || date.startsWith("0000-")) return false;
-  const parsed = /* @__PURE__ */ new Date(`${date}T00:00:00Z`);
-  if (!Number.isFinite(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== date) return false;
-  return date >= londonDateKey(nowMs);
-}
-
-// apps/api/src/match-pagination.ts
-import { createHash } from "node:crypto";
-import { Buffer as Buffer2 } from "node:buffer";
-var invalid = () => {
-  throw new AccessError("INVALID_PAGE", 400, "Use the original cursor for this account, team, season and selected role, with a page limit from 1 to 100.");
-};
-var validId = (value) => typeof value === "string" && value.length >= 1;
-function parseMatchPageQuery(params) {
-  for (const key of params.keys()) if (!["seasonId", "limit", "cursor", "status"].includes(key) || params.getAll(key).length !== 1) invalid();
-  const rawLimit = params.get("limit");
-  if (rawLimit !== null && !/^(?:[1-9]|[1-9][0-9]|100)$/.test(rawLimit)) invalid();
-  const cursor = params.get("cursor");
-  if (cursor !== null && (!cursor.length || /[^A-Za-z0-9_-]/.test(cursor))) invalid();
-  const status2 = params.get("status");
-  if (status2 !== null && status2 !== "active") invalid();
-  return { limit: rawLimit === null ? 25 : Number(rawLimit), cursor, ...status2 === "active" ? { status: status2 } : {} };
-}
-function matchPageAudience(principal, memberships, teamId, seasonId, requestedRole, nowMs) {
-  const available2 = currentMemberships(principal, memberships, nowMs).filter((item) => item.teamId === teamId && item.seasonId === seasonId && ["manager", "player", "spectator"].includes(item.role));
-  const chosen = requestedRole ? available2.find((item) => item.role === requestedRole) : available2.find((item) => item.role === "manager") ?? available2.find((item) => item.role === "player") ?? available2[0];
-  if (!chosen) throw new AccessError("NOT_FOUND", 404, "The requested object is unavailable.");
-  if (chosen.role === "manager") assertAdultAuthority(principal, false, nowMs);
-  return chosen;
-}
-var binding = (scope) => createHash("sha256").update(JSON.stringify(["longball.matches.id-asc.v1", scope.principal.accountId, scope.principal.issuer, scope.principal.subject, scope.teamId, scope.seasonId, scope.role, scope.playerId, ...scope.status === "active" ? ["active"] : []])).digest("base64url");
-function matchPageCursor(scope, afterId) {
-  if (!validId(afterId)) invalid();
-  return Buffer2.from(JSON.stringify({ version: 1, binding: binding(scope), afterId })).toString("base64url");
-}
-function matchPagePosition(scope, query) {
-  if (!Number.isSafeInteger(query.limit) || query.limit < 1 || query.limit > 100) invalid();
-  if (query.status !== void 0 && query.status !== "active" || query.status !== scope.status) invalid();
-  if (query.cursor === null) return null;
-  try {
-    if (!/^[A-Za-z0-9_-]+$/.test(query.cursor)) invalid();
-    const bytes = Buffer2.from(query.cursor, "base64url");
-    if (bytes.toString("base64url") !== query.cursor) invalid();
-    const cursor = JSON.parse(bytes.toString("utf8"));
-    if (!cursor || typeof cursor !== "object" || Array.isArray(cursor) || Object.keys(cursor).sort().join(",") !== "afterId,binding,version" || cursor.version !== 1 || cursor.binding !== binding(scope) || !validId(cursor.afterId)) invalid();
-    return cursor.afterId;
-  } catch {
-    return invalid();
+// packages/application/src/login-analytics.ts
+var LOGIN_ACTIVITY_WINDOW_MS = 15 * 6e4;
+var LOGIN_REPORT_MAX_EVENTS = 2e4;
+var LOGIN_REPORT_PAGE_SIZE = 50;
+var LOGIN_ROLE_LABELS = { super_admin: "Super Admin", club_admin: "Club Admin", manager: "Manager", player: "Player", spectator: "Spectator" };
+var id2 = (v) => /^[A-Za-z0-9_-]{1,150}$/.test(v);
+function parseLoginAnalyticsQuery(parameters) {
+  const known = ["range", "clubId", "teamId", "role", "event", "cursor"];
+  if ([...parameters.keys()].some((key) => !known.includes(key) || parameters.getAll(key).length !== 1)) throw new AccessError("INVALID_LOGIN_REPORT_QUERY", 400, "Use one documented login-report filter per field.");
+  const range = parameters.get("range") ?? "7d", clubId = parameters.get("clubId") ?? void 0, teamId = parameters.get("teamId") ?? void 0, role = parameters.get("role") ?? void 0, event = parameters.get("event") ?? void 0, cursor = parameters.get("cursor") ?? void 0;
+  if (!["24h", "7d", "30d"].includes(range) || clubId !== void 0 && !id2(clubId) || teamId !== void 0 && !id2(teamId) || role !== void 0 && !Object.hasOwn(LOGIN_ROLE_LABELS, role) || event !== void 0 && !["login_success", "login_failure", "logout"].includes(event) || cursor !== void 0 && !/^2\.\d{1,16}\.\d{1,16}\.\d{1,16}\.[A-Za-z0-9_-]{1,150}\.[a-f0-9]{16}$/.test(cursor)) throw new AccessError("INVALID_LOGIN_REPORT_QUERY", 400, "Choose a supported period, club, team, account type or event filter.");
+  if (cursor) {
+    const [, asOf, highWater, at] = cursor.split(".");
+    if (!Number.isSafeInteger(Number(asOf)) || !Number.isSafeInteger(Number(highWater)) || !Number.isSafeInteger(Number(at)) || Number(at) > Number(asOf)) throw new AccessError("INVALID_LOGIN_REPORT_QUERY", 400, "Use the returned login event cursor.");
   }
+  return { range, ...clubId ? { clubId } : {}, ...teamId ? { teamId } : {}, ...role ? { role } : {}, ...event ? { event } : {}, ...cursor ? { cursor } : {} };
 }
-
-// apps/api/src/offline-bundle.ts
-import { randomUUID } from "node:crypto";
 
 // node_modules/.pnpm/@noble+hashes@2.4.0/node_modules/@noble/hashes/_u64.js
 var fromNumH = (n) => n / 2 ** 32 | 0;
@@ -64190,6 +64076,534 @@ var sha256 = /* @__PURE__ */ createHasher(
   /* @__PURE__ */ oidNist(1)
 );
 
+// packages/application/src/uk-display.ts
+var UK_TIME_ZONE = "Europe/London";
+function londonDateKey(now) {
+  const parts = new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: UK_TIME_ZONE }).formatToParts(new Date(now));
+  const part = (kind2) => parts.find((item) => item.type === kind2).value;
+  return `${part("year")}-${part("month")}-${part("day")}`;
+}
+
+// packages/application/src/login-analytics-projection.ts
+var dayMs = 864e5;
+var calendarParts = new Intl.DateTimeFormat("en-GB", { timeZone: UK_TIME_ZONE, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23" });
+function shiftDay(key, count) {
+  const day = /* @__PURE__ */ new Date(`${key}T12:00:00Z`);
+  day.setUTCDate(day.getUTCDate() + count);
+  return day.toISOString().slice(0, 10);
+}
+function midnight(key) {
+  const [year, month, day] = key.split("-").map(Number), target = Date.UTC(year, month - 1, day);
+  let value = target;
+  for (let i = 0; i < 3; i++) {
+    const parts = calendarParts.formatToParts(new Date(value)), part = (kind2) => Number(parts.find((p) => p.type === kind2).value);
+    const shown = Date.UTC(part("year"), part("month") - 1, part("day"), part("hour"), part("minute"), part("second"));
+    const next = value + target - shown;
+    if (next === value) break;
+    value = next;
+  }
+  return value;
+}
+function loginAnalyticsPeriodStart(range, now) {
+  return range === "24h" ? now - dayMs : midnight(shiftDay(londonDateKey(now), range === "7d" ? -6 : -29));
+}
+function loginAnalyticsFilterDigest(query) {
+  const text3 = JSON.stringify([query.range, query.clubId ?? null, query.teamId ?? null, query.role ?? null, query.event ?? null]);
+  return Array.from(sha256(Uint8Array.from(text3, (char) => char.charCodeAt(0))).slice(0, 8), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+function loginAnalyticsCursor(query, now) {
+  if (!query.cursor) return null;
+  const match = /^2\.(\d{1,16})\.(\d{1,16})\.(\d{1,16})\.([A-Za-z0-9_-]{1,150})\.([a-f0-9]{16})$/.exec(query.cursor);
+  if (!match) throw new AccessError("INVALID_LOGIN_REPORT_QUERY", 400, "Use the returned login event cursor.");
+  const asOf = Number(match[1]), highWater = Number(match[2]), at = Number(match[3]);
+  if (!Number.isSafeInteger(asOf) || !Number.isSafeInteger(highWater) || !Number.isSafeInteger(at) || asOf > now || at > asOf || at < loginAnalyticsPeriodStart(query.range, asOf) || match[5] !== loginAnalyticsFilterDigest(query)) throw new AccessError("INVALID_LOGIN_REPORT_QUERY", 400, "The login event cursor does not match this report selection.");
+  if (now - asOf > 36e5) throw new AccessError("INVALID_LOGIN_REPORT_QUERY", 400, "Refresh the report before continuing; this event cursor has expired.");
+  return { asOf, highWater, at, id: match[4] };
+}
+function loginAnalyticsEventAsOf(query, now) {
+  return loginAnalyticsCursor(query, now)?.asOf ?? now;
+}
+var newerFirst = (a, b) => b.at - a.at || (a.id === b.id ? 0 : a.id > b.id ? -1 : 1);
+function scoped(scopes, query) {
+  return !query.clubId && !query.teamId || scopes.some((s) => (!query.clubId || s.clubId === query.clubId) && (!query.teamId || s.teamId === query.teamId));
+}
+function scopeRows(scopes, query) {
+  const found = /* @__PURE__ */ new Map();
+  for (const row of scopes) if ((!query.clubId || row.clubId === query.clubId) && (!query.teamId || row.teamId === query.teamId)) {
+    const key = JSON.stringify([row.clubId, row.teamId, row.seasonId, row.role]);
+    if (!found.has(key)) found.set(key, { clubId: row.clubId, clubName: row.clubName, teamId: row.teamId, teamName: row.teamName, seasonId: row.seasonId, role: row.role });
+    if (found.size > 500) return { rows: [...found.values()].slice(0, 500), truncated: true };
+  }
+  return { rows: [...found.values()], truncated: false };
+}
+var maximum = (values) => values.length ? Math.max(...values) : null;
+function eventCounts(events) {
+  return { signIns: events.filter((e) => e.type === "login_success").reduce((n, e) => n + e.count, 0), uniqueAccounts: new Set(events.flatMap((e) => e.accountId ? [e.accountId] : [])).size };
+}
+function validSession(session, now, runtimeId) {
+  return session.provider !== "oidc" && session.runtimeId === runtimeId && session.endedAt === null && session.expiresAtMs !== null && session.expiresAtMs > now;
+}
+function projectLoginAnalytics(snapshot, query, now, runtimeId, collectionHealthy) {
+  if (!Number.isSafeInteger(now) || now < 0) throw new Error("Use a valid report observation time.");
+  const directory = { clubs: snapshot.directory.clubs.map((c) => ({ id: c.id, name: c.name })), teams: snapshot.directory.teams.map((t) => ({ id: t.id, clubId: t.clubId, name: t.name, ageGroup: t.ageGroup })) };
+  const club = query.clubId ? directory.clubs.find((c) => c.id === query.clubId) : null, team = query.teamId ? directory.teams.find((t) => t.id === query.teamId) : null;
+  if (query.clubId && !club || query.teamId && !team || club && team && team.clubId !== club.id) throw new AccessError("INVALID_LOGIN_REPORT_QUERY", 400, "Choose a team in the selected club.");
+  const parsedCursor = loginAnalyticsCursor(query, now), eventAsOf = parsedCursor?.asOf ?? now, cursor = parsedCursor ? { at: parsedCursor.at, id: parsedCursor.id } : null;
+  const highWater = parsedCursor?.highWater ?? snapshot.eventHighWater ?? Math.max(0, ...snapshot.events.flatMap((e) => e.ordinal === void 0 ? [] : [e.ordinal]));
+  if (!Number.isSafeInteger(highWater) || highWater < 0) throw new Error("Use a valid event collection high-water mark.");
+  const from = loginAnalyticsPeriodStart(query.range, eventAsOf);
+  const eventMatches = (e) => e.at >= from && e.at <= eventAsOf && (!query.role || e.role === query.role) && (!query.event || e.type === query.event) && scoped(e.scopes, query);
+  const events = snapshot.events.filter((e) => e.ordinal === void 0 || e.ordinal <= highWater).map((e) => e.type === "login_failure" ? { ...e, accountId: null, actorLabel: null, role: null, scopes: [] } : e).filter(eventMatches).sort(newerFirst);
+  const enabled = new Set(snapshot.accounts.filter((a) => a.enabled).map((a) => a.accountId));
+  const recent = snapshot.sessions.filter((s) => (snapshot.activityAccountsVerified === true || enabled.has(s.accountId)) && s.lastSeenAt >= now - LOGIN_ACTIVITY_WINDOW_MS && s.lastSeenAt <= now && (!query.role || s.role === query.role) && scoped(s.scopes, query));
+  const activeIds = new Set(recent.map((s) => s.accountId));
+  const byAccount = /* @__PURE__ */ new Map();
+  for (const session of recent) {
+    const rows = byAccount.get(session.accountId) ?? [];
+    rows.push(session);
+    byAccount.set(session.accountId, rows);
+  }
+  let visibleScopesTruncated = false;
+  const publicScopes = (scopes) => {
+    const selected2 = scopeRows(scopes, query);
+    visibleScopesTruncated ||= selected2.truncated;
+    return selected2.rows;
+  };
+  function* accountScopes(rows) {
+    const seen = /* @__PURE__ */ new Set();
+    for (const row of rows) if (!seen.has(row.scopes)) {
+      seen.add(row.scopes);
+      yield* row.scopes;
+    }
+  }
+  const activeUsers = [...byAccount].map(([accountId, rows]) => ({ accountId, rows, latest: rows.reduce((a, b) => b.lastSeenAt > a.lastSeenAt || b.lastSeenAt === a.lastSeenAt && b.sessionId > a.sessionId ? b : a) })).sort((a, b) => b.latest.lastSeenAt - a.latest.lastSeenAt || a.accountId.localeCompare(b.accountId)).slice(0, 100).map(({ accountId, rows, latest: latest2 }) => ({ accountId, label: latest2.label, role: latest2.role, lastSeenAt: latest2.lastSeenAt, sessionCount: rows.some((r) => r.provider === "oidc") ? null : new Set(rows.filter((r) => validSession(r, now, runtimeId)).map((r) => r.sessionId)).size, scopes: publicScopes(accountScopes(rows)) }));
+  const selectedClubs = directory.clubs.filter((c) => (!query.clubId || c.id === query.clubId) && (!team || team.clubId === c.id));
+  const selectedTeams = directory.teams.filter((t) => (!query.clubId || t.clubId === query.clubId) && (!query.teamId || t.id === query.teamId));
+  const clubMetrics = /* @__PURE__ */ new Map(), teamMetrics = /* @__PURE__ */ new Map();
+  const metric = (map, key) => {
+    let value = map.get(key);
+    if (!value) {
+      value = { signIns: 0, accounts: /* @__PURE__ */ new Set(), active: /* @__PURE__ */ new Set(), lastSeenAt: null };
+      map.set(key, value);
+    }
+    return value;
+  };
+  const selectedClubIds = new Set(selectedClubs.map((c) => c.id)), selectedTeamIds = new Set(selectedTeams.map((t) => t.id));
+  for (const row of events) {
+    const clubIds = /* @__PURE__ */ new Set(), teamIds = /* @__PURE__ */ new Set();
+    for (const scope of row.scopes) if (selectedClubIds.has(scope.clubId) && selectedTeamIds.has(scope.teamId)) {
+      clubIds.add(scope.clubId);
+      teamIds.add(scope.teamId);
+    }
+    for (const [map, keys2] of [[clubMetrics, clubIds], [teamMetrics, teamIds]]) for (const key of keys2) {
+      const value = metric(map, key);
+      if (row.type === "login_success") value.signIns += row.count;
+      if (row.accountId) value.accounts.add(row.accountId);
+    }
+  }
+  for (const row of recent) {
+    const clubIds = /* @__PURE__ */ new Set(), teamIds = /* @__PURE__ */ new Set();
+    for (const scope of row.scopes) if (selectedClubIds.has(scope.clubId) && selectedTeamIds.has(scope.teamId)) {
+      clubIds.add(scope.clubId);
+      teamIds.add(scope.teamId);
+    }
+    for (const [map, keys2] of [[clubMetrics, clubIds], [teamMetrics, teamIds]]) for (const key of keys2) {
+      const value = metric(map, key);
+      value.active.add(row.accountId);
+      value.lastSeenAt = value.lastSeenAt === null ? row.lastSeenAt : Math.max(value.lastSeenAt, row.lastSeenAt);
+    }
+  }
+  const values = (value) => ({ signIns: value?.signIns ?? 0, uniqueAccounts: value?.accounts.size ?? 0, activeAccounts: value?.active.size ?? 0, lastSeenAt: value?.lastSeenAt ?? null });
+  const clubNames = new Map(directory.clubs.map((c) => [c.id, c.name])), teamCounts = /* @__PURE__ */ new Map();
+  for (const row of selectedTeams) teamCounts.set(row.clubId, (teamCounts.get(row.clubId) ?? 0) + 1);
+  const clubs = selectedClubs.map((c) => ({ clubId: c.id, clubName: c.name, teamCount: teamCounts.get(c.id) ?? 0, ...values(clubMetrics.get(c.id)) }));
+  const teams = selectedTeams.map((t) => ({ teamId: t.id, teamName: t.name, clubId: t.clubId, clubName: clubNames.get(t.clubId) ?? "Club", ageGroup: t.ageGroup, ...values(teamMetrics.get(t.id)) }));
+  const roles = Object.keys(LOGIN_ROLE_LABELS).filter((role) => !query.role || query.role === role).map((role) => ({ role, label: LOGIN_ROLE_LABELS[role], ...eventCounts(events.filter((e) => e.role === role)), activeAccounts: new Set(recent.filter((s) => s.role === role).map((s) => s.accountId)).size }));
+  const trend = [];
+  if (query.range === "24h") for (let index = 0; index < 24; index++) trend.push({ from: from + index * 36e5, to: Math.min(eventAsOf, from + (index + 1) * 36e5), signIns: 0, failedAttempts: 0, uniqueAccounts: 0 });
+  else {
+    const days = query.range === "7d" ? 7 : 30, key = londonDateKey(from);
+    for (let index = 0; index < days; index++) trend.push({ from: midnight(shiftDay(key, index)), to: Math.min(eventAsOf, midnight(shiftDay(key, index + 1))), signIns: 0, failedAttempts: 0, uniqueAccounts: 0 });
+  }
+  for (const point of trend) {
+    const rows = events.filter((e) => e.at >= point.from && (e.at < point.to || point.to === eventAsOf && e.at === eventAsOf));
+    const counts = eventCounts(rows);
+    point.signIns = counts.signIns;
+    point.uniqueAccounts = counts.uniqueAccounts;
+    point.failedAttempts = rows.filter((e) => e.type === "login_failure").reduce((n, e) => n + e.count, 0);
+  }
+  const pageEvents = events.filter((e) => !cursor || e.at < cursor.at || e.at === cursor.at && e.id < cursor.id), selected = pageEvents.slice(0, LOGIN_REPORT_PAGE_SIZE), last = selected.at(-1);
+  const signIns = events.filter((e) => e.type === "login_success");
+  const publicEvents = selected.map((e) => ({ id: e.id, at: e.at, type: e.type, provider: e.provider, accountId: e.accountId, actorLabel: e.actorLabel, role: e.role, scopes: publicScopes(e.scopes), reason: e.reason, count: e.count }));
+  return {
+    kind: "login-analytics",
+    observedAt: now,
+    eventAsOf,
+    from,
+    filters: { ...query },
+    summary: { ...eventCounts(events), failedAttempts: events.filter((e) => e.type === "login_failure").reduce((n, e) => n + e.count, 0), activeAccounts: activeIds.size, activeSessions: recent.some((s) => s.provider === "oidc") ? null : new Set(recent.filter((s) => validSession(s, now, runtimeId)).map((s) => s.sessionId)).size, enabledAccounts: snapshot.enabledAccountsCount ?? snapshot.accounts.filter((a) => a.enabled && (!query.role || a.role === query.role) && scoped(a.scopes, query)).length, lastSignInAt: maximum(signIns.map((e) => e.at)) },
+    directory,
+    trend,
+    roles,
+    clubs,
+    teams,
+    activeUsers,
+    events: publicEvents,
+    page: { nextCursor: pageEvents.length > LOGIN_REPORT_PAGE_SIZE && last ? `2.${eventAsOf}.${highWater}.${last.at}.${last.id}.${loginAnalyticsFilterDigest(query)}` : null, limit: LOGIN_REPORT_PAGE_SIZE },
+    coverage: { startedAt: snapshot.startedAt, eventRowsTruncated: snapshot.eventRowsTruncated, activityRowsTruncated: snapshot.activityRowsTruncated || byAccount.size > 100, scopeRowsTruncated: visibleScopesTruncated || snapshot.scopeRowsTruncated || snapshot.events.some((e) => e.scopes.length > 500) || snapshot.sessions.some((e) => e.scopes.length > 500) || snapshot.accounts.some((e) => e.scopes.length > 500), eventLimit: LOGIN_REPORT_MAX_EVENTS, activityWindowMinutes: 15, pollingIncluded: true, upstreamProviderFailuresIncluded: false, collectionHealthy },
+    definitions: [
+      "Active accounts means enabled LongBall accounts with authenticated API activity in the last 15 minutes; automatic polling is included. This is not proof that a person is online.",
+      "Club and team attribution is the membership access captured at the event or activity observation, not a claim that the user selected or visited that team. Group totals overlap and must not be added together.",
+      "Unique accounts counts distinct known accounts with the selected recorded events. Shared Player accounts do not identify distinct people.",
+      "The event filter applies to event counts and the timeline; recent activity and enabled-account counts are independent of event type.",
+      "Enabled accounts are known to LongBall with current matching access; this is not the external identity provider user directory.",
+      "Current local sessions are unexpired, not signed out, observed within 15 minutes and held by this running service. Counts are unavailable when the selection includes OIDC observations; provider session validity is not inferred.",
+      "OIDC events record the first verified application use of an authentication context, not every identity-provider sign-in. Upstream provider failures and provider-only sign-outs are not observed.",
+      "Rejected credentials are unattributed. Club, team and account-type filters exclude unknown failures. Network floods and requests rejected before credential evaluation are not a complete attempt log.",
+      "Event pages retain the original persisted event high-water mark, event cutoff and selection through a filter-bound cursor; recent activity and account access are checked at the current observation time. Cursors expire after one hour.",
+      "Periods of 7 or 30 days use UK calendar days, including today; 24 hours is a rolling period. Reporting history starts with collection and is not reconstructed.",
+      "Collection health describes this running service process. It does not certify uninterrupted historical collection across service restarts.",
+      "Event summaries use at most the newest 20,000 source events, and the recent-account list shows at most 100 accounts; coverage flags identify partial data."
+    ]
+  };
+}
+
+// apps/api/src/login-analytics-service.ts
+var pg2 = (source2) => "db" in source2;
+var LOGIN_ANALYTICS_SQLITE_DDL = `
+CREATE TABLE IF NOT EXISTS login_reporting_state(singleton INTEGER PRIMARY KEY CHECK(singleton=1),started_at INTEGER);
+INSERT INTO login_reporting_state VALUES(1,NULL) ON CONFLICT DO NOTHING;
+CREATE TABLE IF NOT EXISTS login_access_snapshots(id TEXT PRIMARY KEY,account_id TEXT NOT NULL REFERENCES accounts(id),label TEXT NOT NULL,role TEXT NOT NULL,scopes_json TEXT NOT NULL,scopes_truncated INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS login_events(ordinal INTEGER PRIMARY KEY AUTOINCREMENT,id TEXT NOT NULL UNIQUE,at INTEGER NOT NULL,type TEXT NOT NULL,provider TEXT NOT NULL,account_id TEXT REFERENCES accounts(id),snapshot_id TEXT REFERENCES login_access_snapshots(id),session_id TEXT,reason TEXT,count INTEGER NOT NULL DEFAULT 1);
+CREATE INDEX IF NOT EXISTS login_events_at ON login_events(at DESC,id DESC);
+CREATE INDEX IF NOT EXISTS login_events_account ON login_events(account_id,at DESC);
+CREATE TABLE IF NOT EXISTS login_sessions(session_id TEXT PRIMARY KEY,account_id TEXT NOT NULL REFERENCES accounts(id),snapshot_id TEXT NOT NULL REFERENCES login_access_snapshots(id),provider TEXT NOT NULL,runtime_id TEXT NOT NULL,issued_at INTEGER NOT NULL,expires_at INTEGER,last_seen_at INTEGER NOT NULL,ended_at INTEGER);
+CREATE INDEX IF NOT EXISTS login_sessions_seen ON login_sessions(last_seen_at DESC);`;
+var parse = (value) => typeof value === "string" ? JSON.parse(value) : value;
+var labels2 = { super_admin: "Super Admin", club_admin: "Club Admin", manager: "Manager", player: "Player", spectator: "Spectator" };
+function sqliteActor(source2, accountId, now) {
+  const db = source2.database, account3 = db.prepare("SELECT status FROM accounts WHERE id=?").get(accountId);
+  if (!account3) return null;
+  const grants = db.prepare("SELECT level FROM administration_grants WHERE account_id=?").all(accountId);
+  const memberships = db.prepare("SELECT m.*,COALESCE(json_extract(doc.value_json,'$.team.name'),t.name) team_name,COALESCE(json_extract(doc.value_json,'$.team.ageGroup'),d.age_group,'') age_group,d.club_id,COALESCE(json_extract(doc.value_json,'$.club.name'),c.name) club_name FROM memberships m JOIN teams t ON t.id=m.team_id JOIN directory_teams d ON d.team_id=m.team_id JOIN directory_clubs c ON c.id=d.club_id LEFT JOIN documents doc ON doc.team_id=m.team_id AND doc.season_id=m.season_id AND doc.kind='preparation' WHERE m.account_id=? AND m.revoked_at IS NULL AND(m.expires_at IS NULL OR m.expires_at>?) ORDER BY c.name,t.name,m.team_id,m.season_id").all(accountId, now);
+  const role = grants.some((g) => g.level === "super") ? "super_admin" : grants.some((g) => g.level === "club") ? "club_admin" : memberships.some((m) => m.role === "manager") ? "manager" : memberships.some((m) => m.role === "player") ? "player" : "spectator";
+  const scopes = /* @__PURE__ */ new Map();
+  if (role !== "super_admin") for (const m of memberships) {
+    const key = JSON.stringify([m.team_id, m.season_id]);
+    if (!scopes.has(key)) scopes.set(key, { clubId: String(m.club_id), clubName: String(m.club_name), teamId: String(m.team_id), teamName: String(m.team_name) + (m.age_group && !String(m.team_name).toLowerCase().endsWith(" " + String(m.age_group).toLowerCase()) ? " " + String(m.age_group) : ""), seasonId: String(m.season_id), role });
+  }
+  const profile = db.prepare("SELECT json_extract(p.value,'$.displayName') label FROM memberships m JOIN documents d ON d.team_id=m.team_id AND d.season_id=m.season_id AND d.kind='preparation' JOIN json_each(d.value_json,'$.profiles')p WHERE m.account_id=? AND m.role='player' AND json_extract(p.value,'$.playerId')=m.player_id LIMIT 1").get(accountId);
+  const label3 = String(profile?.label ?? demoAccountLabels[accountId] ?? `${labels2[role]} \xB7 ${accountId.slice(-6)}`).slice(0, 120);
+  return { accountId, label: label3, role, enabled: account3.status === "active", scopes: [...scopes.values()].slice(0, 500), scopesTruncated: scopes.size > 500 };
+}
+function eligible(row, query) {
+  return row.enabled && (!query.role || query.role === row.role) && (!query.clubId && !query.teamId || row.scopes.some((s) => (!query.clubId || s.clubId === query.clubId) && (!query.teamId || s.teamId === query.teamId)));
+}
+var LoginAnalyticsService = class {
+  constructor(source2) {
+    this.source = source2;
+  }
+  source;
+  runtimeId = randomUUID();
+  healthy = true;
+  initialized = false;
+  seen = /* @__PURE__ */ new Map();
+  oidc = /* @__PURE__ */ new Map();
+  limited = /* @__PURE__ */ new Map();
+  async initialize() {
+    if (this.initialized) return;
+    if (pg2(this.source)) await this.source.one("SELECT login_reporting_initialize($1)", [this.source.now()]);
+    else {
+      this.source.database.exec(LOGIN_ANALYTICS_SQLITE_DDL);
+      this.source.database.prepare("UPDATE login_reporting_state SET started_at=COALESCE(started_at,?) WHERE singleton=1").run(this.source.now());
+    }
+    this.initialized = true;
+  }
+  async safe(work) {
+    try {
+      await this.initialize();
+      await work();
+    } catch {
+      if (this.healthy) console.error("LONGBALL_LOGIN_REPORT_WRITE_FAILED");
+      this.healthy = false;
+    }
+  }
+  async recordFailure(event) {
+    if (event.reason === "rate_limited") {
+      const previous = this.limited.get(event.provider);
+      if (previous !== void 0 && event.at - previous < 6e4) return;
+      this.limited.set(event.provider, event.at);
+    }
+    await this.safe(() => this.write({ type: "login_failure", provider: event.provider, at: event.at, runtimeId: this.runtimeId, reason: event.reason, eventId: randomUUID() }));
+  }
+  async signIn(principal, session) {
+    await this.safe(async () => {
+      await this.actorWrite(principal, { type: "login_success", provider: session.provider, at: this.source.now(), runtimeId: this.runtimeId, accountId: session.accountId, sessionId: session.sessionId, issuedAtMs: session.issuedAtMs, expiresAtMs: session.expiresAtMs });
+      this.seen.set(session.sessionId, this.source.now());
+    });
+  }
+  async observe(principal, session, provider) {
+    if (provider !== "oidc" && !session) return;
+    let observation = session ? { sessionId: session.sessionId, issuedAtMs: session.issuedAtMs, expiresAtMs: session.expiresAtMs } : { sessionId: "", issuedAtMs: principal.authenticatedAt, expiresAtMs: null };
+    if (provider === "oidc") {
+      const key = JSON.stringify([principal.accountId, principal.issuer, principal.subject, principal.authenticatedAt]);
+      let context = this.oidc.get(key);
+      if (!context) {
+        if (this.oidc.size >= 2e4) this.oidc.delete(this.oidc.keys().next().value);
+        context = { sessionId: randomUUID(), issuedAtMs: Math.min(principal.authenticatedAt, this.source.now()) };
+        this.oidc.set(key, context);
+      }
+      observation = { ...context, expiresAtMs: null };
+    }
+    const previous = this.seen.get(observation.sessionId), now = this.source.now();
+    if (previous !== void 0 && now - previous < 6e4) return;
+    await this.safe(async () => {
+      await this.actorWrite(principal, { type: "activity", provider, at: now, runtimeId: this.runtimeId, accountId: principal.accountId, ...observation });
+      if (this.seen.size >= 2e4) this.seen.delete(this.seen.keys().next().value);
+      this.seen.set(observation.sessionId, now);
+    });
+  }
+  async logout(session) {
+    await this.safe(async () => {
+      const source2 = this.source, identity = { issuer: session.provider === "demo" ? "urn:longball:synthetic" : "urn:longball:spectator-pin", subject: session.accountId, strongAuth: false, authenticatedAt: session.issuedAtMs };
+      const event = { type: "logout", at: source2.now(), provider: session.provider, accountId: session.accountId, sessionId: session.sessionId, runtimeId: this.runtimeId };
+      try {
+        const principal = pg2(source2) ? await source2.withIdentityContext(identity, () => source2.principal(identity)) : source2.principal(identity);
+        await this.actorWrite(principal, event);
+      } catch (error) {
+        if (!(error instanceof AccessError) || error.code !== "ACCOUNT_UNAVAILABLE") throw error;
+        if (pg2(source2)) await source2.withIdentityContext(identity, async () => {
+          await source2.transaction(async () => {
+            await this.write(event);
+          });
+        });
+        else source2.transaction(() => this.writeSqlite(source2, event));
+      }
+    });
+    this.seen.delete(session.sessionId);
+  }
+  async actorWrite(principal, event) {
+    if (event.accountId !== principal.accountId) throw new Error("Login observation actor mismatch.");
+    if (pg2(this.source)) {
+      const source2 = this.source;
+      await source2.withActorContext(principal, { operation: "login.activity", requestedRole: "default" }, async () => {
+        await source2.transaction(async () => {
+          await this.write(event);
+        });
+      });
+    } else this.source.transaction(() => this.writeSqlite(this.source, event));
+  }
+  async write(event) {
+    if (pg2(this.source)) {
+      await this.source.one("SELECT login_activity_write($1::jsonb)", [JSON.stringify(event)]);
+      return;
+    }
+    this.writeSqlite(this.source, event);
+  }
+  writeSqlite(source2, event) {
+    const db = source2.database;
+    if (event.type === "login_failure") {
+      db.prepare("INSERT INTO login_events(id,at,type,provider,reason) VALUES(?,?,?,?,?)").run(`failure-${event.eventId}`, event.at, event.type, event.provider, event.reason);
+      return;
+    }
+    if (event.type === "logout") {
+      const prior = db.prepare("SELECT * FROM login_sessions WHERE session_id=? AND account_id=? AND runtime_id=? AND ended_at IS NULL").get(event.sessionId, event.accountId, event.runtimeId);
+      if (prior) {
+        db.prepare("UPDATE login_sessions SET ended_at=? WHERE session_id=? AND ended_at IS NULL").run(event.at, event.sessionId);
+        db.prepare("INSERT INTO login_events(id,at,type,provider,account_id,snapshot_id,session_id) VALUES(?,?,?,?,?,?,?) ON CONFLICT DO NOTHING").run(`logout-${createHash("sha256").update(event.sessionId).digest("hex")}`, event.at, "logout", event.provider, event.accountId, String(prior.snapshot_id), event.sessionId);
+      }
+      return;
+    }
+    const actor = sqliteActor(source2, event.accountId, event.at);
+    if (!actor?.enabled) throw new AccessError("ACCOUNT_UNAVAILABLE", 401, "The account is unavailable.");
+    const snapshot = createHash("sha256").update(JSON.stringify(actor)).digest("hex");
+    db.prepare("INSERT INTO login_access_snapshots(id,account_id,label,role,scopes_json,scopes_truncated) VALUES(?,?,?,?,?,?) ON CONFLICT DO NOTHING").run(snapshot, actor.accountId, actor.label, actor.role, JSON.stringify(actor.scopes), Number(actor.scopesTruncated));
+    db.prepare("INSERT INTO login_sessions(session_id,account_id,snapshot_id,provider,runtime_id,issued_at,expires_at,last_seen_at) VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(session_id) DO UPDATE SET snapshot_id=excluded.snapshot_id,last_seen_at=excluded.last_seen_at WHERE login_sessions.account_id=excluded.account_id AND login_sessions.runtime_id=excluded.runtime_id AND login_sessions.ended_at IS NULL").run(event.sessionId, event.accountId, snapshot, event.provider, event.runtimeId, event.issuedAtMs, event.expiresAtMs ?? null, event.at);
+    db.prepare("INSERT INTO login_events(id,at,type,provider,account_id,snapshot_id,session_id) VALUES(?,?,?,?,?,?,?) ON CONFLICT DO NOTHING").run(`login-${createHash("sha256").update(event.sessionId).digest("hex")}`, event.at, "login_success", event.provider, event.accountId, snapshot, event.sessionId);
+  }
+  async view(principal, parameters) {
+    await this.initialize();
+    const fresh = await this.source.principal({ issuer: principal.issuer, subject: principal.subject, strongAuth: principal.strongAuth, authenticatedAt: principal.authenticatedAt });
+    assertAdultAuthority(fresh, false, this.source.now());
+    if (fresh.administration?.level !== "super") throw new AccessError("NOT_FOUND", 404, "Application login reports are unavailable.");
+    const query = parseLoginAnalyticsQuery(parameters), now = this.source.now(), asOf = loginAnalyticsEventAsOf(query, now), from = loginAnalyticsPeriodStart(query.range, asOf);
+    const snapshot = await this.snapshot(query, from, asOf, now);
+    return projectLoginAnalytics(snapshot, query, now, this.runtimeId, this.healthy);
+  }
+  async snapshot(query, from, until, now) {
+    let raw, enabledAccountsCount;
+    if (pg2(this.source)) {
+      let row;
+      try {
+        row = await this.source.one("SELECT login_analytics_snapshot($1,$2,$3,$4) AS value", [from, until, now - LOGIN_ACTIVITY_WINDOW_MS, loginAnalyticsCursor(query, now)?.highWater ?? null]);
+      } catch (error) {
+        if (error && typeof error === "object" && "code" in error && error.code === "23514") throw new AccessError("INVALID_LOGIN_REPORT_QUERY", 400, "Use the returned login event cursor.");
+        throw error;
+      }
+      raw = parse(row?.value);
+      const count = await this.source.one("SELECT login_analytics_enabled_accounts($1,$2,$3) AS value", [query.clubId ?? null, query.teamId ?? null, query.role ?? null]);
+      enabledAccountsCount = Number(count?.value ?? 0);
+    } else {
+      const db = this.source.database;
+      const actualHighWater = Number(db.prepare("SELECT COALESCE(MAX(ordinal),0) value FROM login_events").get()?.value ?? 0), highWater = loginAnalyticsCursor(query, now)?.highWater ?? actualHighWater;
+      if (highWater > actualHighWater) throw new AccessError("INVALID_LOGIN_REPORT_QUERY", 400, "Use the returned login event cursor.");
+      const events2 = db.prepare("SELECT * FROM login_events WHERE at>=? AND at<=? AND ordinal<=? ORDER BY at DESC,id DESC LIMIT 20001").all(from, until, highWater);
+      const sessions2 = db.prepare("SELECT s.* FROM login_sessions s JOIN accounts a ON a.id=s.account_id WHERE a.status='active' AND s.last_seen_at>=? ORDER BY s.last_seen_at DESC,s.session_id LIMIT 20001").all(now - LOGIN_ACTIVITY_WINDOW_MS);
+      const ids = [...new Set([...events2, ...sessions2].map((e) => e.snapshot_id).filter(Boolean))].sort().slice(0, 1001);
+      const snapshots = ids.flatMap((id12) => {
+        const row = db.prepare("SELECT * FROM login_access_snapshots WHERE id=?").get(String(id12));
+        return row ? [row] : [];
+      });
+      const clubs = db.prepare(`SELECT c.id,COALESCE((SELECT json_extract(value_json,'$.club.name') FROM documents WHERE kind='preparation' AND json_extract(value_json,'$.club.id')=c.id ORDER BY season_id DESC LIMIT 1),c.name) name FROM directory_clubs c ORDER BY name,id LIMIT 20001`).all();
+      const teams = db.prepare(`SELECT d.team_id id,d.club_id clubId,COALESCE((SELECT json_extract(value_json,'$.team.name') FROM documents WHERE team_id=t.id AND kind='preparation' ORDER BY season_id DESC LIMIT 1),t.name) name,COALESCE((SELECT json_extract(value_json,'$.team.ageGroup') FROM documents WHERE team_id=t.id AND kind='preparation' ORDER BY season_id DESC LIMIT 1),d.age_group) ageGroup FROM directory_teams d JOIN teams t ON t.id=d.team_id ORDER BY name,t.id LIMIT 20001`).all();
+      enabledAccountsCount = 0;
+      for (const row of db.prepare("SELECT DISTINCT a.id FROM accounts a LEFT JOIN memberships m ON m.account_id=a.id LEFT JOIN administration_grants g ON g.account_id=a.id WHERE a.status='active' AND(g.account_id IS NOT NULL OR m.account_id IS NOT NULL AND m.revoked_at IS NULL AND(m.expires_at IS NULL OR m.expires_at>?))").all(now)) {
+        const account3 = sqliteActor(this.source, String(row.id), now);
+        if (account3 && eligible(account3, query)) enabledAccountsCount++;
+      }
+      raw = { highWater, events: events2, sessions: sessions2, snapshots, directory: { clubs, teams }, startedAt: Number(db.prepare("SELECT started_at FROM login_reporting_state WHERE singleton=1").get()?.started_at ?? now) };
+    }
+    if (!raw) throw new AccessError("LOGIN_REPORT_UNAVAILABLE", 503, "Login activity is temporarily unavailable.");
+    const sets = new Map(raw.snapshots.slice(0, 1e3).map((s) => [String(s.id), { label: String(s.label), role: s.role, scopes: parse(s.scopes_json), truncated: Boolean(s.scopes_truncated) }]));
+    const events = raw.events.slice(0, LOGIN_REPORT_MAX_EVENTS).map((e) => {
+      const snapshot = sets.get(String(e.snapshot_id));
+      return { ordinal: Number(e.ordinal), id: String(e.id), at: Number(e.at), type: e.type, provider: e.provider, accountId: e.account_id === null ? null : String(e.account_id), actorLabel: snapshot?.label ?? null, role: snapshot?.role ?? null, scopes: snapshot?.scopes ?? [], reason: e.reason === null ? null : String(e.reason), count: Number(e.count) };
+    });
+    const sessions = raw.sessions.slice(0, LOGIN_REPORT_MAX_EVENTS).flatMap((s) => {
+      const snapshot = sets.get(String(s.snapshot_id));
+      return snapshot ? [{ sessionId: String(s.session_id), accountId: String(s.account_id), provider: s.provider, runtimeId: String(s.runtime_id), issuedAtMs: Number(s.issued_at), expiresAtMs: s.expires_at === null ? null : Number(s.expires_at), lastSeenAt: Number(s.last_seen_at), endedAt: s.ended_at === null ? null : Number(s.ended_at), ...snapshot }] : [];
+    });
+    return { events, sessions, accounts: [], eventHighWater: raw.highWater, enabledAccountsCount, activityAccountsVerified: true, directory: { clubs: raw.directory.clubs.slice(0, 2e4), teams: raw.directory.teams.slice(0, 2e4) }, startedAt: raw.startedAt, eventRowsTruncated: raw.events.length > 2e4, activityRowsTruncated: raw.sessions.length > 2e4 || raw.directory.clubs.length > 2e4 || raw.directory.teams.length > 2e4, scopeRowsTruncated: raw.snapshots.length > 1e3 || [...sets.values()].some((s) => s.truncated) };
+  }
+};
+
+// packages/application/src/player-preparation.ts
+var time = (value) => typeof value === "string" && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value);
+var format = (value) => Number.isInteger(value) && Number(value) >= 5 && Number(value) <= 11;
+var half = (value) => Number.isSafeInteger(value) && Number(value) > 0 && Number(value) % 1e3 === 0;
+function projectOwnPlayerPreparation(state, profile, seasonId) {
+  const season = state.seasons.find((item) => item.id === seasonId);
+  if (!season || !profile.active || profile.seasonId !== seasonId || !state.profiles.some(
+    (item) => item.id === profile.id && item.playerId === profile.playerId && item.seasonId === seasonId && item.active
+  ))
+    throw new Error("The authorised own-player preparation is unavailable.");
+  return {
+    kind: "player-preparation",
+    revision: state.revision,
+    positionCatalogue: positionCatalogueFor(state),
+    team: {
+      id: state.team.id,
+      name: state.team.name,
+      ageGroup: state.team.ageGroup
+    },
+    season: {
+      id: season.id,
+      label: season.label,
+      startYear: season.startYear,
+      startDate: season.startDate,
+      endDate: season.endDate,
+      spectatorRenewalRequired: true
+    },
+    profile: {
+      id: profile.id,
+      playerId: profile.playerId,
+      seasonId: profile.seasonId,
+      displayName: profile.displayName,
+      initials: profile.initials,
+      shirtNumber: profile.shirtNumber,
+      ...profile.faPlayerId !== void 0 ? { faPlayerId: profile.faPlayerId } : {},
+      foot: profile.foot,
+      preferences: [...profile.preferences],
+      eligiblePositions: [...profile.eligiblePositions],
+      active: profile.active
+    },
+    fixtures: state.fixtures.filter((item) => item.seasonId === seasonId).map((item) => ({
+      id: item.id,
+      opponent: item.opponent,
+      playedDate: item.playedDate,
+      kickoff: time(item.kickoff) ? item.kickoff : null,
+      arrival: time(item.arrival) ? item.arrival : null,
+      venue: item.venue,
+      homeAway: item.homeAway,
+      status: item.status,
+      format: format(item.format) ? item.format : null,
+      plannedHalfDurationMs: half(item.plannedHalfDurationMs) ? item.plannedHalfDurationMs : null,
+      response: item.responses[profile.id] ?? "no_reply",
+      selected: item.selectedProfileIds.includes(profile.id),
+      attendance: item.attendance[profile.id] ?? "not_recorded"
+    })),
+    training: state.training.filter((item) => item.seasonId === seasonId).map((item) => ({
+      id: item.id,
+      date: item.date,
+      time: time(item.time) ? item.time : null,
+      venue: item.venue,
+      status: item.status,
+      expected: item.expectedProfileIds.includes(profile.id),
+      response: item.responses[profile.id] ?? "no_reply",
+      attendance: item.attendance[profile.id] ?? "not_recorded"
+    }))
+  };
+}
+
+// packages/application/src/fixture-response-window.ts
+function canPlayerReplyToFixture(fixture, nowMs, context = {}) {
+  if (fixture.status !== "scheduled" || !Number.isSafeInteger(nowMs) || nowMs < 0 || !Number.isFinite(new Date(nowMs).getTime())) return false;
+  if (context.recordedStatus != null && context.recordedStatus !== "preparation") return false;
+  const date = fixture.playedDate;
+  if (typeof date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(date) || date.startsWith("0000-")) return false;
+  const parsed = /* @__PURE__ */ new Date(`${date}T00:00:00Z`);
+  if (!Number.isFinite(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== date) return false;
+  return date >= londonDateKey(nowMs);
+}
+
+// apps/api/src/match-pagination.ts
+import { createHash as createHash2 } from "node:crypto";
+import { Buffer as Buffer2 } from "node:buffer";
+var invalid = () => {
+  throw new AccessError("INVALID_PAGE", 400, "Use the original cursor for this account, team, season and selected role, with a page limit from 1 to 100.");
+};
+var validId = (value) => typeof value === "string" && value.length >= 1;
+function parseMatchPageQuery(params) {
+  for (const key of params.keys()) if (!["seasonId", "limit", "cursor", "status"].includes(key) || params.getAll(key).length !== 1) invalid();
+  const rawLimit = params.get("limit");
+  if (rawLimit !== null && !/^(?:[1-9]|[1-9][0-9]|100)$/.test(rawLimit)) invalid();
+  const cursor = params.get("cursor");
+  if (cursor !== null && (!cursor.length || /[^A-Za-z0-9_-]/.test(cursor))) invalid();
+  const status2 = params.get("status");
+  if (status2 !== null && status2 !== "active") invalid();
+  return { limit: rawLimit === null ? 25 : Number(rawLimit), cursor, ...status2 === "active" ? { status: status2 } : {} };
+}
+function matchPageAudience(principal, memberships, teamId, seasonId, requestedRole, nowMs) {
+  const available2 = currentMemberships(principal, memberships, nowMs).filter((item) => item.teamId === teamId && item.seasonId === seasonId && ["manager", "player", "spectator"].includes(item.role));
+  const chosen = requestedRole ? available2.find((item) => item.role === requestedRole) : available2.find((item) => item.role === "manager") ?? available2.find((item) => item.role === "player") ?? available2[0];
+  if (!chosen) throw new AccessError("NOT_FOUND", 404, "The requested object is unavailable.");
+  if (chosen.role === "manager") assertAdultAuthority(principal, false, nowMs);
+  return chosen;
+}
+var binding = (scope) => createHash2("sha256").update(JSON.stringify(["longball.matches.id-asc.v1", scope.principal.accountId, scope.principal.issuer, scope.principal.subject, scope.teamId, scope.seasonId, scope.role, scope.playerId, ...scope.status === "active" ? ["active"] : []])).digest("base64url");
+function matchPageCursor(scope, afterId) {
+  if (!validId(afterId)) invalid();
+  return Buffer2.from(JSON.stringify({ version: 1, binding: binding(scope), afterId })).toString("base64url");
+}
+function matchPagePosition(scope, query) {
+  if (!Number.isSafeInteger(query.limit) || query.limit < 1 || query.limit > 100) invalid();
+  if (query.status !== void 0 && query.status !== "active" || query.status !== scope.status) invalid();
+  if (query.cursor === null) return null;
+  try {
+    if (!/^[A-Za-z0-9_-]+$/.test(query.cursor)) invalid();
+    const bytes = Buffer2.from(query.cursor, "base64url");
+    if (bytes.toString("base64url") !== query.cursor) invalid();
+    const cursor = JSON.parse(bytes.toString("utf8"));
+    if (!cursor || typeof cursor !== "object" || Array.isArray(cursor) || Object.keys(cursor).sort().join(",") !== "afterId,binding,version" || cursor.version !== 1 || cursor.binding !== binding(scope) || !validId(cursor.afterId)) invalid();
+    return cursor.afterId;
+  } catch {
+    return invalid();
+  }
+}
+
+// apps/api/src/offline-bundle.ts
+import { randomUUID as randomUUID2 } from "node:crypto";
+
 // packages/application/src/offline-bundle.ts
 var OFFLINE_SNAPSHOT_SCHEMA = 1;
 var OFFLINE_CHECKSUM_SERIALIZATION = "longball.canonical-json/1";
@@ -64339,7 +64753,7 @@ function buildOfflineDownload(input) {
       contractVersion: "longball.events/1.1",
       schemaVersion: 1,
       engineVersion: ENGINE_VERSION,
-      bundleId: randomUUID(),
+      bundleId: randomUUID2(),
       snapshotSchemaVersion: OFFLINE_SNAPSHOT_SCHEMA,
       checksumSerialization: OFFLINE_CHECKSUM_SERIALIZATION,
       matchId: input.matchId,
@@ -64372,7 +64786,7 @@ var contextKey = (context) => JSON.stringify(Object.entries(context).sort(([a], 
 function matchWriteTeam(context) {
   if (context?.kind !== "actor" || context.operation !== "match.manage" || !["manager", "default"].includes(context.requestedRole ?? "")) return null;
   const ids = [context.clubId, context.teamId, context.seasonId, context.matchId];
-  if (ids.some((id11) => typeof id11 !== "string" || !/^[A-Za-z0-9_-]{1,150}$/.test(id11))) return null;
+  if (ids.some((id12) => typeof id12 !== "string" || !/^[A-Za-z0-9_-]{1,150}$/.test(id12))) return null;
   return JSON.stringify([context.clubId, context.teamId]);
 }
 function validateContext(context) {
@@ -64515,9 +64929,9 @@ var PgDatabase = class {
   async migrate() {
     if (this.migrationMode === "verify") {
       const versions = await this.query("SELECT version FROM longball.schema_migrations ORDER BY version");
-      if (versions.rows.some((row) => row.version > 27)) throw new Error("This PostgreSQL schema is newer than the application. Preserve it and use a compatible build.");
-      if (![2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27].every((version2) => versions.rows.some((row) => row.version === version2))) throw new Error("PostgreSQL migrations are required. Run the separate migrator before starting the runtime.");
-      const protectedTables = ["clubs", "teams", "team_seasons", "game_contexts", "accounts", "memberships", "matches", "documents", "devices", "controller_grants", "controller_history", "events", "streams", "conflicting_submissions", "transfers", "clock_challenges", "clock_mappings", "reconciliation_proposals", "audit", "idempotency", "privacy_requests", "privacy_pending_keys", "jobs", "brand_assets", "brand_slots", "spectator_invitations", "lb_spectator_activation_accounts", "lb_spectator_activation_attempts", "native_app_devices", "team_privilege_states", "team_privilege_decisions", "push_registrations", "report_exports", "match_feedback", "match_feedback_receipts", "administration_grants", "administrative_memberships", "team_documents", "opposition_reviews", "opposition_review_receipts", "spectator_pin_credentials", "invite_requests", "application_sign_in_rules", "global_usernames"];
+      if (versions.rows.some((row) => row.version > 28)) throw new Error("This PostgreSQL schema is newer than the application. Preserve it and use a compatible build.");
+      if (![2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28].every((version2) => versions.rows.some((row) => row.version === version2))) throw new Error("PostgreSQL migrations are required. Run the separate migrator before starting the runtime.");
+      const protectedTables = ["clubs", "teams", "team_seasons", "game_contexts", "accounts", "memberships", "matches", "documents", "devices", "controller_grants", "controller_history", "events", "streams", "conflicting_submissions", "transfers", "clock_challenges", "clock_mappings", "reconciliation_proposals", "audit", "idempotency", "privacy_requests", "privacy_pending_keys", "jobs", "brand_assets", "brand_slots", "spectator_invitations", "lb_spectator_activation_accounts", "lb_spectator_activation_attempts", "native_app_devices", "team_privilege_states", "team_privilege_decisions", "push_registrations", "report_exports", "match_feedback", "match_feedback_receipts", "administration_grants", "administrative_memberships", "team_documents", "opposition_reviews", "opposition_review_receipts", "spectator_pin_credentials", "invite_requests", "application_sign_in_rules", "global_usernames", "login_reporting_state", "login_access_snapshots", "login_events", "login_sessions"];
       const security = await this.query(`SELECT c.relname,c.relrowsecurity,(SELECT count(*)::integer FROM pg_catalog.pg_policy p WHERE p.polrelid=c.oid) AS policies FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='longball' AND c.relname=ANY($1::text[])`, [protectedTables]);
       if (security.rows.length !== protectedTables.length || security.rows.some((row) => !row.relrowsecurity || row.policies < 1)) throw new Error("PostgreSQL row security is missing. Run the separate migrator before starting runtime.");
       return;
@@ -64548,12 +64962,13 @@ var PgDatabase = class {
     const inheritedManagerMigration = await readFile(new URL("../migrations/postgresql/025_inherited_manager_authority.sql", import.meta.url), "utf8");
     const signInRulesMigration = await readFile(new URL("../migrations/postgresql/026_sign_in_rules.sql", import.meta.url), "utf8");
     const globalUsernamesMigration = await readFile(new URL("../migrations/postgresql/027_global_usernames.sql", import.meta.url), "utf8");
+    const loginAnalyticsMigration = await readFile(new URL("../migrations/postgresql/028_login_analytics.sql", import.meta.url), "utf8");
     await this.transaction(async () => {
       const schema = await this.query("SELECT to_regnamespace('longball')::text AS namespace");
       if (!schema.rows[0]?.namespace) await this.query("CREATE SCHEMA longball");
       await this.query("CREATE TABLE IF NOT EXISTS longball.schema_migrations(version integer PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())");
       const versions = await this.query("SELECT version FROM longball.schema_migrations ORDER BY version");
-      if (versions.rows.some((row) => row.version > 27)) throw new Error("This PostgreSQL schema is newer than the application. Preserve it and use a compatible build.");
+      if (versions.rows.some((row) => row.version > 28)) throw new Error("This PostgreSQL schema is newer than the application. Preserve it and use a compatible build.");
       if (!versions.rows.some((row) => row.version === 2)) {
         await this.query(migration);
         await this.query("INSERT INTO longball.schema_migrations(version) VALUES(2)");
@@ -64658,6 +65073,10 @@ var PgDatabase = class {
         await this.query(globalUsernamesMigration);
         await this.query("INSERT INTO longball.schema_migrations(version) VALUES(27)");
       }
+      if (!versions.rows.some((row) => row.version === 28)) {
+        await this.query(loginAnalyticsMigration);
+        await this.query("INSERT INTO longball.schema_migrations(version) VALUES(28)");
+      }
     });
   }
   async close() {
@@ -64666,7 +65085,7 @@ var PgDatabase = class {
 };
 
 // apps/api/src/postgres-store.ts
-import { createHash as createHash2, randomBytes, randomUUID as randomUUID2 } from "node:crypto";
+import { createHash as createHash3, randomBytes, randomUUID as randomUUID3 } from "node:crypto";
 
 // packages/application/src/sync.ts
 function effectiveEventTime(previous, next, event) {
@@ -64829,8 +65248,8 @@ function planSeasonRollover(context) {
   requireThat4(command.managerAccountIds.length >= 1 && command.managerAccountIds.length <= 4 && unique3(command.managerAccountIds), "Select one to four distinct verified adult managers.");
   requireThat4(command.administratorAccountIds.length >= 1 && unique3(command.administratorAccountIds), "Explicitly retain at least one current verified administrator.");
   const options2 = seasonRolloverOptions(context);
-  for (const id11 of command.managerAccountIds) requireThat4(options2.managerCandidates.some((account3) => account3.accountId === id11), "Each manager must be an active verified adult with stronger authentication already enrolled in this team.");
-  for (const id11 of command.administratorAccountIds) requireThat4(options2.managerCandidates.some((account3) => account3.accountId === id11 && account3.administrator), "Only a current verified administrator can retain administrator authority in the new season.");
+  for (const id12 of command.managerAccountIds) requireThat4(options2.managerCandidates.some((account3) => account3.accountId === id12), "Each manager must be an active verified adult with stronger authentication already enrolled in this team.");
+  for (const id12 of command.administratorAccountIds) requireThat4(options2.managerCandidates.some((account3) => account3.accountId === id12 && account3.administrator), "Only a current verified administrator can retain administrator authority in the new season.");
   if ((/* @__PURE__ */ new Set([...activeManagers(context), ...command.managerAccountIds])).size > 4) fail2("A team can have at most four active manager accounts. Revoke departed manager authority explicitly before adding another account.", "MANAGER_LIMIT", 409);
   requireThat4(new Set(command.playerAssignments.map((item) => item.accountId)).size === command.playerAssignments.length && new Set(command.playerAssignments.map((item) => item.playerId)).size === command.playerAssignments.length, "Player assignments must retain one distinct known account for each player.");
   requireThat4(command.copyPlayers || command.playerAssignments.length === 0, "Copy the relevant player profiles before assigning their existing accounts.");
@@ -64877,7 +65296,7 @@ function planSeasonRollover(context) {
     privacyRequests: [],
     appliedCommands: {},
     hiddenUploaders: community.hiddenUploaders.filter((item) => assignedIds.has(item.accountId)).map(copy3),
-    preferences: Object.fromEntries(Object.entries(community.preferences).filter(([accountId]) => assignedIds.has(accountId)).map(([id11, value]) => [id11, copy3(value)])),
+    preferences: Object.fromEntries(Object.entries(community.preferences).filter(([accountId]) => assignedIds.has(accountId)).map(([id12, value]) => [id12, copy3(value)])),
     audit: [{ id: command.id, actorAccountId: principal.accountId, action: "season.created_from_explicit_assignments", atMs: nowMs }]
   };
   return {
@@ -64942,8 +65361,8 @@ function string(value, max = 150) {
 function fields(value, permitted) {
   requireThat5(Object.keys(value).every((key) => permitted.includes(key)), "The request includes unsupported fields.");
 }
-function integer2(value, maximum = Number.MAX_SAFE_INTEGER) {
-  return Number.isSafeInteger(value) && value >= 0 && value <= maximum;
+function integer2(value, maximum2 = Number.MAX_SAFE_INTEGER) {
+  return Number.isSafeInteger(value) && value >= 0 && value <= maximum2;
 }
 var fixtureClasses = ["development", "friendly", "trophy", "unclassified"];
 function score(value) {
@@ -65027,10 +65446,10 @@ function recordsServiceView(input) {
   const ids = new Set(state.results.map((record3) => record3.id));
   for (const row of input.acceptedMatches)
     if (row.teamId === state.teamId && row.seasonId === state.seasonId && row.match.status !== "preparation") ids.add(row.match.config.matchId);
-  const reports = [...ids].map((id11) => {
-    const match = accepted(input, id11);
-    const details = match ? contextFor(state, match, id11 === state.liveMatch.matchId ? state.liveMatch.fixtureClass : void 0) : null;
-    return selectMatchReport(details ? { ...scoreState, liveMatch: details } : scoreState, id11, viewer, match);
+  const reports = [...ids].map((id12) => {
+    const match = accepted(input, id12);
+    const details = match ? contextFor(state, match, id12 === state.liveMatch.matchId ? state.liveMatch.fixtureClass : void 0) : null;
+    return selectMatchReport(details ? { ...scoreState, liveMatch: details } : scoreState, id12, viewer, match);
   }).filter((item) => item !== null);
   const common = { revision: state.revision, results: stamp(selectSeasonResults(derivedState, viewer)), participation: stamp({ ...selectParticipationReport(reportState, activeMatch, viewer), ...viewer.actor === "spectator" ? {} : { sourcePreparationRevision: preparation?.revision ?? null } }), matches: reports.map((report) => stamp({ ...report, ...composeReportCommunity(report, input.principal.accountId, input.community), goals: report.goals.map((goal) => ({ ...goal, scorerLabel: goal.scorerPlayerId ? state.players.find((player) => player.id === goal.scorerPlayerId)?.label ?? null : null })) })) };
   if (viewer.actor !== "manager") return common;
@@ -65166,16 +65585,16 @@ function checkPolicy(policy) {
     throw new Error("A versioned, explicit trusted-time policy is required.");
   }
 }
-function issueClockChallenge(scope, id11, issuedAtMs, policy) {
+function issueClockChallenge(scope, id12, issuedAtMs, policy) {
   checkPolicy(policy);
-  if (!id11 || !scope.accountId || !scope.deviceId || !scope.matchId || !scope.continuityId || !integer3(issuedAtMs) || !integer3(scope.controllerEpoch) || scope.controllerEpoch === 0) {
+  if (!id12 || !scope.accountId || !scope.deviceId || !scope.matchId || !scope.continuityId || !integer3(issuedAtMs) || !integer3(scope.controllerEpoch) || scope.controllerEpoch === 0) {
     throw new Error(
       "The clock challenge requires a current controller and continuous-clock identity."
     );
   }
   return {
     ...scope,
-    id: id11,
+    id: id12,
     issuedAtMs,
     expiresAtMs: issuedAtMs + policy.maximumRoundTripMs,
     policyId: policy.id
@@ -65235,16 +65654,16 @@ function mapContinuousInstant(mapping, scope, monotonicMs, serverNowMs, policy) 
       reason: "The event exceeds the approved extrapolation duration."
     };
   const minimum = monotonicMs + mapping.offsetMinimumMs;
-  const maximum = monotonicMs + mapping.offsetMaximumMs;
-  if (minimum < mapping.establishedAtMs - policy.maximumRoundTripMs || maximum > mapping.validUntilMs || minimum > serverNowMs) {
+  const maximum2 = monotonicMs + mapping.offsetMaximumMs;
+  if (minimum < mapping.establishedAtMs - policy.maximumRoundTripMs || maximum2 > mapping.validUntilMs || minimum > serverNowMs) {
     return {
       quality: "review_required",
       reason: "The event lies outside the original mapping lifetime or in the future."
     };
   }
-  const utcMs = Math.round((minimum + maximum) / 2);
+  const utcMs = Math.round((minimum + maximum2) / 2);
   const uncertaintyMs = Math.ceil(
-    Math.max(utcMs - minimum, maximum - utcMs) + distance * policy.maximumDriftPpm / 1e6
+    Math.max(utcMs - minimum, maximum2 - utcMs) + distance * policy.maximumDriftPpm / 1e6
   );
   if (uncertaintyMs > policy.maximumUncertaintyMs)
     return {
@@ -65471,8 +65890,8 @@ function previewReconciliation(state, input, submissions, context) {
   if (typeof input.reason !== "string" || !input.reason.trim() || input.reason.length > 500)
     issues.push("Record an evidence reason of1\u2013500 characters.");
   if (!Array.isArray(input.sourceSubmissionIds) || input.sourceSubmissionIds.length < 1 || input.sourceSubmissionIds.length > 100 || new Set(input.sourceSubmissionIds).size !== input.sourceSubmissionIds.length || input.sourceSubmissionIds.some(
-    (id11) => !submissions.some(
-      (item) => item.submissionId === id11 && item.matchId === state.config.matchId && Boolean(item.originalDigest)
+    (id12) => !submissions.some(
+      (item) => item.submissionId === id12 && item.matchId === state.config.matchId && Boolean(item.originalDigest)
     )
   ))
     issues.push(
@@ -65527,17 +65946,17 @@ function previewReconciliation(state, input, submissions, context) {
 // apps/api/src/finished-match-context.ts
 function eligibilityEvidence(state) {
   const selected = [...state.config.selectedPlayerIds];
-  const present = selected.filter((id11) => state.attendance[id11] === "present");
+  const present = selected.filter((id12) => state.attendance[id12] === "present");
   const played = selected.filter(
-    (id11) => state.intervals.some(
-      (interval) => interval.playerId === id11 && interval.state === "playing" && interval.endMs > interval.startMs
+    (id12) => state.intervals.some(
+      (interval) => interval.playerId === id12 && interval.state === "playing" && interval.endMs > interval.startMs
     )
   );
   return {
     selected,
     present,
     played,
-    contradictory: played.some((id11) => !present.includes(id11))
+    contradictory: played.some((id12) => !present.includes(id12))
   };
 }
 function finishEligibilityChanged(state, original) {
@@ -65594,8 +66013,8 @@ function deriveFinishedMatchContext(input) {
     selectedPlayerIds: [...state.config.selectedPlayerIds],
     presentPlayerIds: present,
     playedPlayerIds: present.filter(
-      (id11) => state.intervals.some(
-        (interval) => interval.playerId === id11 && interval.state === "playing" && interval.endMs > interval.startMs
+      (id12) => state.intervals.some(
+        (interval) => interval.playerId === id12 && interval.state === "playing" && interval.endMs > interval.startMs
       )
     ),
     actualFullTimeAtMs: trusted ? instant2.utcMs : null,
@@ -65642,7 +66061,7 @@ var londonClock = new Intl.DateTimeFormat("en-GB", { timeZone: TEAM_NOTIFICATION
 
 // packages/application/src/staff.ts
 var current2 = (item, nowMs) => item.revokedAt == null && (item.expiresAt == null || item.expiresAt > nowMs);
-var eligible = (account3) => account3.status === "active" && account3.identityClassification === "adult_individual" && account3.adultVerified && account3.strongAuthEnrolled;
+var eligible2 = (account3) => account3.status === "active" && account3.identityClassification === "adult_individual" && account3.adultVerified && account3.strongAuthEnrolled;
 function managerRoster(input) {
   const { principal, memberships, accounts, teamId, seasonId, nowMs } = input;
   if (input.requestedRole && input.requestedRole !== "administrator") throw new AccessError("NOT_FOUND", 404, "Choose the current administrator context for staff management.");
@@ -65656,13 +66075,13 @@ function managerRoster(input) {
     return {
       accountId: item.accountId,
       label: account3 && account3.identityClassification === "adult_individual" && account3.adultVerified ? account3.label : "Unavailable manager account",
-      status: !account3 || !eligible(account3) ? "disabled" : item.revokedAt != null ? "revoked" : item.expiresAt != null && item.expiresAt <= nowMs ? "expired" : "active",
+      status: !account3 || !eligible2(account3) ? "disabled" : item.revokedAt != null ? "revoked" : item.expiresAt != null && item.expiresAt <= nowMs ? "expired" : "active",
       expiresAt: item.expiresAt ?? null,
       revokedAt: item.revokedAt ?? null,
       otherActiveSeasonIds: [...new Set(liveManagers.filter((other) => other.accountId === item.accountId && other.seasonId !== seasonId).map((other) => other.seasonId))].sort()
     };
   }).sort((a, b) => a.label.localeCompare(b.label) || a.accountId.localeCompare(b.accountId));
-  const candidates = accounts.filter((account3) => associated.has(account3.accountId) && eligible(account3)).map((account3) => ({ accountId: account3.accountId, label: account3.label, currentManager: liveManagers.some((item) => item.accountId === account3.accountId && item.seasonId === seasonId) })).sort((a, b) => a.label.localeCompare(b.label) || a.accountId.localeCompare(b.accountId));
+  const candidates = accounts.filter((account3) => associated.has(account3.accountId) && eligible2(account3)).map((account3) => ({ accountId: account3.accountId, label: account3.label, currentManager: liveManagers.some((item) => item.accountId === account3.accountId && item.seasonId === seasonId) })).sort((a, b) => a.label.localeCompare(b.label) || a.accountId.localeCompare(b.accountId));
   return { kind: "manager-roster", revision: input.revision, teamId, seasonId, asOf: new Date(nowMs).toISOString(), maximumManagers: 4, activeTeamManagerCount: new Set(liveManagers.map((item) => item.accountId)).size, canMutate: principal.authenticatedAt <= nowMs + 3e4 && nowMs - principal.authenticatedAt <= 3e5, managers, candidates };
 }
 
@@ -65840,11 +66259,11 @@ var SqliteBrandRepository = class {
   async byRequest(owner, request) {
     return this.database.prepare("SELECT * FROM brand_assets WHERE owner_id=? AND request_id=?").get(owner, request);
   }
-  async upload(id11) {
-    return this.database.prepare("SELECT * FROM brand_assets WHERE id=?").get(id11);
+  async upload(id12) {
+    return this.database.prepare("SELECT * FROM brand_assets WHERE id=?").get(id12);
   }
-  async asset(id11, revision) {
-    return this.database.prepare("SELECT * FROM brand_assets WHERE asset_id=? AND revision=?").get(id11, revision);
+  async asset(id12, revision) {
+    return this.database.prepare("SELECT * FROM brand_assets WHERE asset_id=? AND revision=?").get(id12, revision);
   }
   async own(owner, club, team) {
     return this.database.prepare("SELECT * FROM brand_assets WHERE owner_id=? AND club_id=? AND(team_id IS NULL OR team_id=?) ORDER BY created_at DESC,id").all(owner, club, team);
@@ -65853,21 +66272,21 @@ var SqliteBrandRepository = class {
     const columns2 = Object.keys(row);
     this.database.prepare(`INSERT INTO brand_assets(${columns2.join(",")}) VALUES(${columns2.map(() => "?").join(",")})`).run(...Object.values(row));
   }
-  async rotateToken(id11, hash6) {
-    return this.database.prepare("UPDATE brand_assets SET token_hash=? WHERE id=?").run(hash6, id11).changes === 1;
+  async rotateToken(id12, hash6) {
+    return this.database.prepare("UPDATE brand_assets SET token_hash=? WHERE id=?").run(hash6, id12).changes === 1;
   }
-  async lease(id11, stage, attempt2, now) {
+  async lease(id12, stage, attempt2, now) {
     const from = stage === "uploading" ? "prepared" : "uploaded";
-    return this.database.prepare("UPDATE brand_assets SET status=?,attempt=?,lease_until=?,failure_code=NULL WHERE id=? AND(status=? OR(status=? AND lease_until<?))").run(stage, attempt2, now + 65e3, id11, from, stage, now).changes === 1;
+    return this.database.prepare("UPDATE brand_assets SET status=?,attempt=?,lease_until=?,failure_code=NULL WHERE id=? AND(status=? OR(status=? AND lease_until<?))").run(stage, attempt2, now + 65e3, id12, from, stage, now).changes === 1;
   }
-  async uploaded(id11, attempt2, key) {
-    return this.database.prepare("UPDATE brand_assets SET status='uploaded',original_key=?,lease_until=NULL,failure_code=NULL WHERE id=? AND attempt=? AND status='uploading'").run(key, id11, attempt2).changes === 1;
+  async uploaded(id12, attempt2, key) {
+    return this.database.prepare("UPDATE brand_assets SET status='uploaded',original_key=?,lease_until=NULL,failure_code=NULL WHERE id=? AND attempt=? AND status='uploading'").run(key, id12, attempt2).changes === 1;
   }
-  async processed(id11, attempt2, value) {
-    return this.database.prepare("UPDATE brand_assets SET status='processed',display_key=?,thumbnail_key=?,width=?,height=?,scanner_engine=?,processed_at=?,lease_until=NULL,failure_code=NULL WHERE id=? AND attempt=? AND status='processing'").run(value.displayKey, value.thumbnailKey, value.width, value.height, value.scannerEngine, value.at, id11, attempt2).changes === 1;
+  async processed(id12, attempt2, value) {
+    return this.database.prepare("UPDATE brand_assets SET status='processed',display_key=?,thumbnail_key=?,width=?,height=?,scanner_engine=?,processed_at=?,lease_until=NULL,failure_code=NULL WHERE id=? AND attempt=? AND status='processing'").run(value.displayKey, value.thumbnailKey, value.width, value.height, value.scannerEngine, value.at, id12, attempt2).changes === 1;
   }
-  async failed(id11, attempt2, stage, code, retryable) {
-    this.database.prepare("UPDATE brand_assets SET status=?,failure_code=?,lease_until=NULL WHERE id=? AND attempt=? AND status=?").run(retryable ? stage === "uploading" ? "prepared" : "uploaded" : "rejected", code, id11, attempt2, stage);
+  async failed(id12, attempt2, stage, code, retryable) {
+    this.database.prepare("UPDATE brand_assets SET status=?,failure_code=?,lease_until=NULL WHERE id=? AND attempt=? AND status=?").run(retryable ? stage === "uploading" ? "prepared" : "uploaded" : "rejected", code, id12, attempt2, stage);
   }
   async slot(kind2, club, team) {
     const row = this.database.prepare("SELECT * FROM brand_slots WHERE kind=? AND club_id=? AND team_id IS ?").get(kind2, club, team);
@@ -65877,8 +66296,8 @@ var SqliteBrandRepository = class {
     this.database.prepare("INSERT INTO brand_slots(kind,club_id,team_id,version) VALUES(?,?,?,0) ON CONFLICT DO NOTHING").run(slot.kind, slot.clubId, slot.teamId);
     return this.database.prepare("UPDATE brand_slots SET version=?,asset_id=?,asset_revision=?,reviewed_revision=?,policy_version=?,confirmed_by=?,confirmed_at=? WHERE kind=? AND club_id=? AND team_id IS ? AND version=?").run(slot.version, slot.assetId, slot.assetRevision, slot.reviewedRevision, slot.policyVersion, slot.confirmedBy, slot.confirmedAt, slot.kind, slot.clubId, slot.teamId, expected).changes === 1;
   }
-  async linked(id11) {
-    const updated = this.database.prepare("UPDATE brand_assets SET status='linked' WHERE id=? AND status IN('processed','linked')").run(id11);
+  async linked(id12) {
+    const updated = this.database.prepare("UPDATE brand_assets SET status='linked' WHERE id=? AND status IN('processed','linked')").run(id12);
     if (updated.changes !== 1) throw new Error("BRAND_LINK_CONFLICT");
   }
 };
@@ -66144,12 +66563,12 @@ function playerStatsSourceFromRecords(input) {
   for (const accepted2 of [...input.acceptedMatches ?? []].sort(
     (left, right) => left.match.revision - right.match.revision
   )) {
-    const match = accepted2.match, id11 = match.config.matchId;
+    const match = accepted2.match, id12 = match.config.matchId;
     if (accepted2.teamId !== state.teamId || accepted2.seasonId !== state.seasonId || match.status === "preparation")
       continue;
     if (match.config.fixture && (match.config.fixture.teamId !== state.teamId || match.config.fixture.seasonId !== state.seasonId))
       denied();
-    const previous = records.get(id11);
+    const previous = records.get(id12);
     if (previous?.sourceMatchRevision != null && previous.sourceMatchRevision >= match.revision)
       continue;
     const sample = match.anchor?.sample ?? {
@@ -66158,8 +66577,8 @@ function playerStatsSourceFromRecords(input) {
       wallTimeMs: 0
     };
     const observed = match.eventHistory?.at(-1)?.sample.wallTimeMs ?? match.completedAtMs ?? match.anchor?.sample.wallTimeMs;
-    records.set(id11, {
-      id: id11,
+    records.set(id12, {
+      id: id12,
       teamId: state.teamId,
       seasonId: state.seasonId,
       status: match.status === "completed" ? "completed" : match.status === "abandoned" ? "abandoned" : "incomplete",
@@ -66436,19 +66855,19 @@ function projectTeamOverview(preparation, accepted2, seasonId) {
   const games = /* @__PURE__ */ new Map();
   for (const fixture of preparation.fixtures.filter((item) => item.seasonId === seasonId && !fixtureWasDeleted(preparation, item.id))) games.set(fixture.id, { id: fixture.id, opponent: fixture.opponent, playedDate: fixture.playedDate, kickoff: fixture.kickoff, venue: fixture.venue || null, status: fixture.status, active: false });
   for (const state of accepted2) {
-    const id11 = state.config.matchId;
-    if (fixtureWasDeleted(preparation, id11)) continue;
-    const current3 = games.get(id11), fixture = state.config.fixture;
+    const id12 = state.config.matchId;
+    if (fixtureWasDeleted(preparation, id12)) continue;
+    const current3 = games.get(id12), fixture = state.config.fixture;
     if (current3 && ["cancelled", "postponed"].includes(current3.status)) continue;
     if (!current3 && (fixture?.teamId !== preparation.team.id || fixture.seasonId !== seasonId)) continue;
-    games.set(id11, { id: id11, opponent: current3?.opponent ?? fixture?.opponent ?? "Opponent to confirm", playedDate: current3?.playedDate ?? fixture?.playedDate ?? "", kickoff: current3 ? current3.kickoff ?? null : fixture?.kickoff ?? null, venue: current3?.venue ?? null, status: state.status, active: active2.has(state.status) });
+    games.set(id12, { id: id12, opponent: current3?.opponent ?? fixture?.opponent ?? "Opponent to confirm", playedDate: current3?.playedDate ?? fixture?.playedDate ?? "", kickoff: current3 ? current3.kickoff ?? null : fixture?.kickoff ?? null, venue: current3?.venue ?? null, status: state.status, active: active2.has(state.status) });
   }
   return { kind: "team-overview", teamId: preparation.team.id, seasonId, team: { name: preparation.team.name, ageGroup: preparation.team.ageGroup, clubName: preparation.club.name, seasonLabel: preparation.seasons.find((item) => item.id === seasonId)?.label ?? seasonId }, games: [...games.values()].sort((left, right) => left.playedDate.localeCompare(right.playedDate) || left.id.localeCompare(right.id)) };
 }
 function assertTeamOverviewDto(value, scope) {
   const object14 = (item) => Boolean(item && typeof item === "object" && !Array.isArray(item));
   const keys2 = (item, names) => Object.keys(item).length === names.length && Object.keys(item).every((key) => names.includes(key));
-  const text3 = (item, maximum = 200) => typeof item === "string" && item.length <= maximum && !/[\u0000-\u001f\u007f]/.test(item);
+  const text3 = (item, maximum2 = 200) => typeof item === "string" && item.length <= maximum2 && !/[\u0000-\u001f\u007f]/.test(item);
   const error = () => {
     throw new Error("The team overview differs from its current scope or contains unsupported private fields.");
   };
@@ -66468,7 +66887,7 @@ function canonical4(value) {
   if (value !== null && typeof value === "object") return `{${Object.entries(value).sort(([a], [b]) => a.localeCompare(b)).map(([key, item]) => `${JSON.stringify(key)}:${canonical4(item)}`).join(",")}}`;
   return JSON.stringify(value);
 }
-var digest = (value) => createHash2("sha256").update(value).digest("hex");
+var digest = (value) => createHash3("sha256").update(value).digest("hex");
 var validId3 = (value) => typeof value === "string" && value.length > 0 && value.length <= 150 && /^[a-zA-Z0-9_-]+$/.test(value);
 var validDeviceId = (value) => validId3(value) && value.length <= 120;
 var nonnegative3 = (value) => typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
@@ -66564,22 +66983,22 @@ var PostgresStore = class _PostgresStore {
       await this.execute("INSERT INTO teams(id,name,club_id,scope_status) VALUES($1,$2,$3,'resolved')", [SYNTHETIC_IDS.teamId, "Roma U10", "synthetic-richmond-rovers"]);
       await this.execute("INSERT INTO teams(id,name,club_id,scope_status) VALUES($1,$2,$3,'resolved')", ["synthetic-other-team", "Milan U11", "synthetic-other-club"]);
       await this.execute("INSERT INTO team_seasons(club_id,team_id,season_id,label,start_year,start_date,end_date) VALUES($1,$2,$3,$4,$5,$6,$7),($8,$9,$3,$4,$5,$6,$7)", ["synthetic-richmond-rovers", SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId, "2026/27", 2026, "2026-09-01", "2027-08-31", "synthetic-other-club", "synthetic-other-team"]);
-      const add2 = async (id11, classification, adult) => await this.execute("INSERT INTO accounts(id,issuer,subject,classification,adult_verified,strong_auth_enrolled) VALUES($1,$2,$3,$4,$5,$6)", [id11, "urn:longball:synthetic", id11, classification, Number(adult), Number(adult)]);
-      const membership = async (id11, role, playerId = null, teamId = SYNTHETIC_IDS.teamId) => await this.execute("INSERT INTO memberships(account_id,team_id,season_id,role,player_id) VALUES($1,$2,$3,$4,$5)", [id11, teamId, SYNTHETIC_IDS.seasonId, role, playerId]);
+      const add2 = async (id12, classification, adult) => await this.execute("INSERT INTO accounts(id,issuer,subject,classification,adult_verified,strong_auth_enrolled) VALUES($1,$2,$3,$4,$5,$6)", [id12, "urn:longball:synthetic", id12, classification, Number(adult), Number(adult)]);
+      const membership = async (id12, role, playerId = null, teamId = SYNTHETIC_IDS.teamId) => await this.execute("INSERT INTO memberships(account_id,team_id,season_id,role,player_id) VALUES($1,$2,$3,$4,$5)", [id12, teamId, SYNTHETIC_IDS.seasonId, role, playerId]);
       await add2("synthetic-account-admin", "adult_individual", true);
       await membership("synthetic-account-admin", "administrator");
       for (let number = 1; number <= 5; number++) {
-        const id11 = number === 1 ? "synthetic-account-manager" : `synthetic-account-manager-${number}`;
-        await add2(id11, "adult_individual", true);
+        const id12 = number === 1 ? "synthetic-account-manager" : `synthetic-account-manager-${number}`;
+        await add2(id12, "adult_individual", true);
         if (number <= 4)
-          await membership(id11, "manager");
+          await membership(id12, "manager");
         if (number === 1)
-          await membership(id11, "administrator");
+          await membership(id12, "administrator");
       }
       for (const player of romaFixture.players) {
-        const id11 = `synthetic-account-player-${player.id.slice(-2)}`;
-        await add2(id11, "child_shared", false);
-        await membership(id11, "player", player.id);
+        const id12 = `synthetic-account-player-${player.id.slice(-2)}`;
+        await add2(id12, "child_shared", false);
+        await membership(id12, "player", player.id);
       }
       await add2("synthetic-account-spectator", "adult_individual", false);
       await membership("synthetic-account-spectator", "spectator");
@@ -66605,9 +67024,9 @@ var PostgresStore = class _PostgresStore {
       }
       if (!options2.demoSharing) community.matches = community.matches.map((match) => ({ ...match, sharing: "manager_only" }));
       for (let number = 2; number <= 4; number++) {
-        const id11 = `synthetic-account-manager-${number}`;
-        community.accounts.push({ id: id11, label: demoAccountLabels[id11], classification: "adult_individual", adultVerified: true });
-        community.memberships.push({ accountId: id11, teamId: SYNTHETIC_IDS.teamId, seasonId: SYNTHETIC_IDS.seasonId, role: "manager", active: true });
+        const id12 = `synthetic-account-manager-${number}`;
+        community.accounts.push({ id: id12, label: demoAccountLabels[id12], classification: "adult_individual", adultVerified: true });
+        community.memberships.push({ accountId: id12, teamId: SYNTHETIC_IDS.teamId, seasonId: SYNTHETIC_IDS.seasonId, role: "manager", active: true });
       }
       await this.saveDocument(SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId, "preparation", preparation);
       await this.saveDocument(SYNTHETIC_IDS.teamId, SYNTHETIC_IDS.seasonId, "community", community);
@@ -66619,7 +67038,7 @@ var PostgresStore = class _PostgresStore {
       }
       if (options2.demoSharing) for (const match of community.matches) {
         const key = `award:${SYNTHETIC_IDS.teamId}:${SYNTHETIC_IDS.seasonId}:${match.id}:${match.voteCutoffAtMs}`;
-        await this.execute("INSERT INTO jobs(id,business_key,kind,payload_json,due_at) VALUES($1,$2,$3,$4,$5) ON CONFLICT(business_key) DO NOTHING", [randomUUID2(), key, "award.finalise", JSON.stringify({ teamId: SYNTHETIC_IDS.teamId, seasonId: SYNTHETIC_IDS.seasonId, matchId: match.id }), match.voteCutoffAtMs]);
+        await this.execute("INSERT INTO jobs(id,business_key,kind,payload_json,due_at) VALUES($1,$2,$3,$4,$5) ON CONFLICT(business_key) DO NOTHING", [randomUUID3(), key, "award.finalise", JSON.stringify({ teamId: SYNTHETIC_IDS.teamId, seasonId: SYNTHETIC_IDS.seasonId, matchId: match.id }), match.voteCutoffAtMs]);
       }
     });
   }
@@ -66713,7 +67132,7 @@ var PostgresStore = class _PostgresStore {
     });
   }
   async audit(principal, action, objectId, outcome) {
-    await this.execute("INSERT INTO audit(id,actor_id,action,object_id,outcome,created_at) VALUES($1,$2,$3,$4,$5,$6)", [randomUUID2(), principal.accountId, action, objectId, outcome, this.now()]);
+    await this.execute("INSERT INTO audit(id,actor_id,action,object_id,outcome,created_at) VALUES($1,$2,$3,$4,$5,$6)", [randomUUID3(), principal.accountId, action, objectId, outcome, this.now()]);
   }
   async idempotent(principal, operation, key, payload, work) {
     if (!validId3(key) || key.length < 8)
@@ -66757,7 +67176,7 @@ var PostgresStore = class _PostgresStore {
       throw new AccessError("CLOCK_POLICY_REQUIRED", 503, "An explicitly configured trusted-time policy is required before establishing an anchor.");
     if (!input || Object.keys(input).some((key) => !["deviceId", "controllerEpoch", "continuityId"].includes(key)) || !validDeviceId(input.deviceId) || !validId3(input.continuityId) || input.deviceId !== grant.device_id || input.controllerEpoch !== grant.epoch || grant.frozen)
       throw new AccessError("CLOCK_SCOPE_CONFLICT", 409, "Use the current unfrozen controller device, epoch and continuous-clock identity.");
-    const challenge = issueClockChallenge({ accountId: principal.accountId, deviceId: grant.device_id, matchId, controllerEpoch: grant.epoch, continuityId: input.continuityId }, randomUUID2(), this.now(), policy);
+    const challenge = issueClockChallenge({ accountId: principal.accountId, deviceId: grant.device_id, matchId, controllerEpoch: grant.epoch, continuityId: input.continuityId }, randomUUID3(), this.now(), policy);
     await this.execute("INSERT INTO clock_challenges(id,match_id,account_id,challenge_json) VALUES($1,$2,$3,$4)", [challenge.id, matchId, principal.accountId, JSON.stringify(challenge)]);
     return challenge;
   }
@@ -66819,7 +67238,7 @@ var PostgresStore = class _PostgresStore {
       throw new AccessError("RECONCILIATION_PREVIEW_REJECTED", 422, preview.issues.join(" ").slice(0, 1500));
     const { projectedState: discarded, ...savedPreview } = preview;
     void discarded;
-    const receipt = { input, matchId, actorId: principal.accountId, createdAt: new Date(this.now()).toISOString(), sourceDigests: input.sourceSubmissionIds.map((id11) => ({ submissionId: id11, originalDigest: snapshot.submissions.find((item) => item.submissionId === id11).originalDigest })), acceptedStateDigest: digest(canonical4(state)), preview: savedPreview, status: "prepared", appliedRevision: null };
+    const receipt = { input, matchId, actorId: principal.accountId, createdAt: new Date(this.now()).toISOString(), sourceDigests: input.sourceSubmissionIds.map((id12) => ({ submissionId: id12, originalDigest: snapshot.submissions.find((item) => item.submissionId === id12).originalDigest })), acceptedStateDigest: digest(canonical4(state)), preview: savedPreview, status: "prepared", appliedRevision: null };
     await this.execute("INSERT INTO reconciliation_proposals(id,match_id,actor_id,signature,receipt_json,created_at) VALUES($1,$2,$3,$4,$5,$6)", [input.proposalId, matchId, principal.accountId, signature3, JSON.stringify(receipt), this.now()]);
     await this.audit(principal, "reconciliation.proposal_prepared", matchId, "q08_authority_unapproved");
     return receipt;
@@ -66842,7 +67261,7 @@ var PostgresStore = class _PostgresStore {
       const sourceEpoch = retainedFinish ? JSON.parse(retainedFinish.envelope_json).controllerEpoch : null;
       const quality = unresolved ? "conflicted" : state.recoveryRequired || sourceEpoch !== currentGrant?.epoch || finishEligibilityChanged(state, existing) ? "review_required" : existing.finishQuality;
       if (quality !== existing.finishQuality) {
-        const next2 = { ...community, revision: community.revision + 1, matches: community.matches.map((match) => match.id === matchId ? { ...match, finishQuality: quality } : match), audit: [...community.audit, { id: randomUUID2(), actorAccountId: null, action: "service.finish_evidence_flagged_without_reopening", atMs: this.now() }] };
+        const next2 = { ...community, revision: community.revision + 1, matches: community.matches.map((match) => match.id === matchId ? { ...match, finishQuality: quality } : match), audit: [...community.audit, { id: randomUUID3(), actorAccountId: null, action: "service.finish_evidence_flagged_without_reopening", atMs: this.now() }] };
         await this.saveDocument(row.team_id, row.season_id, "community", next2);
       }
       return { status: "original_context_preserved", finishQuality: quality };
@@ -66859,7 +67278,7 @@ var PostgresStore = class _PostgresStore {
       return { status: "accepted_fixture_date_required" };
     const scheduledAtMs = Date.parse(`${playedDate}T00:00:00Z`);
     const context = deriveFinishedMatchContext({ state, acceptedFinish: finish, acceptedFinishActorId: finishRow?.actor_id ?? null, teamId: row.team_id, seasonId: row.season_id, currentControllerEpoch: grant?.epoch ?? 0, unresolvedConflicts: unresolved, mapping: mappingRow ? JSON.parse(mappingRow.mapping_json) : null, policy: policy ?? null, serverNowMs: this.now(), scheduledAtMs, sharing: "manager_only", sharingPolicyVersion: 0 });
-    const next = { ...community, revision: community.revision + 1, matches: [...community.matches, { ...context, voteCutoffAtMs: null, cutoffSource: "unresolved", finalisationDeadlineAtMs: context.actualFullTimeAtMs === null ? null : context.actualFullTimeAtMs + 36e5 }], audit: [...community.audit, { id: randomUUID2(), actorAccountId: null, action: "service.accepted_finish_registered_manager_only", atMs: this.now() }] };
+    const next = { ...community, revision: community.revision + 1, matches: [...community.matches, { ...context, voteCutoffAtMs: null, cutoffSource: "unresolved", finalisationDeadlineAtMs: context.actualFullTimeAtMs === null ? null : context.actualFullTimeAtMs + 36e5 }], audit: [...community.audit, { id: randomUUID3(), actorAccountId: null, action: "service.accepted_finish_registered_manager_only", atMs: this.now() }] };
     await this.saveDocument(row.team_id, row.season_id, "community", next);
     return { status: "registered_from_accepted_history", finishQuality: context.finishQuality };
   }
@@ -66900,7 +67319,7 @@ var PostgresStore = class _PostgresStore {
       const previous = await this.one("SELECT * FROM events WHERE event_id=$1", [event.eventId]);
       if (previous) {
         if (previous.match_id !== matchId || previous.signature !== signature3) {
-          await this.execute("INSERT INTO conflicting_submissions VALUES($1,$2,$3,$4,$5,$6)", [randomUUID2(), matchId, principal.accountId, JSON.stringify(value), "EVENT_ID_CONFLICT", this.now()]);
+          await this.execute("INSERT INTO conflicting_submissions VALUES($1,$2,$3,$4,$5,$6)", [randomUUID3(), matchId, principal.accountId, JSON.stringify(value), "EVENT_ID_CONFLICT", this.now()]);
           results.push({ eventId: event.eventId, clientSequence: event.clientSequence, disposition: "quarantined", reason: "EVENT_ID_CONFLICT", revision: null, duplicate: false });
         } else
           results.push({ eventId: previous.event_id, clientSequence: previous.client_sequence, disposition: previous.disposition, reason: previous.reason, revision: previous.revision, duplicate: true });
@@ -66908,7 +67327,7 @@ var PostgresStore = class _PostgresStore {
       }
       const stream = await this.one("SELECT sequence,previous_event_id FROM streams WHERE match_id=$1 AND device_id=$2", [matchId, event.deviceId]);
       if (event.clientSequence !== (stream?.sequence ?? 0) + 1 || event.previousEventId !== (stream?.previous_event_id ?? null)) {
-        await this.execute("INSERT INTO conflicting_submissions VALUES($1,$2,$3,$4,$5,$6)", [randomUUID2(), matchId, principal.accountId, JSON.stringify(value), "SEQUENCE_GAP_OR_REUSE", this.now()]);
+        await this.execute("INSERT INTO conflicting_submissions VALUES($1,$2,$3,$4,$5,$6)", [randomUUID3(), matchId, principal.accountId, JSON.stringify(value), "SEQUENCE_GAP_OR_REUSE", this.now()]);
         results.push({ eventId: event.eventId, clientSequence: event.clientSequence, disposition: "quarantined", reason: "SEQUENCE_GAP_OR_REUSE", revision: null, duplicate: false });
         continue;
       }
@@ -66966,11 +67385,11 @@ var PostgresStore = class _PostgresStore {
       throw new AccessError("NOT_FOUND", 404, "The requested object is unavailable.");
     const targetPrincipal = { accountId: target.id, issuer: target.issuer, subject: target.subject, identityClassification: target.classification, adultVerified: !!target.adult_verified, strongAuth: !!target.strong_auth_enrolled, authenticatedAt: this.now(), status: target.status };
     assertCanManageTeam(targetPrincipal, await this.memberships(), row.team_id, row.season_id, this.now());
-    const id11 = randomUUID2();
-    await this.execute("INSERT INTO transfers VALUES($1,$2,$3,$4,$5,$6,$7)", [id11, matchId, grant.epoch, toAccountId, toDeviceId, "pending", this.now()]);
+    const id12 = randomUUID3();
+    await this.execute("INSERT INTO transfers VALUES($1,$2,$3,$4,$5,$6,$7)", [id12, matchId, grant.epoch, toAccountId, toDeviceId, "pending", this.now()]);
     await this.execute("UPDATE controller_grants SET frozen=1 WHERE match_id=$1", [matchId]);
     await this.audit(principal, "controller.transfer_offered", matchId, "pending");
-    return { transferId: id11, state: "pending", acceptedRevision: state.revision };
+    return { transferId: id12, state: "pending", acceptedRevision: state.revision };
   }
   async acceptHandover(principal, matchId, transferId, deviceId) {
     await this.managerMatch(principal, matchId);
@@ -66986,7 +67405,7 @@ var PostgresStore = class _PostgresStore {
     const epoch = grant.epoch + 1;
     await this.execute("UPDATE controller_grants SET epoch=$1,account_id=$2,device_id=$3,capability_hash=$4,frozen=0 WHERE match_id=$5", [epoch, principal.accountId, deviceId, digest(capability), matchId]);
     await this.execute("UPDATE transfers SET state='accepted' WHERE id=$1", [transferId]);
-    await this.execute("INSERT INTO controller_history VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)", [randomUUID2(), matchId, epoch, principal.accountId, grant.device_id, deviceId, "transferred", null, this.now()]);
+    await this.execute("INSERT INTO controller_history VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)", [randomUUID3(), matchId, epoch, principal.accountId, grant.device_id, deviceId, "transferred", null, this.now()]);
     await this.audit(principal, "controller.transferred", matchId, "accepted");
     return { epoch, deviceId, controllerToken: capability, checkpoint: (await this.download(principal, matchId, deviceId)).deviceCheckpoint, acceptedRevision: JSON.parse((await this.match(matchId)).state_json).revision };
   }
@@ -67007,7 +67426,7 @@ var PostgresStore = class _PostgresStore {
     }
     await this.execute("INSERT INTO controller_grants(match_id,epoch,account_id,device_id,capability_hash,frozen) VALUES($1,$2,$3,$4,$5,0) ON CONFLICT(match_id) DO UPDATE SET epoch=excluded.epoch,account_id=excluded.account_id,device_id=excluded.device_id,capability_hash=excluded.capability_hash,frozen=0", [matchId, epoch, principal.accountId, deviceId, digest(capability)]);
     await this.execute("UPDATE transfers SET state='superseded' WHERE match_id=$1 AND state='pending'", [matchId]);
-    await this.execute("INSERT INTO controller_history VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)", [randomUUID2(), matchId, epoch, principal.accountId, old?.device_id ?? null, deviceId, "recovered", reason.trim(), this.now()]);
+    await this.execute("INSERT INTO controller_history VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)", [randomUUID3(), matchId, epoch, principal.accountId, old?.device_id ?? null, deviceId, "recovered", reason.trim(), this.now()]);
     await this.audit(principal, "controller.recovered", matchId, "reconciliation_required");
     return { epoch, deviceId, controllerToken: capability, reconciliationRequired: true, checkpoint: (await this.download(principal, matchId, deviceId)).deviceCheckpoint };
   }
@@ -67079,7 +67498,7 @@ var PostgresStore = class _PostgresStore {
       requestId2 = retained?.id;
     }
     if (!requestId2) {
-      requestId2 = randomUUID2();
+      requestId2 = randomUUID3();
       await this.execute("INSERT INTO privacy_requests(id,account_id,kind,status,policy_version,verified_at,created_at,team_id,season_id,affected_memberships_json) VALUES($1,$2,$3,$4,NULL,NULL,$5,$6,$7,$8)", [requestId2, principal.accountId, plan.kind, plan.status, this.now(), plan.scope.type === "team_season" ? plan.scope.teamId : null, plan.scope.type === "team_season" ? plan.scope.seasonId : null, JSON.stringify(plan.affectedMemberships)]);
       await this.audit(principal, "privacy.requested", requestId2, "pending_verification_and_policy");
     }
@@ -67139,7 +67558,7 @@ var PostgresStore = class _PostgresStore {
       if (member.role === "administrator" || member.role === "player" && !member.playerId)
         continue;
       const businessKey = `notify:${digest(canonical4([teamId, seasonId, category, entityId2, sourceId, member.accountId, member.role]))}`;
-      const job = createTeamNotificationJob({ id: randomUUID2(), businessKey, accountId: member.accountId, teamId, seasonId, audience: member.role, playerId: member.role === "player" ? member.playerId : null, category, entityId: entityId2, dueAtMs: observed });
+      const job = createTeamNotificationJob({ id: randomUUID3(), businessKey, accountId: member.accountId, teamId, seasonId, audience: member.role, playerId: member.role === "player" ? member.playerId : null, category, entityId: entityId2, dueAtMs: observed });
       if (workerJob) {
         const result = await this.one("SELECT longball.enqueue_award_notification($1,$2,$3::jsonb,$4) AS changes", [job.id, businessKey, JSON.stringify(job), job.dueAtMs]);
         inserted += Number(result?.changes ?? 0);
@@ -67263,10 +67682,10 @@ var PostgresStore = class _PostgresStore {
   /** Called inside the preparation mutation transaction; current labels never rewrite saved match evidence. */
   async projectPreparationRecords(teamId, seasonId, preparation, sourceCommandId) {
     const previous = await this.document(teamId, seasonId, "records");
-    const labels2 = new Map(previous.players.map((player) => [player.id, player]));
+    const labels3 = new Map(previous.players.map((player) => [player.id, player]));
     for (const profile of preparation.profiles.filter((profile2) => profile2.seasonId === seasonId))
-      labels2.set(profile.playerId, { id: profile.playerId, label: profile.displayName });
-    const players = [...labels2.values()];
+      labels3.set(profile.playerId, { id: profile.playerId, label: profile.displayName });
+    const players = [...labels3.values()];
     const evidence = trainingAttendanceEvidence({ ...preparation, training: preparation.training.filter((session) => session.seasonId === seasonId) });
     let records = previous;
     const at = new Date(this.now()).toISOString();
@@ -67342,7 +67761,7 @@ var PostgresStore = class _PostgresStore {
     else if (command.type === "training.series_created")
       for (const occurrence of command.occurrences) await this.enqueueNotifications(teamId, seasonId, "schedule", occurrence.id, command.id);
     else if (command.type === "training.series_updated" || command.type === "training.series_cancelled")
-      for (const id11 of command.occurrenceIds) await this.enqueueNotifications(teamId, seasonId, "schedule", id11, command.id);
+      for (const id12 of command.occurrenceIds) await this.enqueueNotifications(teamId, seasonId, "schedule", id12, command.id);
     return state;
   }
   async ownPreparation(principal, teamId, seasonId) {
@@ -67436,7 +67855,7 @@ var PostgresStore = class _PostgresStore {
       await this.synchronizeSpectatorMemberships(state);
     for (const match of state.matches.filter((match2) => match2.voteCutoffAtMs !== null && match2.finishQuality === "trusted" && !state.awards.some((award) => award.matchId === match2.id))) {
       const key = `award:${teamId}:${seasonId}:${match.id}:${match.voteCutoffAtMs}`;
-      await this.execute("INSERT INTO jobs(id,business_key,kind,payload_json,due_at) VALUES($1,$2,$3,$4,$5) ON CONFLICT(business_key) DO NOTHING", [randomUUID2(), key, "award.finalise", JSON.stringify({ teamId, seasonId, matchId: match.id }), match.voteCutoffAtMs]);
+      await this.execute("INSERT INTO jobs(id,business_key,kind,payload_json,due_at) VALUES($1,$2,$3,$4,$5) ON CONFLICT(business_key) DO NOTHING", [randomUUID3(), key, "award.finalise", JSON.stringify({ teamId, seasonId, matchId: match.id }), match.voteCutoffAtMs]);
     }
     await this.audit(principal, command.type, teamId, "accepted");
     if (command.type === "photo.submitted" || command.type === "photo.revised" || command.type === "photo.published" || command.type === "photo.reviewed" && command.decision === "approve")
@@ -67616,15 +68035,15 @@ async function installPostgresChildUsernameRegistry(source2) {
 
 // apps/api/src/spectator-access.ts
 import {
-  createHash as createHash4,
+  createHash as createHash5,
   randomBytes as randomBytes3,
-  randomUUID as randomUUID4,
+  randomUUID as randomUUID5,
   scrypt,
   timingSafeEqual
 } from "node:crypto";
 
 // apps/api/src/invitation-service.ts
-import { createHash as createHash3, randomBytes as randomBytes2, randomUUID as randomUUID3 } from "node:crypto";
+import { createHash as createHash4, randomBytes as randomBytes2, randomUUID as randomUUID4 } from "node:crypto";
 var unavailable = () => {
   throw new AccessError("INVITATION_UNAVAILABLE", 404, "The invitation is unavailable for this account and current team season.");
 };
@@ -67632,10 +68051,10 @@ var invalid3 = () => {
   throw new AccessError("INVALID_REQUEST", 400, "Use the exact invitation fields and an explicit expiry from 1 to 48 hours.");
 };
 var object5 = (value) => Boolean(value && typeof value === "object" && !Array.isArray(value));
-var id2 = (value) => typeof value === "string" && value.length >= 1 && value.length <= 150 && !/[^A-Za-z0-9_-]/.test(value);
+var id3 = (value) => typeof value === "string" && value.length >= 1 && value.length <= 150 && !/[^A-Za-z0-9_-]/.test(value);
 function invitationVerifier(token) {
   try {
-    return createHash3("sha256").update(invitationTokenHashInput(token)).digest("hex");
+    return createHash4("sha256").update(invitationTokenHashInput(token)).digest("hex");
   } catch {
     return unavailable();
   }
@@ -67646,7 +68065,7 @@ function parseInvitationAccept(value) {
   return { token: value.token };
 }
 function parseInvitationWrite(value, defaultHours) {
-  if (!object5(value) || Object.keys(value).some((key) => !["seasonId", "expiresInHours"].includes(key)) || !id2(value.seasonId)) return invalid3();
+  if (!object5(value) || Object.keys(value).some((key) => !["seasonId", "expiresInHours"].includes(key)) || !id3(value.seasonId)) return invalid3();
   const hours = value.expiresInHours ?? defaultHours;
   if (!Number.isInteger(hours) || Number(hours) < 1 || Number(hours) > 48) return invalid3();
   return { seasonId: value.seasonId, expiresInHours: Number(hours) };
@@ -67662,11 +68081,11 @@ var SpectatorInvitationService = class {
     return JSON.stringify(["invitation", action, session.teamId, session.seasonId, session.role ?? "default", source2 ?? null]);
   }
   identity(session, key) {
-    if (session.principal.status !== "active" || !id2(session.teamId) || !id2(session.seasonId)) unavailable();
+    if (session.principal.status !== "active" || !id3(session.teamId) || !id3(session.seasonId)) unavailable();
     if (key !== void 0 && (key.length < 8 || key.length > 150 || /[^A-Za-z0-9_-]/.test(key))) invalid3();
   }
   async prior(session, operation, key, payload) {
-    const signature3 = createHash3("sha256").update(JSON.stringify(payload)).digest("hex");
+    const signature3 = createHash4("sha256").update(JSON.stringify(payload)).digest("hex");
     const prior = await this.options.repository.receipt(session.principal.accountId, operation, key);
     if (prior && prior.signature !== signature3) throw new AccessError("IDEMPOTENCY_CONFLICT", 409, "The invitation request identity was already used with different content.");
     return { signature: signature3, prior };
@@ -67698,7 +68117,7 @@ var SpectatorInvitationService = class {
   async issue(session, key, value, sourceInvitationId) {
     this.identity(session, key);
     const input = parseInvitationWrite(value, this.options.defaultInviteExpiryHours);
-    if (input.seasonId !== session.seasonId || sourceInvitationId !== void 0 && !id2(sourceInvitationId)) return invalid3();
+    if (input.seasonId !== session.seasonId || sourceInvitationId !== void 0 && !id3(sourceInvitationId)) return invalid3();
     const { entry: entry2, policy } = this.configuration(), repo = this.options.repository;
     return repo.transaction(async () => {
       const actor = await repo.actor(session);
@@ -67711,7 +68130,7 @@ var SpectatorInvitationService = class {
       const now = this.now(), season = state.seasons.find((item) => item.id === session.seasonId && item.teamId === session.teamId);
       if (!season || season.accessEndsAtMs <= now) return unavailable();
       const expiresAtMs = Math.min(now + input.expiresInHours * 36e5, season.accessEndsAtMs);
-      const token = randomBytes2(32).toString("base64url"), tokenHash = invitationVerifier(token), invitationId = randomUUID3();
+      const token = randomBytes2(32).toString("base64url"), tokenHash = invitationVerifier(token), invitationId = randomUUID4();
       const base = { id: key, invitationId, tokenHash, expiresAtMs };
       const next = applyVerifiedInvitationCommand(state, actor, sourceInvitationId ? { ...base, type: "invite.reissued", sourceInvitationId } : { ...base, type: "invite.issued" }, now);
       entry2.hash = new URLSearchParams({ longballInvite: "1", teamId: session.teamId, seasonId: session.seasonId, code: token }).toString();
@@ -67758,7 +68177,7 @@ var SpectatorInvitationService = class {
   }
   async revoke(session, key, invitationId) {
     this.identity(session, key);
-    if (!id2(invitationId)) return invalid3();
+    if (!id3(invitationId)) return invalid3();
     const repo = this.options.repository;
     return repo.transaction(async () => {
       const actor = await repo.actor(session);
@@ -67778,8 +68197,8 @@ var SpectatorInvitationService = class {
   }
 };
 function invitationChangedRows(state, ids) {
-  return ids.map((id11) => {
-    const invite = state.invitations.find((item) => item.id === id11);
+  return ids.map((id12) => {
+    const invite = state.invitations.find((item) => item.id === id12);
     if (!invite) throw new Error("INVITATION_PROJECTION_MISSING");
     return invite;
   });
@@ -67809,7 +68228,7 @@ function denied2() {
     "The username or passcode was not recognised."
   );
 }
-var digest2 = (value) => createHash4("sha256").update(value).digest("hex");
+var digest2 = (value) => createHash5("sha256").update(value).digest("hex");
 var derive = async (pin, salt) => new Promise(
   (resolve4, reject) => scrypt(
     pin,
@@ -67820,10 +68239,11 @@ var derive = async (pin, salt) => new Promise(
   )
 );
 var SpectatorAccessService = class {
-  constructor(repository, now = Date.now, options2 = {}, rules = async () => DEFAULT_SIGN_IN_RULES) {
+  constructor(repository, now = Date.now, options2 = {}, rules = async () => DEFAULT_SIGN_IN_RULES, observeFailure) {
     this.repository = repository;
     this.now = now;
     this.rules = rules;
+    this.observeFailure = observeFailure;
     if (options2.isolatedDemo && process.env.NODE_ENV === "production")
       throw new Error(
         "The review request allowance requires an isolated nonproduction demo."
@@ -67833,6 +68253,7 @@ var SpectatorAccessService = class {
   repository;
   now;
   rules;
+  observeFailure;
   sessions = /* @__PURE__ */ new Map();
   attempts = /* @__PURE__ */ new Map();
   dummySalt = randomBytes3(16).toString("base64url");
@@ -67864,7 +68285,7 @@ var SpectatorAccessService = class {
         "Please retry sign-in shortly."
       );
     const accessToken = `spectator_${randomBytes3(32).toString("base64url")}`, issuedAt = this.now(), expiresAt = issuedAt + 216e5;
-    this.sessions.set(digest2(accessToken), { accountId, issuedAt, expiresAt });
+    this.sessions.set(digest2(accessToken), { accountId, sessionId: randomUUID5(), issuedAt, expiresAt });
     return {
       accountId,
       accessToken,
@@ -67884,6 +68305,17 @@ var SpectatorAccessService = class {
       strongAuth: false,
       authenticatedAt: session.issuedAt
     };
+  }
+  sessionObservation(token) {
+    this.identity(token);
+    const session = this.sessions.get(digest2(token));
+    return { accountId: session.accountId, sessionId: session.sessionId, provider: "spectator_pin", issuedAtMs: session.issuedAt, expiresAtMs: session.expiresAt };
+  }
+  async failed(reason) {
+    try {
+      await this.observeFailure?.(Object.freeze({ kind: "login_failure", provider: "spectator_pin", at: this.now(), reason }));
+    } catch {
+    }
   }
   logout(token) {
     this.identity(token);
@@ -67935,7 +68367,7 @@ var SpectatorAccessService = class {
         username: username2,
         salt,
         verifier: verifier.toString("hex"),
-        accountId: randomUUID4(),
+        accountId: randomUUID5(),
         requestId: value.requestId,
         now: this.now()
       });
@@ -67945,9 +68377,13 @@ var SpectatorAccessService = class {
     }
   }
   async login(value, remoteAddress) {
-    this.limit(remoteAddress, "auth");
-    if (!object6(value) || !exact2(value, ["username", "passcode"]) || typeof value.username !== "string" || value.username.length > 128 || typeof value.passcode !== "string" || !/^\d{4}$/.test(value.passcode))
-      denied2();
+    try {
+      this.limit(remoteAddress, "auth");
+    } catch (error) {
+      if (error instanceof AccessError && error.code === "RATE_LIMIT") await this.failed("rate_limited");
+      throw error;
+    }
+    if (!object6(value) || !exact2(value, ["username", "passcode"]) || typeof value.username !== "string" || value.username.length > 128 || typeof value.passcode !== "string" || !/^\d{4}$/.test(value.passcode)) denied2();
     let username2;
     try {
       username2 = normalizedSpectatorUsername(value.username);
@@ -67971,8 +68407,16 @@ var SpectatorAccessService = class {
       credential && matches && credential.lockedUntil <= this.now()
     );
     await this.repository.loginAttempt(username2, success, this.now());
-    if (!success || !credential) denied2();
-    return this.session(credential.accountId);
+    if (!success || !credential) {
+      await this.failed(credential && credential.lockedUntil > this.now() ? "locked" : "invalid_credentials");
+      denied2();
+    }
+    try {
+      return this.session(credential.accountId);
+    } catch (error) {
+      if (error instanceof AccessError && error.code === "SESSION_LIMIT") await this.failed("capacity");
+      throw error;
+    }
   }
   directory() {
     return this.repository.directory();
@@ -68014,7 +68458,7 @@ function parseInvitationContext(value) {
 
 // packages/application/src/team-privileges.ts
 var object7 = (value) => Boolean(value && typeof value === "object" && !Array.isArray(value));
-var id3 = (value) => typeof value === "string" && /^[A-Za-z0-9_-]{1,150}$/.test(value);
+var id4 = (value) => typeof value === "string" && /^[A-Za-z0-9_-]{1,150}$/.test(value);
 var integer4 = (value) => Number.isSafeInteger(value) && Number(value) >= 0;
 var invalid4 = () => {
   throw new AccessError(
@@ -68035,7 +68479,7 @@ function parseTeamPrivilegeCommand(value) {
       "privateNote",
       "confirm"
     ].includes(key)
-  ) || !id3(value.id) || !id3(value.targetAccountId) || !integer4(value.expectedRevision) || !["privilege.suspended", "privilege.reinstated"].includes(
+  ) || !id4(value.id) || !id4(value.targetAccountId) || !integer4(value.expectedRevision) || !["privilege.suspended", "privilege.reinstated"].includes(
     String(value.type)
   ) || !["uploads", "invitations"].includes(String(value.privilege)) || typeof value.reasonCode !== "string" || !/^[A-Za-z0-9][A-Za-z0-9_.-]{0,79}$/.test(value.reasonCode) || value.confirm !== true || !(value.privateNote === void 0 || value.privateNote === null || typeof value.privateNote === "string" && value.privateNote.length <= 1e3 && !/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(
     value.privateNote
@@ -68055,10 +68499,10 @@ function parseTeamPrivilegeCommand(value) {
 function validateTeamPrivilegeState(value) {
   if (!object7(value) || Object.keys(value).some(
     (key) => !["schemaVersion", "teamId", "revision", "restrictions"].includes(key)
-  ) || value.schemaVersion !== 1 || !id3(value.teamId) || !integer4(value.revision) || !Array.isArray(value.restrictions) || value.restrictions.some(
+  ) || value.schemaVersion !== 1 || !id4(value.teamId) || !integer4(value.revision) || !Array.isArray(value.restrictions) || value.restrictions.some(
     (row) => !object7(row) || Object.keys(row).some(
       (key) => !["accountId", "privilege", "suspended"].includes(key)
-    ) || !id3(row.accountId) || !["uploads", "invitations"].includes(String(row.privilege)) || typeof row.suspended !== "boolean"
+    ) || !id4(row.accountId) || !["uploads", "invitations"].includes(String(row.privilege)) || typeof row.suspended !== "boolean"
   ) || new Set(
     value.restrictions.map(
       (row) => JSON.stringify([row.accountId, row.privilege])
@@ -68207,7 +68651,7 @@ var SqliteTeamPrivilegeRepository = class {
 };
 
 // apps/api/src/invitation-repository.ts
-import { createHash as createHash5 } from "node:crypto";
+import { createHash as createHash6 } from "node:crypto";
 
 // packages/application/src/invitation-redaction.ts
 var LEGACY_INVITATION_FINGERPRINT_DOMAIN = "longball.spectator-invitation.legacy-retired.v1:";
@@ -68219,8 +68663,8 @@ function checkedDigest(digest5, input) {
     throw new Error("The invitation retirement digest is unavailable.");
   return result;
 }
-function legacyInvitationFingerprintInput(id11, code) {
-  return `${LEGACY_INVITATION_FINGERPRINT_DOMAIN}${id11.length}:${id11}:${code}`;
+function legacyInvitationFingerprintInput(id12, code) {
+  return `${LEGACY_INVITATION_FINGERPRINT_DOMAIN}${id12.length}:${id12}:${code}`;
 }
 function redactLegacyInvitationCommand(value, digest5) {
   if (value.startsWith(RETIRED_INVITATION_COMMAND_PREFIX)) return value;
@@ -68277,11 +68721,11 @@ function retireLegacyInvitationCredentials(state, atMs, digest5) {
       }
     };
   });
-  for (const [id11, fingerprint3] of Object.entries(next.appliedCommands)) {
+  for (const [id12, fingerprint3] of Object.entries(next.appliedCommands)) {
     const redacted = redactLegacyInvitationCommand(fingerprint3, digest5);
     if (redacted !== fingerprint3) {
-      next.appliedCommands[id11] = redacted;
-      evidence.commandIds.push(id11);
+      next.appliedCommands[id12] = redacted;
+      evidence.commandIds.push(id12);
     }
   }
   if (!evidence.invitationIds.length && !evidence.commandIds.length)
@@ -68330,8 +68774,8 @@ function redactRetainedInvitationResponse(value, atMs, digest5) {
         return [
           key,
           Object.fromEntries(
-            Object.entries(item).map(([id11, fingerprint3]) => [
-              id11,
+            Object.entries(item).map(([id12, fingerprint3]) => [
+              id12,
               typeof fingerprint3 === "string" ? redactLegacyInvitationCommand(fingerprint3, digest5) : fingerprint3
             ])
           )
@@ -68381,7 +68825,7 @@ var SqliteInvitationRepository = class {
   async initialize() {
     await this.transaction(async () => {
       const docs = this.source.database.prepare("SELECT team_id,season_id FROM documents WHERE kind='community'").all();
-      const digest5 = (input) => createHash5("sha256").update(input).digest("hex");
+      const digest5 = (input) => createHash6("sha256").update(input).digest("hex");
       for (const doc of docs) {
         const state = await this.runtime.document(doc.team_id, doc.season_id, "community");
         const retired = retireLegacyInvitationCredentials(state, this.source.now(), digest5);
@@ -68851,10 +69295,10 @@ var PersistedSpectatorAccessRepository = class {
 
 // apps/api/src/team-document-service.ts
 var import_pdf_lib = __toESM(require_cjs(), 1);
-import { createHash as createHash7 } from "node:crypto";
+import { createHash as createHash8 } from "node:crypto";
 
 // apps/api/src/club-administration.ts
-import { randomUUID as randomUUID5 } from "node:crypto";
+import { randomUUID as randomUUID6 } from "node:crypto";
 var ADMINISTRATION_SQLITE_DDL = `
 CREATE TABLE IF NOT EXISTS administration_grants(account_id TEXT NOT NULL REFERENCES accounts(id),scope_key TEXT NOT NULL,level TEXT NOT NULL CHECK(level IN('super','club')),club_id TEXT,PRIMARY KEY(account_id,scope_key),CHECK((level='super' AND club_id IS NULL AND scope_key='*') OR (level='club' AND club_id=scope_key)));
 CREATE TABLE IF NOT EXISTS administrative_memberships(account_id TEXT NOT NULL,team_id TEXT NOT NULL,season_id TEXT NOT NULL,role TEXT NOT NULL,PRIMARY KEY(account_id,team_id,season_id,role),FOREIGN KEY(account_id,team_id,season_id,role) REFERENCES memberships(account_id,team_id,season_id,role) ON DELETE CASCADE);
@@ -68969,7 +69413,7 @@ var ClubAdministrationService = class {
       command.type !== "team.create",
       this.source.now()
     );
-    const id11 = randomUUID5();
+    const id12 = randomUUID6();
     if (isPg(this.source)) {
       if (command.type === "administrator.grant" || command.type === "administrator.revoke") {
         const directory = await this.view(principal);
@@ -68995,21 +69439,21 @@ var ClubAdministrationService = class {
           throw new AccessError("NOT_FOUND", 404, "The club is unavailable.");
         documents = emptyTeamDocuments({
           club,
-          teamId: id11,
+          teamId: id12,
           ...command,
           nowMs: this.source.now()
         });
       }
       await this.source.execute(
         "SELECT longball.administration_command($1::jsonb,$2::text,$3::jsonb)",
-        [JSON.stringify(command), id11, JSON.stringify(documents)]
+        [JSON.stringify(command), id12, JSON.stringify(documents)]
       );
       return this.view(principal);
     }
     const source2 = this.source, db = source2.database;
     if (command.type === "club.create")
       db.prepare("INSERT INTO directory_clubs(id,name) VALUES(?,?)").run(
-        id11,
+        id12,
         command.name
       );
     else if (command.type === "team.create") {
@@ -69018,19 +69462,19 @@ var ClubAdministrationService = class {
         throw new AccessError("NOT_FOUND", 404, "The club is unavailable.");
       const docs = emptyTeamDocuments({
         club,
-        teamId: id11,
+        teamId: id12,
         ...command,
         nowMs: source2.now()
       });
       db.prepare("INSERT INTO teams(id,name) VALUES(?,?)").run(
-        id11,
+        id12,
         command.name
       );
       db.prepare(
         "INSERT INTO directory_teams(team_id,club_id,age_group) VALUES(?,?,?)"
-      ).run(id11, club.id, command.ageGroup);
+      ).run(id12, club.id, command.ageGroup);
       for (const kind2 of ["preparation", "records", "community"])
-        source2.saveDocument(id11, docs.seasonId, kind2, docs[kind2]);
+        source2.saveDocument(id12, docs.seasonId, kind2, docs[kind2]);
     } else {
       const target = db.prepare("SELECT * FROM accounts WHERE id=?").get(command.accountId);
       if (!target || target.classification !== "adult_individual" || target.adult_verified !== 1 || target.strong_auth_enrolled !== 1 || target.status !== "active")
@@ -69070,7 +69514,7 @@ var ClubAdministrationService = class {
     source2.audit(
       principal,
       command.type,
-      command.type === "team.create" || command.type === "club.create" ? id11 : command.accountId,
+      command.type === "team.create" || command.type === "club.create" ? id12 : command.accountId,
       "accepted"
     );
     return this.view({
@@ -69150,7 +69594,7 @@ var ClubAdministrationService = class {
 };
 
 // apps/api/src/store.ts
-import { createHash as createHash6, randomBytes as randomBytes4, randomUUID as randomUUID6 } from "node:crypto";
+import { createHash as createHash7, randomBytes as randomBytes4, randomUUID as randomUUID7 } from "node:crypto";
 import { chmodSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { backup, DatabaseSync } from "node:sqlite";
@@ -69261,7 +69705,7 @@ function canonical5(value) {
   if (value !== null && typeof value === "object") return `{${Object.entries(value).sort(([a], [b]) => a.localeCompare(b)).map(([key, item]) => `${JSON.stringify(key)}:${canonical5(item)}`).join(",")}}`;
   return JSON.stringify(value);
 }
-var digest3 = (value) => createHash6("sha256").update(value).digest("hex");
+var digest3 = (value) => createHash7("sha256").update(value).digest("hex");
 var validId4 = (value) => typeof value === "string" && value.length > 0 && value.length <= 150 && /^[a-zA-Z0-9_-]+$/.test(value);
 var validDeviceId2 = (value) => validId4(value) && value.length <= 120;
 var nonnegative4 = (value) => typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
@@ -69412,20 +69856,20 @@ var DevelopmentStore = class {
       if (this.database.prepare("SELECT id FROM teams LIMIT 1").get()) return;
       this.database.prepare("INSERT INTO teams(id,name) VALUES(?,?)").run(SYNTHETIC_IDS2.teamId, "Roma U10");
       this.database.prepare("INSERT INTO teams(id,name) VALUES(?,?)").run("synthetic-other-team", "Milan U11");
-      const add2 = (id11, classification, adult) => this.database.prepare("INSERT INTO accounts(id,issuer,subject,classification,adult_verified,strong_auth_enrolled) VALUES(?,?,?,?,?,?)").run(id11, "urn:longball:synthetic", id11, classification, Number(adult), Number(adult));
-      const membership = (id11, role, playerId = null, teamId = SYNTHETIC_IDS2.teamId) => this.database.prepare("INSERT INTO memberships(account_id,team_id,season_id,role,player_id) VALUES(?,?,?,?,?)").run(id11, teamId, SYNTHETIC_IDS2.seasonId, role, playerId);
+      const add2 = (id12, classification, adult) => this.database.prepare("INSERT INTO accounts(id,issuer,subject,classification,adult_verified,strong_auth_enrolled) VALUES(?,?,?,?,?,?)").run(id12, "urn:longball:synthetic", id12, classification, Number(adult), Number(adult));
+      const membership = (id12, role, playerId = null, teamId = SYNTHETIC_IDS2.teamId) => this.database.prepare("INSERT INTO memberships(account_id,team_id,season_id,role,player_id) VALUES(?,?,?,?,?)").run(id12, teamId, SYNTHETIC_IDS2.seasonId, role, playerId);
       add2("synthetic-account-admin", "adult_individual", true);
       membership("synthetic-account-admin", "administrator");
       for (let number = 1; number <= 5; number++) {
-        const id11 = number === 1 ? "synthetic-account-manager" : `synthetic-account-manager-${number}`;
-        add2(id11, "adult_individual", true);
-        if (number <= 4) membership(id11, "manager");
-        if (number === 1) membership(id11, "administrator");
+        const id12 = number === 1 ? "synthetic-account-manager" : `synthetic-account-manager-${number}`;
+        add2(id12, "adult_individual", true);
+        if (number <= 4) membership(id12, "manager");
+        if (number === 1) membership(id12, "administrator");
       }
       for (const player of romaFixture.players) {
-        const id11 = `synthetic-account-player-${player.id.slice(-2)}`;
-        add2(id11, "child_shared", false);
-        membership(id11, "player", player.id);
+        const id12 = `synthetic-account-player-${player.id.slice(-2)}`;
+        add2(id12, "child_shared", false);
+        membership(id12, "player", player.id);
       }
       add2("synthetic-account-spectator", "adult_individual", false);
       membership("synthetic-account-spectator", "spectator");
@@ -69451,9 +69895,9 @@ var DevelopmentStore = class {
       }
       if (!options2.demoSharing) community.matches = community.matches.map((match) => ({ ...match, sharing: "manager_only" }));
       for (let number = 2; number <= 4; number++) {
-        const id11 = `synthetic-account-manager-${number}`;
-        community.accounts.push({ id: id11, label: demoAccountLabels[id11], classification: "adult_individual", adultVerified: true });
-        community.memberships.push({ accountId: id11, teamId: SYNTHETIC_IDS2.teamId, seasonId: SYNTHETIC_IDS2.seasonId, role: "manager", active: true });
+        const id12 = `synthetic-account-manager-${number}`;
+        community.accounts.push({ id: id12, label: demoAccountLabels[id12], classification: "adult_individual", adultVerified: true });
+        community.memberships.push({ accountId: id12, teamId: SYNTHETIC_IDS2.teamId, seasonId: SYNTHETIC_IDS2.seasonId, role: "manager", active: true });
       }
       this.saveDocument(SYNTHETIC_IDS2.teamId, SYNTHETIC_IDS2.seasonId, "preparation", preparation);
       this.saveDocument(SYNTHETIC_IDS2.teamId, SYNTHETIC_IDS2.seasonId, "community", community);
@@ -69467,7 +69911,7 @@ var DevelopmentStore = class {
       }
       if (options2.demoSharing) for (const match of community.matches) {
         const key = `award:${SYNTHETIC_IDS2.teamId}:${SYNTHETIC_IDS2.seasonId}:${match.id}:${match.voteCutoffAtMs}`;
-        this.database.prepare("INSERT INTO jobs(id,business_key,kind,payload_json,due_at) VALUES(?,?,?,?,?) ON CONFLICT(business_key) DO NOTHING").run(randomUUID6(), key, "award.finalise", JSON.stringify({ teamId: SYNTHETIC_IDS2.teamId, seasonId: SYNTHETIC_IDS2.seasonId, matchId: match.id }), match.voteCutoffAtMs);
+        this.database.prepare("INSERT INTO jobs(id,business_key,kind,payload_json,due_at) VALUES(?,?,?,?,?) ON CONFLICT(business_key) DO NOTHING").run(randomUUID7(), key, "award.finalise", JSON.stringify({ teamId: SYNTHETIC_IDS2.teamId, seasonId: SYNTHETIC_IDS2.seasonId, matchId: match.id }), match.voteCutoffAtMs);
       }
     });
   }
@@ -69565,7 +70009,7 @@ var DevelopmentStore = class {
     return this.database.isTransaction ? read() : this.transaction(read);
   }
   audit(principal, action, objectId, outcome) {
-    this.database.prepare("INSERT INTO audit(id,actor_id,action,object_id,outcome,created_at) VALUES(?,?,?,?,?,?)").run(randomUUID6(), principal.accountId, action, objectId, outcome, this.now());
+    this.database.prepare("INSERT INTO audit(id,actor_id,action,object_id,outcome,created_at) VALUES(?,?,?,?,?,?)").run(randomUUID7(), principal.accountId, action, objectId, outcome, this.now());
   }
   idempotent(principal, operation, key, payload, work) {
     if (!validId4(key) || key.length < 8) bad4("A stable Idempotency-Key is required for mutations.");
@@ -69602,7 +70046,7 @@ var DevelopmentStore = class {
     const grant = this.assertController(principal, matchId, token);
     if (!policy) throw new AccessError("CLOCK_POLICY_REQUIRED", 503, "An explicitly configured trusted-time policy is required before establishing an anchor.");
     if (!input || Object.keys(input).some((key) => !["deviceId", "controllerEpoch", "continuityId"].includes(key)) || !validDeviceId2(input.deviceId) || !validId4(input.continuityId) || input.deviceId !== grant.device_id || input.controllerEpoch !== grant.epoch || grant.frozen) throw new AccessError("CLOCK_SCOPE_CONFLICT", 409, "Use the current unfrozen controller device, epoch and continuous-clock identity.");
-    const challenge = issueClockChallenge({ accountId: principal.accountId, deviceId: grant.device_id, matchId, controllerEpoch: grant.epoch, continuityId: input.continuityId }, randomUUID6(), this.now(), policy);
+    const challenge = issueClockChallenge({ accountId: principal.accountId, deviceId: grant.device_id, matchId, controllerEpoch: grant.epoch, continuityId: input.continuityId }, randomUUID7(), this.now(), policy);
     this.database.prepare("INSERT INTO clock_challenges(id,match_id,account_id,challenge_json) VALUES(?,?,?,?)").run(challenge.id, matchId, principal.accountId, JSON.stringify(challenge));
     return challenge;
   }
@@ -69656,7 +70100,7 @@ var DevelopmentStore = class {
     if (!preview.valid) throw new AccessError("RECONCILIATION_PREVIEW_REJECTED", 422, preview.issues.join(" ").slice(0, 1500));
     const { projectedState: discarded, ...savedPreview } = preview;
     void discarded;
-    const receipt = { input, matchId, actorId: principal.accountId, createdAt: new Date(this.now()).toISOString(), sourceDigests: input.sourceSubmissionIds.map((id11) => ({ submissionId: id11, originalDigest: snapshot.submissions.find((item) => item.submissionId === id11).originalDigest })), acceptedStateDigest: digest3(canonical5(state)), preview: savedPreview, status: "prepared", appliedRevision: null };
+    const receipt = { input, matchId, actorId: principal.accountId, createdAt: new Date(this.now()).toISOString(), sourceDigests: input.sourceSubmissionIds.map((id12) => ({ submissionId: id12, originalDigest: snapshot.submissions.find((item) => item.submissionId === id12).originalDigest })), acceptedStateDigest: digest3(canonical5(state)), preview: savedPreview, status: "prepared", appliedRevision: null };
     this.database.prepare("INSERT INTO reconciliation_proposals(id,match_id,actor_id,signature,receipt_json,created_at) VALUES(?,?,?,?,?,?)").run(input.proposalId, matchId, principal.accountId, signature3, JSON.stringify(receipt), this.now());
     this.audit(principal, "reconciliation.proposal_prepared", matchId, "q08_authority_unapproved");
     return receipt;
@@ -69678,7 +70122,7 @@ var DevelopmentStore = class {
       const sourceEpoch = retainedFinish ? JSON.parse(retainedFinish.envelope_json).controllerEpoch : null;
       const quality = unresolved ? "conflicted" : state.recoveryRequired || sourceEpoch !== currentGrant?.epoch || finishEligibilityChanged(state, existing) ? "review_required" : existing.finishQuality;
       if (quality !== existing.finishQuality) {
-        const next2 = { ...community, revision: community.revision + 1, matches: community.matches.map((match) => match.id === matchId ? { ...match, finishQuality: quality } : match), audit: [...community.audit, { id: randomUUID6(), actorAccountId: null, action: "service.finish_evidence_flagged_without_reopening", atMs: this.now() }] };
+        const next2 = { ...community, revision: community.revision + 1, matches: community.matches.map((match) => match.id === matchId ? { ...match, finishQuality: quality } : match), audit: [...community.audit, { id: randomUUID7(), actorAccountId: null, action: "service.finish_evidence_flagged_without_reopening", atMs: this.now() }] };
         this.saveDocument(row.team_id, row.season_id, "community", next2);
       }
       return { status: "original_context_preserved", finishQuality: quality };
@@ -69694,7 +70138,7 @@ var DevelopmentStore = class {
     if (!playedDate) return { status: "accepted_fixture_date_required" };
     const scheduledAtMs = Date.parse(`${playedDate}T00:00:00Z`);
     const context = deriveFinishedMatchContext({ state, acceptedFinish: finish, acceptedFinishActorId: finishRow?.actor_id ?? null, teamId: row.team_id, seasonId: row.season_id, currentControllerEpoch: grant?.epoch ?? 0, unresolvedConflicts: unresolved, mapping: mappingRow ? JSON.parse(mappingRow.mapping_json) : null, policy: policy ?? null, serverNowMs: this.now(), scheduledAtMs, sharing: "manager_only", sharingPolicyVersion: 0 });
-    const next = { ...community, revision: community.revision + 1, matches: [...community.matches, { ...context, voteCutoffAtMs: null, cutoffSource: "unresolved", finalisationDeadlineAtMs: context.actualFullTimeAtMs === null ? null : context.actualFullTimeAtMs + 36e5 }], audit: [...community.audit, { id: randomUUID6(), actorAccountId: null, action: "service.accepted_finish_registered_manager_only", atMs: this.now() }] };
+    const next = { ...community, revision: community.revision + 1, matches: [...community.matches, { ...context, voteCutoffAtMs: null, cutoffSource: "unresolved", finalisationDeadlineAtMs: context.actualFullTimeAtMs === null ? null : context.actualFullTimeAtMs + 36e5 }], audit: [...community.audit, { id: randomUUID7(), actorAccountId: null, action: "service.accepted_finish_registered_manager_only", atMs: this.now() }] };
     this.saveDocument(row.team_id, row.season_id, "community", next);
     return { status: "registered_from_accepted_history", finishQuality: context.finishQuality };
   }
@@ -69731,14 +70175,14 @@ var DevelopmentStore = class {
       const previous = this.database.prepare("SELECT * FROM events WHERE event_id=?").get(event.eventId);
       if (previous) {
         if (previous.match_id !== matchId || previous.signature !== signature3) {
-          this.database.prepare("INSERT INTO conflicting_submissions VALUES(?,?,?,?,?,?)").run(randomUUID6(), matchId, principal.accountId, JSON.stringify(value), "EVENT_ID_CONFLICT", this.now());
+          this.database.prepare("INSERT INTO conflicting_submissions VALUES(?,?,?,?,?,?)").run(randomUUID7(), matchId, principal.accountId, JSON.stringify(value), "EVENT_ID_CONFLICT", this.now());
           results.push({ eventId: event.eventId, clientSequence: event.clientSequence, disposition: "quarantined", reason: "EVENT_ID_CONFLICT", revision: null, duplicate: false });
         } else results.push({ eventId: previous.event_id, clientSequence: previous.client_sequence, disposition: previous.disposition, reason: previous.reason, revision: previous.revision, duplicate: true });
         continue;
       }
       const stream = this.database.prepare("SELECT sequence,previous_event_id FROM streams WHERE match_id=? AND device_id=?").get(matchId, event.deviceId);
       if (event.clientSequence !== (stream?.sequence ?? 0) + 1 || event.previousEventId !== (stream?.previous_event_id ?? null)) {
-        this.database.prepare("INSERT INTO conflicting_submissions VALUES(?,?,?,?,?,?)").run(randomUUID6(), matchId, principal.accountId, JSON.stringify(value), "SEQUENCE_GAP_OR_REUSE", this.now());
+        this.database.prepare("INSERT INTO conflicting_submissions VALUES(?,?,?,?,?,?)").run(randomUUID7(), matchId, principal.accountId, JSON.stringify(value), "SEQUENCE_GAP_OR_REUSE", this.now());
         results.push({ eventId: event.eventId, clientSequence: event.clientSequence, disposition: "quarantined", reason: "SEQUENCE_GAP_OR_REUSE", revision: null, duplicate: false });
         continue;
       }
@@ -69784,11 +70228,11 @@ var DevelopmentStore = class {
     if (!target) throw new AccessError("NOT_FOUND", 404, "The requested object is unavailable.");
     const targetPrincipal = { accountId: target.id, issuer: target.issuer, subject: target.subject, identityClassification: target.classification, adultVerified: !!target.adult_verified, strongAuth: !!target.strong_auth_enrolled, authenticatedAt: this.now(), status: target.status };
     assertCanManageTeam(targetPrincipal, this.memberships(), row.team_id, row.season_id, this.now());
-    const id11 = randomUUID6();
-    this.database.prepare("INSERT INTO transfers VALUES(?,?,?,?,?,?,?)").run(id11, matchId, grant.epoch, toAccountId, toDeviceId, "pending", this.now());
+    const id12 = randomUUID7();
+    this.database.prepare("INSERT INTO transfers VALUES(?,?,?,?,?,?,?)").run(id12, matchId, grant.epoch, toAccountId, toDeviceId, "pending", this.now());
     this.database.prepare("UPDATE controller_grants SET frozen=1 WHERE match_id=?").run(matchId);
     this.audit(principal, "controller.transfer_offered", matchId, "pending");
-    return { transferId: id11, state: "pending", acceptedRevision: state.revision };
+    return { transferId: id12, state: "pending", acceptedRevision: state.revision };
   }
   acceptHandover(principal, matchId, transferId, deviceId) {
     this.managerMatch(principal, matchId);
@@ -69802,7 +70246,7 @@ var DevelopmentStore = class {
     const epoch = grant.epoch + 1;
     this.database.prepare("UPDATE controller_grants SET epoch=?,account_id=?,device_id=?,capability_hash=?,frozen=0 WHERE match_id=?").run(epoch, principal.accountId, deviceId, digest3(capability), matchId);
     this.database.prepare("UPDATE transfers SET state='accepted' WHERE id=?").run(transferId);
-    this.database.prepare("INSERT INTO controller_history VALUES(?,?,?,?,?,?,?,?,?)").run(randomUUID6(), matchId, epoch, principal.accountId, grant.device_id, deviceId, "transferred", null, this.now());
+    this.database.prepare("INSERT INTO controller_history VALUES(?,?,?,?,?,?,?,?,?)").run(randomUUID7(), matchId, epoch, principal.accountId, grant.device_id, deviceId, "transferred", null, this.now());
     this.audit(principal, "controller.transferred", matchId, "accepted");
     return { epoch, deviceId, controllerToken: capability, checkpoint: this.download(principal, matchId, deviceId).deviceCheckpoint, acceptedRevision: JSON.parse(this.match(matchId).state_json).revision };
   }
@@ -69822,7 +70266,7 @@ var DevelopmentStore = class {
     }
     this.database.prepare("INSERT INTO controller_grants(match_id,epoch,account_id,device_id,capability_hash,frozen) VALUES(?,?,?,?,?,0) ON CONFLICT(match_id) DO UPDATE SET epoch=excluded.epoch,account_id=excluded.account_id,device_id=excluded.device_id,capability_hash=excluded.capability_hash,frozen=0").run(matchId, epoch, principal.accountId, deviceId, digest3(capability));
     this.database.prepare("UPDATE transfers SET state='superseded' WHERE match_id=? AND state='pending'").run(matchId);
-    this.database.prepare("INSERT INTO controller_history VALUES(?,?,?,?,?,?,?,?,?)").run(randomUUID6(), matchId, epoch, principal.accountId, old?.device_id ?? null, deviceId, "recovered", reason.trim(), this.now());
+    this.database.prepare("INSERT INTO controller_history VALUES(?,?,?,?,?,?,?,?,?)").run(randomUUID7(), matchId, epoch, principal.accountId, old?.device_id ?? null, deviceId, "recovered", reason.trim(), this.now());
     this.audit(principal, "controller.recovered", matchId, "reconciliation_required");
     return { epoch, deviceId, controllerToken: capability, reconciliationRequired: true, checkpoint: this.download(principal, matchId, deviceId).deviceCheckpoint };
   }
@@ -69888,7 +70332,7 @@ var DevelopmentStore = class {
       requestId2 = retained?.id;
     }
     if (!requestId2) {
-      requestId2 = randomUUID6();
+      requestId2 = randomUUID7();
       this.database.prepare("INSERT INTO privacy_requests(id,account_id,kind,status,policy_version,verified_at,created_at,team_id,season_id,affected_memberships_json) VALUES(?,?,?,?,NULL,NULL,?,?,?,?)").run(requestId2, principal.accountId, plan.kind, plan.status, this.now(), plan.scope.type === "team_season" ? plan.scope.teamId : null, plan.scope.type === "team_season" ? plan.scope.seasonId : null, JSON.stringify(plan.affectedMemberships));
       this.audit(principal, "privacy.requested", requestId2, "pending_verification_and_policy");
     }
@@ -69938,7 +70382,7 @@ var DevelopmentStore = class {
     for (const member of recipients.values()) {
       if (member.role === "administrator" || member.role === "player" && !member.playerId) continue;
       const businessKey = `notify:${digest3(canonical5([teamId, seasonId, category, entityId2, sourceId, member.accountId, member.role]))}`;
-      const job = createTeamNotificationJob({ id: randomUUID6(), businessKey, accountId: member.accountId, teamId, seasonId, audience: member.role, playerId: member.role === "player" ? member.playerId : null, category, entityId: entityId2, dueAtMs: this.now() });
+      const job = createTeamNotificationJob({ id: randomUUID7(), businessKey, accountId: member.accountId, teamId, seasonId, audience: member.role, playerId: member.role === "player" ? member.playerId : null, category, entityId: entityId2, dueAtMs: this.now() });
       const result = this.database.prepare("INSERT INTO jobs(id,business_key,kind,payload_json,due_at) VALUES(?,?,'notification.dispatch',?,?) ON CONFLICT(business_key) DO NOTHING").run(job.id, businessKey, JSON.stringify(job), job.dueAtMs);
       inserted += Number(result.changes);
     }
@@ -70040,9 +70484,9 @@ var DevelopmentStore = class {
   /** Called inside the preparation mutation transaction; current labels never rewrite saved match evidence. */
   projectPreparationRecords(teamId, seasonId, preparation, sourceCommandId) {
     const previous = this.document(teamId, seasonId, "records");
-    const labels2 = new Map(previous.players.map((player) => [player.id, player]));
-    for (const profile of preparation.profiles.filter((profile2) => profile2.seasonId === seasonId)) labels2.set(profile.playerId, { id: profile.playerId, label: profile.displayName });
-    const players = [...labels2.values()];
+    const labels3 = new Map(previous.players.map((player) => [player.id, player]));
+    for (const profile of preparation.profiles.filter((profile2) => profile2.seasonId === seasonId)) labels3.set(profile.playerId, { id: profile.playerId, label: profile.displayName });
+    const players = [...labels3.values()];
     const evidence = trainingAttendanceEvidence({ ...preparation, training: preparation.training.filter((session) => session.seasonId === seasonId) });
     let records = previous;
     const at = new Date(this.now()).toISOString();
@@ -70101,7 +70545,7 @@ var DevelopmentStore = class {
     else if (command.type === "training.saved") this.enqueueNotifications(teamId, seasonId, "schedule", command.training.id, command.id);
     else if (command.type === "training.status_changed") this.enqueueNotifications(teamId, seasonId, "schedule", command.trainingId, command.id);
     else if (command.type === "training.series_created") for (const occurrence of command.occurrences) this.enqueueNotifications(teamId, seasonId, "schedule", occurrence.id, command.id);
-    else if (command.type === "training.series_updated" || command.type === "training.series_cancelled") for (const id11 of command.occurrenceIds) this.enqueueNotifications(teamId, seasonId, "schedule", id11, command.id);
+    else if (command.type === "training.series_updated" || command.type === "training.series_cancelled") for (const id12 of command.occurrenceIds) this.enqueueNotifications(teamId, seasonId, "schedule", id12, command.id);
     return state;
   }
   ownPreparation(principal, teamId, seasonId) {
@@ -70180,7 +70624,7 @@ var DevelopmentStore = class {
     if (["invite.accepted", "invite.revoked", "grant.revoked"].includes(command.type)) this.synchronizeSpectatorMemberships(state);
     for (const match of state.matches.filter((match2) => match2.voteCutoffAtMs !== null && match2.finishQuality === "trusted" && !state.awards.some((award) => award.matchId === match2.id))) {
       const key = `award:${teamId}:${seasonId}:${match.id}:${match.voteCutoffAtMs}`;
-      this.database.prepare("INSERT INTO jobs(id,business_key,kind,payload_json,due_at) VALUES(?,?,?,?,?) ON CONFLICT(business_key) DO NOTHING").run(randomUUID6(), key, "award.finalise", JSON.stringify({ teamId, seasonId, matchId: match.id }), match.voteCutoffAtMs);
+      this.database.prepare("INSERT INTO jobs(id,business_key,kind,payload_json,due_at) VALUES(?,?,?,?,?) ON CONFLICT(business_key) DO NOTHING").run(randomUUID7(), key, "award.finalise", JSON.stringify({ teamId, seasonId, matchId: match.id }), match.voteCutoffAtMs);
     }
     this.audit(principal, command.type, teamId, "accepted");
     if (command.type === "photo.submitted" || command.type === "photo.revised" || command.type === "photo.published" || command.type === "photo.reviewed" && command.decision === "approve") this.enqueueNotifications(teamId, seasonId, "photos", command.photoId, command.id);
@@ -70300,7 +70744,7 @@ async function validateTeamSheetPdf(base64) {
       "Use an unencrypted PDF with one to 50 pages and no scripts, attachments or launch actions."
     );
   }
-  return { bytes, hash: createHash7("sha256").update(bytes).digest("hex") };
+  return { bytes, hash: createHash8("sha256").update(bytes).digest("hex") };
 }
 var TeamDocumentService = class {
   constructor(source2, runtime) {
@@ -70498,8 +70942,8 @@ var OppositionReviewRepository = class {
     if (this.source instanceof PostgresStore) return await this.source.many(`SELECT ${fields5.join(",")} FROM opposition_reviews WHERE team_id=$1 AND season_id=$2 ORDER BY match_id`, [session.teamId, session.seasonId]);
     return this.source.database.prepare(`SELECT ${fields5.join(",")} FROM opposition_reviews WHERE team_id=? AND season_id=? ORDER BY match_id`).all(session.teamId, session.seasonId);
   }
-  async receipt(session, id11) {
-    const row = this.source instanceof PostgresStore ? await this.source.one("SELECT signature,receipt_json FROM opposition_review_receipts WHERE account_id=$1 AND command_id=$2 AND team_id=$3 AND season_id=$4", [session.principal.accountId, id11, session.teamId, session.seasonId]) : this.source.database.prepare("SELECT signature,receipt_json FROM opposition_review_receipts WHERE account_id=? AND command_id=? AND team_id=? AND season_id=?").get(session.principal.accountId, id11, session.teamId, session.seasonId);
+  async receipt(session, id12) {
+    const row = this.source instanceof PostgresStore ? await this.source.one("SELECT signature,receipt_json FROM opposition_review_receipts WHERE account_id=$1 AND command_id=$2 AND team_id=$3 AND season_id=$4", [session.principal.accountId, id12, session.teamId, session.seasonId]) : this.source.database.prepare("SELECT signature,receipt_json FROM opposition_review_receipts WHERE account_id=? AND command_id=? AND team_id=? AND season_id=?").get(session.principal.accountId, id12, session.teamId, session.seasonId);
     return row ?? null;
   }
   async save(session, row, command, signature3, receipt) {
@@ -70528,14 +70972,14 @@ var OppositionReviewRepository = class {
 };
 
 // apps/api/src/opposition-review-service.ts
-import { createHash as createHash8 } from "node:crypto";
+import { createHash as createHash9 } from "node:crypto";
 
 // packages/application/src/opposition-review.ts
 var object8 = (value) => Boolean(value && typeof value === "object" && !Array.isArray(value));
-var id4 = (value) => typeof value === "string" && /^[A-Za-z0-9_.:-]{1,150}$/.test(value);
+var id5 = (value) => typeof value === "string" && /^[A-Za-z0-9_.:-]{1,150}$/.test(value);
 var note = (value) => value === null || typeof value === "string" && Array.from(value).length <= 256 && !/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(value);
 function parseOppositionReviewCommand(value) {
-  if (!object8(value) || Object.keys(value).length !== 6 || Object.keys(value).some((key) => !["id", "type", "matchId", "expectedRevision", "rating", "note"].includes(key)) || typeof value.id !== "string" || !/^[A-Za-z0-9_-]{8,150}$/.test(value.id) || value.type !== "opposition.review.saved" || !id4(value.matchId) || !Number.isSafeInteger(value.expectedRevision) || Number(value.expectedRevision) < 0 || !Number.isInteger(value.rating) || Number(value.rating) < 1 || Number(value.rating) > 5 || !note(value.note)) throw new AccessError("INVALID_OPPOSITION_REVIEW", 400, "Choose an opposition capability rating from 1 to 5 and an optional note of at most 256 characters.");
+  if (!object8(value) || Object.keys(value).length !== 6 || Object.keys(value).some((key) => !["id", "type", "matchId", "expectedRevision", "rating", "note"].includes(key)) || typeof value.id !== "string" || !/^[A-Za-z0-9_-]{8,150}$/.test(value.id) || value.type !== "opposition.review.saved" || !id5(value.matchId) || !Number.isSafeInteger(value.expectedRevision) || Number(value.expectedRevision) < 0 || !Number.isInteger(value.rating) || Number(value.rating) < 1 || Number(value.rating) > 5 || !note(value.note)) throw new AccessError("INVALID_OPPOSITION_REVIEW", 400, "Choose an opposition capability rating from 1 to 5 and an optional note of at most 256 characters.");
   return { id: value.id, type: value.type, matchId: value.matchId, expectedRevision: Number(value.expectedRevision), rating: Number(value.rating), note: typeof value.note === "string" ? value.note.trim() || null : null };
 }
 
@@ -70555,7 +70999,7 @@ var OppositionReviewService = class {
     });
   }
   async command(session, raw) {
-    const command = parseOppositionReviewCommand(raw), signature3 = createHash8("sha256").update(JSON.stringify(command)).digest("hex");
+    const command = parseOppositionReviewCommand(raw), signature3 = createHash9("sha256").update(JSON.stringify(command)).digest("hex");
     return this.repository.transaction(async () => {
       const actor = await this.repository.actor(session);
       if (actor.role === "player") throw new AccessError("NOT_FOUND", 404, "The requested opposition review operation is unavailable.");
@@ -70576,12 +71020,12 @@ var OppositionReviewService = class {
 };
 
 // apps/api/src/report-export-repository.ts
-import { createHash as createHash10, randomBytes as randomBytes5 } from "node:crypto";
+import { createHash as createHash11, randomBytes as randomBytes5 } from "node:crypto";
 import { performance as performance2 } from "node:perf_hooks";
 
 // apps/api/src/runtime-store.ts
 import { AsyncLocalStorage as AsyncLocalStorage2 } from "node:async_hooks";
-import { createHash as createHash9 } from "node:crypto";
+import { createHash as createHash10 } from "node:crypto";
 function sqliteRuntimeStore(source2) {
   const transactionContext = new AsyncLocalStorage2();
   const facade = { now: source2.now };
@@ -70607,7 +71051,7 @@ function sqliteRuntimeStore(source2) {
   facade.withActorContext = async (_principal, _scope, work) => work();
   facade.idempotent = async (principal, operation, key, payload, work) => {
     if (!/^[A-Za-z0-9_-]{8,150}$/.test(key)) throw new AccessError("INVALID_REQUEST", 400, "A stable Idempotency-Key is required for mutations.");
-    const signature3 = createHash9("sha256").update(canonical5(payload)).digest("hex");
+    const signature3 = createHash10("sha256").update(canonical5(payload)).digest("hex");
     return transaction(async () => {
       const prior = source2.database.prepare("SELECT signature,response_json FROM idempotency WHERE account_id=? AND operation=? AND key=?").get(principal.accountId, operation, key);
       if (prior) {
@@ -70633,7 +71077,7 @@ function sqliteRuntimeStore(source2) {
 // apps/api/src/report-export-repository.ts
 var KIND = "report.export";
 var LEASE_MS = 3e4;
-var digest4 = (value) => createHash10("sha256").update(value).digest("hex");
+var digest4 = (value) => createHash11("sha256").update(value).digest("hex");
 var columns = ["id", "job_id", "account_id", "issuer", "subject", "team_id", "season_id", "role", "player_id", "request_json", "status", "created_at", "expires_at", "generated_at", "failure_code", "publication_json", "source_fingerprint", "snapshot_ciphertext", "artifact_ciphertext", "artifact_sha256", "key_id", "version"];
 var failureCode = (value) => /^[A-Z0-9_]{1,80}$/.test(value) ? value : "EXPORT_GENERATION_FAILED";
 var ReportExportRepository = class {
@@ -70675,8 +71119,8 @@ var ReportExportRepository = class {
       }
     });
   }
-  async get(id11) {
-    return this.source instanceof PostgresStore ? await this.source.one("SELECT * FROM report_exports WHERE id=$1", [id11]) : this.source.database.prepare("SELECT * FROM report_exports WHERE id=?").get(id11);
+  async get(id12) {
+    return this.source instanceof PostgresStore ? await this.source.one("SELECT * FROM report_exports WHERE id=$1", [id12]) : this.source.database.prepare("SELECT * FROM report_exports WHERE id=?").get(id12);
   }
   async sourceFingerprint(teamId, seasonId) {
     if (this.source instanceof PostgresStore) {
@@ -70848,7 +71292,7 @@ var ReportExportRepository = class {
 };
 
 // apps/api/src/report-export-service.ts
-import { createCipheriv, createDecipheriv, createHash as createHash11, randomBytes as randomBytes6, randomUUID as randomUUID7 } from "node:crypto";
+import { createCipheriv, createDecipheriv, createHash as createHash12, randomBytes as randomBytes6, randomUUID as randomUUID8 } from "node:crypto";
 
 // packages/application/src/report-export.ts
 var REPORT_EXPORT_MAX_BYTES = 5 * 1024 * 1024;
@@ -70856,8 +71300,8 @@ var REPORT_EXPORT_KINDS = ["own_participation", "team_participation", "attendanc
 function parseReportExportRequest(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Choose a report, its team-season and CSV or PDF.");
   const request = value;
-  const id11 = (input) => typeof input === "string" && input.length > 0 && input.length <= 150 && !/[\u0000-\u001f\u007f]/.test(input);
-  if (Object.keys(request).some((key) => !["kind", "teamId", "seasonId", "matchId", "format"].includes(key)) || !REPORT_EXPORT_KINDS.includes(request.kind) || !id11(request.teamId) || !id11(request.seasonId) || typeof request.format !== "string" || !["csv", "pdf"].includes(request.format) || request.matchId !== void 0 && request.matchId !== null && !id11(request.matchId) || request.kind === "match_summary" && !id11(request.matchId) || request.kind !== "match_summary" && request.matchId != null) throw new Error("Use the exact report kind, team-season, optional match and supported format.");
+  const id12 = (input) => typeof input === "string" && input.length > 0 && input.length <= 150 && !/[\u0000-\u001f\u007f]/.test(input);
+  if (Object.keys(request).some((key) => !["kind", "teamId", "seasonId", "matchId", "format"].includes(key)) || !REPORT_EXPORT_KINDS.includes(request.kind) || !id12(request.teamId) || !id12(request.seasonId) || typeof request.format !== "string" || !["csv", "pdf"].includes(request.format) || request.matchId !== void 0 && request.matchId !== null && !id12(request.matchId) || request.kind === "match_summary" && !id12(request.matchId) || request.kind !== "match_summary" && request.matchId != null) throw new Error("Use the exact report kind, team-season, optional match and supported format.");
   return { kind: request.kind, teamId: request.teamId, seasonId: request.seasonId, matchId: request.matchId ?? null, format: request.format };
 }
 
@@ -70943,8 +71387,8 @@ async function loadFont() {
   }
 }
 async function generateReportPdf(document, options2 = {}) {
-  const maximum = options2.maximumBytes ?? MAX_REPORT_EXPORT_BYTES;
-  if (!Number.isSafeInteger(maximum) || maximum < 1 || maximum > MAX_REPORT_EXPORT_BYTES) return invalid5();
+  const maximum2 = options2.maximumBytes ?? MAX_REPORT_EXPORT_BYTES;
+  if (!Number.isSafeInteger(maximum2) || maximum2 < 1 || maximum2 > MAX_REPORT_EXPORT_BYTES) return invalid5();
   const data = inputLines(document);
   const pdf = await import_pdf_lib2.PDFDocument.create();
   pdf.registerFontkit(import_fontkit.default);
@@ -71008,7 +71452,7 @@ async function generateReportPdf(document, options2 = {}) {
     pages[index].drawText(`Page ${index + 1} of ${pages.length}`, { x: PAGE.margin, y: 25, size: 8, font, color: muted });
   }
   const bytes = await pdf.save({ useObjectStreams: false, addDefaultPage: false });
-  if (bytes.byteLength > maximum) return tooLarge();
+  if (bytes.byteLength > maximum2) return tooLarge();
   return bytes;
 }
 function wrap(text3, font, size, width) {
@@ -71168,7 +71612,7 @@ var ReportExportService = class {
     this.options = options2;
     this.now = now;
     if (options2 && (options2.encryptionKey.byteLength !== 32 || !Number.isSafeInteger(options2.ttlMs) || options2.ttlMs < 1e3 || options2.ttlMs > 864e5)) throw new Error("Report exports require a 32-byte encryption key and explicit bounded expiry.");
-    this.keyId = options2 ? createHash11("sha256").update(options2.encryptionKey).digest("hex").slice(0, 32) : null;
+    this.keyId = options2 ? createHash12("sha256").update(options2.encryptionKey).digest("hex").slice(0, 32) : null;
   }
   repository;
   source;
@@ -71207,12 +71651,12 @@ var ReportExportService = class {
     const metadata = Object.fromEntries(Object.entries(body).filter(([key]) => !["participation", "results", "matches"].includes(key)));
     const document = { schemaVersion: 1, title: `LongBall \xB7 ${titles[request.kind]}`, metadata: { ...metadata, reportType: request.kind, asOf: body.asOf ?? null, requestedAt: new Date(this.now()).toISOString() }, sections: sections.map((section) => ({ ...section, value: disclosed(section.value) })) };
     const bytes = bounded(Buffer.from(JSON.stringify(document)));
-    const id11 = randomUUID7(), at = this.now();
+    const id12 = randomUUID8(), at = this.now();
     const policies = [...Array.isArray(body.policyVersions) ? body.policyVersions : [], ...Array.isArray(body.matches) ? body.matches : [], ...object9(body.results) && Array.isArray(body.results.competitionPolicies) ? body.results.competitionPolicies : []].filter(object9);
     const publication = [...new Map(policies.filter((item) => typeof item.policyId === "string" && Number.isSafeInteger(item.policyVersion) && Number(item.policyVersion) >= 0).map((item) => [JSON.stringify([item.policyId, item.policyVersion]), { policyId: String(item.policyId), version: Number(item.policyVersion) }])).values()];
     const row = {
-      id: id11,
-      job_id: `report-export-${id11}`,
+      id: id12,
+      job_id: `report-export-${id12}`,
       account_id: principal.accountId,
       issuer: principal.issuer,
       subject: principal.subject,
@@ -71241,8 +71685,8 @@ var ReportExportService = class {
   dto(row) {
     return { id: row.id, status: row.status, downloadPath: row.status === "ready" ? `/v1/exports/${encodeURIComponent(row.id)}/download` : null, expiresAt: new Date(row.expires_at).toISOString(), failureCode: row.failure_code, publicationPolicyVersions: JSON.parse(row.publication_json), generatedAt: row.generated_at === null ? null : new Date(row.generated_at).toISOString() };
   }
-  async owned(principal, id11, role) {
-    const row = await this.repository.get(id11);
+  async owned(principal, id12, role) {
+    const row = await this.repository.get(id12);
     if (!row || row.account_id !== principal.accountId || row.issuer !== principal.issuer || row.subject !== principal.subject || role && role !== row.role) fail4("NOT_FOUND", 404, "That export is unavailable in the current account and role.");
     if (this.source instanceof PostgresStore) {
       const context = this.source.db.applicationContext;
@@ -71251,8 +71695,8 @@ var ReportExportService = class {
     } else await this.authorize(principal, JSON.parse(row.request_json), row.role);
     return row;
   }
-  async status(principal, id11, role) {
-    const row = await this.owned(principal, id11, role);
+  async status(principal, id12, role) {
+    const row = await this.owned(principal, id12, role);
     const current3 = await this.repository.current(row);
     if (!current3.allowed) fail4("NOT_FOUND", 404, "That export is unavailable under the current team access.");
     if (current3.nowMs >= row.expires_at) {
@@ -71266,11 +71710,11 @@ var ReportExportService = class {
     }
     return this.dto(row);
   }
-  async download(principal, id11, role) {
-    const state = await this.status(principal, id11, role);
+  async download(principal, id12, role) {
+    const state = await this.status(principal, id12, role);
     if (state.status === "expired") fail4("EXPORT_EXPIRED", 410, "This export expired. Request a fresh report.");
     if (state.status !== "ready") fail4(state.failureCode ?? "EXPORT_NOT_READY", 409, "This export is unavailable or changed. Request a fresh report.");
-    const row = await this.owned(principal, id11, role), current3 = await this.repository.current(row);
+    const row = await this.owned(principal, id12, role), current3 = await this.repository.current(row);
     if (!current3.allowed) fail4("NOT_FOUND", 404, "That export is unavailable under the current access.");
     if (current3.nowMs >= row.expires_at) {
       await this.repository.expire(row);
@@ -71288,7 +71732,7 @@ var ReportExportService = class {
       await this.repository.invalidate(row, "EXPORT_DECRYPTION_FAILED");
       return fail4("EXPORT_DECRYPTION_FAILED", 409, "The encrypted export could not be verified. Request a fresh report.");
     }
-    if (createHash11("sha256").update(bytes).digest("hex") !== row.artifact_sha256) {
+    if (createHash12("sha256").update(bytes).digest("hex") !== row.artifact_sha256) {
       await this.repository.invalidate(row, "EXPORT_INTEGRITY_FAILED");
       fail4("EXPORT_INTEGRITY_FAILED", 409, "The export did not pass integrity verification. Request a fresh report.");
     }
@@ -71330,7 +71774,7 @@ var ReportExportService = class {
     if (!fresh.allowed) fail4("EXPORT_ACCESS_CHANGED", 403, "The report lost authorised access while it was generated.");
     if (fresh.nowMs >= row.expires_at) fail4("EXPORT_EXPIRED", 410, "The report expired while it was generated.");
     if (fresh.sourceFingerprint !== row.source_fingerprint) fail4("EXPORT_SOURCE_CHANGED", 409, "The report changed during generation. Request a fresh export.");
-    return { artifactCiphertext: encrypted(this.options.encryptionKey, aad(row, "artifact"), bytes), artifactSha256: createHash11("sha256").update(bytes).digest("hex"), generatedAtMs };
+    return { artifactCiphertext: encrypted(this.options.encryptionKey, aad(row, "artifact"), bytes), artifactSha256: createHash12("sha256").update(bytes).digest("hex"), generatedAtMs };
   }
 };
 
@@ -71353,13 +71797,13 @@ var TeamPrivilegeService = class {
   }
   async own(session) {
     const actor = await this.repository.actor(session);
-    const eligible2 = actor.role === "manager" || actor.role === "player";
+    const eligible3 = actor.role === "manager" || actor.role === "player";
     return {
       kind: "own-team-privileges",
       teamId: session.teamId,
       seasonId: session.seasonId,
-      uploadsAllowed: eligible2 && await this.repository.own(session, "uploads"),
-      invitationsAllowed: eligible2 && await this.repository.own(session, "invitations")
+      uploadsAllowed: eligible3 && await this.repository.own(session, "uploads"),
+      invitationsAllowed: eligible3 && await this.repository.own(session, "invitations")
     };
   }
   async assertAllowed(session, privilege, lock = false) {
@@ -71433,12 +71877,12 @@ var TeamPrivilegeService = class {
 // apps/api/src/fastify-transport.ts
 import Fastify from "fastify";
 import { createServer } from "node:http";
-import { randomUUID as randomUUID8 } from "node:crypto";
+import { randomUUID as randomUUID9 } from "node:crypto";
 var JSON_LIMIT = 256 * 1024;
 var UPLOAD_LIMIT = 15 * 1024 * 1024;
 function requestId(request) {
   const supplied = request.headers["x-request-id"];
-  return typeof supplied === "string" && /^[a-zA-Z0-9_-]{1,100}$/.test(supplied) ? supplied : randomUUID8();
+  return typeof supplied === "string" && /^[a-zA-Z0-9_-]{1,100}$/.test(supplied) ? supplied : randomUUID9();
 }
 function createFastifyTransport(options2) {
   const app = Fastify({
@@ -71465,9 +71909,9 @@ function createFastifyTransport(options2) {
     serverFactory(handler) {
       return createServer((request, reply) => {
         void app.ready().then(() => handler(request, reply), () => {
-          const id11 = requestId(request);
-          reply.writeHead(503, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff", "X-Request-Id": id11 });
-          reply.end(JSON.stringify({ code: "SERVICE_UNAVAILABLE", message: "The service is temporarily unavailable.", requestId: id11, retryable: true }));
+          const id12 = requestId(request);
+          reply.writeHead(503, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff", "X-Request-Id": id12 });
+          reply.end(JSON.stringify({ code: "SERVICE_UNAVAILABLE", message: "The service is temporarily unavailable.", requestId: id12, retryable: true }));
         });
       });
     }
@@ -71639,7 +72083,7 @@ var events_v1_1_schema_default = {
 };
 
 // apps/api/src/media.ts
-import { createHash as createHash13, randomBytes as randomBytes7, randomUUID as randomUUID9, timingSafeEqual as timingSafeEqual2 } from "node:crypto";
+import { createHash as createHash14, randomBytes as randomBytes7, randomUUID as randomUUID10, timingSafeEqual as timingSafeEqual2 } from "node:crypto";
 import { chmodSync as chmodSync2, mkdirSync as mkdirSync2, readFileSync as readFileSync2 } from "node:fs";
 import { open as open2, rename as rename2, unlink as unlink2 } from "node:fs/promises";
 import { isAbsolute as isAbsolute3, join, resolve, sep } from "node:path";
@@ -71650,7 +72094,7 @@ import { Socket } from "node:net";
 import { DatabaseSync as DatabaseSync2 } from "node:sqlite";
 
 // apps/api/src/image-bytes.ts
-import { createHash as createHash12 } from "node:crypto";
+import { createHash as createHash13 } from "node:crypto";
 import { access, open, readFile as readFile3, rename, unlink } from "node:fs/promises";
 import { constants } from "node:fs";
 import { isAbsolute as isAbsolute2 } from "node:path";
@@ -71764,7 +72208,7 @@ function rejectAnimatedPng(bytes) {
 }
 async function receivePrivateImage(input) {
   const destination = input.temporaryPath ? await open(input.temporaryPath, "wx", 384) : null;
-  const digest5 = createHash12("sha256"), began = performance3.now(), iterator = input.source[Symbol.asyncIterator]();
+  const digest5 = createHash13("sha256"), began = performance3.now(), iterator = input.source[Symbol.asyncIterator]();
   let received = 0;
   try {
     while (true) {
@@ -71794,7 +72238,7 @@ async function receivePrivateImage(input) {
 }
 async function processPrivateImage(input) {
   const original = await readFile3(input.originalPath);
-  if (original.length !== input.expectedBytes || createHash12("sha256").update(original).digest("hex") !== input.expectedSha) fail5("UPLOAD_INTEGRITY_FAILED", 422, "The private original does not match its recorded size and hash.");
+  if (original.length !== input.expectedBytes || createHash13("sha256").update(original).digest("hex") !== input.expectedSha) fail5("UPLOAD_INTEGRITY_FAILED", 422, "The private original does not match its recorded size and hash.");
   const mimeType = actualMime(original);
   if (!mimeType || mimeType !== input.declaredMime) fail5("MEDIA_TYPE_MISMATCH", 415, "The image type must match its original JPEG, PNG or supported still HEIC bytes.");
   rejectAnimatedPng(original);
@@ -71828,8 +72272,8 @@ async function processPrivateImage(input) {
 
 // apps/api/src/media.ts
 var executeFile2 = promisify2(execFile2);
-var hash = (value) => createHash13("sha256").update(value).digest("hex");
-var id5 = (value) => typeof value === "string" && /^[a-zA-Z0-9_-]{1,150}$/.test(value);
+var hash = (value) => createHash14("sha256").update(value).digest("hex");
+var id6 = (value) => typeof value === "string" && /^[a-zA-Z0-9_-]{1,150}$/.test(value);
 function fail6(code, status2, message) {
   throw new AccessError(code, status2, message);
 }
@@ -71942,7 +72386,7 @@ function createClamAvDaemonScanner(options2) {
     return { verdict: reply === "stream: OK" ? "clean" : /^stream: [^\r\n]+ FOUND$/.test(reply ?? "") ? "rejected" : "unavailable", engine };
   } };
 }
-var mediaInternals = { executeFile: executeFile2, hash, id: id5, fail: fail6, auth, sameToken, bounded: bounded2, actualMime, rejectAnimatedPng };
+var mediaInternals = { executeFile: executeFile2, hash, id: id6, fail: fail6, auth, sameToken, bounded: bounded2, actualMime, rejectAnimatedPng };
 var DevelopmentMediaService = class {
   database;
   directory;
@@ -71980,7 +72424,7 @@ var DevelopmentMediaService = class {
   }
   row(state, actor, uploadId, token) {
     auth(state, actor, this.now(), true);
-    if (!id5(uploadId)) fail6("NOT_FOUND", 404, "The requested upload is unavailable.");
+    if (!id6(uploadId)) fail6("NOT_FOUND", 404, "The requested upload is unavailable.");
     const row = this.database.prepare("SELECT * FROM media_uploads WHERE id=? AND owner_id=? AND team_id=? AND season_id=?").get(uploadId, actor.accountId, actor.teamId, actor.seasonId);
     if (!row || token !== void 0 && !sameToken(row.token_hash, token)) fail6("NOT_FOUND", 404, "The requested upload is unavailable.");
     return row;
@@ -71988,7 +72432,7 @@ var DevelopmentMediaService = class {
   prepare(state, actor, input) {
     auth(state, actor, this.now(), true);
     const allowedKeys = ["requestId", "matchId", "byteSize", "mimeType", "sha256", "caption", "policyAcknowledged", "photoId", "sourceRevision"];
-    if (!input || typeof input !== "object" || Object.keys(input).some((key) => !allowedKeys.includes(key)) || !id5(input.requestId) || !id5(input.matchId) || !Number.isSafeInteger(input.byteSize) || input.byteSize < 1 || input.byteSize > MEDIA_LIMITS.maxBytes || !["image/jpeg", "image/png", "image/heic"].includes(input.mimeType) || typeof input.sha256 !== "string" || !/^[a-fA-F0-9]{64}$/.test(input.sha256) || typeof input.caption !== "string" || input.caption.trim().length > 160 || input.policyAcknowledged !== true) {
+    if (!input || typeof input !== "object" || Object.keys(input).some((key) => !allowedKeys.includes(key)) || !id6(input.requestId) || !id6(input.matchId) || !Number.isSafeInteger(input.byteSize) || input.byteSize < 1 || input.byteSize > MEDIA_LIMITS.maxBytes || !["image/jpeg", "image/png", "image/heic"].includes(input.mimeType) || typeof input.sha256 !== "string" || !/^[a-fA-F0-9]{64}$/.test(input.sha256) || typeof input.caption !== "string" || input.caption.trim().length > 160 || input.policyAcknowledged !== true) {
       fail6("INVALID_MEDIA_PREPARATION", 422, "Use an original JPEG, PNG or supported still HEIC up to 15 MiB with a valid size, SHA-256 and policy acknowledgement.");
     }
     const match = state.matches.find((item) => item.id === input.matchId && item.teamId === actor.teamId && item.seasonId === actor.seasonId);
@@ -72003,14 +72447,14 @@ var DevelopmentMediaService = class {
       return { uploadId: existing.id, photoId: existing.photo_id, uploadToken: token, expiresAtMs: existing.expires_at, maxBytes: MEDIA_LIMITS.maxBytes, displayRevision: existing.display_revision };
     }
     let sourceRevision = null;
-    let photoId = `media-${randomUUID9()}`;
+    let photoId = `media-${randomUUID10()}`;
     if (input.photoId !== void 0 || input.sourceRevision !== void 0) {
       const photo = state.photos.find((item) => item.id === input.photoId && item.matchId === match.id && item.teamId === actor.teamId && item.seasonId === actor.seasonId && item.uploaderAccountId === actor.accountId && item.uploaderRole === actor.role && item.removedAtMs === null);
       if (!photo || !Number.isSafeInteger(input.sourceRevision) || photo.currentRevision !== input.sourceRevision) fail6("MEDIA_REVISION_CONFLICT", 409, "The photo changed. Review its current revision before replacing it.");
       sourceRevision = photo.currentRevision;
       photoId = photo.id;
     }
-    const uploadId = randomUUID9();
+    const uploadId = randomUUID10();
     const expiresAtMs = this.now() + MEDIA_LIMITS.uploadWindowMs;
     this.database.prepare(`INSERT INTO media_uploads(id,request_id,request_signature,owner_id,team_id,season_id,match_id,photo_id,source_revision,display_revision,status,expected_bytes,expected_sha,declared_mime,caption,token_hash,expires_at,created_at)
       VALUES(?,?,?,?,?,?,?,?,?,?,'prepared',?,?,?,?,?,?,?)`).run(
@@ -72039,7 +72483,7 @@ var DevelopmentMediaService = class {
     const duplicate = ["uploaded", "processed", "linked"].includes(row.status);
     if (!duplicate && row.expires_at <= this.now()) fail6("UPLOAD_EXPIRED", 410, "The write-only upload window expired.");
     if (!duplicate && row.status !== "prepared" && !(row.status === "uploading" && (row.lease_until ?? 0) < this.now())) fail6("UPLOAD_BUSY", 409, "This upload is already running or cannot be changed.");
-    const attempt2 = randomUUID9();
+    const attempt2 = randomUUID10();
     const key = `quarantine/${row.id}-${attempt2}.upload`;
     const temporary = this.path(key + ".part");
     if (!duplicate) {
@@ -72047,7 +72491,7 @@ var DevelopmentMediaService = class {
       if (!updated.changes) fail6("UPLOAD_BUSY", 409, "This upload is already running.");
     }
     const destination = duplicate ? null : await open2(temporary, "wx", 384);
-    const digest5 = createHash13("sha256");
+    const digest5 = createHash14("sha256");
     let received = 0;
     const began = performance4.now();
     const iterator = source2[Symbol.asyncIterator]();
@@ -72090,7 +72534,7 @@ var DevelopmentMediaService = class {
     if (row.status === "processed" || row.status === "linked") return this.completion(row);
     if (row.status !== "uploaded" && !(row.status === "processing" && (row.lease_until ?? 0) < this.now())) fail6("UPLOAD_NOT_READY", 409, "Finish the private upload before completion; an active processing lease cannot be duplicated.");
     if (!row.original_key) fail6("UPLOAD_NOT_READY", 409, "The private original is unavailable.");
-    const attempt2 = randomUUID9();
+    const attempt2 = randomUUID10();
     const leased = this.database.prepare("UPDATE media_uploads SET status='processing',attempt=?,lease_until=?,failure_code=NULL WHERE id=? AND (status='uploaded' OR (status='processing' AND lease_until<?))").run(attempt2, this.now() + 6e4, row.id, this.now());
     if (!leased.changes) fail6("UPLOAD_BUSY", 409, "This image is already processing.");
     try {
@@ -72148,9 +72592,9 @@ var DevelopmentMediaService = class {
 };
 
 // apps/api/src/activation.ts
-import { createHash as createHash14, randomBytes as randomBytes8, randomUUID as randomUUID10 } from "node:crypto";
-var hash2 = (value) => createHash14("sha256").update(value).digest("hex");
-var id6 = (value) => typeof value === "string" && /^[A-Za-z0-9_-]{1,150}$/.test(value);
+import { createHash as createHash15, randomBytes as randomBytes8, randomUUID as randomUUID11 } from "node:crypto";
+var hash2 = (value) => createHash15("sha256").update(value).digest("hex");
+var id7 = (value) => typeof value === "string" && /^[A-Za-z0-9_-]{1,150}$/.test(value);
 var uuid = (value) => typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 function unavailable4() {
   throw new AccessError(
@@ -72200,7 +72644,7 @@ var DevelopmentActivationService = class {
     this.store = options2.store;
     this.provider = options2.provider;
     this.policy = options2.policy;
-    if (options2.policy && (options2.policy.fictionalOnly !== true || !id6(options2.policy.version) || !Number.isSafeInteger(options2.policy.activationTtlMs) || options2.policy.activationTtlMs <= 0))
+    if (options2.policy && (options2.policy.fictionalOnly !== true || !id7(options2.policy.version) || !Number.isSafeInteger(options2.policy.activationTtlMs) || options2.policy.activationTtlMs <= 0))
       throw new Error(
         "An explicit versioned test activation policy and positive expiry are required."
       );
@@ -72327,7 +72771,7 @@ var DevelopmentActivationService = class {
   async createPendingChild(principal, input) {
     const { provider } = this.enabled();
     fields6(input, ["requestId", "teamId", "seasonId", "playerId"]);
-    if (![input.requestId, input.teamId, input.seasonId, input.playerId].every(id6))
+    if (![input.requestId, input.teamId, input.seasonId, input.playerId].every(id7))
       invalid6();
     const signature3 = fingerprint(principal.accountId, input);
     const signInRules = await ensureProviderSignInRules(this.store, provider);
@@ -72356,7 +72800,7 @@ var DevelopmentActivationService = class {
           409,
           "This player already has an account assignment. Use the verified exact-account linking process."
         );
-      const accountId = randomUUID10();
+      const accountId = randomUUID11();
       this.store.database.prepare(
         "INSERT INTO accounts(id,issuer,subject,classification,adult_verified,strong_auth_enrolled,status) VALUES(?,?,?,?,0,0,?)"
       ).run(
@@ -72453,7 +72897,7 @@ var DevelopmentActivationService = class {
   async issueActivation(principal, input) {
     const { provider, policy } = this.enabled();
     fields6(input, ["requestId", "teamId", "seasonId", "accountId"]);
-    if (![input.requestId, input.teamId, input.seasonId].every(id6) || !uuid(input.accountId))
+    if (![input.requestId, input.teamId, input.seasonId].every(id7) || !uuid(input.accountId))
       invalid6();
     const signature3 = fingerprint(principal.accountId, input);
     const preparation = this.store.transaction(() => {
@@ -72541,7 +72985,7 @@ var DevelopmentActivationService = class {
           "Another activation request superseded this operation."
         );
       const token = randomBytes8(32).toString("base64url");
-      const activationId = randomUUID10();
+      const activationId = randomUUID11();
       const expiresAt = this.store.now() + policy.activationTtlMs;
       if (!Number.isSafeInteger(expiresAt))
         throw new AccessError(
@@ -72582,7 +73026,7 @@ var DevelopmentActivationService = class {
   async redeemActivation(input) {
     const { provider } = this.enabled();
     fields6(input, ["token", "requestId"]);
-    if (typeof input.token !== "string" || !/^[A-Za-z0-9_-]{43}$/.test(input.token) || !id6(input.requestId))
+    if (typeof input.token !== "string" || !/^[A-Za-z0-9_-]{43}$/.test(input.token) || !id7(input.requestId))
       unavailable4();
     const reserved = this.store.transaction(() => {
       const token = this.store.database.prepare("SELECT * FROM lb_activation_tokens WHERE token_hash=?").get(hash2(input.token));
@@ -72617,7 +73061,7 @@ var DevelopmentActivationService = class {
         "The provider credential flow could not be safely opened."
       );
     }
-    if (setup.protocol !== "https:" || setup.username || setup.password || !provider.credentialSetupOrigins.includes(setup.origin) || result.setupUrl.includes(input.token) || !id6(result.flowId) || !Number.isSafeInteger(result.expiresAt) || result.expiresAt > reserved.token.expires_at || result.expiresAt <= this.store.now())
+    if (setup.protocol !== "https:" || setup.username || setup.password || !provider.credentialSetupOrigins.includes(setup.origin) || result.setupUrl.includes(input.token) || !id7(result.flowId) || !Number.isSafeInteger(result.expiresAt) || result.expiresAt > reserved.token.expires_at || result.expiresAt <= this.store.now())
       throw new AccessError(
         "PROVIDER_FLOW_REJECTED",
         502,
@@ -72679,7 +73123,7 @@ var DevelopmentActivationService = class {
         "UPDATE lb_activation_tokens SET state='completed',completed_at=? WHERE id=?"
       ).run(this.store.now(), token.id);
       this.store.database.prepare("INSERT INTO audit VALUES(?,?,?,?,?,?)").run(
-        randomUUID10(),
+        randomUUID11(),
         child.account_id,
         "identity.activation_completed",
         child.account_id,
@@ -72697,7 +73141,7 @@ var DevelopmentActivationService = class {
       "playerId",
       "existingAccountId"
     ]);
-    if (!id6(input.playerId) || !uuid(input.existingAccountId)) invalid6();
+    if (!id7(input.playerId) || !uuid(input.existingAccountId)) invalid6();
     return this.verificationRequest(
       principal,
       "link",
@@ -72719,7 +73163,7 @@ var DevelopmentActivationService = class {
   }
   verificationRequest(principal, kind2, input, target, playerId) {
     const { policy } = this.enabled();
-    if (![input.requestId, input.teamId, input.seasonId].every(id6)) invalid6();
+    if (![input.requestId, input.teamId, input.seasonId].every(id7)) invalid6();
     const signature3 = fingerprint(principal.accountId, { ...input, kind: kind2 });
     return this.store.transaction(() => {
       this.manager(principal, input.teamId, input.seasonId);
@@ -72873,7 +73317,7 @@ function requestDatabaseScope(input) {
 }
 
 // apps/api/src/brand-service.ts
-import { randomBytes as randomBytes9, randomUUID as randomUUID11, createHash as createHash15, timingSafeEqual as timingSafeEqual3 } from "node:crypto";
+import { randomBytes as randomBytes9, randomUUID as randomUUID12, createHash as createHash16, timingSafeEqual as timingSafeEqual3 } from "node:crypto";
 import { chmodSync as chmodSync3, mkdirSync as mkdirSync3 } from "node:fs";
 import { readFile as readFile4 } from "node:fs/promises";
 import { resolve as resolve2, join as join2, sep as sep2 } from "node:path";
@@ -72881,7 +73325,7 @@ import { resolve as resolve2, join as join2, sep as sep2 } from "node:path";
 // packages/application/src/branding.ts
 var BRAND_POLICY_VERSION = "logo-rights-v1";
 var object11 = (value) => Boolean(value && typeof value === "object" && !Array.isArray(value));
-var id7 = (value) => typeof value === "string" && value.length >= 1 && value.length <= 150 && !/[^A-Za-z0-9_-]/.test(value);
+var id8 = (value) => typeof value === "string" && value.length >= 1 && value.length <= 150 && !/[^A-Za-z0-9_-]/.test(value);
 var integer5 = (value) => Number.isSafeInteger(value) && Number(value) >= 0;
 function requireThat7(value, message) {
   if (!value) throw new AccessError("INVALID_BRANDING", 422, message);
@@ -72896,7 +73340,7 @@ function kind(value) {
   return value === "club_logo" || value === "team_logo";
 }
 function validateContext2(context) {
-  requireThat7(id7(context.clubId) && id7(context.teamId) && id7(context.authoritySeasonId) && integer5(context.nowMs), "Use the current verified branding scope.");
+  requireThat7(id8(context.clubId) && id8(context.teamId) && id8(context.authoritySeasonId) && integer5(context.nowMs), "Use the current verified branding scope.");
   assertTeamRole(context.principal, context.memberships, context.teamId, context.authoritySeasonId, [context.selectedRole], context.nowMs);
   if (context.selectedRole === "administrator" || context.selectedRole === "manager") assertAdultAuthority(context.principal, false, context.nowMs);
   if (context.selectedRole === "spectator" && context.spectatorGrantActive !== true) unavailable5();
@@ -72923,7 +73367,7 @@ function reference(context, slot) {
     requireThat7(slot.assetRevision === null && slot.reviewedRevision === null, "An empty logo slot cannot retain an asset revision.");
     return null;
   }
-  requireThat7(id7(slot.assetId) && integer5(slot.assetRevision) && slot.assetRevision > 0 && slot.reviewedRevision === slot.assetRevision && id7(slot.confirmedBy) && integer5(slot.confirmedAt) && id7(slot.policyVersion), "The published logo must match its reviewed revision and recorded publication.");
+  requireThat7(id8(slot.assetId) && integer5(slot.assetRevision) && slot.assetRevision > 0 && slot.reviewedRevision === slot.assetRevision && id8(slot.confirmedBy) && integer5(slot.confirmedAt) && id8(slot.policyVersion), "The published logo must match its reviewed revision and recorded publication.");
   return { assetId: slot.assetId, revision: slot.assetRevision, ...brandScope(context, slot.kind) };
 }
 function resolveBranding(context, club, team) {
@@ -72960,7 +73404,7 @@ function brandingView(input) {
 function parseLogoPrepareInput(value) {
   requireThat7(object11(value) && kind(value.kind), "Choose an explicit club or team logo.");
   strict(value, ["kind", value.kind === "club_logo" ? "clubId" : "teamId", "byteSize", "mimeType", "sha256", "policyAcknowledged"]);
-  requireThat7(id7(value.kind === "club_logo" ? value.clubId : value.teamId), "Use a valid logo-scope identifier.");
+  requireThat7(id8(value.kind === "club_logo" ? value.clubId : value.teamId), "Use a valid logo-scope identifier.");
   requireThat7(integer5(value.byteSize) && value.byteSize > 0 && value.byteSize <= 15 * 1024 * 1024 && ["image/jpeg", "image/png", "image/heic"].includes(String(value.mimeType)) && typeof value.sha256 === "string" && value.sha256.length === 64 && /^[a-fA-F0-9]{64}$/.test(value.sha256) && value.policyAcknowledged === true, "Use a JPEG, PNG or HEIC up to 15 MiB with SHA-256 and explicit policy acknowledgement.");
   return { ...value, sha256: value.sha256.toLowerCase() };
 }
@@ -72972,12 +73416,12 @@ function assertLogoPrepareScope(context, input) {
 }
 function parseBrandingCommand(value, expectedKind) {
   requireThat7(object11(value) && kind(value.kind) && (!expectedKind || expectedKind === value.kind), "Use the requested logo kind.");
-  requireThat7(id7(value.id) && integer5(value.expectedSlotVersion), "Use a stable command identity and current slot version.");
+  requireThat7(id8(value.id) && integer5(value.expectedSlotVersion), "Use a stable command identity and current slot version.");
   if (value.type === "logo.removed") strict(value, ["id", "type", "kind", "expectedSlotVersion"]);
   else {
     requireThat7(value.type === "logo.published", "Use an explicit publish or remove command.");
     strict(value, ["id", "type", "kind", "expectedSlotVersion", "assetId", "reviewedRevision", "confirmRightsToUse", "policyVersion"]);
-    requireThat7(id7(value.assetId) && integer5(value.reviewedRevision) && value.reviewedRevision > 0 && value.confirmRightsToUse === true && id7(value.policyVersion), "Review the exact processed revision and confirm the rights policy before publishing.");
+    requireThat7(id8(value.assetId) && integer5(value.reviewedRevision) && value.reviewedRevision > 0 && value.confirmRightsToUse === true && id8(value.policyVersion), "Review the exact processed revision and confirm the rights policy before publishing.");
   }
   return { ...value };
 }
@@ -73013,8 +73457,8 @@ function authorizeBrandAsset(input) {
 }
 
 // apps/api/src/brand-service.ts
-var hash3 = (value) => createHash15("sha256").update(value).digest("hex");
-var id8 = (value) => typeof value === "string" && /^[A-Za-z0-9_-]{1,150}$/.test(value);
+var hash3 = (value) => createHash16("sha256").update(value).digest("hex");
+var id9 = (value) => typeof value === "string" && /^[A-Za-z0-9_-]{1,150}$/.test(value);
 function unavailable6() {
   throw new AccessError("NOT_FOUND", 404, "The requested branding is unavailable.");
 }
@@ -73058,7 +73502,7 @@ var BrandMediaService = class {
     return this.view(await this.options.load(session));
   }
   async row(session, uploadId, token) {
-    if (!id8(uploadId)) unavailable6();
+    if (!id9(uploadId)) unavailable6();
     const authority = await this.options.load(session), row = await this.options.repository.upload(uploadId);
     if (!row || row.owner_id !== authority.context.principal.accountId || !sameScope2(authority, row)) unavailable6();
     assertBrandAuthority(authority.context, row.kind);
@@ -73066,7 +73510,7 @@ var BrandMediaService = class {
     return { row, authority };
   }
   async prepare(session, requestId2, input) {
-    if (!id8(requestId2)) fail7("INVALID_REQUEST", 400, "A stable upload request identity is required.");
+    if (!id9(requestId2)) fail7("INVALID_REQUEST", 400, "A stable upload request identity is required.");
     const parsed = parseLogoPrepareInput(input);
     return this.options.repository.transaction(async () => {
       const authority = await this.options.load(session), scope = assertLogoPrepareScope(authority.context, parsed);
@@ -73079,7 +73523,7 @@ var BrandMediaService = class {
         if (!await this.options.repository.rotateToken(previous.id, hash3(token))) unavailable6();
         return { kind: "prepared-logo-upload", uploadId: previous.id, asset: reference2(previous), uploadToken: token, expiresAtMs: previous.expires_at, maxBytes: MEDIA_LIMITS.maxBytes };
       }
-      const row = { id: randomUUID11(), asset_id: `logo-${randomUUID11()}`, revision: 1, kind: scope.kind, club_id: scope.clubId, team_id: scope.teamId, owner_id: authority.context.principal.accountId, request_id: requestId2, request_signature: signature3, status: "prepared", expected_bytes: parsed.byteSize, expected_sha: parsed.sha256, declared_mime: parsed.mimeType, token_hash: hash3(token), expires_at: this.now() + MEDIA_LIMITS.uploadWindowMs, created_at: this.now(), processed_at: null, original_key: null, display_key: null, thumbnail_key: null, width: null, height: null, scanner_engine: null, failure_code: null, attempt: null, lease_until: null };
+      const row = { id: randomUUID12(), asset_id: `logo-${randomUUID12()}`, revision: 1, kind: scope.kind, club_id: scope.clubId, team_id: scope.teamId, owner_id: authority.context.principal.accountId, request_id: requestId2, request_signature: signature3, status: "prepared", expected_bytes: parsed.byteSize, expected_sha: parsed.sha256, declared_mime: parsed.mimeType, token_hash: hash3(token), expires_at: this.now() + MEDIA_LIMITS.uploadWindowMs, created_at: this.now(), processed_at: null, original_key: null, display_key: null, thumbnail_key: null, width: null, height: null, scanner_engine: null, failure_code: null, attempt: null, lease_until: null };
       await this.options.repository.create(row);
       return { kind: "prepared-logo-upload", uploadId: row.id, asset: reference2(row), uploadToken: token, expiresAtMs: row.expires_at, maxBytes: MEDIA_LIMITS.maxBytes };
     });
@@ -73087,7 +73531,7 @@ var BrandMediaService = class {
   async upload(session, uploadId, token, source2) {
     const { row } = await this.row(session, uploadId, token), duplicate = ["uploaded", "processed", "linked"].includes(row.status);
     if (!duplicate && row.expires_at <= this.now()) fail7("UPLOAD_EXPIRED", 410, "The private upload window expired.");
-    const attempt2 = randomUUID11(), key = `quarantine/${row.id}-${attempt2}.upload`;
+    const attempt2 = randomUUID12(), key = `quarantine/${row.id}-${attempt2}.upload`;
     if (!duplicate && !await this.options.repository.lease(row.id, "uploading", attempt2, this.now())) fail7("UPLOAD_BUSY", 409, "The logo is already uploading or cannot be changed.");
     try {
       const byteSize = await receivePrivateImage({ source: source2, expectedBytes: row.expected_bytes, expectedSha: row.expected_sha, ...duplicate ? {} : { temporaryPath: this.path(key + ".part"), destinationPath: this.path(key) } });
@@ -73107,7 +73551,7 @@ var BrandMediaService = class {
     const { row } = await this.row(session, uploadId, token);
     if (["processed", "linked"].includes(row.status)) return this.completion(row);
     if (!row.original_key) fail7("UPLOAD_NOT_READY", 409, "Finish the private upload before processing.");
-    const attempt2 = randomUUID11();
+    const attempt2 = randomUUID12();
     if (!await this.options.repository.lease(row.id, "processing", attempt2, this.now())) fail7("UPLOAD_NOT_READY", 409, "An active processing attempt cannot be duplicated.");
     try {
       const displayKey = `derivatives/${row.asset_id}-r${row.revision}-${attempt2}-display.png`, thumbnailKey = `derivatives/${row.asset_id}-r${row.revision}-${attempt2}-thumbnail.png`;
@@ -73136,7 +73580,7 @@ var BrandMediaService = class {
     });
   }
   async gateway(session, assetId, revision, variant, mode = "published") {
-    if (!id8(assetId) || !Number.isSafeInteger(revision) || revision < 1 || !["display", "thumbnail"].includes(variant) || !["own", "published"].includes(mode)) unavailable6();
+    if (!id9(assetId) || !Number.isSafeInteger(revision) || revision < 1 || !["display", "thumbnail"].includes(variant) || !["own", "published"].includes(mode)) unavailable6();
     const authority = await this.options.load(session), row = await this.options.repository.asset(assetId, revision);
     if (!row) unavailable6();
     let slot = await this.slot(authority, row.kind);
@@ -73207,16 +73651,16 @@ function parsePushPlatformPolicies(value) {
 import {
   createCipheriv as createCipheriv2,
   createDecipheriv as createDecipheriv2,
-  createHash as createHash16,
+  createHash as createHash17,
   randomBytes as randomBytes10
 } from "node:crypto";
 import { readFileSync as readFileSync3 } from "node:fs";
-var pushTokenDigest = (token) => createHash16("sha256").update("longball.push-token.v1\0").update(token).digest("hex");
+var pushTokenDigest = (token) => createHash17("sha256").update("longball.push-token.v1\0").update(token).digest("hex");
 function createPushTokenCipher(activeKeyId, keys2) {
   if (!/^[A-Za-z0-9_-]{1,80}$/.test(activeKeyId) || !keys2.has(activeKeyId) || [...keys2.values()].some((key) => key.length !== 32))
     throw new Error("Invalid push encryption key configuration.");
   const material = new Map(
-    [...keys2].map(([id11, key]) => [id11, Buffer.from(key)])
+    [...keys2].map(([id12, key]) => [id12, Buffer.from(key)])
   );
   const aad2 = (binding2) => Buffer.from(
     JSON.stringify([
@@ -73285,11 +73729,11 @@ function pushTokenCipherFromFile(path) {
   try {
     const input = JSON.parse(readFileSync3(path, "utf8"));
     const keys2 = new Map(
-      Object.entries(input.keys).map(([id11, value]) => {
+      Object.entries(input.keys).map(([id12, value]) => {
         const decoded = Buffer.from(value, "base64url");
         if (decoded.length !== 32 || decoded.toString("base64url") !== value)
           throw new Error();
-        return [id11, decoded];
+        return [id12, decoded];
       })
     );
     return createPushTokenCipher(input.activeKeyId, keys2);
@@ -73510,7 +73954,7 @@ var PushRegistrationService = class {
 };
 
 // apps/api/src/demo-sessions.ts
-import { createHash as createHash17, randomBytes as randomBytes11, scrypt as scrypt2, timingSafeEqual as timingSafeEqual4 } from "node:crypto";
+import { createHash as createHash18, randomBytes as randomBytes11, randomUUID as randomUUID13, scrypt as scrypt2, timingSafeEqual as timingSafeEqual4 } from "node:crypto";
 import { readFileSync as readFileSync4, statSync } from "node:fs";
 var DEMO_SCRYPT_OPTIONS = { N: 16384, r: 8, p: 1, maxmem: 32 * 1024 * 1024 };
 var ACCOUNT_ID = /^synthetic-account-(?:manager(?:-[2-5])?|admin|club-admin|player-(?:0[1-9]|1[0-3])|spectator)$/;
@@ -73518,7 +73962,7 @@ var USERNAME = /^[a-z0-9][a-z0-9._-]{2,63}$/;
 var CONFIG_ERROR = "Configure valid demo account verifiers. No account configuration was loaded.";
 var invalidSession = () => new AccessError("INVALID_SESSION", 401, "A valid authenticated session is required.");
 var invalidLogin = () => new AccessError("INVALID_DEMO_CREDENTIALS", 401, "The username or passcode was not recognised.");
-var sha2562 = (value) => createHash17("sha256").update(value).digest("hex");
+var sha2562 = (value) => createHash18("sha256").update(value).digest("hex");
 function object13(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
@@ -73550,13 +73994,15 @@ async function derive2(passcode, salt) {
   return new Promise((resolve4, reject) => scrypt2(passcode, Buffer.from(salt, "base64url"), 32, DEMO_SCRYPT_OPTIONS, (error, result) => error ? reject(error) : resolve4(result)));
 }
 var DemoSessions = class {
-  constructor(options2, now = Date.now) {
+  constructor(options2, now = Date.now, observeFailure) {
     this.now = now;
+    this.observeFailure = observeFailure;
     const parsed = parseDemoAccountOptions(options2);
     this.accounts = parsed.accounts;
     this.ttl = (parsed.sessionTtlSeconds ?? 21600) * 1e3;
   }
   now;
+  observeFailure;
   accounts;
   ttl;
   sessions = /* @__PURE__ */ new Map();
@@ -73569,12 +74015,21 @@ var DemoSessions = class {
     for (const [key, session] of this.sessions) if (session.expiresAt <= now) this.sessions.delete(key);
     for (const [key, attempt2] of this.attempts) if (now - attempt2.begins >= 6e4) this.attempts.delete(key);
   }
+  async failed(reason) {
+    try {
+      await this.observeFailure?.(Object.freeze({ kind: "login_failure", provider: "demo", at: this.now(), reason }));
+    } catch {
+    }
+  }
   async login(value, remoteAddress) {
     this.prune();
     const key = sha2562(remoteAddress);
     const attempt2 = this.attempts.get(key) ?? { begins: this.now(), count: 0 };
     attempt2.count += 1;
-    if (!this.attempts.has(key) && this.attempts.size >= 1e3 || attempt2.count > 20 || this.inFlight >= 4) throw new AccessError("RATE_LIMIT", 429, "Please retry after the current request window.");
+    if (!this.attempts.has(key) && this.attempts.size >= 1e3 || attempt2.count > 20 || this.inFlight >= 4) {
+      await this.failed("rate_limited");
+      throw new AccessError("RATE_LIMIT", 429, "Please retry after the current request window.");
+    }
     this.attempts.set(key, attempt2);
     if (!object13(value) || Object.keys(value).length !== 2 || Object.keys(value).some((field) => !["username", "passcode"].includes(field)) || typeof value.username !== "string" || value.username.length > 128 || typeof value.passcode !== "string" || value.passcode.length < 6 || value.passcode.length > 128) throw new AccessError("INVALID_REQUEST", 400, "Enter a username and a passcode using only the documented fields.");
     const username2 = value.username.trim().toLowerCase();
@@ -73588,12 +74043,18 @@ var DemoSessions = class {
     }
     const verified = timingSafeEqual4(actual, account3 ? Buffer.from(account3.hash, "hex") : this.dummyHash);
     actual.fill(0);
-    if (!account3 || !verified) throw invalidLogin();
+    if (!account3 || !verified) {
+      await this.failed("invalid_credentials");
+      throw invalidLogin();
+    }
     this.prune();
-    if (this.sessions.size >= 1e3) throw new AccessError("DEMO_SESSION_LIMIT", 503, "The demo has reached its current session limit. Please try again later.");
+    if (this.sessions.size >= 1e3) {
+      await this.failed("capacity");
+      throw new AccessError("DEMO_SESSION_LIMIT", 503, "The demo has reached its current session limit. Please try again later.");
+    }
     const accessToken = `demo_${randomBytes11(32).toString("base64url")}`;
     const issuedAt = this.now(), expiresAt = issuedAt + this.ttl;
-    this.sessions.set(sha2562(accessToken), { accountId: account3.accountId, issuedAt, expiresAt });
+    this.sessions.set(sha2562(accessToken), { accountId: account3.accountId, sessionId: randomUUID13(), issuedAt, expiresAt });
     return { accessToken, expiresAt: new Date(expiresAt).toISOString(), accountId: account3.accountId, syntheticOnly: true };
   }
   identity(token) {
@@ -73601,6 +74062,11 @@ var DemoSessions = class {
     const session = /^demo_[A-Za-z0-9_-]{43}$/.test(token) ? this.sessions.get(sha2562(token)) : void 0;
     if (!session) throw invalidSession();
     return { issuer: "urn:longball:synthetic", subject: session.accountId, authenticatedAt: session.issuedAt, strongAuth: /^synthetic-account-(?:manager(?:-[2-5])?|admin|club-admin)$/.test(session.accountId) };
+  }
+  sessionObservation(token) {
+    this.identity(token);
+    const session = this.sessions.get(sha2562(token));
+    return { accountId: session.accountId, sessionId: session.sessionId, provider: "demo", issuedAtMs: session.issuedAt, expiresAtMs: session.expiresAt };
   }
   revoke(token) {
     this.identity(token);
@@ -73709,7 +74175,7 @@ var MatchFeedbackRepository = class {
 };
 
 // apps/api/src/match-feedback-service.ts
-import { createHash as createHash18 } from "node:crypto";
+import { createHash as createHash19 } from "node:crypto";
 
 // packages/application/src/match-feedback.ts
 var record2 = (value) => !!value && typeof value === "object" && !Array.isArray(value);
@@ -73737,10 +74203,10 @@ function trustedCompletion(evidence, session, now) {
   const { state, context } = evidence;
   if (!context || state.status !== "completed" || state.recoveryRequired || context.id !== state.config.matchId || context.teamId !== session.teamId || context.seasonId !== session.seasonId || context.finishQuality !== "trusted" || !Number.isSafeInteger(context.actualFullTimeAtMs) || context.actualFullTimeAtMs < 0 || context.actualFullTimeAtMs > now) return null;
   const selected = [...state.config.selectedPlayerIds];
-  const present = selected.filter((id11) => state.attendance[id11] === "present");
-  const played = selected.filter((id11) => state.intervals.some((interval) => interval.playerId === id11 && interval.state === "playing" && interval.endMs > interval.startMs));
+  const present = selected.filter((id12) => state.attendance[id12] === "present");
+  const played = selected.filter((id12) => state.intervals.some((interval) => interval.playerId === id12 && interval.state === "playing" && interval.endMs > interval.startMs));
   const same = (left, right) => JSON.stringify([...left].sort()) === JSON.stringify([...right].sort());
-  if (played.some((id11) => !present.includes(id11)) || !same(selected, context.selectedPlayerIds) || !same(present, context.presentPlayerIds) || !same(played, context.playedPlayerIds)) return null;
+  if (played.some((id12) => !present.includes(id12)) || !same(selected, context.selectedPlayerIds) || !same(present, context.presentPlayerIds) || !same(played, context.playedPlayerIds)) return null;
   return context.actualFullTimeAtMs;
 }
 var entry = (row, evidence) => ({ playerId: row.player_id, playerLabel: evidence.state.config.players.find((player) => player.id === row.player_id)?.displayName ?? row.player_id, rating: row.rating, text: row.note, revision: row.revision, createdAtMs: row.created_at, updatedAtMs: row.updated_at });
@@ -73763,16 +74229,16 @@ var MatchFeedbackService = class {
         const verified = completion !== null && (!own || own.completed_at === completion && own.closes_at === matchFeedbackClosesAt(completion));
         const completedAtMs = own?.completed_at ?? completion;
         const closesAtMs = own?.closes_at ?? (completion === null ? null : matchFeedbackClosesAt(completion));
-        const eligible2 = actor.role === "player" && completion !== null && evidence.context.playedPlayerIds.includes(actor.playerId);
+        const eligible3 = actor.role === "player" && completion !== null && evidence.context.playedPlayerIds.includes(actor.playerId);
         const status2 = !verified ? "review_required" : now < closesAtMs ? "open" : "closed";
-        visible.push({ matchId, label: evidence.context?.label ?? `${evidence.state.config.fixture?.teamName ?? "Team"} v ${evidence.state.config.fixture?.opponent ?? "opponent"}`, playedDate: evidence.state.config.fixture?.playedDate ?? null, completedAtMs, closesAtMs, status: status2, eligible: eligible2, canEdit: actor.role === "player" && eligible2 && status2 === "open", own: own ? entry(own, evidence) : null, ...actor.role === "manager" ? { entries: entries.map((row) => entry(row, evidence)) } : {} });
+        visible.push({ matchId, label: evidence.context?.label ?? `${evidence.state.config.fixture?.teamName ?? "Team"} v ${evidence.state.config.fixture?.opponent ?? "opponent"}`, playedDate: evidence.state.config.fixture?.playedDate ?? null, completedAtMs, closesAtMs, status: status2, eligible: eligible3, canEdit: actor.role === "player" && eligible3 && status2 === "open", own: own ? entry(own, evidence) : null, ...actor.role === "manager" ? { entries: entries.map((row) => entry(row, evidence)) } : {} });
       }
       return { kind: "match-feedback", accountId: actor.principal.accountId, playerId: actor.playerId, teamId: session.teamId, seasonId: session.seasonId, audience: actor.role, serverNowMs: now, matches: visible };
     });
   }
   async command(session, raw) {
     const command = parseMatchFeedbackCommand(raw);
-    const signature3 = createHash18("sha256").update(JSON.stringify(command)).digest("hex");
+    const signature3 = createHash19("sha256").update(JSON.stringify(command)).digest("hex");
     return this.repository.transaction(async () => {
       const actor = await this.repository.actor(session);
       if (actor.role !== "player" || !actor.playerId) throw unavailable7();
@@ -73866,11 +74332,13 @@ function createApi(options2) {
   const teamDocuments = new TeamDocumentService(source2, runtime.store);
   const oppositionRepository = new OppositionReviewRepository(source2, runtime.store);
   const opposition = new OppositionReviewService(oppositionRepository);
-  const spectatorAccess = new SpectatorAccessService(new PersistedSpectatorAccessRepository(source2, runtime.store), now, options2.demoScenario === true && options2.syntheticAuth === true ? { isolatedDemo: true } : void 0, async () => (await loadSignInRules(source2)).rules);
+  const loginAnalytics = new LoginAnalyticsService(source2);
+  const spectatorAccess = new SpectatorAccessService(new PersistedSpectatorAccessRepository(source2, runtime.store), now, options2.demoScenario === true && options2.syntheticAuth === true ? { isolatedDemo: true } : void 0, async () => (await loadSignInRules(source2)).rules, (event) => loginAnalytics.recordFailure(event));
   const ready = runtime.serialize(async () => {
     await repository.initialize();
     await reserveConfiguredUsernames(source2, options2.demoAccounts?.accounts ?? []);
     await loadSignInRules(source2);
+    await loginAnalytics.initialize();
     await exportsRepository.initialize();
     await feedbackRepository.initialize();
     await teamDocuments.initialize();
@@ -73880,13 +74348,16 @@ function createApi(options2) {
   const invitations = new SpectatorInvitationService({ ...options2, repository, now });
   const privileges = new TeamPrivilegeService(new SqliteTeamPrivilegeRepository(source2, runtime.store), now);
   const push = new PushRegistrationService(new SqlitePushRepository(source2.database, runtime.store.transaction), options2, now);
-  return createRuntimeApi(options2, source2, runtime.store, media, activation, (work) => ready.then(() => runtime.serialize(work)), { branding, invitations, privileges, push, reports, feedback, teamDocuments, opposition, spectatorAccess });
+  return createRuntimeApi(options2, source2, runtime.store, media, activation, (work) => ready.then(() => runtime.serialize(work)), { branding, invitations, privileges, push, reports, feedback, teamDocuments, opposition, spectatorAccess, loginAnalytics });
 }
 function createRuntimeApi(options2, source2, store, media, activation, serialize = (work) => work(), services = {}) {
   const now = options2.now ?? Date.now;
   const signInRules = new SignInRulesService(source2, options2.activationProvider);
   assertDemoScenarioOptions(options2);
-  const demoSessions = options2.demoAccounts ? new DemoSessions(options2.demoAccounts, now) : null;
+  const loginAnalytics = services.loginAnalytics ?? new LoginAnalyticsService(source2);
+  const analyticsReady = services.loginAnalytics ? Promise.resolve() : loginAnalytics.initialize();
+  void analyticsReady.catch(() => void 0);
+  const demoSessions = options2.demoAccounts ? new DemoSessions(options2.demoAccounts, now, (event) => loginAnalytics.recordFailure(event)) : null;
   const privilegeService = () => {
     if (!services.privileges) throw new AccessError("TEAM_PRIVILEGES_UNAVAILABLE", 503, "Current team privileges are unavailable.");
     return services.privileges;
@@ -73925,6 +74396,7 @@ function createRuntimeApi(options2, source2, store, media, activation, serialize
   };
   const framework = createFastifyTransport({ beforeParsing, dispatch: (request, reply, parsedBody, requestId2) => serialize(async () => {
     try {
+      await analyticsReady;
       if (request.method === "OPTIONS") {
         reply.writeHead(204);
         reply.end();
@@ -73968,13 +74440,28 @@ function createRuntimeApi(options2, source2, store, media, activation, serialize
         if (request.method === "POST" && ["preview", "register", "login", "requests"].includes(parts[2])) {
           const input = readJson(request, parsedBody);
           const result = parts[2] === "preview" ? await access2.preview(input, address) : parts[2] === "register" ? await access2.register(input, address) : parts[2] === "login" ? await access2.login(input, address) : await access2.request(input, address);
+          if ((parts[2] === "register" || parts[2] === "login") && "accessToken" in result) {
+            let acceptedPrincipal;
+            try {
+              const identity2 = access2.identity(result.accessToken);
+              acceptedPrincipal = await store.withIdentityContext(identity2, () => store.principal(identity2));
+              if (acceptedPrincipal.accountId !== result.accountId) throw new AccessError("INVALID_SESSION", 401, "A valid authenticated session is required.");
+            } catch (error) {
+              access2.logout(result.accessToken);
+              if (error instanceof AccessError && ["ACCOUNT_UNAVAILABLE", "INVALID_SESSION"].includes(error.code)) await loginAnalytics.recordFailure({ kind: "login_failure", provider: "spectator_pin", at: now(), reason: "invalid_credentials" });
+              throw error;
+            }
+            await loginAnalytics.signIn(acceptedPrincipal, access2.sessionObservation(result.accessToken));
+          }
           response(reply, parts[2] === "requests" ? 202 : parts[2] === "preview" ? 200 : 201, result, requestId2);
           return;
         }
         if (request.method === "DELETE" && parts[2] === "session") {
           const authorization2 = header(request, "authorization");
           if (!authorization2?.startsWith("Bearer ")) throw new AccessError("INVALID_SESSION", 401, "Sign in again.");
+          const observation = access2.sessionObservation(authorization2.slice(7));
           access2.logout(authorization2.slice(7));
+          await loginAnalytics.logout(observation);
           reply.writeHead(204, { "Cache-Control": "private, no-store", "Referrer-Policy": "no-referrer", "X-Content-Type-Options": "nosniff", "X-Request-Id": requestId2 });
           reply.end();
           return;
@@ -73983,14 +74470,17 @@ function createRuntimeApi(options2, source2, store, media, activation, serialize
       if (url.pathname === "/v1/demo/sessions" && request.method === "POST") {
         if (!demoSessions) throw new AccessError("NOT_FOUND", 404, "The requested object is unavailable.");
         const result = await demoSessions.login(readJson(request, parsedBody), request.socket.remoteAddress ?? "unknown");
+        let acceptedPrincipal;
         try {
           const identity2 = demoSessions.identity(result.accessToken);
-          const principal2 = await store.withIdentityContext(identity2, () => store.principal(identity2));
-          if (principal2.accountId !== result.accountId) throw new AccessError("INVALID_SESSION", 401, "A valid authenticated session is required.");
+          acceptedPrincipal = await store.withIdentityContext(identity2, () => store.principal(identity2));
+          if (acceptedPrincipal.accountId !== result.accountId) throw new AccessError("INVALID_SESSION", 401, "A valid authenticated session is required.");
         } catch (error) {
           demoSessions.revoke(result.accessToken);
+          if (error instanceof AccessError && ["ACCOUNT_UNAVAILABLE", "INVALID_SESSION"].includes(error.code)) await loginAnalytics.recordFailure({ kind: "login_failure", provider: "demo", at: now(), reason: "invalid_credentials" });
           throw error;
         }
+        await loginAnalytics.signIn(acceptedPrincipal, demoSessions.sessionObservation(result.accessToken));
         response(reply, 200, result, requestId2);
         return;
       }
@@ -73998,7 +74488,9 @@ function createRuntimeApi(options2, source2, store, media, activation, serialize
         if (!demoSessions) throw new AccessError("NOT_FOUND", 404, "The requested object is unavailable.");
         const authorization2 = header(request, "authorization");
         if (!authorization2?.startsWith("Bearer ") || authorization2.length > 17e3) throw new AccessError("INVALID_SESSION", 401, "A valid authenticated session is required.");
+        const observation = demoSessions.sessionObservation(authorization2.slice(7));
         demoSessions.revoke(authorization2.slice(7));
+        await loginAnalytics.logout(observation);
         reply.writeHead(204, { "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff", "Referrer-Policy": "no-referrer", "X-Request-Id": requestId2 });
         reply.end();
         return;
@@ -74071,6 +74563,9 @@ function createRuntimeApi(options2, source2, store, media, activation, serialize
         reply.setHeader("Retry-After", "60");
         throw new AccessError("RATE_LIMIT", 429, "Please retry after the current request window.");
       }
+      if (token.startsWith("spectator_") && services.spectatorAccess) await loginAnalytics.observe(principal, services.spectatorAccess.sessionObservation(token), "spectator_pin");
+      else if (options2.syntheticAuth && demoSessions) await loginAnalytics.observe(principal, demoSessions.sessionObservation(token), "demo");
+      else if (!options2.syntheticAuth) await loginAnalytics.observe(principal, null, "oidc");
       let role = header(request, "x-longball-role");
       const controllerToken = header(request, "x-controller-token");
       const body = request.method === "POST" ? readJson(request, parsedBody) : null;
@@ -74151,6 +74646,7 @@ function createRuntimeApi(options2, source2, store, media, activation, serialize
           result = { accountId: principal.accountId, identityClassification: principal.identityClassification, principal, memberships: await store.workspaceMemberships(principal), serverTime: new Date(now()).toISOString(), syntheticOnly: Boolean(options2.syntheticAuth) };
         else if (url.pathname === "/v1/administration/sign-in-rules" && request.method === "GET") result = await signInRules.adminView(principal);
         else if (url.pathname === "/v1/administration/sign-in-rules" && request.method === "POST") result = await mutate(url.pathname, () => signInRules.save(principal, body), () => signInRules.authorize(principal));
+        else if (url.pathname === "/v1/administration/login-analytics" && request.method === "GET") result = await loginAnalytics.view(principal, url.searchParams);
         else if (url.pathname === "/v1/administration" && request.method === "GET") result = await administration.view(principal);
         else if (url.pathname === "/v1/administration" && request.method === "POST") {
           if (Object.keys(body).length !== 1 || !Object.hasOwn(body, "command")) throw new AccessError("INVALID_REQUEST", 400, "Use only the captured club administration command.");
@@ -74619,7 +75115,7 @@ var PostgresTeamPrivilegeRepository = class {
 import { dirname as dirname3, join as join5 } from "node:path";
 
 // apps/api/src/postgres-media.ts
-import { createHash as createHash19, randomBytes as randomBytes12, randomUUID as randomUUID12 } from "node:crypto";
+import { createHash as createHash20, randomBytes as randomBytes12, randomUUID as randomUUID14 } from "node:crypto";
 import { chmodSync as chmodSync4, mkdirSync as mkdirSync4, readFileSync as readFileSync6 } from "node:fs";
 import { open as open3, rename as rename3, unlink as unlink3 } from "node:fs/promises";
 import { join as join4, resolve as resolve3, sep as sep4 } from "node:path";
@@ -74663,7 +75159,7 @@ async function installTeamPrivilegeMedia(database) {
 // apps/api/src/postgres-media.ts
 var {
   hash: hash4,
-  id: id9,
+  id: id10,
   auth: auth2,
   sameToken: sameToken2,
   bounded: bounded3
@@ -74764,7 +75260,7 @@ var PgMediaService = class _PgMediaService {
   }
   async row(state, actor, uploadId, token) {
     auth2(state, actor, this.now(), true);
-    if (!id9(uploadId))
+    if (!id10(uploadId))
       fail8("NOT_FOUND", 404, "The requested upload is unavailable.");
     const row = await this.one(
       "SELECT * FROM longball.media_uploads WHERE id=$1 AND owner_id=$2 AND team_id=$3 AND season_id=$4",
@@ -74788,7 +75284,7 @@ var PgMediaService = class _PgMediaService {
         "photoId",
         "sourceRevision"
       ];
-      if (!input || typeof input !== "object" || Object.keys(input).some((key) => !allowedKeys.includes(key)) || !id9(input.requestId) || !id9(input.matchId) || !Number.isSafeInteger(input.byteSize) || input.byteSize < 1 || input.byteSize > MEDIA_LIMITS.maxBytes || !["image/jpeg", "image/png", "image/heic"].includes(input.mimeType) || typeof input.sha256 !== "string" || !/^[a-fA-F0-9]{64}$/.test(input.sha256) || typeof input.caption !== "string" || input.caption.trim().length > 160 || input.policyAcknowledged !== true) {
+      if (!input || typeof input !== "object" || Object.keys(input).some((key) => !allowedKeys.includes(key)) || !id10(input.requestId) || !id10(input.matchId) || !Number.isSafeInteger(input.byteSize) || input.byteSize < 1 || input.byteSize > MEDIA_LIMITS.maxBytes || !["image/jpeg", "image/png", "image/heic"].includes(input.mimeType) || typeof input.sha256 !== "string" || !/^[a-fA-F0-9]{64}$/.test(input.sha256) || typeof input.caption !== "string" || input.caption.trim().length > 160 || input.policyAcknowledged !== true) {
         fail8(
           "INVALID_MEDIA_PREPARATION",
           422,
@@ -74843,7 +75339,7 @@ var PgMediaService = class _PgMediaService {
         };
       }
       let sourceRevision = null;
-      let photoId = `media-${randomUUID12()}`;
+      let photoId = `media-${randomUUID14()}`;
       if (input.photoId !== void 0 || input.sourceRevision !== void 0) {
         const photo = state.photos.find(
           (item) => item.id === input.photoId && item.matchId === match.id && item.teamId === actor.teamId && item.seasonId === actor.seasonId && item.uploaderAccountId === actor.accountId && item.uploaderRole === actor.role && item.removedAtMs === null
@@ -74857,7 +75353,7 @@ var PgMediaService = class _PgMediaService {
         sourceRevision = photo.currentRevision;
         photoId = photo.id;
       }
-      const uploadId = randomUUID12();
+      const uploadId = randomUUID14();
       const expiresAtMs = this.now() + MEDIA_LIMITS.uploadWindowMs;
       await this.execute(
         "INSERT INTO longball.media_uploads(id,request_id,request_signature,owner_id,team_id,season_id,match_id,photo_id,source_revision,display_revision,status,expected_bytes,expected_sha,declared_mime,caption,token_hash,expires_at,created_at)\n      VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'prepared',$11,$12,$13,$14,$15,$16,$17)",
@@ -74902,7 +75398,7 @@ var PgMediaService = class _PgMediaService {
         409,
         "This upload is already running or cannot be changed."
       );
-    const attempt2 = randomUUID12();
+    const attempt2 = randomUUID14();
     const key = `quarantine/${row.id}-${attempt2}.upload`;
     const temporary = this.path(key + ".part");
     if (!duplicate) {
@@ -74914,7 +75410,7 @@ var PgMediaService = class _PgMediaService {
         fail8("UPLOAD_BUSY", 409, "This upload is already running.");
     }
     const destination = duplicate ? null : await open3(temporary, "wx", 384);
-    const digest5 = createHash19("sha256");
+    const digest5 = createHash20("sha256");
     let received = 0;
     const began = performance5.now();
     const iterator = source2[Symbol.asyncIterator]();
@@ -75011,7 +75507,7 @@ var PgMediaService = class _PgMediaService {
       );
     if (!row.original_key)
       fail8("UPLOAD_NOT_READY", 409, "The private original is unavailable.");
-    const attempt2 = randomUUID12();
+    const attempt2 = randomUUID14();
     const leased = await this.execute(
       "UPDATE longball.media_uploads SET status='processing',attempt=$1,lease_until=$2,failure_code=NULL WHERE id=$3 AND (status='uploaded' OR (status='processing' AND lease_until<$4))",
       [attempt2, this.now() + 6e4, row.id, this.now()]
@@ -75145,9 +75641,9 @@ var PgMediaService = class _PgMediaService {
 };
 
 // apps/api/src/postgres-activation.ts
-import { createHash as createHash20, randomBytes as randomBytes13, randomUUID as randomUUID13 } from "node:crypto";
-var hash5 = (value) => createHash20("sha256").update(value).digest("hex");
-var id10 = (value) => typeof value === "string" && /^[A-Za-z0-9_-]{1,150}$/.test(value);
+import { createHash as createHash21, randomBytes as randomBytes13, randomUUID as randomUUID15 } from "node:crypto";
+var hash5 = (value) => createHash21("sha256").update(value).digest("hex");
+var id11 = (value) => typeof value === "string" && /^[A-Za-z0-9_-]{1,150}$/.test(value);
 var uuid2 = (value) => typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 function unavailable8() {
   throw new AccessError(
@@ -75203,7 +75699,7 @@ var PostgresActivationService = class {
     this.store = options2.store;
     this.provider = options2.provider;
     this.policy = options2.policy;
-    if (options2.policy && (options2.policy.fictionalOnly !== true || !id10(options2.policy.version) || !Number.isSafeInteger(options2.policy.activationTtlMs) || options2.policy.activationTtlMs <= 0))
+    if (options2.policy && (options2.policy.fictionalOnly !== true || !id11(options2.policy.version) || !Number.isSafeInteger(options2.policy.activationTtlMs) || options2.policy.activationTtlMs <= 0))
       throw new Error(
         "An explicit versioned test activation policy and positive expiry are required."
       );
@@ -75362,11 +75858,11 @@ CREATE TRIGGER lb_activation_immutable_child BEFORE UPDATE OF classification ON 
     await this.ready;
     const { provider } = await this.enabled();
     fields8(input, ["requestId", "teamId", "seasonId", "playerId"]);
-    if (![input.requestId, input.teamId, input.seasonId, input.playerId].every(id10))
+    if (![input.requestId, input.teamId, input.seasonId, input.playerId].every(id11))
       invalid7();
     const signature3 = fingerprint2(principal.accountId, input);
     const signInRules = await ensureProviderSignInRules(this.store, provider);
-    const candidateAccountId = randomUUID13();
+    const candidateAccountId = randomUUID15();
     const row = await this.withProvisionedAccount(
       candidateAccountId,
       () => this.store.transaction(async () => {
@@ -75527,7 +76023,7 @@ CREATE TRIGGER lb_activation_immutable_child BEFORE UPDATE OF classification ON 
     await this.ready;
     const { provider, policy } = await this.enabled();
     fields8(input, ["requestId", "teamId", "seasonId", "accountId"]);
-    if (![input.requestId, input.teamId, input.seasonId].every(id10) || !uuid2(input.accountId))
+    if (![input.requestId, input.teamId, input.seasonId].every(id11) || !uuid2(input.accountId))
       invalid7();
     const signature3 = fingerprint2(principal.accountId, input);
     const preparation = await this.store.transaction(async () => {
@@ -75626,7 +76122,7 @@ CREATE TRIGGER lb_activation_immutable_child BEFORE UPDATE OF classification ON 
           "Another activation request superseded this operation."
         );
       const token = randomBytes13(32).toString("base64url");
-      const activationId = randomUUID13();
+      const activationId = randomUUID15();
       const expiresAt = this.store.now() + policy.activationTtlMs;
       if (!Number.isSafeInteger(expiresAt))
         throw new AccessError(
@@ -75669,7 +76165,7 @@ CREATE TRIGGER lb_activation_immutable_child BEFORE UPDATE OF classification ON 
   async redeemActivation(input) {
     await this.ready;
     fields8(input, ["token", "requestId"]);
-    if (typeof input.token !== "string" || !/^[A-Za-z0-9_-]{43}$/.test(input.token) || !id10(input.requestId))
+    if (typeof input.token !== "string" || !/^[A-Za-z0-9_-]{43}$/.test(input.token) || !id11(input.requestId))
       unavailable8();
     return this.store.db.withContext(
       {
@@ -75684,7 +76180,7 @@ CREATE TRIGGER lb_activation_immutable_child BEFORE UPDATE OF classification ON 
     await this.ready;
     const { provider } = await this.enabled();
     fields8(input, ["token", "requestId"]);
-    if (typeof input.token !== "string" || !/^[A-Za-z0-9_-]{43}$/.test(input.token) || !id10(input.requestId))
+    if (typeof input.token !== "string" || !/^[A-Za-z0-9_-]{43}$/.test(input.token) || !id11(input.requestId))
       unavailable8();
     const reserved = await this.store.transaction(async () => {
       const token = await this.store.one(
@@ -75726,7 +76222,7 @@ CREATE TRIGGER lb_activation_immutable_child BEFORE UPDATE OF classification ON 
         "The provider credential flow could not be safely opened."
       );
     }
-    if (setup.protocol !== "https:" || setup.username || setup.password || !provider.credentialSetupOrigins.includes(setup.origin) || result.setupUrl.includes(input.token) || !id10(result.flowId) || !Number.isSafeInteger(result.expiresAt) || result.expiresAt > reserved.token.expires_at || result.expiresAt <= this.store.now())
+    if (setup.protocol !== "https:" || setup.username || setup.password || !provider.credentialSetupOrigins.includes(setup.origin) || result.setupUrl.includes(input.token) || !id11(result.flowId) || !Number.isSafeInteger(result.expiresAt) || result.expiresAt > reserved.token.expires_at || result.expiresAt <= this.store.now())
       throw new AccessError(
         "PROVIDER_FLOW_REJECTED",
         502,
@@ -75834,7 +76330,7 @@ CREATE TRIGGER lb_activation_immutable_child BEFORE UPDATE OF classification ON 
           await this.store.execute(
             "INSERT INTO audit(id,actor_id,action,object_id,outcome,created_at,club_id,team_id,season_id,context_operation) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)",
             [
-              randomUUID13(),
+              randomUUID15(),
               child.account_id,
               "identity.activation_completed",
               child.account_id,
@@ -75860,7 +76356,7 @@ CREATE TRIGGER lb_activation_immutable_child BEFORE UPDATE OF classification ON 
       "playerId",
       "existingAccountId"
     ]);
-    if (!id10(input.playerId) || !uuid2(input.existingAccountId)) invalid7();
+    if (!id11(input.playerId) || !uuid2(input.existingAccountId)) invalid7();
     return await this.verificationRequest(
       principal,
       "link",
@@ -75883,7 +76379,7 @@ CREATE TRIGGER lb_activation_immutable_child BEFORE UPDATE OF classification ON 
   }
   async verificationRequest(principal, kind2, input, target, playerId) {
     const { policy } = await this.enabled();
-    if (![input.requestId, input.teamId, input.seasonId].every(id10)) invalid7();
+    if (![input.requestId, input.teamId, input.seasonId].every(id11)) invalid7();
     const signature3 = fingerprint2(principal.accountId, { ...input, kind: kind2 });
     return await this.store.transaction(async () => {
       await this.manager(principal, input.teamId, input.seasonId);
@@ -75950,11 +76446,11 @@ var PostgresBrandRepository = class {
   async byRequest(owner, request) {
     return this.one("SELECT * FROM brand_assets WHERE owner_id=$1 AND request_id=$2", [owner, request]);
   }
-  async upload(id11) {
-    return this.one("SELECT * FROM brand_assets WHERE id=$1", [id11]);
+  async upload(id12) {
+    return this.one("SELECT * FROM brand_assets WHERE id=$1", [id12]);
   }
-  async asset(id11, revision) {
-    return this.one("SELECT * FROM brand_assets WHERE asset_id=$1 AND revision=$2", [id11, revision]);
+  async asset(id12, revision) {
+    return this.one("SELECT * FROM brand_assets WHERE asset_id=$1 AND revision=$2", [id12, revision]);
   }
   async own(owner, club, team) {
     return (await this.database.query("SELECT * FROM brand_assets WHERE owner_id=$1 AND club_id=$2 AND(team_id IS NULL OR team_id=$3) ORDER BY created_at DESC,id", [owner, club, team])).rows;
@@ -75962,20 +76458,20 @@ var PostgresBrandRepository = class {
   async create(row) {
     await this.database.query("INSERT INTO brand_assets(id,asset_id,revision,kind,club_id,team_id,owner_id,request_id,request_signature,status,expected_bytes,expected_sha,declared_mime,token_hash,expires_at,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)", [row.id, row.asset_id, row.revision, row.kind, row.club_id, row.team_id, row.owner_id, row.request_id, row.request_signature, row.status, row.expected_bytes, row.expected_sha, row.declared_mime, row.token_hash, row.expires_at, row.created_at]);
   }
-  async rotateToken(id11, hash6) {
-    return (await this.database.query("UPDATE brand_assets SET token_hash=$1 WHERE id=$2", [hash6, id11])).rowCount === 1;
+  async rotateToken(id12, hash6) {
+    return (await this.database.query("UPDATE brand_assets SET token_hash=$1 WHERE id=$2", [hash6, id12])).rowCount === 1;
   }
-  async lease(id11, stage, attempt2, now) {
-    return (await this.database.query("UPDATE brand_assets SET status=$1,attempt=$2,lease_until=$3,failure_code=NULL WHERE id=$4 AND(status=$5 OR(status=$1 AND lease_until<$6))", [stage, attempt2, now + 65e3, id11, stage === "uploading" ? "prepared" : "uploaded", now])).rowCount === 1;
+  async lease(id12, stage, attempt2, now) {
+    return (await this.database.query("UPDATE brand_assets SET status=$1,attempt=$2,lease_until=$3,failure_code=NULL WHERE id=$4 AND(status=$5 OR(status=$1 AND lease_until<$6))", [stage, attempt2, now + 65e3, id12, stage === "uploading" ? "prepared" : "uploaded", now])).rowCount === 1;
   }
-  async uploaded(id11, attempt2, key) {
-    return (await this.database.query("UPDATE brand_assets SET status='uploaded',original_key=$1,lease_until=NULL,failure_code=NULL WHERE id=$2 AND attempt=$3 AND status='uploading'", [key, id11, attempt2])).rowCount === 1;
+  async uploaded(id12, attempt2, key) {
+    return (await this.database.query("UPDATE brand_assets SET status='uploaded',original_key=$1,lease_until=NULL,failure_code=NULL WHERE id=$2 AND attempt=$3 AND status='uploading'", [key, id12, attempt2])).rowCount === 1;
   }
-  async processed(id11, attempt2, value) {
-    return (await this.database.query("UPDATE brand_assets SET status='processed',display_key=$1,thumbnail_key=$2,width=$3,height=$4,scanner_engine=$5,processed_at=$6,lease_until=NULL,failure_code=NULL WHERE id=$7 AND attempt=$8 AND status='processing'", [value.displayKey, value.thumbnailKey, value.width, value.height, value.scannerEngine, value.at, id11, attempt2])).rowCount === 1;
+  async processed(id12, attempt2, value) {
+    return (await this.database.query("UPDATE brand_assets SET status='processed',display_key=$1,thumbnail_key=$2,width=$3,height=$4,scanner_engine=$5,processed_at=$6,lease_until=NULL,failure_code=NULL WHERE id=$7 AND attempt=$8 AND status='processing'", [value.displayKey, value.thumbnailKey, value.width, value.height, value.scannerEngine, value.at, id12, attempt2])).rowCount === 1;
   }
-  async failed(id11, attempt2, stage, code, retryable) {
-    await this.database.query("UPDATE brand_assets SET status=$1,failure_code=$2,lease_until=NULL WHERE id=$3 AND attempt=$4 AND status=$5", [retryable ? stage === "uploading" ? "prepared" : "uploaded" : "rejected", code, id11, attempt2, stage]);
+  async failed(id12, attempt2, stage, code, retryable) {
+    await this.database.query("UPDATE brand_assets SET status=$1,failure_code=$2,lease_until=NULL WHERE id=$3 AND attempt=$4 AND status=$5", [retryable ? stage === "uploading" ? "prepared" : "uploaded" : "rejected", code, id12, attempt2, stage]);
   }
   async slot(kind2, club, team) {
     const row = (await this.database.query("SELECT * FROM brand_slots WHERE kind=$1 AND club_id=$2 AND team_id IS NOT DISTINCT FROM $3", [kind2, club, team])).rows[0];
@@ -75985,13 +76481,13 @@ var PostgresBrandRepository = class {
     await this.database.query("INSERT INTO brand_slots(kind,club_id,team_id,version) VALUES($1,$2,$3,0) ON CONFLICT DO NOTHING", [slot.kind, slot.clubId, slot.teamId]);
     return (await this.database.query("UPDATE brand_slots SET version=$1,asset_id=$2,asset_revision=$3,reviewed_revision=$4,policy_version=$5,confirmed_by=$6,confirmed_at=$7 WHERE kind=$8 AND club_id=$9 AND team_id IS NOT DISTINCT FROM $10 AND version=$11", [slot.version, slot.assetId, slot.assetRevision, slot.reviewedRevision, slot.policyVersion, slot.confirmedBy, slot.confirmedAt, slot.kind, slot.clubId, slot.teamId, expected])).rowCount === 1;
   }
-  async linked(id11) {
-    if ((await this.database.query("UPDATE brand_assets SET status='linked' WHERE id=$1 AND status IN('processed','linked')", [id11])).rowCount !== 1) throw new Error("BRAND_LINK_CONFLICT");
+  async linked(id12) {
+    if ((await this.database.query("UPDATE brand_assets SET status='linked' WHERE id=$1 AND status IN('processed','linked')", [id12])).rowCount !== 1) throw new Error("BRAND_LINK_CONFLICT");
   }
 };
 
 // apps/api/src/spectator-activation.ts
-import { createHash as createHash21, randomBytes as randomBytes14, randomUUID as randomUUID14 } from "node:crypto";
+import { createHash as createHash22, randomBytes as randomBytes14, randomUUID as randomUUID16 } from "node:crypto";
 var opaque8 = (v) => typeof v === "string" && /^[A-Za-z0-9_-]{1,150}$/.test(v);
 var uuid3 = (v) => typeof v === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
 function unavailable9() {
@@ -76003,7 +76499,7 @@ function unavailable9() {
 }
 function spectatorInvitationHash(token) {
   try {
-    return createHash21("sha256").update(invitationTokenHashInput(token)).digest("hex");
+    return createHash22("sha256").update(invitationTokenHashInput(token)).digest("hex");
   } catch {
     return unavailable9();
   }
@@ -76088,9 +76584,9 @@ var SpectatorActivationService = class {
     const { provider, policy } = this.enabled();
     if (!opaque8(input.deviceId) || !opaque8(input.requestId) || input.policyVersion !== policy.version)
       unavailable9();
-    const tokenHash = spectatorInvitationHash(input.token), candidateId = randomUUID14();
+    const tokenHash = spectatorInvitationHash(input.token), candidateId = randomUUID16();
     const rules = (await this.options.ensureSignInRules?.())?.rules ?? DEFAULT_SIGN_IN_RULES;
-    const signature3 = createHash21("sha256").update(JSON.stringify([input.deviceId, input.policyVersion])).digest("hex");
+    const signature3 = createHash22("sha256").update(JSON.stringify([input.deviceId, input.policyVersion])).digest("hex");
     let account3 = await this.options.repository.withCapability(
       { tokenHash, provisionAccountId: candidateId, nowMs: this.now() },
       async () => this.options.repository.reserveAccount({
@@ -76134,7 +76630,7 @@ var SpectatorActivationService = class {
         const invitation = await this.available(tokenHash);
         return this.options.repository.reserveAttempt({
           accountId: account3.accountId,
-          id: randomUUID14(),
+          id: randomUUID16(),
           requestId: input.requestId,
           signature: signature3,
           deviceId: input.deviceId,
@@ -76244,7 +76740,7 @@ var SpectatorActivationService = class {
 };
 
 // apps/api/src/postgres-spectator-activation.ts
-import { randomUUID as randomUUID15 } from "node:crypto";
+import { randomUUID as randomUUID17 } from "node:crypto";
 function refused() {
   throw new AccessError(
     "ACTIVATION_UNAVAILABLE",
@@ -76472,7 +76968,7 @@ var PostgresSpectatorActivationRepository = class {
       await this.store.execute(
         "INSERT INTO audit(id,actor_id,action,object_id,outcome,created_at,club_id,team_id,season_id,context_operation) VALUES($1,$2,'identity.spectator_activation_completed',$2,'provider_verified_sign_in_required',$3,$4,$5,$6,'spectator.activation.complete')",
         [
-          randomUUID15(),
+          randomUUID17(),
           found.account.accountId,
           input.nowMs,
           input.invitation.clubId,
@@ -76647,8 +77143,10 @@ async function createPostgresApi(options2) {
     const oppositionRepository = new OppositionReviewRepository(store, port2);
     await oppositionRepository.initialize();
     const opposition = new OppositionReviewService(oppositionRepository);
-    const spectatorAccess = new SpectatorAccessService(new PersistedSpectatorAccessRepository(store, port2), store.now, options2.demoScenario === true && options2.syntheticAuth === true ? { isolatedDemo: true } : void 0, async () => (await loadSignInRules(store)).rules);
-    return createRuntimeApi(options2, store, port2, media, activation, void 0, { branding, spectator, invitations, privileges, push, reports, feedback, teamDocuments, opposition, spectatorAccess });
+    const loginAnalytics = new LoginAnalyticsService(store);
+    await loginAnalytics.initialize();
+    const spectatorAccess = new SpectatorAccessService(new PersistedSpectatorAccessRepository(store, port2), store.now, options2.demoScenario === true && options2.syntheticAuth === true ? { isolatedDemo: true } : void 0, async () => (await loadSignInRules(store)).rules, (event) => loginAnalytics.recordFailure(event));
+    return createRuntimeApi(options2, store, port2, media, activation, void 0, { branding, spectator, invitations, privileges, push, reports, feedback, teamDocuments, opposition, spectatorAccess, loginAnalytics });
   } catch (error) {
     await store.close();
     throw error;
