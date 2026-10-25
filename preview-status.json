@@ -1,9 +1,9 @@
 {
-  "state": "starting",
-  "url": "",
+  "state": "ready",
+  "url": "https://conventional-unions-attachment-absolute.trycloudflare.com",
   "sourceRevision": "fe899e89b54aeceab8f5903036fc6daef1dd786d",
   "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40243187138",
-  "startedAt": "2026-10-25T23:08:42Z",
-  "expiresAt": "",
+  "startedAt": "2026-10-25T23:09:15Z",
+  "expiresAt": "2026-10-26T04:09:15Z",
   "audience": "LongBall demo review with simulated Roma U10 teams and matches"
 }
