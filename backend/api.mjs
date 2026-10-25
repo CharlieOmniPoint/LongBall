@@ -58752,87 +58752,57 @@ var roma_synthetic_default = {
   players: [
     {
       id: "synthetic-player-01",
-      displayName: "Oliver Bennett",
+      displayName: "Thomas Arnold",
       available: true,
       goalkeeperChoice: 1
     },
     {
       id: "synthetic-player-02",
-      displayName: "Noah Patel",
+      displayName: "Ralph Barrett",
       available: true,
       goalkeeperChoice: 0
     },
     {
       id: "synthetic-player-03",
-      displayName: "Leo Martin",
+      displayName: "Conor Kyne",
       available: true,
       goalkeeperChoice: 0
     },
     {
       id: "synthetic-player-04",
-      displayName: "Theo Clarke",
+      displayName: "Max Holland",
       available: true,
       goalkeeperChoice: 0
     },
     {
       id: "synthetic-player-05",
-      displayName: "Oscar Evans",
+      displayName: "Aryan Applegard",
       available: true,
       goalkeeperChoice: 0
     },
     {
       id: "synthetic-player-06",
-      displayName: "Ethan Brooks",
+      displayName: "Seb Lawler",
       available: true,
       goalkeeperChoice: 0
     },
     {
       id: "synthetic-player-07",
-      displayName: "Jack Turner",
+      displayName: "Ezra Philips",
       available: true,
       goalkeeperChoice: 0
     },
     {
       id: "synthetic-player-08",
-      displayName: "Freddie Lewis",
+      displayName: "Archie Muir",
       available: true,
-      goalkeeperChoice: 0
-    },
-    {
-      id: "synthetic-player-09",
-      displayName: "Arthur James",
-      available: true,
-      goalkeeperChoice: 0
-    },
-    {
-      id: "synthetic-player-10",
-      displayName: "Lucas Wilson",
-      available: false,
-      goalkeeperChoice: 0
-    },
-    {
-      id: "synthetic-player-11",
-      displayName: "Muhammad Khan",
-      available: false,
-      goalkeeperChoice: 0
-    },
-    {
-      id: "synthetic-player-12",
-      displayName: "Archie Green",
-      available: false,
-      goalkeeperChoice: 0
-    },
-    {
-      id: "synthetic-player-13",
-      displayName: "George Taylor",
-      available: false,
       goalkeeperChoice: 0
     }
   ],
   demo: {
     name: "Roma autumn matchdays",
     generated: true,
-    description: "Simulated club, players and matchdays for testing. No real people, photographs or contact details.",
+    description: "Roma U10 squad and matchdays for reviewing the application.",
     referenceDate: "2026-10-22"
   },
   club: {
@@ -58880,7 +58850,7 @@ var roma_synthetic_default = {
       venue: "Rovers Sports Ground \xB7 Pitch 2",
       homeAway: "home",
       status: "scheduled",
-      selectedCount: 9,
+      selectedCount: 8,
       selectedPlayerIds: [
         "synthetic-player-01",
         "synthetic-player-02",
@@ -58889,8 +58859,7 @@ var roma_synthetic_default = {
         "synthetic-player-05",
         "synthetic-player-06",
         "synthetic-player-07",
-        "synthetic-player-08",
-        "synthetic-player-09"
+        "synthetic-player-08"
       ],
       demoPhase: "scheduled",
       fixtureClass: "development"
@@ -58904,7 +58873,7 @@ var roma_synthetic_default = {
       venue: "Oak Meadow \xB7 Junior pitch",
       homeAway: "away",
       status: "scheduled",
-      selectedCount: 9,
+      selectedCount: 8,
       selectedPlayerIds: [
         "synthetic-player-01",
         "synthetic-player-02",
@@ -58913,8 +58882,7 @@ var roma_synthetic_default = {
         "synthetic-player-05",
         "synthetic-player-06",
         "synthetic-player-07",
-        "synthetic-player-08",
-        "synthetic-player-09"
+        "synthetic-player-08"
       ],
       demoPhase: "scheduled",
       fixtureClass: "development"
@@ -58928,7 +58896,7 @@ var roma_synthetic_default = {
       venue: "Oak Meadow \xB7 Junior pitch",
       homeAway: "away",
       status: "scheduled",
-      selectedCount: 9,
+      selectedCount: 8,
       selectedPlayerIds: [
         "synthetic-player-01",
         "synthetic-player-02",
@@ -58937,8 +58905,7 @@ var roma_synthetic_default = {
         "synthetic-player-05",
         "synthetic-player-06",
         "synthetic-player-07",
-        "synthetic-player-08",
-        "synthetic-player-09"
+        "synthetic-player-08"
       ],
       demoPhase: "completed",
       fixtureClass: "friendly",
@@ -58963,17 +58930,16 @@ var roma_synthetic_default = {
       venue: "Rovers Sports Ground \xB7 Pitch 2",
       homeAway: "home",
       status: "scheduled",
-      selectedCount: 9,
+      selectedCount: 8,
       selectedPlayerIds: [
         "synthetic-player-01",
         "synthetic-player-02",
         "synthetic-player-03",
         "synthetic-player-04",
         "synthetic-player-05",
-        "synthetic-player-10",
-        "synthetic-player-11",
-        "synthetic-player-12",
-        "synthetic-player-13"
+        "synthetic-player-06",
+        "synthetic-player-07",
+        "synthetic-player-08"
       ],
       demoPhase: "completed",
       fixtureClass: "development",
@@ -59044,7 +59010,7 @@ var roma_synthetic_default = {
   profiles: [
     {
       playerId: "synthetic-player-01",
-      initials: "OB",
+      initials: "TA",
       shirtNumber: 1,
       foot: "right",
       preferences: [
@@ -59060,7 +59026,7 @@ var roma_synthetic_default = {
     },
     {
       playerId: "synthetic-player-02",
-      initials: "NP",
+      initials: "RB",
       shirtNumber: 2,
       foot: "right",
       preferences: [
@@ -59080,9 +59046,9 @@ var roma_synthetic_default = {
     },
     {
       playerId: "synthetic-player-03",
-      initials: "LM",
+      initials: "CK",
       shirtNumber: 3,
-      foot: "left",
+      foot: "right",
       preferences: [
         "CB",
         "CM",
@@ -59100,9 +59066,9 @@ var roma_synthetic_default = {
     },
     {
       playerId: "synthetic-player-04",
-      initials: "TC",
+      initials: "MH",
       shirtNumber: 4,
-      foot: "both",
+      foot: "right",
       preferences: [
         "CM",
         "CB",
@@ -59120,13 +59086,13 @@ var roma_synthetic_default = {
     },
     {
       playerId: "synthetic-player-05",
-      initials: "OE",
+      initials: "AA",
       shirtNumber: 5,
-      foot: "left",
+      foot: "right",
       preferences: [
-        "LW",
         "CM",
-        "CB"
+        "CB",
+        "ST"
       ],
       eligiblePositions: [
         "CB",
@@ -59140,11 +59106,11 @@ var roma_synthetic_default = {
     },
     {
       playerId: "synthetic-player-06",
-      initials: "EB",
+      initials: "SL",
       shirtNumber: 6,
-      foot: "right",
+      foot: "left",
       preferences: [
-        "RW",
+        "LW",
         "CM",
         "CB"
       ],
@@ -59160,11 +59126,11 @@ var roma_synthetic_default = {
     },
     {
       playerId: "synthetic-player-07",
-      initials: "JT",
+      initials: "EP",
       shirtNumber: 7,
       foot: "right",
       preferences: [
-        "ST",
+        "RW",
         "CM",
         "CB"
       ],
@@ -59180,113 +59146,13 @@ var roma_synthetic_default = {
     },
     {
       playerId: "synthetic-player-08",
-      initials: "FL",
+      initials: "AM",
       shirtNumber: 8,
-      foot: "left",
-      preferences: [
-        "LW",
-        "CM",
-        "CB"
-      ],
-      eligiblePositions: [
-        "CB",
-        "LB",
-        "RB",
-        "CM",
-        "LW",
-        "RW",
-        "ST"
-      ]
-    },
-    {
-      playerId: "synthetic-player-09",
-      initials: "AJ",
-      shirtNumber: 9,
       foot: "right",
-      preferences: [
-        "RW",
-        "CM",
-        "CB"
-      ],
-      eligiblePositions: [
-        "CB",
-        "LB",
-        "RB",
-        "CM",
-        "LW",
-        "RW",
-        "ST"
-      ]
-    },
-    {
-      playerId: "synthetic-player-10",
-      initials: "LW",
-      shirtNumber: 10,
-      foot: "both",
-      preferences: [
-        "CM",
-        "CB",
-        "ST"
-      ],
-      eligiblePositions: [
-        "CB",
-        "LB",
-        "RB",
-        "CM",
-        "LW",
-        "RW",
-        "ST"
-      ]
-    },
-    {
-      playerId: "synthetic-player-11",
-      initials: "MK",
-      shirtNumber: 11,
-      foot: "right",
-      preferences: [
-        "CB",
-        "CM",
-        "ST"
-      ],
-      eligiblePositions: [
-        "CB",
-        "LB",
-        "RB",
-        "CM",
-        "LW",
-        "RW",
-        "ST"
-      ]
-    },
-    {
-      playerId: "synthetic-player-12",
-      initials: "AG",
-      shirtNumber: 12,
-      foot: "left",
       preferences: [
         "ST",
         "CM",
         "CB"
-      ],
-      eligiblePositions: [
-        "CB",
-        "LB",
-        "RB",
-        "CM",
-        "LW",
-        "RW",
-        "ST"
-      ]
-    },
-    {
-      playerId: "synthetic-player-13",
-      initials: "GT",
-      shirtNumber: 13,
-      foot: "right",
-      preferences: [
-        "CM",
-        "CB",
-        "ST"
       ],
       eligiblePositions: [
         "CB",
@@ -60362,10 +60228,44 @@ function currentTargets(state, sample) {
   return calculateTargets(projected.targetIntervals, state.config.selectedPlayerIds);
 }
 
+// packages/application/src/lineup-autofill.ts
+function autoFillLineup(input) {
+  const fail9 = (reason) => ({ status: "infeasible", reason, unfilledSlotIds: input.slots.map((slot) => slot.slotId) });
+  if (input.slots.length < 1 || input.slots.length > 11 || input.players.length > 100 || input.slots.filter((slot) => slot.position === "GK").length !== 1 || new Set(input.slots.map((slot) => slot.slotId)).size !== input.slots.length || input.slots.some((slot) => !slot.slotId || !slot.position) || new Set(input.players.map((player) => player.id)).size !== input.players.length || input.players.some((player) => !player.id)) return fail9("Review the saved places and distinct player identities before filling a lineup.");
+  const players = input.players.filter((player) => player.available).slice().sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+  if (players.length < input.slots.length) return fail9(`Only ${players.length} available players can fill ${input.slots.length} places. Record actual availability or choose a different planning squad.`);
+  const count = 1 << input.slots.length;
+  let states = new Array(count);
+  states[0] = { cost: 0, assigned: input.slots.map(() => null), key: "" };
+  for (const player of players) {
+    const next = states.slice();
+    for (let mask = 0; mask < count; mask++) {
+      const previous = states[mask];
+      if (!previous) continue;
+      for (let place = 0; place < input.slots.length; place++) {
+        const slot = input.slots[place], bit = 1 << place;
+        if (mask & bit || !player.eligiblePositions.includes(slot.position)) continue;
+        if (slot.position === "GK" && (![1, 2].includes(player.goalkeeperChoice) || !player.preferences.slice(0, 2).includes("GK") || input.fixedKeeperId && input.fixedKeeperId !== player.id)) continue;
+        if (slot.position !== "GK" && input.fixedKeeperId === player.id) continue;
+        const rank = player.preferences.indexOf(slot.position), cost = previous.cost + (rank >= 0 && rank <= 2 ? rank : 4);
+        const assigned = previous.assigned.slice();
+        assigned[place] = player.id;
+        const key = JSON.stringify(assigned), existing = next[mask | bit];
+        if (!existing || cost < existing.cost || cost === existing.cost && key < existing.key) next[mask | bit] = { cost, assigned, key };
+      }
+    }
+    states = next;
+  }
+  const result = states[count - 1];
+  if (!result) return fail9("No complete eligible lineup is available for these places. Review goalkeeper cover, approved positions and actual availability; no partial lineup was staged.");
+  return { status: "complete", preferenceCost: result.cost, allocations: input.slots.map((slot, index) => ({ slotId: slot.slotId, position: slot.position, playerId: result.assigned[index] })) };
+}
+
 // packages/application/src/demo-season.ts
 function createDemoCompletedMatches() {
-  return romaFixture.fixtures.filter((fixture) => fixture.demoPhase === "completed").map((fixture) => {
+  return romaFixture.fixtures.filter((fixture) => fixture.demoPhase === "completed").map((fixture, matchIndex) => {
     const selected = [...fixture.selectedPlayerIds];
+    if (selected.length !== 8) throw new Error("The recorded Roma demo needs its eight-player squad.");
     const profiles = selected.map((playerId) => romaFixture.profiles.find((profile) => profile.playerId === playerId));
     const kickoff = Date.parse(`${fixture.playedDate}T${fixture.kickoff}:00+01:00`);
     const positions = ["GK", "CB", "CB", "CM", "LW", "RW", "ST"];
@@ -60408,26 +60308,44 @@ function createDemoCompletedMatches() {
         sample: { monotonicMs: milliseconds, sessionId: `demo-history-${fixture.id}`, wallTimeMs: kickoff + milliseconds }
       });
     };
-    const quarterLineup = (quarter) => {
-      const omitted = [[7, 8], [5, 6], [3, 4], [1, 2]][quarter];
-      const playing = selected.filter((_, index) => !omitted.includes(index));
-      return playing.map((playerId, index) => ({ playerId, position: positions[index], slotId: `demo-slot-${index}` }));
+    const benchOrder = (matchIndex % 2 === 0 ? [3, 4, 1, 2, 5, 6, 7, 3] : [4, 3, 2, 1, 6, 5, 7, 4]).map((index) => selected[index]);
+    const stintLineup = (stint) => {
+      const filled = autoFillLineup({
+        slots: config.slots,
+        fixedKeeperId: config.fixedKeeperId,
+        players: selected.map((playerId) => {
+          const profile = profiles.find((item) => item.playerId === playerId);
+          return {
+            id: playerId,
+            preferences: profile.preferences,
+            eligiblePositions: profile.eligiblePositions,
+            goalkeeperChoice: config.players.find((player) => player.id === playerId).goalkeeperChoice,
+            available: playerId !== benchOrder[stint]
+          };
+        })
+      });
+      if (filled.status !== "complete") throw new Error(`The recorded Roma lineup is unavailable: ${filled.reason}`);
+      return filled.allocations;
     };
     for (const playerId of selected) send({ type: "attendance.recorded", playerId, status: "present" }, 0);
-    send({ type: "lineup.staged", lineup: quarterLineup(0) }, 0);
+    send({ type: "lineup.staged", lineup: stintLineup(0) }, 0);
     send({ type: "half.started" }, 0);
+    send({ type: "lineup.committed", sourceRevision: state.revision, lineup: stintLineup(1) }, 375e3);
     send({ type: "goal.recorded", beneficiary: "us", scorerPlayerId: selected[1], goalType: "open_play" }, 8 * 6e4);
-    send({ type: "lineup.committed", sourceRevision: state.revision, lineup: quarterLineup(1) }, 75e4);
+    send({ type: "lineup.committed", sourceRevision: state.revision, lineup: stintLineup(2) }, 75e4);
     send({ type: "goal.recorded", beneficiary: "opposition", scorerPlayerId: null, goalType: "open_play" }, 18 * 6e4);
+    send({ type: "lineup.committed", sourceRevision: state.revision, lineup: stintLineup(3) }, 1125e3);
     send({ type: "half.ended" }, 15e5);
-    send({ type: "lineup.staged", lineup: quarterLineup(2) }, 18e5);
+    send({ type: "lineup.staged", lineup: stintLineup(4) }, 18e5);
     send({ type: "half.started" }, 18e5);
+    send({ type: "lineup.committed", sourceRevision: state.revision, lineup: stintLineup(5) }, 2175e3);
     send({ type: "goal.recorded", beneficiary: "us", scorerPlayerId: selected[7], goalType: "open_play" }, 222e4);
-    send({ type: "lineup.committed", sourceRevision: state.revision, lineup: quarterLineup(3) }, 255e4);
+    send({ type: "lineup.committed", sourceRevision: state.revision, lineup: stintLineup(6) }, 255e4);
+    send({ type: "lineup.committed", sourceRevision: state.revision, lineup: stintLineup(7) }, 2925e3);
     send({
       type: "goal.recorded",
       beneficiary: fixture.id === "synthetic-history-oak" ? "opposition" : "us",
-      scorerPlayerId: fixture.id === "synthetic-history-oak" ? null : selected[8],
+      scorerPlayerId: fixture.id === "synthetic-history-oak" ? null : selected[7],
       goalType: "open_play"
     }, 294e4);
     send({ type: "half.ended" }, 33e5);
@@ -61222,16 +61140,17 @@ function getCommunityView(state, actor, nowMs) {
 function createCommunityState(nowMs = Date.now(), options2 = {}) {
   const teamId = "synthetic-roma-u10";
   const seasonId = "synthetic-season-2026-27";
-  const playerIds = Array.from({ length: 13 }, (_, index) => `synthetic-player-${String(index + 1).padStart(2, "0")}`);
+  const playerIds = romaFixture.players.map((player) => player.id);
+  const selectedPlayerIds = romaFixture.players.filter((player) => player.available).map((player) => player.id);
   const accounts = [
     { id: "synthetic-account-manager", label: demoAccountLabels["synthetic-account-manager"], classification: "adult_individual", adultVerified: true },
-    ...playerIds.map((id11, index) => ({ id: `synthetic-account-player-${String(index + 1).padStart(2, "0")}`, label: romaFixture.players[index].displayName, classification: "child_shared", adultVerified: false })),
+    ...romaFixture.players.map((player) => ({ id: `synthetic-account-player-${player.id.slice(-2)}`, label: player.displayName, classification: "child_shared", adultVerified: false })),
     { id: "synthetic-account-spectator", label: demoAccountLabels["synthetic-account-spectator"], classification: "spectator", adultVerified: false },
     { id: "synthetic-account-invitee", label: demoAccountLabels["synthetic-account-invitee"], classification: "spectator", adultVerified: false }
   ];
   const memberships = [
     { accountId: accounts[0].id, teamId, seasonId, role: "manager", active: true },
-    ...playerIds.map((playerId, index) => ({ accountId: accounts[index + 1].id, playerId, teamId, seasonId, role: "player", active: true }))
+    ...playerIds.map((playerId) => ({ accountId: `synthetic-account-player-${playerId.slice(-2)}`, playerId, teamId, seasonId, role: "player", active: true }))
   ];
   const fullTime = Math.max(0, nowMs - 6e5);
   const match = {
@@ -61240,9 +61159,9 @@ function createCommunityState(nowMs = Date.now(), options2 = {}) {
     seasonId,
     label: "Roma v Willow FC \xB7 Practice match",
     playedAtMs: Math.max(0, fullTime - 36e5),
-    selectedPlayerIds: playerIds.slice(0, 9),
-    presentPlayerIds: playerIds.slice(0, 9),
-    playedPlayerIds: playerIds.slice(0, 9),
+    selectedPlayerIds: [...selectedPlayerIds],
+    presentPlayerIds: [...selectedPlayerIds],
+    playedPlayerIds: [...selectedPlayerIds],
     actualFullTimeAtMs: fullTime,
     finishQuality: "trusted",
     voteCutoffAtMs: null,
@@ -64179,17 +64098,16 @@ function trainingAttendanceEvidence(state) {
 }
 function createPreparationState(options2 = {}) {
   const seasonId = "synthetic-season-2026-27";
-  const profiles = Array.from({ length: 13 }, (_, index) => {
-    const number = String(index + 1).padStart(2, "0");
+  const profiles = romaFixture.players.map((player) => {
     const details = romaFixture.profiles.find(
-      (profile) => profile.playerId === `synthetic-player-${number}`
+      (profile) => profile.playerId === player.id
     );
     const preferences = [...details.preferences];
     return {
-      id: `synthetic-player-${number}:${seasonId}`,
-      playerId: `synthetic-player-${number}`,
+      id: `${player.id}:${seasonId}`,
+      playerId: player.id,
       seasonId,
-      displayName: romaFixture.players[index].displayName,
+      displayName: player.displayName,
       initials: details.initials,
       shirtNumber: details.shirtNumber,
       foot: details.foot,
@@ -64221,7 +64139,7 @@ function createPreparationState(options2 = {}) {
           profiles.flatMap(
             (profile, playerIndex) => {
               if (index === 0)
-                return playerIndex < 9 ? [[profile.id, "available"]] : [];
+                return selected.some((item2) => item2.id === profile.id) ? [[profile.id, "available"]] : [];
               if (past)
                 return [
                   [
@@ -64229,7 +64147,7 @@ function createPreparationState(options2 = {}) {
                     selected.some((item2) => item2.id === profile.id) ? "available" : "unavailable"
                   ]
                 ];
-              return playerIndex < 6 ? [[profile.id, "available"]] : playerIndex === 6 ? [[profile.id, "unsure"]] : playerIndex === 10 ? [[profile.id, "unavailable"]] : [];
+              return playerIndex < 6 ? [[profile.id, "available"]] : playerIndex === 6 ? [[profile.id, "unsure"]] : playerIndex === profiles.length - 1 ? [[profile.id, "unavailable"]] : [];
             }
           )
         ),
@@ -64258,13 +64176,13 @@ function createPreparationState(options2 = {}) {
       responses: item.status === "held" ? Object.fromEntries(
         profiles.map((profile, index) => [
           profile.id,
-          index === (sessionIndex + 3) % 13 ? "unavailable" : "available"
+          index === (sessionIndex + 3) % profiles.length ? "unavailable" : "available"
         ])
       ) : {},
       attendance: item.status === "held" ? Object.fromEntries(
         profiles.map((profile, index) => [
           profile.id,
-          index === (sessionIndex + 3) % 13 ? "absent" : "present"
+          index === (sessionIndex + 3) % profiles.length ? "absent" : "present"
         ])
       ) : {}
     })
@@ -66757,11 +66675,10 @@ var PostgresStore = class _PostgresStore {
         if (number === 1)
           await membership(id11, "administrator");
       }
-      for (let number = 1; number <= 13; number++) {
-        const suffix = String(number).padStart(2, "0");
-        const id11 = `synthetic-account-player-${suffix}`;
+      for (const player of romaFixture.players) {
+        const id11 = `synthetic-account-player-${player.id.slice(-2)}`;
         await add2(id11, "child_shared", false);
-        await membership(id11, "player", `synthetic-player-${suffix}`);
+        await membership(id11, "player", player.id);
       }
       await add2("synthetic-account-spectator", "adult_individual", false);
       await membership("synthetic-account-spectator", "spectator");
@@ -69234,11 +69151,10 @@ var DevelopmentStore = class {
         if (number <= 4) membership(id11, "manager");
         if (number === 1) membership(id11, "administrator");
       }
-      for (let number = 1; number <= 13; number++) {
-        const suffix = String(number).padStart(2, "0");
-        const id11 = `synthetic-account-player-${suffix}`;
+      for (const player of romaFixture.players) {
+        const id11 = `synthetic-account-player-${player.id.slice(-2)}`;
         add2(id11, "child_shared", false);
-        membership(id11, "player", `synthetic-player-${suffix}`);
+        membership(id11, "player", player.id);
       }
       add2("synthetic-account-spectator", "adult_individual", false);
       membership("synthetic-account-spectator", "spectator");
