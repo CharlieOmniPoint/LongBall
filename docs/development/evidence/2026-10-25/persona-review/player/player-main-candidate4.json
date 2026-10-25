@@ -1,0 +1,113 @@
+{
+  "persona": "player",
+  "phase": "final",
+  "startedAt": "2026-10-25T22:32:46.574Z",
+  "scope": "Actual compiled UI and isolated SQLite API/worker; only discovery and virtual transport are redirected to owned loopback processes. Generated accounts, not public demo credentials.",
+  "checks": [
+    "Player signs in to the assigned Roma team; own preparation excludes peer profiles and the phone/tablet home fits.",
+    "Home availability changes receive actual service acknowledgement and update the own-player view.",
+    "Player can switch upcoming/past matches and training, download only a chosen calendar event, and past match replies are read-only.",
+    "Player profile exposes only its own membership/preferences, and an actual FA-ID save persists without a staff role.",
+    "Player statistics have one bound player and no teammate selector; detail and unknown-data coverage remain own-only.",
+    "Player can open team overview and shared game updates without match-controller controls.",
+    "Player feedback is own-only and closed historic games do not display editors.",
+    "Player can read permitted team/opposition summaries and its own reports without staff controls.",
+    "Player photos show only permitted albums, and no staff moderation controls are exposed; ballot window metadata remains explicit.",
+    "Player can reach scoped spectator invitations and account controls; no invitation capability is captured.",
+    "Player sign out ends the actual session and closes private home/stat views.",
+    "A prospective Player can request the exact club/team; staff receive a pending request without a new login, membership or child-account approval."
+  ],
+  "findings": [
+    "Current seed correctly has no eligible same-day completed game: open feedback editing needs a separately labelled reducer-completed fixture; closed history/privacy are exercised here.",
+    "Current completed seed games have closed ballots; no voting window is invented for this review."
+  ],
+  "failures": [],
+  "httpFailures": [
+    {
+      "method": "GET",
+      "path": "/v1/me",
+      "status": 401,
+      "code": "INVALID_SESSION",
+      "expected": true
+    }
+  ],
+  "transportErrors": [],
+  "pageErrors": [],
+  "screenshots": [
+    "player-home-320.png",
+    "player-home-390.png",
+    "player-home-1024.png",
+    "player-past-schedule-320.png",
+    "player-past-schedule-390.png",
+    "player-past-schedule-1024.png",
+    "player-profile-320.png",
+    "player-profile-390.png",
+    "player-profile-1024.png",
+    "player-stats-compact-320.png",
+    "player-stats-compact-390.png",
+    "player-stats-compact-1024.png",
+    "player-match-centre-320.png",
+    "player-match-centre-390.png",
+    "player-match-centre-1024.png",
+    "player-feedback-320.png",
+    "player-feedback-390.png",
+    "player-feedback-1024.png",
+    "player-photos-320.png",
+    "player-photos-390.png",
+    "player-photos-1024.png",
+    "player-account.png"
+  ],
+  "passed": true,
+  "source": {
+    "gitHead": "0961d1eb438ac2be591e71e6b3a92442aa72e38a",
+    "workingTreeDirty": true,
+    "webScriptSha256": "fe455b35fee18875c51a314126191d536c6bab8b1ce02053cf614e1629d8b521",
+    "serverBundleSha256": "7e6a4fc28acac0d106ca98e5a3955f2d06932d8da7d3fe99cef7c45ca3a1c3e4",
+    "workerBundleSha256": "b9077f122adf3b1bc6122df9beaf5610f1ea2928c852c1da4280619cf05a45f5",
+    "helperSha256": "6a9da668a2d0fe88245328f3df167f6da815917c90634d66e5a1288fde751698",
+    "harnessSha256": "b2179687a6e43433b635b3111b09e0d05b8539fab1f4db170e80e88859682d93"
+  },
+  "physicalDeviceTested": false,
+  "publicCredentialsUsed": false,
+  "paidServicesProvisioned": false,
+  "calendarCoverage": {
+    "actualBrowserDownload": true,
+    "explicitlySelectedEvents": 1,
+    "noPrivatePlayerFields": true,
+    "nativeShareSheetTested": false
+  },
+  "budgetWaits": [
+    {
+      "accountId": "synthetic-account-player-01",
+      "waitMs": 39084,
+      "attempts": 88,
+      "mutations": 5
+    }
+  ],
+  "feedbackCoverage": {
+    "closedHistoryReadOnly": true,
+    "peerEntriesExcluded": true,
+    "openWindowPresent": false
+  },
+  "awardCoverage": {
+    "permittedMatches": 2,
+    "openBallotPresent": false,
+    "pendingPhotoPublicationDeniedByRole": true
+  },
+  "accountCoverage": {
+    "roleSpecificHelp": true,
+    "pendingPolicyExplained": true,
+    "ownSharedAccountRequestsReadable": true,
+    "noRequestSubmittedOrPolicyApproved": true
+  },
+  "invitationRequestCoverage": {
+    "actualPublicIntake": true,
+    "requestedRole": "player",
+    "staffReviewPending": true,
+    "noAccountOrTeamAccessCreated": true,
+    "actualChildActivationTested": false,
+    "guardianRecoveryPolicyApproved": false
+  },
+  "artifactsStable": true,
+  "finishedAt": "2026-10-25T22:34:31.349Z"
+}

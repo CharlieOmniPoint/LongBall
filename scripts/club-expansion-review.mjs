@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { Buffer } from 'node:buffer';
 import { createHash, randomBytes, randomUUID, scryptSync } from 'node:crypto';
 import { existsSync } from 'node:fs';
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
@@ -125,6 +125,11 @@ async function saved(page, action, leaf = 'preparation') {
   const result = page.waitForResponse(response => new URL(response.url()).pathname.endsWith('/' + leaf) && response.request().method() === 'POST');
   const [response] = await Promise.all([result, action()]); check(response.status() === 200, `The actual ${leaf} UI save must be accepted.`); return response.json();
 }
+async function revealAdministrationForm(page, id) {
+  const toggle = page.getByTestId(id);
+  await toggle.waitFor();
+  if (await toggle.getAttribute('aria-expanded') !== 'true') await toggle.click();
+}
 async function screenshot(state, name) {
   check(await state.page.getByTestId('demo-signed-in').isVisible(), 'Only signed-in workspaces may be photographed.');
   const text = await state.page.locator('body').innerText(); for (const secret of secrets) check(!text.includes(secret), 'Do not screenshot credentials or open invitation capabilities.');
@@ -191,14 +196,15 @@ async function rosterAndDocuments(account) {
 }
 async function administration(superAccount, clubAccount) {
   const admin = await openDemo(superAccount, 1024), { page } = admin, token = admin.session.accessToken;
-  await openWorkspaceTab(page, 'clubs'); await page.getByTestId('club-administration').waitFor(); const colour = await page.getByTestId('admin-create-club').evaluate(node => getComputedStyle(node).backgroundColor); check(colour === 'rgb(113, 58, 162)', 'SuperAdmin primary actions must use purple.');
+  await openWorkspaceTab(page, 'clubs'); await page.getByTestId('club-administration').waitFor(); await revealAdministrationForm(page, 'admin-club-form-toggle'); const colour = await page.getByTestId('admin-create-club').evaluate(node => getComputedStyle(node).backgroundColor); check(colour === 'rgb(113, 58, 162)', 'SuperAdmin primary actions must use purple.');
   const policyRoute = '/v1/administration/sign-in-rules', originalPolicy = await api(token, policyRoute, { role: 'administrator' });
   await page.getByTestId('sign-in-rules-toggle').click(); await page.getByLabel('Minimum password length', { exact: true }).waitFor();
   const policySwitchColours = await page.getByRole('switch', { name: 'Require an uppercase letter', exact: true }).evaluate(node => [...node.parentElement.children].filter(child => child.tagName === 'DIV').map(child => getComputedStyle(child).backgroundColor));
   check(policySwitchColours.filter(colour => colour === 'rgb(113, 58, 162)').length === 2, 'Super Admin enabled policy switch track and thumb must use purple.');
   check(await page.getByLabel('Minimum password length', { exact: true }).inputValue() === String(originalPolicy.rules.password.minLength), 'The global policy form must load the persisted password rules.');
-  await page.getByLabel('Minimum password length', { exact: true }).fill('7'); await page.getByTestId('sign-in-rules-save').click();
-  await page.getByTestId('application-sign-in-rules').getByText('Use the documented sign-in rules and supported lengths.', { exact: true }).waitFor();
+  await page.getByLabel('Minimum password length', { exact: true }).fill('7');
+  check(await page.getByTestId('sign-in-rules-save').isDisabled(), 'Invalid policy lengths must be identified before an update can be sent.');
+  await page.getByTestId('application-sign-in-rules').getByText('Minimum password length must be 8–64 characters.', { exact: true }).waitFor();
   check((await api(token, policyRoute, { role: 'administrator' })).revision === originalPolicy.revision, 'Invalid password lengths must never change the saved policy.');
   const changedMinimum = originalPolicy.rules.password.minLength === 14 ? 15 : 14;
   await page.getByLabel('Minimum password length', { exact: true }).fill(String(changedMinimum));
@@ -239,8 +245,8 @@ async function administration(superAccount, clubAccount) {
   await screenshot(admin, 'super-admin-sign-in-rules-390'); await page.setViewportSize({ width: 1024, height: 844 });
   report.signInRules = { superAdminLoadedSavedAndRemounted: true, superAdminEnabledPolicyTogglesPurple: true, invalidLengthsRefused: true, versionIncremented: true, lostReceiptRetainedNavigationAndExactKey: true, originalPolicyRestored: true, phone390ReloadAndNoOverflow: true, providerStatus: changedPolicy.provider.status };
   report.checks.push('Super Admin edits persisted application sign-in rules, invalid lengths are refused, remount reloads the changed version, and the original rules are explicitly restored.');
-  await page.getByLabel('New club name').fill('Harbour Athletic'); await saved(page, () => page.getByTestId('admin-create-club').click(), 'administration');
-  await page.getByRole('button', { name: 'Harbour Athletic', exact: true }).click(); await page.getByLabel('New team name').fill('Harbour Youth'); await page.getByLabel('New team age group').fill('U21'); await page.getByLabel('New team format').fill('11');
+  await revealAdministrationForm(page, 'admin-club-form-toggle'); await page.getByLabel('New club name').fill('Harbour Athletic'); await saved(page, () => page.getByTestId('admin-create-club').click(), 'administration');
+  await page.getByRole('button', { name: 'Harbour Athletic', exact: true }).click(); await revealAdministrationForm(page, 'admin-team-form-toggle'); await page.getByLabel('New team name').fill('Harbour Youth'); await page.getByLabel('New team age group').fill('U21'); await page.getByLabel('New team format').fill('11');
   await saved(page, () => page.getByTestId('admin-create-team').click(), 'administration'); const directory = await api(token, '/v1/administration', { role: 'administrator' }), harbour = directory.clubs.find(item => item.name === 'Harbour Athletic'), team = directory.teams.find(item => item.name === 'Harbour Youth');
   check(harbour && team?.clubId === harbour.id, 'SuperAdmin must create a real club and its scoped team.'); const empty = await api(token, scope('preparation', team.id, team.seasonId)); check(empty.profiles.length === 0 && empty.fixtures.length === 0 && empty.training.length === 0, 'New teams must start empty without leaking Roma data.'); await screenshot(admin, 'super-admin-purple-tablet');
   await changeWorkspaceContext(page, 'manager', { teamId: team.id, seasonId: team.seasonId }); await createInvite(admin, team.id, team.seasonId);
@@ -251,7 +257,7 @@ async function administration(superAccount, clubAccount) {
   report.signInRules.clubAdminReadAndWriteDenied = true;
   check(await club.page.getByTestId('admin-create-club').count() === 0, 'Club Admin must not see global club creation.'); await api(clubToken, '/v1/administration', { role: 'administrator', body: { command: { type: 'club.create', name: 'Forbidden club' } }, expected: 404 });
   await api(clubToken, `/v1/clubs/${harbour.id}/reports`, { role: 'administrator', expected: 404 }); await api(clubToken, scope('preparation', team.id, team.seasonId), { expected: 404 });
-  await club.page.getByLabel('New team name').fill('Roma Falcons'); await club.page.getByLabel('New team age group').fill('U12'); await club.page.getByLabel('New team format').fill('9'); await saved(club.page, () => club.page.getByTestId('admin-create-team').click(), 'administration');
+  await revealAdministrationForm(club.page, 'admin-team-form-toggle'); await club.page.getByLabel('New team name').fill('Roma Falcons'); await club.page.getByLabel('New team age group').fill('U12'); await club.page.getByLabel('New team format').fill('9'); await saved(club.page, () => club.page.getByTestId('admin-create-team').click(), 'administration');
   const clubDirectory = await api(clubToken, '/v1/administration', { role: 'administrator' }), falcons = clubDirectory.teams.find(item => item.name === 'Roma Falcons'); check(falcons?.clubId === clubId, 'Club Admin creates teams only inside its own club.');
   await club.page.getByTestId('admin-club-report').click(); await club.page.getByRole('button', { name: 'U12', exact: true }).click(); await club.page.getByRole('button', { name: 'Games', exact: true }).click(); check(await club.page.getByText(/Roma Falcons · U12 ·/).count() > 0, 'Club reports must filter the created age group.');
   await changeWorkspaceContext(club.page, 'manager', { teamId: falcons.id, seasonId: falcons.seasonId }); await openWorkspaceTab(club.page, 'team'); check((await api(clubToken, scope('preparation', falcons.id, falcons.seasonId))).profiles.length === 0, 'Club Admin inherits actual manager authority on its new team.');
@@ -308,7 +314,8 @@ async function invitationsAndPlayers(accounts, clubState, falcons) {
 
 const watchdog = setTimeout(() => { console.error('The isolated club-expansion review exceeded its ten-minute watchdog.'); process.exit(124); }, 600_000); watchdog.unref();
 try {
-  await rm(output, { recursive: true, force: true }); await mkdir(output, { recursive: true });
+  if (existsSync(output)) await rename(output, `${output}-attempt-${Date.now()}`);
+  await mkdir(output, { recursive: true });
   check(existsSync(path.join(webRoot, 'index.html')) && existsSync(apiBundle) && existsSync(workerBundle), 'Build flagged demo web and current API/worker bundles before review.');
   const html = await readFile(path.join(webRoot, 'index.html'), 'utf8'), scriptPath = html.match(/<script[^>]+src="([^"]+)"/)?.[1]; check(scriptPath && !scriptPath.includes('..') && !scriptPath.includes('://'), 'Use a local compiled entry script.'); const script = await readFile(path.join(webRoot, scriptPath.replace(/^\//, '')));
   report.source = { gitHead: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(), workingTreeDirty: Boolean(execFileSync('git', ['status', '--porcelain'], { encoding: 'utf8' }).trim()), harnessSha256: digest(await readFile(new URL(import.meta.url))), webIndexSha256: digest(html), webJavaScriptSha256: digest(script), apiBundleSha256: digest(await readFile(apiBundle)), workerBundleSha256: digest(await readFile(workerBundle)) };

@@ -33,8 +33,9 @@ import {
   type RemoteMediaReceipt,
   type RemoteOwnUpload,
   type RemotePreparedUpload,
+  type MediaAuthenticatedFetch,
 } from "../platform/media-client";
-import { Button, Card, colors, Notice, Pill } from "../ui";
+import { Button, Card, colors, Notice } from "../ui";
 
 export interface MediaUploadProps {
   actor: CommunityActor;
@@ -48,6 +49,7 @@ export interface MediaUploadProps {
   onRetainedChange?: (retained: boolean, scopeKey: string) => void;
   onChanged?: () => void | Promise<void>;
   allowLibraryPicker?: boolean;
+  authenticatedFetch?: MediaAuthenticatedFetch;
 }
 interface UploadJob {
   target: AlbumSelection;
@@ -80,6 +82,7 @@ function MediaUploadContent(props: MediaUploadProps) {
     allowed,
     onChanged,
     allowLibraryPicker = false,
+    authenticatedFetch,
   } = props;
   const scopeKey = albumScopeKey(albumScope);
   const live = useRef(props);
@@ -129,6 +132,14 @@ function MediaUploadContent(props: MediaUploadProps) {
   const [receipt, setReceipt] = useState<RemoteMediaReceipt | null>(null);
   const [uploads, setUploads] = useState<RemoteOwnUpload[] | null>(null);
   const [privateImage, setPrivateImage] = useState<string | null>(null);
+  const [showDetails, setShowDetails] = useState(false);
+  const chooseImage = (picked: LocalUploadImage) => {
+    setImage(picked);
+    setReceipt(null);
+    setPhase(null);
+    setError(null);
+    setAcknowledged(false);
+  };
   const client = useMemo(
     () =>
       new MediaUploadClient(apiBaseUrl, actor, async (url, options) => {
@@ -136,6 +147,7 @@ function MediaUploadContent(props: MediaUploadProps) {
           url.startsWith("/") && Platform.OS === "web"
             ? new URL(url, globalThis.location.origin).toString()
             : url;
+        if (authenticatedFetch) return authenticatedFetch(absolute, options);
         if (!synthetic) return connectedFetch(absolute, options);
         return fetch(absolute, {
           ...options,
@@ -146,7 +158,7 @@ function MediaUploadContent(props: MediaUploadProps) {
           },
         });
       }),
-    [apiBaseUrl, actor, synthetic],
+    [apiBaseUrl, actor, synthetic, authenticatedFetch],
   );
   const refresh = async () => {
     const rows = await client.listOwn();
@@ -178,7 +190,7 @@ function MediaUploadContent(props: MediaUploadProps) {
     setRetained(job);
     setReceipt(null);
     if (!job.prepared) {
-      setPhase("Preparing a private, write-only upload…");
+      setPhase("Preparing your photo…");
       const prepared = await client.prepare({
         requestId: job.requestId,
         matchId: job.target.matchId,
@@ -191,11 +203,11 @@ function MediaUploadContent(props: MediaUploadProps) {
       setRetained(job);
     }
     assertCurrent(job);
-    setPhase("Uploading the exact bytes to private quarantine…");
+    setPhase("Uploading your photo privately…");
     await client.upload(job.prepared!, job.image, job.requestId);
     assertCurrent(job);
     setPhase(
-      "Checking size, hash, file type, scanning and metadata-free derivatives…",
+      "Checking your photo before it can be shared…",
     );
     const processed = await client.complete(job.prepared!, job.requestId);
     assertCurrent(job);
@@ -203,8 +215,8 @@ function MediaUploadContent(props: MediaUploadProps) {
     setRetained(null);
     setPhase(
       actor.role === "manager"
-        ? "Processed privately. Explicit manager Publish is still required."
-        : "Processed privately. Pending manager approval.",
+        ? "Your photo is ready and private. Review it in your submissions, then choose Publish when you are ready."
+        : "Your photo is ready for your manager to review. The team cannot see it until it is approved.",
     );
     await refresh();
     await onChanged?.();
@@ -212,43 +224,31 @@ function MediaUploadContent(props: MediaUploadProps) {
   if (actor.role === "spectator")
     return (
       <Card>
-        <Text style={s.heading}>Private image uploads</Text>
+        <Text style={s.heading}>Team photos</Text>
         <Notice>
-          Spectators can view authorised published images, but cannot upload,
-          vote or invite.
+          Spectators can view shared team photos. Uploading is available to players and managers.
         </Notice>
       </Card>
     );
   return (
     <Card>
-      <Text style={s.heading}>Connected image upload</Text>
-      <Pill tone="info">
-        {synthetic ? "UPLOAD REVIEW" : "AUTHENTICATED SERVICE"}
-      </Pill>
+      <Text style={s.heading}>Add a photo</Text>
       <Notice>
         {target
-          ? `Selected game: ${target.label}. The upload stays bound to this game through retries.`
-          : "Select the actual permitted game in Game albums before preparing an upload."}
+          ? `For ${target.label}`
+          : "Choose a game album above before adding a photo."}
       </Notice>
       <Text style={s.body}>
-        Prepare, upload and complete through the service. An uploaded file stays
-        private until processing and the required publication action succeed.
+        {actor.role === "manager" ? "Your photo stays private until you review it and choose Publish." : "Your manager checks your photo before the team can see it."}
       </Text>
-      <Notice>
-        {synthetic ? "Use the generated PNG for this review. " : ""}
-        The service fails closed when its safety scanner is unavailable. No raw
-        upload is served through the gallery.
-      </Notice>
       {props.contributionsAllowed === false && (
         <Notice tone="warning">
-          Photo contributions are currently held or awaiting a current privilege
-          check. Existing private upload records stay retained. Refresh after a
-          manager reinstates the privilege.
+          Adding photos is currently unavailable for this account. Your existing private uploads are kept. Check with your manager, then refresh.
         </Notice>
       )}
       {synthetic && (
         <Button
-          label="Choose generated PNG"
+          label="Use a football picture"
           testID="media-generated-image"
           variant="secondary"
           disabled={
@@ -258,16 +258,14 @@ function MediaUploadContent(props: MediaUploadProps) {
             props.contributionsAllowed === false
           }
           onPress={() => {
-            setImage(generatedFictionalImage());
-            setReceipt(null);
-            setError(null);
+            chooseImage(generatedFictionalImage());
           }}
         />
       )}
       {allowLibraryPicker && (
         <>
           <Button
-            label="Choose a local JPEG, PNG or HEIC"
+            label="Choose a photo"
             variant="secondary"
             disabled={
               busy ||
@@ -278,13 +276,13 @@ function MediaUploadContent(props: MediaUploadProps) {
             onPress={() =>
               void run(async () => {
                 const picked = await pickMediaImage();
-                if (picked) setImage(picked);
+                if (picked) chooseImage(picked);
               })
             }
           />
           {Platform.OS === "android" && (
             <Button
-              label="Review a picker result after Android activity recovery"
+              label="Recover my last photo selection"
               variant="quiet"
               disabled={
                 busy ||
@@ -295,7 +293,7 @@ function MediaUploadContent(props: MediaUploadProps) {
               onPress={() =>
                 void run(async () => {
                   const picked = await recoverPickedMediaImage();
-                  if (picked) setImage(picked);
+                  if (picked) chooseImage(picked);
                   else setPhase("No recovered image is waiting.");
                 })
               }
@@ -311,7 +309,7 @@ function MediaUploadContent(props: MediaUploadProps) {
             accessibilityLabel={image.label}
           />
           <Text style={s.muted}>
-            {image.label} · {image.bytes.byteLength} bytes · {image.mimeType}
+            {image.label}
           </Text>
         </>
       )}
@@ -323,29 +321,30 @@ function MediaUploadContent(props: MediaUploadProps) {
         maxLength={160}
         placeholder="Optional caption · avoid personal details"
         placeholderTextColor={colors.inkMuted}
-        accessibilityLabel="Connected image caption"
+        accessibilityLabel="Photo caption"
+        testID="media-caption"
       />
       <View style={s.row}>
         <Text style={[s.body, { flex: 1 }]}>
-          {synthetic
-            ? "I reviewed this image and the content rules."
-            : "I reviewed this image and the content rules."}
+          I checked this photo and the team’s photo rules.
         </Text>
         <Switch
-          accessibilityLabel="Connected image policy acknowledgement"
+          accessibilityLabel="I checked this photo and the team’s photo rules"
+          testID="media-policy-acknowledgement"
           value={acknowledged}
           onValueChange={setAcknowledged}
           disabled={busy || retainedAction}
         />
       </View>
       <Button
-        label="Upload privately and request processing"
+        label={actor.role === "manager" ? "Upload photo privately" : "Submit for manager review"}
         testID="media-upload-image"
         disabled={
           busy ||
           !target ||
           !image ||
           !acknowledged ||
+          receipt !== null ||
           retainedAction ||
           props.contributionsAllowed === false
         }
@@ -391,7 +390,7 @@ function MediaUploadContent(props: MediaUploadProps) {
       {retainedAction && (
         <>
           <Button
-            label="Retry the retained upload request"
+            label="Retry this photo upload"
             variant="secondary"
             disabled={busy || props.contributionsAllowed === false}
             onPress={() => {
@@ -415,7 +414,7 @@ function MediaUploadContent(props: MediaUploadProps) {
             }}
           />
           <Button
-            label="Close retained upload; keep private record"
+            label="Close this upload; keep any private copy"
             testID="media-close-retained"
             variant="quiet"
             disabled={busy}
@@ -424,18 +423,20 @@ function MediaUploadContent(props: MediaUploadProps) {
               setImage(null);
               setAcknowledged(false);
               setPhase(
-                "The in-memory upload request was closed. Any private server record remains private.",
+                "This upload is closed on this screen. Any copy already received stays private.",
               );
               setError(null);
             }}
           />
           <Text style={s.muted}>
-            Retry keeps the original game, upload identity and bytes. Closing
-            this screen clears the in-memory write capability; the private
-            server record remains.
+            Retry sends the same photo for the same game. Closing stops retries from this screen; any copy already received stays private.
           </Text>
         </>
       )}
+      <Button label="Photo details" compact variant="quiet" testID="media-upload-details" accessibilityState={{ expanded: showDetails }} onPress={() => setShowDetails(value => !value)} />
+      {showDetails && <View style={{ gap: 8 }} testID="media-upload-detail-content">
+        <Text style={s.muted}>JPEG, PNG and HEIC photos can be up to 15 MiB. Photos are checked before they can be shared. If safety checks are unavailable, the photo stays private.</Text>
+        {image && <Text style={s.muted}>Selected file: {image.bytes.byteLength} bytes · {image.mimeType}</Text>}
       {receipt && (
         <Text style={s.muted}>
           Service receipt: {receipt.photoId} · revision{" "}
@@ -443,8 +444,9 @@ function MediaUploadContent(props: MediaUploadProps) {
           is processing acknowledgement, not photo publication.
         </Text>
       )}
+      </View>}
       <Button
-        label="Refresh my connected upload statuses"
+        label="Refresh my uploads"
         testID="media-refresh-uploads"
         variant="quiet"
         disabled={busy}
@@ -452,21 +454,22 @@ function MediaUploadContent(props: MediaUploadProps) {
       />
       {uploads !== null && uploads.length === 0 && (
         <Text style={s.muted}>
-          No connected uploads for this account and season.
+          No uploads yet for this team and season.
         </Text>
       )}
       {uploads?.map((upload) => (
         <View key={upload.uploadId} style={s.uploadRow}>
           <Text style={s.label}>
-            {upload.status} · revision {upload.displayRevision}
+            {upload.status === "linked" ? "Photo received" : upload.status === "prepared" ? "Waiting to upload" : upload.status === "uploaded" ? "Waiting for photo checks" : upload.status === "processed" ? "Photo checked" : upload.status.replaceAll("_", " ")}
           </Text>
-          <Text style={s.muted}>
+          {showDetails && <Text style={s.muted}>
             {upload.byteSize} bytes
             {upload.failureCode ? ` · ${upload.failureCode}` : ""}
-          </Text>
+            {` · revision ${upload.displayRevision}`}
+          </Text>}
           {upload.status === "linked" && (
             <Button
-              label="View my current private derivative"
+              label="View my private photo"
               variant="secondary"
               disabled={busy}
               onPress={() =>
@@ -490,16 +493,15 @@ function MediaUploadContent(props: MediaUploadProps) {
           <Image
             source={{ uri: privateImage, cache: "reload" }}
             style={s.privatePreview}
-            accessibilityLabel="Current private derivative fetched after an authenticated access check"
+            accessibilityLabel="Your private photo"
           />
           <Button
-            label="Close private derivative"
+            label="Close private photo"
             variant="quiet"
             onPress={() => setPrivateImage(null)}
           />
           <Text style={s.muted}>
-            Held in memory while displayed. Current access is checked on each
-            image fetch; removal cannot recall an existing screenshot.
+            {actor.role === "manager" ? "This preview is private. Choose Publish to share the photo with the team." : "Your photo is private to your account and team managers until it is approved."} A screenshot or a copy saved outside LongBall cannot be recalled.
           </Text>
         </>
       )}

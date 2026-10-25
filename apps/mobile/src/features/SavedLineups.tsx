@@ -17,6 +17,7 @@ import {
 import { activePositionCodes } from "@longball/application/position-catalogue";
 import { retainedPreparationPlayers } from "@longball/application/preparation-presentation";
 import { randomUUID } from "../platform/id";
+import { useDraftSignal } from "../platform/use-unsaved-draft";
 import { Button, Card, Notice, Pill, typography } from "../ui";
 import { useWorkspaceLayout, WorkspaceColumns } from "../ui/WorkspaceLayout";
 
@@ -36,6 +37,7 @@ export interface SavedLineupsProps {
   onCommand: (command: PreparationCommand) => Promise<boolean>;
   fixture?: PreparationFixture;
   onApplied?: (formationId: string) => void;
+  onDraftChange?: (dirty: boolean) => void;
 }
 /** Three simple team setups, independent of fixture creation and advanced match policy. */
 export function SavedLineups({
@@ -44,6 +46,7 @@ export function SavedLineups({
   onCommand,
   fixture,
   onApplied,
+  onDraftChange,
 }: SavedLineupsProps) {
   const { wide } = useWorkspaceLayout();
   const actionStyle = wide
@@ -61,6 +64,17 @@ export function SavedLineups({
   };
   const [editor, setEditor] = useState<SetupEditor | null>(null),
     [slotId, setSlotId] = useState<string | null>(null);
+  const [cleanEditor, setCleanEditor] = useState("");
+  const editorFingerprint = editor
+    ? JSON.stringify({
+        name: editor.name,
+        formationId: editor.formationId,
+        selectedPlayerIds: editor.selectedPlayerIds,
+        allocations: editor.allocations,
+      })
+    : "";
+  const dirty = editor !== null && editorFingerprint !== cleanEditor;
+  useDraftSignal(dirty, onDraftChange);
   const [review, setReview] = useState<ReturnType<
     typeof previewLineupTemplate
   > | null>(null);
@@ -100,7 +114,7 @@ export function SavedLineups({
         (item) => item.format === state.team.defaultPitchPlaces,
       ) ??
       formations[0];
-    setEditor({
+    const nextEditor: SetupEditor = {
       templateId: template?.id ?? randomUUID(),
       expectedTemplateVersion: template?.version ?? 0,
       sourceRevision: state.revision,
@@ -113,7 +127,16 @@ export function SavedLineups({
         ? template.allocations.map((row) => ({ ...row }))
         : [],
       step: 0,
-    });
+    };
+    setEditor(nextEditor);
+    setCleanEditor(
+      JSON.stringify({
+        name: nextEditor.name,
+        formationId: nextEditor.formationId,
+        selectedPlayerIds: nextEditor.selectedPlayerIds,
+        allocations: nextEditor.allocations,
+      }),
+    );
     setSlotId(null);
     setError(null);
     setNotice(null);
@@ -539,11 +562,12 @@ export function SavedLineups({
             <Button
               style={actionStyle}
               label={
-                stale
+                stale || dirty
                   ? "Discard setup draft and close"
-                  : "Keep saved setups; close draft"
+                  : "Close setup editor"
               }
               variant="quiet"
+              disabled={busy}
               onPress={() => {
                 setEditor(null);
                 setError(null);

@@ -24,6 +24,7 @@ export interface ConnectedManagerHomeProps {
   onOpenCommunity: () => void;
   onResumeMatch?: (matchId: string) => void;
   onPrepareMatch?: (fixtureId: string) => void;
+  onPrepareTraining?: (trainingId: string) => void;
 }
 const plural = (count: number, one: string, many = `${one}s`) =>
   `${count} ${count === 1 ? one : many}`;
@@ -60,8 +61,13 @@ function EventSummary({
               "availability reply",
               "availability replies",
             )}{" "}
-            outstanding · {plural(event.unrecordedCheckIns, "check-in")} not
-            recorded
+            outstanding
+            {event.kind === "match" && (
+              <>
+                {" "}
+                · {plural(event.unrecordedCheckIns, "check-in")} not recorded
+              </>
+            )}
           </Text>
           {event.kind === "match" && (
             <Pill tone={event.prepared ? "brand" : "warning"}>
@@ -88,6 +94,7 @@ export function ConnectedManagerHome({
   onOpenCommunity,
   onResumeMatch,
   onPrepareMatch,
+  onPrepareTraining,
 }: ConnectedManagerHomeProps) {
   const { wide } = useWorkspaceLayout();
   const cardStyle = [s.dashboardCard, wide && s.dashboardCardWide];
@@ -154,7 +161,9 @@ export function ConnectedManagerHome({
                 onPress={() =>
                   next.kind === "match" && onPrepareMatch
                     ? onPrepareMatch(next.id)
-                    : onOpenSchedule()
+                    : next.kind === "training" && onPrepareTraining
+                      ? onPrepareTraining(next.id)
+                      : onOpenSchedule()
                 }
               />
             </>

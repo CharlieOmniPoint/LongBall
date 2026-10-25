@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "README.md",
+      "bytes": 3178,
+      "sha256": "386e5cd8d5d11fbd3f7ce11b182c81119c374ffffdd49edee337ef16734d327c"
+    },
+    {
+      "path": "report.json",
+      "bytes": 6836,
+      "sha256": "25a7cb3fb23fe5906ef91dea48f702a36407eb2970188afe7a25e56bd238790d"
+    },
+    {
+      "path": "smoke-candidate6.json",
+      "bytes": 1795,
+      "sha256": "8c895030ce67a2f3353ffe49a1420d6406f69cd13fda0973676884ca5fc5dc91"
+    },
+    {
+      "path": "super-policy-phone.png",
+      "bytes": 62371,
+      "sha256": "53e61bba0923cc794ae4a5e9c9d1eecbeb396dec9c12e042d90a0635af87edc6"
+    },
+    {
+      "path": "super-activity-phone.png",
+      "bytes": 46188,
+      "sha256": "f45348392d5c8eec41412d318aba090bd56724e3a6ac4f8673dde8b9aebe0155"
+    },
+    {
+      "path": "super-clubs-1024-tablet.png",
+      "bytes": 63000,
+      "sha256": "acbcae705c2a4266f2c0477ade0a34b3b2ce8eb310a4d9d862bc3eb49edac2d5"
+    }
+  ]
+}

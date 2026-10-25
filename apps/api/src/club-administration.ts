@@ -11,6 +11,7 @@ import {
 } from "../../../packages/application/src/club-administration";
 import type { DevelopmentStore } from "./store";
 import type { PostgresStore } from "./postgres-store";
+import { demoAccountLabels } from "../../../packages/testing/src/index";
 
 export const ADMINISTRATION_SQLITE_DDL = `
 CREATE TABLE IF NOT EXISTS administration_grants(account_id TEXT NOT NULL REFERENCES accounts(id),scope_key TEXT NOT NULL,level TEXT NOT NULL CHECK(level IN('super','club')),club_id TEXT,PRIMARY KEY(account_id,scope_key),CHECK((level='super' AND club_id IS NULL AND scope_key='*') OR (level='club' AND club_id=scope_key)));
@@ -20,6 +21,11 @@ CREATE TABLE IF NOT EXISTS directory_teams(team_id TEXT PRIMARY KEY REFERENCES t
 `;
 type Source = DevelopmentStore | PostgresStore;
 const isPg = (source: Source): source is PostgresStore => "db" in source;
+/** Label-only adapter after authorisation; known review identities do not define production names. */
+export function administrationDisplayLabels(value: ClubAdministrationDto, principal: Pick<Principal, 'issuer'>): ClubAdministrationDto {
+  if (principal.issuer !== 'urn:longball:synthetic') return value;
+  return { ...value, candidates: value.candidates.map(candidate => ({ ...candidate, label: Object.hasOwn(demoAccountLabels, candidate.accountId) ? demoAccountLabels[candidate.accountId] : candidate.label })).sort((left, right) => left.label.localeCompare(right.label, 'en-GB') || left.accountId.localeCompare(right.accountId)) };
+}
 export function sqliteAdministration(
   source: DevelopmentStore,
   accountId: string,
@@ -80,9 +86,9 @@ export class ClubAdministrationService {
           404,
           "Club administration is unavailable.",
         );
-      return typeof row.value === "string"
+      return administrationDisplayLabels(typeof row.value === "string"
         ? JSON.parse(row.value)
-        : (row.value as ClubAdministrationDto);
+        : (row.value as ClubAdministrationDto), principal);
     }
     const db = this.source.database,
       scope = sqliteAdministration(this.source, principal.accountId);
@@ -123,14 +129,14 @@ export class ClubAdministrationService {
             )
             .all() as ClubAdministrationDto["candidates"])
         : [];
-    return {
+    return administrationDisplayLabels({
       kind: "club-administration",
       administration: scope,
       clubs,
       teams,
       administrators,
       candidates,
-    };
+    }, principal);
   }
   async authorizeCommand(principal: Principal, input: unknown): Promise<void> {
     const fresh = await this.source.principal({

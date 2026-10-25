@@ -5,6 +5,7 @@ import type {
   ScheduledGameManagementDto,
 } from "@longball/application/fixture-management";
 import { randomUUID } from "../platform/id";
+import { useDraftSignal } from "../platform/use-unsaved-draft";
 import { Button, Card, Notice, Pill, colors, typography } from "../ui";
 import { formatUkDate } from "@longball/application/uk-display";
 import { useWorkspaceLayout } from "../ui/WorkspaceLayout";
@@ -14,11 +15,13 @@ export function ScheduledGameManagement({
   busy = false,
   onCommand,
   fixtureId,
+  onDraftChange,
 }: {
   value: ScheduledGameManagementDto;
   busy?: boolean;
   fixtureId?: string;
   onCommand: (command: ScheduledGameCommand) => Promise<boolean>;
+  onDraftChange?: (dirty: boolean) => void;
 }) {
   const { wide } = useWorkspaceLayout();
   const [availableWidth, setAvailableWidth] = useState(0);
@@ -30,6 +33,8 @@ export function ScheduledGameManagement({
   const [saving, setSaving] = useState(false),
     [error, setError] = useState<string | null>(null);
   const disabled = busy || saving;
+  const dirty = review !== null && review.command.reason.length > 0;
+  useDraftSignal(dirty, onDraftChange);
   const fixtures = value.fixtures.filter(
     (item) => !fixtureId || item.id === fixtureId,
   );
@@ -236,7 +241,13 @@ export function ScheduledGameManagement({
               }}
             />
             <Button
-              label="Close review"
+              label={
+                review.sealed
+                  ? "Close reviewed decision"
+                  : dirty
+                    ? "Discard reason and close review"
+                    : "Close review"
+              }
               variant="quiet"
               testID="scheduled-game-close-review"
               disabled={disabled}

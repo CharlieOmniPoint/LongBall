@@ -1,4 +1,7 @@
-import { formatUkSeasonLabel } from "@longball/application/uk-display";
+import {
+  formatUkDateTime,
+  formatUkSeasonLabel,
+} from "@longball/application/uk-display";
 import { useEffect, useRef, useState } from "react";
 import { AppState, Text, TextInput, View } from "react-native";
 import {
@@ -46,6 +49,9 @@ function SpectatorPinSession({
     [confirmation, setConfirmation] = useState(""),
     [preview, setPreview] = useState<SpectatorInvitePreview | null>(null),
     [rules, setRules] = useState<SignInRules | null>(null),
+    [reviewAttempt, setReviewAttempt] = useState(0),
+    [reviewing, setReviewing] = useState(Boolean(invitation)),
+    [reviewError, setReviewError] = useState<string | null>(null),
     [busy, setBusy] = useState(false),
     [error, setError] = useState<string | null>(null);
   const operation = useRef<AbortController | null>(null),
@@ -70,28 +76,56 @@ function SpectatorPinSession({
   useEffect(() => {
     if (!invitationCode) return;
     const controller = new AbortController();
+    let timedOut = false;
+    const deadline = setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, 20_000);
     operation.current = controller;
-    void Promise.all([
-      previewSpectatorInvite(apiBaseUrl, invitationCode, controller.signal),
-      loadSpectatorSignInRules(apiBaseUrl, controller.signal),
-    ])
-      .then(([value, currentRules]) => {
+    void Promise.resolve()
+      .then(() => {
+        if (!mounted.current || controller.signal.aborted) return null;
+        setReviewing(true);
+        setReviewError(null);
+        setPreview(null);
+        setRules(null);
+        return Promise.all([
+          previewSpectatorInvite(apiBaseUrl, invitationCode, controller.signal),
+          loadSpectatorSignInRules(apiBaseUrl, controller.signal),
+        ]);
+      })
+      .then((reviewed) => {
+        if (!reviewed) return;
+        const [value, currentRules] = reviewed;
         if (mounted.current && !controller.signal.aborted) {
           setPreview(value);
           setRules(currentRules);
         }
       })
       .catch(() => {
-        if (mounted.current && !controller.signal.aborted)
-          setError(
-            "The invitation and current sign-in rules could not be reviewed. Ask for a current link, or sign in to your existing account.",
+        if (
+          mounted.current &&
+          operation.current === controller &&
+          (!controller.signal.aborted || timedOut)
+        )
+          setReviewError(
+            timedOut
+              ? "Checking this invitation took too long. Retry when connected."
+              : "We could not check this invitation. Retry when connected, or ask for a new link if it has expired.",
           );
       })
       .finally(() => {
-        if (operation.current === controller) operation.current = null;
+        clearTimeout(deadline);
+        if (operation.current === controller) {
+          operation.current = null;
+          if (mounted.current) setReviewing(false);
+        }
       });
-    return () => controller.abort();
-  }, [apiBaseUrl, invitationCode]);
+    return () => {
+      clearTimeout(deadline);
+      controller.abort();
+    };
+  }, [apiBaseUrl, invitationCode, reviewAttempt]);
   const suggestion =
     preview && rules && fullName.trim()
       ? suggestInitialUsername(preview.context.teamName, fullName, [], rules)
@@ -118,6 +152,11 @@ function SpectatorPinSession({
       }
     }
     const controller = new AbortController();
+    let timedOut = false;
+    const deadline = setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, 20_000);
     operation.current = controller;
     setBusy(true);
     const submittedPin = pin;
@@ -136,13 +175,23 @@ function SpectatorPinSession({
       });
       if (mounted.current && !controller.signal.aborted) onSignedIn(session);
     } catch (cause) {
-      if (mounted.current && !controller.signal.aborted)
+      if (mounted.current && (!controller.signal.aborted || timedOut)) {
+        const unconfirmed =
+          timedOut ||
+          cause instanceof TypeError ||
+          cause instanceof SyntaxError;
         setError(
-          cause instanceof Error
-            ? cause.message
-            : "Spectator sign-in could not be completed.",
+          unconfirmed
+            ? register
+              ? "Account creation was not confirmed. Retry with the same username and passcode, or sign in to your existing account."
+              : "Sign-in was not confirmed. Check your connection and try again."
+            : cause instanceof Error
+              ? cause.message
+              : "Spectator sign-in could not be completed.",
         );
+      }
     } finally {
+      clearTimeout(deadline);
       if (operation.current === controller) operation.current = null;
       if (mounted.current) setBusy(false);
     }
@@ -161,12 +210,43 @@ function SpectatorPinSession({
         {register ? "Join as a Spectator" : "Spectator sign in"}
       </Text>
       {preview && (
-        <Text style={typography.body} testID="spectator-pin-context">
-          {preview.context.clubName} · {invitationTeamLabel(preview.context)} ·{" "}
-          {preview.context.seasonLabel
-            ? formatUkSeasonLabel(preview.context.seasonLabel)
-            : ""}
+        <>
+          <Text style={typography.body} testID="spectator-pin-context">
+            {preview.context.clubName} · {invitationTeamLabel(preview.context)}{" "}
+            ·{" "}
+            {preview.context.seasonLabel
+              ? formatUkSeasonLabel(preview.context.seasonLabel)
+              : ""}
+          </Text>
+          {register && (
+            <Text style={typography.muted}>
+              Invitation valid until {formatUkDateTime(preview.expiresAt)} · UK
+              time
+            </Text>
+          )}
+        </>
+      )}
+      {reviewing && (
+        <Text
+          style={typography.muted}
+          accessibilityLiveRegion="polite"
+          testID="spectator-invitation-loading"
+        >
+          Checking your team invitation…
         </Text>
+      )}
+      {reviewError && <Notice tone="warning">{reviewError}</Notice>}
+      {invitation && !preview && !reviewing && (
+        <View style={{ alignSelf: "flex-start" }}>
+          <Button
+            label="Retry invitation"
+            testID="spectator-invitation-retry"
+            compact
+            variant="secondary"
+            disabled={busy}
+            onPress={() => setReviewAttempt((attempt) => attempt + 1)}
+          />
+        </View>
       )}
       <Text style={typography.body}>
         {register
@@ -265,6 +345,7 @@ function SpectatorPinSession({
         testID="spectator-pin-submit"
         disabled={
           busy ||
+          reviewing ||
           !enteredUsername.trim() ||
           pin.length !== 4 ||
           (register && (!preview || !rules || confirmation.length !== 4))

@@ -60,11 +60,11 @@ export function demoArtwork(kind) {
   return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk('IHDR', header), chunk('IDAT', deflateSync(raster)), chunk('IEND', Buffer.alloc(0))]);
 }
 
-export async function seedDemoMedia(baseURL) {
+export async function seedDemoMedia(baseURL, { fetch: requestFetch = fetch } = {}) {
   const base = new URL(baseURL);
   if (base.protocol !== 'http:' || !['127.0.0.1', 'localhost', '[::1]'].includes(base.hostname) || base.username || base.password || base.search || base.hash || base.pathname !== '/') throw new Error('Demo media bootstrap requires an explicit loopback API.');
   const request = async (route, { account = 'synthetic-account-manager', role = 'manager', method = 'GET', body, token, key } = {}) => {
-    const response = await fetch(new URL(route, base), { method, headers: {
+    const response = await requestFetch(new URL(route, base), { method, headers: {
       Authorization: `Bearer ${account}`, 'X-Longball-Role': role,
       ...(method !== 'GET' ? { 'X-Api-Contract-Version': contract, 'Idempotency-Key': key, 'Content-Type': body instanceof Uint8Array ? 'image/png' : 'application/json' } : {}),
       ...(token ? { 'X-Media-Upload-Token': token } : {}),
@@ -77,14 +77,14 @@ export async function seedDemoMedia(baseURL) {
   const examples = [
     { id: 'pitch', kind: 'pitch', account: 'synthetic-account-manager', role: 'manager', caption: 'Saturday at Rovers Sports Ground · sample illustration', publish: true },
     { id: 'cones', kind: 'cones', account: 'synthetic-account-manager', role: 'manager', caption: 'Ready for the next training session · sample illustration', publish: true },
-    { id: 'ball', kind: 'ball', account: 'synthetic-account-player-01', role: 'player', caption: 'Oliver’s matchday football · sample illustration', publish: false },
+    { id: 'ball', kind: 'ball', account: 'synthetic-account-player-01', role: 'player', caption: 'Matchday football · sample illustration', publish: false },
   ];
   let processed = 0;
   for (const example of examples) {
     const connection = { account: example.account, role: example.role };
     const current = await request(`${team}/community?seasonId=${seasonId}`, connection);
     if ([...current.gallery, ...current.submissions].some((photo) => photo.caption === example.caption)) continue;
-    const bytes = demoArtwork(example.kind), key = `demo-media-${example.id}-v1`;
+    const bytes = demoArtwork(example.kind), key = `demo-media-${example.id}-${example.id === 'ball' ? 'v2' : 'v1'}`;
     const prepared = await request(`${team}/media/uploads/prepare?seasonId=${seasonId}`, { ...connection, method: 'POST', key, body: {
       matchId, byteSize: bytes.length, mimeType: 'image/png', sha256: createHash('sha256').update(bytes).digest('hex'), caption: example.caption, policyAcknowledged: true,
     } });

@@ -10,6 +10,7 @@ import type {
   PreparationState,
 } from "@longball/application/preparation";
 import { randomUUID } from "../platform/id";
+import { useDraftSignal } from "../platform/use-unsaved-draft";
 import {
   createRosterXls,
   previewRosterXls,
@@ -25,11 +26,13 @@ export function RosterImportPanel({
   busy = false,
   onImport,
   onProformaImport,
+  onDraftChange,
 }: {
   state: PreparationState;
   busy?: boolean;
   onImport: (profiles: PlayerProfile[]) => Promise<boolean>;
   onProformaImport?: (profiles: PlayerProfile[]) => Promise<boolean>;
+  onDraftChange?: (dirty: boolean) => void;
 }) {
   const [excel, setExcel] = useState(false);
   const [open, setOpen] = useState(false),
@@ -39,6 +42,8 @@ export function RosterImportPanel({
     [saving, setSaving] = useState(false),
     [status, setStatus] = useState<string | null>(null);
   const disabled = busy || saving;
+  const dirty = open && (csv.length > 0 || preview !== null);
+  useDraftSignal(dirty, onDraftChange);
   const close = () => {
     setOpen(false);
     setExcel(false);
@@ -87,7 +92,7 @@ export function RosterImportPanel({
           testID="roster-xls-import"
           compact
           variant="secondary"
-          disabled={disabled}
+          disabled={disabled || dirty}
           onPress={() => {
             setSaving(true);
             setStatus(null);
@@ -271,7 +276,9 @@ export function RosterImportPanel({
             </View>
           )}
           <Button
-            label="Close roster import"
+            label={
+              dirty ? "Discard roster import and close" : "Close roster import"
+            }
             variant="quiet"
             disabled={disabled}
             onPress={close}

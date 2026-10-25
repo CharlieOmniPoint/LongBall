@@ -789,7 +789,7 @@ async function staleProfileRegression(state) {
   await page.getByRole('button', { name: `Edit ${profile.displayName}`, exact: true }).click();
   check(await page.getByLabel('Player display name', { exact: true }).inputValue() === profile.displayName, 'Discard and reopen must show the current saved profile name.');
   check(await page.getByRole('radio', { name: `Preferred foot: ${remoteFoot === 'both' ? 'Both' : 'Right'}`, exact: true }).getAttribute('aria-checked') === 'true', 'The independently updated foot must be exposed as the checked radio after discard and reopen.');
-  await page.getByRole('button', { name: 'Keep previous values', exact: true }).click();
+  await page.getByRole('button', { name: 'Close without saving', exact: true }).click();
   report.staleProfile = { actualRejectedStatus: 422, originalDraftRetained: true, explicitRefreshBlocksStaleForm: true, automaticWriteCount: 0, newerFootPreserved: true, unsavedNameNotPublished: true, discardAndReopenCurrent: true };
   checks.push('Actual concurrent profile-field change rejects a stale full-form save; explicit refresh retains the draft but blocks saving at its original revision, and discard/reopen reveals the newer saved field without publishing the unsaved name.');
 }

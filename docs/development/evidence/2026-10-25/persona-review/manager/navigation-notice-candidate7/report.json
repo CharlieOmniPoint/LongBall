@@ -1,0 +1,35 @@
+{
+  "persona": "manager",
+  "phase": "final",
+  "startedAt": "2026-10-25T22:55:43.490Z",
+  "scope": "Actual compiled UI and isolated SQLite API/worker; only discovery and virtual transport are redirected to owned loopback processes. Generated accounts, not public demo credentials.",
+  "checks": [
+    "Normal team-header navigation blocks a dirty draft; explicit Discard permits Home and the resolved draft guard warning clears."
+  ],
+  "findings": [],
+  "failures": [],
+  "httpFailures": [],
+  "transportErrors": [],
+  "pageErrors": [],
+  "screenshots": [],
+  "passed": true,
+  "source": {
+    "gitHead": "0961d1eb438ac2be591e71e6b3a92442aa72e38a",
+    "workingTreeDirty": true,
+    "webScriptSha256": "a2b86b6642ba5d1a9ee4c08199f84663c3e02c43b1934aaade92f1326f812fdb",
+    "serverBundleSha256": "7e6a4fc28acac0d106ca98e5a3955f2d06932d8da7d3fe99cef7c45ca3a1c3e4",
+    "workerBundleSha256": "b9077f122adf3b1bc6122df9beaf5610f1ea2928c852c1da4280619cf05a45f5",
+    "helperSha256": "6a9da668a2d0fe88245328f3df167f6da815917c90634d66e5a1288fde751698"
+  },
+  "physicalDeviceTested": false,
+  "publicCredentialsUsed": false,
+  "paidServicesProvisioned": false,
+  "navigationNotice": {
+    "draftGuardShown": true,
+    "draftExplicitlyDiscarded": true,
+    "allowedHomeReached": true,
+    "staleGuardBannerRemains": false
+  },
+  "artifactsStable": true,
+  "finishedAt": "2026-10-25T22:55:49.420Z"
+}

@@ -4,6 +4,10 @@ Native iPhone and Android team management, with a phone/tablet browser demo shar
 
 The demo includes Super Admin, Club Admin, Manager, Player/household and Spectator journeys; club/team administration, preparation, attendance, formations and lineup advice, manual match clocks, substitution alerts, goals/corrections, fair-time planning, reports, training, results, invitations, roster imports, FA records, private awards and moderated albums. Roma U10 contains the owner's eight selected demo players and four fixtures: two completed and two scheduled. Training remains separate. Initial user access stays free.
 
+## Five-persona review
+
+The current development source simplifies Spectator/Player journeys, adds useful Account/Help/Privacy views, protects staff drafts and same-account recovery, preserves custom formations, improves scoped team/staff/report navigation, compacts phone/tablet squad choices, and fixes verified photo upload and recording for newly created demo games. [Persona evidence and remaining gates](docs/development/evidence/2026-10-25/persona-review/README.md) distinguish full role journeys, later targeted regressions and unchanged credentials. Local acceptance is complete; publication and final native/cloud checks are being recorded separately.
+
 ## Review
 
 Open [LongBall](https://charlieomnipoint.github.io/LongBall/?review=f31b823) → **Sign in** with the unchanged supplied username and password/passcode. Account details remain outside app screens and repository documentation. See [current review status](docs/development/review.md) and [account setup](docs/development/demo-accounts.md).

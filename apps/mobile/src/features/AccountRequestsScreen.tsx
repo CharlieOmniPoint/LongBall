@@ -1,5 +1,5 @@
-import { formatUkDateTime } from '@longball/application/uk-display';
-import { useEffect, useState } from "react";
+import { formatUkDateTime } from "@longball/application/uk-display";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import type {
   PrivacyAffectedMembership,
@@ -53,6 +53,31 @@ function AccountRequestsContent({
   onClose?: () => void;
 }) {
   const [client] = useState(() => connectedAccountRequestsClient(session));
+  return (
+    <AccountRequestsPanel
+      client={client}
+      locked={session.locked || session.expired}
+      identityClassification={session.identityClassification}
+      onClose={onClose}
+    />
+  );
+}
+export function AccountRequestsPanel({
+  client,
+  locked = false,
+  identityClassification = "unclassified",
+  onClose,
+  onRetainedChange,
+  membershipLabels,
+}: {
+  client: ReturnType<typeof connectedAccountRequestsClient>;
+  locked?: boolean;
+  identityClassification?: "child_shared" | "adult_individual" | "unclassified";
+  onClose?: () => void;
+  onRetainedChange?: (retained: boolean) => void;
+  membershipLabels?: Readonly<Record<string, string>>;
+}) {
+  const [showReferences, setShowReferences] = useState(false);
   const [state, setState] = useState<AccountRequestsState>(() =>
     client.getState(),
   );
@@ -66,6 +91,10 @@ function AccountRequestsContent({
     seasonId: string;
   } | null>(null);
   const [confirmed, setConfirmed] = useState(false);
+  const running = useRef(false);
+  useLayoutEffect(() => {
+    onRetainedChange?.(busy || Boolean(state.pending));
+  }, [onRetainedChange, state.pending, busy]);
   useEffect(() => {
     let active = true;
     void client
@@ -95,13 +124,16 @@ function AccountRequestsContent({
     };
   }, [client]);
   async function run(work: () => Promise<AccountRequestsState>) {
-    if (busy) return;
+    if (busy || running.current) return;
+    running.current = true;
+    onRetainedChange?.(true);
     setBusy(true);
     setError(null);
     setNotice(null);
     setConfirmed(false);
     try {
       const next = await work();
+      setBlocked(false);
       setState(next);
       if (next.resolvedRequest)
         setNotice(
@@ -124,6 +156,7 @@ function AccountRequestsContent({
       )
         setBlocked(true);
     } finally {
+      running.current = false;
       setBusy(false);
     }
   }
@@ -158,6 +191,7 @@ function AccountRequestsContent({
           <Button
             label="Close account requests"
             variant="quiet"
+            disabled={busy || Boolean(state.pending)}
             onPress={onClose}
           />
         )}
@@ -169,11 +203,21 @@ function AccountRequestsContent({
       </Notice>
       {error && <Notice tone="error">{error}</Notice>}
       {notice && <Notice>{notice}</Notice>}
-      {blocked || session.locked || session.expired ? (
-        <Notice tone="warning">
-          Unlock or sign in again to review this account’s requests. Private
-          request data is hidden.
-        </Notice>
+      {blocked || locked ? (
+        <View style={s.stack}>
+          <Notice tone="warning">
+            Unlock or sign in again to review this account’s requests. Private
+            request data is hidden.
+          </Notice>
+          {!locked && (
+            <Button
+              label="Check current account access"
+              testID="account-requests-recheck"
+              disabled={busy}
+              onPress={() => void run(() => client.refresh())}
+            />
+          )}
+        </View>
       ) : (
         <>
           <Button
@@ -190,11 +234,24 @@ function AccountRequestsContent({
           {snapshot && (
             <>
               <Card>
-                <Text style={s.section}>Requesting global account</Text>
-                <Text selectable style={s.body}>
-                  {snapshot.accountId}
-                </Text>
-                {session.identityClassification === "child_shared" && (
+                <Text style={s.section}>Your account</Text>
+                <Button
+                  label={
+                    showReferences
+                      ? "Hide technical references"
+                      : "Show technical references"
+                  }
+                  compact
+                  variant="quiet"
+                  accessibilityState={{ expanded: showReferences }}
+                  onPress={() => setShowReferences((value) => !value)}
+                />
+                {showReferences && (
+                  <Text selectable style={s.small}>
+                    {snapshot.accountId}
+                  </Text>
+                )}
+                {identityClassification === "child_shared" && (
                   <Notice>
                     This is a shared household/player account. A request is
                     attributed to this account; LongBall does not identify which
@@ -205,7 +262,11 @@ function AccountRequestsContent({
                   All memberships recorded for this account, including expired
                   and revoked access:
                 </Text>
-                <Memberships memberships={snapshot.memberships} />
+                <Memberships
+                  memberships={snapshot.memberships}
+                  labels={membershipLabels}
+                  showReferences={showReferences || !membershipLabels}
+                />
               </Card>
               <Card>
                 <Text style={s.section}>
@@ -221,6 +282,7 @@ function AccountRequestsContent({
                           key={choice}
                           label={`${kind === choice ? "Selected: " : ""}${label(choice)}`}
                           variant={kind === choice ? "primary" : "secondary"}
+                          accessibilityState={{ selected: kind === choice }}
                           disabled={busy}
                           onPress={() => {
                             setKind(choice);
@@ -242,8 +304,13 @@ function AccountRequestsContent({
                           choices.map((choice) => (
                             <Button
                               key={JSON.stringify(choice)}
-                              label={`${selected?.teamId === choice.teamId && selected.seasonId === choice.seasonId ? "Selected: " : ""}${choice.teamId} · ${choice.seasonId}`}
+                              label={`${selected?.teamId === choice.teamId && selected.seasonId === choice.seasonId ? "Selected: " : ""}${membershipLabels?.[`${choice.teamId}:${choice.seasonId}`] ?? (showReferences || !membershipLabels ? `${choice.teamId} · ${choice.seasonId}` : "Team and season details unavailable")}`}
                               variant="secondary"
+                              accessibilityState={{
+                                selected:
+                                  selected?.teamId === choice.teamId &&
+                                  selected.seasonId === choice.seasonId,
+                              }}
                               disabled={busy}
                               onPress={() => {
                                 setSelected(choice);
@@ -266,10 +333,14 @@ function AccountRequestsContent({
                     <Text style={s.section}>{label(input.kind)}</Text>
                     <Text style={s.body}>
                       {input.kind === "leave_team"
-                        ? `Scope: ${input.teamId} · ${input.seasonId}. This request covers only the current memberships shown below. It does not delete the global account or remove access elsewhere.`
+                        ? `Scope: ${membershipLabels?.[`${input.teamId}:${input.seasonId}`] ?? (showReferences || !membershipLabels ? `${input.teamId} · ${input.seasonId}` : "the selected team and season")}. This request covers only the current memberships shown below. It does not delete the global account or remove access elsewhere.`
                         : "Scope: this global LongBall account across every team and season, including the recorded memberships below. Leaving one team or removing one spectator access grant is a separate action."}
                     </Text>
-                    <Memberships memberships={affected} />
+                    <Memberships
+                      memberships={affected}
+                      labels={membershipLabels}
+                      showReferences={showReferences || !membershipLabels}
+                    />
                     <Notice tone="warning">
                       {input.kind === "export"
                         ? "An account rights export needs identity verification and third-party review. No export file is generated or delivered by submitting this request."
@@ -364,7 +435,12 @@ function AccountRequestsContent({
                 [...snapshot.items]
                   .reverse()
                   .map((request) => (
-                    <Request key={request.requestId} value={request} />
+                    <Request
+                      key={request.requestId}
+                      value={request}
+                      labels={membershipLabels}
+                      showReferences={showReferences || !membershipLabels}
+                    />
                   ))
               ) : (
                 <Notice>
@@ -380,8 +456,12 @@ function AccountRequestsContent({
 }
 function Memberships({
   memberships,
+  labels,
+  showReferences = true,
 }: {
   memberships: PrivacyAffectedMembership[] | null;
+  labels?: Readonly<Record<string, string>>;
+  showReferences?: boolean;
 }) {
   return memberships === null ? (
     <Notice>
@@ -402,11 +482,13 @@ function Memberships({
           style={s.membership}
         >
           <Text style={s.body}>
-            {membership.teamId} · {membership.seasonId}
+            {labels?.[`${membership.teamId}:${membership.seasonId}`] ??
+              (showReferences
+                ? `${membership.teamId} · ${membership.seasonId}`
+                : "Earlier team or season")}
           </Text>
           <Text style={s.small}>
             {membership.role} · {membership.status}
-            {membership.playerId ? ` · player ${membership.playerId}` : ""}
           </Text>
         </View>
       ))}
@@ -415,16 +497,26 @@ function Memberships({
     <Text style={s.small}>No memberships in this recorded scope.</Text>
   );
 }
-function Request({ value }: { value: PrivacyRequestDto }) {
+function Request({
+  value,
+  labels,
+  showReferences = true,
+}: {
+  value: PrivacyRequestDto;
+  labels?: Readonly<Record<string, string>>;
+  showReferences?: boolean;
+}) {
   return (
     <Card>
       <View style={s.between}>
         <Text style={s.section}>{label(value.kind)}</Text>
         <Pill tone="muted">Pending</Pill>
       </View>
-      <Text selectable style={s.small}>
-        Reference {value.requestId}
-      </Text>
+      {showReferences && (
+        <Text selectable style={s.small}>
+          Reference {value.requestId}
+        </Text>
+      )}
       <Text style={s.small}>
         Recorded {formatUkDateTime(value.createdAtMs)}
       </Text>
@@ -432,17 +524,21 @@ function Request({ value }: { value: PrivacyRequestDto }) {
         {value.reviewStatus === "needs_scope"
           ? "Scope needs verification: this earlier request did not retain a known team and season. No scope has been guessed or approved."
           : value.reviewStatus === "duplicate_requires_review"
-            ? `Retained duplicate history requires service review. Related reference ${value.duplicateOfRequestId}.`
+            ? `Retained duplicate history requires service review.${showReferences ? ` Related reference ${value.duplicateOfRequestId}.` : ""}`
             : "Pending identity verification and the agreed data policy."}
       </Text>
       <Text style={s.small}>
         {value.scope?.type === "team_season"
-          ? `Selected team and season: ${value.scope.teamId} · ${value.scope.seasonId}`
+          ? `Selected team and season: ${labels?.[`${value.scope.teamId}:${value.scope.seasonId}`] ?? (showReferences ? `${value.scope.teamId} · ${value.scope.seasonId}` : "Earlier team or season")}`
           : value.scope?.type === "all_memberships"
             ? "Global account scope: all memberships"
             : "Original scope not recorded"}
       </Text>
-      <Memberships memberships={value.affectedMemberships} />
+      <Memberships
+        memberships={value.affectedMemberships}
+        labels={labels}
+        showReferences={showReferences}
+      />
       <Text style={s.small}>
         Fulfilment has not occurred. Nothing has been erased and memberships
         remain unchanged by this request.

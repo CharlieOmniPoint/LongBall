@@ -1,14 +1,22 @@
-import { FormationDesigner } from './FormationDesigner';
-import { FormationAdvice } from './FormationAdvice';
-import { TeamLeagueEditor } from './TeamDetailsEditors';
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { FormationDesigner } from "./FormationDesigner";
+import { FormationAdvice } from "./FormationAdvice";
+import { TeamLeagueEditor } from "./TeamDetailsEditors";
 import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
+import {
+  Platform,
   Pressable,
   StyleSheet,
   Switch,
   Text,
   TextInput,
   View,
+  type KeyDownEvent,
 } from "react-native";
 import {
   defaultFormation,
@@ -56,12 +64,20 @@ import { ReusableMatchPlans } from "./ReusableMatchPlans";
 import { SavedLineups } from "./SavedLineups";
 import { useWorkspaceLayout, WorkspaceColumns } from "../ui/WorkspaceLayout";
 import { randomUUID } from "../platform/id";
+import { useDraftSignal, useUnsavedDraft } from "../platform/use-unsaved-draft";
 import { Button, Card, colors, Icon, Notice, Pill } from "../ui";
 
 export interface PreparationScreensProps {
   brandingPanel?: ReactNode;
-  renderScheduledGameManagement?: (fixtureId: string) => ReactNode;
+  renderScheduledGameManagement?: (
+    fixtureId: string,
+    onDraftChange?: (dirty: boolean) => void,
+  ) => ReactNode;
   initialFixtureId?: string;
+  initialTrainingId?: string;
+  initialScheduleFilter?: "matches" | "training";
+  onDraftChange?: (dirty: boolean) => void;
+  createFixtureId?: () => string;
   state: PreparationState;
   onChange: (command: PreparationCommand) => Promise<boolean> | boolean;
   view: "schedule" | "team" | "settings";
@@ -153,7 +169,7 @@ async function exportLocalPreparationCalendar(
 export function PreparationScreens(props: PreparationScreensProps) {
   return (
     <PreparationContent
-      key={`${props.view}:${props.state.activeSeasonId}`}
+      key={`${props.state.club.id}:${props.state.team.id}:${props.view}:${props.state.activeSeasonId}`}
       {...props}
     />
   );
@@ -175,23 +191,32 @@ function PreparationContent({
   onExportCalendar,
   renderScheduledGameManagement,
   initialFixtureId,
+  initialTrainingId,
+  initialScheduleFilter,
+  onDraftChange,
+  createFixtureId,
 }: PreparationScreensProps) {
   const [observedAt] = useState(() => Date.now());
   const [editor, setOpenEditor] = useState<OpenEditor | null>(null);
-  const setEditor = (value: Editor) =>
-    setOpenEditor(value ? { ...value, sourceRevision: state.revision } : null);
   const [selectedEvent, setSelectedEvent] = useState<{
     kind: "match" | "training";
     id: string;
   } | null>(() =>
-    initialFixtureId &&
-    state.fixtures.some(
-      (fixture) =>
-        fixture.id === initialFixtureId &&
-        fixture.seasonId === state.activeSeasonId,
+    initialTrainingId &&
+    state.training.some(
+      (training) =>
+        training.id === initialTrainingId &&
+        training.seasonId === state.activeSeasonId,
     )
-      ? { kind: "match", id: initialFixtureId }
-      : null,
+      ? { kind: "training", id: initialTrainingId }
+      : initialFixtureId &&
+          state.fixtures.some(
+            (fixture) =>
+              fixture.id === initialFixtureId &&
+              fixture.seasonId === state.activeSeasonId,
+          )
+        ? { kind: "match", id: initialFixtureId }
+        : null,
   );
   const routeScope = JSON.stringify([state.team.id, state.activeSeasonId]);
   const previousRouteScope = useRef(routeScope),
@@ -204,26 +229,79 @@ function PreparationContent({
           fixture.seasonId === state.activeSeasonId,
       ),
   );
+  const routedTrainingExists = Boolean(
+    initialTrainingId &&
+      state.training.some(
+        (training) =>
+          training.id === initialTrainingId &&
+          training.seasonId === state.activeSeasonId,
+      ),
+  );
+  const [tab, setTab] = useState<"matches" | "training">(
+    initialScheduleFilter ?? (initialTrainingId ? "training" : "matches"),
+  );
   useEffect(() => {
     if (previousRouteScope.current !== routeScope) {
       previousRouteScope.current = routeScope;
       setSelectedEvent(null);
     }
-    if (!initialFixtureId) {
+    const target =
+      routedTrainingExists && initialTrainingId
+        ? { kind: "training" as const, id: initialTrainingId }
+        : routedFixtureExists && initialFixtureId
+          ? { kind: "match" as const, id: initialFixtureId }
+          : null;
+    if (!target) {
       handledOverviewRoute.current = null;
       return;
     }
-    const route = JSON.stringify([routeScope, initialFixtureId]);
-    if (routedFixtureExists && handledOverviewRoute.current !== route) {
+    const route = JSON.stringify([routeScope, target.kind, target.id]);
+    if (handledOverviewRoute.current !== route) {
       handledOverviewRoute.current = route;
-      setSelectedEvent({ kind: "match", id: initialFixtureId });
+      setSelectedEvent(target);
+      setTab(target.kind === "training" ? "training" : "matches");
     }
-  }, [routeScope, initialFixtureId, routedFixtureExists]);
-  const [tab, setTab] = useState<"matches" | "training">("matches");
+  }, [
+    routeScope,
+    initialFixtureId,
+    initialTrainingId,
+    routedFixtureExists,
+    routedTrainingExists,
+  ]);
   const [period, setPeriod] = useState<"upcoming" | "past">("upcoming");
   const [localError, setLocalError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [squadTools, setSquadTools] = useState(false);
+  const [editorDirty, setEditorDirty] = useState(false),
+    [formationDirty, setFormationDirty] = useState(false);
+  const [setupsDirty, setSetupsDirty] = useState(false),
+    [rosterDirty, setRosterDirty] = useState(false),
+    [fixtureDirty, setFixtureDirty] = useState(false),
+    [leagueDirty, setLeagueDirty] = useState(false),
+    [scheduledDirty, setScheduledDirty] = useState(false);
+  const anyDirty =
+    editorDirty ||
+    formationDirty ||
+    setupsDirty ||
+    rosterDirty ||
+    fixtureDirty ||
+    leagueDirty ||
+    scheduledDirty;
+  const setEditor = (value: Editor) => {
+    if (value && anyDirty) {
+      setLocalError(
+        "Save or discard the current draft before opening another editor.",
+      );
+      return;
+    }
+    setOpenEditor(value ? { ...value, sourceRevision: state.revision } : null);
+  };
+  const draftChange = useRef(onDraftChange);
+  useLayoutEffect(() => {
+    draftChange.current = onDraftChange;
+    onDraftChange?.(anyDirty);
+  }, [onDraftChange, anyDirty]);
+  useLayoutEffect(() => () => draftChange.current?.(false), []);
   const players = seasonPlayers(state);
   const season = state.seasons.find(
     (item) => item.id === state.activeSeasonId,
@@ -289,7 +367,7 @@ function PreparationContent({
       ? state.training.find((item) => item.id === selectedEvent.id)
       : undefined;
   const newFixture = (): FixtureDraft => ({
-    id: randomUUID(),
+    id: createFixtureId?.() ?? randomUUID(),
     seasonId: season.id,
     opponent: "",
     playedDate: nextDate(state),
@@ -315,7 +393,7 @@ function PreparationContent({
   );
   const scheduleList = (
     <View style={s.stack} testID="preparation-schedule-list">
-      {editor && (
+      {(editor || anyDirty) && (
         <Text style={s.small}>
           Finish or close this draft before choosing another event.
         </Text>
@@ -328,7 +406,7 @@ function PreparationContent({
           label="Create weekly training series"
           testID="training-series-create"
           variant="secondary"
-          disabled={disabled || Boolean(editor)}
+          disabled={disabled || Boolean(editor) || anyDirty}
           onPress={() =>
             setEditor({
               type: "training_series",
@@ -378,7 +456,7 @@ function PreparationContent({
       <Button
         label={tab === "matches" ? "Create fixture" : "Add training occurrence"}
         icon="calendar"
-        disabled={disabled || Boolean(editor)}
+        disabled={disabled || Boolean(editor) || anyDirty}
         onPress={() =>
           setEditor(
             tab === "matches"
@@ -398,8 +476,10 @@ function PreparationContent({
               <Pressable
                 key={event.id}
                 accessibilityRole="button"
-                accessibilityState={{ disabled: disabled || Boolean(editor) }}
-                disabled={disabled || Boolean(editor)}
+                accessibilityState={{
+                  disabled: disabled || Boolean(editor) || anyDirty,
+                }}
+                disabled={disabled || Boolean(editor) || anyDirty}
                 accessibilityLabel={`Open fixture ${event.opponent}, ${dateLabel(event.playedDate)}`}
                 onPress={() =>
                   setSelectedEvent({ kind: "match", id: event.id })
@@ -446,8 +526,10 @@ function PreparationContent({
               <Pressable
                 key={event.id}
                 accessibilityRole="button"
-                accessibilityState={{ disabled: disabled || Boolean(editor) }}
-                disabled={disabled || Boolean(editor)}
+                accessibilityState={{
+                  disabled: disabled || Boolean(editor) || anyDirty,
+                }}
+                disabled={disabled || Boolean(editor) || anyDirty}
                 accessibilityLabel={`Open training ${dateLabel(event.date)}`}
                 onPress={() =>
                   setSelectedEvent({ kind: "training", id: event.id })
@@ -547,6 +629,7 @@ function PreparationContent({
                   <Button
                     label="Discard draft and close"
                     variant="secondary"
+                    disabled={disabled}
                     onPress={close}
                     testID="preparation-discard-stale-draft"
                   />
@@ -554,6 +637,7 @@ function PreparationContent({
               )}
               {editor.type === "profile" && (
                 <ProfileForm
+                  onDraftChange={setEditorDirty}
                   state={state}
                   profile={editor.value}
                   disabled={formDisabled}
@@ -565,6 +649,7 @@ function PreparationContent({
               )}
               {editor.type === "fixture" && (
                 <FixtureForm
+                  onDraftChange={setEditorDirty}
                   fixture={editor.value}
                   disabled={formDisabled}
                   onSubmit={(fixture) =>
@@ -575,6 +660,7 @@ function PreparationContent({
               )}
               {editor.type === "training" && (
                 <TrainingForm
+                  onDraftChange={setEditorDirty}
                   training={editor.value}
                   players={retainedPreparationPlayers(
                     state,
@@ -590,6 +676,7 @@ function PreparationContent({
               )}
               {editor.type === "training_series" && (
                 <TrainingSeriesEditor
+                  onDraftChange={setEditorDirty}
                   state={state}
                   training={editor.value}
                   mode={editor.mode}
@@ -601,6 +688,7 @@ function PreparationContent({
               )}
               {editor.type === "formation" && (
                 <FormationForm
+                  onDraftChange={setEditorDirty}
                   state={state}
                   formation={editor.value}
                   disabled={formDisabled}
@@ -612,6 +700,7 @@ function PreparationContent({
               )}
               {editor.type === "positions" && (
                 <PositionCatalogueForm
+                  onDraftChange={setEditorDirty}
                   state={state}
                   disabled={formDisabled}
                   onSave={(position) =>
@@ -625,6 +714,7 @@ function PreparationContent({
               )}
               {editor.type === "club" && (
                 <ClubForm
+                  onDraftChange={setEditorDirty}
                   state={state}
                   disabled={formDisabled}
                   onSubmit={(name, logo) =>
@@ -635,6 +725,7 @@ function PreparationContent({
               )}
               {editor.type === "team" && (
                 <TeamForm
+                  onDraftChange={setEditorDirty}
                   state={state}
                   disabled={formDisabled}
                   allowPresetLogo={storage !== "service"}
@@ -644,6 +735,7 @@ function PreparationContent({
               )}
               {editor.type === "rollover" && (
                 <RolloverForm
+                  onDraftChange={setEditorDirty}
                   state={state}
                   disabled={formDisabled}
                   onSubmit={(payload) => commit(payload, true)}
@@ -657,11 +749,14 @@ function PreparationContent({
                 label="Back to schedule"
                 icon="left"
                 variant="quiet"
+                disabled={disabled || anyDirty}
                 onPress={() => setSelectedEvent(null)}
               />
               <FixtureDetail
+                onDraftChange={setFixtureDirty}
                 scheduledGameManagement={renderScheduledGameManagement?.(
                   selectedFixture.id,
+                  setScheduledDirty,
                 )}
                 fixture={selectedFixture}
                 state={state}
@@ -688,6 +783,7 @@ function PreparationContent({
                 label="Back to schedule"
                 icon="left"
                 variant="quiet"
+                disabled={disabled || anyDirty}
                 onPress={() => setSelectedEvent(null)}
               />
               <TrainingDetail
@@ -729,23 +825,34 @@ function PreparationContent({
                 unchanged.
               </Text>
               <SavedLineups
+                onDraftChange={setSetupsDirty}
                 state={state}
                 busy={disabled}
                 onCommand={(command) => commit(command, false, command)}
               />
               <Button
                 label={
-                  squadTools ? "Hide squad tools" : "Squad tools and Excel import"
+                  squadTools
+                    ? "Hide squad tools"
+                    : "Squad tools and Excel import"
                 }
                 variant="quiet"
+                disabled={disabled || rosterDirty}
                 onPress={() => setSquadTools((value) => !value)}
                 testID="squad-tools-toggle"
               />
               {squadTools && (
                 <RosterImportPanel
+                  onDraftChange={setRosterDirty}
                   state={state}
                   busy={disabled}
-                  onProformaImport={profiles => commit({type:"roster.proforma_imported",profiles,confirmChanges:true})}
+                  onProformaImport={(profiles) =>
+                    commit({
+                      type: "roster.proforma_imported",
+                      profiles,
+                      confirmChanges: true,
+                    })
+                  }
                   onImport={(profiles) =>
                     commit({
                       type: "roster.imported",
@@ -914,8 +1021,21 @@ function PreparationContent({
           ) : (
             <>
               {storage === "service" && brandingPanel}
-              <TeamLeagueEditor value={state.team.league} disabled={disabled} onSave={league => commit({type:"team.league_updated",league})} />
-              <FormationDesigner state={state} onChange={onChange} busy={disabled} error={error} />
+              <TeamLeagueEditor
+                value={state.team.league}
+                disabled={disabled}
+                onDraftChange={setLeagueDirty}
+                onSave={(league) =>
+                  commit({ type: "team.league_updated", league })
+                }
+              />
+              <FormationDesigner
+                state={state}
+                onChange={onChange}
+                busy={disabled}
+                error={error}
+                onDraftChange={setFormationDirty}
+              />
               <Card>
                 <View style={s.between}>
                   <View style={s.flex}>
@@ -1098,17 +1218,21 @@ function Choice<Value extends string>({
   options,
   onChange,
   disabled = false,
+  compact = false,
+  visibleLabel,
 }: {
   label: string;
   value: Value;
   options: { value: Value; label: string }[];
   onChange: (value: Value) => void;
   disabled?: boolean;
+  compact?: boolean;
+  visibleLabel?: string;
 }) {
   return (
-    <View style={s.field}>
-      <Text style={s.label}>{label}</Text>
-      <View style={s.choices}>
+    <View style={[s.field, compact && s.compactChoiceField]}>
+      <Text style={s.label}>{visibleLabel ?? label}</Text>
+      <View style={[s.choices, compact && s.compactChoices]}>
         {options.map((option) => (
           <Pressable
             key={option.value}
@@ -1119,11 +1243,28 @@ function Choice<Value extends string>({
             aria-disabled={disabled}
             disabled={disabled}
             onPress={() => onChange(option.value)}
-            style={[s.choice, value === option.value && s.choiceSelected]}
+            {...(Platform.OS === "web"
+              ? {
+                  onKeyDown: (event: KeyDownEvent) => {
+                    // RN Web activates radio roles with Enter, but leaves Space to scrolling.
+                    const { key, repeat } = event.nativeEvent;
+                    if (key !== " " && key !== "Spacebar") return;
+                    event.preventDefault();
+                    event.stopPropagation();
+                    if (!disabled && !repeat) onChange(option.value);
+                  },
+                }
+              : {})}
+            style={[
+              s.choice,
+              compact && s.compactChoice,
+              value === option.value && s.choiceSelected,
+            ]}
           >
             <Text
               style={[
                 s.choiceText,
+                compact && s.compactChoiceText,
                 value === option.value && s.choiceSelectedText,
               ]}
             >
@@ -1140,11 +1281,13 @@ function Toggle({
   value,
   onChange,
   disabled = false,
+  visibleLabel,
 }: {
   label: string;
   value: boolean;
   onChange: (value: boolean) => void;
   disabled?: boolean;
+  visibleLabel?: string;
 }) {
   return (
     <View style={[s.row, { minHeight: 48 }]}>
@@ -1155,7 +1298,7 @@ function Toggle({
         onValueChange={onChange}
         disabled={disabled}
       />
-      <Text style={[s.body, s.flex]}>{label}</Text>
+      <Text style={[s.body, s.flex]}>{visibleLabel ?? label}</Text>
     </View>
   );
 }
@@ -1181,14 +1324,17 @@ function LogoPicker({
   value,
   onChange,
   inherit = false,
+  disabled = false,
 }: {
   value: LogoChoice | null;
   onChange: (value: LogoChoice | null) => void;
   inherit?: boolean;
+  disabled?: boolean;
 }) {
   return (
     <Choice
       label="Badge"
+      disabled={disabled}
       value={value ?? "none"}
       options={[
         {
@@ -1208,11 +1354,13 @@ function LogoPicker({
 function FormActions({
   label = "Save changes",
   disabled,
+  saveDisabled = false,
   onSave,
   onClose,
 }: {
   label?: string;
   disabled: boolean;
+  saveDisabled?: boolean;
   onSave: () => void;
   onClose: () => void;
 }) {
@@ -1222,11 +1370,16 @@ function FormActions({
       <Button
         label={label}
         icon="check"
-        disabled={disabled}
+        disabled={disabled || saveDisabled}
         onPress={onSave}
         testID="preparation-save"
       />
-      <Button label="Keep previous values" variant="quiet" onPress={onClose} />
+      <Button
+        label="Close without saving"
+        variant="quiet"
+        disabled={disabled}
+        onPress={onClose}
+      />
     </View>
   );
 }
@@ -1235,18 +1388,26 @@ function ClubForm({
   disabled,
   onSubmit,
   onClose,
+  onDraftChange,
 }: {
   state: PreparationState;
   disabled: boolean;
   onSubmit: (name: string, logo: LogoChoice | null) => Promise<boolean>;
   onClose: () => void;
+  onDraftChange?: (dirty: boolean) => void;
 }) {
   const [name, setName] = useState(state.club.name);
   const [logo, setLogo] = useState(state.club.logo);
+  useUnsavedDraft({ name, logo }, onDraftChange);
   return (
     <>
-      <Field label="Club name" value={name} onChange={setName} />
-      <LogoPicker value={logo} onChange={setLogo} />
+      <Field
+        label="Club name"
+        value={name}
+        disabled={disabled}
+        onChange={setName}
+      />
+      <LogoPicker value={logo} disabled={disabled} onChange={setLogo} />
       <Notice tone="info">
         Team badge overrides are preserved when the club badge changes.
       </Notice>
@@ -1266,6 +1427,7 @@ function TeamForm({
   allowPresetLogo = true,
   onSubmit,
   onClose,
+  onDraftChange,
 }: {
   state: PreparationState;
   disabled: boolean;
@@ -1274,6 +1436,7 @@ function TeamForm({
     payload: Extract<Payload, { type: "team.updated" }>,
   ) => Promise<boolean>;
   onClose: () => void;
+  onDraftChange?: (dirty: boolean) => void;
 }) {
   const [name, setName] = useState(state.team.name);
   const [ageGroup, setAgeGroup] = useState(state.team.ageGroup);
@@ -1282,19 +1445,36 @@ function TeamForm({
   const [minutes, setMinutes] = useState(
     String(state.team.defaultHalfDurationMs / 60_000),
   );
+  useUnsavedDraft({ name, ageGroup, logo, format, minutes }, onDraftChange);
   return (
     <>
       <WorkspaceColumns testID="team-default-editor-columns">
         <View style={s.stack}>
-          <Field label="Team name" value={name} onChange={setName} />
-          <Field label="Age group" value={ageGroup} onChange={setAgeGroup} />
+          <Field
+            label="Team name"
+            value={name}
+            disabled={disabled}
+            onChange={setName}
+          />
+          <Field
+            label="Age group"
+            value={ageGroup}
+            disabled={disabled}
+            onChange={setAgeGroup}
+          />
           {allowPresetLogo && (
-            <LogoPicker value={logo} onChange={setLogo} inherit />
+            <LogoPicker
+              value={logo}
+              disabled={disabled}
+              onChange={setLogo}
+              inherit
+            />
           )}
         </View>
         <View style={s.stack}>
           <Choice
             label="Default pitch places"
+            disabled={disabled}
             value={format}
             options={Array.from({ length: 7 }, (_, i) => ({
               value: String(i + 5),
@@ -1304,6 +1484,7 @@ function TeamForm({
           />
           <Field
             label="Default minutes per half"
+            disabled={disabled}
             numeric
             value={minutes}
             onChange={setMinutes}
@@ -1336,6 +1517,7 @@ function RolloverForm({
   disabled,
   onSubmit,
   onClose,
+  onDraftChange,
 }: {
   state: PreparationState;
   disabled: boolean;
@@ -1343,6 +1525,7 @@ function RolloverForm({
     payload: Extract<Payload, { type: "season.rolled_over" }>,
   ) => Promise<boolean>;
   onClose: () => void;
+  onDraftChange?: (dirty: boolean) => void;
 }) {
   const season = state.seasons.find(
     (item) => item.id === state.activeSeasonId,
@@ -1350,6 +1533,7 @@ function RolloverForm({
   const year = season.startYear + 1;
   const [copyPlayers, setCopyPlayers] = useState(true);
   const [renewal, setRenewal] = useState(false);
+  useUnsavedDraft({ copyPlayers, renewal }, onDraftChange);
   return (
     <>
       <Card>
@@ -1362,11 +1546,13 @@ function RolloverForm({
       </Card>
       <Toggle
         label="Copy active player profiles into the new season"
+        disabled={disabled}
         value={copyPlayers}
         onChange={setCopyPlayers}
       />
       <Toggle
         label="I understand spectators need explicit access for the new season"
+        disabled={disabled}
         value={renewal}
         onChange={setRenewal}
       />
@@ -1376,7 +1562,8 @@ function RolloverForm({
       </Notice>
       <FormActions
         label="Create next season"
-        disabled={disabled || !renewal}
+        disabled={disabled}
+        saveDisabled={!renewal}
         onSave={() => {
           if (renewal)
             void onSubmit({
@@ -1398,12 +1585,14 @@ function PositionCatalogueForm({
   onSave,
   onArchive,
   onClose,
+  onDraftChange,
 }: {
   state: PreparationState;
   disabled: boolean;
   onSave: (position: TeamPosition) => Promise<boolean>;
   onArchive: (code: string) => Promise<boolean>;
   onClose: () => void;
+  onDraftChange?: (dirty: boolean) => void;
 }) {
   const catalogue = positionCatalogueFor(state);
   const [draft, setDraft] = useState<TeamPosition>({
@@ -1412,6 +1601,8 @@ function PositionCatalogueForm({
     active: true,
   });
   const [existing, setExisting] = useState(false);
+  const [draftScope, setDraftScope] = useState("new");
+  const dirty = useUnsavedDraft(draft, onDraftChange, draftScope);
   return (
     <View style={s.compactStack} testID="team-position-catalogue">
       <Text style={s.section}>Team positions</Text>
@@ -1423,7 +1614,7 @@ function PositionCatalogueForm({
       <Choice
         label="Edit a team position"
         value={draft.code}
-        disabled={disabled}
+        disabled={disabled || dirty}
         options={catalogue.map((position) => ({
           value: position.code,
           label: `${position.code}${position.active ? "" : " · inactive"}`,
@@ -1433,17 +1624,24 @@ function PositionCatalogueForm({
             ...catalogue.find((position) => position.code === code)!,
           });
           setExisting(true);
+          setDraftScope(`position:${code}`);
         }}
       />
       <Button
         label="Add a position"
         variant="secondary"
-        disabled={disabled}
+        disabled={disabled || dirty}
         onPress={() => {
           setDraft({ code: "", label: "", active: true });
           setExisting(false);
+          setDraftScope("new");
         }}
       />
+      {dirty && (
+        <Text style={s.small}>
+          Save or close this draft before choosing another team position.
+        </Text>
+      )}
       <Field
         label="Two-letter position code"
         value={draft.code}
@@ -1466,8 +1664,8 @@ function PositionCatalogueForm({
       />
       <FormActions
         label={existing ? "Save position" : "Add team position"}
-        disabled={
-          disabled ||
+        disabled={disabled}
+        saveDisabled={
           !validPositionCode(draft.code) ||
           !draft.label.trim() ||
           (!existing &&
@@ -1498,12 +1696,14 @@ function ProfileForm({
   disabled,
   onSubmit,
   onClose,
+  onDraftChange,
 }: {
   state: PreparationState;
   profile: PlayerProfile;
   disabled: boolean;
   onSubmit: (profile: PlayerProfile) => Promise<boolean>;
   onClose: () => void;
+  onDraftChange?: (dirty: boolean) => void;
 }) {
   const { wide } = useWorkspaceLayout();
   const [draft, setDraft] = useState({
@@ -1515,6 +1715,7 @@ function ProfileForm({
     profile.shirtNumber === null ? "" : String(profile.shirtNumber),
   );
   const [section, setSection] = useState<"details" | "positions">("details");
+  useUnsavedDraft({ draft, shirt }, onDraftChange);
   const [rank, setRank] = useState("0");
   const catalogue = positionCatalogueFor(state),
     active = activePositionCodes(state);
@@ -1581,7 +1782,13 @@ function ProfileForm({
               />
             </View>
           </View>
-          <Field label="FA player ID (optional)" numeric value={draft.faPlayerId ?? ""} disabled={disabled} onChange={value => change("faPlayerId",value.trim() || null)} />
+          <Field
+            label="FA player ID (optional)"
+            numeric
+            value={draft.faPlayerId ?? ""}
+            disabled={disabled}
+            onChange={(value) => change("faPlayerId", value.trim() || null)}
+          />
           <Choice
             label="Preferred foot"
             value={draft.foot}
@@ -1729,16 +1936,19 @@ function FixtureForm({
   disabled,
   onSubmit,
   onClose,
+  onDraftChange,
 }: {
   fixture: FixtureDraft;
   disabled: boolean;
   onSubmit: (fixture: FixtureDraft) => Promise<boolean>;
   onClose: () => void;
+  onDraftChange?: (dirty: boolean) => void;
 }) {
   const [draft, setDraft] = useState({ ...fixture });
   const [minutes, setMinutes] = useState(
     String(fixture.plannedHalfDurationMs / 60_000),
   );
+  useUnsavedDraft({ draft, minutes }, onDraftChange);
   const change = <Key extends keyof FixtureDraft>(
     key: Key,
     value: FixtureDraft[Key],
@@ -1749,21 +1959,25 @@ function FixtureForm({
         <View style={s.stack}>
           <Field
             label="Opposition"
+            disabled={disabled}
             value={draft.opponent}
             onChange={(value) => change("opponent", value)}
           />
           <Field
             label="Match date (YYYY-MM-DD)"
+            disabled={disabled}
             value={draft.playedDate}
             onChange={(value) => change("playedDate", value)}
           />
           <Field
             label="Kick-off (HH:MM, blank if not recorded)"
+            disabled={disabled}
             value={draft.kickoff ?? ""}
             onChange={(value) => change("kickoff", value.trim() || null)}
           />
           <Field
             label="Arrival (HH:MM, blank if not recorded)"
+            disabled={disabled}
             value={draft.arrival ?? ""}
             onChange={(value) => change("arrival", value.trim() || null)}
           />
@@ -1771,11 +1985,13 @@ function FixtureForm({
         <View style={s.stack}>
           <Field
             label="Venue"
+            disabled={disabled}
             value={draft.venue}
             onChange={(value) => change("venue", value)}
           />
           <Choice
             label="Home or away"
+            disabled={disabled}
             value={draft.homeAway}
             options={[
               { value: "home", label: "Home" },
@@ -1785,6 +2001,7 @@ function FixtureForm({
           />
           <Choice
             label="Pitch places"
+            disabled={disabled}
             value={String(draft.format)}
             options={Array.from({ length: 7 }, (_, i) => ({
               value: String(i + 5),
@@ -1794,6 +2011,7 @@ function FixtureForm({
           />
           <Field
             label="Minutes per half for this match"
+            disabled={disabled}
             numeric
             value={minutes}
             onChange={setMinutes}
@@ -1824,33 +2042,39 @@ function TrainingForm({
   disabled,
   onSubmit,
   onClose,
+  onDraftChange,
 }: {
   training: TrainingDraft;
   players: PlayerProfile[];
   disabled: boolean;
   onSubmit: (training: TrainingDraft) => Promise<boolean>;
   onClose: () => void;
+  onDraftChange?: (dirty: boolean) => void;
 }) {
   const [draft, setDraft] = useState({
     ...training,
     expectedProfileIds: [...training.expectedProfileIds],
   });
+  useUnsavedDraft(draft, onDraftChange);
   return (
     <>
       <WorkspaceColumns testID="training-editor-columns">
         <View style={s.stack}>
           <Field
             label="Training date (YYYY-MM-DD)"
+            disabled={disabled}
             value={draft.date}
             onChange={(date) => setDraft((previous) => ({ ...previous, date }))}
           />
           <Field
             label="Training time (HH:MM)"
+            disabled={disabled}
             value={draft.time}
             onChange={(time) => setDraft((previous) => ({ ...previous, time }))}
           />
           <Field
             label="Training venue"
+            disabled={disabled}
             value={draft.venue}
             onChange={(venue) =>
               setDraft((previous) => ({ ...previous, venue }))
@@ -1936,6 +2160,7 @@ function FormationForm({
   disabled,
   onSubmit,
   onClose,
+  onDraftChange,
 }: {
   state: PreparationState;
   formation: PreparationFormation;
@@ -1944,6 +2169,7 @@ function FormationForm({
     formation: Omit<PreparationFormation, "version">,
   ) => Promise<boolean>;
   onClose: () => void;
+  onDraftChange?: (dirty: boolean) => void;
 }) {
   const { wide } = useWorkspaceLayout();
   const [draft, setDraft] = useState({
@@ -1951,6 +2177,33 @@ function FormationForm({
     slots: formation.slots.map((slot) => ({ ...slot })),
   });
   const [advanced, setAdvanced] = useState(false);
+  const [coordinates, setCoordinates] = useState(
+    () =>
+      Object.fromEntries(
+        formation.slots.map((slot) => [
+          slot.id,
+          { x: String(slot.x), y: String(slot.y) },
+        ]),
+      ) as Record<string, { x: string; y: string }>,
+  );
+  useUnsavedDraft({ draft, coordinates }, onDraftChange);
+  const validCoordinate = (value: string) =>
+    value.trim() !== "" &&
+    Number.isFinite(Number(value)) &&
+    Number(value) >= 0 &&
+    Number(value) <= 1;
+  const coordinatesValid = draft.slots.every(
+    (slot) =>
+      coordinates[slot.id] &&
+      validCoordinate(coordinates[slot.id].x) &&
+      validCoordinate(coordinates[slot.id].y),
+  );
+  const previewSlots = draft.slots.map((slot) => {
+    const point = coordinates[slot.id];
+    return point && validCoordinate(point.x) && validCoordinate(point.y)
+      ? { ...slot, x: Number(point.x), y: Number(point.y) }
+      : slot;
+  });
   const changeSlot = (
     id: string,
     changes: Partial<PreparationFormation["slots"][number]>,
@@ -1965,11 +2218,13 @@ function FormationForm({
     <>
       <Field
         label="Formation name"
+        disabled={disabled}
         value={draft.name}
         onChange={(name) => setDraft((previous) => ({ ...previous, name }))}
       />
       <Choice
         label="Formation pitch places"
+        disabled={disabled}
         value={String(draft.format)}
         options={Array.from({ length: 7 }, (_, i) => ({
           value: String(i + 5),
@@ -1977,6 +2232,14 @@ function FormationForm({
         }))}
         onChange={(value) => {
           const template = defaultFormation(Number(value));
+          setCoordinates(
+            Object.fromEntries(
+              template.slots.map((slot) => [
+                slot.id,
+                { x: String(slot.x), y: String(slot.y) },
+              ]),
+            ),
+          );
           setDraft((previous) => ({
             ...previous,
             format: template.format,
@@ -1988,10 +2251,16 @@ function FormationForm({
         positionOrder={positionCatalogueFor(state).map(
           (position) => position.code,
         )}
-        slots={draft.slots}
+        slots={previewSlots}
         name={draft.name}
         disabled={disabled}
-        onMove={(slotId, point) => changeSlot(slotId, point)}
+        onMove={(slotId, point) => {
+          changeSlot(slotId, point);
+          setCoordinates((previous) => ({
+            ...previous,
+            [slotId]: { x: String(point.x), y: String(point.y) },
+          }));
+        }}
       />
       {draft.slots.some(
         (slot) => !activePositionCodes(state).includes(slot.position),
@@ -2009,6 +2278,7 @@ function FormationForm({
             : "Advanced position coordinates"
         }
         variant="secondary"
+        disabled={disabled}
         onPress={() => setAdvanced((value) => !value)}
       />
       <Notice tone="info">
@@ -2027,6 +2297,7 @@ function FormationForm({
             <Text style={s.small}>Slot {slot.id}</Text>
             <Field
               label={`Label for ${slot.id}`}
+              disabled={disabled}
               value={slot.label}
               onChange={(label) => changeSlot(slot.id, { label })}
             />
@@ -2050,20 +2321,34 @@ function FormationForm({
                 <View style={s.flex}>
                   <Field
                     label={`X for ${slot.id}`}
+                    disabled={disabled}
                     numeric
-                    value={String(slot.x)}
+                    value={coordinates[slot.id]?.x ?? String(slot.x)}
                     onChange={(value) =>
-                      changeSlot(slot.id, { x: Number(value) })
+                      setCoordinates((previous) => ({
+                        ...previous,
+                        [slot.id]: {
+                          x: value,
+                          y: previous[slot.id]?.y ?? String(slot.y),
+                        },
+                      }))
                     }
                   />
                 </View>
                 <View style={s.flex}>
                   <Field
                     label={`Y for ${slot.id}`}
+                    disabled={disabled}
                     numeric
-                    value={String(slot.y)}
+                    value={coordinates[slot.id]?.y ?? String(slot.y)}
                     onChange={(value) =>
-                      changeSlot(slot.id, { y: Number(value) })
+                      setCoordinates((previous) => ({
+                        ...previous,
+                        [slot.id]: {
+                          x: previous[slot.id]?.x ?? String(slot.x),
+                          y: value,
+                        },
+                      }))
                     }
                   />
                 </View>
@@ -2072,12 +2357,26 @@ function FormationForm({
           </Card>
         ))}
       </View>
+      {!coordinatesValid && (
+        <Notice tone="warning">
+          Enter a number between 0 and 1 for every position coordinate before
+          saving. Your typed values are retained.
+        </Notice>
+      )}
       <FormActions
         label="Save formation version"
         disabled={disabled}
+        saveDisabled={!coordinatesValid}
         onSave={() => {
           const { version: _version, ...value } = draft;
-          void onSubmit(value);
+          void onSubmit({
+            ...value,
+            slots: value.slots.map((slot) => ({
+              ...slot,
+              x: Number(coordinates[slot.id].x),
+              y: Number(coordinates[slot.id].y),
+            })),
+          });
         }}
         onClose={onClose}
       />
@@ -2085,6 +2384,7 @@ function FormationForm({
   );
 }
 function FixtureDetail({
+  onDraftChange,
   scheduledGameManagement,
   fixture,
   state,
@@ -2098,6 +2398,7 @@ function FixtureDetail({
   canLookUpSavedMatch,
   statusLabel,
 }: {
+  onDraftChange?: (dirty: boolean) => void;
   scheduledGameManagement?: ReactNode;
   fixture: PreparationFixture;
   state: PreparationState;
@@ -2115,6 +2416,14 @@ function FixtureDetail({
   canLookUpSavedMatch: boolean;
   statusLabel: string;
 }) {
+  const layout = useWorkspaceLayout();
+  const wide =
+    layout.mode === "tablet" &&
+    layout.viewportHeight >= 480 &&
+    layout.contentWidth >= 460 * Math.min(layout.fontScale, 1.5);
+  const [setupDirty, setSetupDirty] = useState(false),
+    [planDirty, setPlanDirty] = useState(false);
+  useDraftSignal(setupDirty || planDirty, onDraftChange);
   const players = retainedPreparationPlayers(state, fixture.seasonId, [
     ...fixture.selectedProfileIds,
     ...Object.keys(fixture.responses),
@@ -2280,75 +2589,93 @@ function FixtureDetail({
           />
         </>
       )}
-      {players.map((profile) => {
-        const selected = fixture.selectedProfileIds.includes(profile.id);
-        return (
-          <Card key={profile.id}>
-            {profile.active ? (
-              <Toggle
-                label={`Select ${profile.displayName}`}
-                value={selected}
-                disabled={disabled || !scheduled || archivedSelected.length > 0}
-                onChange={(value) => {
-                  void onCommand({
-                    type: "fixture.selection_saved",
-                    fixtureId: fixture.id,
-                    selectedProfileIds: value
-                      ? [...fixture.selectedProfileIds, profile.id]
-                      : fixture.selectedProfileIds.filter(
-                          (id) => id !== profile.id,
-                        ),
-                  });
-                }}
-              />
-            ) : (
-              <>
-                <View style={s.between}>
-                  <Text style={s.section}>{profile.displayName}</Text>
-                  <Pill>Archived</Pill>
-                </View>
-                <Text style={s.small}>
-                  {selected
-                    ? completed
-                      ? "Selected in Schedule."
-                      : "Selected in the saved squad."
-                    : "Not selected. Saved replies and attendance are retained."}
-                </Text>
-              </>
-            )}
-            <Choice
-              label={`${profile.displayName} availability reply`}
-              value={fixture.responses[profile.id] ?? "no_reply"}
-              options={responseOptions}
-              disabled={disabled || !scheduled || !profile.active}
-              onChange={(response) => {
-                void onCommand({
-                  type: "fixture.response_recorded",
-                  fixtureId: fixture.id,
-                  profileId: profile.id,
-                  response,
-                });
-              }}
-            />
-            {selected && (
+      <View
+        style={[s.rosterGrid, wide && s.rosterGridWide]}
+        testID="fixture-squad-grid"
+      >
+        {players.map((profile) => {
+          const selected = fixture.selectedProfileIds.includes(profile.id);
+          return (
+            <Card
+              key={profile.id}
+              style={[
+                s.compactCard,
+                wide ? s.rosterCardWide : s.rosterCardPhone,
+              ]}
+            >
+              {profile.active ? (
+                <Toggle
+                  label={`Select ${profile.displayName}`}
+                  visibleLabel={profile.displayName}
+                  value={selected}
+                  disabled={
+                    disabled || !scheduled || archivedSelected.length > 0
+                  }
+                  onChange={(value) => {
+                    void onCommand({
+                      type: "fixture.selection_saved",
+                      fixtureId: fixture.id,
+                      selectedProfileIds: value
+                        ? [...fixture.selectedProfileIds, profile.id]
+                        : fixture.selectedProfileIds.filter(
+                            (id) => id !== profile.id,
+                          ),
+                    });
+                  }}
+                />
+              ) : (
+                <>
+                  <View style={s.between}>
+                    <Text style={s.section}>{profile.displayName}</Text>
+                    <Pill>Archived</Pill>
+                  </View>
+                  <Text style={s.small}>
+                    {selected
+                      ? completed
+                        ? "Selected in Schedule."
+                        : "Selected in the saved squad."
+                      : "Not selected. Saved replies and attendance are retained."}
+                  </Text>
+                </>
+              )}
               <Choice
-                label={`${profile.displayName} actual attendance`}
-                value={fixture.attendance[profile.id] ?? "not_recorded"}
-                options={attendanceOptions}
+                label={`${profile.displayName} availability reply`}
+                visibleLabel="Reply"
+                compact
+                value={fixture.responses[profile.id] ?? "no_reply"}
+                options={responseOptions}
                 disabled={disabled || !scheduled || !profile.active}
-                onChange={(attendance) => {
+                onChange={(response) => {
                   void onCommand({
-                    type: "fixture.attendance_recorded",
+                    type: "fixture.response_recorded",
                     fixtureId: fixture.id,
                     profileId: profile.id,
-                    attendance,
+                    response,
                   });
                 }}
               />
-            )}
-          </Card>
-        );
-      })}
+              {selected && (
+                <Choice
+                  label={`${profile.displayName} actual attendance`}
+                  visibleLabel="Check-in"
+                  compact
+                  value={fixture.attendance[profile.id] ?? "not_recorded"}
+                  options={attendanceOptions}
+                  disabled={disabled || !scheduled || !profile.active}
+                  onChange={(attendance) => {
+                    void onCommand({
+                      type: "fixture.attendance_recorded",
+                      fixtureId: fixture.id,
+                      profileId: profile.id,
+                      attendance,
+                    });
+                  }}
+                />
+              )}
+            </Card>
+          );
+        })}
+      </View>
       {scheduled && onOpenMatch && (
         <>
           {(accepted || canLookUpSavedMatch) && (
@@ -2370,7 +2697,13 @@ function FixtureDetail({
               />
             </>
           )}
-          <FormationAdvice state={state} fixtureId={fixture.id} disabled={disabled} onChooseFormation={setFormationId} onChange={command => onCommand(command,false,command)} />
+          <FormationAdvice
+            state={state}
+            fixtureId={fixture.id}
+            disabled={disabled}
+            onChooseFormation={setFormationId}
+            onChange={(command) => onCommand(command, false, command)}
+          />
           <Choice
             label="Saved formation for this match"
             value={formation?.id ?? ""}
@@ -2386,7 +2719,13 @@ function FixtureDetail({
           <Button
             label="Open match preparation"
             icon="play"
-            disabled={disabled || !formation || archivedSelected.length > 0}
+            disabled={
+              disabled ||
+              setupDirty ||
+              planDirty ||
+              !formation ||
+              archivedSelected.length > 0
+            }
             onPress={() => {
               if (formation)
                 void onCommand({
@@ -2403,6 +2742,7 @@ function FixtureDetail({
       )}
       {!completed && (
         <SavedLineups
+          onDraftChange={setSetupDirty}
           state={state}
           fixture={fixture}
           busy={disabled}
@@ -2412,6 +2752,7 @@ function FixtureDetail({
       )}
       {!completed && (
         <ReusableMatchPlans
+          onDraftChange={setPlanDirty}
           key={fixture.id}
           state={state}
           fixture={fixture}
@@ -2462,6 +2803,11 @@ function TrainingDetail({
   onEdit: () => void;
   onEditSeries?: () => void;
 }) {
+  const layout = useWorkspaceLayout();
+  const wide =
+    layout.mode === "tablet" &&
+    layout.viewportHeight >= 480 &&
+    layout.contentWidth >= 460 * Math.min(layout.fontScale, 1.5);
   return (
     <>
       <Card>
@@ -2518,48 +2864,63 @@ function TrainingDetail({
             ? "Record attendance only from what happened. Available replies do not check players in."
             : "Record availability now. Mark this occurrence as held before entering actual attendance."}
       </Notice>
-      {players
-        .filter((profile) => training.expectedProfileIds.includes(profile.id))
-        .map((profile) => (
-          <Card key={profile.id}>
-            <View style={s.between}>
-              <Text style={s.section}>{profile.displayName}</Text>
-              {!profile.active && <Pill>Archived</Pill>}
-            </View>
-            <Choice
-              label={`${profile.displayName} training reply`}
-              value={training.responses[profile.id] ?? "no_reply"}
-              options={responseOptions}
-              disabled={
-                disabled || training.status === "cancelled" || !profile.active
-              }
-              onChange={(response) => {
-                void onCommand({
-                  type: "training.response_recorded",
-                  trainingId: training.id,
-                  profileId: profile.id,
-                  response,
-                });
-              }}
-            />
-            <Choice
-              label={`${profile.displayName} training attendance`}
-              value={training.attendance[profile.id] ?? "not_recorded"}
-              options={attendanceOptions}
-              disabled={
-                disabled || training.status !== "held" || !profile.active
-              }
-              onChange={(attendance) => {
-                void onCommand({
-                  type: "training.attendance_recorded",
-                  trainingId: training.id,
-                  profileId: profile.id,
-                  attendance,
-                });
-              }}
-            />
-          </Card>
-        ))}
+      <View
+        style={[s.rosterGrid, wide && s.rosterGridWide]}
+        testID="training-squad-grid"
+      >
+        {players
+          .filter((profile) => training.expectedProfileIds.includes(profile.id))
+          .map((profile) => (
+            <Card
+              key={profile.id}
+              style={[
+                s.compactCard,
+                wide ? s.rosterCardWide : s.rosterCardPhone,
+              ]}
+            >
+              <View style={s.between}>
+                <Text style={s.section}>{profile.displayName}</Text>
+                {!profile.active && <Pill>Archived</Pill>}
+              </View>
+              <Choice
+                label={`${profile.displayName} training reply`}
+                visibleLabel="Reply"
+                compact
+                value={training.responses[profile.id] ?? "no_reply"}
+                options={responseOptions}
+                disabled={
+                  disabled || training.status === "cancelled" || !profile.active
+                }
+                onChange={(response) => {
+                  void onCommand({
+                    type: "training.response_recorded",
+                    trainingId: training.id,
+                    profileId: profile.id,
+                    response,
+                  });
+                }}
+              />
+              <Choice
+                label={`${profile.displayName} training attendance`}
+                visibleLabel="Attendance"
+                compact
+                value={training.attendance[profile.id] ?? "not_recorded"}
+                options={attendanceOptions}
+                disabled={
+                  disabled || training.status !== "held" || !profile.active
+                }
+                onChange={(attendance) => {
+                  void onCommand({
+                    type: "training.attendance_recorded",
+                    trainingId: training.id,
+                    profileId: profile.id,
+                    attendance,
+                  });
+                }}
+              />
+            </Card>
+          ))}
+      </View>
     </>
   );
 }
@@ -2632,6 +2993,15 @@ const s = StyleSheet.create({
     color: colors.ink,
   },
   choices: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  compactChoiceField: { gap: 4 },
+  compactChoices: { gap: 6 },
+  compactChoice: {
+    minWidth: 44,
+    minHeight: 44,
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+  },
+  compactChoiceText: { fontSize: 13, lineHeight: 18 },
   choice: {
     minWidth: 48,
     minHeight: 48,

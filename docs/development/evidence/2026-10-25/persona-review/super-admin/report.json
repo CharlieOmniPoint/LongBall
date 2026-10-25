@@ -1,0 +1,204 @@
+{
+  "persona": "super",
+  "phase": "final",
+  "startedAt": "2026-10-25T22:36:55.835Z",
+  "scope": "Actual compiled UI and isolated SQLite API/worker; only discovery and virtual transport are redirected to owned loopback processes. Generated accounts, not public demo credentials.",
+  "checks": [
+    "Super Admin unsaved rules survive a reload review, Keep editing preserves the draft, explicit discard/reload releases navigation, and invalid/unchanged policies cannot be submitted.",
+    "Real verification rejects and revokes a valid different-account session, then verifies the original generated account on the pinned service, revokes its old token and preserves the mounted unconfirmed policy request.",
+    "An actual committed policy with a deliberately lost receipt retains its original payload/key after a controlled non-committing403 retry denial and real same-account verification; a final same-key origin receipt creates only one revision. The denial is injected transport evidence, not an actual five-minute expiry test. Original rules are restored.",
+    "Actual activity requests retain the chosen club/team scope, return only attributed team events, and support 24-hour, 30-day and 7-day ranges.",
+    "Super Admin opens global activity, selects account/event filters, clears them and visits active/events/overview panels with real observed sign-in coverage and a UK-time successful receipt.",
+    "Club and application-wide privilege changes show target/scope before submission; cancel makes no grant, accepted changes are verified and reversed, and self-revocation remains disabled.",
+    "Super Admin creates a real isolated club and U12 team, verifies empty-team isolation and inherited Manager access, grants/revokes an existing verified adult, and reviews the new club report.",
+    "Super Admin visits Teams, overview, schedule, aggregate stats, People, seasons, opposition notes, configuration, invitations/access requests, club reports and Account through the actual compact navigation.",
+    "Super Admin Account provides readable access/help/privacy and records an explicitly confirmed own-account export request as pending verification/policy only; no fulfilment, erasure or membership change occurs.",
+    "Super Admin creates a real one-hour team/season spectator link, renders its QR locally, closes the secret display and explicitly revokes the invitation. No email/share message is sent.",
+    "Phone 390 and tablet 1024 fit in the staff phone/tablet modes; Club Admin cannot read global policy/activity, anonymous access is denied, and Super Admin logout revokes the session and closes private views."
+  ],
+  "findings": [],
+  "failures": [],
+  "httpFailures": [
+    {
+      "method": "POST",
+      "path": "/v1/administration/sign-in-rules",
+      "status": 503,
+      "code": "CONTROLLED_POLICY_RECEIPT_LOST",
+      "expected": true,
+      "controlledFault": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/administration/sign-in-rules",
+      "status": 403,
+      "code": "CONTROLLED_CURRENT_AUTHORITY_DENIED",
+      "expected": true,
+      "controlledFault": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/me",
+      "status": 401,
+      "code": "INVALID_SESSION",
+      "expected": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/me",
+      "status": 401,
+      "code": "INVALID_SESSION",
+      "expected": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/administration/login-analytics",
+      "status": 404,
+      "code": "NOT_FOUND",
+      "expected": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/administration/sign-in-rules",
+      "status": 404,
+      "code": "NOT_FOUND",
+      "expected": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/administration/login-analytics",
+      "status": 401,
+      "code": "INVALID_SESSION",
+      "expected": true
+    }
+  ],
+  "transportErrors": [],
+  "pageErrors": [],
+  "screenshots": [
+    "super-policy-phone.png",
+    "super-activity-phone.png",
+    "super-global-clubs-phone.png",
+    "super-clubs-390-phone.png",
+    "super-clubs-390-tablet.png",
+    "super-clubs-1024-phone.png",
+    "super-clubs-1024-tablet.png"
+  ],
+  "passed": true,
+  "source": {
+    "gitHead": "0961d1eb438ac2be591e71e6b3a92442aa72e38a",
+    "workingTreeDirty": true,
+    "webScriptSha256": "fe455b35fee18875c51a314126191d536c6bab8b1ce02053cf614e1629d8b521",
+    "serverBundleSha256": "7e6a4fc28acac0d106ca98e5a3955f2d06932d8da7d3fe99cef7c45ca3a1c3e4",
+    "workerBundleSha256": "b9077f122adf3b1bc6122df9beaf5610f1ea2928c852c1da4280619cf05a45f5",
+    "helperSha256": "6a9da668a2d0fe88245328f3df167f6da815917c90634d66e5a1288fde751698"
+  },
+  "physicalDeviceTested": false,
+  "publicCredentialsUsed": false,
+  "paidServicesProvisioned": false,
+  "scenarioSha256": "d612d4a204901252a72d86d7e93468ad5f895611a17c27ef5feb0d2c05a032f5",
+  "budgetWaits": [
+    {
+      "accountId": "synthetic-account-admin",
+      "waitMs": 36821,
+      "attempts": 71,
+      "mutations": 6
+    },
+    {
+      "accountId": "synthetic-account-admin",
+      "waitMs": 42403,
+      "attempts": 101,
+      "mutations": 6
+    },
+    {
+      "accountId": "synthetic-account-admin",
+      "waitMs": 0,
+      "attempts": 101,
+      "mutations": 6
+    },
+    {
+      "accountId": "synthetic-account-admin",
+      "waitMs": 0,
+      "attempts": 101,
+      "mutations": 6
+    },
+    {
+      "accountId": "synthetic-account-admin",
+      "waitMs": 0,
+      "attempts": 101,
+      "mutations": 6
+    },
+    {
+      "accountId": "synthetic-account-admin",
+      "waitMs": 0,
+      "attempts": 101,
+      "mutations": 6
+    },
+    {
+      "accountId": "synthetic-account-admin",
+      "waitMs": 0,
+      "attempts": 101,
+      "mutations": 6
+    },
+    {
+      "accountId": "synthetic-account-admin",
+      "waitMs": 0,
+      "attempts": 101,
+      "mutations": 6
+    },
+    {
+      "accountId": "synthetic-account-admin",
+      "waitMs": 0,
+      "attempts": 101,
+      "mutations": 6
+    },
+    {
+      "accountId": "synthetic-account-admin",
+      "waitMs": 0,
+      "attempts": 101,
+      "mutations": 6
+    }
+  ],
+  "elements": [
+    {
+      "route": "team",
+      "rendered": true
+    },
+    {
+      "route": "overview",
+      "rendered": true
+    },
+    {
+      "route": "schedule",
+      "rendered": true
+    },
+    {
+      "route": "stats",
+      "rendered": true
+    },
+    {
+      "route": "people",
+      "rendered": true
+    },
+    {
+      "route": "seasons",
+      "rendered": true
+    },
+    {
+      "route": "opposition",
+      "rendered": true
+    },
+    {
+      "route": "settings",
+      "rendered": true
+    },
+    {
+      "route": "invitations",
+      "rendered": true
+    },
+    {
+      "route": "clubReports",
+      "rendered": true
+    }
+  ],
+  "artifactsStable": true,
+  "finishedAt": "2026-10-25T22:39:21.737Z"
+}

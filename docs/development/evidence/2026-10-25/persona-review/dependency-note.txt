@@ -1,0 +1,5 @@
+The 25 October 2026 dependency gate reached the package registry and failed on two high workspace advisories: node-forge GHSA-86w9-cpqp-85rv and zod GHSA-mrhx-c7xc-m3w5. The separately locked runtime and compiler audits passed with zero findings. Both workspace findings come through Expo CLI; node-forge also comes through its code-signing-certificates dependency.
+
+The registry still publishes node-forge 1.4.0 as latest, with no patched version for the finding. Zod is fixed in >=4.6.6, but the latest Expo CLI 58.1.15 still declares ^3.25.76, and 3.25.76 remains the latest major-3 release. No compatible in-range fix was found. No package or lockfile was changed, no override was installed, and no security gate was waived. The gate remains open; this evidence does not assert production readiness.
+
+The accompanying summary records audit timestamps, source and lock hashes, advisory links, representative package dependency paths and current registry metadata hashes. Raw reports remain local and are not copied into this evidence directory.

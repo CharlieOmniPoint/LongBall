@@ -1,4 +1,4 @@
-import { formatUkDate } from '@longball/application/uk-display';
+import { formatUkDate } from "@longball/application/uk-display";
 import { useMemo, useState, type ReactNode } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import {
@@ -36,12 +36,18 @@ export function ConnectedAlbums(props: ConnectedAlbumsProps) {
   const model = useMemo(() => {
     try {
       const key = albumScopeKey(props.scope);
-      const albums = groupPermittedAlbums(
+      const permitted = groupPermittedAlbums(
         props.matches,
         props.photos,
         props.allowed,
         props.timeZone,
       );
+      // Spectators browse published photos; empty games remain available to
+      // contributors so they can deliberately choose their upload target.
+      const albums =
+        props.scope.role === "spectator"
+          ? permitted.filter((album) => album.photoCount > 0)
+          : permitted;
       const chosen = resolveAlbumSelection(
         props.scope,
         props.matches,
@@ -86,27 +92,66 @@ export function ConnectedAlbums(props: ConnectedAlbumsProps) {
     );
     setOpened(null);
   };
+  if (photo && chosen) {
+    return (
+      <Card>
+        <View style={styles.stack} testID="album-selected-game">
+          <View style={styles.stack} testID="album-photo-viewer">
+            <View style={{ alignSelf: "flex-start" }}>
+              <Button
+                label="Back to album"
+                accessibilityLabel="Close photo; return to this album"
+                testID="album-close-photo"
+                compact
+                variant="secondary"
+                onPress={() => setOpened(null)}
+              />
+            </View>
+            <Text style={typography.label}>
+              {chosen.label} ·{" "}
+              {chosen.playedDate
+                ? formatUkDate(chosen.playedDate)
+                : "Played date not recorded"}
+            </Text>
+            <Text style={typography.body}>
+              {photo.caption || "No caption recorded"}
+            </Text>
+            {props.renderPhoto ? (
+              props.renderPhoto(photo)
+            ) : (
+              <Notice>
+                This photo could not be opened. Close it and try again after
+                refreshing your team view.
+              </Notice>
+            )}
+          </View>
+        </View>
+      </Card>
+    );
+  }
   return (
     <Card>
       <Text style={typography.section}>Game albums</Text>
       <Text style={typography.body}>
-        Choose the actual game. Albums use the game’s played date and contain
-        only photos this service view permits you to see.
+        Choose a game to see its published photos.
       </Text>
       <Text style={typography.muted}>
-        Game dates use {props.timeZone ?? "Europe/London"} team time.
+        Game dates ·{" "}
+        {!props.timeZone || props.timeZone === "Europe/London"
+          ? "UK time"
+          : props.timeZone}
       </Text>
       {model.error && <Notice tone="error">{model.error}</Notice>}
       {!props.allowed && (
         <Notice tone="warning">
-          Current team or season access is unavailable. Album context,
-          thumbnails and full images stay closed.
+          Your access to these photos could not be confirmed. Check your
+          invitation or choose another team.
         </Notice>
       )}
       {props.allowed && !model.error && model.albums.length === 0 && (
         <Notice>
-          No game album is currently permitted for this account. Withheld match
-          context and unpublished photos are not included.
+          No published game albums are available here yet. Unpublished photos
+          stay private.
         </Notice>
       )}
       {model.albums.map((album) => (
@@ -117,6 +162,7 @@ export function ConnectedAlbums(props: ConnectedAlbumsProps) {
             variant={
               chosen?.matchId === album.matchId ? "primary" : "secondary"
             }
+            accessibilityState={{ selected: chosen?.matchId === album.matchId }}
             disabled={props.disabled}
             onPress={() => choose(album.matchId)}
           />
@@ -125,22 +171,24 @@ export function ConnectedAlbums(props: ConnectedAlbumsProps) {
       {!chosen && props.allowed && model.albums.length > 0 && (
         <Notice>
           {props.scope.role === "spectator"
-            ? "Select a permitted game to browse its published album."
-            : "Select a permitted game explicitly before uploading. No game is selected automatically."}
+            ? "Choose a game above to open its photos."
+            : "Choose a game before uploading. Your upload will stay with that game."}
         </Notice>
       )}
       {chosen && (
         <View style={styles.stack} testID="album-selected-game">
           <Pill tone="info">
-            {chosen.playedDate ? formatUkDate(chosen.playedDate) : "PLAYED DATE NOT RECORDED"} ·{" "}
-            {chosen.photoCount} PUBLISHED{" "}
+            {chosen.playedDate
+              ? formatUkDate(chosen.playedDate)
+              : "PLAYED DATE NOT RECORDED"}{" "}
+            · {chosen.photoCount} PUBLISHED{" "}
             {chosen.photoCount === 1 ? "PHOTO" : "PHOTOS"}
           </Pill>
           <Text style={typography.section}>{chosen.label}</Text>
           <Text style={typography.muted}>
             {props.scope.role === "spectator"
-              ? "Published photos only. Current access is checked for each thumbnail and full image."
-              : "New upload target: this game. A retained upload remains bound to the game captured when it was prepared. Publication and moderation stay separate actions."}
+              ? "Published photos for this game."
+              : "New uploads will belong to this game. Submitting a photo and publishing it are separate steps."}
           </Text>
           <Button
             label="Close selected album"
@@ -154,8 +202,8 @@ export function ConnectedAlbums(props: ConnectedAlbumsProps) {
           />
           {chosen.photos.length === 0 && (
             <Text style={typography.muted}>
-              No published photos are visible in this game album. Pending or
-              private submissions do not increase its count.
+              No published photos for this game yet. Pending submissions stay
+              private.
             </Text>
           )}
           <View style={styles.grid}>
@@ -167,8 +215,10 @@ export function ConnectedAlbums(props: ConnectedAlbumsProps) {
                 {props.renderThumbnail?.(item)}
                 <Button
                   testID={`album-photo-${item.id}`}
-                  label={`Open photo ${index + 1}${item.caption ? ` · ${item.caption}` : ""}`}
-                  variant={photo?.id === item.id ? "primary" : "secondary"}
+                  label={`Open photo ${index + 1}`}
+                  accessibilityLabel={`Open photo ${index + 1}${item.caption ? ` · ${item.caption}` : ""}`}
+                  variant="secondary"
+                  accessibilityState={{ expanded: false }}
                   onPress={() =>
                     setOpened({
                       scopeKey: model.key!,
@@ -182,35 +232,6 @@ export function ConnectedAlbums(props: ConnectedAlbumsProps) {
               </View>
             ))}
           </View>
-          {photo && (
-            <View
-              style={styles.viewer}
-              key={`${model.key}:${chosen.matchId}:${photo.id}:${photo.version}`}
-              testID="album-photo-viewer"
-            >
-              <Text style={typography.label}>
-                {chosen.label} ·{" "}
-                {chosen.playedDate ? formatUkDate(chosen.playedDate) : "Played date not recorded"}
-              </Text>
-              <Text style={typography.body}>
-                {photo.caption || "No caption recorded"}
-              </Text>
-              {props.renderPhoto ? (
-                props.renderPhoto(photo)
-              ) : (
-                <Notice>
-                  Open this photo through the authenticated media gateway. A
-                  published listing does not bypass its current access check.
-                </Notice>
-              )}
-              <Button
-                label="Close photo; return to this album"
-                testID="album-close-photo"
-                variant="quiet"
-                onPress={() => setOpened(null)}
-              />
-            </View>
-          )}
         </View>
       )}
     </Card>
@@ -230,11 +251,5 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: 8,
     backgroundColor: colors.canvas,
-  },
-  viewer: {
-    gap: 12,
-    borderTopWidth: 1,
-    borderColor: colors.border,
-    paddingTop: 12,
   },
 });

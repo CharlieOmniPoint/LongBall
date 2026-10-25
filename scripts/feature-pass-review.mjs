@@ -2,13 +2,13 @@ import assert from 'node:assert/strict';
 import { Buffer } from 'node:buffer';
 import { createHash, randomBytes, randomUUID, scryptSync } from 'node:crypto';
 import { existsSync } from 'node:fs';
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { spawn, execFileSync } from 'node:child_process';
 import { chromium } from 'playwright';
-import { openWorkspaceTab } from './review-entry.mjs';
+import { openWorkspaceTab, reviewDateLabel, selectWorkspaceContext } from './review-entry.mjs';
 
 /** Actual built application and loopback API; no existing database, public account or client state is changed. */
 const output = path.resolve('.local/quality/feature-pass-review');
@@ -24,6 +24,11 @@ const requestWindows = new Map(), tokenAccounts = new Map();
 let browser, privateDirectory, base, fixture, stage = 'preconditions', processDiagnostic = '';
 const delay = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
+function futureReviewDate(days) {
+  const parts = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
+  const today = `${parts.find(part => part.type === 'year').value}-${parts.find(part => part.type === 'month').value}-${parts.find(part => part.type === 'day').value}`;
+  return new Date(Date.parse(`${today}T12:00:00Z`) + days * 86400000).toISOString().slice(0, 10);
+}
 function sanitise(value, limit = 2500) {
   let text = String(value);
   for (const secret of [...secrets].sort((a, b) => b.length - a.length)) if (secret) text = text.replaceAll(secret, '[redacted]');
@@ -105,7 +110,7 @@ async function makePage(width) {
       else state.feedbackPosts.push(command);
     }
     try {
-      const response = await intercepted.fetch({ url: base + address.pathname + address.search, maxRedirects: 0 });
+      const response = await intercepted.fetch({ url: base + address.pathname + address.search, headers: { ...request.headers(), connection: 'close' }, maxRedirects: 0, maxRetries: 0 });
       if (!response.ok()) {
         const body = await response.json().catch(() => null);
         (report.httpFailures ??= []).push({ stage, method: request.method(), pathname: address.pathname, status: response.status(), code: typeof body?.code === 'string' && /^[A-Z0-9_]{1,80}$/.test(body.code) ? body.code : 'UNRECOGNISED_ERROR' });
@@ -115,7 +120,8 @@ async function makePage(width) {
       }
       await intercepted.fulfill({ response });
     } catch (error) {
-      if (!state.closed && !/abort|closed|disposed|canceled|cancelled|already handled/i.test(error.message)) state.transportErrors.push(sanitise(error.message));
+      if (!state.closed && request.failure()?.errorText !== 'net::ERR_ABORTED') state.transportErrors.push(sanitise(error.message));
+      else if (!state.closed) (report.browserCancellations ??= []).push({ method: request.method(), pathname: address.pathname, failure: 'net::ERR_ABORTED' });
       await intercepted.abort().catch(() => undefined);
     }
   });
@@ -129,9 +135,10 @@ async function login(state, account) {
   await page.getByTestId('demo-username').fill(account.username);
   await page.getByTestId('demo-passcode').fill(account.passcode);
   await page.getByTestId('demo-login-submit').click();
-  await page.getByTestId('workspace-context-ready').waitFor();
+  await page.getByTestId('demo-signed-in').waitFor();
+  await selectWorkspaceContext(page, account.role);
   const badge = page.getByTestId('workspace-current-role'); await badge.waitFor();
-  const expected = { manager: /Manager/, administrator: /Administrator/, player: /Player/, spectator: /Spectator/ };
+  const expected = { manager: /Manager/, administrator: /Super Admin/, player: /Player/, spectator: /Spectator/ };
   assert.match(await badge.innerText(), expected[account.role], 'The current selected role must be visible.');
   assert.equal(state.session?.accountId, account.accountId, 'The actual server must bind the configured account.');
   await page.getByTestId('demo-sign-out').click({ trial: true });
@@ -173,7 +180,7 @@ async function noPositionOverlaps(page) {
   await pitch.getByTestId(/^stats-position-/).first().waitFor();
   await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   const collisions = await pitch.evaluate(element => {
-    const cells = [...element.querySelectorAll('[data-testid^="stats-position-"]')].map(node => node.getBoundingClientRect());
+    const cells = [...element.querySelectorAll('[data-testid^="stats-position-"]')].filter(node => /^stats-position-[A-Z]{2}$/.test(node.getAttribute('data-testid'))).map(node => node.getBoundingClientRect());
     let overlap = 0;
     for (let i = 0; i < cells.length; i++) for (let j = i + 1; j < cells.length; j++) if (Math.min(cells[i].right, cells[j].right) - Math.max(cells[i].left, cells[j].left) > 2 && Math.min(cells[i].bottom, cells[j].bottom) - Math.max(cells[i].top, cells[j].top) > 2) overlap++;
     return overlap;
@@ -193,15 +200,18 @@ async function roleJourney(account, width, privateNote) {
     assert.equal(await page.getByTestId('demo-login-screen').count(), 0, 'Only signed-in application screens may be retained as screenshots.');
     const statsResponse = account.role === 'spectator' ? null : await currentJson(state.session.accessToken, 'player-stats', account.role);
     if (account.role === 'player') {
-      await openWorkspaceTab(page, 'home');
-      await page.getByTestId('player-home-my-stats').click(); await page.getByTestId('player-my-stats').waitFor();
+      await openWorkspaceTab(page, 'stats');
+      await page.getByTestId('player-my-stats').waitFor();
       assert.equal(statsResponse.kind, 'own-player-stats'); assert.equal(statsResponse.player.playerId, 'synthetic-player-01'); assert(!Object.hasOwn(statsResponse, 'players')); assertNoPrivateStats(statsResponse);
       assert.equal(await page.getByTestId(/^stats-player-detail-/).count(), 1, 'Player statistics must contain exactly the bound player.');
       assert.equal(await page.getByTestId('team-player-stats').count(), 0, 'Player views must never show the staff roster statistics.');
-      if (width === 390) await feedbackJourney(state, privateNote);
+      if (width === 390) {
+        await feedbackJourney(state, privateNote);
+        await ballotJourney(state, account);
+      }
     } else if (['manager', 'administrator'].includes(account.role)) {
       await openWorkspaceTab(page, 'stats'); await page.getByTestId('team-player-stats').waitFor();
-      assert.equal(statsResponse.kind, 'team-player-stats'); assert(statsResponse.players.length >= 13); assertNoPrivateStats(statsResponse);
+      assert.equal(statsResponse.kind, 'team-player-stats'); assert.equal(statsResponse.players.length, 8, 'The reviewed staff roster must retain the owner\'s eight Roma players.'); assertNoPrivateStats(statsResponse);
       assert(!JSON.stringify(statsResponse).includes(privateNote), 'Private feedback must not leak into staff statistics.');
       await targetSize(page.getByTestId('stats-map-team'), 'Whole-team position map');
       await page.getByTestId('stats-map-player').click(); await noPositionOverlaps(page);
@@ -252,11 +262,64 @@ async function feedbackJourney(state, privateNote) {
   report.feedback = { actualPlayedProof: true, trustedNodeCompletion: true, unicodeNoteBoundary: true, reviewHasNoWrite: true, ratingAndNoteSaved: true, exactReplayRevisionUnchanged: true, ownFeedbackUpdate: true, closedHistoryReadOnly: true };
   checks.push('Private feedback uses an actual reducer-completed accepted fixture and Node-owned trusted finish; Unicode note limits are respected, review writes nothing, confirmed save persists once, exact replay keeps revision, an own edit advances CAS and closed history has no editor.');
 }
+async function ballotJourney(state, account) {
+  await freshBudget(account.accountId, 'own private ballot and same-account second session');
+  const { page } = state, token = state.session.accessToken;
+  const before = await currentJson(token, 'community', 'player');
+  const match = before.matches.find(item => item.id === fixture.matchId);
+  assert(match?.mayVote && match.candidates.length >= 2 && match.ownChoice === null);
+  assert(!match.candidates.some(item => item.id === 'synthetic-player-01'), 'The played Player must not be a candidate for its own vote.');
+  const [first, second] = match.candidates;
+  const posts = [];
+  const capture = request => {
+    if (new URL(request.url()).pathname.endsWith('/community') && request.method() === 'POST') posts.push(request.postDataJSON().command);
+  };
+  page.on('request', capture);
+  try {
+    await openWorkspaceTab(page, 'home'); await page.getByTestId('player-home-vote').click();
+    const card = page.getByTestId(`connected-ballot-${fixture.matchId}`); await card.waitFor();
+    await card.getByTestId(`community-vote-option-${fixture.matchId}-${first.id}`).click();
+    assert.equal(posts.length, 0, 'Selecting a teammate must remain a draft until explicit confirmation.');
+    const received = page.waitForResponse(response => new URL(response.url()).pathname.endsWith('/community') && response.request().method() === 'POST');
+    await card.getByTestId(`community-confirm-vote-${fixture.matchId}`).click(); assert.equal((await received).status(), 200);
+    await card.getByTestId(`community-change-vote-${fixture.matchId}`).waitFor();
+    const firstSaved = await currentJson(token, 'community', 'player');
+    assert.equal(firstSaved.matches.find(item => item.id === fixture.matchId).ownChoice, first.id);
+    assert.equal(posts.length, 1); assert.equal(posts[0].type, 'ballot.cast');
+    const replay = await apiCommand(token, 'community', posts[0], 'player');
+    assert.equal(replay.status, 200); assert.equal(replay.value.revision, firstSaved.revision, 'Replaying the exact accepted ballot request must not add another revision.');
+    await card.getByTestId(`community-change-vote-${fixture.matchId}`).click();
+    await card.getByTestId(`community-vote-option-${fixture.matchId}-${second.id}`).click();
+    await card.getByRole('button', { name: 'Keep current vote', exact: true }).click();
+    assert.equal(posts.length, 1); assert.equal((await currentJson(token, 'community', 'player')).matches.find(item => item.id === fixture.matchId).ownChoice, first.id, 'Cancelling a changed-vote draft must retain the confirmed choice.');
+    await card.getByTestId(`community-change-vote-${fixture.matchId}`).click();
+    await card.getByTestId(`community-vote-option-${fixture.matchId}-${second.id}`).click();
+    const changed = page.waitForResponse(response => new URL(response.url()).pathname.endsWith('/community') && response.request().method() === 'POST');
+    await card.getByTestId(`community-confirm-vote-${fixture.matchId}`).click(); assert.equal((await changed).status(), 200);
+    await card.getByTestId(`community-change-vote-${fixture.matchId}`).waitFor();
+    assert.equal(posts.length, 2); assert.equal((await currentJson(token, 'community', 'player')).matches.find(item => item.id === fixture.matchId).ownChoice, second.id);
+    const household = await makePage(390);
+    try {
+      await login(household, account); await openWorkspaceTab(household.page, 'home'); await household.page.getByTestId('player-home-vote').click();
+      const same = household.page.getByTestId(`connected-ballot-${fixture.matchId}`); await same.waitFor();
+      await same.getByTestId(`community-change-vote-${fixture.matchId}`).waitFor();
+      await same.getByText(`Current choice: ${second.label}`, { exact: true }).waitFor();
+      assert.equal(await same.getByTestId(`community-confirm-vote-${fixture.matchId}`).count(), 0, 'A second session for the same shared account must show its existing choice rather than another new-vote prompt.');
+      assert.equal((await currentJson(household.session.accessToken, 'community', 'player')).matches.find(item => item.id === fixture.matchId).ownChoice, second.id);
+      await fits(household); await logout(household);
+    } finally { household.closed = true; await household.context.close(); }
+    report.ballot = { actualCompiledPlayerUi: true, labelledTrustedReducerFixture: true, selfExcluded: true, selectionAndCancelledDraftDoNotWrite: true, explicitVoteAndChangedVoteAcknowledged: true, exactReplayDoesNotAdvanceRevision: true, sameSharedAccountSecondSessionSeesExistingChoice: true, cutoffMs: match.cutoffAtMs, originalFinalisationDeadlineMs: match.deadlineAtMs, policyOrClockChanged: false };
+    checks.push('Player casts and changes its own private vote only after confirmation; cancelling a draft and exact replay add no vote revision, self is excluded, and a second session for the same shared account sees the existing confirmed choice. The isolated trusted fixture uses its explicitly configured cutoff; no proposed59-minute default or original60-minute finalisation deadline is changed.');
+  } finally { page.off('request', capture); }
+}
 async function managerFeatures(account, privateNote) {
   await freshBudget(account.accountId, 'manager setup/cancellation features');
   const state = await makePage(390), { page } = state;
   try {
     await login(state, account);
+    const privateBallotBoundary = await currentJson(state.session.accessToken, 'community');
+    const managerMatch = privateBallotBoundary.matches.find(item => item.id === fixture.matchId);
+    assert(managerMatch && managerMatch.ownChoice === null && managerMatch.candidates.length === 0 && !Object.hasOwn(privateBallotBoundary, 'ballots'), 'Managers may operate the award window without receiving a player’s private choice or a ballot directory.');
     await openWorkspaceTab(page, 'feedback'); await page.getByTestId('match-feedback-manager-view').first().waitFor();
     await page.getByTestId(`match-feedback-${fixture.matchId}`).getByText(privateNote, { exact: true }).waitFor();
     assert.equal(await page.getByTestId('match-feedback-save').count(), 0, 'Managers may read private feedback but must not submit a player entry.');
@@ -278,7 +341,7 @@ async function managerFeatures(account, privateNote) {
     const template = current.lineupTemplates?.find(item => item.active && item.name === name); assert(template?.allocations.length === template.formation.format);
     assert.deepEqual(current.snapshots, originalSnapshots, 'Saving a squad setup must not change immutable match snapshots.');
     const fixtureId = `qa-feature-${randomUUID()}`;
-    const fixtureCommand = { id: randomUUID(), type: 'fixture.saved', expectedRevision: current.revision, fixture: { id: fixtureId, seasonId, opponent: 'QA Setup Review', playedDate: '2026-11-14', kickoff: '10:00', arrival: '09:30', venue: 'Roma training ground', homeAway: 'home', format: template.formation.format, plannedHalfDurationMs: 1500000 } };
+    const fixtureCommand = { id: randomUUID(), type: 'fixture.saved', expectedRevision: current.revision, fixture: { id: fixtureId, seasonId, opponent: 'QA Setup Review', playedDate: futureReviewDate(14), kickoff: '10:00', arrival: '09:30', venue: 'Roma training ground', homeAway: 'home', format: template.formation.format, plannedHalfDurationMs: 1500000 } };
     assert.equal((await apiCommand(state.session.accessToken, 'preparation', fixtureCommand)).status, 200);
     await openWorkspaceTab(page, 'more'); const refreshed = page.waitForResponse(response => new URL(response.url()).pathname.endsWith('/preparation') && response.request().method() === 'GET');
     await page.getByRole('button', { name: 'Refresh service views', exact: true }).click(); await refreshed;
@@ -314,6 +377,16 @@ async function privacyChecks(accounts, privateNote) {
     const account = accounts.find(item => item.key === role), state = await makePage(390);
     try {
       await login(state, account);
+      if (account.role === 'administrator') {
+        const deniedCommunity = await fetch(base + route('community'), { headers: { Authorization: `Bearer ${state.session.accessToken}`, 'X-Longball-Role': 'administrator' } });
+        assert.equal(deniedCommunity.status, 404, 'Administrative context does not silently gain a player’s community identity.');
+      } else {
+        const community = await currentJson(state.session.accessToken, 'community', account.role);
+        const ownMatch = community.matches.find(item => item.id === fixture.matchId);
+        assert(ownMatch && ownMatch.ownChoice === null, 'A different account or role must not receive the reviewed Player’s private choice.');
+        assert(!Object.hasOwn(community, 'ballots'), 'A community projection must not return a ballot directory.');
+        if (account.role !== 'player') assert.deepEqual(ownMatch.candidates, [], 'A non-player role receives no private ballot candidates or controls.');
+      }
       const response = await fetch(base + route('match-feedback'), { headers: { Authorization: `Bearer ${state.session.accessToken}`, 'X-Longball-Role': account.role } });
       if (account.role === 'player') {
         assert.equal(response.status, 200); const view = await response.json();
@@ -340,10 +413,45 @@ async function localMatch(page, matchId) {
 }
 async function actualMatchAutofill(account) {
   await freshBudget(account.accountId, 'actual checked-in lineup suggestion');
-  const state = await makePage(390), { page } = state, matchId = 'synthetic-roma-maple-2026-10-24';
+  const state = await makePage(390), { page } = state;
   try {
-    await login(state, account); await openWorkspaceTab(page, 'schedule');
-    await page.getByRole('button', { name: /^Open fixture Maple FC,/ }).click(); await page.getByTestId('preparation-open-match').click();
+    await login(state, account);
+    const token = state.session.accessToken, opponent = 'QA Check-in Review', playedDate = futureReviewDate(21);
+    let preparation = await currentJson(token, 'preparation');
+    const originalFixtures = structuredClone(preparation.fixtures), originalSnapshots = structuredClone(preparation.snapshots);
+    const formation = preparation.formations.find(row => row.format === 7); assert(formation, 'The saved seven-a-side formation must be available.');
+    await openWorkspaceTab(page, 'schedule');
+    await page.getByRole('radio', { name: 'Event type: Matches', exact: true }).click();
+    await page.getByTestId('preparation-create-event').click();
+    await page.getByLabel('Opposition', { exact: true }).fill(opponent);
+    await page.getByLabel('Match date (YYYY-MM-DD)', { exact: true }).fill(playedDate);
+    await page.getByLabel('Venue', { exact: true }).fill('Roma review pitch');
+    await page.getByRole('radio', { name: 'Pitch places: 7', exact: true }).click();
+    await page.getByLabel('Minutes per half for this match', { exact: true }).fill('25');
+    const creating = page.waitForResponse(response => new URL(response.url()).pathname.endsWith('/preparation') && response.request().method() === 'POST');
+    await page.getByRole('button', { name: 'Save fixture', exact: true }).click(); assert.equal((await creating).status(), 200);
+    await page.getByRole('button', { name: 'Save fixture', exact: true }).waitFor({ state: 'hidden' });
+    preparation = await currentJson(token, 'preparation');
+    const created = preparation.fixtures.find(row => row.opponent === opponent && row.playedDate === playedDate);
+    const creationCommand = state.preparationPosts.at(-1);
+    assert(created && creationCommand?.type === 'fixture.saved' && creationCommand.fixture.id === created.id, 'The exact game must be created by the actual Schedule form and acknowledged by the service.');
+    const matchId = created.id;
+    assert(matchId.startsWith('synthetic-'), 'The trusted demo creation mode must classify its actual new game for the narrow browser recording boundary.');
+    const commands = [
+      { type: 'fixture.selection_saved', fixtureId: matchId, selectedProfileIds: preparation.profiles.filter(row => row.active && row.seasonId === seasonId).map(row => row.id) },
+      { type: 'fixture.prepared', fixtureId: matchId, formationId: formation.id },
+    ];
+    for (const payload of commands) {
+      const reply = await apiCommand(token, 'preparation', { ...payload, id: randomUUID(), expectedRevision: preparation.revision });
+      assert.equal(reply.status, 200, 'Owned QA fixture setup must use accepted Manager commands.');
+      preparation = await currentJson(token, 'preparation');
+    }
+    assert.deepEqual(preparation.fixtures.filter(row => originalFixtures.some(original => original.id === row.id)), originalFixtures, 'Setting up an isolated future fixture must not rewrite seeded games.');
+    assert.deepEqual(preparation.snapshots.filter(row => originalSnapshots.some(original => original.id === row.id)), originalSnapshots, 'Existing immutable match snapshots remain unchanged.');
+    report.autofillFixture = { matchId, playedDate, commandCount: 3, createdThroughActualScheduleUi: true, trustedDemoIdentityGeneratedByApp: true, selectionAndPreparationUseRealManagerCommands: true, createdOnlyInOwnedDatabase: true, originalFixturesUnchanged: true, actualClockUnchanged: true };
+    await logout(state); await login(state, account); await openWorkspaceTab(page, 'schedule');
+    const open = () => page.getByRole('button', { name: `Open fixture ${opponent}, ${reviewDateLabel(playedDate)}`, exact: true });
+    await open().click(); await page.getByTestId('preparation-open-saved-match').click();
     await page.getByTestId('recording-acquire').click(); await page.getByTestId('connected-match-lineup').click();
     const initial = await localMatch(page, matchId); assert(initial?.state?.status === 'preparation');
     await page.getByTestId('lineup-auto-fill').click();
@@ -372,7 +480,7 @@ async function actualMatchAutofill(account) {
     assert.equal(accepted.acceptedRevision, 0); assert.equal(accepted.state.stagedLineup.length, 0); assert.equal(accepted.state.status, 'preparation');
     const retained = current;
     await fits(state); await logout(state); await login(state, account);
-    await openWorkspaceTab(page, 'schedule'); await page.getByRole('button', { name: /^Open fixture Maple FC,/ }).click(); await page.getByTestId('preparation-open-saved-match').click();
+    await openWorkspaceTab(page, 'schedule'); await open().click(); await page.getByTestId('preparation-open-saved-match').click();
     await page.getByText('Recording on this phone', { exact: true }).waitFor();
     const reopened = await localMatch(page, matchId);
     assert.deepEqual(reopened.state.stagedLineup, retained.state.stagedLineup); assert.equal(reopened.outboxCount, retained.outboxCount); assert.equal(reopened.state.status, 'preparation');
@@ -389,7 +497,8 @@ async function stop(child) {
 }
 const watchdog = setTimeout(() => { void browser?.close().catch(() => undefined); for (const child of children) child.kill('SIGTERM'); }, 420000); watchdog.unref();
 try {
-  await rm(output, { recursive: true, force: true }); await mkdir(output, { recursive: true });
+  if (existsSync(output)) await rename(output, `${output}-attempt-${Date.now()}`);
+  await mkdir(output, { recursive: true });
   assert(existsSync(path.join(webRoot, 'index.html')) && existsSync(apiBundle), 'Build the new flagged web application and API before this separate review.');
   const html = await readFile(path.join(webRoot, 'index.html'), 'utf8'), scriptPath = html.match(/<script[^>]+src="([^"]+)"/)?.[1];
   assert(scriptPath && !scriptPath.includes('..') && !scriptPath.includes('://'));
@@ -418,6 +527,11 @@ try {
   stage = 'manager planning/cancellation'; await managerFeatures(accounts.find(item => item.key === 'manager'), privateNote);
   stage = 'actual checked-in lineup suggestion'; await actualMatchAutofill(accounts.find(item => item.key === 'manager'));
   stage = 'private feedback access boundaries'; await privacyChecks(accounts, privateNote);
+  assert.equal((report.httpFailures ?? []).length, 0, 'The actual UI journey must have no unexpected HTTP failures; intentional direct denial probes are separate.');
+  for (const state of states) { assert.deepEqual(state.errors, []); assert.deepEqual(state.transportErrors, []); }
+  assert.equal(digest(await readFile(apiBundle)), report.source.apiBundleSha256, 'The actual API bundle must remain unchanged throughout the review.');
+  assert.equal(digest(await readFile(path.join(webRoot, scriptPath.replace(/^\//, '')))), report.source.webJavaScriptSha256, 'The actual browser bundle must remain unchanged throughout the review.');
+  assert.equal(digest(await readFile(new URL(import.meta.url))), report.source.harnessSha256, 'The feature harness must remain unchanged throughout the review.');
   report.passed = true;
 } catch (error) {
   report.failures.push({ stage, name: sanitise(error.name), message: sanitise(error.message) }); report.processDiagnostic = sanitise(processDiagnostic); process.exitCode = 1;

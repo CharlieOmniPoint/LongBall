@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import type {
   OwnPlayerStatsDto,
@@ -5,8 +6,8 @@ import type {
   PositionStatsTotals,
   StatsScope,
 } from "@longball/application/player-stats";
-import { formatUkSeasonLabel } from "@longball/application/uk-display";
-import { Card, Notice, Pill } from "../ui";
+import { formatUkDateTime, formatUkSeasonLabel } from "@longball/application/uk-display";
+import { Button, Card, Notice, Pill } from "../ui";
 import { colors, typography } from "../ui/tokens";
 import { formatStatsPositionPercentage } from "../platform/player-stats-presentation";
 
@@ -42,6 +43,8 @@ export function PlayerStatsDetails({
   scope: StatsScope;
   own?: boolean;
 }) {
+  if (own)
+    return <OwnPlayerStatsDetails key={`${scope.clubId}:${scope.teamId}:${scope.seasonId}:${row.playerId}`} row={row} scope={scope} />;
   return (
     <View style={s.section} testID={`stats-player-detail-${row.playerId}`}>
       <Card>
@@ -130,7 +133,52 @@ export function PlayerStatsDetails({
   );
 }
 
-export function PositionBreakdown({ value }: { value: PositionStatsTotals }) {
+/** Keep the player's headline stats and positions ahead of the full coverage explanation. */
+function OwnPlayerStatsDetails({ row, scope }: { row: PlayerStatsRow; scope: StatsScope }) {
+  const [aboutOpen, setAboutOpen] = useState(false);
+  const hasGaps = row.coverage.playingTimeUnknownMatches > 0 || row.coverage.reviewRequiredMatches > 0 || row.coverage.scoringPartialMatches > 0 || row.coverage.scoringUnknownMatches > 0 || row.goalkeepingUnknownMatches > 0;
+  const keeperStats = row.goalkeepingReviewedMatches > 0 || row.goalkeepingUnknownMatches > 0 || row.knownCleanSheets > 0;
+  return <View style={s.section} testID={`stats-player-detail-${row.playerId}`}>
+    <Card>
+      <Text accessibilityRole="header" style={typography.section}>Your season</Text>
+      {row.coverage.recordedMatches === 0 ? <Notice>Your stats will appear after your manager records a played game.</Notice> : <>
+        <View style={s.totals}>
+          <Total label="Recorded playing time" value={statsTime(row.knownPlayingMs)} />
+          <Total label="Games played" value={String(row.knownAppearances)} />
+          <Total label="Recorded goals" value={String(row.knownGoals)} />
+          {keeperStats && <Total label="Clean sheets in goal" value={String(row.knownCleanSheets)} />}
+        </View>
+        {hasGaps && <Notice>Some game records are incomplete. These are your confirmed totals.</Notice>}
+      </>}
+      <Text style={typography.muted} testID="player-stats-coverage-summary">These totals use recorded matches. Missing information stays unknown.</Text>
+    </Card>
+    <Card>
+      <Text accessibilityRole="header" style={typography.section}>Where you played</Text>
+      <PositionBreakdown value={row} simple />
+    </Card>
+    <Card>
+      <Button label="About these stats" icon="info" compact variant="quiet" testID="player-stats-about-toggle" accessibilityState={{ expanded: aboutOpen }} onPress={() => setAboutOpen(value => !value)} />
+      {aboutOpen && <View style={s.section} testID="player-stats-about-details">
+        <Text style={typography.body}>Games played count matches with recorded playing time above zero. Recorded goals count goals named to you; missing goals or minutes are not filled in.</Text>
+        <Text style={typography.muted}>Position percentages include all recorded playing time, even time with no position recorded. Missing history is not filled in.</Text>
+        <Text style={typography.body}>Recorded own goals: {row.knownOwnGoals}. Clean sheets in goal: {row.knownCleanSheets}.</Text>
+        <Text style={typography.muted}>A clean sheet counts a completed game with no opposition goal while you were recorded in goal, including opposition goals from own goals.</Text>
+        <Text style={typography.body}>Goalkeeping reviewed: {row.goalkeepingReviewedMatches} games.{row.goalkeepingUnknownMatches > 0 ? ` ${row.goalkeepingUnknownMatches} games have incomplete goalkeeper or goal-timing records.` : ""}</Text>
+        <Text style={typography.body}>Playing-time entries: {row.coverage.playingTimeKnownMatches} of {row.coverage.recordedMatches} recorded matches.</Text>
+        {row.coverage.playingTimeUnknownMatches > 0 && <Text style={typography.muted}>{row.coverage.playingTimeUnknownMatches} games have no usable playing-time entry. This does not mean you were absent or did not play.</Text>}
+        {row.coverage.reviewRequiredMatches > 0 && <Notice tone="warning">{row.coverage.reviewRequiredMatches} games need review and add no uncertain minutes or goals to these totals.</Notice>}
+        <View style={s.pills}>
+          <Pill>Scoring complete: {row.coverage.scoringCompleteMatches}</Pill>
+          <Pill tone="muted">Partial: {row.coverage.scoringPartialMatches}</Pill>
+          <Pill tone="muted">Unknown: {row.coverage.scoringUnknownMatches}</Pill>
+        </View>
+        <Text style={typography.muted}>{scope.asOf ? `Latest saved match update: ${formatUkDateTime(scope.asOf)} · UK time. Running clocks add no unsaved time here.` : "A latest recording time is not available."}</Text>
+      </View>}
+    </Card>
+  </View>;
+}
+
+export function PositionBreakdown({ value, simple = false }: { value: PositionStatsTotals; simple?: boolean }) {
   const recorded = value.positions.filter((position) => position.playingMs > 0);
   return (
     <View style={s.section}>
@@ -184,8 +232,7 @@ export function PositionBreakdown({ value }: { value: PositionStatsTotals }) {
         </View>
       )}
       <Text style={typography.muted}>
-        Percentages use known playing time. Time without a position stays in the
-        denominator; historical gaps are not filled in.
+        {simple ? "Percentages show your recorded playing time. Some time may have no position recorded." : "Percentages use known playing time. Time without a position stays in the denominator; historical gaps are not filled in."}
       </Text>
     </View>
   );

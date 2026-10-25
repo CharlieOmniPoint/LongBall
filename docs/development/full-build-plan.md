@@ -1,5 +1,8 @@
 # Full feature build and evidence register
 
+The 25 October five-persona usability pass is implemented and locally accepted; publication and exact-source native/cloud checks are being recorded. [The persona register](evidence/2026-10-25/persona-review/README.md) preserves baseline defects, failed test assumptions, role-specific fixes, source/artifact boundaries and current checks. This pass keeps native iPhone/Android, phone/tablet web, all roles/features and agreed match rules. It does not approve deferred privacy/support decisions or waive upstream dependency/hardware gates.
+
+
 > Current published product `f31b823f59b64d4474f821439ffa43fc1d674942` preserves native iPhone/Android, phone/tablet browser, F01–F28, all four Should features and the later club/account/formation/access/record/reminder expansion. [Review status](review.md) holds current publication, tests and remaining gates. Earlier release sections below retain their own source-qualified evidence and expiries.
 
 ## Manager selected-player map — 25 October

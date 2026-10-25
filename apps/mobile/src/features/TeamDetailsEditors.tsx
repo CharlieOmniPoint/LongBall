@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Text, TextInput, View } from "react-native";
 import { normaliseFaPlayerId } from "@longball/application/preparation";
 import { Button, Notice, typography, colors } from "../ui";
+import { useDraftSignal } from "../platform/use-unsaved-draft";
 import {
   acknowledgeRevisionedValueDraft,
   refreshRevisionedValueDraft,
@@ -17,6 +18,7 @@ function OptionalDetail({
   disabled,
   numeric = false,
   testID,
+  onDraftChange,
 }: {
   value: string;
   label: string;
@@ -25,6 +27,7 @@ function OptionalDetail({
   disabled?: boolean;
   numeric?: boolean;
   testID: string;
+  onDraftChange?: (dirty: boolean) => void;
 }) {
   const [model, setModel] = useState(() => revisionedValueDraft(value, 0)),
     [busy, setBusy] = useState(false),
@@ -38,6 +41,8 @@ function OptionalDetail({
   }
   const draft = model.value;
   const needsReview = revisionedValueNeedsReview(model);
+  const dirty = draft !== model.source;
+  useDraftSignal(dirty, onDraftChange);
   return (
     <View style={{ gap: 8 }}>
       <Text style={typography.label}>{label} (optional)</Text>
@@ -131,6 +136,19 @@ function OptionalDetail({
           </View>
         </View>
       )}
+      {dirty && !needsReview && (
+        <Button
+          label={`Discard ${label.toLowerCase()} changes`}
+          testID={`${testID}-discard`}
+          compact
+          variant="quiet"
+          disabled={disabled || busy}
+          onPress={() => {
+            setModel(revisionedValueDraft(value, model.revision));
+            setMessage("Unsaved changes discarded.");
+          }}
+        />
+      )}
       {message && <Notice>{message}</Notice>}
     </View>
   );
@@ -139,10 +157,12 @@ export function FaPlayerIdEditor({
   value,
   onSave,
   disabled,
+  onDraftChange,
 }: {
   value?: string | null;
   onSave: (value: string | null) => Promise<boolean>;
   disabled?: boolean;
+  onDraftChange?: (dirty: boolean) => void;
 }) {
   return (
     <OptionalDetail
@@ -153,6 +173,7 @@ export function FaPlayerIdEditor({
       onSave={(draft) => onSave(normaliseFaPlayerId(draft))}
       disabled={disabled}
       testID="fa-player-id"
+      onDraftChange={onDraftChange}
     />
   );
 }
@@ -160,10 +181,12 @@ export function TeamLeagueEditor({
   value,
   onSave,
   disabled,
+  onDraftChange,
 }: {
   value?: string;
   onSave: (value: string) => Promise<boolean>;
   disabled?: boolean;
+  onDraftChange?: (dirty: boolean) => void;
 }) {
   return (
     <OptionalDetail
@@ -173,6 +196,7 @@ export function TeamLeagueEditor({
       onSave={onSave}
       disabled={disabled}
       testID="team-league"
+      onDraftChange={onDraftChange}
     />
   );
 }

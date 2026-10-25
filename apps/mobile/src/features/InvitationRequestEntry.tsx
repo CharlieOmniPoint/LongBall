@@ -1,7 +1,10 @@
-import { formatUkSeasonLabel } from '@longball/application/uk-display';
+import { formatUkSeasonLabel } from "@longball/application/uk-display";
 import { useEffect, useRef, useState } from "react";
 import { Text, TextInput, View } from "react-native";
-import type { InviteDirectoryTeam } from "@longball/application/spectator-pin";
+import type {
+  InviteDirectoryTeam,
+  InviteRequestInput,
+} from "@longball/application/spectator-pin";
 import {
   inviteDirectory,
   requestTeamInvite,
@@ -9,13 +12,17 @@ import {
 import { randomUUID } from "../platform/id";
 import { Button, Card, Notice, colors, typography } from "../ui";
 
-export function InvitationRequestEntry({
-  apiBaseUrl,
-  onBack,
-}: {
+type InvitationRequestProps = {
   apiBaseUrl: string;
   onBack: () => void;
-}) {
+};
+export function InvitationRequestEntry(props: InvitationRequestProps) {
+  return <InvitationRequestSession key={props.apiBaseUrl} {...props} />;
+}
+function InvitationRequestSession({
+  apiBaseUrl,
+  onBack,
+}: InvitationRequestProps) {
   const [directory, setDirectory] = useState<InviteDirectoryTeam[]>([]),
     [clubId, setClubId] = useState(""),
     [team, setTeam] = useState<InviteDirectoryTeam | null>(null),
@@ -26,34 +33,71 @@ export function InvitationRequestEntry({
     [email, setEmail] = useState(""),
     [busy, setBusy] = useState(false),
     [loaded, setLoaded] = useState(false),
+    [loading, setLoading] = useState(true),
+    [loadAttempt, setLoadAttempt] = useState(0),
+    [loadError, setLoadError] = useState<string | null>(null),
     [error, setError] = useState<string | null>(null),
+    [retained, setRetained] = useState<InviteRequestInput | null>(null),
+    [confirmLeaving, setConfirmLeaving] = useState(false),
     [sent, setSent] = useState(false);
   const requestId = useRef(randomUUID()),
     active = useRef<AbortController | null>(null);
   useEffect(() => {
     const controller = new AbortController();
+    let timedOut = false;
+    const deadline = setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, 20_000);
     active.current = controller;
-    void inviteDirectory(apiBaseUrl, controller.signal)
+    void Promise.resolve()
+      .then(() => {
+        if (controller.signal.aborted) return null;
+        setLoading(true);
+        setLoadError(null);
+        return inviteDirectory(apiBaseUrl, controller.signal);
+      })
       .then((value) => {
-        if (!controller.signal.aborted) {
+        if (value && !controller.signal.aborted) {
           setDirectory(value);
+          setClubId((current) =>
+            value.some((item) => item.clubId === current) ? current : "",
+          );
+          setTeam((current) =>
+            current
+              ? (value.find(
+                  (item) =>
+                    item.clubId === current.clubId &&
+                    item.teamId === current.teamId &&
+                    item.seasonId === current.seasonId,
+                ) ?? null)
+              : null,
+          );
           setLoaded(true);
         }
       })
       .catch(() => {
-        if (!controller.signal.aborted)
-          setError(
-            "The club and team list could not be loaded. Please try again.",
+        if (!controller.signal.aborted || timedOut)
+          setLoadError(
+            timedOut
+              ? "Loading clubs and teams took too long. Retry when connected."
+              : "We could not load clubs and teams. Retry when connected.",
           );
       })
       .finally(() => {
-        if (active.current === controller) active.current = null;
+        clearTimeout(deadline);
+        if (active.current === controller) {
+          active.current = null;
+          setLoading(false);
+        }
       });
     return () => {
+      clearTimeout(deadline);
       controller.abort();
       active.current?.abort();
+      if (active.current === controller) active.current = null;
     };
-  }, [apiBaseUrl]);
+  }, [apiBaseUrl, loadAttempt]);
   const clubs = [
     ...new Map(
       directory.map((item) => [
@@ -77,41 +121,49 @@ export function InvitationRequestEntry({
     paddingHorizontal: 12,
     ...typography.body,
   };
+  const controlsLocked = busy || Boolean(retained);
   const submit = async () => {
-    if (!team || busy || active.current) return;
+    if (!team || busy || loading || loadError || active.current) return;
+    if (!retained && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setError("Enter a valid contact email before requesting an invitation.");
+      return;
+    }
+    const submitted = retained ?? {
+      requestId: requestId.current,
+      clubId: team.clubId,
+      teamId: team.teamId,
+      seasonId: team.seasonId,
+      requestedRole: role,
+      name: name.trim(),
+      email: email.trim(),
+    };
     const controller = new AbortController();
+    let timedOut = false;
+    const deadline = setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, 20_000);
     active.current = controller;
+    setRetained(submitted);
     setBusy(true);
     setError(null);
     try {
-      await requestTeamInvite(
-        apiBaseUrl,
-        {
-          requestId: requestId.current,
-          clubId: team.clubId,
-          teamId: team.teamId,
-          seasonId: team.seasonId,
-          requestedRole: role,
-          name,
-          email,
-        },
-        controller.signal,
-      );
+      await requestTeamInvite(apiBaseUrl, submitted, controller.signal);
       if (!controller.signal.aborted) {
         setSent(true);
+        setRetained(null);
         setName("");
         setEmail("");
       }
-    } catch (cause) {
-      if (!controller.signal.aborted)
+    } catch {
+      if (!controller.signal.aborted || timedOut)
         setError(
-          cause instanceof Error
-            ? cause.message
-            : "The request could not be sent.",
+          "Your request was not confirmed. Retry the original request to check it; your details have been kept unchanged.",
         );
     } finally {
+      clearTimeout(deadline);
       if (active.current === controller) active.current = null;
-      if (!controller.signal.aborted) setBusy(false);
+      if (!controller.signal.aborted || timedOut) setBusy(false);
     }
   };
   return (
@@ -127,11 +179,34 @@ export function InvitationRequestEntry({
           <Text style={typography.body}>
             Choose your club and team. Ask to join as a Player or Spectator.
           </Text>
+          {loading && (
+            <Text
+              style={typography.muted}
+              accessibilityLiveRegion="polite"
+              testID="invite-directory-loading"
+            >
+              Loading clubs and teams…
+            </Text>
+          )}
+          {loadError && <Notice tone="warning">{loadError}</Notice>}
+          {loadError && (
+            <View style={{ alignSelf: "flex-start" }}>
+              <Button
+                label="Retry clubs and teams"
+                testID="invite-directory-retry"
+                compact
+                variant="secondary"
+                disabled={loading || busy}
+                onPress={() => setLoadAttempt((attempt) => attempt + 1)}
+              />
+            </View>
+          )}
           <TextInput
             accessibilityLabel="Search clubs"
             placeholder="Search clubs"
             value={clubSearch}
             onChangeText={setClubSearch}
+            editable={!controlsLocked}
             style={input}
           />
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
@@ -140,6 +215,7 @@ export function InvitationRequestEntry({
                 key={club.id}
                 compact
                 label={club.name}
+                disabled={loading || controlsLocked || Boolean(loadError)}
                 variant={clubId === club.id ? "primary" : "secondary"}
                 onPress={() => {
                   setClubId(club.id);
@@ -161,6 +237,7 @@ export function InvitationRequestEntry({
                 placeholder="Team name or age group, e.g. U10"
                 value={teamSearch}
                 onChangeText={setTeamSearch}
+                editable={!controlsLocked}
                 style={input}
               />
               <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
@@ -169,6 +246,7 @@ export function InvitationRequestEntry({
                     key={`${item.teamId}:${item.seasonId}`}
                     compact
                     label={`${item.teamName} ${item.ageGroup} · ${formatUkSeasonLabel(item.seasonLabel)}`}
+                    disabled={loading || controlsLocked || Boolean(loadError)}
                     variant={
                       team?.teamId === item.teamId &&
                       team.seasonId === item.seasonId
@@ -186,7 +264,7 @@ export function InvitationRequestEntry({
               )}
             </>
           )}
-          {loaded && !directory.length && (
+          {loaded && !loading && !loadError && !directory.length && (
             <Notice>No teams are available for invitation requests yet.</Notice>
           )}
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
@@ -195,6 +273,7 @@ export function InvitationRequestEntry({
                 key={item}
                 compact
                 label={item === "player" ? "Player" : "Spectator"}
+                disabled={controlsLocked}
                 variant={role === item ? "primary" : "secondary"}
                 onPress={() => setRole(item)}
               />
@@ -206,7 +285,7 @@ export function InvitationRequestEntry({
             maxLength={80}
             value={name}
             onChangeText={setName}
-            editable={!busy}
+            editable={!controlsLocked}
             style={input}
           />
           <TextInput
@@ -217,14 +296,27 @@ export function InvitationRequestEntry({
             onChangeText={setEmail}
             autoCapitalize="none"
             keyboardType="email-address"
-            editable={!busy}
+            editable={!controlsLocked}
             style={input}
           />
           {error && <Notice tone="warning">{error}</Notice>}
           <Button
-            label={busy ? "Sending request…" : "Request invitation"}
+            label={
+              busy
+                ? "Sending request…"
+                : retained
+                  ? "Retry original request"
+                  : "Request invitation"
+            }
             testID="submit-invite-request"
-            disabled={busy || !team || name.trim().length < 2 || !email.trim()}
+            disabled={
+              busy ||
+              loading ||
+              Boolean(loadError) ||
+              !team ||
+              name.trim().length < 2 ||
+              !email.trim()
+            }
             onPress={() => {
               void submit();
             }}
@@ -235,8 +327,29 @@ export function InvitationRequestEntry({
         label="Back to sign in"
         variant="quiet"
         disabled={busy}
-        onPress={onBack}
+        onPress={() => (retained ? setConfirmLeaving(true) : onBack())}
       />
+      {confirmLeaving && retained && (
+        <View style={{ gap: 8 }} testID="invite-request-leave-confirmation">
+          <Notice tone="warning">
+            The team may already have received your request. Leaving closes the
+            retry details on this device; it does not withdraw the request.
+          </Notice>
+          <Button
+            label="Stay and retry"
+            compact
+            variant="secondary"
+            onPress={() => setConfirmLeaving(false)}
+          />
+          <Button
+            label="Leave without confirmation"
+            compact
+            variant="quiet"
+            testID="invite-request-leave-unconfirmed"
+            onPress={onBack}
+          />
+        </View>
+      )}
     </Card>
   );
 }

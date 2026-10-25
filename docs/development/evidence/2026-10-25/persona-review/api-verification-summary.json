@@ -1,0 +1,84 @@
+{
+  "schemaVersion": 1,
+  "startedAt": "2026-10-25T22:29:31.088Z",
+  "finishedAt": "2026-10-25T22:36:57.666Z",
+  "apiCommand": "pnpm exec vitest run --config apps/api/vitest.config.ts --reporter=default --reporter=json",
+  "migrationCommand": "pnpm db:migrate:check",
+  "postgresConfigured": true,
+  "limits": {
+    "maxWorkers": 2,
+    "testTimeoutMs": 30000,
+    "hookTimeoutMs": 60000,
+    "limitsChanged": false
+  },
+  "sourceBeforeSha256": "b70c6698f530a4f3089015311ef1b12340b7fdd2d910d5ebaa37c2fbafe708fa",
+  "sourceAfterSha256": "b70c6698f530a4f3089015311ef1b12340b7fdd2d910d5ebaa37c2fbafe708fa",
+  "sourceStable": true,
+  "api": {
+    "exitCode": 0,
+    "success": true,
+    "tests": {
+      "total": 499,
+      "passed": 496,
+      "failed": 0,
+      "pending": 3,
+      "todo": 0
+    },
+    "files": {
+      "total": 83,
+      "passed": 83,
+      "failed": 0,
+      "pending": 0
+    },
+    "skipped": [
+      {
+        "file": "apps/api/src/heic.test.ts",
+        "test": "actual maintained HEVC native decoder and isolated derivatives applies actual container orientation and strips EXIF/GPS while producing existing JPEG photos and PNG logos",
+        "status": "skipped"
+      },
+      {
+        "file": "apps/api/src/heic.test.ts",
+        "test": "actual maintained HEVC native decoder and isolated derivatives allows a valid hidden thumbnail while refusing an oversized hidden item and multiple top-level images",
+        "status": "skipped"
+      },
+      {
+        "file": "apps/api/src/heic.test.ts",
+        "test": "actual maintained HEVC native decoder and isolated derivatives requires the original scan verdict before native decoding or any derivative",
+        "status": "skipped"
+      }
+    ],
+    "failed": [],
+    "rawReportSha256": "b515f20da59cafe3234c9f5ece7b80137b0c42e5a3741988f8e78c7f184c2e5d",
+    "logSha256": "489cb917b9dda6aaccff5813598c03f2da2f84ee76891acb75e750c948585505"
+  },
+  "migrations": {
+    "exitCode": 0,
+    "summary": [
+      " Test Files  11 passed (11)",
+      "      Tests  45 passed (45)",
+      "   Duration  30.09s (tests 82%, import 14%, transform 3%)"
+    ],
+    "logSha256": "a0d13a879f7bfd02d4a6483cca1b56a1bdc57d6a0348b1ed25446c46d4fd7e54",
+    "tests": {
+      "passed": 45,
+      "failed": 0,
+      "skipped": 0,
+      "total": 45
+    },
+    "files": {
+      "passed": 11,
+      "failed": 0,
+      "total": 11
+    }
+  },
+  "passed": true,
+  "postgresNamedFiles": {
+    "boundary": "Files with postgres in their relative source filename; additional PostgreSQL cases in mixed files remain included in the full API total.",
+    "files": 24,
+    "passed": 100,
+    "failed": 0,
+    "skipped": 0
+  },
+  "heicNativeHelperInstalled": false,
+  "rawOutputPolicy": "Raw runner output remains local; evidence contains counts, relative test paths, limits and hashes only."
+}

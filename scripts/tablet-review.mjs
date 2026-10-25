@@ -368,7 +368,7 @@ async function roleMatrix(account) {
         assert.equal(await page.locator('[data-testid^="stats-position-"][aria-label*="core position"]').count(), 0, 'Aggregate-only administrator statistics must not invent or expose Manager-only core preferences.');
       }
     } else if (account.role === 'player') {
-      await openWorkspaceTab(page, 'home'); await page.getByTestId('player-home-my-stats').click(); await page.getByTestId('player-my-stats').waitFor();
+      await openWorkspaceTab(page, 'stats'); await page.getByTestId('player-my-stats').waitFor();
     }
     for (const viewport of viewports) {
       stage = `${account.role} ${viewport.width}x${viewport.height}`;
@@ -456,7 +456,7 @@ async function managerDrafts(account) {
       await resizeFocusedField(state, name, viewport); await chooseLayout(state, preference); await expectLayout(state, 'manager', preference); assert.equal(await name.inputValue(), draftName); await geometry(state, 'manager profile draft');
     }
     assert.equal(state.mutations.length, rosterPosts, 'Rotation/toggles must retain a profile editor without saving it.');
-    await name.fill(profile.displayName); await button('Keep previous values').click();
+    await name.fill(profile.displayName); await button('Close without saving').click();
     stage = 'manager actual recording and check-in setup';
     await page.setViewportSize(viewports[3]); await chooseLayout(state, 'auto'); await openWorkspaceTab(page, 'schedule');
     const fixture = page.getByRole('button', { name: /^Open fixture Maple FC,/ });

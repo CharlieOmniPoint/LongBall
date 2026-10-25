@@ -91,6 +91,8 @@ describe.skipIf(!configured)(
         expect(
           (full.body as unknown as ClubAdministrationDto).clubs,
         ).toHaveLength(2);
+        expect((full.body as unknown as ClubAdministrationDto).candidates.find(candidate => candidate.accountId === 'synthetic-account-manager-2')?.label).toBe('Priya Shah');
+        expect((full.body as unknown as ClubAdministrationDto).candidates.some(candidate => candidate.accountId.startsWith('synthetic-account-player-'))).toBe(false);
         const club = await call("/v1/administration", "synthetic-club-admin");
         expect(club.status).toBe(200);
         expect(

@@ -14,6 +14,7 @@ import {
   type PreparationState,
 } from "@longball/application/preparation";
 import { randomUUID } from "../platform/id";
+import { useDraftSignal } from "../platform/use-unsaved-draft";
 import { Button, Card, Notice, typography } from "../ui";
 type Payload = PreparationCommand extends infer Command
   ? Command extends PreparationCommand
@@ -27,12 +28,14 @@ export function ReusableMatchPlans({
   busy,
   onCommand,
   onPrepare,
+  onDraftChange,
 }: {
   state: PreparationState;
   fixture: PreparationFixture;
   busy: boolean;
   onCommand: (command: Payload) => Promise<boolean>;
   onPrepare: () => Promise<boolean>;
+  onDraftChange?: (dirty: boolean) => void;
 }) {
   const [open, setOpen] = useState(false),
     [name, setName] = useState(""),
@@ -49,6 +52,29 @@ export function ReusableMatchPlans({
   const [review, setReview] = useState<ReturnType<
     typeof previewMatchPlan
   > | null>(null);
+  const dirty =
+    open &&
+    (name !== "" ||
+      description !== "" ||
+      allocations.length > 0 ||
+      minimum !== "5" ||
+      batch !== "2" ||
+      threshold !== "4" ||
+      buffer !== "15" ||
+      returnToNormal !== null);
+  useDraftSignal(dirty, onDraftChange);
+  const resetDraft = () => {
+    setName("");
+    setDescription("");
+    setAllocations([]);
+    setSlotId(null);
+    setMinimum("5");
+    setBatch("2");
+    setThreshold("4");
+    setBuffer("15");
+    setReturn(null);
+    setOpen(false);
+  };
   const source = state.snapshots
     .filter((snapshot) => snapshot.fixtureId === fixture.id)
     .at(-1);
@@ -119,23 +145,27 @@ export function ReusableMatchPlans({
       <View style={{ gap: 12 }} testID="reusable-match-plans">
         <Text style={typography.section}>Advanced match plans</Text>
         <Text style={typography.body}>
-          Optionally save a starting lineup with proposed match settings from reviewed
-          preparation. Copy them into another unplayed fixture only after
-          reviewing its current selected players. Replies, check-in and recorded
-          matches are never copied. For a simple lineup without policy settings, use Saved player setups.
+          Optionally save a starting lineup with proposed match settings from
+          reviewed preparation. Copy them into another unplayed fixture only
+          after reviewing its current selected players. Replies, check-in and
+          recorded matches are never copied. For a simple lineup without policy
+          settings, use Saved player setups.
         </Text>
         {error && <Notice tone="error">{error}</Notice>}
         {notice && <Notice>{notice}</Notice>}
         <Button
           label={
             open
-              ? "Close match-plan editor"
+              ? dirty
+                ? "Discard match-plan draft and close"
+                : "Close match-plan editor"
               : "Save a reusable match plan from this fixture"
           }
           variant="secondary"
           disabled={busy}
           onPress={() => {
-            setOpen(!open);
+            if (open) resetDraft();
+            else setOpen(true);
             setError(null);
           }}
         />
@@ -158,9 +188,9 @@ export function ReusableMatchPlans({
             ) : (
               <>
                 <Text style={typography.muted}>
-                  Reviewed source: {fixture.opponent} · preparation revision {source.preparedRevision}. Choose
-                  every place explicitly; this proposal does not mark anyone
-                  present.
+                  Reviewed source: {fixture.opponent} · preparation revision{" "}
+                  {source.preparedRevision}. Choose every place explicitly; this
+                  proposal does not mark anyone present.
                 </Text>
                 {field("Reusable plan name", name, setName)}
                 {field(
@@ -295,7 +325,7 @@ export function ReusableMatchPlans({
                           setNotice(
                             "Reusable plan saved. Its source snapshot and match are unchanged.",
                           );
-                          setOpen(false);
+                          resetDraft();
                         }
                       } catch (cause) {
                         setError(
@@ -420,6 +450,7 @@ export function ReusableMatchPlans({
             <Button
               label="Cancel plan preview"
               variant="quiet"
+              disabled={busy}
               onPress={() => setReview(null)}
             />
           </View>

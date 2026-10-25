@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useLayoutEffect, useState, type ReactNode } from "react";
 import { Text, TextInput, View } from "react-native";
 import type {
   PreparationCommand,
@@ -34,8 +34,10 @@ export function ConnectedClubConfiguration({
   staff,
   onStaffChange,
   brandingPanel,
+  onDraftChange,
 }: {
   brandingPanel?: ReactNode;
+  onDraftChange?: (dirty: boolean) => void;
   value: ConnectedConfigurationDto;
   disabled: boolean;
   onChange: (command: PreparationCommand) => Promise<boolean>;
@@ -71,6 +73,19 @@ export function ConnectedClubConfiguration({
   }
   if (nextDraft !== draft) setDraft(nextDraft);
   const { clubName, teamName, ageGroup, places, minutes } = draft.fields;
+  const clubDirty = draft.fields.clubName !== draft.baseline.clubName;
+  const teamDirty = (
+    ["teamName", "ageGroup", "places", "minutes"] as const
+  ).some((key) => draft.fields[key] !== draft.baseline[key]);
+  const dirty = clubDirty || teamDirty;
+  useLayoutEffect(() => {
+    onDraftChange?.(dirty);
+  }, [onDraftChange, dirty]);
+  const discardDraft = () => {
+    setDraft(configurationDraft(source));
+    setAcknowledged(null);
+  };
+
   const change = <K extends keyof ConfigurationFields>(
     key: K,
     updated: ConfigurationFields[K],
@@ -179,6 +194,29 @@ export function ConnectedClubConfiguration({
   return (
     <View style={{ gap: 12 }} testID="administrator-configuration">
       {brandingPanel}
+      {dirty && (
+        <View
+          style={{
+            flexDirection: "row",
+            flexWrap: "wrap",
+            alignItems: "center",
+            gap: 8,
+          }}
+          testID="administrator-configuration-draft"
+        >
+          <Text style={typography.muted}>
+            You have unsaved configuration changes.
+          </Text>
+          <Button
+            compact
+            label="Discard configuration changes"
+            testID="administrator-config-discard"
+            variant="quiet"
+            disabled={disabled}
+            onPress={discardDraft}
+          />
+        </View>
+      )}
       <View
         style={{
           gap: 16,
@@ -203,7 +241,9 @@ export function ConnectedClubConfiguration({
             {clubReview && review("club")}
             <Button
               label="Save administrator club configuration"
-              disabled={disabled || clubReview || !clubName.trim()}
+              disabled={
+                disabled || !clubDirty || clubReview || !clubName.trim()
+              }
               onPress={() => {
                 void save("club");
               }}
@@ -228,6 +268,7 @@ export function ConnectedClubConfiguration({
                   key={number}
                   label={`${number} a side`}
                   variant={places === number ? "primary" : "secondary"}
+                  accessibilityState={{ selected: places === number }}
                   disabled={disabled}
                   onPress={() => change("places", number)}
                 />
@@ -245,6 +286,7 @@ export function ConnectedClubConfiguration({
               label="Save administrator team configuration"
               disabled={
                 disabled ||
+                !teamDirty ||
                 teamReview ||
                 !teamName.trim() ||
                 !ageGroup.trim() ||

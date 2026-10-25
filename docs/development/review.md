@@ -1,5 +1,11 @@
 # Review LongBall
 
+## Five-persona development pass — 25 October
+
+Local persona acceptance is complete; refreshed publication and exact-source cloud/native results are pending. [Evidence, fixed findings and test boundaries](evidence/2026-10-25/persona-review/README.md) cover all five roles, current verified photo upload/moderation, actual UI-created demo match recording, keyboard operation, draft protection, scoped administration and phone/tablet usability.1,008 shared/client tests,496 API passes plus 3 absent-helper skips,45 real PostgreSQL migrations and the recorded browser groups passed. Credentials and original feature scope remain unchanged. The dependency-security, physical-device, production-operations and owner-deferred privacy/support gates remain open.
+
+## Previous published player-stats release
+
 Current published product: `f31b823f59b64d4474f821439ffa43fc1d674942`. Manager Player Stats now opens the selected player's map automatically, uses grey text for true zero-time positions, and marks declared primary/secondary core positions with solid/dotted red outlines. Existing native iPhone/Android targets, phone/tablet layouts, roles, Roma squad and credentials are preserved.
 
 ## Shared review status

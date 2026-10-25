@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "README.md",
+      "bytes": 4053,
+      "sha256": "c8e70181c36ce35ce5efa8ad92a451ebcad54e3c262c0dd9a46026b78306ac09"
+    },
+    {
+      "path": "history/precompact-functional-report.json",
+      "bytes": 7434,
+      "sha256": "1c22941be7d83a606ba0a9a1fe052415a326e805cf8acd6a8fed50a7f0bb98b6"
+    },
+    {
+      "path": "history/precompact-photo-open-390.png",
+      "bytes": 62899,
+      "sha256": "2f0f25fe799bf711dfae497648d1620c1b3227ba8b67a678454adc195aa36d74"
+    },
+    {
+      "path": "history/stale-community-cas-409.json",
+      "bytes": 5699,
+      "sha256": "9759a7b07c67c3ac4648650a39f7c94471382f9569ae0ef7d42a8feab1375f3a"
+    },
+    {
+      "path": "home-390.png",
+      "bytes": 38658,
+      "sha256": "e89588999540f4a49e16fa6fb7ed36b0dd39673160b4350a2f00cade3f2d9bee"
+    },
+    {
+      "path": "photo-open-390.png",
+      "bytes": 52826,
+      "sha256": "781fd6926775b30fa62522a129bee73310fbcbfe97ff5ee7eb450dd79688d672"
+    },
+    {
+      "path": "report.json",
+      "bytes": 7871,
+      "sha256": "551b38c95cb910279ee21e020c73b37d237155bd2504eed91b59ff24e6660d1f"
+    }
+  ]
+}

@@ -5,6 +5,7 @@ import { Text, TextInput, View } from "react-native";
 import { Button, Card, Notice, Pill } from "../ui";
 import { colors, typography } from "../ui/tokens";
 import { randomUUID } from "../platform/id";
+import { accountChoiceLabel } from "../platform/account-choice-labels";
 import { useWorkspaceLayout } from "../ui/WorkspaceLayout";
 
 export type ConnectedStaffDto = ManagerRosterDto;
@@ -19,7 +20,20 @@ export type ConnectedStaffCommand = { id: string; expectedRevision: number } & (
 );
 const date = (value: number | null) =>
   value === null ? "No recorded expiry" : formatUkDateTime(value);
-export function ConnectedStaffPanel({
+export function ConnectedStaffPanel(props: {
+  value: ConnectedStaffDto;
+  disabled: boolean;
+  onChange: (command: ConnectedStaffCommand) => Promise<boolean>;
+}) {
+  return (
+    <ScopedConnectedStaffPanel
+      key={`${props.value.teamId}:${props.value.seasonId}`}
+      {...props}
+    />
+  );
+}
+
+function ScopedConnectedStaffPanel({
   value,
   disabled,
   onChange,
@@ -30,6 +44,10 @@ export function ConnectedStaffPanel({
 }) {
   const { wide } = useWorkspaceLayout();
   const [accountId, setAccountId] = useState("");
+  const [accountSearch, setAccountSearch] = useState("");
+  const [candidateLimit, setCandidateLimit] = useState(20);
+  const [referenceOpen, setReferenceOpen] = useState(false);
+  const [detailsAccountId, setDetailsAccountId] = useState<string | null>(null);
   const [review, setReview] = useState<ConnectedStaffCommand | null>(null);
   const [revoke, setRevoke] = useState<
     ConnectedStaffDto["managers"][number] | null
@@ -46,10 +64,19 @@ export function ConnectedStaffPanel({
     color: colors.ink,
     backgroundColor: colors.surface,
   };
-  const targetLabel = (id: string) =>
-    value.managers.find((person) => person.accountId === id)?.label ??
-    value.candidates.find((person) => person.accountId === id)?.label ??
-    id;
+  const allAccounts = [...value.managers, ...value.candidates];
+  const targetLabel = (id: string) => {
+    const account = allAccounts.find((person) => person.accountId === id);
+    return account ? accountChoiceLabel(account, allAccounts) : id;
+  };
+  const availableCandidates = value.candidates.filter(
+    (person) => !person.currentManager,
+  );
+  const matchingCandidates = availableCandidates.filter((person) =>
+    `${person.label} ${person.accountId}`
+      .toLocaleLowerCase("en-GB")
+      .includes(accountSearch.trim().toLocaleLowerCase("en-GB")),
+  );
   if (review)
     return (
       <Card>
@@ -62,6 +89,12 @@ export function ConnectedStaffPanel({
         <Text selectable style={typography.muted}>
           {review.accountId} · season {value.seasonId}
         </Text>
+        {review.expectedRevision !== value.revision && (
+          <Notice tone="warning">
+            The manager roster changed while this review was open. Return to
+            editing and review the latest roster before confirming.
+          </Notice>
+        )}
         {review.type === "manager.assigned" ? (
           <Notice>
             This gives manager access in this season. The service checks the
@@ -98,6 +131,8 @@ export function ConnectedStaffPanel({
                 setAccountId("");
                 setRevoke(null);
                 setReason("");
+                setReferenceOpen(false);
+                setAccountSearch("");
               }
             });
           }}
@@ -126,12 +161,12 @@ export function ConnectedStaffPanel({
         <Card>
           <Text style={typography.section}>Season managers</Text>
           <Pill>
-            {value.activeTeamManagerCount} of {value.maximumManagers} distinct
-            active team manager accounts
+            {value.activeTeamManagerCount} of {value.maximumManagers} appointed
+            manager places
           </Pill>
           <Text style={typography.body}>
-            The limit includes every active season for this team. An
-            administrator assignment is separate from a manager assignment.
+            Appointed managers count across this team’s active seasons. Club and
+            Super Admin management access is inherited separately.
           </Text>
           <Text style={typography.muted}>
             Current authorised roster · {formatUkDateTime(value.asOf)} ·
@@ -159,33 +194,58 @@ export function ConnectedStaffPanel({
                 paddingTop: 12,
               }}
             >
-              <Text style={typography.label}>{person.label}</Text>
+              <Text style={typography.label}>
+                {targetLabel(person.accountId)}
+              </Text>
               <Pill tone={person.status === "active" ? "brand" : "muted"}>
                 {person.status}
               </Pill>
-              <Text selectable style={typography.muted}>
-                Account reference: {person.accountId}
-              </Text>
-              <Text style={typography.muted}>{date(person.expiresAt)}</Text>
-              {person.otherActiveSeasonIds.length > 0 && (
-                <Text style={typography.muted}>
-                  Also active in {person.otherActiveSeasonIds.length} other
-                  season
-                  {person.otherActiveSeasonIds.length === 1 ? "" : "s"}.
-                  Revoking this assignment alone may leave the team-wide account
-                  count unchanged.
-                </Text>
-              )}
-              {person.revokedAt === null && person.status !== "revoked" && (
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
                 <Button
-                  label={`Review revoking ${person.label} manager access`}
-                  variant="secondary"
-                  disabled={locked}
-                  onPress={() => {
-                    setRevoke(person);
-                    setReason("");
+                  compact
+                  label="Account details"
+                  accessibilityLabel={`Account details for ${targetLabel(person.accountId)}`}
+                  variant="quiet"
+                  accessibilityState={{
+                    expanded: detailsAccountId === person.accountId,
                   }}
+                  disabled={disabled}
+                  onPress={() =>
+                    setDetailsAccountId((current) =>
+                      current === person.accountId ? null : person.accountId,
+                    )
+                  }
                 />
+                {person.revokedAt === null && person.status !== "revoked" && (
+                  <Button
+                    compact
+                    label="Review removal"
+                    accessibilityLabel={`Review revoking ${targetLabel(person.accountId)} manager access`}
+                    variant="secondary"
+                    disabled={locked}
+                    onPress={() => {
+                      setRevoke(person);
+                      setReason("");
+                    }}
+                  />
+                )}
+              </View>
+              {detailsAccountId === person.accountId && (
+                <>
+                  <Text selectable style={typography.muted}>
+                    Account reference: {person.accountId}
+                  </Text>
+                  <Text style={typography.muted}>{date(person.expiresAt)}</Text>
+                  {person.otherActiveSeasonIds.length > 0 && (
+                    <Text style={typography.muted}>
+                      Also active in {person.otherActiveSeasonIds.length} other
+                      season
+                      {person.otherActiveSeasonIds.length === 1 ? "" : "s"}.
+                      Revoking this assignment alone may leave the team-wide
+                      account count unchanged.
+                    </Text>
+                  )}
+                </>
               )}
             </View>
           ))}
@@ -198,24 +258,29 @@ export function ConnectedStaffPanel({
         {revoke ? (
           <Card>
             <Text style={typography.section}>
-              Reason for revoking {revoke.label}
+              Reason for revoking {targetLabel(revoke.accountId)}
             </Text>
             <Text style={typography.body}>
               Review the account reference and this season before confirming.
-              The service retains an audit entry.
+              Give a brief reason of 5–500 characters. The service retains an
+              audit entry.
             </Text>
             <TextInput
               accessibilityLabel="Manager revocation reason"
               value={reason}
               onChangeText={setReason}
               multiline
+              maxLength={500}
               editable={!locked}
               style={inputStyle}
             />
+            <Text style={typography.muted}>{reason.length}/500 characters</Text>
             <Button
               label="Review this-season manager revocation"
               testID="staff-review-revoke"
-              disabled={locked || !reason.trim() || reason.trim().length > 500}
+              disabled={
+                locked || reason.trim().length < 5 || reason.trim().length > 500
+              }
               onPress={() =>
                 setReview({
                   id: randomUUID(),
@@ -240,32 +305,96 @@ export function ConnectedStaffPanel({
               Assign an existing adult account
             </Text>
             <Text style={typography.body}>
-              Select an associated verified adult or enter an existing opaque
-              account reference supplied through the account service. A player
-              profile or typed age does not establish adult authority.
+              Choose a verified adult already associated with this team. The
+              service checks their eligibility and available manager places
+              again when you confirm.
             </Text>
-            {value.candidates
-              .filter((person) => !person.currentManager)
-              .map((person) => (
+            <TextInput
+              accessibilityLabel="Search manager candidates"
+              placeholder="Find an adult account"
+              value={accountSearch}
+              onChangeText={(text) => {
+                setAccountSearch(text);
+                setCandidateLimit(20);
+              }}
+              editable={!locked}
+              style={inputStyle}
+            />
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+              {matchingCandidates.slice(0, candidateLimit).map((person) => (
                 <Button
+                  compact
                   key={person.accountId}
-                  label={`Select ${person.label} for manager review`}
+                  label={`Select ${targetLabel(person.accountId)} for manager review`}
                   variant={
                     accountId === person.accountId ? "primary" : "secondary"
                   }
                   disabled={locked}
-                  onPress={() => setAccountId(person.accountId)}
+                  accessibilityState={{
+                    selected: accountId === person.accountId,
+                  }}
+                  onPress={() => {
+                    setAccountId(person.accountId);
+                    setReferenceOpen(false);
+                  }}
                 />
               ))}
-            <TextInput
-              accessibilityLabel="Existing adult account reference"
-              value={accountId}
-              onChangeText={setAccountId}
-              autoCapitalize="none"
-              autoCorrect={false}
-              editable={!locked}
-              style={inputStyle}
+            </View>
+            {matchingCandidates.length > candidateLimit && (
+              <Button
+                compact
+                variant="quiet"
+                label="Show more manager candidates"
+                disabled={locked}
+                onPress={() => setCandidateLimit((current) => current + 20)}
+              />
+            )}
+            {!matchingCandidates.length && (
+              <Text style={typography.muted}>
+                {availableCandidates.length
+                  ? "No adult accounts match this search."
+                  : "No additional verified adult accounts are associated with this team."}
+              </Text>
+            )}
+            {accountId && (
+              <Text style={typography.label}>
+                Selected:{" "}
+                {referenceOpen
+                  ? "Account reference entered"
+                  : targetLabel(accountId)}
+              </Text>
+            )}
+            <Button
+              compact
+              variant="quiet"
+              label={
+                referenceOpen
+                  ? "Hide account reference"
+                  : "Enter an account reference"
+              }
+              accessibilityState={{ expanded: referenceOpen }}
+              disabled={locked}
+              onPress={() => setReferenceOpen((value) => !value)}
             />
+            {referenceOpen && (
+              <>
+                <Text style={typography.muted}>
+                  Use an existing adult account reference supplied by the
+                  account service. A player profile, email address or typed age
+                  does not establish adult authority.
+                </Text>
+                <TextInput
+                  accessibilityLabel="Existing adult account reference"
+                  maxLength={80}
+                  value={accountId}
+                  onChangeText={setAccountId}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  editable={!locked}
+                  style={inputStyle}
+                />
+              </>
+            )}
             {value.activeTeamManagerCount >= value.maximumManagers && (
               <Notice tone="warning">
                 The team has reached its distinct active-manager limit. Adding

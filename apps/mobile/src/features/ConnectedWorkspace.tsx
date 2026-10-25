@@ -8,7 +8,11 @@ import { TeamDocumentsPanel } from './TeamDocumentsPanel';
 import { ClubAdministration } from './ClubAdministration';
 import { SignInRulesPanel } from './SignInRulesPanel';
 import { LoginActivityDashboard } from './LoginActivityDashboard';
-import type { ClubAdministrationCommand, ClubAdministrationDto, ClubReportDto } from '@longball/application/club-administration';
+import { WorkspaceAccount } from './WorkspaceAccount';
+import { useDraftSignal } from '../platform/use-unsaved-draft';
+import { demoFixtureId } from '../platform/demo-fixture-id';
+import { parseClubAdministrationReceipt } from '../platform/club-administration-receipt';
+import type { ClubAdministrationCommand, ClubAdministrationDto, ClubDirectoryTeam, ClubReportDto } from '@longball/application/club-administration';
 import { OppositionReviews } from './OppositionReviews';
 import { assertOppositionReviewView, type OppositionReviewView, type OppositionReviewCommand } from '@longball/application/opposition-review';
 import { RoleThemeProvider, accountRoleLabel, useRoleTheme } from '../ui/RoleTheme';
@@ -144,7 +148,8 @@ import { base64Url } from "@longball/application/security";
 import { MediaUploadClient } from "../platform/media-client";
 import { selectedRoleHeaders } from "../platform/request-headers";
 import { randomUUID } from "../platform/id";
-import { rebindWorkspaceRefresh } from "../platform/workspace-refresh";
+import { rebindWorkspaceRefresh, workspaceMutationRefreshResources, type AcceptedWorkspaceRefresh } from "../platform/workspace-refresh";
+import { workspaceCommandFailureOutcome, workspaceCommandPreviouslyUnconfirmed } from "../platform/workspace-command-outcome";
 import { acknowledgeRevisionedValueDraft, refreshRevisionedValueDraft, reviewRevisionedValueDraft, revisionedValueDraft, revisionedValueNeedsReview } from "../platform/revisioned-value-draft";
 import type { Journal, JournalDiagnostics } from "../platform/types";
 import {
@@ -232,6 +237,8 @@ function WorkspaceFrame({ fullScreen, fixedMatch, resetKey, footer, children }: 
   </View>;
 }
 
+const DRAFT_NAVIGATION_MESSAGE = 'Save or discard your unsaved changes before leaving this view. If a request is awaiting confirmation, retry or explicitly close that request first. Sign-out remains available.';
+
 export interface ConnectedWorkspaceProps {
   /** A retained hidden workspace preserves its journal without polling protected views. */
   active?: boolean;
@@ -243,6 +250,9 @@ export interface ConnectedWorkspaceProps {
     account: string;
   };
   initialRole?: Role;
+  /** Verified same-account session renewal keeps in-memory drafts and exact request identities. */
+  sessionIdentityKey?: string;
+  onVerifySignIn?: () => void;
   onLeaveWorkspace?: () => void;
   /** Immediate account sign-out remains available while ordinary navigation is guarded. */
   onSignOut?: () => void;
@@ -319,6 +329,24 @@ const responseLabels: Record<AvailabilityResponse, string> = {
   unsure: "Unsure",
   no_reply: "No reply",
 };
+function confirmedChangeMessage(request: PendingRequest): string {
+  const type = (request.body as {command?:{type?:string}} | null)?.command?.type;
+  const labels: Record<string,string> = {
+    'own.fixture_response_recorded':'Your game reply is saved.',
+    'own.training_response_recorded':'Your training reply is saved.',
+    'own.preferences_saved':'Your positions are saved.',
+    'own.fa_id_saved':'Your FA player ID is saved.',
+    'fixture.response_recorded':'Availability saved.',
+    'fixture.attendance_recorded':'Check-in saved.',
+    'training.response_recorded':'Training availability saved.',
+    'training.attendance_recorded':'Training attendance saved.',
+    'feedback.saved':'Your match feedback is saved.',
+    'preferences.changed':'Notification choices saved.',
+    'concern.submitted':'Your concern is recorded for review.',
+    'photo.published':'Photo shared with the team.',
+  };
+  return type && labels[type] ? labels[type] : `${request.label} saved.`;
+}
 const failureText = (error: unknown) =>
   error instanceof Error
     ? error.message
@@ -590,7 +618,7 @@ export function ConnectedWorkspace(props: ConnectedWorkspaceProps) {
       {activeConnection &&
         (activeConnection.mode !== "synthetic" || allowSynthetic) && (
           <WorkspaceEntry
-            key={`${activeConnection.baseUrl}|${activeConnection.mode}|${activeConnection.account}|${props.teamId}|${props.seasonId}`}
+            key={`${activeConnection.baseUrl}|${activeConnection.mode}|${props.sessionIdentityKey ?? activeConnection.account}|${props.teamId}|${props.seasonId}`}
             connection={activeConnection}
             {...props}
             allowSynthetic={allowSynthetic}
@@ -733,16 +761,35 @@ function WorkspaceSession({
   const uploadRetainedRef = useRef(false);
   const signInRulesRetainedRef = useRef(false);
   const [signInRulesRetained, setSignInRulesRetained] = useState(false);
-  const albumKeyRef = useRef<string | null>(null);
-  const invitationAuthority = useRef<string | null>(null);
   const invitationHeldRef = useRef<{
     scopeKey: string;
     active: boolean;
   } | null>(null);
+  const [formRetained,setFormRetained] = useState(false);
+  const formDraftsRef = useRef<Record<string, boolean>>({});
+  const formRetainedRef = useRef(false);
+  const updateFormRetention = useCallback((name: string, active: boolean) => {
+    if (Boolean(formDraftsRef.current[name]) === active) return;
+    formDraftsRef.current[name] = active;
+    formRetainedRef.current = Object.values(formDraftsRef.current).some(Boolean);
+    setFormRetained(formRetainedRef.current);
+    onEphemeralRetainedChange?.(formRetainedRef.current || signInRulesRetainedRef.current || brandRetainedRef.current || uploadRetainedRef.current || Boolean(invitationHeldRef.current?.active), retainedOwner);
+  }, [onEphemeralRetainedChange, retainedOwner]);
+  const onFormationDraft = useCallback((active: boolean) => updateFormRetention('formation', active), [updateFormRetention]);
+  const onPreparationDraft = useCallback((active: boolean) => updateFormRetention('preparation', active), [updateFormRetention]);
+  const onAdministrationRetained = useCallback((active: boolean) => updateFormRetention('administration', active), [updateFormRetention]);
+  const onOwnDraft = useCallback((active: boolean) => updateFormRetention('own-profile', active), [updateFormRetention]);
+  const onAccountRetained = useCallback((active: boolean) => updateFormRetention('account-request', active), [updateFormRetention]);
+  const onConfigurationDraft = useCallback((active: boolean) => updateFormRetention('configuration', active), [updateFormRetention]);
+  const onAlertDraft = useCallback((active: boolean) => updateFormRetention('alerts', active), [updateFormRetention]);
+  const onCommunityDraft = useCallback((active: boolean) => updateFormRetention('community', active), [updateFormRetention]);
+  const onScheduledDraft = useCallback((active: boolean) => updateFormRetention('scheduled-review', active), [updateFormRetention]);
+  const albumKeyRef = useRef<string | null>(null);
+  const invitationAuthority = useRef<string | null>(null);
   const onSignInRulesRetained = useCallback((active: boolean) => {
     signInRulesRetainedRef.current = active;
     setSignInRulesRetained(active);
-    onEphemeralRetainedChange?.(active || brandRetainedRef.current || uploadRetainedRef.current || Boolean(invitationHeldRef.current?.active), retainedOwner);
+    onEphemeralRetainedChange?.(active || formRetainedRef.current || brandRetainedRef.current || uploadRetainedRef.current || Boolean(invitationHeldRef.current?.active), retainedOwner);
   }, [onEphemeralRetainedChange, retainedOwner]);
 
   const [membershipTime, setMembershipTime] = useState(Date.now);
@@ -790,15 +837,19 @@ function WorkspaceSession({
         brandRetainedRef.current ||
         uploadRetainedRef.current ||
         signInRulesRetainedRef.current ||
+        formRetainedRef.current ||
         Boolean(invitationHeldRef.current?.active),
       busy: lock.current,
     });
     if (decision === "blocked") {
       setErrors([
-        "Retry or explicitly close the retained private request before changing workspace. Its current capability stays on this screen. Account locking and sign-out remain available.",
+        DRAFT_NAVIGATION_MESSAGE,
       ]);
       return;
     }
+    // A previous draft warning no longer describes an allowed transition.
+    // Preserve service/authentication failures and unresolved-request messages.
+    setErrors(previous => previous.filter(error => error !== DRAFT_NAVIGATION_MESSAGE));
     if (decision === "review_saved") {
       setNavigationReview(() => leave);
       return;
@@ -827,6 +878,8 @@ function WorkspaceSession({
   const [feedbackCache, setFeedback] = useState<BoundWorkspaceValue<MatchFeedbackView> | null>(null);
   const [scheduledGamesCache, setScheduledGames] = useState<BoundWorkspaceValue<ScheduledGameManagementDto> | null>(null);
   const [selectedOverviewGameId, setSelectedOverviewGameId] = useState<string | null>(null);
+  const [selectedTrainingId, setSelectedTrainingId] = useState<string | undefined>();
+  const [scheduleFilter, setScheduleFilter] = useState<'matches' | 'training'>('matches');
   const [selectedStatsPlayerId, setSelectedStatsPlayerId] = useState<string | undefined>();
   const [matchesCache, setMatches] = useState<BoundWorkspaceValue<
     MatchListPage<ConnectedMatchCentreDto>
@@ -856,6 +909,7 @@ function WorkspaceSession({
         active ||
           uploadRetainedRef.current ||
           signInRulesRetainedRef.current ||
+          formRetainedRef.current ||
           Boolean(
             invitationHeldRef.current?.active &&
               invitationHeldRef.current.scopeKey ===
@@ -879,6 +933,7 @@ function WorkspaceSession({
         active ||
           brandRetainedRef.current ||
           signInRulesRetainedRef.current ||
+          formRetainedRef.current ||
           Boolean(
             invitationHeldRef.current?.active &&
               invitationHeldRef.current.scopeKey ===
@@ -949,6 +1004,13 @@ function WorkspaceSession({
   const initialRoute = useRef(false);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const goToTab = (next: Tab) => guardNavigation(() => {
+    setNotice(null);
+    if (next === 'community') setCommunityInitialSection('photos');
+    setSelectedOverviewGameId(null);
+    setSelectedTrainingId(undefined);
+    setTab(next);
+  });
   const [memoryPending, setPending] = useState<PendingRequest | null>(null);
   const [legacyReviewKey, setLegacyReviewKey] = useState<string | null>(null);
   const [outboxStatus, setOutboxStatus] =
@@ -969,7 +1031,7 @@ function WorkspaceSession({
       invitationHeldRef.current = next;
       setInvitationHeld(next);
       onEphemeralRetainedChange?.(
-        active || brandRetainedRef.current || uploadRetainedRef.current || signInRulesRetainedRef.current,
+        active || brandRetainedRef.current || uploadRetainedRef.current || signInRulesRetainedRef.current || formRetainedRef.current,
         retainedOwner,
       );
     },
@@ -1459,19 +1521,20 @@ function WorkspaceSession({
           community.allowed,
         )
       : null;
-  const openAlbum = (matchId: string) => {
+  const openAlbum = (matchId: string) => guardNavigation(() => {
     try {
       if (!albumScope || !community)
         throw new Error("Refresh the current permitted game albums first.");
       setAlbumSelection(
         selectAlbum(albumScope, community.matches, matchId, community.allowed),
       );
+      setNotice(null);
       setCommunityInitialSection("photos");
       setTab("community");
     } catch (cause) {
       setErrors([failureText(cause)]);
     }
-  };
+  });
 
   useEffect(() => {
     const timer = setInterval(() => setMembershipTime(Date.now()), 1_000);
@@ -1492,7 +1555,7 @@ function WorkspaceSession({
     return () => clearTimeout(timer);
   }, [identity, membershipTime]);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (accepted?: AcceptedWorkspaceRefresh) => {
     if (!activeRef.current) return;
     const requestGeneration = ++generation.current;
     const previousBinding = liveBinding.current ?? refreshingBinding.current;
@@ -1609,6 +1672,8 @@ function WorkspaceSession({
       role: chosen.role,
       playerId: chosen?.playerId ?? null,
     };
+    const resources = workspaceMutationRefreshResources(accepted, previousBinding, ticket);
+    const refreshes = (section: string) => resources === null || resources.some(resource => resource === section);
     liveBinding.current = ticket;
     refreshingBinding.current = null;
     setBinding(ticket);
@@ -1700,9 +1765,8 @@ function WorkspaceSession({
         ]);
       }
     };
-    const tasks: Promise<void>[] = isAdministrator
-      ? []
-      : [
+    const tasks: Promise<void>[] = [];
+    if (!isAdministrator && refreshes('community')) tasks.push(
           client
             .request<CommunityDto>(scopedPath("community"))
             .then(async (value) => {
@@ -1710,6 +1774,8 @@ function WorkspaceSession({
               if (attached) setCommunity(attached);
             })
             .catch((cause) => readFault("Community", cause, true)),
+    );
+    if (!isAdministrator && refreshes('records')) tasks.push(
           client
             .request<RecordsDto>(scopedPath("records"))
             .then(async (reply) => {
@@ -1737,8 +1803,8 @@ function WorkspaceSession({
               if (attached) setRecords(attached);
             })
             .catch((cause) => readFault("Reports", cause, true)),
-        ];
-    if (chosen)
+    );
+    if (chosen && refreshes('branding'))
       tasks.push(
         client
           .request<BrandingDto>(scopedPath("branding"))
@@ -1753,7 +1819,7 @@ function WorkspaceSession({
           })
           .catch((cause) => readFault("Branding", cause, true)),
       );
-    if (!isAdministrator)
+    if (!isAdministrator && refreshes('matches'))
       tasks.push(
         client
           .request<unknown>(scopedPath("matches"))
@@ -1768,7 +1834,7 @@ function WorkspaceSession({
           })
           .catch((cause) => readFault("Matches", cause, true)),
       );
-    if (isManager || isAdministrator)
+    if ((isManager || isAdministrator) && refreshes('seasons/rollover-options'))
       tasks.push(
         client
           .request<ConnectedSeasonOptions>(
@@ -1783,7 +1849,7 @@ function WorkspaceSession({
               faults.push(`Seasons: ${failureText(cause)}`);
           }),
       );
-    if (isAdministrator)
+    if (isAdministrator && refreshes('configuration'))
       tasks.push(
         client
           .request<ConnectedConfigurationDto>(scopedPath("configuration"))
@@ -1795,7 +1861,7 @@ function WorkspaceSession({
             readFault("Configuration", cause, true);
           }),
       );
-    if (isAdministrator)
+    if (isAdministrator && refreshes('managers'))
       tasks.push(
         client
           .request<ConnectedStaffDto>(scopedPath("managers"))
@@ -1817,7 +1883,7 @@ function WorkspaceSession({
             readFault("Staff", cause, true);
           }),
       );
-    if (!isAdministrator)
+    if (!isAdministrator && refreshes('privileges/own'))
       tasks.push(
         client
           .request<OwnTeamPrivileges>(scopedPath("privileges/own"))
@@ -1828,7 +1894,7 @@ function WorkspaceSession({
           })
           .catch((cause) => readFault("Contribution privileges", cause, true)),
       );
-    if (isManager)
+    if (isManager && refreshes('privileges'))
       tasks.push(
         client
           .request<TeamPrivilegesView>(scopedPath("privileges"))
@@ -1839,7 +1905,7 @@ function WorkspaceSession({
           })
           .catch((cause) => readFault("Team privilege decisions", cause, true)),
       );
-    if (isManager)
+    if (isManager && refreshes('preparation'))
       tasks.push(
         client
           .request<PreparationState>(scopedPath("preparation"))
@@ -1849,7 +1915,7 @@ function WorkspaceSession({
           })
           .catch((cause) => readFault("Preparation", cause, true)),
       );
-    if (!isManager && isPlayer)
+    if (!isManager && isPlayer && refreshes('preparation/own'))
       tasks.push(
         client
           .request<unknown>(scopedPath("preparation/own"))
@@ -1864,29 +1930,29 @@ function WorkspaceSession({
           })
           .catch((cause) => readFault("Own preparation", cause, true)),
       );
-    tasks.push(client.request<unknown>(scopedPath('team-overview')).then(async value => {
+    if (refreshes('team-overview')) tasks.push(client.request<unknown>(scopedPath('team-overview')).then(async value => {
       assertTeamOverviewDto(value, {teamId:ticket.teamId,seasonId:ticket.seasonId});
       const attached = await attach(value); if (attached) setTeamOverview(attached);
     }).catch(cause => readFault('Team overview',cause,true)));
-    if (isManager || isAdministrator || isPlayer) tasks.push(
+    if ((isManager || isAdministrator || isPlayer) && refreshes('player-stats')) tasks.push(
       client.request<unknown>(scopedPath('player-stats')).then(async value => {
         assertPlayerStatsDto(value, { role: chosen.role, teamId: ticket.teamId, seasonId: ticket.seasonId, ...(isPlayer ? { playerId: ticket.playerId ?? '' } : {}) });
         const attached = await attach(value); if (attached) setStats(attached);
       }).catch(cause => readFault('Player statistics', cause, true)),
     );
-    if (isManager || isAdministrator || isPlayer) tasks.push(
+    if ((isManager || isAdministrator || isPlayer) && refreshes('opposition-reviews')) tasks.push(
       client.request<unknown>(scopedPath('opposition-reviews')).then(async value => {
         assertOppositionReviewView(value, {teamId:ticket.teamId,seasonId:ticket.seasonId,role:chosen.role});
         const attached=await attach(value); if(attached)setOpposition(attached);
       }).catch(cause => readFault('Opposition notes',cause,true)),
     );
-    if (isManager || isPlayer) tasks.push(
+    if ((isManager || isPlayer) && refreshes('match-feedback')) tasks.push(
       client.request<unknown>(scopedPath('match-feedback')).then(async value => {
         assertMatchFeedbackView(value, { accountId: ticket.accountId, teamId: ticket.teamId, seasonId: ticket.seasonId, role: isManager ? 'manager' : 'player', ...(isPlayer ? { playerId: ticket.playerId ?? '' } : {}) });
         const attached = await attach(value); if (attached) setFeedback(attached);
       }).catch(cause => readFault('Match feedback', cause, true)),
     );
-    if (isManager || isAdministrator) tasks.push(
+    if ((isManager || isAdministrator) && refreshes('scheduled-games')) tasks.push(
       client.request<unknown>(scopedPath('scheduled-games')).then(async value => {
         assertScheduledGameManagementDto(value, { teamId: ticket.teamId, seasonId: ticket.seasonId });
         const attached = await attach(value); if (attached) setScheduledGames(attached);
@@ -2035,19 +2101,27 @@ function WorkspaceSession({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sharedRefreshEnabled, sharedRefreshKey, client, absoluteApi, oidcSessionId, closeDeniedScope]);
 
+  const unconfirmedRequestKeys = useRef(new Set<string>());
   const execute = async (
     request: PendingRequest,
     retained?: WorkspaceOutboxState,
   ): Promise<boolean> => {
     const source = liveBinding.current;
     let outcomeAttempted = false;
+    let writeAttempted = false;
     const durable = request.protected === true;
+    const priorRequest = durable ? (retained ?? outboxPort.current?.snapshot())?.pending : null;
+    const previouslyUnconfirmed = workspaceCommandPreviouslyUnconfirmed({ key: request.key, knownUnconfirmed: unconfirmedRequestKeys.current.has(request.key), protectedPending: priorRequest, initialEnqueueReceipt: retained?.pending?.key === request.key });
     const settle = async (outcome: WorkspaceRequestOutcome) => {
       outcomeAttempted = true;
+      // Keep uncertainty across auth renewal and failed protected receipt saves.
+      // A first preflight refusal has not sent a write and need not add it.
+      if (outcome.kind === 'accepted' || outcome.kind === 'unconfirmed' && writeAttempted) unconfirmedRequestKeys.current.add(request.key);
       if (durable && !(await outboxPort.current?.settle(request.key, outcome)))
         throw new Error(
           "The service outcome has not been saved in protected storage. Retry the protected request save before another network attempt.",
         );
+      if (outcome.kind !== 'unconfirmed') unconfirmedRequestKeys.current.delete(request.key);
     };
     try {
       const type = (request.body as { command?: { type?: string } }).command
@@ -2131,6 +2205,7 @@ function WorkspaceSession({
           }).bodyJson;
         }
       }
+      writeAttempted = true;
       const response = await authenticatedFetch(
         `${client.baseUrl}${request.path}`,
         {
@@ -2168,35 +2243,9 @@ function WorkspaceSession({
       }
       if (!response.ok) {
         const code = body.code ?? "HTTP_FAILURE";
-        const definitive =
-          (response.status >= 400 &&
-            response.status < 500 &&
-            ![401, 403, 404, 408, 425, 429].includes(response.status)) ||
-          (response.status === 503 &&
-            ["POLICY_APPROVAL_REQUIRED", "SEASON_ASSIGNMENT_REQUIRED"].includes(
-              code,
-            ));
-        await settle(
-          definitive
-            ? {
-                kind: "refused",
-                httpStatus: response.status,
-                code,
-                serverRequestId: body.requestId ?? null,
-              }
-            : {
-                kind: "unconfirmed",
-                reason:
-                  response.status === 401
-                    ? "authentication"
-                    : [403, 404].includes(response.status)
-                      ? "access"
-                      : "retryable_service",
-                httpStatus: response.status,
-                code,
-              },
-        );
-        if (definitive) {
+        const outcome = workspaceCommandFailureOutcome({ httpStatus: response.status, code, serverRequestId: body.requestId, previouslyUnconfirmed });
+        await settle(outcome);
+        if (outcome.kind === 'refused') {
           setPending(null);
           // A rejected draft may need fresh comparison, while ordinary validation
           // failures must still allow correcting the current fields.
@@ -2226,11 +2275,9 @@ function WorkspaceSession({
         serverRequestId: response.headers.get("x-request-id"),
       });
       setPending(null);
-      setNotice(
-        `${request.label} saved by the service${durable ? " and its receipt retained on this device" : ""}.`,
-      );
+      setNotice(confirmedChangeMessage(request));
       try {
-        await load();
+        await load({ source, path: request.path, bodyJson });
       } catch (cause) {
         setErrors([
           `The command was accepted; the refreshed view is unavailable: ${failureText(cause)}`,
@@ -2238,7 +2285,7 @@ function WorkspaceSession({
       }
       return true;
     } catch (cause) {
-      if (durable && !outcomeAttempted) {
+      if (!outcomeAttempted) {
         try {
           await settle({
             kind: "unconfirmed",
@@ -2481,6 +2528,7 @@ function WorkspaceSession({
   const switchScope = (
     destination: { teamId: string; seasonId: string; playerId?: string | null },
     role: WorkspaceBinding["role"] | null = null,
+    destinationTab?: Tab,
   ) => {
     guardNavigation(() => {
       setRefreshSuggested(false);
@@ -2511,18 +2559,26 @@ function WorkspaceSession({
       setServiceMatchId("");
       setMatchFocused(false);
       setSelectedReportMatchId(null);
+      setSelectedTrainingId(undefined);
+      setNotice(null);
       setCommunityInitialSection("photos");
       setRoleChoice(role);
       setScopeChoice(destination);
       setContextPickerOpen(false);
       setTab(
-        role === "administrator"
+        destinationTab ?? (role === "administrator"
           ? "clubs"
           : role === "spectator"
             ? "overview"
-            : "home",
+            : "home"),
       );
     });
+  };
+  const openAdministrationTeam = (team: ClubDirectoryTeam, mode: 'overview' | 'manage') => {
+    const role = mode === 'manage' ? 'manager' : 'administrator';
+    const choice = contextChoices.find(item => item.teamId === team.id && item.seasonId === team.seasonId && item.role === role);
+    if (!choice) { setErrors(['Refresh your teams to confirm current access before opening this team.']); return; }
+    switchScope({teamId:choice.teamId,seasonId:choice.seasonId,playerId:choice.playerId}, role, mode === 'manage' ? 'home' : 'overview');
   };
   const exportCalendar = async (selectedKeys: string[]): Promise<string> => {
     const source = liveBinding.current;
@@ -2729,6 +2785,9 @@ function WorkspaceSession({
   const overviewGames: TeamOverviewGame[] = teamOverview?.games ?? [];
   const selectedOverviewGame = overviewGames.find(game => game.id === selectedOverviewGameId);
   const openOverviewGame = (id: string) => guardNavigation(() => {
+    setNotice(null);
+    setSelectedTrainingId(undefined);
+    setScheduleFilter('matches');
     setSelectedOverviewGameId(id);
     if (manager) {
       if (props.journal && props.deviceId && preparation?.snapshots.some(snapshot => snapshot.fixtureId === id)) { setServiceMatchId(id); setMatchFocused(true); setTab('controller'); }
@@ -2737,8 +2796,8 @@ function WorkspaceSession({
     else setTab('centre');
   });
   const [administrationAction] = useState(() => new RetainedAction<ClubAdministrationCommand,ClubAdministrationDto>());
-  const loadAdministration = useCallback(() => client.request<ClubAdministrationDto>('/v1/administration'), [client]);
-  const saveAdministration = useCallback((command:ClubAdministrationCommand) => administrationAction.run(command,randomUUID,(captured,key) => client.request<ClubAdministrationDto>('/v1/administration', {request:{idempotencyKey:key,path:'/v1/administration',kind:'upload',body:{command:captured}}})), [client,administrationAction]);
+  const loadAdministration = useCallback(async () => parseClubAdministrationReceipt(await client.request<unknown>('/v1/administration'),identity?.principal.administration), [client,identity?.principal.administration]);
+  const saveAdministration = useCallback((command:ClubAdministrationCommand) => administrationAction.run(command,randomUUID,async (captured,key) => parseClubAdministrationReceipt(await client.request<unknown>('/v1/administration', {request:{idempotencyKey:key,path:'/v1/administration',kind:'upload',body:{command:captured}}}),identity?.principal.administration)), [client,administrationAction,identity?.principal.administration]);
   const loadClubReport = useCallback((clubId:string) => client.request<ClubReportDto>(`/v1/clubs/${encodeURIComponent(clubId)}/reports`), [client]);
   const focusedMatch = Boolean(props.initialConnection && manager && tab === "controller" && matchFocused);
   return (
@@ -2752,21 +2811,8 @@ function WorkspaceSession({
             active={tab}
             disabled={disabled}
             onSelect={(value) => {
-              if (
-                !uploadRetainedRef.current &&
-                !brandRetainedRef.current &&
-                !signInRulesRetainedRef.current &&
-                !invitationIsRetained()
-              ) {
-                if (value === "account" && props.onOpenAccount)
-                  guardNavigation(props.onOpenAccount);
-                else {
-                  if (value === "community")
-                    setCommunityInitialSection("photos");
-                  setSelectedOverviewGameId(null);
-                  setTab(value);
-                }
-              }
+              if (value === "account" && props.onOpenAccount) guardNavigation(props.onOpenAccount);
+              else goToTab(value);
             }}
           />
         </View>
@@ -2786,7 +2832,7 @@ function WorkspaceSession({
           <Button label="Return to selected match" testID="workspace-return-to-match" variant="secondary" disabled={disabled} onPress={() => setTab("controller")} />
         )}
         {!focusedMatch && <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-          <Pressable accessibilityRole="button" accessibilityLabel="Open team overview" testID="workspace-team-overview" disabled={disabled} onPress={() => guardNavigation(() => setTab('overview'))} style={{minWidth:44,minHeight:44,alignItems:'center',justifyContent:'center'}}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Open team overview" testID="workspace-team-overview" disabled={disabled} onPress={() => goToTab('overview')} style={{minWidth:44,minHeight:44,alignItems:'center',justifyContent:'center'}}>
             {branding && brandClient && brandScopeKey ? <AuthenticatedBrandBadge client={brandClient} reference={branding.effective.logo} scopeKey={brandScopeKey} assertAccess={assertBrandAccess} label={`${branding.team.name} team badge`} /> : <Text style={[typography.section,{color:colors.brand}]}>RU</Text>}
           </Pressable>
           <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
@@ -2867,7 +2913,7 @@ function WorkspaceSession({
             label="Review received season invitation"
             variant="secondary"
             disabled={disabled}
-            onPress={() => setTab("invitations")}
+            onPress={() => goToTab("invitations")}
           />
         )}
         {sharedRefreshEnabled && sharedRefreshDelayed && (
@@ -2880,7 +2926,8 @@ function WorkspaceSession({
             {error}
           </Notice>
         ))}
-        {notice && !focusedMatch && <Notice>{notice}</Notice>}
+        {notice && !focusedMatch && <View testID="workspace-success-notice"><Notice>{notice}</Notice></View>}
+        {!focusedMatch && props.onVerifySignIn && (pending || signInRulesRetained || formRetained) && <Button label="Verify sign-in again" compact icon="lock" variant="quiet" testID="workspace-verify-sign-in" onPress={props.onVerifySignIn} />}
         {!focusedMatch && (activeController?.unsent || activeController?.pendingNetwork) && (
           <Notice tone="warning">
             This match has {activeController.pendingCount} event(s) awaiting
@@ -2944,10 +2991,10 @@ function WorkspaceSession({
             onStatus={setOutboxStatus}
             showStorageDetails={tab === "more"}
           />
-        ) : tab === "more" || !selectedContext ? (
+        ) : !storageChecked || !selectedContext ? (
           <Text style={typography.muted}>
             {storageChecked
-              ? "Service changes use memory-only retry on this connection. Closing this workspace clears unsent or unresolved requests; real browser command bodies are not written to browser persistence."
+              ? "Choose your club and team to get started."
               : "Checking protected request storage before enabling changes…"}
           </Text>
         ) : null}
@@ -2955,8 +3002,8 @@ function WorkspaceSession({
           <>
             <Notice tone="warning">
               {pending.protected
-                ? "A request is unresolved. Its exact command and key are retained in this protected workspace. Retry after the service verifies current access; a queued vote is never counted until the service accepts it before the cutoff."
-                : "A request is unresolved. Its exact command and key remain on this open screen. This connection uses memory-only retry; closing this workspace clears the request."}
+                ? "Your change has not been confirmed. Retry when connected. A vote counts only after it is accepted before the deadline."
+                : "Your change has not been confirmed. Keep this page open and retry when connected."}
             </Notice>
             <Button
               label="Retry exact service request"
@@ -3048,13 +3095,13 @@ function WorkspaceSession({
           />
         )}
       </Card>
-      {tab === 'clubs' && administrator && identity?.principal.administration && <View style={s.row}><Button label="Edit club and team configuration" compact variant="secondary" disabled={disabled} onPress={() => setTab('settings')} /><Button label="View assigned teams" compact variant="quiet" disabled={disabled} onPress={() => setTab('team')} /></View>}
-      {tab === 'clubs' && identity?.principal.administration?.level === 'super' && <Button label="Login activity" icon="chart" compact style={{ alignSelf: "flex-start" }} testID="workspace-tab-loginActivity" variant="secondary" disabled={disabled} onPress={() => guardNavigation(() => setTab('loginActivity'))} />}
-      {tab === 'account' && membership?.role === 'spectator' && teamId && seasonId && <SpectatorConnection key={`${absoluteApi}:${identity?.principal.accountId}:${teamId}:${seasonId}`} baseUrl={connection.baseUrl || '/'} authenticatedFetch={authenticatedFetch} teamId={teamId} seasonId={seasonId} active={!disabledWithoutInvitation} assertCurrent={assertInvitationCurrent} />}
-      {tab === 'formation' && manager && preparation && <FormationDesigner state={preparation} busy={disabled} onChange={command => mutate('preparation',command,'Formation')} />}
-      {(tab === 'clubs' || tab === 'clubReports' || !selectedContext && tab !== 'loginActivity') && identity?.principal.administration && <ClubAdministration key={`${absoluteApi}:${identity.principal.accountId}`} principal={identity.principal} section={tab === "clubReports" ? "reports" : "all"} load={loadAdministration} save={saveAdministration} loadReport={loadClubReport} onChanged={load} />}
+      {tab === 'clubs' && administrator && identity?.principal.administration && <View style={s.row}><Button label="Edit club and team configuration" compact variant="secondary" disabled={disabled} onPress={() => goToTab('settings')} /><Button label="View assigned teams" compact variant="quiet" disabled={disabled} onPress={() => goToTab('team')} /></View>}
+      {tab === 'clubs' && identity?.principal.administration?.level === 'super' && <Button label="Login activity" icon="chart" compact style={{ alignSelf: "flex-start" }} testID="workspace-tab-loginActivity" variant="secondary" disabled={disabled} onPress={() => goToTab('loginActivity')} />}
+      {tab === 'account' && membership?.role === 'spectator' && teamId && seasonId && <SpectatorConnection key={`${absoluteApi}:${identity?.principal.accountId}:${teamId}:${seasonId}`} baseUrl={connection.baseUrl || '/'} authenticatedFetch={authenticatedFetch} teamId={teamId} seasonId={seasonId} active={!disabledWithoutInvitation} assertCurrent={assertInvitationCurrent} onChanged={reload} />}
+      {tab === 'formation' && manager && preparation && <FormationDesigner state={preparation} busy={disabled} onChange={command => mutate('preparation',command,'Formation')} onDraftChange={onFormationDraft} />}
       {tab === 'clubs' && identity?.principal.administration?.level === 'super' && <SignInRulesPanel key={`sign-in-rules:${absoluteApi}:${identity.principal.accountId}`} client={client} active={props.active !== false && !disabledWithoutInvitation} onRetainedChange={onSignInRulesRetained} />}
-      {tab === 'loginActivity' && identity?.principal.administration?.level === 'super' && <LoginActivityDashboard key={`login-activity:${absoluteApi}:${identity.principal.accountId}`} client={client} active={props.active !== false && !disabled} onBack={() => guardNavigation(() => setTab('clubs'))} />}
+      {(tab === 'clubs' || tab === 'clubReports' || tab === 'team' && administrator || !selectedContext && tab !== 'loginActivity') && identity?.principal.administration && <ClubAdministration key={`${absoluteApi}:${identity.principal.accountId}`} principal={identity.principal} section={tab === 'team' ? 'teams' : tab === 'clubReports' ? 'reports' : 'all'} initialClubId={configuration?.club.id ?? preparation?.club.id} initialTeamId={teamId} load={loadAdministration} save={saveAdministration} loadReport={loadClubReport} onChanged={load} onOpenTeam={openAdministrationTeam} canManageTeam={team => contextChoices.some(choice => choice.teamId === team.id && choice.seasonId === team.seasonId && choice.role === 'manager')} onRetainedChange={onAdministrationRetained} />}
+      {tab === 'loginActivity' && identity?.principal.administration?.level === 'super' && <LoginActivityDashboard key={`login-activity:${absoluteApi}:${identity.principal.accountId}`} client={client} active={props.active !== false && !disabled} onBack={() => goToTab('clubs')} />}
       {tab === 'opposition' && (manager || administrator || membership?.role==='player') && (opposition ? <OppositionReviews value={opposition} busy={disabled} onSave={manager || administrator ? command => mutate('opposition-reviews',command,'Opposition notes') : undefined} /> : <Notice>Opposition notes are loading. Refresh your team view if they remain unavailable.</Notice>)}
       {tab === 'overview' && selectedContext && (teamOverview ? <TeamOverview team={teamOverview.team} games={overviewGames} nowMs={membershipTime} busy={disabled} onOpenGame={openOverviewGame} onRefresh={() => { void reload(); }} /> : <Notice>Your team overview is loading. Refresh your team view if it remains unavailable.</Notice>)}
       {tab === 'stats' && (manager || administrator || membership?.role === 'player') && <View style={s.stack}><Button label="Refresh stats" compact variant="quiet" disabled={disabled} onPress={() => {void reload();}} />{stats ? stats.kind === 'own-player-stats' ? <PlayerStats value={stats} teamLabel={overviewTeamLabel} /> : <TeamStats value={stats} teamLabel={overviewTeamLabel} selectedPlayerId={selectedStatsPlayerId} onSelectPlayer={setSelectedStatsPlayerId} corePositions={manager && preparation?.club.id === stats.scope.clubId && preparation.team.id === stats.scope.teamId ? preparation.profiles.filter(profile => profile.seasonId === stats.scope.seasonId).map(profile => ({ playerId: profile.playerId, primary: profile.preferences[0] ?? null, secondary: profile.preferences[1] ?? null })) : undefined} /> : <Notice>Your statistics are loading. Refresh your team view if they remain unavailable.</Notice>}</View>}
@@ -3065,7 +3112,7 @@ function WorkspaceSession({
             <Text accessibilityRole="header" style={typography.section}>
               More
             </Text>
-            {identity?.principal.administration?.level === 'super' && <Button label="Login activity" icon="chart" testID="workspace-tab-loginActivity" compact variant="secondary" disabled={disabled} onPress={() => guardNavigation(() => setTab('loginActivity'))} />}
+            {identity?.principal.administration?.level === 'super' && <Button label="Login activity" icon="chart" testID="workspace-tab-loginActivity" compact variant="secondary" disabled={disabled} onPress={() => goToTab('loginActivity')} />}
             {(manager ? [
               ["overview", "Team overview"], ["centre", "Match centre"], ["reports", "Team records"], ["feedback", "Player feedback"], ["opposition", "Opposition notes"],
               ["community", "Photos and player of the match"], ["settings", "Team settings"], ["seasons", "Seasons"],
@@ -3084,12 +3131,7 @@ function WorkspaceSession({
                 compact
                 variant="secondary"
                 disabled={disabled}
-                onPress={() => {
-                  if (value === "community")
-                    setCommunityInitialSection("photos");
-                  setSelectedOverviewGameId(null);
-                  setTab(value as Tab);
-                }}
+                onPress={() => goToTab(value as Tab)}
               />
             ))}
             <Button
@@ -3119,14 +3161,12 @@ function WorkspaceSession({
           records={records}
           community={community}
           nowMs={membershipTime}
-          onOpenSchedule={() => setTab("schedule")}
-          onOpenTeam={() => setTab("team")}
-          onOpenReports={() => setTab("reports")}
-          onOpenCommunity={() => {
-            setCommunityInitialSection("photos");
-            setTab("community");
-          }}
-          onPrepareMatch={() => setTab("schedule")}
+          onOpenSchedule={() => goToTab("schedule")}
+          onOpenTeam={() => goToTab("team")}
+          onOpenReports={() => goToTab("reports")}
+          onOpenCommunity={() => goToTab("community")}
+          onPrepareMatch={matchId => guardNavigation(() => { setNotice(null); setSelectedOverviewGameId(matchId); setSelectedTrainingId(undefined); setScheduleFilter('matches'); setTab('schedule'); })}
+          onPrepareTraining={trainingId => guardNavigation(() => { setNotice(null); setSelectedTrainingId(trainingId); setSelectedOverviewGameId(null); setScheduleFilter('training'); setTab('schedule'); })}
           onResumeMatch={
             props.journal && props.deviceId
               ? (matchId: string) => {
@@ -3153,13 +3193,15 @@ function WorkspaceSession({
             nowMs={membershipTime}
             disabled={disabled}
             displayName={own.profile.displayName}
-            onOpenSchedule={() => setTab("schedule")}
-            onOpenProfile={() => setTab("team")}
+            onOpenSchedule={() => goToTab("schedule")}
+            onOpenProfile={() => goToTab("team")}
             onOpenGame={() => { const selected = selectTeamOverviewGame(overviewGames, teamOverviewLondonDate(membershipTime)).game; if (selected) openOverviewGame(selected.id); else setTab('centre'); }}
-            onOpenVote={() => {
+            onOpenFeedback={feedback?.audience === 'player' && feedback.matches.some(match => match.canEdit && match.closesAtMs !== null && membershipTime < match.closesAtMs) ? () => goToTab('feedback') : undefined}
+            onOpenVote={() => guardNavigation(() => {
+              setNotice(null);
               setCommunityInitialSection("awards");
               setTab("community");
-            }}
+            })}
             onOpenAlbum={openAlbum}
             onReply={(event, response) => {
               void mutate(
@@ -3202,10 +3244,6 @@ function WorkspaceSession({
             }
           />
         )}
-      {tab === 'home' && membership?.role === 'player' && <View style={s.row}>
-        <Button label="My Stats" compact icon="chart" variant="secondary" testID="player-home-my-stats" style={{flex:1}} disabled={disabled} onPress={() => setTab('stats')} />
-        <Button label="Match feedback" compact icon="ball" variant="secondary" testID="player-home-feedback" style={{flex:1}} disabled={disabled} onPress={() => setTab('feedback')} />
-      </View>}
       {tab === "home" && membership?.role === "player" && !own && (
         <Notice>
           {busy
@@ -3241,13 +3279,13 @@ function WorkspaceSession({
           <Button
             label="Edit club and team configuration"
             disabled={disabled}
-            onPress={() => setTab("settings")}
+            onPress={() => goToTab("settings")}
           />
           <Button
             label="View assigned teams"
             variant="secondary"
             disabled={disabled}
-            onPress={() => setTab("team")}
+            onPress={() => goToTab("team")}
           />
         </Card>
       )}
@@ -3273,31 +3311,18 @@ function WorkspaceSession({
             assignment.
           </Notice>
         ))}
-      {tab === "account" && (
-        <Card>
-          <Text style={typography.section}>Account</Text>
-          {selectedContext && <Button label="Invite a spectator" icon="users" variant="secondary" testID="workspace-account-invite" onPress={() => setTab('invitations')} />}
-          <Text style={typography.body}>
-            {selectedContext?.roleLabel ?? "No selected workspace"}
-          </Text>
-          <Text style={typography.muted}>
-            {identity?.principal.accountId ?? "Checking account"}
-          </Text>
-          {props.onOpenAccount && (
-            <Button
-              label="Open account and security"
-              onPress={() => guardNavigation(props.onOpenAccount!)}
-            />
-          )}
-          {props.onLeaveWorkspace && (
-            <Button
-              label="Return to welcome"
-              variant="secondary"
-              onPress={() => guardNavigation(props.onLeaveWorkspace!)}
-            />
-          )}
-        </Card>
-      )}
+      {tab === "account" && identity && <WorkspaceAccount
+        key={`${absoluteApi}:${identity.principal.accountId}`}
+        principal={identity.principal} role={membership?.role ?? roleChoice ?? 'spectator'}
+        roleLabel={accountRoleLabel(identity.principal,membership?.role ?? roleChoice)}
+        teamLabel={selectedContext?.teamLabel} seasonLabel={selectedContext?.seasonLabel}
+        playerLabel={membership?.role==='player' ? own?.profile.displayName : undefined}
+        client={client} request={authenticatedFetch} active={props.active !== false && !disabledWithoutInvitation}
+        membershipLabels={Object.fromEntries(contextChoices.map(choice => [`${choice.teamId}:${choice.seasonId}`,`${choice.clubLabel ? choice.clubLabel+' · ' : ''}${choice.teamLabel} · ${formatUkSeasonLabel(choice.seasonLabel)}`]))}
+        onInvite={selectedContext ? () => goToTab('invitations') : undefined}
+        onSignOut={props.onSignOut ?? props.onLeaveWorkspace}
+        onVerifySignIn={props.onVerifySignIn} onRetainedChange={onAccountRetained}
+      />}
       {tab === 'centre' && selectedOverviewGameId && membership?.role !== 'administrator' && <Card>
         {selectedOverviewGame && !matches?.some(match => match.matchId === selectedOverviewGameId) && <>
           <Text style={typography.section}>{selectedOverviewGame.opponent}</Text>
@@ -3332,15 +3357,11 @@ function WorkspaceSession({
             onRefresh={() => {
               void reload();
             }}
-            onReports={() => setTab("reports")}
-            onPhotos={() => {
-              setCommunityInitialSection("photos");
-              setTab("community");
-            }}
-            onOpenReport={(matchId) => {
-              setSelectedReportMatchId(matchId);
-              setTab("reports");
-            }}
+            onReports={() => goToTab("reports")}
+            onPhotos={() => goToTab("community")}
+            onOpenReport={(matchId) => guardNavigation(() => {
+              setNotice(null); setSelectedReportMatchId(matchId); setTab("reports");
+            })}
             onOpenAlbum={openAlbum}
           />
         ) : (
@@ -3350,16 +3371,17 @@ function WorkspaceSession({
               : "Match updates are unavailable in this current authorised context."}
           </Notice>
         ))}
-      {(tab === 'team' || tab === 'schedule') && manager && preparation && <View style={s.row}><Button label="Formation" icon="ball" compact variant="secondary" testID="workspace-formation" disabled={disabled} onPress={() => setTab('formation')} /><Button label="FA team sheet" icon="shield" compact variant="secondary" testID="workspace-team-sheet" disabled={disabled} onPress={() => setTab('documents')} /></View>}
+      {(tab === 'team' || tab === 'schedule') && manager && preparation && <View style={s.row}><Button label="Formation" icon="ball" compact variant="secondary" testID="workspace-formation" disabled={disabled} onPress={() => goToTab('formation')} /><Button label="FA team sheet" icon="shield" compact variant="secondary" testID="workspace-team-sheet" disabled={disabled} onPress={() => goToTab('documents')} /></View>}
       {tab === 'documents' && manager && teamId && seasonId && <TeamDocumentsPanel key={`${absoluteApi}:${identity?.principal.accountId}:${teamId}:${seasonId}:${membership?.role}`} baseUrl={connection.baseUrl || '/'} teamId={teamId} seasonId={seasonId} headers={documentHeaders} request={documentRequest} disabled={disabled} />}
-      {tab === 'settings' && manager && preparation && <SubstitutionAlertSettings key={`${teamId}:${seasonId}`} scopeKey={`${teamId}:${seasonId}`} value={preparation.substitutionAlerts} disabled={disabled} onSave={settings => mutate('preparation',{id:randomUUID(),expectedRevision:preparation.revision,type:'team.alerts_updated',substitutionAlerts:settings},'Team substitution alerts')} />}
+      {tab === 'settings' && manager && preparation && <SubstitutionAlertSettings key={`${teamId}:${seasonId}`} scopeKey={`${teamId}:${seasonId}`} value={preparation.substitutionAlerts} disabled={disabled} onSave={settings => mutate('preparation',{id:randomUUID(),expectedRevision:preparation.revision,type:'team.alerts_updated',substitutionAlerts:settings},'Team substitution alerts')} onDraftChange={onAlertDraft} />}
       {(tab === "schedule" || tab === "team" || tab === "settings") &&
         (administrator && tab === "schedule" ? (
-          scheduledGames ? <ScheduledGameManagement value={scheduledGames} fixtureId={selectedOverviewGameId ?? undefined} busy={disabled} onCommand={command => mutate("scheduled-games", command, "Scheduled game change")} /> : <Notice>Scheduled games are loading. Refresh your team view if they remain unavailable.</Notice>
-        ) : administrator && configuration ? (
+          scheduledGames ? <ScheduledGameManagement value={scheduledGames} fixtureId={selectedOverviewGameId ?? undefined} onDraftChange={onScheduledDraft} busy={disabled} onCommand={command => mutate("scheduled-games", command, "Scheduled game change")} /> : <Notice>Scheduled games are loading. Refresh your team view if they remain unavailable.</Notice>
+        ) : administrator && configuration && tab === "settings" ? (
           <ConnectedClubConfiguration
             key={`${absoluteApi}:${identity?.principal.accountId}:${teamId}:${seasonId}`}
             value={configuration}
+            onDraftChange={onConfigurationDraft}
             disabled={disabled}
             staff={staff}
             brandingPanel={brandingPanel}
@@ -3378,8 +3400,12 @@ function WorkspaceSession({
           />
         ) : manager && preparation ? (
           <PreparationScreens
+            createFixtureId={() => demoFixtureId(randomUUID(), {environment:process.env.EXPO_PUBLIC_ENVIRONMENT,allowSynthetic:props.allowSynthetic === true,connectionMode:connection.mode,platform:Platform.OS,principal:identity?.principal ?? null})}
             initialFixtureId={selectedOverviewGameId ?? undefined}
-            renderScheduledGameManagement={fixtureId => scheduledGames ? <ScheduledGameManagement value={scheduledGames} fixtureId={fixtureId} busy={disabled} onCommand={command => mutate("scheduled-games", command, "Scheduled game change")} /> : null}
+            initialTrainingId={selectedTrainingId}
+            initialScheduleFilter={scheduleFilter}
+            onDraftChange={onPreparationDraft}
+            renderScheduledGameManagement={(fixtureId,onDraftChange) => scheduledGames ? <ScheduledGameManagement value={scheduledGames} fixtureId={fixtureId} onDraftChange={onDraftChange} busy={disabled} onCommand={command => mutate("scheduled-games", command, "Scheduled game change")} /> : null}
             storage="service"
             completedFixtureIds={completedFixtureIds}
             acceptedFixtureIds={acceptedFixtureIds}
@@ -3392,7 +3418,7 @@ function WorkspaceSession({
               mutate("preparation", command, "Preparation change")
             }
             busy={disabled}
-            onPrepareRollover={() => setTab("seasons")}
+            onPrepareRollover={() => goToTab("seasons")}
             onPrepareChildActivation={
               props.onPrepareChildActivation && teamId && seasonId
                 ? (playerId) =>
@@ -3418,6 +3444,7 @@ function WorkspaceSession({
             key={`${absoluteApi}:${identity?.principal.accountId}:${teamId}:${seasonId}:${own.profile.id}`}
             completedFixtureIds={completedFixtureIds}
             replyClosedFixtureIds={replyClosedFixtureIds}
+            onDraftChange={onOwnDraft}
             value={own}
             onExportCalendar={exportCalendar}
             view={tab === "team" ? "profile" : "schedule"}
@@ -3514,6 +3541,8 @@ function WorkspaceSession({
               key={`${communityActor.accountId}:${communityActor.teamId}:${communityActor.seasonId}:${communityActor.role}`}
               value={community}
               initialSection={communityInitialSection}
+              onSectionChange={section => guardNavigation(() => { setNotice(null); setCommunityInitialSection(section); })}
+              onDraftChange={onCommunityDraft}
               actor={communityActor}
               albumScope={albumScope}
               albumSelection={albumSelection}
@@ -3533,13 +3562,14 @@ function WorkspaceSession({
               Community is unavailable until the service grants current access.
             </Notice>
           )}
-          {community?.allowed &&
+          {communityInitialSection === "photos" && community?.allowed &&
             communityActor &&
             communityActor.role !== "spectator" &&
             albumScope && (
               <MediaUpload
                 actor={communityActor}
                 apiBaseUrl={connection.baseUrl || "/"}
+                authenticatedFetch={authenticatedFetch}
                 synthetic={connection.mode === "synthetic"}
                 allowLibraryPicker={props.allowSynthetic === false}
                 albumScope={albumScope}
@@ -3554,7 +3584,7 @@ function WorkspaceSession({
         </>
       )}
       {tab === "invitations" && (manager || administrator) && teamId && seasonId && <InvitationRequestsPanel key={`${absoluteApi}:${identity?.principal.accountId}:${teamId}:${seasonId}:${membership?.role}`} baseUrl={connection.baseUrl || "/"} authenticatedFetch={authenticatedFetch} teamId={teamId} seasonId={seasonId} active={!disabledWithoutInvitation} assertCurrent={assertInvitationCurrent} />}
-      {(tab === "community" || tab === "invitations") &&
+      {tab === "invitations" &&
         identity &&
         invitationScopeKey && (
           <ScopedWorkspaceInvitations
@@ -3656,6 +3686,7 @@ function OwnPreparation({
   onExportCalendar,
   completedFixtureIds,
   replyClosedFixtureIds,
+  onDraftChange,
 }: {
   value: OwnPreparationDto;
   view?: "schedule" | "profile";
@@ -3665,6 +3696,7 @@ function OwnPreparation({
   onExportCalendar: (selectedKeys: string[]) => Promise<string>;
   completedFixtureIds: ReadonlySet<string>;
   replyClosedFixtureIds: ReadonlySet<string>;
+  onDraftChange?: (dirty:boolean)=>void;
 }) {
   const [preferenceDraft, setPreferenceDraft] = useState(() => revisionedValueDraft(value.profile.preferences, value.revision));
   const [preferenceAck, setPreferenceAck] = useState<{ submitted: PlayerProfile['preferences']; sourceRevision: number } | null>(null);
@@ -3678,6 +3710,11 @@ function OwnPreparation({
   const [preferenceRank, setPreferenceRank] = useState(0);
   const preferences = preferenceDraft.value;
   const preferencesNeedReview = revisionedValueNeedsReview(preferenceDraft);
+  const [faDirty,setFaDirty] = useState(false);
+  const preferencesDirty = JSON.stringify(preferences) !== JSON.stringify(preferenceDraft.source);
+  const positionChoices = activePositionCodes(value);
+  const preferencesValid = preferences.length === 3 && new Set(preferences).size === 3 && preferences.every(position => positionChoices.includes(position));
+  useDraftSignal(view === 'profile' && (preferencesDirty || faDirty), onDraftChange);
   const command = (payload: OwnPayload, expectedRevision = value.revision) =>
     onChange({
       ...payload,
@@ -3695,6 +3732,7 @@ function OwnPreparation({
           label={responseLabels[option]}
           compact
           variant={response === option ? "primary" : "secondary"}
+          accessibilityState={{selected:response === option}}
           disabled={disabled}
           onPress={() => save(option)}
         />
@@ -3764,7 +3802,7 @@ function OwnPreparation({
           : "Not in this occurrence"}{" "}
         · actual attendance: {training.attendance.replaceAll("_", " ")}
       </Text>
-      {training.status === "scheduled" && training.expected ? (
+      {training.status === "scheduled" && training.expected && (!training.date || training.date >= today) ? (
         responseButtons(training.response, (response) => {
           void command({
             type: "own.training_response_recorded",
@@ -3795,29 +3833,36 @@ function OwnPreparation({
             positions:{" "}
             {value.profile.eligiblePositions.join(", ") || "not recorded"}.
           </Text>
-          <FaPlayerIdEditor value={value.profile.faPlayerId} disabled={disabled} onSave={faPlayerId => command({type:"own.fa_id_saved",faPlayerId})} />
-          <Text style={typography.body}>Choose your first, second and backup positions. Your manager confirms eligibility.</Text>
+          <FaPlayerIdEditor value={value.profile.faPlayerId} disabled={disabled} onDraftChange={setFaDirty} onSave={faPlayerId => command({type:"own.fa_id_saved",faPlayerId})} />
+          <Text style={typography.body}>Choose your primary, secondary and backup positions. Choosing a position you already picked swaps those two places. Your manager confirms eligibility.</Text>
           <View style={s.row}>
-            {preferences.map((selected, rank) => <Button key={rank} label={`${['First','Second','Backup'][rank]} · ${selected}`} compact testID={`own-preference-rank-${rank}`} variant={preferenceRank === rank ? 'primary' : 'secondary'} style={{flex:1,minWidth:74}} disabled={disabled} onPress={() => setPreferenceRank(rank)} />)}
+            {preferences.map((selected, rank) => <Button key={rank} label={`${['Primary','Secondary','Backup'][rank]} · ${selected}`} compact testID={`own-preference-rank-${rank}`} variant={preferenceRank === rank ? 'primary' : 'secondary'} accessibilityState={{selected:preferenceRank === rank}} style={{flex:1,minWidth:74}} disabled={disabled} onPress={() => setPreferenceRank(rank)} />)}
           </View>
-          <Text style={typography.label}>Choose {['first','second','backup'][preferenceRank]} position</Text>
+          <Text style={typography.label}>Choose {['primary','secondary','backup'][preferenceRank]} position</Text>
           <View style={s.row}>
-            {activePositionCodes(value).map(position => <Button key={position} label={position} compact testID={`own-preference-position-${position}`} accessibilityLabel={`${position}${preferences[preferenceRank] === position ? ', selected' : ''}`} variant={preferences[preferenceRank] === position ? 'primary' : 'secondary'} style={{minWidth:48}} disabled={disabled} onPress={() => setPreferenceDraft(current => ({...current,value:current.value.map((item,index) => index === preferenceRank ? position : item) as PlayerProfile['preferences']}))} />)}
+            {positionChoices.map(position => <Button key={position} label={position} compact testID={`own-preference-position-${position}`} accessibilityLabel={`${position}${preferences[preferenceRank] === position ? ', selected' : ''}`} accessibilityState={{selected:preferences[preferenceRank] === position}} variant={preferences[preferenceRank] === position ? 'primary' : 'secondary'} style={{minWidth:48}} disabled={disabled} onPress={() => setPreferenceDraft(current => {
+              const next=[...current.value], previous=next[preferenceRank], other=next.indexOf(position);
+              if(other >= 0 && other !== preferenceRank) next[other]=previous;
+              next[preferenceRank]=position;
+              return {...current,value:next as PlayerProfile['preferences']};
+            })} />)}
           </View>
           {preferencesNeedReview && <>
             <Notice tone="warning">Your player record changed while you were editing. Your draft preferences are retained. Review the current service choices before saving.</Notice>
             <Text style={typography.body}>Current preferences: {value.profile.preferences.join(' · ')}</Text>
             <Button label="I have reviewed the latest preferences; keep my draft" variant="secondary" disabled={disabled} onPress={() => setPreferenceDraft(current => reviewRevisionedValueDraft(current))} />
           </>}
+          {!preferencesValid && <Notice tone="warning">{positionChoices.length < 3 ? 'Your manager needs to enable at least three positions before you can save three different preferences.' : 'Choose three different active positions before saving.'}</Notice>}
           <Button
             label="Save preferences"
-            disabled={disabled || preferencesNeedReview || new Set(preferences).size !== 3}
+            disabled={disabled || preferencesNeedReview || !preferencesValid || !preferencesDirty}
             onPress={() => {
               void command({ type: "own.preferences_saved", preferences }, preferenceDraft.expectedRevision).then(saved => {
                 if (saved) setPreferenceAck({ submitted: preferences, sourceRevision: value.revision });
               });
             }}
           />
+          {preferencesDirty && <Button label="Discard position changes" compact variant="quiet" disabled={disabled} onPress={() => {setPreferenceDraft(revisionedValueDraft(value.profile.preferences,value.revision));setPreferenceAck(null);}}/>}
         </Card>
       )}
       {view === "schedule" && (
@@ -3838,6 +3883,7 @@ function OwnPreparation({
                 label={period === "upcoming" ? "Upcoming" : "Past"}
                 testID={`own-schedule-${period}`}
                 variant={schedulePeriod === period ? "primary" : "secondary"}
+                accessibilityState={{selected:schedulePeriod === period}}
                 disabled={disabled}
                 onPress={() => setSchedulePeriod(period)}
               />
@@ -3850,6 +3896,7 @@ function OwnPreparation({
                 label={kind === "all" ? "All events" : kind === "match" ? "Matches" : "Training"}
                 testID={`own-schedule-kind-${kind}`}
                 variant={scheduleKind === kind ? "primary" : "secondary"}
+                accessibilityState={{selected:scheduleKind === kind}}
                 disabled={disabled}
                 onPress={() => setScheduleKind(kind)}
               />
@@ -3903,6 +3950,7 @@ function ConnectedCommunity({
   disabled,
   onChange,
   initialSection = "photos",
+  onSectionChange, onDraftChange,
 }: {
   value: CommunityDto;
   actor: CommunityActor;
@@ -3913,6 +3961,8 @@ function ConnectedCommunity({
   disabled: boolean;
   onChange: (command: CommunityPayload) => Promise<boolean>;
   initialSection?: "photos" | "awards";
+  onSectionChange?: (section: "photos" | "awards") => void;
+  onDraftChange?: (dirty: boolean) => void;
 }) {
   const [showPreferences, setShowPreferences] = useState(false);
   const [cutoff, setCutoff] = useState("");
@@ -4007,6 +4057,10 @@ function ConnectedCommunity({
     value.preferences.quietStart ?? "",
   );
   const [quietEnd, setQuietEnd] = useState(value.preferences.quietEnd ?? "");
+  const quietHoursDirty = quietStart !== (value.preferences.quietStart ?? "") || quietEnd !== (value.preferences.quietEnd ?? "");
+  const communityDirty = quietHoursDirty || concernExplanation.length > 0 || cutoff.length > 0 || reportReason.length > 0;
+  useDraftSignal(communityDirty, onDraftChange);
+  const discardDrafts = () => { setQuietStart(value.preferences.quietStart ?? ""); setQuietEnd(value.preferences.quietEnd ?? ""); setConcernExplanation(""); setReportReason(""); setCutoff(""); setClosingAward(null); };
   const validQuietHours =
     (!quietStart && !quietEnd) ||
     (/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(quietStart) &&
@@ -4033,12 +4087,7 @@ function ConnectedCommunity({
         />
       )}
       renderPhoto={(photo) => (
-        <View key={photo.id} style={s.divider}>
-          <Text style={typography.label}>{photo.matchLabel}</Text>
-          <Text style={typography.body}>{photo.caption}</Text>
-          <Text style={typography.muted}>
-            {photo.uploaderLabel} · revision {photo.version}
-          </Text>
+        <View key={photo.id} style={s.stack}>
           <RemotePhoto
             key={`${photo.id}:${photo.version}:gallery`}
             client={media}
@@ -4046,6 +4095,7 @@ function ConnectedCommunity({
             revision={photo.version}
             mode="gallery"
           />
+          <Text style={typography.muted}>Shared by {photo.uploaderLabel}</Text>
           <Button
             label="Report photo"
             testID={`community-report-photo-${photo.id}`}
@@ -4467,7 +4517,7 @@ function ConnectedCommunity({
                           type: "award.cutoffConfigured",
                           matchId: match.id,
                           minutesAfterFullTime: Number(cutoff),
-                        });
+                        }).then(saved => { if (saved) setCutoff(""); });
                       }}
                     />
                     {closingAward === match.id ? (
@@ -4517,10 +4567,11 @@ function ConnectedCommunity({
     <View style={s.stack} testID="workspace-community">
       <Card>
         <Text style={typography.section}>{value.teamLabel} community</Text>
-        <Text style={typography.muted}>
-          {value.accountLabel} · {value.seasonLabel} · service revision{" "}
-          {value.revision}
-        </Text>
+        <Text style={typography.muted}>{formatUkSeasonLabel(value.seasonLabel)}</Text>
+        <View style={s.row}>
+          {(["photos", "awards"] as const).map(section => <Button key={section} label={section === 'photos' ? 'Photos' : 'Awards'} compact testID={`community-section-${section}`} accessibilityState={{ selected: initialSection === section }} variant={initialSection === section ? 'primary' : 'secondary'} disabled={controlsDisabled} onPress={() => onSectionChange?.(section)} />)}
+        </View>
+        {communityDirty && <Button label="Discard community changes" testID="community-discard-draft" compact variant="quiet" disabled={controlsDisabled} onPress={discardDrafts} />}
         {!value.allowed && (
           <Notice tone="warning">{value.accessMessage}</Notice>
         )}
@@ -4533,9 +4584,7 @@ function ConnectedCommunity({
           </Notice>
         )}
       </Card>
-      {initialSection === "awards"
-        ? [awardsSection, albumsSection]
-        : [albumsSection, awardsSection]}
+      {initialSection === "awards" ? awardsSection : albumsSection}
       <Button
         label={
           showPreferences
@@ -4584,6 +4633,7 @@ function ConnectedCommunity({
             accessibilityLabel="Service quiet hours start Europe/London"
             placeholder="Start HH:MM"
             value={quietStart}
+            editable={!controlsDisabled}
             onChangeText={setQuietStart}
             style={s.input}
             autoCapitalize="none"
@@ -4592,6 +4642,7 @@ function ConnectedCommunity({
             accessibilityLabel="Service quiet hours end Europe/London"
             placeholder="End HH:MM"
             value={quietEnd}
+            editable={!controlsDisabled}
             onChangeText={setQuietEnd}
             style={s.input}
             autoCapitalize="none"
@@ -4605,7 +4656,7 @@ function ConnectedCommunity({
           <Button
             label="Save service quiet hours"
             variant="secondary"
-            disabled={disabled || !validQuietHours}
+            disabled={controlsDisabled || !validQuietHours || !quietHoursDirty}
             onPress={() => {
               void onChange({
                 type: "preferences.changed",
@@ -4619,6 +4670,7 @@ function ConnectedCommunity({
           />
         </Card>
       )}
+      {initialSection === "photos" && <>
       {actor.role !== "spectator" && value.grants.length > 0 && (
         <Card>
           <Text style={typography.section}>
@@ -4734,7 +4786,8 @@ function ConnectedCommunity({
               {photo.rejectionReason && (
                 <Notice tone="warning">{photo.rejectionReason}</Notice>
               )}
-              {["draft", "pending", "published"].includes(photo.status) && (
+              {photo.status === "published" && <Text style={typography.muted}>This photo is shared with the team. Ask a Manager to review removal if needed.</Text>}
+              {["draft", "pending"].includes(photo.status) && (
                 <Button
                   label="Withdraw this service submission"
                   variant="danger"
@@ -4809,7 +4862,7 @@ function ConnectedCommunity({
                     sourceRevision: photo.version,
                     decision: "reject",
                     reason: reportReason.trim(),
-                  });
+                  }).then(saved => { if (saved) setReportReason(""); });
                 }}
               />
             </View>
@@ -4868,6 +4921,7 @@ function ConnectedCommunity({
           ))}
         </Card>
       )}
+      </>}
     </View>
   );
 }
@@ -4887,70 +4941,93 @@ function RemotePhoto({
   variant?: "thumbnail" | "display";
   onViewed?: () => void;
 }) {
-  const [uri, setUri] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const scopeKey = JSON.stringify([photoId, revision, mode, variant]);
+  const [image, setImage] = useState<{ key: string; operation: number; uri: string } | null>(null);
+  const [busy, setBusy] = useState(mode === "gallery");
   const [error, setError] = useState<string | null>(null);
-  const lock = useRef(false);
+  const [attempt, setAttempt] = useState<{ key: string; id: number } | null>(null);
+  const generation = useRef(0), attempts = useRef(0), acknowledged = useRef<number | null>(null);
+  const live = useRef({ client, onViewed, scopeKey, mode, mounted: true, foreground: AppState.currentState !== "background" && AppState.currentState !== "inactive" });
+  useLayoutEffect(() => {
+    live.current = { ...live.current, client, onViewed, scopeKey, mode };
+  });
+  useEffect(() => {
+    live.current.mounted = true;
+    const subscription = AppState.addEventListener("change", state => {
+      live.current.foreground = state === "active";
+      if (state !== "active") {
+        generation.current += 1;
+        setImage(null);
+        setBusy(false);
+        setError(null);
+      } else if (live.current.mode === "gallery") {
+        setAttempt({ key: live.current.scopeKey, id: ++attempts.current });
+      }
+    });
+    return () => {
+      live.current.mounted = false;
+      generation.current += 1;
+      subscription.remove();
+    };
+  }, []);
+  const attemptId = attempt?.key === scopeKey ? attempt.id : 0;
+  useEffect(() => {
+    const operation = ++generation.current;
+    const shouldLoad = mode === "gallery" || attemptId > 0;
+    const current = () => live.current.mounted && live.current.foreground && live.current.scopeKey === scopeKey && generation.current === operation;
+    // The media port owns its15-second request deadline. This ticket also prevents
+    // decoded bytes from returning to a closed, backgrounded or replaced view.
+    void Promise.resolve().then(async () => {
+      if (!current()) return;
+      setImage(null);
+      setError(null);
+      setBusy(shouldLoad);
+      if (!shouldLoad) return;
+      try {
+        const bytes = await live.current.client.image(photoId, revision, variant, mode);
+        if (!current()) return;
+        const encoded = base64Url(bytes).replaceAll("-", "+").replaceAll("_", "/");
+        setImage({ key: scopeKey, operation, uri: `data:image/jpeg;base64,${encoded}${"=".repeat((4 - (encoded.length % 4)) % 4)}` });
+      } catch {
+        if (current()) setError("This photo could not be opened. Check your connection and retry. Your access may have changed.");
+      } finally {
+        if (current()) setBusy(false);
+      }
+    });
+    return () => { generation.current += 1; };
+    // The parent keys account/team/season/role. Client wrappers change each render;
+    // read the current port without restarting a successful image on every tick.
+  }, [scopeKey, photoId, revision, variant, mode, attemptId]);
+  const shown = image?.key === scopeKey ? image : null;
+  const requestImage = () => setAttempt({ key: scopeKey, id: ++attempts.current });
+  const imageCurrent = () => Boolean(shown && live.current.mounted && live.current.foreground && live.current.scopeKey === scopeKey && generation.current === shown.operation);
   return (
     <View style={s.stack}>
-      <Button
-        label={
-          busy
-            ? "Checking current image access…"
-            : variant === "thumbnail"
-              ? "View authorised thumbnail"
-              : "View authorised service image"
-        }
-        variant="secondary"
-        disabled={busy}
-        onPress={() => {
-          if (lock.current) return;
-          lock.current = true;
-          setBusy(true);
-          setError(null);
-          setUri(null);
-          void client
-            .image(photoId, revision, variant, mode)
-            .then((bytes) => {
-              const encoded = base64Url(bytes)
-                .replaceAll("-", "+")
-                .replaceAll("_", "/");
-              setUri(
-                `data:image/jpeg;base64,${encoded}${"=".repeat((4 - (encoded.length % 4)) % 4)}`,
-              );
-              onViewed?.();
-            })
-            .catch((cause) => setError(failureText(cause)))
-            .finally(() => {
-              lock.current = false;
-              setBusy(false);
-            });
-        }}
-      />
+      {busy && <Text style={typography.muted} accessibilityLiveRegion="polite">{variant === "thumbnail" ? "Loading preview…" : "Loading photo…"}</Text>}
       {error && <Notice tone="warning">{error}</Notice>}
-      {uri && (
-        <>
-          <Image
-            source={{ uri, cache: "reload" }}
-            accessibilityLabel={`Authorised service photo revision ${revision}`}
-            style={{
-              width: "100%",
-              height: variant === "thumbnail" ? 120 : 240,
-              resizeMode: "contain",
-              backgroundColor: colors.bench,
-            }}
-          />
-          <Button
-            label="Close service image"
-            variant="quiet"
-            onPress={() => setUri(null)}
-          />
-          <Text style={typography.muted}>
-            This derivative is held in memory. The service checks current access
-            on each fetch; it cannot recall an existing screenshot.
-          </Text>
-        </>
-      )}
+      {!busy && !shown && <Button label={error ? (variant === "thumbnail" ? "Retry preview" : "Retry photo") : "View photo"} testID={`media-${variant === "thumbnail" ? "thumbnail" : "photo"}-retry-${photoId}`} compact variant="secondary" onPress={requestImage} />}
+      {shown && <>
+        <Image
+          testID={`media-${variant === "thumbnail" ? "thumbnail" : "photo"}-${photoId}`}
+          source={{ uri: shown.uri, cache: "reload" }}
+          accessibilityLabel={mode === "review" || mode === "own" ? `Photo revision ${revision}` : variant === "thumbnail" ? "Game photo preview" : "Game photo"}
+          onLoad={() => {
+            if (mode !== "gallery" && variant === "display" && attemptId > 0 && imageCurrent() && acknowledged.current !== shown.operation) {
+              acknowledged.current = shown.operation;
+              live.current.onViewed?.();
+            }
+          }}
+          onError={() => {
+            if (!imageCurrent()) return;
+            generation.current += 1;
+            setImage(null);
+            setError("This photo could not be displayed. Retry to check your current access.");
+          }}
+          style={{ width: "100%", height: variant === "thumbnail" ? 120 : 240, resizeMode: "contain", backgroundColor: colors.bench }}
+        />
+        {mode !== "gallery" && <Button label="Close image" compact variant="quiet" onPress={() => { generation.current += 1; setImage(null); }} />}
+        {variant === "display" && <Text style={typography.muted}>A screenshot can remain after you close a photo. Respect everyone’s privacy when sharing.</Text>}
+      </>}
     </View>
   );
 }

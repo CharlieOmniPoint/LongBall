@@ -1,10 +1,11 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Platform, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { parseSignInRules, type SignInRules, type SignInRulesDto } from '@longball/application/identity-policy';
-import { RetainedAction } from '@longball/application/retained-action';
+import { RetainedAction, retainedActionFailureIsUnconfirmed } from '@longball/application/retained-action';
 import type { LongBallServiceClient } from '@longball/application/sync';
 import { randomUUID } from '../platform/id';
 import { parseSignInRulesDto } from '../platform/sign-in-rules';
+import { evaluateSignInRulesDraft } from '../platform/sign-in-rules-draft';
 import { Button, Card, Notice, colors, typography } from '../ui';
 import { useRoleTheme } from '../ui/RoleTheme';
 
@@ -22,6 +23,7 @@ export function SignInRulesPanel({ client, active, onRetainedChange }: { client:
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [uncertain, setUncertain] = useState(false);
+  const [reloadReview, setReloadReview] = useState(false);
   const [retained] = useState(() => new RetainedAction<Change, SignInRulesDto>());
   const operation = useRef<AbortController | null>(null);
   const pending = useRef<Change | null>(null);
@@ -32,6 +34,9 @@ export function SignInRulesPanel({ client, active, onRetainedChange }: { client:
     retainedListener.current = onRetainedChange;
     enabled.current = active;
   }, [onRetainedChange, active]);
+  const evaluation = data && draft ? evaluateSignInRulesDraft(data.rules, draft, lengths) : { dirty: false, problem: null, rules: null };
+  const hasRetainedWork = evaluation.dirty || uncertain;
+  useLayoutEffect(() => { retainedListener.current(hasRetainedWork); }, [hasRetainedWork]);
   useEffect(() => {
     current.current = true;
     return () => { current.current = false; operation.current?.abort(); retainedListener.current(false); };
@@ -44,6 +49,7 @@ export function SignInRulesPanel({ client, active, onRetainedChange }: { client:
     setData({ ...value, rules });
     setDraft({ username: { ...rules.username }, password: { ...rules.password }, spectatorPin: { ...rules.spectatorPin } });
     setLengths({ usernameMin: String(rules.username.minLength), usernameMax: String(rules.username.maxLength), passwordMin: String(rules.password.minLength) });
+    setReloadReview(false);
   };
   const load = async () => {
     if (!enabled.current || operation.current || pending.current) return;
@@ -63,12 +69,13 @@ export function SignInRulesPanel({ client, active, onRetainedChange }: { client:
     if (!enabled.current || operation.current || !data || !draft) return;
     let change: Change;
     try {
-      change = pending.current ?? { expectedRevision: data.revision, rules: parseSignInRules({ ...draft, username: { ...draft.username, minLength: Number(lengths.usernameMin), maxLength: Number(lengths.usernameMax) }, password: { ...draft.password, minLength: Number(lengths.passwordMin) } }) };
+      if (!pending.current && (!evaluation.dirty || !evaluation.rules)) { setError(evaluation.problem); return; }
+      change = pending.current ?? { expectedRevision: data.revision, rules: evaluation.rules! };
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Check the username and password lengths.'); return;
     }
     const controller = new AbortController(); operation.current = controller; pending.current = change;
-    retainedListener.current(true);
+    setReloadReview(false);
     setBusy(true); setError(null); setMessage(null);
     try {
       const value = await retained.run(change, randomUUID, async (captured, key) => parseSignInRulesDto(await client.request<unknown>(endpoint, { signal: controller.signal, request: { path: endpoint, kind: 'upload', idempotencyKey: key, body: captured } })));
@@ -76,11 +83,9 @@ export function SignInRulesPanel({ client, active, onRetainedChange }: { client:
       if (current.current && !controller.signal.aborted) {
         adopt(value); setUncertain(false); setMessage('Application sign-in rules saved. Existing accounts keep their current login details.');
       }
-      retainedListener.current(false);
     } catch (cause) {
-      const status = cause && typeof cause === 'object' && 'status' in cause ? Number(cause.status) : 0;
-      const unknown = !(status >= 400 && status < 500 && ![408, 429].includes(status));
-      if (!unknown) { pending.current = null; retainedListener.current(false); }
+      const unknown = retainedActionFailureIsUnconfirmed(cause, uncertain);
+      if (!unknown) pending.current = null;
       if (current.current) {
         setUncertain(unknown);
         setError(unknown ? 'The service has not confirmed this update. Retry the same update when connected.' : cause instanceof Error ? cause.message : 'The update was refused. Reload the current rules before trying again.');
@@ -91,11 +96,14 @@ export function SignInRulesPanel({ client, active, onRetainedChange }: { client:
     }
   };
   const locked = !active || busy || uncertain;
+  const reload = () => { if (evaluation.dirty) setReloadReview(true); else void load(); };
+  const discard = () => { if (!data || locked) return; adopt(data); setError(null); setMessage('Local changes discarded. Showing the last loaded rules.'); };
   const toggle = (label: string, value: boolean, onChange: (value: boolean) => void) => <View style={styles.toggle} key={label}><Text style={[typography.body, styles.toggleText]}>{label}</Text><Switch accessibilityLabel={label} value={value} onValueChange={onChange} disabled={locked} trackColor={{ true: theme.accent }} {...(Platform.OS === 'web' ? { activeThumbColor: theme.accent } : {})} thumbColor={Platform.OS !== 'web' && value ? theme.accent : undefined} /></View>;
   const length = (label: string, field: keyof typeof lengths) => <View style={styles.length} key={field}><Text style={typography.label}>{label}</Text><TextInput accessibilityLabel={label} value={lengths[field]} onChangeText={value => setLengths(previous => ({ ...previous, [field]: value.replace(/\D/g, '').slice(0, 3) }))} keyboardType="number-pad" editable={!locked} maxLength={3} style={styles.input} /></View>;
   return <Card testID="application-sign-in-rules">
     <View style={styles.heading}><Text style={typography.section}>Application sign-in rules</Text><Button compact variant="secondary" label={expanded ? 'Hide sign-in rules' : 'Manage sign-in rules'} testID="sign-in-rules-toggle" disabled={!active || busy} accessibilityState={{ expanded }} onPress={() => { setExpanded(value => !value); if (!data) void load(); }} /></View>
     <Text style={typography.muted}>Super Admin · applies across all clubs and account types when credentials are created or changed.</Text>
+    {hasRetainedWork && <Text style={typography.muted} accessibilityLiveRegion="polite" testID="sign-in-rules-draft-status">{uncertain ? 'Update awaiting confirmation. Retry the same update before leaving.' : evaluation.dirty ? 'Unsaved changes. Save or discard them before leaving.' : 'Saving application rules…'}</Text>}
     {expanded && <>
       {error && <Notice tone="warning">{error}</Notice>}
       {message && <Notice>{message}</Notice>}
@@ -114,7 +122,9 @@ export function SignInRulesPanel({ client, active, onRetainedChange }: { client:
         {toggle('Block easily guessed spectator codes', draft.spectatorPin.blockSimpleCodes, value => setDraft({ ...draft, spectatorPin: { blockSimpleCodes: value } }))}
         <Text style={typography.muted}>Spectators use four-digit passcodes. Other account types use passwords. Changing rules does not rename accounts or expire existing passwords.</Text>
         {data.provider.status !== 'applied' && <Notice tone="warning">{data.provider.detail}</Notice>}
-        <View style={styles.row}><Button compact label={busy ? 'Saving…' : uncertain ? 'Retry same rules update' : 'Save application rules'} testID="sign-in-rules-save" disabled={!active || busy} onPress={() => void save()} /><Button compact variant="quiet" label="Reload current rules" disabled={locked} onPress={() => void load()} /></View>
+        {evaluation.dirty && evaluation.problem && <Text style={[typography.body, { color: colors.errorInk }]} accessibilityRole="alert" testID="sign-in-rules-validation">{evaluation.problem}</Text>}
+        {reloadReview && <Notice tone="warning"><Text style={typography.body}>Discard your unsaved changes and load the saved application rules?</Text><View style={styles.row}><Button compact variant="secondary" label="Keep editing rules" testID="sign-in-rules-keep-editing" disabled={locked} onPress={() => setReloadReview(false)} /><Button compact variant="danger" label="Discard and reload rules" testID="sign-in-rules-confirm-reload" disabled={locked} onPress={() => { discard(); void load(); }} /></View></Notice>}
+        <View style={styles.row}><Button compact label={busy ? 'Saving…' : uncertain ? 'Retry same rules update' : 'Save application rules'} testID="sign-in-rules-save" disabled={!active || busy || (!uncertain && (!evaluation.dirty || !evaluation.rules))} onPress={() => void save()} /><Button compact variant="quiet" label="Reload current rules" testID="sign-in-rules-reload" disabled={locked} onPress={reload} />{evaluation.dirty && <Button compact variant="quiet" label="Discard local changes" testID="sign-in-rules-discard" disabled={locked} onPress={discard} />}</View>
         <Text style={typography.muted}>Rules version {data.revision}</Text>
       </>}
       {!data && <Button compact variant="quiet" label="Retry loading rules" disabled={!active || busy} onPress={() => void load()} />}

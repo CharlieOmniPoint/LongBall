@@ -26,6 +26,8 @@ export interface ConnectedPlayerHomeProps {
   onOpenSchedule: () => void;
   onOpenProfile: () => void;
   onOpenGame: () => void;
+  /** Supplied only when this player can currently leave feedback on a played game. */
+  onOpenFeedback?: () => void;
   onOpenVote: () => void;
   onOpenAlbum: (matchId: string) => void;
   onReply: (
@@ -81,7 +83,7 @@ export function ConnectedPlayerHome(props: ConnectedPlayerHomeProps) {
             <Text style={typography.muted}>
               {event.venue ?? "Venue to confirm"}
             </Text>
-            <Text style={typography.label}>
+            <Text style={typography.label} accessibilityLiveRegion="polite" testID="player-home-reply-status">
               Your reply: {responses[event.response]}
             </Text>
             <View style={s.responses}>
@@ -94,6 +96,7 @@ export function ConnectedPlayerHome(props: ConnectedPlayerHomeProps) {
                     variant={
                       event.response === response ? "primary" : "secondary"
                     }
+                    accessibilityState={{ selected: event.response === response }}
                     disabled={props.disabled}
                     testID={`player-home-reply-${response}`}
                     onPress={() => props.onReply(event, response)}
@@ -150,11 +153,11 @@ export function ConnectedPlayerHome(props: ConnectedPlayerHomeProps) {
               {home.liveMatch.status?.replaceAll("_", " ")}
             </Text>
             <Pill tone={home.liveMatch.lastRecorderSyncAt !== null && props.nowMs >= home.liveMatch.lastRecorderSyncAt && props.nowMs - home.liveMatch.lastRecorderSyncAt <= 15_000 ? "brand" : "warning"}>
-              {home.liveMatch.lastRecorderSyncAt !== null && props.nowMs >= home.liveMatch.lastRecorderSyncAt && props.nowMs - home.liveMatch.lastRecorderSyncAt <= 15_000 ? "Last accepted update" : "Updates delayed"}
+              {home.liveMatch.lastRecorderSyncAt !== null && props.nowMs >= home.liveMatch.lastRecorderSyncAt && props.nowMs - home.liveMatch.lastRecorderSyncAt <= 15_000 ? "Latest team update" : "Updates delayed"}
             </Pill>
             <Text style={typography.muted}>
-              Last shared update: {formatUkDateTime(home.liveMatch.lastRecorderSyncAt)} · Europe/London.
-              The match recorder may have newer changes.
+              Last shared update: {formatUkDateTime(home.liveMatch.lastRecorderSyncAt)} · UK time.
+              Your manager may have newer updates.
             </Text>
           </>
         ) : home.multipleActiveMatches ? (
@@ -175,6 +178,10 @@ export function ConnectedPlayerHome(props: ConnectedPlayerHomeProps) {
           testID="player-home-game"
           onPress={props.onOpenGame}
         />
+        {props.onOpenFeedback && <View style={s.feedback}>
+          <Button label="How was the game?" compact icon="ball" variant="quiet" testID="player-home-feedback" onPress={props.onOpenFeedback} />
+          <Text style={typography.muted}>Rate it and add a private note for your manager.</Text>
+        </View>}
       </Card>
       {home.vote && (
         <Card>
@@ -232,7 +239,7 @@ export function ConnectedPlayerHome(props: ConnectedPlayerHomeProps) {
             )}
             {home.award.deadlineAtMs !== null && (
               <Text style={typography.muted}>
-                Result due: {formatUkDateTime(home.award.deadlineAtMs)} · Europe/London.
+                Result due: {formatUkDateTime(home.award.deadlineAtMs)} · UK time.
               </Text>
             )}
             <Button
@@ -280,6 +287,7 @@ const s = StyleSheet.create({
   stack: { gap: 16 },
   greeting: { gap: 4 },
   responses: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  feedback: { gap: 6, paddingTop: 8, borderTopWidth: 1, borderTopColor: colors.border },
   score: {
     fontSize: 32,
     lineHeight: 38,

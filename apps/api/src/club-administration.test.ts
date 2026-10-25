@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { createApi } from "./server";
 import { EVENT_CONTRACT_VERSION, SYNTHETIC_IDS } from "./store";
 import type { ClubAdministrationDto } from "../../../packages/application/src/club-administration";
+import { administrationDisplayLabels } from './club-administration';
 
 describe("club and application administration through real SQLite HTTP", () => {
   let api: ReturnType<typeof createApi> | undefined;
@@ -64,6 +65,8 @@ describe("club and application administration through real SQLite HTTP", () => {
     expect((admin.body as unknown as ClubAdministrationDto).clubs).toHaveLength(
       2,
     );
+    expect((admin.body as unknown as ClubAdministrationDto).candidates.find(candidate => candidate.accountId === 'synthetic-account-manager-2')?.label).toBe('Priya Shah');
+    expect((admin.body as unknown as ClubAdministrationDto).candidates.some(candidate => candidate.accountId.startsWith('synthetic-account-player-'))).toBe(false);
     const club = await call("/v1/administration", "synthetic-club-admin");
     expect(club.status).toBe(200);
     expect(
@@ -280,5 +283,17 @@ describe("club and application administration through real SQLite HTTP", () => {
         )
       ).status,
     ).toBe(404);
+  });
+});
+
+describe('administration display labels', () => {
+  it('uses known review labels only in the verified review issuer and leaves other labels untouched', () => {
+    const value: ClubAdministrationDto = { kind: 'club-administration', administration: { level: 'super', clubIds: [] }, clubs: [], teams: [], administrators: [], candidates: [{ accountId: 'synthetic-account-manager-2', label: 'provider-specific-reference' }, { accountId: 'unknown-review-adult', label: 'Existing adult label' }, { accountId: 'toString', label: 'Unmapped adult reference' }] };
+    const review = administrationDisplayLabels(value, { issuer: 'urn:longball:synthetic' });
+    expect(review.candidates.find(candidate => candidate.accountId === 'synthetic-account-manager-2')?.label).toBe('Priya Shah');
+    expect(review.candidates.find(candidate => candidate.accountId === 'unknown-review-adult')?.label).toBe('Existing adult label');
+    expect(review.candidates.find(candidate => candidate.accountId === 'toString')?.label).toBe('Unmapped adult reference');
+    expect(administrationDisplayLabels(value, { issuer: 'https://identity.example/real-club' })).toBe(value);
+    expect(value.candidates[0].label).toBe('provider-specific-reference');
   });
 });

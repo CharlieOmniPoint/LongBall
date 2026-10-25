@@ -1,0 +1,728 @@
+{
+  "persona": "manager",
+  "phase": "final",
+  "startedAt": "2026-10-25T22:47:19.764Z",
+  "scope": "Actual compiled UI and isolated SQLite API/worker; only discovery and virtual transport are redirected to owned loopback processes. Generated accounts, not public demo credentials.",
+  "checks": [
+    "Sixteen consecutive squad replies fit the unchanged authenticated request limit",
+    "Compact squad cards preserve phone targets and use two tablet columns",
+    "Home action opens the specific next event",
+    "Manager navigates every authorised ordinary workspace section",
+    "Manager creates and explicitly closes a team-scoped spectator QR invitation",
+    "Saved custom formation opens and name-only saves losslessly",
+    "Unsaved formation edits survive or block navigation",
+    "Manager drafts have explicit discard and preserve decimal geometry input",
+    "Manager saves a reusable player setup and reviews genuine XLS/PDF files",
+    "Weekly training separates replies from held attendance and retains other occurrences",
+    "Fixture creation, reply saves and lifecycle actions",
+    "Manager explicitly checks in, stages, starts, pauses and uploads an actual match",
+    "Manager tablet stats retain selected player and visible role legend",
+    "Manager account and explicit logout"
+  ],
+  "findings": [],
+  "failures": [],
+  "httpFailures": [],
+  "transportErrors": [],
+  "pageErrors": [],
+  "screenshots": [
+    "manager-home-phone.png",
+    "manager-squad-390.png",
+    "manager-squad-1024.png",
+    "manager-formation-phone.png",
+    "manager-active-match-phone.png",
+    "manager-stats-tablet.png"
+  ],
+  "passed": true,
+  "source": {
+    "gitHead": "0961d1eb438ac2be591e71e6b3a92442aa72e38a",
+    "workingTreeDirty": true,
+    "webScriptSha256": "91c5b2b6013ee0f496c9e13d73bb59b073d0d8b32e0bf0c56f658cf5908b4813",
+    "serverBundleSha256": "7e6a4fc28acac0d106ca98e5a3955f2d06932d8da7d3fe99cef7c45ca3a1c3e4",
+    "workerBundleSha256": "b9077f122adf3b1bc6122df9beaf5610f1ea2928c852c1da4280619cf05a45f5",
+    "helperSha256": "6a9da668a2d0fe88245328f3df167f6da815917c90634d66e5a1288fde751698"
+  },
+  "physicalDeviceTested": false,
+  "publicCredentialsUsed": false,
+  "paidServicesProvisioned": false,
+  "personaHarnessSha256": "239aa64d554b76e6005d0118be3e7c8023c1943e4b5898d638236318f90cc19e",
+  "rapidReplies": {
+    "replies": 16,
+    "requests": 96,
+    "initialBrowserRequests": 16,
+    "extraDirectReads": 2,
+    "revisions": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16
+    ],
+    "projections": {
+      "preparation": 16,
+      "records": 16,
+      "player-stats": 16
+    },
+    "firstReplyByKeyboardSpace": true,
+    "keyboardFocusRetainedThroughRefresh": true,
+    "budgetWaitWithinBurst": false,
+    "ordinaryRateLimit": 120,
+    "mutationsRateLimit": 60
+  },
+  "budgetWaits": [
+    {
+      "accountId": "synthetic-account-manager-2",
+      "waitMs": 22179,
+      "attempts": 114,
+      "mutations": 16
+    },
+    {
+      "accountId": "synthetic-account-manager-2",
+      "waitMs": 0,
+      "attempts": 114,
+      "mutations": 16
+    },
+    {
+      "accountId": "synthetic-account-manager-2",
+      "waitMs": 0,
+      "attempts": 114,
+      "mutations": 16
+    },
+    {
+      "accountId": "synthetic-account-manager-2",
+      "waitMs": 48678,
+      "attempts": 72,
+      "mutations": 4
+    },
+    {
+      "accountId": "synthetic-account-manager-2",
+      "waitMs": 46170,
+      "attempts": 85,
+      "mutations": 7
+    },
+    {
+      "accountId": "synthetic-account-manager-2",
+      "waitMs": 48612,
+      "attempts": 91,
+      "mutations": 7
+    }
+  ],
+  "squadSpacing": [
+    {
+      "viewport": 390,
+      "cards": [
+        {
+          "x": 16,
+          "y": 267,
+          "width": 358,
+          "height": 226,
+          "touchHeights": [
+            44,
+            44,
+            44,
+            44,
+            44,
+            44,
+            44
+          ]
+        },
+        {
+          "x": 16,
+          "y": 505,
+          "width": 358,
+          "height": 226,
+          "touchHeights": [
+            44,
+            44,
+            44,
+            44,
+            44,
+            44,
+            44
+          ]
+        }
+      ],
+      "overflow": false
+    },
+    {
+      "viewport": 1024,
+      "cards": [
+        {
+          "x": 508.609375,
+          "y": 267,
+          "width": 239.703125,
+          "height": 326,
+          "touchHeights": [
+            44,
+            44,
+            44,
+            44,
+            44,
+            44,
+            44
+          ]
+        },
+        {
+          "x": 768.296875,
+          "y": 267,
+          "width": 239.703125,
+          "height": 326,
+          "touchHeights": [
+            44,
+            44,
+            44,
+            44,
+            44,
+            44,
+            44
+          ]
+        }
+      ],
+      "overflow": false
+    }
+  ],
+  "visitedSections": [
+    {
+      "tab": "home",
+      "headings": [
+        "Next event",
+        "To follow up",
+        "Team photos and concerns",
+        "Upcoming schedule",
+        "Recent results"
+      ],
+      "actions": [
+        "Open team overview",
+        "Change display layout, auto selected",
+        "Sign out",
+        "Review training",
+        "Review replies and attendance",
+        "Open squad",
+        "Review team photos",
+        "Open schedule",
+        "Open reports"
+      ],
+      "overflow": false
+    },
+    {
+      "tab": "overview",
+      "headings": [
+        "Roma U10",
+        "Roma U10 v Oak FC"
+      ],
+      "actions": [
+        "Open team overview",
+        "Change display layout, auto selected",
+        "Sign out",
+        "Open game",
+        "Refresh team overview"
+      ],
+      "overflow": false
+    },
+    {
+      "tab": "schedule",
+      "headings": [
+        "Schedule",
+        "29/10/26",
+        "05/11/26"
+      ],
+      "actions": [
+        "Open team overview",
+        "Change display layout, auto selected",
+        "Sign out",
+        "Formation",
+        "FA team sheet",
+        "Create weekly training series",
+        "Export selected events",
+        "Add training occurrence",
+        "Open training 29/10/26",
+        "Open training 05/11/26"
+      ],
+      "overflow": false
+    },
+    {
+      "tab": "team",
+      "headings": [
+        "Your team"
+      ],
+      "actions": [
+        "Open team overview",
+        "Change display layout, auto selected",
+        "Sign out",
+        "Formation",
+        "FA team sheet",
+        "Create player setup",
+        "Squad tools and Excel import",
+        "Add player profile",
+        "Edit Thomas Arnold",
+        "Archive Thomas Arnold",
+        "Edit Ralph Barrett",
+        "Archive Ralph Barrett",
+        "Edit Conor Kyne",
+        "Archive Conor Kyne",
+        "Edit Max Holland",
+        "Archive Max Holland",
+        "Edit Aryan Applegard",
+        "Archive Aryan Applegard",
+        "Edit Seb Lawler",
+        "Archive Seb Lawler",
+        "Edit Ezra Philips",
+        "Archive Ezra Philips",
+        "Edit Archie Muir",
+        "Archive Archie Muir"
+      ],
+      "overflow": false
+    },
+    {
+      "tab": "formation",
+      "headings": [
+        "Formation"
+      ],
+      "actions": [
+        "Open team overview",
+        "Change display layout, auto selected",
+        "Sign out",
+        "Choose a saved formation (7)",
+        "New formation",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        "10",
+        "11",
+        "2-3-1",
+        "3-2-1",
+        "2-2-2",
+        "1-3-2",
+        "Edit position codes",
+        "Save formation",
+        "Show position list"
+      ],
+      "overflow": false
+    },
+    {
+      "tab": "stats",
+      "headings": [],
+      "actions": [
+        "Open team overview",
+        "Change display layout, auto selected",
+        "Sign out",
+        "Refresh stats",
+        "Thomas Arnold",
+        "Ralph Barrett",
+        "Conor Kyne",
+        "Max Holland",
+        "Aryan Applegard",
+        "Seb Lawler",
+        "Ezra Philips",
+        "Archie Muir",
+        "Whole team",
+        "Selected player"
+      ],
+      "overflow": false
+    },
+    {
+      "tab": "centre",
+      "headings": [],
+      "actions": [
+        "Open team overview",
+        "Change display layout, auto selected",
+        "Sign out",
+        "Refresh match updates",
+        "Show match details",
+        "Open match report",
+        "Show match details",
+        "Open match report",
+        "Open game photos"
+      ],
+      "overflow": false
+    },
+    {
+      "tab": "reports",
+      "headings": [
+        "Export a permitted report"
+      ],
+      "actions": [
+        "Open team overview",
+        "Change display layout, auto selected",
+        "Sign out",
+        "Hill FC · 17/10/26 · completed",
+        "Oak FC · 10/10/26 · completed",
+        "Maple FC · 24/10/26 · preparation",
+        "Oak FC · 31/10/26 · preparation",
+        "Add past result",
+        "Oak FC, 10/10/26, 2 – 2. Open match report.",
+        "Hill FC, 17/10/26, 3 – 1. Open match report.",
+        "Season report",
+        "Match report",
+        "Team participation",
+        "Attendance",
+        "Export permitted JSON",
+        "Prepare permitted CSV",
+        "Prepare permitted PDF"
+      ],
+      "overflow": false
+    },
+    {
+      "tab": "feedback",
+      "headings": [
+        "Players’ match feedback",
+        "Roma v Hill FC",
+        "Roma at Oak FC"
+      ],
+      "actions": [
+        "Open team overview",
+        "Change display layout, auto selected",
+        "Sign out",
+        "Refresh match feedback"
+      ],
+      "overflow": false
+    },
+    {
+      "tab": "opposition",
+      "headings": [],
+      "actions": [
+        "Open team overview",
+        "Change display layout, auto selected",
+        "Sign out",
+        "Hill FC · 17/10/26",
+        "Oak FC · 10/10/26",
+        "Save opposition notes"
+      ],
+      "overflow": false
+    },
+    {
+      "tab": "community",
+      "headings": [],
+      "actions": [
+        "Open team overview",
+        "Change display layout, auto selected",
+        "Sign out",
+        "Photos",
+        "Awards",
+        "17/10/26 · Roma v Hill FC · 0 photos",
+        "10/10/26 · Roma at Oak FC · 0 photos",
+        "Show notification preferences",
+        "Revoke Jamie Bennett season grant",
+        "Use a football picture",
+        "Upload photo privately",
+        "Photo details",
+        "Refresh my uploads"
+      ],
+      "overflow": false
+    },
+    {
+      "tab": "settings",
+      "headings": [
+        "Team settings",
+        "Formation"
+      ],
+      "actions": [
+        "Open team overview",
+        "Change display layout, auto selected",
+        "Sign out",
+        "Save team alerts",
+        "Test sound",
+        "Team logo",
+        "Choose generated logo PNG",
+        "Upload logo privately for processing",
+        "Refresh authorised logo choices",
+        "Review removing team override",
+        "Save",
+        "Choose a saved formation (7)",
+        "New formation",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        "10",
+        "11",
+        "2-3-1",
+        "3-2-1",
+        "2-2-2",
+        "1-3-2",
+        "Edit position codes",
+        "Save formation",
+        "Show position list",
+        "Edit team defaults",
+        "Manage team positions",
+        "Edit 5-a-side",
+        "Edit 6-a-side",
+        "Edit 7-a-side",
+        "Edit 8-a-side",
+        "Edit 9-a-side",
+        "Edit 10-a-side",
+        "Edit 11-a-side",
+        "Create formation template",
+        "Prepare the next season"
+      ],
+      "overflow": false
+    },
+    {
+      "tab": "seasons",
+      "headings": [],
+      "actions": [
+        "Open team overview",
+        "Change display layout, auto selected",
+        "Sign out",
+        "Verified account · current manager",
+        "Verified account · retain administrator?",
+        "Alex Morgan · current manager",
+        "Alex Morgan · retain administrator?",
+        "Priya Shah · current manager",
+        "Dan Foster · current manager",
+        "Chris Lewis · current manager",
+        "Verified account · current manager",
+        "Verified account · retain administrator?",
+        "Thomas Arnold",
+        "Ralph Barrett",
+        "Conor Kyne",
+        "Max Holland",
+        "Aryan Applegard",
+        "Seb Lawler",
+        "Ezra Philips",
+        "Archie Muir",
+        "Acknowledge individual spectator renewal",
+        "Review next season assignments"
+      ],
+      "overflow": false
+    },
+    {
+      "tab": "privileges",
+      "headings": [
+        "Ralph Barrett",
+        "Conor Kyne",
+        "Max Holland",
+        "Aryan Applegard",
+        "Seb Lawler",
+        "Ezra Philips",
+        "Archie Muir",
+        "Jamie Bennett"
+      ],
+      "actions": [
+        "Open team overview",
+        "Change display layout, auto selected",
+        "Sign out",
+        "Review suspending uploads",
+        "Review suspending invitations",
+        "Review suspending uploads",
+        "Review suspending invitations",
+        "Review suspending uploads",
+        "Review suspending invitations",
+        "Review suspending uploads",
+        "Review suspending invitations",
+        "Review suspending uploads",
+        "Review suspending invitations",
+        "Review suspending uploads",
+        "Review suspending invitations",
+        "Review suspending uploads",
+        "Review suspending invitations",
+        "Review suspending uploads",
+        "Review suspending invitations",
+        "Review suspending uploads",
+        "Review suspending invitations",
+        "Review suspending uploads",
+        "Review suspending invitations",
+        "Review suspending uploads",
+        "Review suspending invitations",
+        "Review suspending uploads",
+        "Review suspending invitations",
+        "Review suspending uploads",
+        "Review suspending invitations",
+        "Review suspending uploads",
+        "Review suspending invitations",
+        "Review suspending uploads",
+        "Review suspending invitations"
+      ],
+      "overflow": false
+    },
+    {
+      "tab": "invitations",
+      "headings": [],
+      "actions": [
+        "Open team overview",
+        "Change display layout, auto selected",
+        "Sign out",
+        "Refresh invitation requests",
+        "Create one-time spectator link",
+        "Refresh invitation status",
+        "Review invitation destination"
+      ],
+      "overflow": false
+    },
+    {
+      "tab": "documents",
+      "reached": true
+    }
+  ],
+  "invitation": {
+    "exactTeamAndSeasonBound": true,
+    "locallyRenderedQr": true,
+    "privateDisclosureExplicitlyClosed": true,
+    "emailSent": false,
+    "capabilityRetainedInReport": false
+  },
+  "customFormation": {
+    "sameSlots": true,
+    "original": [
+      {
+        "id": "manager-place-0",
+        "label": "GK",
+        "position": "GK",
+        "x": 0.5,
+        "y": 0.91
+      },
+      {
+        "id": "manager-place-1",
+        "label": "Left cover",
+        "position": "CM",
+        "x": 0.17,
+        "y": 0.73
+      },
+      {
+        "id": "manager-place-2",
+        "label": "CB",
+        "position": "CB",
+        "x": 0.6666666666666666,
+        "y": 0.73
+      },
+      {
+        "id": "manager-place-3",
+        "label": "LW",
+        "position": "LW",
+        "x": 0.25,
+        "y": 0.435
+      },
+      {
+        "id": "manager-place-4",
+        "label": "CM",
+        "position": "CM",
+        "x": 0.5,
+        "y": 0.435
+      },
+      {
+        "id": "manager-place-5",
+        "label": "RW",
+        "position": "RW",
+        "x": 0.75,
+        "y": 0.435
+      },
+      {
+        "id": "manager-place-6",
+        "label": "ST",
+        "position": "ST",
+        "x": 0.5,
+        "y": 0.14
+      }
+    ],
+    "stored": [
+      {
+        "id": "manager-place-0",
+        "label": "GK",
+        "position": "GK",
+        "x": 0.5,
+        "y": 0.91
+      },
+      {
+        "id": "manager-place-1",
+        "label": "Left cover",
+        "position": "CM",
+        "x": 0.17,
+        "y": 0.73
+      },
+      {
+        "id": "manager-place-2",
+        "label": "CB",
+        "position": "CB",
+        "x": 0.6666666666666666,
+        "y": 0.73
+      },
+      {
+        "id": "manager-place-3",
+        "label": "LW",
+        "position": "LW",
+        "x": 0.25,
+        "y": 0.435
+      },
+      {
+        "id": "manager-place-4",
+        "label": "CM",
+        "position": "CM",
+        "x": 0.5,
+        "y": 0.435
+      },
+      {
+        "id": "manager-place-5",
+        "label": "RW",
+        "position": "RW",
+        "x": 0.75,
+        "y": 0.435
+      },
+      {
+        "id": "manager-place-6",
+        "label": "ST",
+        "position": "ST",
+        "x": 0.5,
+        "y": 0.14
+      }
+    ]
+  },
+  "formationNavigationGuarded": true,
+  "files": {
+    "xlsBytes": 37888,
+    "actualBiffOle": true,
+    "importedPreviewRetainedUntilExplicitDiscard": true,
+    "protectedPdfRoundTripExact": true
+  },
+  "replySaveRequests": [
+    {
+      "method": "GET",
+      "path": "/v1/me"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/teams/synthetic-roma-u10/preparation"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/me"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/teams/synthetic-roma-u10/records"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/teams/synthetic-roma-u10/preparation"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/teams/synthetic-roma-u10/player-stats"
+    }
+  ],
+  "matchday": {
+    "matchId": "synthetic-roma-oak-2026-10-31",
+    "selectedPlayers": 8,
+    "actualStarters": 7,
+    "countdownBefore": "07:09",
+    "countdownAfter": "07:06",
+    "freezesWhilePaused": true,
+    "localChangesRequireExplicitUpload": true,
+    "canonicalAcceptedRevision": 12,
+    "hardwareAudioProved": false
+  },
+  "artifactsStable": true,
+  "finishedAt": "2026-10-25T22:51:57.816Z"
+}

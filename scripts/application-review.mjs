@@ -273,7 +273,7 @@ try {
     const conflicts = Object.values(record.events).filter(item => item.matchId === documentId && item.disposition === 'quarantined');
     assert.equal(conflicts.length, 1); assert(conflicts[0].rejectedProjection.preparation.profiles.some(item => item.displayName === 'Oliver Bennett rejected tab'));
     await button(other, 'Reload saved team records; retain conflict');
-    const retainedEditor = other.getByRole('button', { name: 'Keep previous values', exact: true });
+    const retainedEditor = other.getByRole('button', { name: 'Close without saving', exact: true });
     if (await retainedEditor.count()) await retainedEditor.click();
     await other.getByRole('button', { name: 'Edit Oliver Bennett accepted tab', exact: true }).waitFor();
     await page.reload({ waitUntil: 'networkidle' }); await enterFictionalReview(page); await button(page, 'Team'); await page.getByRole('button', { name: 'Edit Oliver Bennett accepted tab', exact: true }).waitFor();

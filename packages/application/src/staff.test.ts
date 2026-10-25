@@ -41,4 +41,17 @@ describe('scoped existing-account manager roster', () => {
     expect(dto.managers.find(item => item.accountId === 'child')).toMatchObject({ label: 'Unavailable manager account', status: 'disabled' });
     expect(JSON.stringify(dto)).not.toContain('PRIVATE CHILD LABEL');
   });
+  it('does not offer inherited managers as new appointments or count them as appointed seats', () => {
+    const input = fixture();
+    input.memberships.push({ accountId: 'admin', teamId: 'roma', seasonId: '2026-27', role: 'manager', administrativeInheritance: true });
+    const dto = managerRoster(input);
+    expect(dto.candidates.find(item => item.accountId === 'admin')?.currentManager).toBe(true);
+    expect(dto.managers.map(item => item.accountId)).toEqual(['manager']);
+    expect(dto.activeTeamManagerCount).toBe(1);
+    input.memberships.push({ accountId: 'candidate', teamId: 'other-team', seasonId: '2026-27', role: 'manager', administrativeInheritance: true });
+    expect(managerRoster(input).candidates.find(item => item.accountId === 'candidate')?.currentManager).toBe(false);
+    input.memberships.find(item => item.accountId === 'admin' && item.role === 'manager')!.revokedAt = nowMs;
+    expect(managerRoster(input).candidates.find(item => item.accountId === 'admin')?.currentManager).toBe(false);
+  });
+
 });
