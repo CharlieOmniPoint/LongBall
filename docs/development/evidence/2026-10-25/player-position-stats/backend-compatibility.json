@@ -1,0 +1,11 @@
+{
+  "observedAt": "2026-10-25T19:36:06.992733+00:00",
+  "baselineProduct": "d07cf42ae04b17ff6c00f1d84f2e5c8bed2a9114",
+  "currentGitHead": "ed16f22913ea88eeba171791aa0fb598d44e64f7",
+  "workingTreeDirty": true,
+  "backendSharedRulesLocksNativeConfigUnchanged": true,
+  "serverBundleSha256": "218ef2808696ce0a063aa19d3c89b5af4784ae47249f083f67b60b932b0fc85e",
+  "workerBundleSha256": "1a72230f6f9f49f0cd86601189993c543a5aa1f3a89229048cd9ea10e0b71e7a",
+  "apiAndWorkerIdenticalToPreviouslyTested": true,
+  "scope": "Presentation changes use already-authorized Manager preparation preferences; aggregate statistics contract and administrator data minimization are unchanged."
+}

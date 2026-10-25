@@ -1,0 +1,1 @@
+{"passed":false,"viewportJourneys":0,"checks":0,"failures":[{"stage":"Manager selected-player defaults and authoritative core-position presentation","name":"AssertionError","message":"Manager selected player: choosing a player must select their map without a second map-button click.\n\nnull !== 'true'\n"}],"report":".local/quality/tablet-review/report.json"}

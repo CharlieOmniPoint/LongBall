@@ -8,6 +8,7 @@ import type {
 import { formatUkSeasonLabel } from "@longball/application/uk-display";
 import { Card, Notice, Pill } from "../ui";
 import { colors, typography } from "../ui/tokens";
+import { formatStatsPositionPercentage } from "../platform/player-stats-presentation";
 
 export interface PlayerStatsProps {
   value: OwnPlayerStatsDto;
@@ -16,7 +17,7 @@ export interface PlayerStatsProps {
 export const statsTime = (ms: number) =>
   `${Math.floor(ms / 60_000)}m ${Math.floor((ms % 60_000) / 1000)}s`;
 const percent = (value: number | null) =>
-  value === null ? "Not recorded" : `${value.toFixed(1)}%`;
+  formatStatsPositionPercentage(value, "Not recorded");
 
 /** Accepts the own-only service DTO; no raw records/profile/attendance document. */
 export function PlayerStats({ value, teamLabel }: PlayerStatsProps) {
@@ -58,17 +59,23 @@ export function PlayerStatsDetails({
           />
           <Total label="Known goals" value={String(row.knownGoals)} />
           <Total label="Recorded own goals" value={String(row.knownOwnGoals)} />
-          <Total label="Clean sheets in goal" value={String(row.knownCleanSheets)} />
+          <Total
+            label="Clean sheets in goal"
+            value={String(row.knownCleanSheets)}
+          />
         </View>
         <Text style={typography.muted}>
           Appearances count only matches with recorded playing time above zero.
           Known goals count explicit scorer attribution; gaps are not treated as
-          zero. Clean sheets count completed games with no opposition goal during
-          the recorded goalkeeper stints, including opposition goals from own goals.
+          zero. Clean sheets count completed games with no opposition goal
+          during the recorded goalkeeper stints, including opposition goals from
+          own goals.
         </Text>
         <Text style={typography.muted}>
           Goalkeeping reviewed: {row.goalkeepingReviewedMatches} games.
-          {row.goalkeepingUnknownMatches > 0 ? ` ${row.goalkeepingUnknownMatches} games lack complete goalkeeper or goal-timing evidence.` : ""}
+          {row.goalkeepingUnknownMatches > 0
+            ? ` ${row.goalkeepingUnknownMatches} games lack complete goalkeeper or goal-timing evidence.`
+            : ""}
         </Text>
       </Card>
       <Card>

@@ -224,7 +224,7 @@ async function geometry(state, label) {
     const pitchGroups = [...document.querySelectorAll('[aria-label^="Season recorded position time on "]')];
     const overlaps = [];
     for (const pitch of pitchGroups) {
-      const cells = [...pitch.querySelectorAll('[data-testid^="stats-position-"]')].filter(visible);
+      const cells = [...pitch.querySelectorAll('[data-testid^="stats-position-"]')].filter(element => /^stats-position-[A-Z]{2}$/.test(element.getAttribute('data-testid')) && visible(element));
       for (let index = 0; index < cells.length; index++) for (let other = index + 1; other < cells.length; other++) { const a = cells[index].getBoundingClientRect(), b = cells[other].getBoundingClientRect(); if (Math.min(a.right, b.right) - Math.max(a.left, b.left) > 2 && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 2) overlaps.push([named(cells[index]), named(cells[other])]); }
     }
     const places = [...document.querySelectorAll('[role="button"][aria-label*=" · place "]')].filter(visible);
@@ -279,19 +279,97 @@ async function safeScreenshot(state, name) {
   const body = await state.page.locator('body').innerText(); for (const secret of secrets) assert(!body.includes(secret), 'Signed-in screenshots must not contain credentials or capabilities.');
   await state.page.screenshot({ path: path.join(output, `${name}.png`), animations: 'disabled' });
 }
+async function positionMapPresentation(state, row, preferences, label) {
+  const { page } = state;
+  await page.getByTestId('stats-core-positions').waitFor();
+  await settled(page);
+  assert.equal(await page.getByTestId('stats-map-player').getAttribute('aria-pressed'), 'true', `${label}: choosing a player must select their map without a second map-button click.`);
+  assert.equal(await page.getByTestId('stats-map-team').getAttribute('aria-pressed'), 'false');
+  assert.equal(await page.getByTestId('stats-map-scope').innerText(), row.label, `${label}: the map must name its selected player.`);
+  const cards = await page.locator('[data-testid^="stats-position-"]').evaluateAll(elements => elements.filter(element => /^stats-position-[A-Z]{2}$/.test(element.getAttribute('data-testid'))).map(element => {
+    const code = element.getAttribute('data-testid').slice('stats-position-'.length), style = getComputedStyle(element);
+    const color = kind => getComputedStyle(element.querySelector(`[data-testid="stats-position-${kind}-${code}"]`)).color;
+    return { code, label: element.getAttribute('aria-label'), borderColor: style.borderTopColor, borderStyle: style.borderTopStyle, borderWidth: style.borderTopWidth, colors: [color('code'), color('time'), color('percentage')] };
+  }));
+  assert(cards.length > 0, `${label}: actual formation position cards must be present.`);
+  let muted = 0, emphasized = 0;
+  for (const card of cards) {
+    const position = row.positions.find(position => position.code === card.code);
+    const zero = position?.percentage === 0 && position.playingMs === 0;
+    assert(card.colors.every(color => zero ? color === 'rgb(107, 114, 128)' : color !== 'rgb(107, 114, 128)'), `${label}: only a true recorded zero may mute all text in ${card.code}.`);
+    if (zero) muted++; else if (position?.playingMs > 0) emphasized++;
+    const rank = card.code === preferences[0] ? 'Primary' : card.code === preferences[1] ? 'Secondary' : null;
+    if (rank) {
+      assert.equal(card.borderColor, 'rgb(198, 40, 40)', `${label}: ${rank.toLowerCase()} core ${card.code} must be red.`);
+      assert.equal(card.borderStyle, rank === 'Primary' ? 'solid' : 'dotted', `${label}: core rank must be distinguishable by line style.`);
+      assert.equal(card.borderWidth, '2px');
+      assert.match(card.label, new RegExp(`${rank} core position`), `${label}: the core rank must also have a text alternative.`);
+    } else {
+      assert.notEqual(card.borderColor, 'rgb(198, 40, 40)', `${label}: unrelated positions must not receive a core outline.`);
+      assert.doesNotMatch(card.label ?? '', /Primary core position|Secondary core position/);
+    }
+  }
+  assert(muted > 0 && emphasized > 0, `${label}: the actual selected player must exercise both zero and nonzero recorded position time.`);
+  const legend = await page.getByTestId('stats-core-positions').innerText();
+  assert(legend.includes('Primary') && legend.includes('Secondary') && preferences.slice(0, 2).every(code => legend.includes(code)), `${label}: the legend must identify the actual declared primary and secondary codes.`);
+  const absent = preferences.slice(0, 2).filter(code => !cards.some(card => card.code === code));
+  if (absent.length) {
+    const outside = await page.getByTestId('stats-core-outside-layout').innerText();
+    assert(absent.every(code => outside.includes(code)), `${label}: a core position outside the reference formation must be stated rather than invented on the pitch.`);
+    for (const code of absent) {
+      const marker = page.getByTestId(`stats-core-outside-${code}`), primary = code === preferences[0];
+      assert.match(await marker.getAttribute('aria-label'), new RegExp(`${primary ? 'Primary' : 'Secondary'} core position ${code}, outside reference layout`));
+      assert.deepEqual(await marker.evaluate(element => { const style = getComputedStyle(element); return [style.borderTopColor, style.borderTopStyle, style.borderTopWidth]; }), ['rgb(198, 40, 40)', primary ? 'solid' : 'dotted', '2px'], `${label}: an absent core position keeps its explicit outline marker outside the pitch.`);
+    }
+  }
+  return { actualPlayerId: row.playerId, primary: preferences[0], secondary: preferences[1], mutedZeroCards: muted, emphasizedPlayedCards: emphasized, coreOutsideLayout: absent, source: 'Actual isolated Manager preparation preferences and accepted player-stats aggregates' };
+}
+async function managerStatsSelection(state, stats, preparation) {
+  stage = 'Manager selected-player defaults and authoritative core-position presentation';
+  const { page } = state, chosenId = 'synthetic-player-02';
+  const row = stats.players.find(player => player.playerId === chosenId), profile = preparation.profiles.find(profile => profile.playerId === chosenId && profile.seasonId === seasonId);
+  assert(row && profile && profile.preferences.length >= 2, 'The Manager fixture must expose authoritative selected-player core preferences.');
+  await page.getByTestId(`stats-choose-${chosenId}`).click();
+  const presentation = await positionMapPresentation(state, row, profile.preferences, 'Manager selected player');
+  await page.getByTestId('stats-map-team').click(); await settled(page);
+  assert.equal(await page.getByTestId('stats-map-team').getAttribute('aria-pressed'), 'true', 'Whole team must remain an explicit available map choice.');
+  assert.equal(await page.getByTestId('stats-core-positions').count(), 0, 'The whole-team map must not display the chosen player\'s core legend.');
+  assert.equal(await page.getByTestId('stats-core-outside-layout').count(), 0, 'Whole team must not display selected-player markers outside the formation either.');
+  assert.equal(await page.locator('[data-testid^="stats-position-"][aria-label*="core position"]').count(), 0, 'The whole-team map must not inherit any selected-player core rank.');
+  const another = stats.players.find(player => player.playerId !== chosenId); assert(another);
+  await page.getByTestId(`stats-choose-${another.playerId}`).click(); await settled(page);
+  assert.equal(await page.getByTestId('stats-map-player').getAttribute('aria-pressed'), 'true', 'Choosing another player must leave Whole team and open that player\'s map.');
+  assert.equal(await page.getByTestId('stats-map-scope').innerText(), another.label);
+  await page.getByTestId('stats-map-team').click(); await settled(page);
+  await page.getByTestId(`stats-choose-${another.playerId}`).click(); await settled(page);
+  assert.equal(await page.getByTestId('stats-map-player').getAttribute('aria-pressed'), 'true', 'Choosing the already selected player must also reopen their map.');
+  await page.getByTestId(`stats-choose-${chosenId}`).click(); await positionMapPresentation(state, row, profile.preferences, 'Manager restored selection');
+  report.managerPositionMap = presentation;
+  report.checks.push('Actual Manager player selection automatically opens that player\'s position map; Whole team clears core annotations and either another or the same player returns to their own map. Zero recorded position text is grey, positive time remains emphasized, and authoritative primary/secondary preferences receive red solid/dotted outlines with text alternatives.');
+  return { row, preferences: profile.preferences };
+}
 async function roleMatrix(account) {
   const state = await makePage(), { page } = state;
   try {
     await login(state, account);
     await page.getByTestId('workspace-team-overview').click(); await page.getByTestId('team-overview').waitFor();
     await expectLayout(state, account.role); await geometry(state, `${account.role} overview`);
+    const before = state.mutations.length;
+    let selectedMap;
     if (staff(account.role)) {
       await openWorkspaceTab(page, 'stats'); await page.getByTestId('team-player-stats').waitFor();
-      await page.getByTestId('stats-choose-synthetic-player-02').click(); await page.getByTestId('stats-map-player').click();
+      if (account.role === 'manager') {
+        const stats = await currentJson(state, route('player-stats')), preparation = await currentJson(state, route('preparation'));
+        selectedMap = await managerStatsSelection(state, stats, preparation);
+      } else {
+        await page.getByTestId('stats-choose-synthetic-player-02').click(); await settled(page);
+        assert.equal(await page.getByTestId('stats-map-player').getAttribute('aria-pressed'), 'true', 'An administrator selection must also default to the selected player map.');
+        await page.getByTestId('stats-core-unavailable').waitFor();
+        assert.equal(await page.locator('[data-testid^="stats-position-"][aria-label*="core position"]').count(), 0, 'Aggregate-only administrator statistics must not invent or expose Manager-only core preferences.');
+      }
     } else if (account.role === 'player') {
       await openWorkspaceTab(page, 'home'); await page.getByTestId('player-home-my-stats').click(); await page.getByTestId('player-my-stats').waitFor();
     }
-    const before = state.mutations.length;
     for (const viewport of viewports) {
       stage = `${account.role} ${viewport.width}x${viewport.height}`;
       await page.setViewportSize(viewport); const effective = await expectLayout(state, account.role);
@@ -304,6 +382,12 @@ async function roleMatrix(account) {
       }
       const checked = await geometry(state, stage);
       await safeScreenshot(state, `${account.role}-${viewport.width}x${viewport.height}`);
+      if (selectedMap && (viewport.width === 390 || viewport.width === 1024)) {
+        await positionMapPresentation(state, selectedMap.row, selectedMap.preferences, stage);
+        await page.getByTestId('stats-map-scope').scrollIntoViewIfNeeded();
+        await safeScreenshot(state, `manager-position-map-${viewport.width}x${viewport.height}`);
+        await page.locator('[aria-label^="Season recorded position time on "]').screenshot({ path: path.join(output, `manager-position-pitch-${viewport.width}x${viewport.height}.png`), animations: 'disabled' });
+      }
       report.journeys.push({ role: account.role, ...viewport, preference: 'auto', effective, selectedPlayerRetained: staff(account.role), ...checked });
     }
     assert.equal(state.mutations.length, before, 'The role/rotation matrix must remain read-only after login.');
@@ -492,6 +576,10 @@ try {
   stage = 'staff preference and administrator draft retention'; await adminPreferenceDrafts(accounts.find(account => account.key === 'dual'), accounts.find(account => account.role === 'player'), accounts.find(account => account.role === 'spectator'));
   stage = 'manager football draft and event-review retention'; await managerDrafts(accounts.find(account => account.key === 'manager'));
   stage = 'original read across explicit sign-out and replacement account'; await heldReadAcrossSignOut(accounts.find(account => account.key === 'manager'), accounts.find(account => account.role === 'player'));
+  assert.equal(digest(await readFile(apiBundle)), report.source.apiBundleSha256, 'The compiled API must stay unchanged throughout the review.');
+  assert.equal(digest(await readFile(path.join(webRoot, script.replace(/^\//, '')))), report.source.webJavaScriptSha256, 'The compiled web application must stay unchanged throughout the review.');
+  assert.equal(digest(await readFile(new URL(import.meta.url))), report.source.harnessSha256, 'The maintained review harness must stay unchanged throughout its run.');
+  report.artifactsStableBeforeAfter = true;
   classifyHttpFailures(); assert.deepEqual(report.httpFailures, [], 'No current-session or otherwise unexpected real API request may fail during the tablet review.'); report.passed = true;
 } catch (error) {
   report.failures.push({ stage, name: sanitise(error.name), message: sanitise(error.message) }); report.processDiagnostic = sanitise(diagnostics); process.exitCode = 1;

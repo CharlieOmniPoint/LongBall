@@ -1,0 +1,2 @@
+{"phase":"manager actual-match layout retention","waitingForExistingAccountRateWindowMs":41618}
+{"passed":true,"viewportJourneys":36,"checks":4,"failures":[],"report":".local/quality/tablet-review/report.json"}

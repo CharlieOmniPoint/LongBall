@@ -27,6 +27,7 @@ export function Button({ label, accessibilityLabel, accessibilityState, buttonRe
     accessibilityLabel={accessibilityLabel ?? (iconOnly ? label : undefined)}
     accessibilityState={{ ...accessibilityState, disabled }}
     aria-expanded={accessibilityState?.expanded}
+    aria-pressed={accessibilityState?.selected}
     aria-disabled={disabled}
     disabled={disabled}
     onPress={onPress}

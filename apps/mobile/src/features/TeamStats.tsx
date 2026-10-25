@@ -10,6 +10,13 @@ import { Button, Card, Notice } from "../ui";
 import { colors, typography } from "../ui/tokens";
 import { useWorkspaceLayout } from "../ui/WorkspaceLayout";
 import {
+  formatStatsPositionPercentage,
+  isRecordedZeroPosition,
+  statsCorePositionsOutsideLayout,
+  statsPositionPreference,
+  type PlayerStatsCorePositions,
+} from "../platform/player-stats-presentation";
+import {
   PlayerStatsDetails,
   PositionBreakdown,
   statsTime,
@@ -20,6 +27,8 @@ export interface TeamStatsProps {
   teamLabel?: string;
   selectedPlayerId?: string;
   onSelectPlayer?: (playerId: string) => void;
+  /** Already-authorised current-season preferences; never inferred from stats. */
+  corePositions?: readonly PlayerStatsCorePositions[];
 }
 /** Both manager and administrator receive this same aggregate-only DTO. */
 export function TeamStats({
@@ -27,18 +36,45 @@ export function TeamStats({
   teamLabel,
   selectedPlayerId,
   onSelectPlayer,
+  corePositions,
 }: TeamStatsProps) {
   const { wide } = useWorkspaceLayout();
   const [panelWidth, setPanelWidth] = useState(0);
   const splitDetails = wide && panelWidth >= 800;
-  const [localPlayer, setLocalPlayer] = useState<string | null>(null),
-    [mapScope, setMapScope] = useState<"team" | "player">("team");
+  const [localPlayer, setLocalPlayer] = useState<string | null>(null);
   const player =
     value.players.find(
       (row) => row.playerId === (selectedPlayerId ?? localPlayer),
     ) ?? value.players[0];
+  const selectionKey = JSON.stringify([
+    value.scope.clubId,
+    value.scope.teamId,
+    value.scope.seasonId,
+    player?.playerId ?? null,
+  ]);
+  const [mapView, setMapView] = useState<{
+    selectionKey: string;
+    scope: "team" | "player";
+  }>(() => ({ selectionKey, scope: player ? "player" : "team" }));
+  const mapScope =
+    mapView.selectionKey === selectionKey
+      ? mapView.scope
+      : player
+        ? "player"
+        : "team";
+  const setMapScope = (scope: "team" | "player") =>
+    setMapView({ selectionKey, scope });
   const select = (id: string) => {
     setLocalPlayer(id);
+    setMapView({
+      selectionKey: JSON.stringify([
+        value.scope.clubId,
+        value.scope.teamId,
+        value.scope.seasonId,
+        id,
+      ]),
+      scope: "player",
+    });
     onSelectPlayer?.(id);
   };
   return (
@@ -118,18 +154,20 @@ export function TeamStats({
                 <Button
                   label="Whole team"
                   variant={mapScope === "team" ? "primary" : "secondary"}
+                  accessibilityState={{ selected: mapScope === "team" }}
                   onPress={() => setMapScope("team")}
                   testID="stats-map-team"
                 />
                 <Button
                   label="Selected player"
                   variant={mapScope === "player" ? "primary" : "secondary"}
+                  accessibilityState={{ selected: mapScope === "player" }}
                   disabled={!player}
                   onPress={() => setMapScope("player")}
                   testID="stats-map-player"
                 />
               </View>
-              <Text style={typography.label}>
+              <Text style={typography.label} testID="stats-map-scope">
                 {mapScope === "player" && player
                   ? player.label
                   : "All player playing time"}
@@ -137,6 +175,14 @@ export function TeamStats({
               <FormationStats
                 formation={value.formation}
                 value={mapScope === "player" && player ? player : value.team}
+                playerView={mapScope === "player" && Boolean(player)}
+                core={
+                  mapScope === "player" && player
+                    ? corePositions?.find(
+                        (row) => row.playerId === player.playerId,
+                      )
+                    : undefined
+                }
               />
             </Card>
           </View>
@@ -151,9 +197,13 @@ export function TeamStats({
 function FormationStats({
   formation,
   value,
+  playerView,
+  core,
 }: {
   formation: StatsFormation | null;
   value: PositionStatsTotals;
+  playerView: boolean;
+  core: PlayerStatsCorePositions | undefined;
 }) {
   const [pitchWidth, setPitchWidth] = useState(240);
   const groups = new Map<string, { x: number; y: number; count: number }>();
@@ -182,8 +232,43 @@ function FormationStats({
       chunks.push(sorted.slice(index, index + capacity));
     return chunks;
   });
+  const outsideLayout = formation
+    ? statsCorePositionsOutsideLayout(core, new Set(groups.keys()))
+    : [];
   return (
     <View style={s.section}>
+      {playerView &&
+        (core ? (
+          <View style={s.coreLegend} testID="stats-core-positions">
+            <Text style={typography.muted}>Current core positions</Text>
+            <View style={s.actions}>
+              <View style={s.legendItem}>
+                <View
+                  style={[s.legendMark, s.primaryPosition]}
+                  accessibilityElementsHidden
+                  importantForAccessibility="no-hide-descendants"
+                />
+                <Text style={typography.muted}>
+                  Primary · {core.primary ?? "not recorded"}
+                </Text>
+              </View>
+              <View style={s.legendItem}>
+                <View
+                  style={[s.legendMark, s.secondaryPosition]}
+                  accessibilityElementsHidden
+                  importantForAccessibility="no-hide-descendants"
+                />
+                <Text style={typography.muted}>
+                  Secondary · {core.secondary ?? "not recorded"}
+                </Text>
+              </View>
+            </View>
+          </View>
+        ) : (
+          <Text style={typography.muted} testID="stats-core-unavailable">
+            Primary and secondary positions are not available in this view.
+          </Text>
+        ))}
       {formation && (
         <>
           <Text style={typography.muted}>
@@ -210,12 +295,18 @@ function FormationStats({
                     const position = value.positions.find(
                       (row) => row.code === code,
                     );
+                    const zero = isRecordedZeroPosition(position);
+                    const preference = statsPositionPreference(code, core);
                     return (
                       <View
                         key={code}
                         testID={`stats-position-${code}`}
+                        accessible
+                        accessibilityLabel={`${code}${preference ? `, ${preference === "primary" ? "Primary" : "Secondary"} core position` : ""}, ${statsTime(position?.playingMs ?? 0)}, ${position?.percentage == null ? "percentage not recorded" : `${formatStatsPositionPercentage(position.percentage)} of known playing time`}`}
                         style={[
                           s.position,
+                          preference === "primary" && s.primaryPosition,
+                          preference === "secondary" && s.secondaryPosition,
                           {
                             width: Math.min(
                               80,
@@ -225,14 +316,23 @@ function FormationStats({
                           },
                         ]}
                       >
-                        <Text style={s.code}>{code}</Text>
-                        <Text style={s.pitchTime}>
+                        <Text
+                          style={[s.code, zero && s.zeroText]}
+                          testID={`stats-position-code-${code}`}
+                        >
+                          {code}
+                        </Text>
+                        <Text
+                          style={[s.pitchTime, zero && s.zeroText]}
+                          testID={`stats-position-time-${code}`}
+                        >
                           {statsTime(position?.playingMs ?? 0)}
                         </Text>
-                        <Text style={s.pitchTime}>
-                          {position?.percentage == null
-                            ? "—"
-                            : `${position.percentage.toFixed(1)}%`}
+                        <Text
+                          style={[s.pitchTime, zero && s.zeroText]}
+                          testID={`stats-position-percentage-${code}`}
+                        >
+                          {formatStatsPositionPercentage(position?.percentage)}
                         </Text>
                       </View>
                     );
@@ -247,6 +347,38 @@ function FormationStats({
             player stood within a position.
           </Text>
         </>
+      )}
+      {outsideLayout.length > 0 && (
+        <View style={s.coreLegend} testID="stats-core-outside-layout">
+          <Text style={typography.muted}>
+            Core positions outside this reference layout
+          </Text>
+          <View style={s.actions}>
+            {outsideLayout.map((row) => (
+              <View
+                key={row.rank}
+                testID={`stats-core-outside-${row.code}`}
+                style={[
+                  s.outsideCorePosition,
+                  row.rank === "primary"
+                    ? s.primaryPosition
+                    : s.secondaryPosition,
+                ]}
+                accessible
+                accessibilityLabel={`${row.rank === "primary" ? "Primary" : "Secondary"} core position ${row.code}, outside reference layout`}
+              >
+                <Text style={typography.label}>
+                  {row.rank === "primary" ? "Primary" : "Secondary"} ·{" "}
+                  {row.code}
+                </Text>
+              </View>
+            ))}
+          </View>
+          <Text style={typography.muted}>
+            These preference markers do not add formation slots. Recorded time
+            is listed in the breakdown.
+          </Text>
+        </View>
       )}
       {!formation && (
         <Notice>
@@ -335,4 +467,29 @@ const s = StyleSheet.create({
   },
   code: { ...typography.label, color: colors.brand },
   pitchTime: { fontSize: 12, lineHeight: 16, color: colors.ink },
+  zeroText: { color: "#6B7280" },
+  primaryPosition: {
+    borderWidth: 2,
+    borderColor: "#C62828",
+    borderStyle: "solid",
+  },
+  secondaryPosition: {
+    borderWidth: 2,
+    borderColor: "#C62828",
+    borderStyle: "dotted",
+  },
+  coreLegend: { gap: 6 },
+  legendItem: { flexDirection: "row", alignItems: "center", gap: 6 },
+  legendMark: {
+    width: 22,
+    height: 22,
+    backgroundColor: colors.surface,
+    borderRadius: 4,
+  },
+  outsideCorePosition: {
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    backgroundColor: colors.surface,
+  },
 });
