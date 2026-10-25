@@ -64988,7 +64988,7 @@ function managerRoster(input) {
       otherActiveSeasonIds: [...new Set(liveManagers.filter((other) => other.accountId === item.accountId && other.seasonId !== seasonId).map((other) => other.seasonId))].sort()
     };
   }).sort((a, b) => a.label.localeCompare(b.label) || a.accountId.localeCompare(b.accountId));
-  const candidates = accounts.filter((account2) => associated.has(account2.accountId) && eligible(account2)).map((account2) => ({ accountId: account2.accountId, label: account2.label, currentManager: liveManagers.some((item) => item.accountId === account2.accountId && item.seasonId === seasonId) })).sort((a, b) => a.label.localeCompare(b.label) || a.accountId.localeCompare(b.accountId));
+  const candidates = accounts.filter((account2) => associated.has(account2.accountId) && eligible(account2)).map((account2) => ({ accountId: account2.accountId, label: account2.label, currentManager: memberships.some((item) => item.accountId === account2.accountId && item.teamId === teamId && item.seasonId === seasonId && item.role === "manager" && current2(item, nowMs)) })).sort((a, b) => a.label.localeCompare(b.label) || a.accountId.localeCompare(b.accountId));
   return { kind: "manager-roster", revision: input.revision, teamId, seasonId, asOf: new Date(nowMs).toISOString(), maximumManagers: 4, activeTeamManagerCount: new Set(liveManagers.map((item) => item.accountId)).size, canMutate: principal.authenticatedAt <= nowMs + 3e4 && nowMs - principal.authenticatedAt <= 3e5, managers, candidates };
 }
 

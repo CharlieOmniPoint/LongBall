@@ -66081,7 +66081,7 @@ function managerRoster(input) {
       otherActiveSeasonIds: [...new Set(liveManagers.filter((other) => other.accountId === item.accountId && other.seasonId !== seasonId).map((other) => other.seasonId))].sort()
     };
   }).sort((a, b) => a.label.localeCompare(b.label) || a.accountId.localeCompare(b.accountId));
-  const candidates = accounts.filter((account3) => associated.has(account3.accountId) && eligible2(account3)).map((account3) => ({ accountId: account3.accountId, label: account3.label, currentManager: liveManagers.some((item) => item.accountId === account3.accountId && item.seasonId === seasonId) })).sort((a, b) => a.label.localeCompare(b.label) || a.accountId.localeCompare(b.accountId));
+  const candidates = accounts.filter((account3) => associated.has(account3.accountId) && eligible2(account3)).map((account3) => ({ accountId: account3.accountId, label: account3.label, currentManager: memberships.some((item) => item.accountId === account3.accountId && item.teamId === teamId && item.seasonId === seasonId && item.role === "manager" && current2(item, nowMs)) })).sort((a, b) => a.label.localeCompare(b.label) || a.accountId.localeCompare(b.accountId));
   return { kind: "manager-roster", revision: input.revision, teamId, seasonId, asOf: new Date(nowMs).toISOString(), maximumManagers: 4, activeTeamManagerCount: new Set(liveManagers.map((item) => item.accountId)).size, canMutate: principal.authenticatedAt <= nowMs + 3e4 && nowMs - principal.authenticatedAt <= 3e5, managers, candidates };
 }
 
@@ -69306,6 +69306,10 @@ CREATE TABLE IF NOT EXISTS directory_clubs(id TEXT PRIMARY KEY,name TEXT NOT NUL
 CREATE TABLE IF NOT EXISTS directory_teams(team_id TEXT PRIMARY KEY REFERENCES teams(id),club_id TEXT NOT NULL REFERENCES directory_clubs(id),age_group TEXT NOT NULL);
 `;
 var isPg = (source2) => "db" in source2;
+function administrationDisplayLabels(value, principal) {
+  if (principal.issuer !== "urn:longball:synthetic") return value;
+  return { ...value, candidates: value.candidates.map((candidate) => ({ ...candidate, label: Object.hasOwn(demoAccountLabels, candidate.accountId) ? demoAccountLabels[candidate.accountId] : candidate.label })).sort((left, right) => left.label.localeCompare(right.label, "en-GB") || left.accountId.localeCompare(right.accountId)) };
+}
 function sqliteAdministration(source2, accountId) {
   const grants = source2.database.prepare(
     "SELECT level,club_id FROM administration_grants WHERE account_id=?"
@@ -69353,7 +69357,7 @@ var ClubAdministrationService = class {
           404,
           "Club administration is unavailable."
         );
-      return typeof row.value === "string" ? JSON.parse(row.value) : row.value;
+      return administrationDisplayLabels(typeof row.value === "string" ? JSON.parse(row.value) : row.value, principal);
     }
     const db = this.source.database, scope = sqliteAdministration(this.source, principal.accountId);
     if (!scope)
@@ -69375,14 +69379,14 @@ var ClubAdministrationService = class {
     const candidates = scope.level === "super" ? db.prepare(
       "SELECT id accountId,subject label FROM accounts WHERE status='active' AND classification='adult_individual' AND adult_verified=1 AND strong_auth_enrolled=1 ORDER BY subject"
     ).all() : [];
-    return {
+    return administrationDisplayLabels({
       kind: "club-administration",
       administration: scope,
       clubs,
       teams,
       administrators,
       candidates
-    };
+    }, principal);
   }
   async authorizeCommand(principal, input) {
     const fresh = await this.source.principal({
