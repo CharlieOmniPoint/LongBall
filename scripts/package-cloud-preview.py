@@ -20,6 +20,10 @@ demo_accounts = load_demo_account_verifiers(arguments.demo_accounts_file, root) 
 if demo_accounts and os.environ.get('EXPO_PUBLIC_ENVIRONMENT') == 'production':
     raise SystemExit('Demo account login is available only in a nonproduction review build.')
 web_build_environment = {**os.environ, 'EXPO_PUBLIC_DEMO_ACCOUNT_LOGIN': '1' if demo_accounts else '0'}
+# Keep the verified-account review identical to the explicitly tested profile.
+# Demo fixture creation deliberately requires an explicit nonproduction caller.
+if demo_accounts:
+    web_build_environment.setdefault('EXPO_PUBLIC_ENVIRONMENT', 'development')
 
 
 def git(*args):

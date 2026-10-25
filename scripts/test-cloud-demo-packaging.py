@@ -99,8 +99,8 @@ class VerifierPackagingTests(unittest.TestCase):
 class PreviewPayloadTests(unittest.TestCase):
     def test_payload_and_both_browser_builds_receive_only_the_explicit_verifier_profile(self):
         repository = Path(__file__).resolve().parents[1]
-        for enabled in [False, True]:
-            with self.subTest(enabled=enabled), tempfile.TemporaryDirectory() as directory:
+        for enabled, environment in [(False, None), (True, None), (True, "fictional")]:
+            with self.subTest(enabled=enabled, environment=environment), tempfile.TemporaryDirectory() as directory:
                 root = Path(directory)
                 script = root / "scripts/package-cloud-preview.py"
                 script.parent.mkdir()
@@ -146,17 +146,39 @@ class PreviewPayloadTests(unittest.TestCase):
                         self.fail(f"Unexpected build command: {args}")
 
                 argv = [str(script), "--with-pages"] + (["--demo-accounts-file", str(verifier)] if enabled else [])
-                with patch.object(sys, "argv", argv), patch("subprocess.check_output", side_effect=git), patch("subprocess.run", side_effect=run), patch.dict("os.environ", {"EXPO_PUBLIC_DEMO_ACCOUNT_LOGIN": "inherited-value"}), contextlib.redirect_stdout(io.StringIO()):
+                build_env = {"EXPO_PUBLIC_DEMO_ACCOUNT_LOGIN": "inherited-value"}
+                if environment is not None:
+                    build_env["EXPO_PUBLIC_ENVIRONMENT"] = environment
+                with patch.object(sys, "argv", argv), patch("subprocess.check_output", side_effect=git), patch("subprocess.run", side_effect=run), patch.dict("os.environ", build_env, clear=True), contextlib.redirect_stdout(io.StringIO()):
                     runpy.run_path(str(script), run_name="__main__")
                 payload_text = (local / "cloud-preview-payload.json").read_text()
                 payload = {item["path"]: item["content"] for item in json.loads(payload_text)}
                 self.assertNotIn("chat-only-unit-passphrase", payload_text)
                 self.assertEqual([build["EXPO_PUBLIC_DEMO_ACCOUNT_LOGIN"] for build in builds], [str(int(enabled))] * 2)
+                self.assertEqual([build.get("EXPO_PUBLIC_ENVIRONMENT") for build in builds], [environment or ("development" if enabled else None)] * 2)
                 self.assertEqual(json.loads(payload["preview/native-build-request.txt"])["demo_account_login"], enabled)
                 self.assertEqual("preview/demo-accounts.json" in payload, enabled)
                 self.assertEqual("preview/demo-accounts.sha256" in payload, enabled)
                 if enabled:
                     self.assertEqual(json.loads(payload["preview/demo-accounts.json"]), fixture())
+
+
+    def test_explicit_production_demo_is_rejected_before_git_or_build(self):
+        repository = Path(__file__).resolve().parents[1]
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            script = root / "scripts/package-cloud-preview.py"
+            script.parent.mkdir()
+            shutil.copyfile(repository / "scripts/package-cloud-preview.py", script)
+            local = root / ".local"
+            local.mkdir()
+            verifier = local / "verifiers.json"
+            verifier.write_text(json.dumps(fixture()))
+            with patch.object(sys, "argv", [str(script), "--demo-accounts-file", str(verifier)]), patch.dict("os.environ", {"EXPO_PUBLIC_ENVIRONMENT": "production"}, clear=True), patch("subprocess.check_output") as git, patch("subprocess.run") as build:
+                with self.assertRaisesRegex(SystemExit, "nonproduction review build"):
+                    runpy.run_path(str(script), run_name="__main__")
+                git.assert_not_called()
+                build.assert_not_called()
 
 
 if __name__ == "__main__":

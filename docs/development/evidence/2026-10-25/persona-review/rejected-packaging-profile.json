@@ -1,0 +1,11 @@
+{
+  "sourceCommit": "d216a52a5d00ee819a10461814d0e139840599bc",
+  "published": false,
+  "accepted": false,
+  "reason": "Exact packaged-byte comparison rejected an unset review environment before publication. Trusted demo fixture creation would remain guarded.",
+  "testedBrowserScriptSha256": "a2b86b6642ba5d1a9ee4c08199f84663c3e02c43b1934aaade92f1326f812fdb",
+  "rejectedPackagedScriptSha256": "4a61b1c7b0622488bd33aee9d452b5708aeeb56ce76e11bce31772d6fef8f898",
+  "fix": "Packaging now defaults only the verifier-enabled review profile to explicit development; caller-supplied fictional remains explicit, production remains rejected.",
+  "appSourceChanged": false,
+  "credentialValuesChanged": false
+}
