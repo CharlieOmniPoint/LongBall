@@ -106,7 +106,7 @@ for (const backend of ['sqlite', 'postgres'] as const) describe.skipIf(backend =
       expect(downloaded.status).toBe(200);
       const state = downloaded.body.state;
       expect(state.config).toEqual(fixtureMatchConfig(preparation.body, prepareFixtureSnapshot(preparation.body, fixture.id)));
-      expect(state.config.profileSnapshot).toHaveLength(9);
+      expect(state.config.profileSnapshot).toHaveLength(8);
       expect(state.config.slots).toHaveLength(7);
       expect(state).toMatchObject({ status: 'preparation', matchActiveMs: 0, half: 0, intervals: [], goals: [], completedAtMs: null });
       expect(Object.values(state.attendance).every(status => status === 'not_recorded')).toBe(true);

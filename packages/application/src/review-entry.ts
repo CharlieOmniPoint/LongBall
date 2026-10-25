@@ -1,3 +1,5 @@
+import { demoAccountLabels } from '@longball/testing';
+
 /** Public fictional review identities. These strings are never production credentials or role grants. */
 export type ReviewRole = 'manager' | 'administrator' | 'player' | 'spectator';
 export interface ReviewIdentity {
@@ -10,7 +12,7 @@ export interface ReviewIdentity {
 export const REVIEW_IDENTITIES: Readonly<Record<ReviewRole, ReviewIdentity>> = Object.freeze({
   manager: Object.freeze({ role: 'manager', label: 'Roma U10 manager', token: 'synthetic-manager-2', accountId: 'synthetic-account-manager-2', localFallback: true }),
   administrator: Object.freeze({ role: 'administrator', label: 'Sam Taylor', token: 'synthetic-admin', accountId: 'synthetic-account-admin', localFallback: false }),
-  player: Object.freeze({ role: 'player', label: 'Oliver Bennett', token: 'synthetic-account-player-01', accountId: 'synthetic-account-player-01', localFallback: true }),
+  player: Object.freeze({ role: 'player', label: demoAccountLabels['synthetic-account-player-01'], token: 'synthetic-account-player-01', accountId: 'synthetic-account-player-01', localFallback: true }),
   spectator: Object.freeze({ role: 'spectator', label: 'Jamie Bennett', token: 'synthetic-spectator', accountId: 'synthetic-account-spectator', localFallback: true }),
 });
 

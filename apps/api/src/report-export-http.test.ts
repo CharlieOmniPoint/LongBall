@@ -92,7 +92,7 @@ for (const kind of ['sqlite', 'postgres'] as const) describe.skipIf(kind === 'po
     const bytes = new Uint8Array(await download.arrayBuffer()), text = Buffer.from(bytes).toString('utf8');
     expect(Number(download.headers.get('Content-Length'))).toBe(bytes.length); expect(text).toContain('synthetic-player-01'); expect(text).not.toContain('synthetic-player-02'); expect(text).not.toContain('editableState');
     const saved = client.owner instanceof PostgresStore ? await client.owner.one('SELECT * FROM report_exports WHERE id=$1', [first.body.id]) : client.owner.database.prepare('SELECT * FROM report_exports WHERE id=?').get(first.body.id as string);
-    expect(saved).toMatchObject({ status: 'ready', snapshot_ciphertext: null }); expect(JSON.stringify(saved)).not.toContain('Noah Patel'); expect(JSON.stringify(saved)).not.toContain('playingMs');
+    expect(saved).toMatchObject({ status: 'ready', snapshot_ciphertext: null }); expect(JSON.stringify(saved)).not.toContain('Ralph Barrett'); expect(JSON.stringify(saved)).not.toContain('playingMs');
     expect((await client.json(path, { token: 'synthetic-account-player-02', role: 'player' })).status).toBe(404);
     expect((await client.json(path, { token: args.token, role: 'spectator' })).status).toBe(404);
     await client.execute('UPDATE memberships SET revoked_at=? WHERE account_id=? AND role=?', [Date.now(), 'synthetic-account-player-01', 'player']);

@@ -168,11 +168,10 @@ async seedSynthetic(options: { demoSharing?: boolean } = {}): Promise<void> {
             if (number === 1)
                 (await membership(id, 'administrator'));
         }
-        for (let number = 1; number <= 13; number++) {
-            const suffix = String(number).padStart(2, '0');
-            const id = `synthetic-account-player-${suffix}`;
+        for (const player of romaFixture.players) {
+            const id = `synthetic-account-player-${player.id.slice(-2)}`;
             (await add(id, 'child_shared', false));
-            (await membership(id, 'player', `synthetic-player-${suffix}`));
+            (await membership(id, 'player', player.id));
         }
         (await add('synthetic-account-spectator', 'adult_individual', false));
         (await membership('synthetic-account-spectator', 'spectator'));

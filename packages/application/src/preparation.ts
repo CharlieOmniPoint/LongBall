@@ -1314,17 +1314,16 @@ export function createPreparationState(
   options: { demoScenario?: boolean } = {},
 ): PreparationState {
   const seasonId = "synthetic-season-2026-27";
-  const profiles: PlayerProfile[] = Array.from({ length: 13 }, (_, index) => {
-    const number = String(index + 1).padStart(2, "0");
+  const profiles: PlayerProfile[] = romaFixture.players.map((player) => {
     const details = romaFixture.profiles.find(
-      (profile) => profile.playerId === `synthetic-player-${number}`,
+      (profile) => profile.playerId === player.id,
     )!;
     const preferences = [...details.preferences] as PositionCode[];
     return {
-      id: `synthetic-player-${number}:${seasonId}`,
-      playerId: `synthetic-player-${number}`,
+      id: `${player.id}:${seasonId}`,
+      playerId: player.id,
       seasonId,
-      displayName: romaFixture.players[index].displayName,
+      displayName: player.displayName,
       initials: details.initials,
       shirtNumber: details.shirtNumber,
       foot: details.foot as PlayerProfile["foot"],
@@ -1359,7 +1358,9 @@ export function createPreparationState(
           profiles.flatMap(
             (profile, playerIndex): [string, AvailabilityResponse][] => {
               if (index === 0)
-                return playerIndex < 9 ? [[profile.id, "available"]] : [];
+                return selected.some((item) => item.id === profile.id)
+                  ? [[profile.id, "available"]]
+                  : [];
               if (past)
                 return [
                   [
@@ -1373,7 +1374,7 @@ export function createPreparationState(
                 ? [[profile.id, "available"]]
                 : playerIndex === 6
                   ? [[profile.id, "unsure"]]
-                  : playerIndex === 10
+                  : playerIndex === profiles.length - 1
                     ? [[profile.id, "unavailable"]]
                     : [];
             },
@@ -1408,7 +1409,7 @@ export function createPreparationState(
           ? Object.fromEntries(
               profiles.map((profile, index) => [
                 profile.id,
-                index === (sessionIndex + 3) % 13 ? "unavailable" : "available",
+                index === (sessionIndex + 3) % profiles.length ? "unavailable" : "available",
               ]),
             )
           : {},
@@ -1417,7 +1418,7 @@ export function createPreparationState(
           ? Object.fromEntries(
               profiles.map((profile, index) => [
                 profile.id,
-                index === (sessionIndex + 3) % 13 ? "absent" : "present",
+                index === (sessionIndex + 3) % profiles.length ? "absent" : "present",
               ]),
             )
           : {},

@@ -339,7 +339,7 @@ describe('durable preparation, records, community and own privacy requests', () 
   });
   it('creates a new canonical match from its prepared snapshot and never overwrites a claimed stream', async () => {
     const client = await start(); let revision = 0;
-    const profileIds = Array.from({ length: 9 }, (_, index) => `synthetic-player-${String(index + 1).padStart(2, '0')}:${SYNTHETIC_IDS.seasonId}`);
+    const profileIds = Array.from({ length: 8 }, (_, index) => `synthetic-player-${String(index + 1).padStart(2, '0')}:${SYNTHETIC_IDS.seasonId}`);
     const fixtureId = 'synthetic-new-fixture';
     const apply = async (command: Record<string, unknown>) => {
       const response = await client.call(`${teamUrl}/preparation`, { body: { command: { id: randomUUID(), expectedRevision: revision, ...command } } });
@@ -365,7 +365,7 @@ describe('durable preparation, records, community and own privacy requests', () 
     expect((await apply({ type: 'profile.saved', profile: { ...profile, displayName: 'Changed for the next preparation' } })).status).toBe(200);
     const changed = await apply({ type: 'fixture.prepared', fixtureId, formationId: 'formation-7' });
     expect(changed.status).toBe(409); expect(changed.body.code).toBe('MATCH_HISTORY_EXISTS');
-    expect((JSON.parse(client.api.store.match(fixtureId).config_json) as MatchState['config']).players.find(player => player.id === 'synthetic-player-03')?.displayName).toBe('Leo Martin');
+    expect((JSON.parse(client.api.store.match(fixtureId).config_json) as MatchState['config']).players.find(player => player.id === 'synthetic-player-03')?.displayName).toBe('Conor Kyne');
   });
   it('projects held training evidence using stable player IDs, keeps RSVP separate, and excludes cancelled sessions atomically', async () => {
     const client = await start(); let revision = 0;

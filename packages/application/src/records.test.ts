@@ -37,7 +37,7 @@ describe('Results and historical completeness (F27/F28, REP01/REP07)', () => {
     expect(report.totals).toEqual({ played: 3, wins: 1, draws: 1, losses: 1, goalsFor: 5, goalsAgainst: 4, goalDifference: 1, points: 4 });
     expect(report.form?.map(item => item.outcome)).toEqual(['W', 'D', 'L']);
     expect(report.rows[0].unassignedGoalsFor).toBe(2);
-    expect(report.scorerTotals).toEqual([{ playerId: 'synthetic-player-02', label: 'Noah Patel', knownGoals: 1 }]);
+    expect(report.scorerTotals).toEqual([{ playerId: 'synthetic-player-02', label: 'Ralph Barrett', knownGoals: 1 }]);
   });
   it('corrects totals, chronology and scorer evidence while preserving old values in audit', () => {
     const before = createRecordsSeed();

@@ -54,11 +54,11 @@ describe('private feedback service with actual SQLite persistence', () => {
   });
   it('refuses bench-only, untrusted completion, contradicted corrections and revoked/relinked accounts without deleting accepted feedback', async () => {
     const f = await fixture(), player = f.session(); await f.service.command(player, f.command());
-    const benchState = structuredClone(f.state); benchState.intervals = benchState.intervals.filter(interval => interval.playerId !== 'synthetic-player-13');
-    f.context.playedPlayerIds = f.context.playedPlayerIds.filter(id => id !== 'synthetic-player-13');
+    const benchState = structuredClone(f.state); benchState.intervals = benchState.intervals.filter(interval => interval.playerId !== 'synthetic-player-08');
+    f.context.playedPlayerIds = f.context.playedPlayerIds.filter(id => id !== 'synthetic-player-08');
     f.source.database.prepare('UPDATE matches SET state_json=? WHERE id=?').run(JSON.stringify(benchState), benchState.config.matchId);
     f.source.saveDocument(player.teamId, player.seasonId, 'community', f.community);
-    await expect(f.service.command(f.session('player-13'), f.command({ id: 'bench-only-request' }))).rejects.toMatchObject({ status: 404 });
+    await expect(f.service.command(f.session('player-08'), f.command({ id: 'bench-only-request' }))).rejects.toMatchObject({ status: 404 });
     f.context.finishQuality = 'review_required'; f.source.saveDocument(player.teamId, player.seasonId, 'community', f.community);
     await expect(f.service.command(player, f.command({ id: 'untrusted-request', expectedRevision: 1 }))).rejects.toMatchObject({ code: 'FEEDBACK_FINISH_UNVERIFIED' });
     expect((await f.service.view(player)).matches.find(item => item.matchId === f.state.config.matchId)).toMatchObject({ status: 'review_required', canEdit: false, own: { revision: 1 } });

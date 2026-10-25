@@ -219,9 +219,9 @@ export class DevelopmentStore {
         if (number <= 4) membership(id, 'manager');
         if (number === 1) membership(id, 'administrator');
       }
-      for (let number = 1; number <= 13; number++) {
-        const suffix = String(number).padStart(2, '0'); const id = `synthetic-account-player-${suffix}`;
-        add(id, 'child_shared', false); membership(id, 'player', `synthetic-player-${suffix}`);
+      for (const player of romaFixture.players) {
+        const id = `synthetic-account-player-${player.id.slice(-2)}`;
+        add(id, 'child_shared', false); membership(id, 'player', player.id);
       }
       add('synthetic-account-spectator', 'adult_individual', false); membership('synthetic-account-spectator', 'spectator');
       add('synthetic-account-invitee', 'adult_individual', false);

@@ -882,18 +882,19 @@ export function getCommunityView(state: CommunityState, actor: CommunityActor, n
 export function createCommunityState(nowMs = Date.now(), options: { demoScenario?: boolean } = {}): CommunityState {
   const teamId = 'synthetic-roma-u10';
   const seasonId = 'synthetic-season-2026-27';
-  const playerIds = Array.from({ length: 13 }, (_, index) => `synthetic-player-${String(index + 1).padStart(2, '0')}`);
+  const playerIds = romaFixture.players.map(player => player.id);
+  const selectedPlayerIds = romaFixture.players.filter(player => player.available).map(player => player.id);
   const accounts: CommunityAccount[] = [
     { id: 'synthetic-account-manager', label: demoAccountLabels['synthetic-account-manager'], classification: 'adult_individual', adultVerified: true },
-    ...playerIds.map((id, index): CommunityAccount => ({ id: `synthetic-account-player-${String(index + 1).padStart(2, '0')}`, label: romaFixture.players[index].displayName, classification: 'child_shared', adultVerified: false })),
+    ...romaFixture.players.map((player): CommunityAccount => ({ id: `synthetic-account-player-${player.id.slice(-2)}`, label: player.displayName, classification: 'child_shared', adultVerified: false })),
     { id: 'synthetic-account-spectator', label: demoAccountLabels['synthetic-account-spectator'], classification: 'spectator', adultVerified: false },
     { id: 'synthetic-account-invitee', label: demoAccountLabels['synthetic-account-invitee'], classification: 'spectator', adultVerified: false },
   ];
   const memberships: CommunityMembership[] = [{ accountId: accounts[0].id, teamId, seasonId, role: 'manager', active: true },
-    ...playerIds.map((playerId, index): CommunityMembership => ({ accountId: accounts[index + 1].id, playerId, teamId, seasonId, role: 'player', active: true }))];
+    ...playerIds.map((playerId): CommunityMembership => ({ accountId: `synthetic-account-player-${playerId.slice(-2)}`, playerId, teamId, seasonId, role: 'player', active: true }))];
   const fullTime = Math.max(0, nowMs - 600_000);
   const match: CommunityMatch = { id: 'synthetic-community-willow', teamId, seasonId, label: 'Roma v Willow FC · Practice match',
-    playedAtMs: Math.max(0, fullTime - 3_600_000), selectedPlayerIds: playerIds.slice(0, 9), presentPlayerIds: playerIds.slice(0, 9), playedPlayerIds: playerIds.slice(0, 9),
+    playedAtMs: Math.max(0, fullTime - 3_600_000), selectedPlayerIds: [...selectedPlayerIds], presentPlayerIds: [...selectedPlayerIds], playedPlayerIds: [...selectedPlayerIds],
     actualFullTimeAtMs: fullTime, finishQuality: 'trusted', voteCutoffAtMs: null, cutoffSource: 'unresolved', finalisationDeadlineAtMs: fullTime + 3_600_000,
     sharing: 'fictional_review_only', policyVersion: 1 };
   let state: CommunityState = { schemaVersion: 1, synthetic: true, revision: 0, accounts, memberships,

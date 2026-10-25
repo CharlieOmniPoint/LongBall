@@ -54,25 +54,30 @@ describe('preparation editor source revision', () => {
 describe('retained preparation player references', () => {
   it('keeps an archived selected player visible without silently changing the squad', () => {
     const original = createPreparationState({ demoScenario: true });
-    const noah = original.profiles.find(profile => profile.displayName === 'Noah Patel')!;
+    const noah = original.profiles.find(profile => profile.displayName === 'Ralph Barrett')!;
     const archived = reducePreparation(original, { id: 'archive-noah', expectedRevision: original.revision, type: 'profile.archived', profileId: noah.id });
     const fixture = archived.fixtures.find(item => item.id === 'synthetic-roma-oak-2026-10-31')!;
-    expect(seasonPlayers(archived).filter(profile => fixture.selectedProfileIds.includes(profile.id))).toHaveLength(8);
+    expect(seasonPlayers(archived).filter(profile => fixture.selectedProfileIds.includes(profile.id))).toHaveLength(7);
     const rows = retainedPreparationPlayers(archived, fixture.seasonId, fixture.selectedProfileIds);
-    expect(rows.filter(profile => fixture.selectedProfileIds.includes(profile.id))).toHaveLength(9);
+    expect(rows.filter(profile => fixture.selectedProfileIds.includes(profile.id))).toHaveLength(8);
     expect(rows.find(profile => profile.id === noah.id)?.active).toBe(false);
     expect(fixture.selectedProfileIds).toContain(noah.id);
     expect(original.profiles.find(profile => profile.id === noah.id)?.active).toBe(true);
   });
 
   it('allows atomic removal of multiple archived squad players while retaining historical participation evidence', () => {
-    const original = createPreparationState({ demoScenario: true });
-    const noah = original.profiles.find(profile => profile.displayName === 'Noah Patel')!;
-    const leo = original.profiles.find(profile => profile.displayName === 'Leo Martin')!;
+    let original = createPreparationState({ demoScenario: true });
+    const coverId = `test-cover:${original.activeSeasonId}`;
+    const cover = { ...original.profiles[3], id: coverId, playerId: 'test-cover', displayName: 'Test cover', initials: 'TC', shirtNumber: 99 };
+    original = reducePreparation(original, { id: 'add-test-cover', expectedRevision: original.revision, type: 'profile.saved', profile: cover });
+    const future = original.fixtures.find(item => item.id === 'synthetic-roma-oak-2026-10-31')!;
+    original = reducePreparation(original, { id: 'select-test-cover', expectedRevision: original.revision, type: 'fixture.selection_saved', fixtureId: future.id, selectedProfileIds: [...future.selectedProfileIds, coverId] });
+    const noah = original.profiles.find(profile => profile.displayName === 'Ralph Barrett')!;
+    const leo = original.profiles.find(profile => profile.displayName === 'Conor Kyne')!;
     const archivedIds = new Set([noah.id, leo.id]);
     const historicalFixtures = original.fixtures.filter(fixture => fixture.playedDate < '2026-10-22');
     const heldEvidence = (state: typeof original) => trainingAttendanceEvidence(state).filter(session => session.eventStatus === 'held').map(({ sessionId, expectedPlayerIds, attendance, responses }) => ({ sessionId, expectedPlayerIds, attendance, responses }));
-    let state = reducePreparation(original, { id: 'archive-noah', expectedRevision: 0, type: 'profile.archived', profileId: noah.id });
+    let state = reducePreparation(original, { id: 'archive-noah', expectedRevision: original.revision, type: 'profile.archived', profileId: noah.id });
     state = reducePreparation(state, { id: 'archive-leo', expectedRevision: state.revision, type: 'profile.archived', profileId: leo.id });
     const fixture = state.fixtures.find(item => item.id === 'synthetic-roma-oak-2026-10-31')!;
     expect(() => reducePreparation(state, { id: 'blocked-prepare', expectedRevision: state.revision, type: 'fixture.prepared', fixtureId: fixture.id, formationId: 'formation-7' })).toThrow('active player');
@@ -90,7 +95,7 @@ describe('retained preparation player references', () => {
 
   it('retains an archived expected player until explicitly removed from a training draft', () => {
     const original = createPreparationState({ demoScenario: true });
-    const noah = original.profiles.find(profile => profile.displayName === 'Noah Patel')!;
+    const noah = original.profiles.find(profile => profile.displayName === 'Ralph Barrett')!;
     const state = reducePreparation(original, { id: 'archive-noah', expectedRevision: 0, type: 'profile.archived', profileId: noah.id });
     const training = state.training.find(session => session.status === 'scheduled')!;
     const references = [...training.expectedProfileIds];

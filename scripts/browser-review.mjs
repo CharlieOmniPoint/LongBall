@@ -142,8 +142,8 @@ try {
   const page = await openReview(context);
   let state = await savedState(page);
   assert.equal(state.status, "preparation");
-  assert.equal(state.config.selectedPlayerIds.length, 9);
-  assert.equal(state.config.players.length, 13);
+  assert.equal(state.config.selectedPlayerIds.length, 8);
+  assert.equal(state.config.players.length, 8);
   assert.equal(
     Object.values(state.attendance).filter((value) => value === "present")
       .length,
@@ -152,12 +152,12 @@ try {
   assert.equal(state.intervals.length, 0);
   await screenshot(page, "01-phone-home");
   checks.push(
-    "Home: 13 fictional roster records, nine selected, zero inferred attendance.",
+    "Home: eight requested Roma roster records, eight selected, zero inferred attendance.",
   );
 
   await page.getByTestId("prepare-match").click();
   await page
-    .getByRole("radio", { name: "Oliver Bennett, Absent", exact: true })
+    .getByRole("radio", { name: "Thomas Arnold, Absent", exact: true })
     .click();
   state = await waitState(
     page,
@@ -174,7 +174,7 @@ try {
     page,
     (value) =>
       Object.values(value.attendance).filter((status) => status === "present")
-        .length === 9,
+        .length === 8,
     "Bulk check-in did not finish",
   );
   assert.equal(
@@ -202,23 +202,28 @@ try {
     new Set(state.stagedLineup.map((item) => item.playerId)).size,
     7,
   );
-  await page.getByRole("button", { name: /^Goalkeeper, Oliver Bennett,/ }).click();
-  await page.getByRole("button", { name: "Choose Noah Patel", exact: true }).click();
+  await page.getByRole("button", { name: /^Goalkeeper, Thomas Arnold,/ }).click();
+  await page.getByRole("button", { name: "Choose Ralph Barrett", exact: true }).click();
   await page.getByText(/Goalkeeper cover requires a first- or second-choice eligible keeper/).waitFor();
   const rejectedKeeperState = await savedState(page);
   assert.equal(rejectedKeeperState.revision, state.revision, "An invalid keeper assignment cannot change the saved draft.");
   assert.equal(rejectedKeeperState.stagedLineup.find(item => item.slotId === "gk").playerId, "synthetic-player-01");
   assert.equal(rejectedKeeperState.intervals.length, 0);
-  await page.getByRole("button", { name: /^Left wing, Oscar Evans,/ }).click();
+  const firstBenchId = state.config.selectedPlayerIds.find(playerId => !state.stagedLineup.some(item => item.playerId === playerId));
+  assert(firstBenchId, "The eight-player Roma squad must have an actual bench player for seven places.");
+  const firstBench = state.config.players.find(player => player.id === firstBenchId);
+  const initialLeftWing = state.config.players.find(player => player.id === state.stagedLineup.find(item => item.slotId === "lw").playerId);
+  assert(state.config.profileSnapshot.find(profile => profile.playerId === firstBenchId).eligiblePositions.includes("LW"), "The bench swap must use an approved eligible left-wing cover.");
+  await page.getByRole("button", { name: new RegExp(`^Left wing, ${initialLeftWing.displayName},`) }).click();
   await page
-    .getByRole("button", { name: "Choose Freddie Lewis", exact: true })
+    .getByRole("button", { name: `Choose ${firstBench.displayName}`, exact: true })
     .click();
   state = await waitState(
     page,
     (value) =>
       value.stagedLineup.some(
         (item) =>
-          item.slotId === "lw" && item.playerId === "synthetic-player-08",
+          item.slotId === "lw" && item.playerId === firstBenchId,
       ),
     "The bench swap was not staged",
   );
@@ -249,7 +254,7 @@ try {
   await assertActionVisible(page, "end-half");
   assert.equal(
     state.lineup.find((item) => item.slotId === "lw").playerId,
-    "synthetic-player-08",
+    firstBenchId,
   );
   const firstHalfAnchor = state.anchor.sample.monotonicMs;
   await page.clock.fastForward(720_000);
@@ -311,17 +316,22 @@ try {
   const halfTimeDuration = state.matchActiveMs;
   const firstHalfIntervals = JSON.stringify(state.intervals);
   const firstActualLineup = JSON.stringify(state.lineup);
+  const halfTimeBenchId = state.config.selectedPlayerIds.find(playerId => !state.lineup.some(item => item.playerId === playerId));
+  assert(halfTimeBenchId, "The halftime swap must select the actual current bench player.");
+  const halfTimeBench = state.config.players.find(player => player.id === halfTimeBenchId);
+  const currentRightWing = state.config.players.find(player => player.id === state.lineup.find(item => item.slotId === "rw").playerId);
+  assert(state.config.profileSnapshot.find(profile => profile.playerId === halfTimeBenchId).eligiblePositions.includes("RW"), "The halftime draft must use approved eligible right-wing cover.");
   await page.getByTestId("prepare-second-half").click();
-  await page.getByRole("button", { name: /^Right wing, Ethan Brooks,/ }).click();
+  await page.getByRole("button", { name: new RegExp(`^Right wing, ${currentRightWing.displayName},`) }).click();
   await page
-    .getByRole("button", { name: "Choose Arthur James", exact: true })
+    .getByRole("button", { name: `Choose ${halfTimeBench.displayName}`, exact: true })
     .click();
   await waitState(
     page,
     (value) =>
       value.stagedLineup.some(
         (item) =>
-          item.slotId === "rw" && item.playerId === "synthetic-player-09",
+          item.slotId === "rw" && item.playerId === halfTimeBenchId,
       ),
     "Half-time changes were not staged",
   );
@@ -354,7 +364,7 @@ try {
   assert.equal(state.matchActiveMs, halfTimeDuration);
   assert.equal(
     state.lineup.find((item) => item.slotId === "rw").playerId,
-    "synthetic-player-09",
+    halfTimeBenchId,
   );
   assert.equal(
     state.config.plannedHalfDurationMs,
@@ -500,7 +510,7 @@ try {
     };
   }, { requestedMatchId: matchId, previousIds: scopedIds(beforeFailure) });
   await failurePage
-    .getByRole("radio", { name: "Oliver Bennett, Present", exact: true })
+    .getByRole("radio", { name: "Thomas Arnold, Present", exact: true })
     .click();
   await failurePage
     .getByRole("button", { name: "Retry unsaved action", exact: true })
@@ -557,7 +567,7 @@ try {
   await firstTab.getByTestId("prepare-match").click();
   await secondTab.getByTestId("prepare-match").click();
   await firstTab
-    .getByRole("radio", { name: "Oliver Bennett, Present", exact: true })
+    .getByRole("radio", { name: "Thomas Arnold, Present", exact: true })
     .click();
   await waitState(
     firstTab,
@@ -565,7 +575,7 @@ try {
     "First-tab action did not save",
   );
   await secondTab
-    .getByRole("radio", { name: "Noah Patel, Present", exact: true })
+    .getByRole("radio", { name: "Ralph Barrett, Present", exact: true })
     .click();
   const conflictDeadline = Date.now() + 10_000;
   let concurrentJournal;
@@ -609,7 +619,7 @@ try {
   await enterFictionalReview(secondTab);
   await secondTab.getByTestId("prepare-match").click();
   await secondTab
-    .getByRole("radio", { name: "Noah Patel, Present", exact: true })
+    .getByRole("radio", { name: "Ralph Barrett, Present", exact: true })
     .click();
   await waitState(
     secondTab,
@@ -647,7 +657,7 @@ try {
     smallPage,
     (value) =>
       Object.values(value.attendance).filter((status) => status === "present")
-        .length === 9,
+        .length === 8,
     "Small-phone check-in did not finish",
   );
   await smallPage.getByTestId("continue-lineup").click();

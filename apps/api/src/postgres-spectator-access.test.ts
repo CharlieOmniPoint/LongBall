@@ -242,7 +242,7 @@ describe.skipIf(!configured)(
       const choices = await store.withActorContext(principal, scope, () =>
         repo.connections(principal, teamId, seasonId, "spectator"),
       );
-      expect(choices.players).toHaveLength(13);
+      expect(choices.players).toHaveLength(8);
       expect(Object.keys(choices.players[0]).sort()).toEqual(["id", "label"]);
       await store.withActorContext(
         principal,

@@ -59,7 +59,7 @@ describe('own workspace names are display metadata rather than authority', () =>
     const child = await call('/v1/me', 'synthetic-account-player-01');
     expect(child.body.memberships).toEqual([expect.objectContaining({ role: 'player', playerId: 'synthetic-player-01', teamName: 'Roma U10' })]);
     expect(JSON.stringify(child.body)).not.toContain('synthetic-player-02');
-    expect(JSON.stringify(child.body)).not.toContain('Noah Patel');
+    expect(JSON.stringify(child.body)).not.toContain('Ralph Barrett');
     expect(JSON.stringify(manager.body)).not.toContain('synthetic-account-manager-2');
     expect(JSON.stringify(manager.body)).not.toContain('profiles');
   });

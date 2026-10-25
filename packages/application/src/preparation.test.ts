@@ -93,11 +93,11 @@ describe("F02/F03/F04 team-season history and player snapshots", () => {
       confirmSpectatorRenewal: true,
     });
     expect(state.seasons[1].spectatorRenewalRequired).toBe(true);
-    expect(seasonPlayers(state)).toHaveLength(13);
-    expect(JSON.stringify(state.profiles.slice(0, 13))).toBe(originalProfiles);
+    expect(seasonPlayers(state)).toHaveLength(8);
+    expect(JSON.stringify(state.profiles.slice(0, 8))).toBe(originalProfiles);
     expect(JSON.stringify(state.fixtures[0])).toBe(originalFixture);
-    expect(state.profiles[0].playerId).toBe(state.profiles[13].playerId);
-    expect(state.profiles[0].id).not.toBe(state.profiles[13].id);
+    expect(state.profiles[0].playerId).toBe(state.profiles[8].playerId);
+    expect(state.profiles[0].id).not.toBe(state.profiles[8].id);
     expect(state.training).toHaveLength(createPreparationState().training.length);
     expect(state.fixtures).toHaveLength(createPreparationState().fixtures.length);
     expect(() =>
@@ -142,7 +142,7 @@ describe("F02/F03/F04 team-season history and player snapshots", () => {
     });
     expect(
       new Set(state.profiles.map((profile) => profile.playerId)).size,
-    ).toBe(13);
+    ).toBe(8);
     expect(() =>
       apply(state, {
         type: "profile.saved",
@@ -232,7 +232,12 @@ describe("F06/F07 fixture, availability and attendance boundaries", () => {
   it("never treats a reply, selection or cancellation as actual attendance", () => {
     let state = createPreparationState();
     const fixtureId = state.fixtures[0].id;
-    const profile = state.profiles[10];
+    const profile = state.profiles[7];
+    state = apply(state, {
+      type: "fixture.selection_saved",
+      fixtureId,
+      selectedProfileIds: state.fixtures[0].selectedProfileIds.filter(id => id !== profile.id),
+    });
     state = apply(state, {
       type: "fixture.response_recorded",
       fixtureId,
@@ -263,20 +268,26 @@ describe("F06/F07 fixture, availability and attendance boundaries", () => {
     ).toThrow(/scheduled/);
   });
   it("requires a genuine selected player for check-in and preserves explicit unknown attendance", () => {
-    const state = createPreparationState();
+    let state = createPreparationState();
     const fixtureId = state.fixtures[0].id;
+    const unselected = state.profiles[7];
+    state = apply(state, {
+      type: "fixture.selection_saved",
+      fixtureId,
+      selectedProfileIds: state.fixtures[0].selectedProfileIds.filter(id => id !== unselected.id),
+    });
     expect(() =>
       apply(state, {
         type: "fixture.attendance_recorded",
         fixtureId,
-        profileId: state.profiles[12].id,
+        profileId: unselected.id,
         attendance: "present",
       }),
     ).toThrow(/selected/);
     const snapshot = prepareFixtureSnapshot(state, fixtureId);
-    expect(snapshot.selectedPlayerIds).toHaveLength(9);
+    expect(snapshot.selectedPlayerIds).toHaveLength(7);
     expect(Object.values(snapshot.attendance)).toEqual(
-      Array(9).fill("not_recorded"),
+      Array(7).fill("not_recorded"),
     );
   });
   it("rejects invalid or out-of-season dates and invalid formats without mutating the fixture", () => {

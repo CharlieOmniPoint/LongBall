@@ -214,7 +214,7 @@ describe.skipIf(!configuredUrl)('real PostgreSQL HTTP runtime (requires disposab
     expect((await client.api.store.document<CommunityState>(SYNTHETIC_IDS.teamId,SYNTHETIC_IDS.seasonId,'community')).awards.some(award=>award.matchId==='unclaimed-due-award-context')).toBe(false);
     for(const audience of [{token:'synthetic-manager-1',role:'manager'},{token:'synthetic-account-player-01',role:'player'},{token:'synthetic-spectator',role:'spectator'}]){
       const response=await client.call(`${teamUrl}/records`,audience);expect(response.status).toBe(200);const report=(response.body.matches as Record<string,unknown>[]).find(item=>item.matchId===record.id)!;
-      expect(report).toMatchObject({communityStatus:'available',publishedAlbum:{matchId:record.id,photoCount:1},award:{matchId:record.id,result:'winners',winnerLabels:['Noah Patel'],deadlineMissed:false}});
+      expect(report).toMatchObject({communityStatus:'available',publishedAlbum:{matchId:record.id,photoCount:1},award:{matchId:record.id,result:'winners',winnerLabels:['Ralph Barrett'],deadlineMissed:false}});
       const wire=JSON.stringify(response.body);for(const privateValue of [ballotId,'winnerPlayerIds','voterAccountId','synthetic-pending-ball','Fictional football illustration awaiting review.'])expect(wire).not.toContain(privateValue);
       const exported=await client.call(`${teamUrl}/records/export?kind=match&matchId=${record.id}&format=json`,audience);expect(exported.status).toBe(200);const document=JSON.parse(exported.body.body as string) as {audience:string;matches:Record<string,unknown>[]};expect(document.audience).toBe(audience.role);expect(document.matches[0].award).toEqual(report.award);expect(document.matches[0].publishedAlbum).toEqual(report.publishedAlbum);
     }

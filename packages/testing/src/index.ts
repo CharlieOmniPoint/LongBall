@@ -22,13 +22,13 @@ export function assertSyntheticFixture(value: typeof fixture): void {
     throw new Error('Only the generated synthetic Roma demo fixture is supported.');
   }
   const ids = new Set(value.players.map((player) => player.id));
-  if (value.players.length !== 13 || ids.size !== 13) {
-    throw new Error('Roma requires 13 distinct sample players (D16).');
+  if (value.players.length !== 8 || ids.size !== 8) {
+    throw new Error('The owner-provided Roma demo requires eight distinct players.');
   }
   if (value.players.some((player, index) => !/^synthetic-player-\d{2}$/.test(player.id) || player.displayName !== fixture.players[index]?.displayName)) {
     throw new Error('Use the supplied generated sample identities only.');
   }
-  if (value.profiles.length !== 13 || new Set(value.profiles.map(profile => profile.playerId)).size !== 13 || value.profiles.some(profile => !ids.has(profile.playerId) || !/^[A-Z]{2,3}$/.test(profile.initials) || !Number.isSafeInteger(profile.shirtNumber) || profile.shirtNumber < 1 || !['left', 'right', 'both', 'not_recorded'].includes(profile.foot))) {
+  if (value.profiles.length !== 8 || new Set(value.profiles.map(profile => profile.playerId)).size !== 8 || value.profiles.some(profile => !ids.has(profile.playerId) || !/^[A-Z]{2,3}$/.test(profile.initials) || !Number.isSafeInteger(profile.shirtNumber) || profile.shirtNumber < 1 || !['left', 'right', 'both', 'not_recorded'].includes(profile.foot))) {
     throw new Error('Sample profiles need an exact unique player join and valid shirt/initial/foot details.');
   }
   const positions = ['GK', 'CB', 'LB', 'RB', 'CM', 'LW', 'RW', 'ST'];
@@ -43,8 +43,8 @@ export function assertSyntheticFixture(value: typeof fixture): void {
     throw new Error('Each sample match needs a distinct selected squad from the Roma roster.');
   }
   const available = value.players.filter((player) => player.available);
-  if (available.length !== 9 || !available.some((player) => player.goalkeeperChoice === 1)) {
-    throw new Error('The initial M0 scenario needs nine selected players including a goalkeeper.');
+  if (available.length !== 8 || !available.some((player) => player.goalkeeperChoice === 1)) {
+    throw new Error('The initial Roma scenario needs all eight selected players including a goalkeeper.');
   }
   if (value.pitchPlaces !== 7 || value.plannedHalfDurationMs !== 1_500_000) {
     throw new Error('Roma uses seven pitch places and two planned 25-minute halves (D11).');

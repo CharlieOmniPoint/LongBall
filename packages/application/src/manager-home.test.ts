@@ -90,10 +90,13 @@ describe('UI04 connected manager home selectors', () => {
 
   it('removes an explicitly completed accepted fixture from upcoming preparation work', () => {
     const state = createPreparationState(), value = records();
+    state.fixtures = state.fixtures.slice(0, 2).map(fixture => ({ ...fixture, responses: {} }));
+    state.training = [];
+    expect(selectManagerHome({ state, records: value, community: null, nowMs: now }).repliesDue).toBe(16);
     value.results.rows[0] = { ...value.results.rows[0], id: state.fixtures[0].id, status: 'completed' };
     const home = selectManagerHome({ state, records: value, community: null, nowMs: now });
     expect(home.upcoming.some(item => item.id === state.fixtures[0].id)).toBe(false);
-    expect(home.repliesDue).toBe(44);
+    expect(home.repliesDue).toBe(8);
   });
 
   it('keeps recent date-only ties explicit and never converts unknown scores into zero', () => {

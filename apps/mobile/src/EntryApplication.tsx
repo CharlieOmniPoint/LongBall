@@ -247,7 +247,7 @@ export function EntryApplication({
               {reviewRole === "administrator"
                 ? "Club administrator"
                 : reviewRole === "player"
-                  ? "Oliver Bennett and household"
+                  ? `${REVIEW_IDENTITIES.player.label} and household`
                   : reviewRole === "spectator"
                     ? "Invited spectator"
                     : "Assigned manager"}

@@ -45,7 +45,7 @@ describe('complete available-player lineup matching', () => {
   });
   it('uses actual match check-in rather than available replies and opens no accepted lineup itself', () => {
     const preparation = createPreparationState({ demoScenario: true }), fixture = preparation.fixtures.find(item => item.id === 'synthetic-roma-maple-2026-10-24')!;
-    expect(Object.values(fixture.responses).filter(response => response === 'available')).toHaveLength(9);
+    expect(Object.values(fixture.responses).filter(response => response === 'available')).toHaveLength(8);
     let match = createMatch(fixtureMatchConfig(preparation, prepareFixtureSnapshot(preparation, fixture.id)));
     expect(autoFillMatchLineup(match).status).toBe('infeasible');
     const sample = { monotonicMs: 0, wallTimeMs: 1_800_000_000_000, sessionId: 'autofill-check-in' };

@@ -27,7 +27,7 @@ describe('connected season rollover plan', () => {
     expect(JSON.stringify(context)).toBe(original);
     expect(result.preparation.activeSeasonId).toBe(command.idForSeason);
     expect(result.preparation.seasons).toHaveLength(1);
-    expect(result.preparation.profiles).toHaveLength(13);
+    expect(result.preparation.profiles).toHaveLength(8);
     expect(result.preparation.profiles.every(profile => profile.seasonId === command.idForSeason)).toBe(true);
     expect(result.preparation.snapshots).toEqual([]); expect(result.preparation.training).toEqual([]); expect(result.preparation.fixtures).toEqual([]);
     expect(result.records.results).toEqual([]); expect(result.records.trainingAttendance).toEqual([]); expect(result.records.gamePreparation).toEqual([]); expect(result.records.liveMatch.matchId).toBe('');

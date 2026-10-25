@@ -129,7 +129,7 @@ describe("connected invitation/PIN/request HTTP journey", () => {
     );
     expect(choices.status).toBe(200);
     const players = responseRows(responseObject(choices.body).players);
-    expect(players).toHaveLength(13);
+    expect(players).toHaveLength(8);
     expect(Object.keys(players[0]).sort()).toEqual(["id", "label"]);
     expect(
       responseObject(

@@ -15,6 +15,7 @@ import {
 } from "@longball/domain";
 import { romaFixture } from "@longball/testing";
 import { createPreparationState } from "@longball/application/preparation";
+import { autoFillLineup } from "@longball/application/lineup-autofill";
 import { openJournal } from "./platform/journal";
 import { readClock } from "./platform/clock";
 import { assertRetainedMatchFixture } from "./platform/retained-match";
@@ -87,32 +88,21 @@ export function suggestedStartingLineup(state: MatchState): Allocation[] {
     )?.id;
   if (!keeper || !eligible.includes(keeper)) return [];
   const positions = state.config.slots ?? slots;
-  const used = new Set<string>();
-  const result: Allocation[] = [];
-  // Small bipartite matching avoids a greedy early choice stealing the only eligible cover.
-  function place(index: number): boolean {
-    if (index === positions.length) return true;
-    const slot = positions[index];
-    const candidates =
-      slot.position === "GK"
-        ? [keeper!]
-        : eligible.filter((id) => id !== state.config.fixedKeeperId);
-    for (const playerId of candidates) {
-      if (used.has(playerId)) continue;
-      const profile = state.config.profileSnapshot?.find(
-        (item) => item.playerId === playerId,
-      );
-      if (profile && !profile.eligiblePositions.includes(slot.position))
-        continue;
-      used.add(playerId);
-      result.push({ slotId: slot.slotId, position: slot.position, playerId });
-      if (place(index + 1)) return true;
-      used.delete(playerId);
-      result.pop();
-    }
-    return false;
-  }
-  return place(0) ? result : [];
+  const filled = autoFillLineup({
+    slots: positions,
+    fixedKeeperId: keeper,
+    players: state.config.players.map((player) => {
+      const profile = state.config.profileSnapshot?.find((item) => item.playerId === player.id);
+      return {
+        id: player.id,
+        preferences: profile?.preferences ?? player.positionPreferences ?? (player.id === keeper ? ["GK"] : []),
+        eligiblePositions: profile?.eligiblePositions ?? positions.map((slot) => slot.position),
+        goalkeeperChoice: player.id === keeper ? 1 : player.goalkeeperChoice,
+        available: eligible.includes(player.id),
+      };
+    }),
+  });
+  return filled.status === "complete" ? filled.allocations : [];
 }
 
 /** Saves the exact event and projection before exposing success to the interface. */

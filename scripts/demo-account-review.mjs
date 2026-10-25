@@ -19,6 +19,17 @@ const workerBundle = path.resolve('apps/api/dist/worker.mjs');
 const virtualApi = 'https://longball-qa-demo.trycloudflare.com';
 const statusAddress = 'https://raw.githubusercontent.com/CharlieOmniPoint/LongBall/preview/longball-m0/preview-status.json';
 const teamId = 'synthetic-roma-u10', seasonId = 'synthetic-season-2026-27';
+// Owner-specified identities are checked against the actual scoped API, independently of its seed module.
+const expectedRomaRoster = [
+  ['synthetic-player-01', 'Thomas Arnold', 'TA', 'GK', 'right'],
+  ['synthetic-player-02', 'Ralph Barrett', 'RB', 'CB', 'right'],
+  ['synthetic-player-03', 'Conor Kyne', 'CK', 'CB', 'right'],
+  ['synthetic-player-04', 'Max Holland', 'MH', 'CM', 'right'],
+  ['synthetic-player-05', 'Aryan Applegard', 'AA', 'CM', 'right'],
+  ['synthetic-player-06', 'Seb Lawler', 'SL', 'LW', 'left'],
+  ['synthetic-player-07', 'Ezra Philips', 'EP', 'RW', 'right'],
+  ['synthetic-player-08', 'Archie Muir', 'AM', 'ST', 'right'],
+];
 const secrets = new Set();
 // Canonical controller/media capabilities are durable demo work, while account
 // credentials and login sessions must remain memory-only. Both stay redacted.
@@ -254,7 +265,7 @@ async function login(state, account) {
   await page.getByTestId('demo-login-submit').click();
   await page.getByTestId('demo-signed-in').waitFor({ timeout: 25000 });
   await selectWorkspaceContext(page, account.role);
-  const ready = { manager: 'Next event', administrator: 'View assigned teams', player: 'Your team, Oliver Bennett' };
+  const ready = { manager: 'Next event', administrator: 'View assigned teams', player: 'Your team, Thomas Arnold' };
   if (account.role === 'spectator') await page.getByTestId('team-overview').waitFor({ timeout: 20000 });
   else await page.getByText(ready[account.role], { exact: true }).first().waitFor({ timeout: 20000 });
   check(state.currentSession?.accountId === account.accountId, 'The service must bind the generated account to its preauthorised identity.');
@@ -792,7 +803,7 @@ async function archivedFutureRegression(state) {
   const { page } = state, token = state.currentSession.accessToken;
   const route = `/v1/teams/${teamId}/preparation?seasonId=${seasonId}`;
   const before = await currentJson(token, route);
-  const profile = before.profiles.find(item => item.displayName === 'Noah Patel');
+  const profile = before.profiles.find(item => item.displayName === 'Ralph Barrett');
   const fixture = before.fixtures.find(item => item.id === 'synthetic-roma-oak-2026-10-31');
   check(profile?.active && fixture.selectedProfileIds.includes(profile.id), 'The archive regression needs an active named player selected for the future Oak game.');
   const retainedHistory = structuredClone(before.training.filter(item => item.status !== 'scheduled'));
@@ -875,7 +886,7 @@ async function managerMatchday(accounts, databasePath) {
     check(await page.getByTestId('workspace-tab-home').count() === 0, 'The focused match console must hide team navigation.');
     stage = 'manager initial accepted checkpoint after current preparation';
     const initial = await readAccepted(), match = initial.state;
-    check(initial.acceptedRevision === 0 && match.config.selectedPlayerIds.length === 9 && match.config.pitchPlaces === 7, 'The prepared unplayed game must start with nine selected, seven places and no accepted play.');
+    check(initial.acceptedRevision === 0 && match.config.selectedPlayerIds.length === 8 && match.config.pitchPlaces === 7, 'The prepared unplayed game must start with all eight Roma players selected, seven places and no accepted play.');
     const assignments = fixtureLineup(match), slots = match.config.slots;
     stage = 'manager initial controller acquisition after accepted checkpoint';
     await page.getByTestId('recording-acquire').click();
@@ -971,12 +982,12 @@ async function managerMatchday(accounts, databasePath) {
     await page.getByText('Up to date with the service', { exact: true }).waitFor();
     stage = 'manager accepted attendance, lineup and paused clock';
     const paused = await readAccepted(), saved = paused.state;
-    check(paused.acceptedRevision >= 12 && saved.status === 'first_half_paused', 'Actual attendance, lineup, kickoff and referee pause must reach the canonical accepted stream.');
-    check(match.config.selectedPlayerIds.every(id => saved.attendance[id] === 'present'), 'All nine selected players must have explicit accepted present attendance.');
+    check(paused.acceptedRevision >= match.config.selectedPlayerIds.length + 3 && saved.status === 'first_half_paused', 'Actual attendance, lineup, kickoff and referee pause must reach the canonical accepted stream.');
+    check(match.config.selectedPlayerIds.every(id => saved.attendance[id] === 'present'), 'All eight selected players must have explicit accepted present attendance.');
     assert.deepEqual(saved.lineup.map(item => ({ slotId: item.slotId, playerId: item.playerId })), slots.map((slot, index) => ({ slotId: slot.slotId, playerId: assignments[index].id })), 'The accepted seven-place lineup must match the actual eligible UI selections.');
     check(saved.matchActiveMs >= 0 && saved.half === 1, 'The accepted first-half clock must remain valid.');
     assert.deepEqual(saved.score, { for: 0, against: 0 });
-    checks.push('Manager explicitly claims recording, checks in nine players, stages seven eligible places, confirms kickoff and referee pause, navigates back/return, and uploads; independent HTTP verifies accepted attendance, lineup and clock.');
+    checks.push('Manager explicitly claims recording, checks in eight players, stages seven eligible places, confirms kickoff and referee pause, navigates back/return, and uploads; independent HTTP verifies accepted attendance, lineup and clock.');
     stage = 'bounded API window pause after accepted referee pause';
     await freshManagerRequestWindow(accounts.find(item => item.role === 'manager').accountId, 'after-accepted-referee-pause');
     const afterBudgetPause = await readAccepted();
@@ -1048,7 +1059,7 @@ async function managerMatchday(accounts, databasePath) {
       await logout(state);
       check(state.errors.length === 0 && state.routes.length === 0, 'Scope revalidation, restored login and final sign-out must have no runtime or transport errors.');
     }
-    report.matchday = { viewport: { width: 390, height: 844 }, fixtureId: matchId, selectedPlayers: 9, acceptedLineupPlaces: 7, pausedCheckpoint: { acceptedRevision: paused.acceptedRevision, status: saved.status }, finalCheckpoint: { acceptedRevision: final.acceptedRevision, status: final.state.status, score: final.state.score }, savedMatchReopenedAfterFutureEdits: true, openGoalDraftRetained: true, localGoalWithheldUntilUpload: true, acceptedSpectatorAutoRefresh: true, selectedScopeRevocationClosesDespiteOtherManagerGrant: true, signedOut: true, nativeDeviceEvidence: false, latencyBenchmark: false };
+    report.matchday = { viewport: { width: 390, height: 844 }, fixtureId: matchId, selectedPlayers: match.config.selectedPlayerIds.length, acceptedLineupPlaces: 7, pausedCheckpoint: { acceptedRevision: paused.acceptedRevision, status: saved.status }, finalCheckpoint: { acceptedRevision: final.acceptedRevision, status: final.state.status, score: final.state.score }, savedMatchReopenedAfterFutureEdits: true, openGoalDraftRetained: true, localGoalWithheldUntilUpload: true, acceptedSpectatorAutoRefresh: true, selectedScopeRevocationClosesDespiteOtherManagerGrant: true, signedOut: true, nativeDeviceEvidence: false, latencyBenchmark: false };
   } catch (error) {
     for (const state of [manager, viewer]) await retainFailureWorkspace(state);
     throw error;
@@ -1133,11 +1144,12 @@ try {
         const preparation = await currentJson(state.currentSession.accessToken, `/v1/teams/${teamId}/preparation?seasonId=${seasonId}`);
         const matches = await currentJson(state.currentSession.accessToken, `/v1/teams/${teamId}/matches?seasonId=${seasonId}`);
         const statuses = matches.items.map(item => item.status ?? item.state?.status);
-        check(preparation.profiles.length === 13 && preparation.fixtures.length === 4 && matches.items.length === 4 && statuses.filter(status => status === 'completed').length === 2 && statuses.filter(status => status === 'preparation').length === 2, 'The fresh demo must contain thirteen profiles, four accepted fixtures, two completed games and two prepared unplayed games.');
+        assert.deepEqual(preparation.profiles.map(profile => [profile.playerId, profile.displayName, profile.initials, profile.preferences[0], profile.foot]).sort((a, b) => a[0].localeCompare(b[0])), expectedRomaRoster, 'The actual demo API must expose precisely the eight requested names, initials, primary positions and preferred feet.');
+        check(preparation.profiles.length === 8 && preparation.fixtures.length === 4 && matches.items.length === 4 && statuses.filter(status => status === 'completed').length === 2 && statuses.filter(status => status === 'preparation').length === 2, 'The fresh demo must contain the eight requested Roma profiles, four accepted fixtures, two completed games and two prepared unplayed games.');
         await page.getByRole('tab', { name: 'Team', exact: true }).click();
         await selectedWorkspaceTab(page, 'team');
-        await page.getByText('13 active players', { exact: true }).waitFor();
-        check(await page.getByRole('button', { name: /^Edit / }).count() === 13, 'Manager Team must show all thirteen editable sample players.');
+        await page.getByText('8 active players', { exact: true }).waitFor();
+        check(await page.getByRole('button', { name: /^Edit / }).count() === 8, 'Manager Team must show all eight requested editable Roma players.');
         await page.getByRole('tab', { name: 'Schedule', exact: true }).click();
         await selectedWorkspaceTab(page, 'schedule');
         await page.getByRole('radio', { name: 'Schedule period: Past', exact: true }).click();

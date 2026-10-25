@@ -88,10 +88,12 @@ describe('private ballots and original award timing', () => {
   it('rejects self-votes, absent voters, unplayed candidates and manager impersonation', () => {
     const lab = setup(); lab.configure();
     const matchId = lab.state.matches[0].id;
+    lab.state.matches[0].playedPlayerIds = lab.state.matches[0].playedPlayerIds.filter(id => id !== 'synthetic-player-08');
     expect(() => lab.send(lab.actors.player, { type: 'ballot.cast', matchId, candidatePlayerId: 'synthetic-player-01' })).toThrow(/Self-votes/);
-    expect(() => lab.send(lab.actors.player, { type: 'ballot.cast', matchId, candidatePlayerId: 'synthetic-player-13' })).toThrow(/actually played/);
+    expect(() => lab.send(lab.actors.player, { type: 'ballot.cast', matchId, candidatePlayerId: 'synthetic-player-08' })).toThrow(/actually played/);
     expect(() => lab.send(lab.actors.manager, { type: 'ballot.cast', matchId, candidatePlayerId: 'synthetic-player-02' })).toThrow(/present selected player/);
-    const absent = { ...lab.actors.player, accountId: 'synthetic-account-player-13', playerId: 'synthetic-player-13' };
+    lab.state.matches[0].presentPlayerIds = lab.state.matches[0].presentPlayerIds.filter(id => id !== 'synthetic-player-08');
+    const absent = { ...lab.actors.player, accountId: 'synthetic-account-player-08', playerId: 'synthetic-player-08' };
     expect(() => lab.send(absent, { type: 'ballot.cast', matchId, candidatePlayerId: 'synthetic-player-02' })).toThrow(/present selected player/);
     expect(() => lab.send({ ...lab.actors.player, playerId: 'synthetic-player-02' }, { type: 'ballot.cast', matchId, candidatePlayerId: 'synthetic-player-03' })).toThrow(/access is unavailable/);
   });
@@ -126,7 +128,7 @@ describe('private ballots and original award timing', () => {
     expect(final.awards[0].deadlineMissed).toBe(false);
     expect(final.audit.at(-1)).toMatchObject({ actorAccountId: null, origin: 'award_worker' });
     expect(finalizeDueCommunityAwards(final, cutoff + 1000)).toBe(final);
-    expect(getCommunityView(final, lab.actors.spectator, cutoff).matches[0].award?.winnerLabels).toEqual(['Noah Patel', 'Leo Martin']);
+    expect(getCommunityView(final, lab.actors.spectator, cutoff).matches[0].award?.winnerLabels).toEqual(['Ralph Barrett', 'Conor Kyne']);
   });
 
   it('counts a committed ballot before a deliberate close in the same millisecond', () => {
@@ -283,12 +285,13 @@ describe('global own-account support surfaces', () => {
   it('persists per-account preferences and verification-needed deletion drafts without deleting journals', () => {
     const lab = setup();
     const before = lab.state.matches;
+    const accounts = structuredClone(lab.state.accounts);
     lab.send(lab.actors.player, { type: 'preferences.changed', preferences: { schedule: false, match: true, awards: false, photos: true, quietStart: '22:30', quietEnd: '07:15' } });
     expect(getCommunityView(lab.state, lab.actors.secondPlayer, now).preferences.schedule).toBe(true);
     expect(getCommunityView(lab.state, lab.actors.player, now).preferences.quietStart).toBe('22:30');
     lab.send(lab.actors.player, { type: 'privacy.drafted', requestId: 'global-delete-draft', requestType: 'delete_global_account' });
     expect(lab.state.matches).toEqual(before);
-    expect(lab.state.accounts).toHaveLength(16);
+    expect(lab.state.accounts).toEqual(accounts);
     expect(lab.state.privacyRequests[0]).toMatchObject({ accountId: lab.actors.player.accountId, status: 'verification_needed', delivery: 'local_draft' });
     expect(() => lab.send(lab.actors.manager, { type: 'privacy.cancelled', requestId: 'global-delete-draft' })).toThrow(/belongs to another/);
     lab.send(lab.actors.player, { type: 'privacy.cancelled', requestId: 'global-delete-draft' });

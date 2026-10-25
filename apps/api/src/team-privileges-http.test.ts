@@ -531,8 +531,10 @@ for (const kind of ["SQLite", "PostgreSQL"] as const)
         );
       });
       it("retains the same private upload and capability after decoder timeout, crash or startup failure", async () => {
-        const account = target("09"),
+        // This existing player has no earlier contribution suspension in this suite.
+        const account = target("08"),
           role = "player";
+        expect((await call("privileges/own", { account, role })).body.uploadsAllowed).toBe(true);
         for (const error of [
           Object.assign(new Error("controlled timeout"), {
             killed: true,
@@ -642,9 +644,11 @@ for (const kind of ["SQLite", "PostgreSQL"] as const)
         }
       });
       it("keeps confirmed malformed image rejection terminal and unpublished through HTTP", async () => {
-        const account = target("10"),
+        // Keep this rejection independent from the decoder-retry player's manifests.
+        const account = target("05"),
           role = "player",
           invalid = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
+        expect((await call("privileges/own", { account, role })).body.uploadsAllowed).toBe(true);
         scannerFixtures.add(createHash("sha256").update(invalid).digest("hex"));
         const prepared = await call("media/uploads/prepare", {
           account,

@@ -70,6 +70,10 @@ session expires rather than silently restarting it during feedback.
 
 21 October implementation: the companion [events-v1.1.schema.json](../../apps/api/contracts/events-v1.1.schema.json) explicitly requires immutable engine provenance and is enforced by the development API/client. Original archived contracts/checksums remain unchanged. This resolves the implementation discrepancy for the companion event transport; it does not assert that every original OpenAPI endpoint has been implemented.
 
+## Owner-provided Roma demo squad — 25 October 2026
+
+ADR-018: replace the earlier 13-player sample roster with the owner’s [eight-player squad](roma-demo-squad.md), preserving the supplied primary positions, initials and feet. Stable IDs 01–08 and existing account credentials remain; the Player account now displays Thomas Arnold. Historic goals, lineups and participation are replayed for the eight-player squad, while seven-a-side/two-25-minute rules and general squad capabilities remain unchanged. Secondary/third preferences remain editable template defaults. This explicit later request supersedes the D16 demo sample only; it approves no privacy, operator or release-policy changes.
+
 ## Historical 21 October acceptance boundary
 
 Historical accepted source `6078969` passed 742 shared/platform tests, 380 API tests without skips, 24 migration checks, lint/root/mobile types/contracts, three Node checks, source-publication validation and native/web/API JavaScript exports. Actual schema 16 HEIC and paired restore passed. The focused queued-PDF browser scenario 02 passed with the real worker, protected download and readable Roma/Maple text. Existing six configuration/six anonymous-entry checks and role-entry 8/matchday 6 at both widths retain their recorded artifact scopes. Root local 6/application 01–08/policy 2/accepted 4 passed; application 09's unknown-cause entry timeout remains recorded alongside its unchanged isolated pass. Focused PDF 16/shared 11/notification 49 counts overlap the aggregate.

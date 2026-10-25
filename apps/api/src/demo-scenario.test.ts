@@ -50,11 +50,11 @@ describe('explicit generated demo scenario boundary', () => {
     expect(acquired.status).toBe(200);
     const snapshot = await demo.get<{ state: { config: { fixture: { kickoff: string }; players: Record<string, unknown>[] } } }>(`${path}/download?deviceId=demo-controller-boundary`, 'manager', 'synthetic-manager-2');
     expect(snapshot.state.config.fixture.kickoff).toBe('10:00');
-    expect(snapshot.state.config.players[0].displayName).toBe('Oliver Bennett');
+    expect(snapshot.state.config.players[0].displayName).toBe('Thomas Arnold');
     for (const key of ['initials', 'shirtNumber', 'foot']) expect(snapshot.state.config.players[0]).not.toHaveProperty(key);
 
     const community = await demo.get<ReturnType<typeof getCommunityView>>(`/v1/teams/${SYNTHETIC_IDS.teamId}/community?seasonId=${SYNTHETIC_IDS.seasonId}`, 'player');
-    expect(community.matches[0]).toMatchObject({ id: 'synthetic-history-hill', sharingAllowed: true, mayVote: false, award: { result: 'winners', winnerLabels: ['Noah Patel'] } });
+    expect(community.matches[0]).toMatchObject({ id: 'synthetic-history-hill', sharingAllowed: true, mayVote: false, award: { result: 'winners', winnerLabels: ['Ralph Barrett'] } });
     expect(community.matches[0].candidates).toEqual([]);
     const reports = await demo.get<ReturnType<typeof recordsServiceView>>(`/v1/teams/${SYNTHETIC_IDS.teamId}/records?seasonId=${SYNTHETIC_IDS.seasonId}`);
     expect(reports.results.totals).not.toBeNull();
@@ -68,7 +68,7 @@ describe('explicit generated demo scenario boundary', () => {
     expect(list.items.filter(item => item.status === 'completed')).toHaveLength(2);
     expect(list.items.filter(item => item.status === 'preparation')).toHaveLength(2);
     const prep = await get<{ profiles: { displayName: string }[]; fixtures: { id: string; attendance: Record<string, string>; playedDate: string }[] }>(`/v1/teams/${SYNTHETIC_IDS.teamId}/preparation?seasonId=${SYNTHETIC_IDS.seasonId}`, 'manager', 'synthetic-manager-1');
-    expect(prep.profiles).toHaveLength(13); expect(prep.profiles[0].displayName).toBe('Oliver Bennett');
+    expect(prep.profiles).toHaveLength(8); expect(prep.profiles[0].displayName).toBe('Thomas Arnold');
     expect(prep.fixtures.map(item => item.id).sort()).toEqual(list.items.map(item => item.matchId).sort());
     for (const fixture of prep.fixtures.filter(item => item.playedDate >= '2026-10-22')) expect(fixture.attendance).toEqual({});
     const manager = await get<ReturnType<typeof recordsServiceView>>(`/v1/teams/${SYNTHETIC_IDS.teamId}/records?seasonId=${SYNTHETIC_IDS.seasonId}`, 'manager', 'synthetic-manager-1');
