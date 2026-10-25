@@ -1,9 +1,9 @@
 {
-  "state": "ready",
-  "url": "https://bills-alexander-img-introduce.trycloudflare.com",
-  "sourceRevision": "eb511810dbf96073f8240ff2c251f3df49faf562",
-  "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40227817766",
-  "startedAt": "2026-10-25T19:52:20Z",
-  "expiresAt": "2026-10-26T00:52:20Z",
+  "state": "starting",
+  "url": "",
+  "sourceRevision": "fe899e89b54aeceab8f5903036fc6daef1dd786d",
+  "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40243187138",
+  "startedAt": "2026-10-25T23:08:42Z",
+  "expiresAt": "",
   "audience": "LongBall demo review with simulated Roma U10 teams and matches"
 }
