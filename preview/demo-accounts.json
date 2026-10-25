@@ -1,78 +1,78 @@
 {
-  "version": 1,
-  "sessionTtlSeconds": 21600,
   "accounts": [
     {
-      "username": "roma.manager",
       "accountId": "synthetic-account-manager-2",
+      "hash": "4a6388d461fddc3dad251935cac35ec0829ed9c99e2f1d1aab255e0d61651ac6",
       "salt": "Brt6qHQyUlgqzbIuRpZnXsT-50de7txS",
-      "hash": "4a6388d461fddc3dad251935cac35ec0829ed9c99e2f1d1aab255e0d61651ac6"
+      "username": "roma.manager"
     },
     {
-      "username": "roma.admin",
       "accountId": "synthetic-account-admin",
+      "hash": "bff5a2e3b032997be500a929fdfd0f1778ab3291ccad344e16029226f7f9de6e",
       "salt": "4y8ccFuNn6_MoT6q2irAqMMGy9_YYneK",
-      "hash": "bff5a2e3b032997be500a929fdfd0f1778ab3291ccad344e16029226f7f9de6e"
+      "username": "roma.admin"
     },
     {
-      "username": "oliver.bennett",
       "accountId": "synthetic-account-player-01",
+      "hash": "2ba6a6c6fdf9e46f2f571929b5cba02d9c34199d1f7eda71d7f1396fdaa2aec5",
       "salt": "8n118r8bXQ-J0Tb4B00iTCC286Q8ES8j",
-      "hash": "2ba6a6c6fdf9e46f2f571929b5cba02d9c34199d1f7eda71d7f1396fdaa2aec5"
+      "username": "oliver.bennett"
     },
     {
-      "username": "roma.spectator",
       "accountId": "synthetic-account-spectator",
+      "hash": "a6ae89c7f706d4349bbfcb8409e1c72a3222726640695c04739e20d38b7d9abd",
       "salt": "jPgkxdLEmdvWqDHrqMhSd3_ffwrQh9P_",
-      "hash": "a6ae89c7f706d4349bbfcb8409e1c72a3222726640695c04739e20d38b7d9abd"
+      "username": "roma.spectator"
     },
     {
-      "username": "roma.clubadmin",
       "accountId": "synthetic-account-club-admin",
+      "hash": "f7afab0f9919f6f3feb929755221beb8b15c1f445cb3588845524781dc2b5298",
       "salt": "nUi24Bsu9P4crUS3pkPoGA",
-      "hash": "f7afab0f9919f6f3feb929755221beb8b15c1f445cb3588845524781dc2b5298"
+      "username": "roma.clubadmin"
     },
     {
-      "username": "roma.ralph",
       "accountId": "synthetic-account-player-02",
+      "hash": "c0e1e7a4440c6407ed6a988393f4b476af410dc93a9c70c7885eb6c7444f4d19",
       "salt": "90rwrPvgECLbKqv29DsYzQ",
-      "hash": "c0e1e7a4440c6407ed6a988393f4b476af410dc93a9c70c7885eb6c7444f4d19"
+      "username": "roma.ralph"
     },
     {
-      "username": "roma.conor",
       "accountId": "synthetic-account-player-03",
+      "hash": "ebac522469e1826d8188c653e9c42198f4f780a30ecead81d481992e9a6b6c6e",
       "salt": "G9GiQ8Cf4lG6jxsGjOjxxg",
-      "hash": "ebac522469e1826d8188c653e9c42198f4f780a30ecead81d481992e9a6b6c6e"
+      "username": "roma.conor"
     },
     {
-      "username": "roma.max",
       "accountId": "synthetic-account-player-04",
+      "hash": "d632b947c385da43047d32fe542ff2998cc054915c03d92918bb7f37dce41f6c",
       "salt": "CgiMiDZ2CqQtuHddHUPfjQ",
-      "hash": "d632b947c385da43047d32fe542ff2998cc054915c03d92918bb7f37dce41f6c"
+      "username": "roma.max"
     },
     {
-      "username": "roma.aryan",
       "accountId": "synthetic-account-player-05",
+      "hash": "a789453d672aa5f7e3cc42da0c81abebdd3409b11ab5386626a275e6974cfbf0",
       "salt": "mp-IAhT9UBlFFHF-jZyg3Q",
-      "hash": "a789453d672aa5f7e3cc42da0c81abebdd3409b11ab5386626a275e6974cfbf0"
+      "username": "roma.aryan"
     },
     {
-      "username": "roma.seb",
       "accountId": "synthetic-account-player-06",
+      "hash": "ef72f1f8c87e14e81d009656cd3c4e4c1102bf73b6c9d01007a22220084d2ba8",
       "salt": "KH2sY7IJ2e7_yFLMm7YbBg",
-      "hash": "ef72f1f8c87e14e81d009656cd3c4e4c1102bf73b6c9d01007a22220084d2ba8"
+      "username": "roma.seb"
     },
     {
-      "username": "roma.ezra",
       "accountId": "synthetic-account-player-07",
+      "hash": "3aeae4325a6f93f970657ae203e3c9954bb67a89ddda1f40a00eabe7c351cc41",
       "salt": "kk9vYBY9g222Ag_vSa4gMQ",
-      "hash": "3aeae4325a6f93f970657ae203e3c9954bb67a89ddda1f40a00eabe7c351cc41"
+      "username": "roma.ezra"
     },
     {
-      "username": "roma.archie",
       "accountId": "synthetic-account-player-08",
+      "hash": "205f200b4b03c87462a401760bc35a44853990d443bc4bd933e02a87b8036bee",
       "salt": "iC7_Q47mREH3vai2Xg8JAw",
-      "hash": "205f200b4b03c87462a401760bc35a44853990d443bc4bd933e02a87b8036bee"
+      "username": "roma.archie"
     }
-  ]
+  ],
+  "sessionTtlSeconds": 21600,
+  "version": 1
 }

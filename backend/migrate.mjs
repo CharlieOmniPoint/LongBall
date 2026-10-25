@@ -233,7 +233,7 @@ function filterMatchForPrincipal(input) {
     return { matchId: input.state.config.matchId, teamId: input.teamId, seasonId: input.seasonId, audience: "manager", revision: input.state.revision, state: input.state, lastRecorderSyncAt: input.lastSyncAt };
   }
   const scoresAllowed = input.policy.approvedBy !== null && input.policy.approvedAt !== null && input.policy.shareScores;
-  const dto = {
+  const dto2 = {
     matchId: input.state.config.matchId,
     teamId: input.teamId,
     seasonId: input.seasonId,
@@ -250,7 +250,7 @@ function filterMatchForPrincipal(input) {
   };
   if (role.role === "player" && role.playerId) {
     const ownIntervals = input.state.intervals.filter((item) => item.playerId === role.playerId);
-    dto.ownRecord = {
+    dto2.ownRecord = {
       playerId: role.playerId,
       attendance: input.state.attendance[role.playerId] ?? "not_recorded",
       playingMs: ownIntervals.filter((item) => item.state === "playing").reduce((sum, item) => sum + item.endMs - item.startMs, 0),
@@ -258,7 +258,7 @@ function filterMatchForPrincipal(input) {
       completeness: input.state.recoveryRequired ? "review_required" : "recorded_to_last_sync"
     };
   }
-  return dto;
+  return dto2;
 }
 
 // apps/api/src/match-pagination.ts
@@ -867,8 +867,8 @@ function nonnegative(value, label2) {
   if (!Number.isSafeInteger(value) || Number(value) < 0) fail(`${label2} must be a nonnegative safe integer.`);
 }
 function keeperRank(config, playerId) {
-  const saved = config.profileSnapshot?.find((profile) => profile.playerId === playerId);
-  return saved ? saved.preferences.indexOf("GK") + 1 : config.players.find((player) => player.id === playerId)?.goalkeeperChoice ?? 0;
+  const saved2 = config.profileSnapshot?.find((profile) => profile.playerId === playerId);
+  return saved2 ? saved2.preferences.indexOf("GK") + 1 : config.players.find((player) => player.id === playerId)?.goalkeeperChoice ?? 0;
 }
 function initialKeeperPolicy(config) {
   return { keeperMode: config.fixedKeeperId ? "sole_fixed" : "common_pool", fixedKeeperPlayerSeasonId: config.fixedKeeperId };
@@ -895,8 +895,8 @@ function assertInitialLineupProposal(config, value) {
     keys(allocation, ["slotId", "position", "playerId"], "lineup proposal");
     if (typeof allocation.playerId !== "string" || !config.selectedPlayerIds.includes(allocation.playerId) || typeof allocation.slotId !== "string" || !allocation.slotId || typeof allocation.position !== "string" || !allocation.position) fail("Starting-lineup proposals must use the selected saved match squad.");
     if (config.slots && !config.slots.some((slot) => slot.slotId === allocation.slotId && slot.position === allocation.position)) fail("Starting-lineup proposals must use the saved formation slots and roles.");
-    const saved = config.profileSnapshot?.find((profile) => profile.playerId === allocation.playerId);
-    if (saved && !saved.eligiblePositions.includes(allocation.position)) fail("A proposed role is outside the saved player eligibility.");
+    const saved2 = config.profileSnapshot?.find((profile) => profile.playerId === allocation.playerId);
+    if (saved2 && !saved2.eligiblePositions.includes(allocation.position)) fail("A proposed role is outside the saved player eligibility.");
   }
   const keepers = value.filter((allocation) => allocation.position === "GK");
   if (keepers.length !== 1 || ![1, 2].includes(keeperRank(config, keepers[0].playerId)) || config.fixedKeeperId && keepers[0].playerId !== config.fixedKeeperId) fail("A lineup proposal needs one qualifying keeper consistent with its explicit policy.");
@@ -2043,9 +2043,9 @@ var PgDatabase = class {
   async migrate() {
     if (this.migrationMode === "verify") {
       const versions = await this.query("SELECT version FROM longball.schema_migrations ORDER BY version");
-      if (versions.rows.some((row) => row.version > 25)) throw new Error("This PostgreSQL schema is newer than the application. Preserve it and use a compatible build.");
-      if (![2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25].every((version2) => versions.rows.some((row) => row.version === version2))) throw new Error("PostgreSQL migrations are required. Run the separate migrator before starting the runtime.");
-      const protectedTables = ["clubs", "teams", "team_seasons", "game_contexts", "accounts", "memberships", "matches", "documents", "devices", "controller_grants", "controller_history", "events", "streams", "conflicting_submissions", "transfers", "clock_challenges", "clock_mappings", "reconciliation_proposals", "audit", "idempotency", "privacy_requests", "privacy_pending_keys", "jobs", "brand_assets", "brand_slots", "spectator_invitations", "lb_spectator_activation_accounts", "lb_spectator_activation_attempts", "native_app_devices", "team_privilege_states", "team_privilege_decisions", "push_registrations", "report_exports", "match_feedback", "match_feedback_receipts", "administration_grants", "administrative_memberships", "team_documents", "opposition_reviews", "opposition_review_receipts", "spectator_pin_credentials", "invite_requests"];
+      if (versions.rows.some((row) => row.version > 27)) throw new Error("This PostgreSQL schema is newer than the application. Preserve it and use a compatible build.");
+      if (![2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27].every((version2) => versions.rows.some((row) => row.version === version2))) throw new Error("PostgreSQL migrations are required. Run the separate migrator before starting the runtime.");
+      const protectedTables = ["clubs", "teams", "team_seasons", "game_contexts", "accounts", "memberships", "matches", "documents", "devices", "controller_grants", "controller_history", "events", "streams", "conflicting_submissions", "transfers", "clock_challenges", "clock_mappings", "reconciliation_proposals", "audit", "idempotency", "privacy_requests", "privacy_pending_keys", "jobs", "brand_assets", "brand_slots", "spectator_invitations", "lb_spectator_activation_accounts", "lb_spectator_activation_attempts", "native_app_devices", "team_privilege_states", "team_privilege_decisions", "push_registrations", "report_exports", "match_feedback", "match_feedback_receipts", "administration_grants", "administrative_memberships", "team_documents", "opposition_reviews", "opposition_review_receipts", "spectator_pin_credentials", "invite_requests", "application_sign_in_rules", "global_usernames"];
       const security = await this.query(`SELECT c.relname,c.relrowsecurity,(SELECT count(*)::integer FROM pg_catalog.pg_policy p WHERE p.polrelid=c.oid) AS policies FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='longball' AND c.relname=ANY($1::text[])`, [protectedTables]);
       if (security.rows.length !== protectedTables.length || security.rows.some((row) => !row.relrowsecurity || row.policies < 1)) throw new Error("PostgreSQL row security is missing. Run the separate migrator before starting runtime.");
       return;
@@ -2074,12 +2074,14 @@ var PgDatabase = class {
     const oppositionReviewsMigration = await readFile(new URL("../migrations/postgresql/023_opposition_reviews.sql", import.meta.url), "utf8");
     const spectatorAccessMigration = await readFile(new URL("../migrations/postgresql/024_spectator_access.sql", import.meta.url), "utf8");
     const inheritedManagerMigration = await readFile(new URL("../migrations/postgresql/025_inherited_manager_authority.sql", import.meta.url), "utf8");
+    const signInRulesMigration = await readFile(new URL("../migrations/postgresql/026_sign_in_rules.sql", import.meta.url), "utf8");
+    const globalUsernamesMigration = await readFile(new URL("../migrations/postgresql/027_global_usernames.sql", import.meta.url), "utf8");
     await this.transaction(async () => {
       const schema = await this.query("SELECT to_regnamespace('longball')::text AS namespace");
       if (!schema.rows[0]?.namespace) await this.query("CREATE SCHEMA longball");
       await this.query("CREATE TABLE IF NOT EXISTS longball.schema_migrations(version integer PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())");
       const versions = await this.query("SELECT version FROM longball.schema_migrations ORDER BY version");
-      if (versions.rows.some((row) => row.version > 25)) throw new Error("This PostgreSQL schema is newer than the application. Preserve it and use a compatible build.");
+      if (versions.rows.some((row) => row.version > 27)) throw new Error("This PostgreSQL schema is newer than the application. Preserve it and use a compatible build.");
       if (!versions.rows.some((row) => row.version === 2)) {
         await this.query(migration);
         await this.query("INSERT INTO longball.schema_migrations(version) VALUES(2)");
@@ -2175,6 +2177,14 @@ var PgDatabase = class {
       if (!versions.rows.some((row) => row.version === 25)) {
         await this.query(inheritedManagerMigration);
         await this.query("INSERT INTO longball.schema_migrations(version) VALUES(25)");
+      }
+      if (!versions.rows.some((row) => row.version === 26)) {
+        await this.query(signInRulesMigration);
+        await this.query("INSERT INTO longball.schema_migrations(version) VALUES(26)");
+      }
+      if (!versions.rows.some((row) => row.version === 27)) {
+        await this.query(globalUsernamesMigration);
+        await this.query("INSERT INTO longball.schema_migrations(version) VALUES(27)");
       }
     });
   }
@@ -4879,8 +4889,8 @@ function createCommunityState(nowMs = Date.now(), options = {}) {
 }
 function communityObjectShape(value, fields5) {
   if (value === null || typeof value !== "object" || Array.isArray(value)) return false;
-  const object4 = value;
-  return Object.keys(object4).every((key) => Object.hasOwn(fields5, key)) && Object.entries(fields5).every(([key, rule]) => Object.hasOwn(object4, key) ? rule.accepts(object4[key]) : Boolean(rule.optional));
+  const object5 = value;
+  return Object.keys(object5).every((key) => Object.hasOwn(fields5, key)) && Object.entries(fields5).every(([key, rule]) => Object.hasOwn(object5, key) ? rule.accepts(object5[key]) : Boolean(rule.optional));
 }
 var communityText = (maximum, nonempty = true) => ({ accepts: (value) => typeof value === "string" && value.length <= maximum && (!nonempty || value.trim().length > 0) });
 var communityInteger = (minimum = 0) => ({ accepts: (value) => typeof value === "number" && Number.isSafeInteger(value) && value >= minimum });
@@ -5120,12 +5130,12 @@ function snapshotLiveMatch(state, match, at) {
     selectedPlayerIds: [...match.config.selectedPlayerIds],
     attendance: { ...match.attendance },
     participation: started ? playerMinutes(match, sample).map((player) => {
-      const saved = match.config.players.find((item) => item.id === player.playerId);
+      const saved2 = match.config.players.find((item) => item.id === player.playerId);
       const target = targets.find((item) => item.playerId === player.playerId);
       const targetMs = target ? rationalToNumber(target.target) : null;
       const priorEntry = state.results.find((record) => record.id === match.config.matchId)?.participation?.find((item) => item.playerId === player.playerId);
       const exceptionReason = priorEntry?.playedMs === player.playingMs && priorEntry.target?.targetMs === targetMs ? priorEntry.target.exceptionReason : null;
-      const preferences = match.config.profileSnapshot?.find((item) => item.playerId === player.playerId)?.preferences ?? saved?.positionPreferences ?? [];
+      const preferences = match.config.profileSnapshot?.find((item) => item.playerId === player.playerId)?.preferences ?? saved2?.positionPreferences ?? [];
       const preferenceMs = { first: 0, second: 0, backup: 0, other: 0, unknown: 0 };
       for (const [position, duration2] of Object.entries(player.positionMs)) {
         const index = preferences.indexOf(position);
@@ -5141,7 +5151,7 @@ function snapshotLiveMatch(state, match, at) {
         preferenceMs,
         target: target && targetMs !== null ? { targetMs, lowerMs: rationalToNumber(target.lower), upperMs: rationalToNumber(target.upper), withinBand: withinTargetBand(player.playingMs, target), deviationRatio: targetMs === 0 ? null : (player.playingMs - targetMs) / targetMs, exceptionReason } : void 0,
         intervals: match.intervals.filter((item) => item.playerId === player.playerId).map((item) => ({ half: item.half, startMs: item.startMs, endMs: item.endMs, state: item.state, position: item.position })),
-        primaryWasGoalkeeper: preferences.length ? preferences[0] === "GK" : saved?.goalkeeperChoice ? saved.goalkeeperChoice === 1 : null
+        primaryWasGoalkeeper: preferences.length ? preferences[0] === "GK" : saved2?.goalkeeperChoice ? saved2.goalkeeperChoice === 1 : null
       };
     }) : null,
     actualActiveDurationMs: started ? match.matchActiveMs : null,
@@ -7010,17 +7020,17 @@ function projectPlayerStats(source2, viewer) {
   };
 }
 function assertPlayerStatsDto(value, viewer) {
-  const object4 = (item) => Boolean(item && typeof item === "object" && !Array.isArray(item));
-  const exact = (item, fields5) => Object.keys(item).length === fields5.length && fields5.every((field) => Object.hasOwn(item, field));
+  const object5 = (item) => Boolean(item && typeof item === "object" && !Array.isArray(item));
+  const exact2 = (item, fields5) => Object.keys(item).length === fields5.length && fields5.every((field) => Object.hasOwn(item, field));
   const text2 = (item) => typeof item === "string" && item.length > 0 && item.length <= 150 && !/[\u0000-\u001f\u007f]/.test(item);
   const number = (item) => typeof item === "number" && safeMs(item);
   const totals = (item) => {
-    if (!object4(item) || !number(item.knownPlayingMs) || !number(item.unknownPositionMs) || !Array.isArray(item.positions))
+    if (!object5(item) || !number(item.knownPlayingMs) || !number(item.unknownPositionMs) || !Array.isArray(item.positions))
       return false;
     let named = 0;
     const codes = /* @__PURE__ */ new Set();
     for (const position of item.positions) {
-      if (!object4(position) || !exact(position, ["code", "label", "playingMs", "percentage"]) || typeof position.code !== "string" || !/^[A-Z]{2}$/.test(position.code) || codes.has(position.code) || !text2(position.label) || !number(position.playingMs))
+      if (!object5(position) || !exact2(position, ["code", "label", "playingMs", "percentage"]) || typeof position.code !== "string" || !/^[A-Z]{2}$/.test(position.code) || codes.has(position.code) || !text2(position.label) || !number(position.playingMs))
         return false;
       const expected = item.knownPlayingMs ? position.playingMs / item.knownPlayingMs * 100 : null;
       if (expected === null ? position.percentage !== null : typeof position.percentage !== "number" || !Number.isFinite(position.percentage) || Math.abs(position.percentage - expected) > 1e-6)
@@ -7031,7 +7041,7 @@ function assertPlayerStatsDto(value, viewer) {
     return named + item.unknownPositionMs === item.knownPlayingMs;
   };
   const row = (item) => {
-    if (!totals(item) || !exact(item, [
+    if (!totals(item) || !exact2(item, [
       "playerId",
       "label",
       "knownPlayingMs",
@@ -7044,7 +7054,7 @@ function assertPlayerStatsDto(value, viewer) {
       "positions",
       "unknownPositionMs",
       "coverage"
-    ]) || !text2(item.playerId) || !text2(item.label) || !number(item.knownAppearances) || !number(item.knownGoals) || !number(item.knownOwnGoals) || !number(item.knownCleanSheets) || !number(item.goalkeepingReviewedMatches) || !number(item.goalkeepingUnknownMatches) || item.knownCleanSheets > item.goalkeepingReviewedMatches || !object4(item.coverage))
+    ]) || !text2(item.playerId) || !text2(item.label) || !number(item.knownAppearances) || !number(item.knownGoals) || !number(item.knownOwnGoals) || !number(item.knownCleanSheets) || !number(item.goalkeepingReviewedMatches) || !number(item.goalkeepingUnknownMatches) || item.knownCleanSheets > item.goalkeepingReviewedMatches || !object5(item.coverage))
       return false;
     const coverage = item.coverage;
     const fields5 = [
@@ -7056,9 +7066,9 @@ function assertPlayerStatsDto(value, viewer) {
       "scoringPartialMatches",
       "scoringUnknownMatches"
     ];
-    return exact(coverage, fields5) && fields5.every((field) => number(coverage[field])) && Number(coverage.playingTimeKnownMatches) + Number(coverage.playingTimeUnknownMatches) === coverage.recordedMatches && Number(coverage.scoringCompleteMatches) + Number(coverage.scoringPartialMatches) + Number(coverage.scoringUnknownMatches) === coverage.recordedMatches && Number(coverage.reviewRequiredMatches) <= Number(coverage.playingTimeUnknownMatches);
+    return exact2(coverage, fields5) && fields5.every((field) => number(coverage[field])) && Number(coverage.playingTimeKnownMatches) + Number(coverage.playingTimeUnknownMatches) === coverage.recordedMatches && Number(coverage.scoringCompleteMatches) + Number(coverage.scoringPartialMatches) + Number(coverage.scoringUnknownMatches) === coverage.recordedMatches && Number(coverage.reviewRequiredMatches) <= Number(coverage.playingTimeUnknownMatches);
   };
-  if (!object4(value) || !object4(value.scope) || !exact(value.scope, [
+  if (!object5(value) || !object5(value.scope) || !exact2(value.scope, [
     "clubId",
     "teamId",
     "seasonId",
@@ -7068,14 +7078,14 @@ function assertPlayerStatsDto(value, viewer) {
   ]) || !text2(value.scope.clubId) || value.scope.teamId !== viewer.teamId || value.scope.seasonId !== viewer.seasonId || !text2(value.scope.seasonLabel) || !number(value.scope.projectionVersion) || !(value.scope.asOf === null || typeof value.scope.asOf === "string" && instant(value.scope.asOf)))
     denied();
   if (viewer.role === "player") {
-    if (value.kind !== "own-player-stats" || !exact(value, ["kind", "scope", "player"]) || !row(value.player) || value.player.playerId !== viewer.playerId)
+    if (value.kind !== "own-player-stats" || !exact2(value, ["kind", "scope", "player"]) || !row(value.player) || value.player.playerId !== viewer.playerId)
       denied();
     return;
   }
-  if (!["manager", "administrator"].includes(viewer.role) || value.kind !== "team-player-stats" || !exact(value, ["kind", "scope", "players", "team", "formation"]) || !Array.isArray(value.players) || !value.players.every(row) || new Set(value.players.map((player) => player.playerId)).size !== value.players.length || !totals(value.team) || !exact(value.team, ["knownPlayingMs", "positions", "unknownPositionMs"]))
+  if (!["manager", "administrator"].includes(viewer.role) || value.kind !== "team-player-stats" || !exact2(value, ["kind", "scope", "players", "team", "formation"]) || !Array.isArray(value.players) || !value.players.every(row) || new Set(value.players.map((player) => player.playerId)).size !== value.players.length || !totals(value.team) || !exact2(value.team, ["knownPlayingMs", "positions", "unknownPositionMs"]))
     denied();
-  if (value.formation !== null && (!object4(value.formation) || !exact(value.formation, ["id", "label", "slots"]) || !text2(value.formation.id) || !text2(value.formation.label) || !Array.isArray(value.formation.slots) || value.formation.slots.some(
-    (slot) => !object4(slot) || !exact(slot, ["id", "positionCode", "label", "x", "y"]) || !text2(slot.id) || !text2(slot.positionCode) || !text2(slot.label) || typeof slot.x !== "number" || typeof slot.y !== "number" || !Number.isFinite(slot.x) || !Number.isFinite(slot.y) || slot.x < 0 || slot.x > 1 || slot.y < 0 || slot.y > 1
+  if (value.formation !== null && (!object5(value.formation) || !exact2(value.formation, ["id", "label", "slots"]) || !text2(value.formation.id) || !text2(value.formation.label) || !Array.isArray(value.formation.slots) || value.formation.slots.some(
+    (slot) => !object5(slot) || !exact2(slot, ["id", "positionCode", "label", "x", "y"]) || !text2(slot.id) || !text2(slot.positionCode) || !text2(slot.label) || typeof slot.x !== "number" || typeof slot.y !== "number" || !Number.isFinite(slot.x) || !Number.isFinite(slot.y) || slot.x < 0 || slot.x > 1 || slot.y < 0 || slot.y > 1
   )))
     denied();
 }
@@ -7083,16 +7093,16 @@ function assertPlayerStatsDto(value, viewer) {
 // packages/application/src/team-overview-service.ts
 var active2 = /* @__PURE__ */ new Set(["first_half_running", "first_half_paused", "half_time", "second_half_running", "second_half_paused"]);
 function assertTeamOverviewDto(value, scope) {
-  const object4 = (item) => Boolean(item && typeof item === "object" && !Array.isArray(item));
+  const object5 = (item) => Boolean(item && typeof item === "object" && !Array.isArray(item));
   const keys2 = (item, names) => Object.keys(item).length === names.length && Object.keys(item).every((key) => names.includes(key));
   const text2 = (item, maximum = 200) => typeof item === "string" && item.length <= maximum && !/[\u0000-\u001f\u007f]/.test(item);
   const error = () => {
     throw new Error("The team overview differs from its current scope or contains unsupported private fields.");
   };
-  if (!object4(value) || !keys2(value, ["kind", "teamId", "seasonId", "team", "games"]) || value.kind !== "team-overview" || value.teamId !== scope.teamId || value.seasonId !== scope.seasonId || !object4(value.team) || !keys2(value.team, ["name", "ageGroup", "clubName", "seasonLabel"]) || !Object.values(value.team).every((item) => text2(item)) || !Array.isArray(value.games)) return error();
+  if (!object5(value) || !keys2(value, ["kind", "teamId", "seasonId", "team", "games"]) || value.kind !== "team-overview" || value.teamId !== scope.teamId || value.seasonId !== scope.seasonId || !object5(value.team) || !keys2(value.team, ["name", "ageGroup", "clubName", "seasonLabel"]) || !Object.values(value.team).every((item) => text2(item)) || !Array.isArray(value.games)) return error();
   const ids = /* @__PURE__ */ new Set(), statuses = ["scheduled", "postponed", "cancelled", "preparation", ...active2, "completed", "abandoned"];
   for (const game of value.games) {
-    if (!object4(game) || !keys2(game, ["id", "opponent", "playedDate", "kickoff", "venue", "status", "active"]) || typeof game.id !== "string" || !/^[A-Za-z0-9_.:-]{1,150}$/.test(game.id) || ids.has(game.id) || !text2(game.opponent) || typeof game.playedDate !== "string" || game.playedDate !== "" && (!/^\d{4}-\d{2}-\d{2}$/.test(game.playedDate) || !Number.isFinite(Date.parse(game.playedDate)) || new Date(game.playedDate).toISOString().slice(0, 10) !== game.playedDate) || !(game.kickoff === null || typeof game.kickoff === "string" && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(game.kickoff)) || !(game.venue === null || text2(game.venue, 1e3)) || !statuses.includes(String(game.status)) || typeof game.active !== "boolean" || game.active !== active2.has(String(game.status))) return error();
+    if (!object5(game) || !keys2(game, ["id", "opponent", "playedDate", "kickoff", "venue", "status", "active"]) || typeof game.id !== "string" || !/^[A-Za-z0-9_.:-]{1,150}$/.test(game.id) || ids.has(game.id) || !text2(game.opponent) || typeof game.playedDate !== "string" || game.playedDate !== "" && (!/^\d{4}-\d{2}-\d{2}$/.test(game.playedDate) || !Number.isFinite(Date.parse(game.playedDate)) || new Date(game.playedDate).toISOString().slice(0, 10) !== game.playedDate) || !(game.kickoff === null || typeof game.kickoff === "string" && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(game.kickoff)) || !(game.venue === null || text2(game.venue, 1e3)) || !statuses.includes(String(game.status)) || typeof game.active !== "boolean" || game.active !== active2.has(String(game.status))) return error();
     ids.add(game.id);
   }
 }
@@ -7324,14 +7334,14 @@ var PostgresStore = class _PostgresStore {
     return row;
   }
   async assertScheduledMatchAvailable(row) {
-    const saved = await this.one("SELECT value_json FROM documents WHERE team_id=$1 AND season_id=$2 AND kind='preparation'", [row.team_id, row.season_id]);
-    if (saved && fixtureRecordingUnavailable(JSON.parse(saved.value_json), row.id)) throw new AccessError("FIXTURE_UNAVAILABLE", 409, "This schedule item is cancelled, postponed or deleted. Match recording and downloads are unavailable.");
+    const saved2 = await this.one("SELECT value_json FROM documents WHERE team_id=$1 AND season_id=$2 AND kind='preparation'", [row.team_id, row.season_id]);
+    if (saved2 && fixtureRecordingUnavailable(JSON.parse(saved2.value_json), row.id)) throw new AccessError("FIXTURE_UNAVAILABLE", 409, "This schedule item is cancelled, postponed or deleted. Match recording and downloads are unavailable.");
   }
   async matchDto(principal, matchId, requestedRole) {
     const row = await this.match(matchId);
-    const dto = filterMatchForPrincipal({ principal, memberships: await this.myMemberships(principal), teamId: row.team_id, seasonId: row.season_id, state: JSON.parse(row.state_json), policy: JSON.parse(row.sharing_policy_json), lastSyncAt: row.last_sync_at, now: this.now(), requestedRole });
+    const dto2 = filterMatchForPrincipal({ principal, memberships: await this.myMemberships(principal), teamId: row.team_id, seasonId: row.season_id, state: JSON.parse(row.state_json), policy: JSON.parse(row.sharing_policy_json), lastSyncAt: row.last_sync_at, now: this.now(), requestedRole });
     await this.assertScheduledMatchAvailable(row);
-    return dto;
+    return dto2;
   }
   async download(principal, matchId, deviceId, syntheticOnly = false, controllerToken) {
     return this.transaction(async () => {
@@ -7345,8 +7355,8 @@ var PostgresStore = class _PostgresStore {
       const controller = await this.one("SELECT epoch,account_id,device_id,frozen FROM controller_grants WHERE match_id=$1", [matchId]);
       const events = await this.many("SELECT revision,received_at,envelope_json FROM events WHERE match_id=$1 AND disposition='accepted' ORDER BY revision LIMIT 10001", [matchId]);
       const transitions = await this.many("SELECT id,epoch,actor_id,from_device,to_device,kind,reason,created_at FROM controller_history WHERE match_id=$1 ORDER BY epoch,created_at,id LIMIT 10001", [matchId]);
-      const saved = await this.one("SELECT value_json FROM documents WHERE team_id=$1 AND season_id=$2 AND kind='records'", [row.team_id, row.season_id]);
-      return buildOfflineDownload({ matchId, teamId: row.team_id, seasonId: row.season_id, deviceId, state: JSON.parse(row.state_json), checkpoint: { clientSequence: stream?.sequence ?? 0, previousEventId: stream?.previous_event_id ?? null }, controller: controller ?? null, events, transitions, publication: offlinePublication(matchId, JSON.parse(row.sharing_policy_json), saved ? JSON.parse(saved.value_json) : null), nowMs: this.now(), syntheticOnly });
+      const saved2 = await this.one("SELECT value_json FROM documents WHERE team_id=$1 AND season_id=$2 AND kind='records'", [row.team_id, row.season_id]);
+      return buildOfflineDownload({ matchId, teamId: row.team_id, seasonId: row.season_id, deviceId, state: JSON.parse(row.state_json), checkpoint: { clientSequence: stream?.sequence ?? 0, previousEventId: stream?.previous_event_id ?? null }, controller: controller ?? null, events, transitions, publication: offlinePublication(matchId, JSON.parse(row.sharing_policy_json), saved2 ? JSON.parse(saved2.value_json) : null), nowMs: this.now(), syntheticOnly });
     });
   }
   async audit(principal, action, objectId, outcome) {
@@ -7501,10 +7511,10 @@ var PostgresStore = class _PostgresStore {
     return { status: "registered_from_accepted_history", finishQuality: context.finishQuality };
   }
   async refreshDetailedArchive(row, match) {
-    const saved = await this.one("SELECT value_json FROM documents WHERE team_id=$1 AND season_id=$2 AND kind='records'", [row.team_id, row.season_id]);
-    if (!saved)
+    const saved2 = await this.one("SELECT value_json FROM documents WHERE team_id=$1 AND season_id=$2 AND kind='records'", [row.team_id, row.season_id]);
+    if (!saved2)
       return;
-    const records = JSON.parse(saved.value_json);
+    const records = JSON.parse(saved2.value_json);
     const archived = records.results.find((item) => item.id === match.config.matchId && item.recordMode === "detailed_live");
     if (!archived || (archived.sourceMatchRevision ?? -1) >= match.revision)
       return;
@@ -7828,9 +7838,9 @@ var PostgresStore = class _PostgresStore {
     if (!role || !["manager", "administrator", "player", "spectator"].includes(role)) throw new AccessError("NOT_FOUND", 404, "Choose the current team overview context.");
     assertTeamRole(principal, await this.memberships(), teamId, seasonId, [role], this.now());
     const row = await this.one("SELECT longball.team_overview_source($1,$2) AS value", [teamId, seasonId]);
-    const dto = typeof row?.value === "string" ? JSON.parse(row.value) : row?.value;
-    assertTeamOverviewDto(dto, { teamId, seasonId });
-    return dto;
+    const dto2 = typeof row?.value === "string" ? JSON.parse(row.value) : row?.value;
+    assertTeamOverviewDto(dto2, { teamId, seasonId });
+    return dto2;
   }
   async scheduledGameCommand(principal, teamId, seasonId, input, role) {
     assertTeamRole(principal, await this.memberships(), teamId, seasonId, [role], this.now());
@@ -8136,9 +8146,9 @@ var PostgresStore = class _PostgresStore {
       source2 = playerStatsSourceFromRecords({ state: await this.document(teamId, seasonId, "records"), acceptedMatches: rows.map((row) => ({ teamId, seasonId, match: JSON.parse(row.state_json), sharingPolicy: JSON.parse(row.sharing_policy_json) })), positions: positionCatalogueFor(preparation), formation: formation ? { id: formation.id, label: formation.name, slots: formation.slots.map((slot) => ({ id: slot.id, positionCode: slot.position, label: slot.label, x: slot.x, y: slot.y })) } : null });
     }
     const viewer = { role, teamId, seasonId, ...role === "player" ? { playerId: bindings[0] } : {} };
-    const dto = projectPlayerStats(source2, viewer);
-    assertPlayerStatsDto(dto, viewer);
-    return dto;
+    const dto2 = projectPlayerStats(source2, viewer);
+    assertPlayerStatsDto(dto2, viewer);
+    return dto2;
   }
   async recordsExport(principal, teamId, seasonId, request, role) {
     return recordsServiceExport({ ...await this.recordsContext(principal, teamId, seasonId, role), request });
@@ -8722,7 +8732,7 @@ var PgMediaService = class _PgMediaService {
       const displayKey = `derivatives/${row.photo_id}-v${row.display_revision}-${attempt}-display.jpg`;
       const thumbnailKey = `derivatives/${row.photo_id}-v${row.display_revision}-${attempt}-thumbnail.jpg`;
       const decoded = await processPrivateImage({ originalPath: this.path(row.original_key), displayPath: this.path(displayKey), thumbnailPath: this.path(thumbnailKey), expectedBytes: row.expected_bytes, expectedSha: row.expected_sha, declaredMime: row.declared_mime, scanner: this.scanner });
-      const saved = await this.execute(
+      const saved2 = await this.execute(
         "UPDATE longball.media_uploads SET status='processed',display_key=$1,thumbnail_key=$2,width=$3,height=$4,scanner_engine=$5,failure_code=NULL,lease_until=NULL WHERE id=$6 AND attempt=$7 AND status='processing'",
         [
           displayKey,
@@ -8734,7 +8744,7 @@ var PgMediaService = class _PgMediaService {
           attempt
         ]
       );
-      if (!saved.changes)
+      if (!saved2.changes)
         fail6(
           "PROCESSING_LEASE_CHANGED",
           409,
@@ -8846,6 +8856,127 @@ var PgMediaService = class _PgMediaService {
 
 // apps/api/src/postgres-activation.ts
 import { createHash as createHash6, randomBytes as randomBytes4, randomUUID as randomUUID5 } from "node:crypto";
+
+// packages/application/src/identity-policy.ts
+var DEFAULT_SIGN_IN_RULES = {
+  username: { minLength: 3, maxLength: 40, allowNumbers: true, allowSeparators: true },
+  password: { minLength: 12, requireUppercase: true, requireLowercase: true, requireNumber: true, requireSymbol: true, disallowUsername: true },
+  spectatorPin: { blockSimpleCodes: true }
+};
+var object4 = (value) => !!value && typeof value === "object" && !Array.isArray(value);
+function exact(value, fields5) {
+  return object4(value) && Object.keys(value).length === fields5.length && fields5.every((key) => Object.hasOwn(value, key));
+}
+function bad2() {
+  throw new AccessError("INVALID_SIGN_IN_RULES", 400, "Use the documented sign-in rules and supported lengths.");
+}
+function parseSignInRules(value) {
+  if (!exact(value, ["username", "password", "spectatorPin"]) || !exact(value.username, ["minLength", "maxLength", "allowNumbers", "allowSeparators"]) || !exact(value.password, ["minLength", "requireUppercase", "requireLowercase", "requireNumber", "requireSymbol", "disallowUsername"]) || !exact(value.spectatorPin, ["blockSimpleCodes"])) bad2();
+  const u = value.username, p = value.password, pin = value.spectatorPin;
+  if (!Number.isInteger(u.minLength) || Number(u.minLength) < 3 || Number(u.minLength) > 32 || !Number.isInteger(u.maxLength) || Number(u.maxLength) < Math.max(8, Number(u.minLength)) || Number(u.maxLength) > 40 || !Number.isInteger(p.minLength) || Number(p.minLength) < 8 || Number(p.minLength) > 64 || typeof u.allowNumbers !== "boolean" || typeof u.allowSeparators !== "boolean" || [p.requireUppercase, p.requireLowercase, p.requireNumber, p.requireSymbol, p.disallowUsername, pin.blockSimpleCodes].some((v) => typeof v !== "boolean")) bad2();
+  return { username: { minLength: Number(u.minLength), maxLength: Number(u.maxLength), allowNumbers: u.allowNumbers, allowSeparators: u.allowSeparators }, password: { minLength: Number(p.minLength), requireUppercase: p.requireUppercase, requireLowercase: p.requireLowercase, requireNumber: p.requireNumber, requireSymbol: p.requireSymbol, disallowUsername: p.disallowUsername }, spectatorPin: { blockSimpleCodes: pin.blockSimpleCodes } };
+}
+function usernameProblem(value, rules = DEFAULT_SIGN_IN_RULES) {
+  const username = value.trim();
+  if (username.length < rules.username.minLength || username.length > rules.username.maxLength) return `Use a username of ${rules.username.minLength}\u2013${rules.username.maxLength} characters.`;
+  if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(username)) return "Use letters, numbers, dots, underscores or dashes, starting with a letter or number.";
+  if (!rules.username.allowNumbers && /\d/.test(username)) return "Use a username without numbers.";
+  if (!rules.username.allowSeparators && /[._-]/.test(username)) return "Use a username without dots, underscores or dashes.";
+  return null;
+}
+var letters = (value) => value.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/[^A-Za-z0-9]/g, "");
+function suggestInitialUsername(teamName, fullName, existingUsernames = [], rules = DEFAULT_SIGN_IN_RULES) {
+  const parts = fullName.trim().split(/\s+/).filter(Boolean);
+  const component = (value) => {
+    const text2 = letters(value);
+    return rules.username.allowNumbers ? text2 : text2.replace(/\d/g, "");
+  };
+  const team = component(teamName.replace(/\s+U(?:[5-9]|1\d|2[01])\b.*$/i, "")) || "Team";
+  const first = component(parts[0] ?? "Player") || "Player";
+  const initial2 = parts.length > 1 ? component(parts.at(-1)).slice(0, 1).toUpperCase() : "";
+  let base = `${team}${rules.username.allowSeparators ? "." : ""}${first}${initial2}`;
+  if (!rules.username.allowNumbers) base = base.replace(/\d/g, "");
+  base = base.padEnd(rules.username.minLength, "x").slice(0, rules.username.maxLength);
+  const used = new Set(existingUsernames.map((v) => v.trim().toLowerCase()));
+  for (let n = 1; n <= 1e4; n++) {
+    let suffix = n === 1 ? "" : String(n);
+    if (!rules.username.allowNumbers && suffix) {
+      suffix = "";
+      let index = n - 1;
+      do {
+        suffix = String.fromCharCode(97 + index % 26) + suffix;
+        index = Math.floor(index / 26) - 1;
+      } while (index >= 0);
+    }
+    const candidate = `${base.slice(0, rules.username.maxLength - suffix.length)}${suffix}`;
+    if (!used.has(candidate.toLowerCase()) && !usernameProblem(candidate, rules)) return candidate;
+  }
+  throw new Error("Choose another username; this name has too many duplicates.");
+}
+
+// apps/api/src/sign-in-rules.ts
+var pg = (source2) => "db" in source2;
+var ddl = `CREATE TABLE IF NOT EXISTS application_sign_in_rules(singleton INTEGER PRIMARY KEY CHECK(singleton=1),revision INTEGER NOT NULL,rules_json TEXT NOT NULL,provider_revision INTEGER);`;
+async function saved(source2) {
+  let row;
+  if (pg(source2)) {
+    const result = await source2.one(source2.db.migrationMode === "apply" ? "SELECT jsonb_build_object('revision',revision,'rules_json',rules_json,'provider_revision',provider_revision) AS value FROM application_sign_in_rules WHERE singleton=1" : "SELECT longball.sign_in_rules_read() AS value");
+    if (!result?.value) throw new AccessError("SIGN_IN_RULES_UNAVAILABLE", 503, "Sign-in rules are unavailable. Try again shortly.");
+    row = typeof result.value === "string" ? JSON.parse(result.value) : result.value;
+  } else {
+    source2.database.exec(ddl);
+    source2.database.prepare("INSERT INTO application_sign_in_rules(singleton,revision,rules_json) VALUES(1,0,?) ON CONFLICT DO NOTHING").run(JSON.stringify(DEFAULT_SIGN_IN_RULES));
+    row = source2.database.prepare("SELECT revision,rules_json,provider_revision FROM application_sign_in_rules WHERE singleton=1").get();
+  }
+  return { revision: Number(row.revision), rules: parseSignInRules(typeof row.rules_json === "string" ? JSON.parse(row.rules_json) : row.rules_json), providerRevision: row.provider_revision === null ? null : Number(row.provider_revision) };
+}
+function dto(value, providerConfigured = false) {
+  const status = !providerConfigured ? "not_configured" : value.providerRevision === value.revision ? "applied" : "pending";
+  return { kind: "sign-in-rules", revision: value.revision, rules: value.rules, provider: { status, detail: status === "applied" ? "Rules apply to newly chosen provider credentials and new usernames. Existing sign-ins stay valid." : status === "not_configured" ? "Demo sign-ins keep their existing credentials. New spectator usernames and passcodes use these rules; the password provider is not connected." : "The password provider has not yet confirmed this rule revision. Save the rules to apply them before enabling new provider accounts." } };
+}
+async function ensureProviderSignInRules(source2, provider) {
+  const current3 = await saved(source2);
+  if (!provider) return dto(current3);
+  const adapter = provider;
+  if (!adapter.applySignInRules) throw new AccessError("SIGN_IN_RULES_PROVIDER_UNAVAILABLE", 503, "The identity provider cannot enforce the current sign-in rules.");
+  try {
+    const confirmation = await adapter.applySignInRules({ revision: current3.revision, rules: current3.rules });
+    if (confirmation.revision !== current3.revision || confirmation.enforced !== true) throw new Error("unconfirmed");
+    if (pg(source2) && source2.db.migrationMode === "apply") {
+      const result = await source2.one("UPDATE application_sign_in_rules SET provider_revision=$1 WHERE singleton=1 AND revision=$1 RETURNING true AS confirmed", [current3.revision]);
+      if (result?.confirmed !== true) throw new Error("changed");
+    } else if (pg(source2)) {
+      const result = await source2.one("SELECT longball.sign_in_rules_provider_confirm($1) AS confirmed", [current3.revision]);
+      if (result?.confirmed !== true) throw new Error("changed");
+    } else {
+      const result = source2.database.prepare("UPDATE application_sign_in_rules SET provider_revision=? WHERE singleton=1 AND revision=?").run(current3.revision, current3.revision);
+      if (!result.changes) throw new Error("changed");
+    }
+    return dto({ ...current3, providerRevision: current3.revision }, true);
+  } catch {
+    throw new AccessError("SIGN_IN_RULES_PROVIDER_UNAVAILABLE", 503, "The identity provider did not confirm the current sign-in rules. Retry before creating credentials.");
+  }
+}
+
+// apps/api/src/username-registry.ts
+function isUsernameCollision(error) {
+  if (!error || typeof error !== "object") return false;
+  const value = error;
+  return value.code === "23505" && value.constraint === "global_username" || value.code === "ERR_SQLITE_ERROR" && /GLOBAL_USERNAME_CONFLICT/.test(value.message ?? "");
+}
+function usernameAllocationUnavailable() {
+  throw new AccessError(
+    "IDENTITY_ALLOCATION_UNAVAILABLE",
+    503,
+    "A unique username could not be allocated. Try a different name."
+  );
+}
+async function installPostgresChildUsernameRegistry(source2) {
+  if (source2.db.migrationMode !== "apply") return;
+  await source2.execute("SELECT install_child_username_registry()");
+}
+
+// apps/api/src/postgres-activation.ts
 var hash3 = (value) => createHash6("sha256").update(value).digest("hex");
 var id4 = (value) => typeof value === "string" && /^[A-Za-z0-9_-]{1,150}$/.test(value);
 var uuid = (value) => typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
@@ -8883,10 +9014,6 @@ function fingerprint(actor, input) {
       )
     ])
   );
-}
-function username() {
-  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  return `LB${Array.from(randomBytes4(12), (byte) => alphabet[byte & 31]).join("")}`;
 }
 var PostgresActivationService = class {
   async ownsActivationToken(token, activationId) {
@@ -8963,6 +9090,7 @@ var PostgresActivationService = class {
         );
       if (version2?.version === 2) {
         await verifyActivationSecurity(this.store.db);
+        await installPostgresChildUsernameRegistry(this.store);
         return;
       }
       if (!version2)
@@ -8996,6 +9124,7 @@ CREATE TRIGGER lb_activation_immutable_child BEFORE UPDATE OF classification ON 
       await this.store.execute(
         "UPDATE lb_activation_schema SET version=2 WHERE singleton=1"
       );
+      await installPostgresChildUsernameRegistry(this.store);
     });
   }
   async manager(principal, teamId, seasonId) {
@@ -9067,6 +9196,7 @@ CREATE TRIGGER lb_activation_immutable_child BEFORE UPDATE OF classification ON 
     if (![input.requestId, input.teamId, input.seasonId, input.playerId].every(id4))
       invalid3();
     const signature2 = fingerprint(principal.accountId, input);
+    const signInRules = await ensureProviderSignInRules(this.store, provider);
     const candidateAccountId = randomUUID5();
     const row = await this.withProvisionedAccount(
       candidateAccountId,
@@ -9080,7 +9210,8 @@ CREATE TRIGGER lb_activation_immutable_child BEFORE UPDATE OF classification ON 
           if (existing.request_signature !== signature2) conflict();
           return existing;
         }
-        const profile = (await this.store.preparation(principal, input.teamId, input.seasonId)).profiles.find(
+        const preparation = await this.store.preparation(principal, input.teamId, input.seasonId);
+        const profile = preparation.profiles.find(
           (item) => item.playerId === input.playerId && item.seasonId === input.seasonId && item.active
         );
         if (!profile)
@@ -9098,19 +9229,6 @@ CREATE TRIGGER lb_activation_immutable_child BEFORE UPDATE OF classification ON 
             "This player already has an account assignment. Use the verified exact-account linking process."
           );
         const accountId = candidateAccountId;
-        let chosen = username();
-        for (let tries = 0; await this.store.one(
-          "SELECT 1 FROM lb_activation_children WHERE lower(username)=lower($1)",
-          [chosen]
-        ); tries++) {
-          if (tries >= 10)
-            throw new AccessError(
-              "IDENTITY_ALLOCATION_UNAVAILABLE",
-              503,
-              "A unique username could not be allocated."
-            );
-          chosen = username();
-        }
         await this.store.execute(
           "INSERT INTO accounts(id,issuer,subject,classification,adult_verified,strong_auth_enrolled,status) VALUES($1,$2,$3,$4,0,0,$5)",
           [
@@ -9121,20 +9239,25 @@ CREATE TRIGGER lb_activation_immutable_child BEFORE UPDATE OF classification ON 
             "disabled"
           ]
         );
-        await this.store.execute(
-          "INSERT INTO lb_activation_children(account_id,username,team_id,season_id,player_id,request_id,request_signature,state,created_by,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,'provisioning',$8,$9)",
-          [
-            accountId,
-            chosen,
-            input.teamId,
-            input.seasonId,
-            input.playerId,
-            input.requestId,
-            signature2,
-            principal.accountId,
-            this.store.now()
-          ]
-        );
+        const collisions = [];
+        while (true) {
+          const chosen = suggestInitialUsername(preparation.team.name, profile.displayName, collisions, signInRules.rules);
+          await this.store.execute("SAVEPOINT username_candidate");
+          try {
+            await this.store.execute(
+              "INSERT INTO lb_activation_children(account_id,username,team_id,season_id,player_id,request_id,request_signature,state,created_by,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,'provisioning',$8,$9)",
+              [accountId, chosen, input.teamId, input.seasonId, input.playerId, input.requestId, signature2, principal.accountId, this.store.now()]
+            );
+            await this.store.execute("RELEASE SAVEPOINT username_candidate");
+            break;
+          } catch (error) {
+            await this.store.execute("ROLLBACK TO SAVEPOINT username_candidate");
+            await this.store.execute("RELEASE SAVEPOINT username_candidate");
+            if (!isUsernameCollision(error)) throw error;
+            collisions.push(chosen);
+            if (collisions.length >= 100) usernameAllocationUnavailable();
+          }
+        }
         await this.store.execute(
           "INSERT INTO memberships(account_id,team_id,season_id,role,player_id) VALUES($1,$2,$3,'player',$4)",
           [accountId, input.teamId, input.seasonId, input.playerId]
@@ -9413,6 +9536,7 @@ CREATE TRIGGER lb_activation_immutable_child BEFORE UPDATE OF classification ON 
       );
       return { token, child };
     });
+    await ensureProviderSignInRules(this.store, provider);
     const result = await this.providerCall(
       () => provider.beginCredentialSetup({
         operationId: `activation:${reserved.token.id}`,
@@ -9677,6 +9801,7 @@ async function applyRuntimeGrants(database, roles = { apiRole: "longball_api", w
     await database.query(`GRANT SELECT ON longball.administrative_memberships TO ${api},${worker}`);
     await database.query(`GRANT SELECT,INSERT ON longball.opposition_review_receipts TO ${api}`);
     await database.query(`GRANT SELECT,UPDATE ON longball.invite_requests TO ${api}`);
+    await database.query(`GRANT EXECUTE ON FUNCTION longball.sign_in_rules_read(),longball.sign_in_rules_provider_confirm(bigint),longball.sign_in_rules_lock(),longball.sign_in_rules_save(bigint,jsonb,bigint),longball.claim_configured_demo_username(text,text) TO ${api}`);
     await database.query(`GRANT EXECUTE ON FUNCTION longball.team_document_staff(text,text),longball.opposition_completed_games(text,text),longball.spectator_pin_preview(text,bigint),longball.spectator_pin_register(text,text,text,text,text,text,bigint),longball.spectator_pin_credential(text),longball.spectator_pin_login_attempt(text,boolean,bigint),longball.spectator_invite_directory(),longball.spectator_connection_catalog(text,text),longball.spectator_invite_request(text,text,text,text,text,text,text,bigint) TO ${api}`);
     await database.query(`GRANT EXECUTE ON FUNCTION longball.feedback_player(text,text,text,text,text),longball.feedback_reader(text,text,text,text,text) TO ${api}`);
     await database.query(`GRANT EXECUTE ON FUNCTION longball.scheduled_games(text,text),longball.manage_scheduled_game(text,text,jsonb),longball.admin_player_stats_source(text,text),longball.team_overview_source(text,text) TO ${api}`);
