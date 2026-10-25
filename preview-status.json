@@ -1,9 +1,9 @@
 {
-  "state": "starting",
-  "url": "",
+  "state": "ready",
+  "url": "https://vic-subjects-evaluated-sociology.trycloudflare.com",
   "sourceRevision": "f1e1a748487be1e628567f0339becedf8162eb7d",
   "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40206586726",
-  "startedAt": "2026-10-25T15:24:26Z",
-  "expiresAt": "",
+  "startedAt": "2026-10-25T15:24:56Z",
+  "expiresAt": "2026-10-25T20:24:56Z",
   "audience": "LongBall demo review with simulated Roma U10 teams and matches"
 }
