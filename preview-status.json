@@ -1,9 +1,9 @@
 {
-  "state": "ready",
-  "url": "https://desperate-rail-markets-begin.trycloudflare.com",
-  "sourceRevision": "351a7b17168b446321bd03439aa317c3e1c405ae",
-  "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40171241231",
-  "startedAt": "2026-10-25T07:05:01Z",
-  "expiresAt": "2026-10-25T12:05:01Z",
+  "state": "starting",
+  "url": "",
+  "sourceRevision": "29633577198155d4cb548ccf1499be17afdfbf41",
+  "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40178798927",
+  "startedAt": "2026-10-25T09:03:34Z",
+  "expiresAt": "",
   "audience": "LongBall demo review with simulated Roma U10 teams and matches"
 }
