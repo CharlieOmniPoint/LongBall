@@ -1,0 +1,21 @@
+{
+  "sourceCommit": "97b6a49c7830da82a498a8dfb9108ad9b0cbfa69",
+  "testedBrowserScriptSha256": "a2b86b6642ba5d1a9ee4c08199f84663c3e02c43b1934aaade92f1326f812fdb",
+  "packagedPagesScriptSha256": "a2ae2acd16fc138cf079e8708bb51843afdaa0920a57039f855999f6b8ff9706",
+  "onlyBrowserDifference": "One 44-byte escaped Expo manifest insertion setting experiments.baseUrl=/LongBall.",
+  "browserEqualAfterExactInsertionRemoved": true,
+  "backend": {
+    "api.mjs": {
+      "byteIdentical": true,
+      "sha256": "7e6a4fc28acac0d106ca98e5a3955f2d06932d8da7d3fe99cef7c45ca3a1c3e4"
+    },
+    "worker.mjs": {
+      "byteIdentical": true,
+      "sha256": "b9077f122adf3b1bc6122df9beaf5610f1ea2928c852c1da4280619cf05a45f5"
+    }
+  },
+  "existingVerifierAccounts": 12,
+  "verifierSemanticSha256": "bb5f1482463b049a4cf102fce8d986bd3a065e84bb6279220c9b3a23eae720d9",
+  "verifiersUnchanged": true,
+  "runtimeWebProfile": "Separate hosted profile, no byte-equivalence claim to static Pages."
+}

@@ -1,0 +1,307 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-10-25T23:22:38.682Z",
+  "scope": "Completed GitHub Actions validation of the final product source. Functional success is separate from the enforced, failed dependency gate; native device acceptance is not established.",
+  "productSource": "97b6a49c7830da82a498a8dfb9108ad9b0cbfa69",
+  "productTree": "e1c551e6a372aa2ee95aa1deaf5d62ed857991f1",
+  "run": {
+    "id": 40243045635,
+    "url": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40243045635",
+    "event": "pull_request",
+    "attempt": 1,
+    "headSha": "97b6a49c7830da82a498a8dfb9108ad9b0cbfa69",
+    "status": "completed",
+    "conclusion": "failure",
+    "createdAt": "2026-10-25T23:03:57Z",
+    "updatedAt": "2026-10-25T23:20:36Z"
+  },
+  "actualCheckout": {
+    "commit": "ef26cfd2c0c259845b3b74c9bab9d210f24221d1",
+    "tree": "e1c551e6a372aa2ee95aa1deaf5d62ed857991f1",
+    "sourceTreeEquivalent": true,
+    "proof": "Both completed job logs show refs/remotes/pull/1/merge and git log -1 --format=%H returning this commit; the immutable Git commit API gives the same tree as the product source."
+  },
+  "repositoryBoundary": {
+    "main": "031fdf5fdf4d937a0c638f81f24f9ae34db3579b",
+    "pullRequest": 1,
+    "draft": true,
+    "merged": false
+  },
+  "supersededRuns": [
+    {
+      "id": 40242760980,
+      "source": "d216a52a5d00ee819a10461814d0e139840599bc",
+      "event": "push",
+      "conclusion": "cancelled",
+      "acceptedAsFinal": false
+    },
+    {
+      "id": 40242763071,
+      "source": "d216a52a5d00ee819a10461814d0e139840599bc",
+      "event": "pull_request",
+      "conclusion": "cancelled",
+      "acceptedAsFinal": false
+    },
+    {
+      "id": 40243041929,
+      "source": "97b6a49c7830da82a498a8dfb9108ad9b0cbfa69",
+      "event": "push",
+      "conclusion": "cancelled",
+      "acceptedAsFinal": false
+    }
+  ],
+  "tests": {
+    "sharedClient": {
+      "passed": 1008,
+      "files": 123
+    },
+    "apiWorkerAccess": {
+      "passed": 496,
+      "skipped": 3,
+      "total": 499,
+      "files": 83,
+      "skipScope": "The maintained native HEIC/HEVC helper cases in apps/api/src/heic.test.ts; all configured PostgreSQL source tests ran."
+    },
+    "actualPostgresMigrations": {
+      "passed": 45,
+      "files": 11
+    },
+    "canonicalContractsAndOriginalArchive": {
+      "passed": true
+    },
+    "sourcePublicationAndVerifierPackaging": {
+      "passed": true,
+      "sourceTests": 1,
+      "verifierPackagingTests": 8,
+      "total": 9
+    },
+    "nativeProductionConfigurationAndHermesExports": {
+      "passed": true,
+      "physicalAcceptance": false
+    },
+    "builtBrowserJourney": {
+      "passed": true
+    },
+    "configuredBrowserSummaries": [
+      {
+        "passed": true,
+        "roleJourneys": 8,
+        "checks": 28,
+        "failures": [],
+        "report": ".local/quality/demo-account-review/report.json"
+      },
+      {
+        "passed": true,
+        "viewportJourneys": 36,
+        "checks": 4,
+        "failures": [],
+        "report": ".local/quality/tablet-review/report.json"
+      },
+      {
+        "passed": true,
+        "checks": 7,
+        "failures": [],
+        "report": ".local/quality/club-expansion-review/report.json"
+      },
+      {
+        "passed": true,
+        "checks": 9,
+        "failures": [],
+        "report": ".local/quality/login-activity-review/report.json"
+      }
+    ]
+  },
+  "sourceSecrets": {
+    "scannedFiles": 1421,
+    "unexpectedFindings": 0,
+    "exactReviewedFalsePositives": 99,
+    "historyScanClaimed": false
+  },
+  "dependencyGate": {
+    "passed": false,
+    "soleFailedStep": "Enforce the dependency audit result",
+    "cloudAuditOutput": {
+      "workspace": "failed or unavailable (high/critical gate; complete report retained)",
+      "runtime": "passed (high/critical gate; complete report retained)",
+      "compiler": "passed (high/critical gate; complete report retained)"
+    },
+    "advisoryOnlyCloudCauseEstablished": false,
+    "localRegistryEvidence": "dependency-summary.json",
+    "localFindingsNotRelabeledAsCloud": true,
+    "waived": false
+  },
+  "allConfiguredFunctionalStepsPassed": true,
+  "productionImageAcceptance": {
+    "jobId": 121318832828,
+    "passed": true,
+    "sourceCheckoutEquivalent": true
+  },
+  "jobs": [
+    {
+      "id": 121318832470,
+      "name": "quality",
+      "status": "completed",
+      "conclusion": "failure",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Initialize containers",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Install the pinned frozen workspace",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Retain resolved dependency and licence inventories",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Scan current source for secrets",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Audit workspace and runtime dependency locks",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Lint and check both TypeScript clients",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Shared rules, platform adapters and real PostgreSQL API boundaries",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Retained-history and actual PostgreSQL migration checks",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Validate canonical contracts, source publication and sample fixtures",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Check native production configuration and compile JavaScript exports",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Exercise the built browser journey",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Exercise configured demo accounts and queued report downloads",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Enforce the dependency audit result",
+          "status": "completed",
+          "conclusion": "failure"
+        },
+        {
+          "name": "Retain safe quality evidence",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Post Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Stop containers",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "id": 121318832828,
+      "name": "runtime-image",
+      "status": "completed",
+      "conclusion": "success",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Build and exercise the isolated production image",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Retain safe image acceptance evidence",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Run actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    }
+  ],
+  "nativeCompilationEvidence": "native-final.json",
+  "physicalDeviceTested": false,
+  "productionIdentityOrOperatingPolicyApproved": false,
+  "privacySupportDecisionsApproved": false,
+  "paidServicesProvisioned": false
+}

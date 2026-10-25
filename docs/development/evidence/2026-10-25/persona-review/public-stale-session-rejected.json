@@ -1,0 +1,44 @@
+{
+  "observedAt": "2026-10-25T23:11:36.053Z",
+  "url": "https://charlieomnipoint.github.io/LongBall/?review=97b6a49",
+  "source": {
+    "sourceCommit": "97b6a49c7830da82a498a8dfb9108ad9b0cbfa69",
+    "sourceBranch": "dev/longball-m0-journey",
+    "synthetic": true,
+    "nativeTargets": [
+      "iPhone",
+      "Android"
+    ],
+    "production": false,
+    "basePath": "/LongBall",
+    "connectedBackendIncluded": false
+  },
+  "scriptUrl": "https://charlieomnipoint.github.io/LongBall/_expo/static/js/web/index-c7ff53dbd26b58f59e390d60917a223f.js",
+  "servedScriptSha256": "b620507312c5e97566a3c6cfaf99144fefc18a0da7d941401dfa0f5f58fb0368",
+  "runtime": {
+    "state": "ready",
+    "url": "https://conventional-unions-attachment-absolute.trycloudflare.com",
+    "sourceRevision": "fe899e89b54aeceab8f5903036fc6daef1dd786d",
+    "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40243187138",
+    "startedAt": "2026-10-25T23:09:15Z",
+    "expiresAt": "2026-10-26T04:09:15Z",
+    "audience": "LongBall demo review with simulated Roma U10 teams and matches"
+  },
+  "healthStatus": 200,
+  "health": {
+    "status": "ok",
+    "service": "longball-api",
+    "contractVersion": "longball.events/1.1",
+    "backend": "fictional-sqlite",
+    "syntheticOnly": true,
+    "demoScenario": true,
+    "demoAccountLogin": true
+  },
+  "publicPolicyStatus": 200,
+  "anonymousPrivateReportStatus": 401,
+  "welcomeVisible": true,
+  "signInVisible": true,
+  "credentialsSubmitted": false,
+  "accepted": false,
+  "reason": "Reused pre-deployment browser referenced the previous script while fresh build-info had the new source; script fingerprint did not match and this attempt is rejected."
+}
