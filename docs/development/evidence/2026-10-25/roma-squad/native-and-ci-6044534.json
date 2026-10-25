@@ -1,0 +1,90 @@
+{
+  "recordedAt": "2026-10-25T09:13:55Z",
+  "productSourceCommit": "6044534f2962fd1a4d58e70c612ee859f0c36f79",
+  "nativeCompilation": {
+    "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40178798974",
+    "conclusion": "success",
+    "completedAt": "2026-10-25T09:12:24Z",
+    "transportCommit": "29633577198155d4cb548ccf1499be17afdfbf41",
+    "importedSourceCommit": "6044534f2962fd1a4d58e70c612ee859f0c36f79",
+    "sourceBundleSha256": "9807367ed9b6cde15da2862d481a55cab94d0a436eb9030a99fdf9beb0350f6f",
+    "sourceProof": "Both completed job logs verified the imported source and bundle digest.",
+    "android": {
+      "jobUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40178798974/job/121125198748",
+      "conclusion": "success",
+      "kind": "arm64-v8a debug development client",
+      "command": ":app:assembleDebug",
+      "startedAt": "2026-10-25T08:59:28Z",
+      "completedAt": "2026-10-25T09:05:37Z",
+      "compileStepStartedAt": "2026-10-25T09:00:12Z",
+      "compileStepCompletedAt": "2026-10-25T09:05:34Z",
+      "result": "BUILD SUCCESSFUL; local native Kotlin module compiled."
+    },
+    "ios": {
+      "jobUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40178798974/job/121125198643",
+      "conclusion": "success",
+      "kind": "unsigned x86_64 Debug simulator development client",
+      "sdk": "iphonesimulator26.2",
+      "codeSigningAllowed": false,
+      "codeSigningRequired": false,
+      "startedAt": "2026-10-25T08:59:30Z",
+      "completedAt": "2026-10-25T09:12:23Z",
+      "compileStepStartedAt": "2026-10-25T09:03:15Z",
+      "compileStepCompletedAt": "2026-10-25T09:12:14Z",
+      "result": "BUILD SUCCEEDED; local LongBallNativeModule Swift module compiled."
+    },
+    "physicalDeviceProof": false,
+    "artifactUploadRequested": false,
+    "binaryArtifactsUploaded": false
+  },
+  "originalPullRequestCI": {
+    "runUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40178326590",
+    "headCommit": "6044534f2962fd1a4d58e70c612ee859f0c36f79",
+    "checkoutKind": "pull-request merge",
+    "checkoutCommit": "ec5f093233eed32d61a24178a190b66b6a0dc2f6",
+    "conclusion": "failure",
+    "passed": {
+      "sharedTests": 914,
+      "apiTests": 459,
+      "apiTestsSkipped": 3,
+      "migrationTests": 30,
+      "lintAndBothTypeScriptClients": true,
+      "canonicalContractsSourcePublicationAndFixtures": true,
+      "nativeConfigurationAndJavaScriptExports": true,
+      "builtBrowserJourney": true
+    },
+    "demoAccountReview": {
+      "conclusion": "failure",
+      "roleJourneysReported": 8,
+      "checksCompleted": 20,
+      "assertion": "The active substitution countdown must decrease as actual active time passes.",
+      "diagnosis": "The test helper mapped the first seven roster IDs directly to slots, placing primary-position players in the wrong slots. The app correctly proposed an immediate lineup correction, so the test's future-countdown precondition was false.",
+      "classification": "test fixture lineup precondition failure; not a passing review or an unexplained flaky result",
+      "laterTabletAndClubGroups": "not reached in this CI run"
+    },
+    "dependencyAudit": {
+      "workspaceGate": "failure",
+      "workspaceHighFindings": 2,
+      "knownPackages": ["node-forge", "zod"],
+      "waived": false,
+      "runtimeGate": "success",
+      "compilerGate": "success"
+    },
+    "runtimeImage": {
+      "jobUrl": "https://github.com/CharlieOmniPoint/LongBall/actions/runs/40178326590/job/121124051742",
+      "conclusion": "success",
+      "imageId": "sha256:b89a81d7e9dd473f336fbe24240ca46111639575f551843259471d5c72efd8be",
+      "sourceScope": "PR merge ec5f093 for head6044534; separate from the pinned product604 preview publication."
+    }
+  },
+  "separateLocalProduct604Reviews": {
+    "m0Browser": { "conclusion": "success", "checksPassed": 10 },
+    "clubExpansionBrowser": { "conclusion": "success", "groupsPassed": 6 },
+    "scope": "Local reviews of pinned product604; they do not change the original CI failure."
+  },
+  "limitations": [
+    "Native compilation does not prove physical-device behaviour or signed release distribution.",
+    "The workspace dependency findings remain unwaived.",
+    "A primary-aware test-helper correction and its follow-up CI must be recorded separately."
+  ]
+}

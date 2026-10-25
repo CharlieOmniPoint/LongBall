@@ -425,17 +425,26 @@ async function preparationCommand(token, payload) {
 }
 function fixtureLineup(match) {
   const assignments = [], { slots, players, selectedPlayerIds, profileSnapshot, fixedKeeperId } = match.config;
+  // This countdown case starts from a core-position lineup. Otherwise the
+  // planner may correctly propose an immediate position correction at kickoff,
+  // leaving an overdue timer instead of the future countdown this case tests.
   function choose(index, used = new Set()) {
     if (index === slots.length) return true;
-    for (const player of players.filter(item => selectedPlayerIds.includes(item.id))) {
+    for (const player of players.filter(item => selectedPlayerIds.includes(item.id) && match.availability[item.id] !== false)) {
       const profile = profileSnapshot.find(item => item.playerId === player.id);
-      if (used.has(player.id) || !profile?.eligiblePositions.includes(slots[index].position) || slots[index].position === 'GK' && fixedKeeperId && player.id !== fixedKeeperId) continue;
+      if (used.has(player.id) || profile?.preferences[0] !== slots[index].position || !profile.eligiblePositions.includes(slots[index].position) || slots[index].position === 'GK' && fixedKeeperId && player.id !== fixedKeeperId) continue;
       assignments[index] = player;
       if (choose(index + 1, new Set([...used, player.id]))) return true;
     }
     return false;
   }
-  check(choose(0), 'The actual prepared snapshot must support a complete eligible lineup.');
+  check(choose(0), 'The actual prepared snapshot must support a complete primary-position eligible lineup.');
+  const selected = slots.map((slot, index) => ({ slotId: slot.slotId, position: slot.position, playerId: assignments[index].id }));
+  check(selected.length === 7 && new Set(selected.map(item => item.playerId)).size === 7 && selected.every(item => profileSnapshot.find(profile => profile.playerId === item.playerId).preferences[0] === item.position), 'All seven initial places must use a distinct available player in their actual primary position.');
+  assert.deepEqual(selected.filter(item => item.position === 'GK' || item.position === 'LW' || item.position === 'RW' || item.position === 'ST').map(item => [item.position, item.playerId]), [['GK', 'synthetic-player-01'], ['LW', 'synthetic-player-06'], ['RW', 'synthetic-player-07'], ['ST', 'synthetic-player-08']], 'Thomas, Seb, Ezra and Archie must occupy their core goalkeeper, wing and striker places.');
+  const midfielder = selected.find(item => item.position === 'CM'), bench = selectedPlayerIds.filter(id => !selected.some(item => item.playerId === id));
+  check(['synthetic-player-04', 'synthetic-player-05'].includes(midfielder?.playerId) && bench.length === 1 && ['synthetic-player-04', 'synthetic-player-05'].includes(bench[0]) && bench[0] !== midfielder.playerId, 'One of Max or Aryan must start in central midfield and the other must be the available bench player.');
+  report.managerInitialLineup = { source: 'Actual accepted match profile snapshot, availability and saved formation slots', allocations: selected, primaryPreferenceCost: 0, benchPlayerId: bench[0] };
   return assignments;
 }
 async function openDemo(state, account) {
@@ -1193,7 +1202,7 @@ try {
     } finally { state.closed = true; state.holdMe?.release(); await state.context.close(); }
   }
   checks.push('All four preauthorised roles pass at 320px and 390px; logout revokes each opaque server session.');
-  checks.push('Thirteen named profiles, four accepted fixtures and two completed games agree with manager/player screens.');
+  checks.push('The eight owner-specified player names, initials, primary positions and feet, four accepted fixtures and two completed games agree with manager/player screens.');
   checks.push('Past game cards at both phone widths omit every availability action while retaining exact recorded replies and attendance; upcoming unplayed games keep their reply actions, and period navigation causes no POST or service preparation change.');
   checks.push('Generated passwords and login tokens are absent from built assets, visible workspace text and browser journal/preferences.');
   report.browserCredentialBoundary = { generatedUsernamesPasswordsForbidden: true, demoSessionBearerTokensForbidden: true, serverOnlyExportKeyForbidden: true, allBrowserStoresInspected: true, canonicalControllerGrantIntentionallyRetained: true, allOpaqueHeadersRedactedFromEvidence: true };
